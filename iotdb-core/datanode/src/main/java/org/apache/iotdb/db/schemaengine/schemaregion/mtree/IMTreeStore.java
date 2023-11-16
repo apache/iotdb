@@ -28,6 +28,7 @@ import org.apache.iotdb.db.schemaengine.template.Template;
 
 import java.io.File;
 import java.util.Map;
+import java.util.function.Consumer;
 
 /**
  * This interface defines the basic access methods of an MTreeStore.
@@ -74,10 +75,12 @@ public interface IMTreeStore<N extends IMNode<N>> {
   void deleteChild(N parent, String childName) throws MetadataException;
 
   /**
-   * @param node
-   * @throws MetadataException
+   * Update the mnode under the guarantee of latch.
+   *
+   * @param node node to be updated
+   * @param operation operation
    */
-  void updateMNode(N node) throws MetadataException;
+  void updateMNode(N node, Consumer<N> operation) throws MetadataException;
 
   IDeviceMNode<N> setToEntity(N node) throws MetadataException;
 

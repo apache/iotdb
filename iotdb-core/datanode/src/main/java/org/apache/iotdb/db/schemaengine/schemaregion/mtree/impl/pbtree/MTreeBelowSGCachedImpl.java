@@ -648,8 +648,7 @@ public class MTreeBelowSGCachedImpl {
         }
       } else if (!hasNonViewMeasurement) {
         // has some measurement but they are all logical view
-        entityMNode.setAligned(null);
-        updateMNode(entityMNode.getAsMNode());
+        store.updateMNode(entityMNode.getAsMNode(), o -> o.getAsDeviceMNode().setAligned(null));
       }
     }
 
@@ -686,8 +685,8 @@ public class MTreeBelowSGCachedImpl {
 
           protected void updateMeasurement(IMeasurementMNode<ICachedMNode> node)
               throws MetadataException {
-            node.setPreDeleted(true);
-            store.updateMNode(node.getAsMNode());
+            store.updateMNode(
+                node.getAsMNode(), o -> o.getAsMeasurementMNode().setPreDeleted(true));
             result.add(getPartialPathFromRootToNode(node.getAsMNode()));
           }
         }) {
@@ -705,8 +704,8 @@ public class MTreeBelowSGCachedImpl {
 
           protected void updateMeasurement(IMeasurementMNode<ICachedMNode> node)
               throws MetadataException {
-            node.setPreDeleted(false);
-            store.updateMNode(node.getAsMNode());
+            store.updateMNode(
+                node.getAsMNode(), o -> o.getAsMeasurementMNode().setPreDeleted(false));
             result.add(getPartialPathFromRootToNode(node.getAsMNode()));
           }
         }) {
@@ -1010,8 +1009,8 @@ public class MTreeBelowSGCachedImpl {
           protected void updateMeasurement(IMeasurementMNode<ICachedMNode> node)
               throws MetadataException {
             if (node.isLogicalView()) {
-              node.setPreDeleted(true);
-              store.updateMNode(node.getAsMNode());
+              store.updateMNode(
+                  node.getAsMNode(), o -> o.getAsMeasurementMNode().setPreDeleted(true));
               result.add(getPartialPathFromRootToNode(node.getAsMNode()));
             }
           }
@@ -1030,8 +1029,8 @@ public class MTreeBelowSGCachedImpl {
           protected void updateMeasurement(IMeasurementMNode<ICachedMNode> node)
               throws MetadataException {
             if (node.isLogicalView()) {
-              node.setPreDeleted(false);
-              store.updateMNode(node.getAsMNode());
+              store.updateMNode(
+                  node.getAsMNode(), o -> o.getAsMeasurementMNode().setPreDeleted(false));
               result.add(getPartialPathFromRootToNode(node.getAsMNode()));
             }
           }
@@ -1066,8 +1065,11 @@ public class MTreeBelowSGCachedImpl {
       if (!leafMNode.isLogicalView()) {
         throw new MetadataException(String.format("[%s] is no view.", path));
       }
-      leafMNode.setSchema(new LogicalViewSchema(leafMNode.getName(), expression));
-      updateMNode(leafMNode.getAsMNode());
+      store.updateMNode(
+          leafMNode.getAsMNode(),
+          o ->
+              o.getAsMeasurementMNode()
+                  .setSchema(new LogicalViewSchema(leafMNode.getName(), expression)));
     } finally {
       unPinMNode(leafMNode.getAsMNode());
     }
@@ -1111,13 +1113,16 @@ public class MTreeBelowSGCachedImpl {
         }
       }
 
-      if (!entityMNode.isAligned()) {
-        entityMNode.setAligned(template.isDirectAligned());
-      }
-      entityMNode.setUseTemplate(true);
-      entityMNode.setSchemaTemplateId(template.getId());
+      store.updateMNode(
+          entityMNode.getAsMNode(),
+          o -> {
+            if (!entityMNode.isAligned()) {
+              entityMNode.setAligned(template.isDirectAligned());
+            }
+            entityMNode.setUseTemplate(true);
+            entityMNode.setSchemaTemplateId(template.getId());
+          });
 
-      store.updateMNode(entityMNode.getAsMNode());
       regionStatistics.activateTemplate(template.getId());
     } finally {
       unPinPath(cur);
@@ -1148,13 +1153,16 @@ public class MTreeBelowSGCachedImpl {
         }
       }
 
-      if (!entityMNode.isAligned()) {
-        entityMNode.setAligned(isAligned);
-      }
-      entityMNode.setUseTemplate(true);
-      entityMNode.setSchemaTemplateId(templateId);
+      store.updateMNode(
+          entityMNode.getAsMNode(),
+          o -> {
+            if (!entityMNode.isAligned()) {
+              entityMNode.setAligned(isAligned);
+            }
+            entityMNode.setUseTemplate(true);
+            entityMNode.setSchemaTemplateId(templateId);
+          });
 
-      store.updateMNode(entityMNode.getAsMNode());
       regionStatistics.activateTemplate(templateId);
     } finally {
       unPinPath(cur);
@@ -1173,8 +1181,8 @@ public class MTreeBelowSGCachedImpl {
               if (entry.getValue().contains(node.getSchemaTemplateId())) {
                 resultTemplateSetInfo.put(
                     node.getPartialPath(), Collections.singletonList(node.getSchemaTemplateId()));
-                node.preDeactivateTemplate();
-                store.updateMNode(node.getAsMNode());
+                store.updateMNode(
+                    node.getAsMNode(), o -> o.getAsDeviceMNode().preDeactivateTemplate());
               }
             }
           }) {
@@ -1197,8 +1205,8 @@ public class MTreeBelowSGCachedImpl {
                   && node.isPreDeactivateTemplate()) {
                 resultTemplateSetInfo.put(
                     node.getPartialPath(), Collections.singletonList(node.getSchemaTemplateId()));
-                node.rollbackPreDeactivateTemplate();
-                store.updateMNode(node.getAsMNode());
+                store.updateMNode(
+                    node.getAsMNode(), o -> o.getAsDeviceMNode().rollbackPreDeactivateTemplate());
               }
             }
           }) {
@@ -1222,8 +1230,8 @@ public class MTreeBelowSGCachedImpl {
                 resultTemplateSetInfo.put(
                     node.getPartialPath(), Collections.singletonList(node.getSchemaTemplateId()));
                 regionStatistics.deactivateTemplate(node.getSchemaTemplateId());
-                node.deactivateTemplate();
-                store.updateMNode(node.getAsMNode());
+                store.updateMNode(
+                    node.getAsMNode(), o -> o.getAsDeviceMNode().deactivateTemplate());
               }
             }
           }) {
@@ -1269,8 +1277,8 @@ public class MTreeBelowSGCachedImpl {
   }
 
   // TODO: This interface should not be exposed to SchemaRegion
-  public void updateMNode(ICachedMNode node) throws MetadataException {
-    store.updateMNode(node);
+  public void updateMNode(ICachedMNode node, Consumer<ICachedMNode> operation) {
+    store.updateMNode(node, operation);
   }
 
   // endregion

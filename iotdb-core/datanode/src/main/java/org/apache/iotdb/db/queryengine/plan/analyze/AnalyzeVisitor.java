@@ -1782,7 +1782,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     FillComponent fillComponent = queryStatement.getFillComponent();
     analysis.setFillDescriptor(
-        new FillDescriptor(fillComponent.getFillPolicy(), fillComponent.getFillValue()));
+        new FillDescriptor(
+            fillComponent.getFillPolicy(),
+            fillComponent.getFillValue(),
+            fillComponent.getTimeDurationThreshold()));
   }
 
   private void analyzeDataPartition(
@@ -2107,7 +2110,20 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       // construct insert statement
       InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement =
           new InsertRowsOfOneDeviceStatement();
+      if (!checkSorted(timeArray)) {
+        Integer[] index = new Integer[timeArray.length];
+        for (int i = 0; i < index.length; i++) {
+          index[i] = i;
+        }
+        Arrays.sort(index, Comparator.comparingLong(o -> timeArray[o]));
+        Arrays.sort(timeArray, 0, timeArray.length);
+        insertStatement.setValuesList(
+            Arrays.stream(index)
+                .map(insertStatement.getValuesList()::get)
+                .collect(Collectors.toList()));
+      }
       List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
+
       for (int i = 0; i < timeArray.length; i++) {
         InsertRowStatement statement = new InsertRowStatement();
         statement.setDevicePath(devicePath);
@@ -2127,6 +2143,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       insertRowsOfOneDeviceStatement.setInsertRowStatementList(insertRowStatementList);
       return insertRowsOfOneDeviceStatement.accept(this, context);
     }
+  }
+
+  private boolean checkSorted(long[] times) {
+    for (int i = 1; i < times.length; i++) {
+      if (times[i] < times[i - 1]) {
+        return false;
+      }
+    }
+    return true;
   }
 
   @Override

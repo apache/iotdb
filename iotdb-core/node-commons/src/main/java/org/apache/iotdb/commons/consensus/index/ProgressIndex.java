@@ -124,10 +124,8 @@ public abstract class ProgressIndex {
    */
   public abstract TotalOrderSumTuple getTotalOrderSumTuple();
 
-  public final int topologicalCompareTo(ProgressIndex progressIndex) {
-    return progressIndex == null
-        ? 1
-        : getTotalOrderSumTuple().compareTo(progressIndex.getTotalOrderSumTuple());
+  public final int topologicalCompareTo(@Nonnull ProgressIndex progressIndex) {
+    return getTotalOrderSumTuple().compareTo(progressIndex.getTotalOrderSumTuple());
   }
 
   /**

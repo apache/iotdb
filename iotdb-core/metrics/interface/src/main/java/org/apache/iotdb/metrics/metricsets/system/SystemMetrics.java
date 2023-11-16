@@ -20,6 +20,7 @@
 package org.apache.iotdb.metrics.metricsets.system;
 
 import org.apache.iotdb.metrics.AbstractMetricService;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
@@ -57,26 +58,31 @@ public class SystemMetrics implements IMetricSet {
   }
 
   public void setDiskDirs(List<String> diskDirs) {
-    this.diskDirs.set(diskDirs);
-    for (String diskDir : this.diskDirs.get()) {
-      if (!FSUtils.isLocal(diskDir)) {
-        continue;
-      }
-      Path path = Paths.get(diskDir);
-      FileStore fileStore = null;
-      try {
-        fileStore = Files.getFileStore(path);
-      } catch (IOException e) {
-        // check parent if path is not exists
-        path = path.getParent();
+    if (!MetricConfigDescriptor.getInstance()
+        .getMetricConfig()
+        .getMetricLevel()
+        .equals(MetricLevel.OFF)) {
+      this.diskDirs.set(diskDirs);
+      for (String diskDir : this.diskDirs.get()) {
+        if (!FSUtils.isLocal(diskDir)) {
+          continue;
+        }
+        Path path = Paths.get(diskDir);
+        FileStore fileStore = null;
         try {
           fileStore = Files.getFileStore(path);
-        } catch (IOException innerException) {
-          logger.error("Failed to get storage path of {}, because", diskDir, innerException);
+        } catch (IOException e) {
+          // check parent if path is not exists
+          path = path.getParent();
+          try {
+            fileStore = Files.getFileStore(path);
+          } catch (IOException innerException) {
+            logger.error("Failed to get storage path of {}, because", diskDir, innerException);
+          }
         }
-      }
-      if (null != fileStore) {
-        fileStores.add(fileStore);
+        if (null != fileStore) {
+          fileStores.add(fileStore);
+        }
       }
     }
   }
