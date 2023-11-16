@@ -69,9 +69,7 @@ public class CompactionFileGeneratorUtils {
   public static List<TsFileResource> getInnerCompactionTargetTsFileResources(
       List<TsFileResource> fileResources, boolean seq) throws IOException {
     List<TsFileResource> resources = new ArrayList<>();
-    resources.add(
-        new TsFileResource(
-            TsFileNameGenerator.getInnerCompactionTargetFileResource(fileResources, seq)));
+    resources.add(TsFileNameGenerator.getInnerCompactionTargetFileResource(fileResources, seq));
     return resources;
   }
 
