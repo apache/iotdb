@@ -100,17 +100,14 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
         empty -> {
           try {
             // Ensure the sink doesn't point to the air gap receiver on DataNode itself
-
-            if (!pipeConfig.getPipeAirGapReceiverEnabled()) {
-              return true;
-            }
-
-            return !NodeUrlUtils.containsLocalAddress(
-                givenNodeUrls.stream()
-                    .filter(
-                        tEndPoint -> tEndPoint.getPort() == pipeConfig.getPipeAirGapReceiverPort())
-                    .map(TEndPoint::getIp)
-                    .collect(Collectors.toList()));
+            return !(pipeConfig.getPipeAirGapReceiverEnabled()
+                && NodeUrlUtils.containsLocalAddress(
+                    givenNodeUrls.stream()
+                        .filter(
+                            tEndPoint ->
+                                tEndPoint.getPort() == pipeConfig.getPipeAirGapReceiverPort())
+                        .map(TEndPoint::getIp)
+                        .collect(Collectors.toList())));
           } catch (UnknownHostException e) {
             LOGGER.warn("Unknown host when checking pipe sink IP.", e);
             return false;
@@ -318,7 +315,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
   @Override
   public void transfer(Event event) {
     if (!(event instanceof PipeHeartbeatEvent)) {
-      LOGGER.warn("IoTDBAirGapConnector does not support transfer generic event: {}.", event);
+      LOGGER.warn("IoTDBAirGapConnector does not support transferring generic event: {}.", event);
     }
   }
 

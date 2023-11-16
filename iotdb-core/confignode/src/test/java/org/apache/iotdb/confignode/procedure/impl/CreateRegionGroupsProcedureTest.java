@@ -93,6 +93,7 @@ public class CreateRegionGroupsProcedureTest {
     CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
     createRegionGroupsPlan.addRegionGroup("root.sg0", dataRegionSet);
     createRegionGroupsPlan.addRegionGroup("root.sg1", schemaRegionSet);
+
     CreateRegionGroupsPlan persistPlan = new CreateRegionGroupsPlan();
     persistPlan.addRegionGroup("root.sg0", dataRegionSet);
     persistPlan.addRegionGroup("root.sg1", schemaRegionSet);

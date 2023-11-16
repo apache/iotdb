@@ -25,7 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -49,7 +49,7 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
     return insertNode;
   }
 
-  public Statement constructStatement() {
+  public InsertBaseStatement constructStatement() {
     if (insertNode instanceof InsertRowNode) {
       final InsertRowNode node = (InsertRowNode) insertNode;
 
@@ -85,6 +85,16 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
         String.format(
             "unknown InsertNode type %s when constructing statement from insert node.",
             insertNode));
+  }
+
+  /////////////////////////////// WriteBack ///////////////////////////////
+
+  public static PipeTransferTabletInsertNodeReq toTPipeTransferRawReq(InsertNode insertNode) {
+    final PipeTransferTabletInsertNodeReq req = new PipeTransferTabletInsertNodeReq();
+
+    req.insertNode = insertNode;
+
+    return req;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////

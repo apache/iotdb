@@ -31,6 +31,7 @@ import org.apache.thrift.async.AsyncMethodCallback;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.apache.iotdb.commons.client.ThriftClient.isConnectionBroken;
@@ -97,9 +98,9 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendBatchP
 
   private boolean needRetry(Exception e) {
     Throwable rootCause = ExceptionUtils.getRootCause(e);
-    // if the exception is SocketException and its error message is Broken pipe, it means that the
-    // remote node may go offline
-    return isConnectionBroken(rootCause);
+    // 1. connection broken it means that the remote node may go offline
+    // 2. or the method call is time out
+    return isConnectionBroken(rootCause) || (e instanceof TimeoutException);
   }
 
   private boolean needRetry(TSendSinglePlanNodeResp resp) {

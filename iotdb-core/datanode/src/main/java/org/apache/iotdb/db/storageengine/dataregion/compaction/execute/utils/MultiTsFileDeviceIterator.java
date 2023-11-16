@@ -339,7 +339,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    */
   @SuppressWarnings({"squid:S1319", "squid:S135"})
   public LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
-      getReaderAndChunkMetadataForCurrentAlignedSeries() throws IOException {
+      getReaderAndChunkMetadataForCurrentAlignedSeries() throws IOException, IllegalPathException {
     if (currentDevice == null || !currentDevice.right) {
       return new LinkedList<>();
     }
@@ -374,7 +374,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    * @param alignedChunkMetadataList list of aligned chunk metadata
    */
   private void applyModificationForAlignedChunkMetadataList(
-      TsFileResource tsFileResource, List<AlignedChunkMetadata> alignedChunkMetadataList) {
+      TsFileResource tsFileResource, List<AlignedChunkMetadata> alignedChunkMetadataList)
+      throws IllegalPathException {
     ModificationFile modificationFile = ModificationFile.getNormalMods(tsFileResource);
     if (!modificationFile.exists()) {
       return;
@@ -387,16 +388,21 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     AlignedChunkMetadata alignedChunkMetadata = alignedChunkMetadataList.get(0);
     List<IChunkMetadata> valueChunkMetadataList = alignedChunkMetadata.getValueChunkMetadataList();
     List<List<Modification>> modificationForCurDevice = new ArrayList<>();
+    List<PartialPath> valueSeriesPaths = new ArrayList<>(valueChunkMetadataList.size());
     for (int i = 0; i < valueChunkMetadataList.size(); ++i) {
       modificationForCurDevice.add(new ArrayList<>());
+      IChunkMetadata valueChunkMetadata = valueChunkMetadataList.get(i);
+      valueSeriesPaths.add(
+          valueChunkMetadata == null
+              ? null
+              : new PartialPath(currentDevice.left, valueChunkMetadata.getMeasurementUid()));
     }
 
     for (Modification modification : modifications) {
       if (modification.getDevice().equals(currentDevice.left)) {
         for (int i = 0; i < valueChunkMetadataList.size(); ++i) {
-          IChunkMetadata chunkMetadata = valueChunkMetadataList.get(i);
-          if (chunkMetadata != null
-              && modification.getMeasurement().equals(chunkMetadata.getMeasurementUid())) {
+          PartialPath path = valueSeriesPaths.get(i);
+          if (path != null && modification.getPath().matchFullPath(path)) {
             modificationForCurDevice.get(i).add(modification);
           }
         }
