@@ -27,6 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
@@ -95,7 +96,8 @@ public class DatabasePartitionTable {
     replicaSets.forEach(
         replicaSet ->
             regionGroupMap.put(
-                replicaSet.getRegionId(), new RegionGroup(System.currentTimeMillis(), replicaSet)));
+                replicaSet.getRegionId(),
+                new RegionGroup(CommonDateTimeUtils.currentTime(), replicaSet)));
   }
 
   /** @return Deep copy of all Regions' RegionReplicaSet within one StorageGroup */

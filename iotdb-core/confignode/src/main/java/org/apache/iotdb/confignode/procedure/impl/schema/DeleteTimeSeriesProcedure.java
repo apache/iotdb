@@ -89,7 +89,7 @@ public class DeleteTimeSeriesProcedure
     try {
       switch (state) {
         case CONSTRUCT_BLACK_LIST:
-          LOGGER.info("Construct schemaengine black list of timeseries {}", requestMessage);
+          LOGGER.info("Construct schemaEngine black list of timeSeries {}", requestMessage);
           if (constructBlackList(env) > 0) {
             setNextState(DeleteTimeSeriesState.CLEAN_DATANODE_SCHEMA_CACHE);
             break;
@@ -104,31 +104,29 @@ public class DeleteTimeSeriesProcedure
             return Flow.NO_MORE_STATE;
           }
         case CLEAN_DATANODE_SCHEMA_CACHE:
-          LOGGER.info("Invalidate cache of timeseries {}", requestMessage);
+          LOGGER.info("Invalidate cache of timeSeries {}", requestMessage);
           invalidateCache(env);
           break;
         case DELETE_DATA:
-          LOGGER.info("Delete data of timeseries {}", requestMessage);
+          LOGGER.info("Delete data of timeSeries {}", requestMessage);
           deleteData(env);
           break;
         case DELETE_TIMESERIES_SCHEMA:
-          LOGGER.info("Delete timeseries schemaengine of {}", requestMessage);
+          LOGGER.info("Delete timeSeries schemaEngine of {}", requestMessage);
           deleteTimeSeriesSchema(env);
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized state " + state.toString()));
+          setFailure(new ProcedureException("Unrecognized state " + state));
           return Flow.NO_MORE_STATE;
       }
       return Flow.HAS_MORE_STATE;
     } finally {
       LOGGER.info(
-          String.format(
-              "DeleteTimeSeries-[%s] costs %sms",
-              state.toString(), (System.currentTimeMillis() - startTime)));
+          "DeleteTimeSeries-[{}] costs {}ms", state, (System.currentTimeMillis() - startTime));
     }
   }
 
-  // return the total num of timeseries in schemaengine black list
+  // return the total num of timeSeries in schemaEngine black list
   private long constructBlackList(ConfigNodeProcedureEnv env) {
     Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup =
         env.getConfigManager().getRelatedSchemaRegionGroup(patternTree);
@@ -191,11 +189,11 @@ public class DeleteTimeSeriesProcedure
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (TSStatus status : statusMap.values()) {
-      // all dataNodes must clear the related schemaengine cache
+      // all dataNodes must clear the related schemaEngine cache
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.error("Failed to invalidate schemaengine cache of timeseries {}", requestMessage);
+        LOGGER.error("Failed to invalidate schemaEngine cache of timeSeries {}", requestMessage);
         setFailure(
-            new ProcedureException(new MetadataException("Invalidate schemaengine cache failed")));
+            new ProcedureException(new MetadataException("Invalidate schemaEngine cache failed")));
         return;
       }
     }
@@ -219,7 +217,7 @@ public class DeleteTimeSeriesProcedure
     Map<TConsensusGroupId, TRegionReplicaSet> relatedDataRegionGroup =
         env.getConfigManager().getRelatedDataRegionGroup(patternTree);
 
-    // target timeseries has no data
+    // target timeSeries has no data
     if (relatedDataRegionGroup.isEmpty()) {
       return;
     }
@@ -254,15 +252,17 @@ public class DeleteTimeSeriesProcedure
   protected void rollbackState(
       ConfigNodeProcedureEnv env, DeleteTimeSeriesState deleteTimeSeriesState)
       throws IOException, InterruptedException, ProcedureException {
-    DeleteTimeSeriesRegionTaskExecutor<TRollbackSchemaBlackListReq> rollbackStateTask =
-        new DeleteTimeSeriesRegionTaskExecutor<>(
-            "roll back schemaengine black list",
-            env,
-            env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
-            DataNodeRequestType.ROLLBACK_SCHEMA_BLACK_LIST,
-            (dataNodeLocation, consensusGroupIdList) ->
-                new TRollbackSchemaBlackListReq(consensusGroupIdList, patternTreeBytes));
-    rollbackStateTask.execute();
+    if (deleteTimeSeriesState == DeleteTimeSeriesState.CONSTRUCT_BLACK_LIST) {
+      DeleteTimeSeriesRegionTaskExecutor<TRollbackSchemaBlackListReq> rollbackStateTask =
+          new DeleteTimeSeriesRegionTaskExecutor<>(
+              "roll back schemaengine black list",
+              env,
+              env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
+              DataNodeRequestType.ROLLBACK_SCHEMA_BLACK_LIST,
+              (dataNodeLocation, consensusGroupIdList) ->
+                  new TRollbackSchemaBlackListReq(consensusGroupIdList, patternTreeBytes));
+      rollbackStateTask.execute();
+    }
   }
 
   @Override

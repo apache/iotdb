@@ -86,7 +86,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
           node.getTimes()[0],
           node.getMeasurements(),
           e.getFailingStatus());
-      return StatusUtils.getStatus(TSStatusCode.representOf(e.getErrorCode()));
+      return new TSStatus(TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode());
     }
   }
 
@@ -199,7 +199,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
       return StatusUtils.OK;
     } catch (IOException e) {
       LOGGER.error("Error in executing plan node: {}", node, e);
-      return StatusUtils.EXECUTE_STATEMENT_ERROR;
+      return new TSStatus(TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode());
     }
   }
 

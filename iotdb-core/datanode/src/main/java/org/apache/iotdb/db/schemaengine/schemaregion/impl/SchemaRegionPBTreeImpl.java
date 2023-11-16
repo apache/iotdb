@@ -626,8 +626,9 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
           writeToMLog(plan);
         }
         if (offset != -1) {
-          leafMNode.setOffset(offset);
-          mtree.updateMNode(leafMNode.getAsMNode());
+          long finalOffset = offset;
+          mtree.updateMNode(
+              leafMNode.getAsMNode(), o -> o.getAsMeasurementMNode().setOffset(finalOffset));
         }
 
       } finally {
@@ -738,8 +739,10 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
         tagOffsets = plan.getTagOffsets();
         for (int i = 0; i < measurements.size(); i++) {
           if (tagOffsets.get(i) != -1) {
-            measurementMNodeList.get(i).setOffset(tagOffsets.get(i));
-            mtree.updateMNode(measurementMNodeList.get(i).getAsMNode());
+            final long offset = tagOffsets.get(i);
+            mtree.updateMNode(
+                measurementMNodeList.get(i).getAsMNode(),
+                o -> o.getAsMeasurementMNode().setOffset(offset));
           }
         }
       } finally {
@@ -979,6 +982,21 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     return mtree.fetchSchema(pathPattern, templateMap, withTags);
   }
 
+  @Override
+  public List<MeasurementPath> fetchSchema(
+      PathPatternTree patternTree, Map<Integer, Template> templateMap, boolean withTags)
+      throws MetadataException {
+    if (patternTree.isContainWildcard()) {
+      List<MeasurementPath> res = new ArrayList<>();
+      for (PartialPath path : patternTree.getAllPathPatterns()) {
+        res.addAll(mtree.fetchSchema(path, templateMap, withTags));
+      }
+      return res;
+    } else {
+      return mtree.fetchSchemaWithoutWildcard(patternTree, templateMap, withTags);
+    }
+  }
+
   // endregion
   // endregion
 
@@ -994,8 +1012,8 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   private void changeOffset(PartialPath path, long offset) throws MetadataException {
     IMeasurementMNode<ICachedMNode> measurementMNode = mtree.getMeasurementMNode(path);
     try {
-      measurementMNode.setOffset(offset);
-      mtree.updateMNode(measurementMNode.getAsMNode());
+      mtree.updateMNode(
+          measurementMNode.getAsMNode(), o -> o.getAsMeasurementMNode().setOffset(offset));
 
       if (isRecovering) {
         try {
@@ -1039,8 +1057,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       if (leafMNode.getOffset() < 0) {
         long offset = tagManager.writeTagFile(tagsMap, attributesMap);
         writeToMLog(SchemaRegionWritePlanFactory.getChangeTagOffsetPlan(fullPath, offset));
-        leafMNode.setOffset(offset);
-        mtree.updateMNode(leafMNode.getAsMNode());
+        mtree.updateMNode(leafMNode.getAsMNode(), o -> o.getAsMeasurementMNode().setOffset(offset));
         // update inverted Index map
         if (tagsMap != null && !tagsMap.isEmpty()) {
           tagManager.addIndex(tagsMap, leafMNode);
@@ -1079,14 +1096,13 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       if (leafMNode.getOffset() < 0) {
         long offset = tagManager.writeTagFile(Collections.emptyMap(), attributesMap);
         writeToMLog(SchemaRegionWritePlanFactory.getChangeTagOffsetPlan(fullPath, offset));
-        leafMNode.setOffset(offset);
-        mtree.updateMNode(leafMNode.getAsMNode());
+        mtree.updateMNode(leafMNode.getAsMNode(), o -> o.getAsMeasurementMNode().setOffset(offset));
         return;
       }
 
       tagManager.addAttributes(attributesMap, fullPath, leafMNode);
     } finally {
-      mtree.updateMNode(leafMNode.getAsMNode());
+      mtree.unPinMNode(leafMNode.getAsMNode());
     }
   }
 
@@ -1106,8 +1122,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       if (leafMNode.getOffset() < 0) {
         long offset = tagManager.writeTagFile(tagsMap, Collections.emptyMap());
         writeToMLog(SchemaRegionWritePlanFactory.getChangeTagOffsetPlan(fullPath, offset));
-        leafMNode.setOffset(offset);
-        mtree.updateMNode(leafMNode.getAsMNode());
+        mtree.updateMNode(leafMNode.getAsMNode(), o -> o.getAsMeasurementMNode().setOffset(offset));
         // update inverted Index map
         tagManager.addIndex(tagsMap, leafMNode);
         mtree.pinMNode(leafMNode.getAsMNode());

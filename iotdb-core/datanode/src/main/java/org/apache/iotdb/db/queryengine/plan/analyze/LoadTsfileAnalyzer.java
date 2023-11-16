@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
@@ -36,6 +37,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.LoadFileException;
+import org.apache.iotdb.db.exception.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.VerifyMetadataException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
@@ -119,6 +121,15 @@ public class LoadTsfileAnalyzer {
   public Analysis analyzeFileByFile() {
     context.setQueryType(QueryType.WRITE);
 
+    // check if the system is read only
+    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+      Analysis analysis = new Analysis();
+      analysis.setFinishQueryAfterAnalyze(true);
+      analysis.setFailStatus(
+          RpcUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY, LoadReadOnlyException.MESSAGE));
+      return analysis;
+    }
+
     // analyze tsfile metadata file by file
     for (int i = 0, tsfileNum = loadTsFileStatement.getTsFiles().size(); i < tsfileNum; i++) {
       final File tsFile = loadTsFileStatement.getTsFiles().get(i);
@@ -143,6 +154,7 @@ public class LoadTsfileAnalyzer {
               i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
         }
       } catch (IllegalArgumentException e) {
+        schemaAutoCreatorAndVerifier.clear();
         LOGGER.warn(
             String.format(
                 "Parse file %s to resource error, this TsFile maybe empty.", tsFile.getPath()),
@@ -150,11 +162,13 @@ public class LoadTsfileAnalyzer {
         throw new SemanticException(
             String.format("TsFile %s is empty or incomplete.", tsFile.getPath()));
       } catch (AuthException e) {
+        schemaAutoCreatorAndVerifier.clear();
         Analysis analysis = new Analysis();
         analysis.setFinishQueryAfterAnalyze(true);
         analysis.setFailStatus(RpcUtils.getStatus(e.getCode(), e.getMessage()));
         return analysis;
       } catch (Exception e) {
+        schemaAutoCreatorAndVerifier.clear();
         LOGGER.warn(String.format("Parse file %s to resource error.", tsFile.getPath()), e);
         throw new SemanticException(
             String.format(
@@ -163,6 +177,8 @@ public class LoadTsfileAnalyzer {
     }
 
     schemaAutoCreatorAndVerifier.flush();
+    schemaAutoCreatorAndVerifier.clear();
+
     LOGGER.info("Load - Analysis Stage: all tsfiles have been analyzed.");
 
     // data partition will be queried in the scheduler
@@ -643,6 +659,13 @@ public class LoadTsfileAnalyzer {
           }
         }
       }
+    }
+
+    public void clear() {
+      tsfileDevice2IsAligned.clear();
+      currentBatchDevice2TimeseriesSchemas.clear();
+      currentBatchTimeseriesCount = 0;
+      alreadySetDatabases.clear();
     }
   }
 }

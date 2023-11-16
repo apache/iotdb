@@ -21,6 +21,7 @@ package org.apache.iotdb.session.util;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.UnSupportedDataTypeException;
@@ -254,7 +255,7 @@ public class SessionUtils {
     }
     List<TEndPoint> endPointsList = new ArrayList<>();
     for (String nodeUrl : nodeUrls) {
-      TEndPoint endPoint = parseNodeUrl(nodeUrl);
+      TEndPoint endPoint = UrlUtils.parseTEndPointIpv4AndIpv6Url(nodeUrl);
       endPointsList.add(endPoint);
     }
     return endPointsList;

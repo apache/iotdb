@@ -42,6 +42,11 @@ public abstract class MeasurementCollector<R, N extends IMNode<N>>
     super(startNode, path, store, isPrefixMatch, scope);
   }
 
+  protected MeasurementCollector(
+      N startNode, PathPatternTree fullPathTree, IMTreeStore<N> store, PathPatternTree scope) {
+    super(startNode, fullPathTree, store, scope);
+  }
+
   @Override
   protected R generateResult(N nextMatchedNode) {
     return collectMeasurement(nextMatchedNode.getAsMeasurementMNode());

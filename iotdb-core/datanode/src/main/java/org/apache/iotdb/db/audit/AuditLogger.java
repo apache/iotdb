@@ -21,6 +21,7 @@ package org.apache.iotdb.db.audit;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -35,7 +36,6 @@ import org.apache.iotdb.db.queryengine.plan.analyze.partition.ClusterPartitionFe
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
-import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.enums.TSDataType;
@@ -85,7 +85,7 @@ public class AuditLogger {
     InsertRowStatement insertStatement = new InsertRowStatement();
     insertStatement.setDevicePath(
         DEVICE_PATH_CACHE.getPartialPath(String.format(AUDIT_LOG_DEVICE, username)));
-    insertStatement.setTime(DateTimeUtils.currentTime());
+    insertStatement.setTime(CommonDateTimeUtils.currentTime());
     insertStatement.setMeasurements(new String[] {LOG, USERNAME, ADDRESS});
     insertStatement.setAligned(false);
     insertStatement.setValues(

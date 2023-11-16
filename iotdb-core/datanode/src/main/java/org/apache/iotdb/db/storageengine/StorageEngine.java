@@ -41,6 +41,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.dataregion.DataExecutionVisitor;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.LoadFileException;
+import org.apache.iotdb.db.exception.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
@@ -768,6 +769,12 @@ public class StorageEngine implements IService {
   public TSStatus writeLoadTsFileNode(
       DataRegionId dataRegionId, LoadTsFilePieceNode pieceNode, String uuid) {
     TSStatus status = new TSStatus();
+
+    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+      status.setCode(TSStatusCode.SYSTEM_READ_ONLY.getStatusCode());
+      status.setMessage(LoadReadOnlyException.MESSAGE);
+      return status;
+    }
 
     try {
       getLoadTsFileManager().writeToDataRegion(getDataRegion(dataRegionId), pieceNode, uuid);
