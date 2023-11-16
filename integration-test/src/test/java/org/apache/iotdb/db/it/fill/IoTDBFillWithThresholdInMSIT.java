@@ -69,7 +69,7 @@ public class IoTDBFillWithThresholdInMSIT {
   }
 
   @Test
-  public void testFill() {
+  public void testPreviousFill() {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -195,6 +195,40 @@ public class IoTDBFillWithThresholdInMSIT {
       }
     } catch (SQLException e) {
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testLinearFill() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      try (ResultSet set =
+          statement.executeQuery(
+              "SELECT last_value(*) FROM root.fillTest.d0 group by((2023-02-01T11:47:00.000+08:00, 2023-02-01T11:58:00.000+08:00], 1m) FILL(LINEAR, 2m)")) {
+        fail("FILL(LINEAR) doesn't support second parameter");
+      }
+    } catch (SQLException e) {
+      assertEquals(
+          "701: Only FILL(PREVIOUS) support specifying the time duration threshold.",
+          e.getMessage());
+    }
+  }
+
+  @Test
+  public void testConstantFill() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      try (ResultSet set =
+          statement.executeQuery(
+              "SELECT last_value(s0) FROM root.fillTest.d0 group by((2023-02-01T11:47:00.000+08:00, 2023-02-01T11:58:00.000+08:00], 1m) FILL(2, 2m)")) {
+        fail("FILL(CONSTANT_VALUE) doesn't support second parameter");
+      }
+    } catch (SQLException e) {
+      assertEquals(
+          "701: Only FILL(PREVIOUS) support specifying the time duration threshold.",
+          e.getMessage());
     }
   }
 
