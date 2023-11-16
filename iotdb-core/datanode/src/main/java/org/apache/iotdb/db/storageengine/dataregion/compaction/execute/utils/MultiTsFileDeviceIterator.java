@@ -400,12 +400,10 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     }
 
     for (Modification modification : modifications) {
-      if (modification.getDevice().equals(currentDevice.left)) {
-        for (int i = 0; i < valueChunkMetadataList.size(); ++i) {
-          PartialPath path = valueSeriesPaths.get(i);
-          if (path != null && modification.getPath().matchFullPath(path)) {
-            modificationForCurDevice.get(i).add(modification);
-          }
+      for (int i = 0; i < valueChunkMetadataList.size(); ++i) {
+        PartialPath path = valueSeriesPaths.get(i);
+        if (path != null && modification.getPath().matchFullPath(path)) {
+          modificationForCurDevice.get(i).add(modification);
         }
       }
     }
