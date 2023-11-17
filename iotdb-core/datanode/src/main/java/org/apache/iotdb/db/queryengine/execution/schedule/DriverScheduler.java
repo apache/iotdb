@@ -65,7 +65,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.BLOCK_QUEUED_TIME;
 import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.READY_QUEUED_TIME;
 
@@ -87,7 +86,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
   private final IndexedBlockingQueue<DriverTask> timeoutQueue;
   private final Set<DriverTask> blockedTasks;
   private final Map<QueryId, Map<FragmentInstanceId, Set<DriverTask>>> queryMap;
-  /** All FIs of one query dispatched to this Node shares one DriverTaskHandle */
+  /** All FIs of one query dispatched to this Node shares one DriverTaskHandle. */
   private final Map<QueryId, DriverTaskHandle> queryIdToDriverTaskHandleMap;
 
   private final ITaskScheduler scheduler;
@@ -453,6 +452,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
   @Override
   public void abortQuery(QueryId queryId) {
     Map<FragmentInstanceId, Set<DriverTask>> queryRelatedTasks = queryMap.remove(queryId);
+    queryIdToDriverTaskHandleMap.remove(queryId);
     if (queryRelatedTasks != null) {
       for (Set<DriverTask> fragmentRelatedTasks : queryRelatedTasks.values()) {
         if (fragmentRelatedTasks != null) {
@@ -463,8 +463,6 @@ public class DriverScheduler implements IDriverScheduler, IService {
         }
       }
     }
-    DriverTaskHandle taskHandle = queryIdToDriverTaskHandleMap.remove(queryId);
-    checkState(taskHandle == null, "taskHandle must be removed when clearDriverTasks are done.");
   }
 
   private static class InstanceHolder {
