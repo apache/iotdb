@@ -454,19 +454,35 @@ public class REGERCompress1ArrayTest {
         float theta0_t = theta[0];
         float theta1_t = theta[1];
         long tmp_i = ts_block[i];
-        long tmp_i_1 = ts_block[i];
+        long tmp_i_1 = ts_block[i-1];
 
         int min_delta_time = getTime(tmp_i) - (int) (theta0_t + theta1_t * (float) getTime(tmp_i_1));
         int min_delta_time_i = min_delta_time;
         int min_delta_time_index = i;
+        int j = 1;
+        long tmp_j_1 = ts_block[0];
+        long tmp_j;
+        while(j < block_size){
+            tmp_j = ts_block[j];
+            int epsilon_r_j =
+                    getTime(tmp_j)
+                            - (int) (theta0_t + theta1_t * (float) getTime(tmp_j_1));
 
-        for (int j = 1; j < block_size; j++) {
-            int timestamp_delta_i = getTime(ts_block[j]) - (int) (theta0_t + theta1_t * (float) getTime(ts_block[j - 1]));
-            if (timestamp_delta_i < min_delta_time) {
+            if (epsilon_r_j < min_delta_time) {
                 min_delta_time_index = j;
-                min_delta_time = timestamp_delta_i;
+                min_delta_time = epsilon_r_j;
             }
+            tmp_j_1 = tmp_j;
+            j++;
         }
+
+//        for (int j = 1; j < block_size; j++) {
+//            int timestamp_delta_i = getTime(ts_block[j]) - (int) (theta0_t + theta1_t * (float) getTime(ts_block[j - 1]));
+//            if (timestamp_delta_i < min_delta_time) {
+//                min_delta_time_index = j;
+//                min_delta_time = timestamp_delta_i;
+//            }
+//        }
         raw_length[0] += (getBitWith(min_delta_time_i - min_delta_time) * (block_size - 1));
         raw_length[3] = min_delta_time;
         min_index.set(0, min_delta_time_index);
@@ -484,14 +500,31 @@ public class REGERCompress1ArrayTest {
         int min_delta_value = getValue(ts_block[i]) - (int) (theta0_v + theta1_v * (float) getValue(ts_block[i - 1]));
         int min_delta_value_i = min_delta_value;
         int min_delta_value_index = i;
+        int j = 1;
+        long tmp_j_1 = ts_block[0];
+        long tmp_j;
+        while(j < block_size){
+            tmp_j = ts_block[j];
+            int epsilon_r_j =
+                    getValue(tmp_j)
+                            - (int) (theta0_v + theta1_v * (float) getValue(tmp_j_1));
 
-        for (int j = 1; j < block_size; j++) {
-            int value_delta_i = getValue(ts_block[j]) - (int) (theta0_v + theta1_v * (float) getValue(ts_block[j - 1]));
-            if (value_delta_i < min_delta_value) {
+            if (epsilon_r_j < min_delta_value) {
                 min_delta_value_index = j;
-                min_delta_value = value_delta_i;
+                min_delta_value = epsilon_r_j;
             }
+            tmp_j_1 = tmp_j;
+            j++;
         }
+
+
+//        for (int j = 1; j < block_size; j++) {
+//            int value_delta_i = getValue(ts_block[j]) - (int) (theta0_v + theta1_v * (float) getValue(ts_block[j - 1]));
+//            if (value_delta_i < min_delta_value) {
+//                min_delta_value_index = j;
+//                min_delta_value = value_delta_i;
+//            }
+//        }
         raw_length[0] += (getBitWith(min_delta_value_i - min_delta_value) * (block_size - 1));
         raw_length[3] = min_delta_value;
         min_index.set(0, min_delta_value_index);
@@ -1544,80 +1577,6 @@ public class REGERCompress1ArrayTest {
         theta[3] = theta1_v;
     }
 
-    public static long[] getEncodeBitsRegression(
-            long[] ts_block,
-            int block_size,
-            int[] raw_length,
-            float[] theta) {
-
-        long[] ts_block_delta = new long[ts_block.length];
-
-        trainParameter( ts_block, block_size, theta);
-        float theta0_r = theta[0];
-        float theta1_r = theta[1];
-        float theta0_v = theta[2];
-        float theta1_v = theta[3];
-
-        ts_block_delta[0] = ts_block[0];
-        int timestamp_delta_min = Integer.MAX_VALUE;
-        int value_delta_min = Integer.MAX_VALUE;
-        // delta to Regression
-        for (int j = 1; j < block_size; j++) {
-            long tmp_j = ts_block[j];
-            long tmp_j_1 = ts_block[j-1];
-            int epsilon_r =
-                    (getTime(tmp_j))
-                            - (int) (theta0_r + theta1_r * (float) getTime(tmp_j_1));
-            int epsilon_v =
-                    getValue(tmp_j) - (int) (theta0_v + theta1_v * (float) getValue(tmp_j_1 ));
-
-
-            if (epsilon_r < timestamp_delta_min) {
-                timestamp_delta_min = epsilon_r;
-            }
-            if (epsilon_v < value_delta_min) {
-                value_delta_min = epsilon_v;
-            }
-            ts_block_delta[j] = combine2Int(epsilon_r,epsilon_v);
-//            ts_block_delta[j][1] = epsilon_v;
-
-        }
-
-
-        int max_interval = Integer.MIN_VALUE;
-        int max_value = Integer.MIN_VALUE;
-        int length = 0;
-        long delta_time = combine2Int(timestamp_delta_min,value_delta_min);
-        for (int j = block_size - 1; j > 0; j--) {
-            ts_block_delta[j] -= delta_time;
-            long tmp = ts_block_delta[j];
-            int epsilon_r = getTime(tmp);
-            int epsilon_v = getValue(tmp);
-
-            length += getBitWith(epsilon_r);
-            length += getBitWith(epsilon_v);
-
-            if (epsilon_r > max_interval) {
-                max_interval = epsilon_r;
-            }
-            if (epsilon_v > max_value) {
-                max_value = epsilon_v;
-            }
-        }
-
-        int max_bit_width_interval = getBitWith(max_interval);
-        int max_bit_width_value = getBitWith(max_value);
-
-
-        raw_length[0] = length;
-        raw_length[1] = max_bit_width_interval;
-        raw_length[2] = max_bit_width_value;
-        raw_length[3] = timestamp_delta_min;
-        raw_length[4] = value_delta_min;
-
-        return ts_block_delta;
-    }
-
     public static long[] getEncodeBitsRegressionNoTrain(
             long[] ts_block,
             int block_size,
@@ -1635,36 +1594,62 @@ public class REGERCompress1ArrayTest {
         ts_block_delta[0] = ts_block[0];
         int timestamp_delta_min = Integer.MAX_VALUE;
         int value_delta_min = Integer.MAX_VALUE;
-        // delta to Regression
-        for (int j = 1; j < block_size; j++) {
-            long tmp_j = ts_block[j];
-            long tmp_j_1 = ts_block[j-1];
-            int epsilon_r =
-                    getTime(tmp_j) - (int) (theta0_r + theta1_r * (float) getTime(tmp_j_1));
-            int epsilon_v =
-                    getValue(tmp_j) - (int) (theta0_v + theta1_v * (float) getValue(tmp_j_1));
 
+        int j = 1;
+        long tmp_j_1 = ts_block[0];
+        long tmp_j;
+        while(j < block_size){
+            tmp_j = ts_block[j];
+            int epsilon_r_j =
+                    getTime(tmp_j)
+                            - (int) (theta0_r + theta1_r * (float) getTime(tmp_j_1));
+            int epsilon_v_j =
+                    getValue(tmp_j)
+                            - (int) (theta0_v + theta1_v * (float) getValue(tmp_j_1));
 
-            if (epsilon_r < timestamp_delta_min) {
-                timestamp_delta_min = epsilon_r;
+            if (epsilon_r_j < timestamp_delta_min) {
+                timestamp_delta_min = epsilon_r_j;
             }
-            if (epsilon_v < value_delta_min) {
-                value_delta_min = epsilon_v;
+            if (epsilon_v_j < value_delta_min) {
+                value_delta_min = epsilon_v_j;
             }
-            ts_block_delta[j] = combine2Int(epsilon_r,epsilon_v);
-//            ts_block_delta[j][1] = epsilon_v;
+            ts_block_delta[j] = combine2Int(epsilon_r_j,epsilon_v_j);
+            tmp_j_1 = tmp_j;
+            j++;
         }
+
+//        // delta to Regression
+//        for (int j = 1; j < block_size; j++) {
+//            long tmp_j = ts_block[j];
+//            long tmp_j_1 = ts_block[j-1];
+//            int epsilon_r =
+//                    getTime(tmp_j) - (int) (theta0_r + theta1_r * (float) getTime(tmp_j_1));
+//            int epsilon_v =
+//                    getValue(tmp_j) - (int) (theta0_v + theta1_v * (float) getValue(tmp_j_1));
+//
+//
+//            if (epsilon_r < timestamp_delta_min) {
+//                timestamp_delta_min = epsilon_r;
+//            }
+//            if (epsilon_v < value_delta_min) {
+//                value_delta_min = epsilon_v;
+//            }
+//            ts_block_delta[j] = combine2Int(epsilon_r,epsilon_v);
+////            ts_block_delta[j][1] = epsilon_v;
+//        }
 
 
         int max_interval = Integer.MIN_VALUE;
         int max_value = Integer.MIN_VALUE;
         int length = 0;
         long delta_time = combine2Int(timestamp_delta_min,value_delta_min);
-        for (int j = block_size - 1; j > 0; j--) {
-            long tmp_j = ts_block_delta[j];
+        for (int i = block_size - 1; i > 0; i--) {
+            tmp_j = ts_block_delta[i];
             int epsilon_r = getTime(tmp_j) - timestamp_delta_min;
             int epsilon_v = getValue(tmp_j) - value_delta_min;
-            ts_block_delta[j] = combine2Int(epsilon_r,epsilon_v);
+//            System.out.println(epsilon_r);
+//            System.out.println(epsilon_v);
+            ts_block_delta[i] = combine2Int(epsilon_r,epsilon_v);
 //            ts_block_delta[j] = delta_time;
 
 //
@@ -1672,15 +1657,16 @@ public class REGERCompress1ArrayTest {
 //            int epsilon_r = getTime(tmp);
 //            int epsilon_v = getValue(tmp);
 
-            length += getBitWith(epsilon_r);
-            length += getBitWith(epsilon_v);
-
             if (epsilon_r > max_interval) {
                 max_interval = epsilon_r;
             }
             if (epsilon_v > max_value) {
                 max_value = epsilon_v;
             }
+
+            length += getBitWith(epsilon_r);
+            length += getBitWith(epsilon_v);
+
         }
 
         int max_bit_width_interval = getBitWith(max_interval);
@@ -1693,6 +1679,7 @@ public class REGERCompress1ArrayTest {
         raw_length[3] = timestamp_delta_min;
         raw_length[4] = value_delta_min;
 
+//        printTSBlock(ts_block_delta);
         return ts_block_delta;
 
 //        int[][] ts_block_delta_segment = new int[block_size][2];
@@ -1957,15 +1944,17 @@ public class REGERCompress1ArrayTest {
         float theta1_v = theta[3];
 //        int[][] ts_block_delta = new int[block_size - 1][2];
 
-        for (int j = 1; j < block_size; j++) {
-            long tmp_j = ts_block[j];
-            long tmp_j_1 = ts_block[j-1];
+        int j = 1;
+        long tmp_j_1 = ts_block[0];
+        long tmp_j;
+        while(j < block_size){
+            tmp_j = ts_block[j];
             int epsilon_r_j =
                     getTime(tmp_j)
                             - (int) (theta0_t + theta1_t * (float) getTime(tmp_j_1));
             int epsilon_v_j =
                     getValue(tmp_j)
-            - (int) (theta0_v + theta1_v * (float) getValue(tmp_j_1));
+                            - (int) (theta0_v + theta1_v * (float) getValue(tmp_j_1));
 
             if (epsilon_r_j < timestamp_delta_min) {
                 timestamp_delta_min = epsilon_r_j;
@@ -1983,7 +1972,14 @@ public class REGERCompress1ArrayTest {
                 value_delta_max = epsilon_v_j;
                 value_delta_max_index = j;
             }
+            tmp_j_1 = tmp_j;
+            j++;
         }
+//        for (int j = 1; j < block_size; j++) {
+//            long tmp_j = ts_block[j];
+//            long tmp_j_1 = ts_block[j-1];
+//
+//        }
         min_index.add(timestamp_delta_min_index);
         min_index.add(value_delta_min_index);
 
@@ -2022,10 +2018,11 @@ public class REGERCompress1ArrayTest {
         float theta0_v = theta[2];
         float theta1_v = theta[3];
 
-
-        for (int j = 1; j < block_size; j++) {
-            long tmp_j = ts_block[j];
-            long tmp_j_1 = ts_block[j-1];
+        int j = 1;
+        long tmp_j_1 = ts_block[0];
+        long tmp_j;
+        while(j < block_size){
+            tmp_j = ts_block[j];
             int epsilon_r_j =
                     getTime(tmp_j)
                             - (int) (theta0_t + theta1_t * (float) getTime(tmp_j_1));
@@ -2033,9 +2030,9 @@ public class REGERCompress1ArrayTest {
                     getValue(tmp_j)
                             - (int) (theta0_v + theta1_v * (float) getValue(tmp_j_1));
 
-            if (epsilon_v_j > value_delta_max) {
-                value_delta_max = epsilon_v_j;
-                value_delta_max_index = j;
+            if (epsilon_r_j < timestamp_delta_min) {
+                timestamp_delta_min = epsilon_r_j;
+                timestamp_delta_min_index = j;
             }
             if (epsilon_v_j < value_delta_min) {
                 value_delta_min = epsilon_v_j;
@@ -2045,11 +2042,41 @@ public class REGERCompress1ArrayTest {
                 timestamp_delta_max = epsilon_r_j;
                 timestamp_delta_max_index = j;
             }
-            if (epsilon_r_j < timestamp_delta_min) {
-                timestamp_delta_min = epsilon_r_j;
-                timestamp_delta_min_index = j;
+            if (epsilon_v_j > value_delta_max) {
+                value_delta_max = epsilon_v_j;
+                value_delta_max_index = j;
             }
+            tmp_j_1 = tmp_j;
+            j++;
         }
+
+//        for (int j = 1; j < block_size; j++) {
+//            long tmp_j = ts_block[j];
+//            long tmp_j_1 = ts_block[j-1];
+//            int epsilon_r_j =
+//                    getTime(tmp_j)
+//                            - (int) (theta0_t + theta1_t * (float) getTime(tmp_j_1));
+//            int epsilon_v_j =
+//                    getValue(tmp_j)
+//                            - (int) (theta0_v + theta1_v * (float) getValue(tmp_j_1));
+//
+//            if (epsilon_v_j > value_delta_max) {
+//                value_delta_max = epsilon_v_j;
+//                value_delta_max_index = j;
+//            }
+//            if (epsilon_v_j < value_delta_min) {
+//                value_delta_min = epsilon_v_j;
+//                value_delta_min_index = j;
+//            }
+//            if (epsilon_r_j > timestamp_delta_max) {
+//                timestamp_delta_max = epsilon_r_j;
+//                timestamp_delta_max_index = j;
+//            }
+//            if (epsilon_r_j < timestamp_delta_min) {
+//                timestamp_delta_min = epsilon_r_j;
+//                timestamp_delta_min_index = j;
+//            }
+//        }
 
         min_index.add(timestamp_delta_min_index);
         alpha_list[0] = timestamp_delta_min_index;
@@ -2237,6 +2264,9 @@ public class REGERCompress1ArrayTest {
 
             for (int data_i = segment_i * segment_size + 1; data_i < (segment_i + 1) * segment_size + 1; data_i++) {
                 long cur_data_i = ts_block_delta[data_i];
+//                System.out.println("cur_data_i: "+(cur_data_i));
+//                System.out.println("getTime(cur_data_i): "+getTime(cur_data_i));
+//                System.out.println("getValue(cur_data_i): "+getValue(cur_data_i));
                 int cur_bit_width_time = getBitWith(getTime(cur_data_i));
                 int cur_bit_width_value = getBitWith(getValue(cur_data_i));
                 if (cur_bit_width_time > bit_width_time) {
@@ -2301,16 +2331,24 @@ public class REGERCompress1ArrayTest {
         pos_encode += 4;
 
 
+
         pos_encode = encodeRLEBitWidth2Bytes(bit_width_segments, pos_encode, encoded_result);
         for (int segment_i = 0; segment_i < segment_n; segment_i++) {
             long tmp_bit_width_segments = bit_width_segments[segment_i];
             int bit_width_time = getTime(tmp_bit_width_segments);
             int bit_width_value = getValue(tmp_bit_width_segments);
+//            System.out.println(bit_width_time);
+//            System.out.println(bit_width_value);
             pos_encode = bitPacking(delta_segments, 0, segment_i * segment_size + 1, segment_size, bit_width_time, pos_encode, encoded_result);
             pos_encode = bitPacking(delta_segments, 1, segment_i * segment_size + 1, segment_size, bit_width_value, pos_encode, encoded_result);
         }
 
         return pos_encode;
+    }
+    private static void printTSBlock(long[] ts_block){
+        for(long ts : ts_block){
+            System.out.println("["+getTime(ts)+","+getValue(ts)+"]");
+        }
     }
 
     private static long[] ReorderingTimeSeries(long[] ts_block, int[] raw_length, float[] theta, int segment_size,int k) {
@@ -2322,8 +2360,11 @@ public class REGERCompress1ArrayTest {
         ArrayList<Integer> min_index = new ArrayList<>();
         int index_alpha_list = 0;
 
+
         trainParameter(ts_block,block_size,theta);
+//        System.out.println(Arrays.toString(theta));
         getEncodeBitsRegressionNoTrain(ts_block, block_size, raw_length, theta,segment_size);
+//        System.out.println(Arrays.toString(raw_length));
         int[] alpha_list = getIStar(ts_block, min_index, block_size, 0, theta, k);
         int[] beta_list = new int[alpha_list.length];
         int[][] new_length_list = new int[alpha_list.length][5];
@@ -2348,38 +2389,48 @@ public class REGERCompress1ArrayTest {
 
         int adjust_count = 0;
 
-        int[][] all_length;
+//        int[][] all_length;
+        int[] min_raw_length = new int[5];
         while (pos_new_length_list != 0) {
             if (adjust_count < block_size / 2 && adjust_count < 20) {
                 adjust_count++;
             } else {
                 break;
             }
-            all_length = new int[pos_new_length_list][2];
+//            all_length = new int[pos_new_length_list][2];
+            int min_length_index = -1;
+            int min_length = Integer.MAX_VALUE;
+
+
             for (int pos_new_length_list_j = 0; pos_new_length_list_j < pos_new_length_list; pos_new_length_list_j++) {
-                all_length[pos_new_length_list_j][0] = pos_new_length_list_j;
-                all_length[pos_new_length_list_j][1] = new_length_list[pos_new_length_list_j][0];
-            }
-            Arrays.sort(all_length, (a, b) -> {
-                if (a[1] == b[1])
-                    return Integer.compare(a[0], b[0]);
-                return Integer.compare(a[1], b[1]);
-            });
 
-            if (all_length[0][1] <= raw_length[0]) {
-                long[] new_ts_block = ts_block.clone();
-                moveAlphaToBeta(new_ts_block, new_alpha_list[all_length[0][0]], beta_list[all_length[0][0]]);
-                int[] new_length = new int[5];
-                ts_block_delta = getEncodeBitsRegression(new_ts_block, block_size, new_length, theta);
-                long[] bit_width_segments = segmentBitPacking(ts_block_delta, block_size, segment_size);
-                new_length[0] = numberOfEncodeSegment2Bytes(ts_block_delta, bit_width_segments, segment_size);
-
-                if (new_length[0] <= raw_length[0]) {
-                    raw_length = new_length;
-                    ts_block = new_ts_block.clone();
-                } else {
-                    break;
+                if(new_length_list[pos_new_length_list_j][0]<min_length){
+                    min_length = new_length_list[pos_new_length_list_j][0];
+                    min_length_index = pos_new_length_list_j;
                 }
+//                all_length[pos_new_length_list_j][0] = pos_new_length_list_j;
+//                all_length[pos_new_length_list_j][1] = new_length_list[pos_new_length_list_j][0];
+            }
+//            Arrays.sort(all_length, (a, b) -> {
+//                if (a[1] == b[1])
+//                    return Integer.compare(a[0], b[0]);
+//                return Integer.compare(a[1], b[1]);
+//            });
+
+            if (min_length <= raw_length[0]) {
+//                long[] new_ts_block = ts_block.clone();
+                moveAlphaToBeta(ts_block, new_alpha_list[min_length_index], beta_list[min_length_index]);
+//                int[] new_length = new int[5];
+                 getEncodeBitsRegressionNoTrain(ts_block, block_size, raw_length, theta, segment_size);
+//              ts_block_delta =  long[] bit_width_segments = segmentBitPacking(ts_block_delta, block_size, segment_size);
+//                new_length[0] = numberOfEncodeSegment2Bytes(ts_block_delta, bit_width_segments, segment_size);
+
+//                if (new_length[0] <= raw_length[0]) {
+//                    raw_length = new_length;
+//                    ts_block = new_ts_block.clone();
+//                } else {
+//                    break;
+//                }
             } else {
                 break;
             }
@@ -2412,7 +2463,11 @@ public class REGERCompress1ArrayTest {
 
         }
 
-        return getEncodeBitsRegressionNoTrain(ts_block, block_size, raw_length, theta, segment_size);
+//        printTSBlock(ts_block);
+        ts_block_delta = getEncodeBitsRegressionNoTrain(ts_block, block_size, raw_length, theta, segment_size);
+//        printTSBlock(ts_block_delta);
+
+        return ts_block_delta;
 //        int segment_n = (block_size - 1) / segment_size;
 //        int[][] bit_width_segments = new int[segment_n][2];
 //        for (int segment_i = 0; segment_i < segment_n; segment_i++) {
@@ -2549,8 +2604,8 @@ public class REGERCompress1ArrayTest {
 
         trainParameter(ts_block,block_size,theta_time);
 //        System.out.println(Arrays.toString(theta_time));
-         getEncodeBitsRegressionNoTrain(ts_block, block_size, time_length, theta_time,segment_size);
-
+        long[] ts_block_delta_time =  getEncodeBitsRegressionNoTrain(ts_block, block_size, time_length, theta_time,segment_size);
+//        System.out.println(Arrays.toString(time_length));
         int pos_ts_block_partition = 0;
         if(third_value.length>0){
             for (long datum : ts_block) {
@@ -2576,7 +2631,9 @@ public class REGERCompress1ArrayTest {
         }
 
         trainParameter(ts_block_partition,block_size,theta_partition);
-        getEncodeBitsRegressionNoTrain(ts_block_partition, block_size, partition_length, theta_partition,segment_size);
+//        System.out.println(Arrays.toString(theta_partition));
+        long[] ts_block_delta_partition = getEncodeBitsRegressionNoTrain(ts_block_partition, block_size, partition_length, theta_partition,segment_size);
+//        System.out.println(Arrays.toString(partition_length));
 
 //        ts_block_delta_partition = ReorderingTimeSeries(ts_block_partition, raw_length,  theta, segment_size, k);
 
@@ -2598,15 +2655,18 @@ public class REGERCompress1ArrayTest {
 //        System.out.println(Arrays.toString(time_length));
 
         if(time_length[0] > partition_length[0]){
-            long[] ts_block_delta_partition = ReorderingTimeSeries(ts_block_partition, partition_length,  theta_partition, segment_size, k);
+
+            ts_block_delta_partition = ReorderingTimeSeries(ts_block_partition, partition_length,  theta_partition, segment_size, k);
+
             bit_width_segments = segmentBitPacking(ts_block_delta_partition, block_size, segment_size);
             encode_pos = encodeSegment2Bytes(ts_block_delta_partition, bit_width_segments, partition_length, segment_size, theta_partition, encode_pos, cur_byte);
-//            System.out.println(Arrays.toString(partition_length));
+
         }else{
-            long[] ts_block_delta_time = ReorderingTimeSeries(ts_block, time_length,  theta_time, segment_size, k);
+            ts_block_delta_time = ReorderingTimeSeries(ts_block, time_length,  theta_time, segment_size, k);
+
             bit_width_segments = segmentBitPacking(ts_block_delta_time, block_size, segment_size);
             encode_pos = encodeSegment2Bytes(ts_block_delta_time, bit_width_segments, time_length, segment_size, theta_time, encode_pos, cur_byte);
-//            System.out.println(Arrays.toString(time_length));
+
         }
 
 //        if (choose == 0) {
@@ -2645,8 +2705,10 @@ public class REGERCompress1ArrayTest {
         int2Bytes(segment_size, encode_pos, encoded_result);
         encode_pos += 4;
 
-//        for (int i = 0; i < 1; i++) {
+//        for (int i = 0; i < 2; i++) {
+//            System.out.println(encode_pos);
         for (int i = 0; i < block_num; i++) {
+//            System.out.println(i);
             encode_pos = REGERBlockEncoder(data, i, block_size, 0, third_value, segment_size, k, encode_pos, encoded_result,best_order);
         }
 
@@ -2886,8 +2948,9 @@ public class REGERCompress1ArrayTest {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
 //        dataset_block_size.add(256);
 
-    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
-//        for (int file_i = 0; file_i < 1; file_i++) {
+
+//    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+        for (int file_i = input_path_list.size()-1; file_i < input_path_list.size(); file_i++) {
             String inputPath = input_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
 
@@ -2954,7 +3017,7 @@ public class REGERCompress1ArrayTest {
                 long decodeTime = 0;
                 double ratio = 0;
                 double compressed_size = 0;
-                int repeatTime2 = 100;
+                int repeatTime2 = 200;
                 long s = System.nanoTime();
                 int[] best_order = new int[3];
                 int length = 0;

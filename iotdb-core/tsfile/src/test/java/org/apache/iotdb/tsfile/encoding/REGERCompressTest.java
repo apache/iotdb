@@ -2321,26 +2321,16 @@ public class REGERCompressTest {
       for (int j = 0; j < block_size; j++) {
         ts_block[j][0] = (data[j + i * block_size][0] - min_time);
         ts_block[j][1] = data[j + i * block_size][1];
-        //                if(ts_block[j][1]<min_value){
-        //                    min_value = ts_block[j][1];
-        //                }
-        //                if(data_map.containsKey(ts_block[j][1])){
-        //                    int tmp = data_map.get(ts_block[j][1]);
-        //                    tmp++;
-        //                    data_map.put(ts_block[j][1],tmp);
-        //                }else{
-        //                    data_map.put(ts_block[j][1],1);
-        //                }
+
+
         //                ts_block_value[j][0] =ts_block[j][0];
         //                ts_block_value[j][1] =ts_block[j][1];
       }
+      //            Map<Integer, Integer> data_map = new HashMap<>();
+
       //            for (int j = 0; j < block_size; j++) {
       //                ts_block[j][0] = (data[j + i * block_size][0] - min_time);
       //                ts_block[j][1] = data[j + i * block_size][1];
-      //                if(ts_block[j][1]<min_value){
-      //                    min_value = ts_block[j][1];
-      //                }
-      //                int tmp_value = ts_block[j][1]-min_value;
       //                if(data_map.containsKey(tmp_value)){
       //                    int tmp = data_map.get(tmp_value);
       //                    tmp++;
@@ -2358,6 +2348,8 @@ public class REGERCompressTest {
       //                third_value[j] += min_value;
       //            }
       //            System.out.println("Minimum point: x=" + (Arrays.toString(third_value)));
+
+
     } else {
       ts_block = new int[supply_length][2];
       ts_block_value = new int[supply_length][2];
