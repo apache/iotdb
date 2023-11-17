@@ -60,6 +60,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -175,15 +176,13 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       return;
     }
 
-    final long requestCommitId = commitIdGenerator.incrementAndGet();
-
     if (isTabletBatchModeEnabled) {
+      final long requestCommitId = commitIdGenerator.incrementAndGet();
       if (tabletBatchBuilder.onEvent(tabletInsertionEvent, requestCommitId)) {
         final PipeTransferTabletBatchEventHandler pipeTransferTabletBatchEventHandler =
             new PipeTransferTabletBatchEventHandler(tabletBatchBuilder, this);
 
         transfer(requestCommitId, pipeTransferTabletBatchEventHandler);
-
         tabletBatchBuilder.onSuccess();
       }
     } else {
@@ -196,6 +195,8 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
                     pipeInsertNodeTabletInsertionEvent.getByteBuffer())
                 : PipeTransferTabletInsertNodeReq.toTPipeTransferReq(
                     pipeInsertNodeTabletInsertionEvent.getInsertNode());
+
+        final long requestCommitId = commitIdGenerator.incrementAndGet();
         final PipeTransferTabletInsertNodeEventHandler pipeTransferInsertNodeReqHandler =
             new PipeTransferTabletInsertNodeEventHandler(
                 requestCommitId, pipeInsertNodeTabletInsertionEvent, pipeTransferReq, this);
@@ -208,6 +209,8 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
             PipeTransferTabletRawReq.toTPipeTransferReq(
                 pipeRawTabletInsertionEvent.convertToTablet(),
                 pipeRawTabletInsertionEvent.isAligned());
+
+        final long requestCommitId = commitIdGenerator.incrementAndGet();
         final PipeTransferTabletRawEventHandler pipeTransferTabletReqHandler =
             new PipeTransferTabletRawEventHandler(
                 requestCommitId, pipeRawTabletInsertionEvent, pipeTransferTabletRawReq, this);
@@ -297,8 +300,12 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       return;
     }
 
-    final long requestCommitId = commitIdGenerator.incrementAndGet();
+    // Just in case. To avoid the case that exception occurred when constructing the handler.
+    if (!pipeTsFileInsertionEvent.getTsFile().exists()) {
+      throw new FileNotFoundException(pipeTsFileInsertionEvent.getTsFile().getAbsolutePath());
+    }
 
+    final long requestCommitId = commitIdGenerator.incrementAndGet();
     final PipeTransferTsFileInsertionEventHandler pipeTransferTsFileInsertionEventHandler =
         new PipeTransferTsFileInsertionEventHandler(
             requestCommitId, pipeTsFileInsertionEvent, this);
@@ -449,9 +456,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
             "IoTDBThriftAsyncConnector does not support transfer generic event: {}.", event);
       }
 
-      if (event instanceof EnrichedEvent) {
-        commit(requestCommitId, (EnrichedEvent) event);
-      }
+      commit(requestCommitId, event instanceof EnrichedEvent ? (EnrichedEvent) event : null);
 
       retryEventQueue.poll();
     }
