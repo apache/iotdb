@@ -172,6 +172,15 @@ public class WebSocketConnector implements PipeConnector {
 
     while (!commitQueue.isEmpty()) {
       final Pair<Long, Runnable> committer = commitQueue.peek();
+
+      // If the commit id is less than or equals to the last commit id, it means that
+      // the event has been committed before, and has been retried. So the event can
+      // be ignored.
+      if (committer.left <= lastCommitId.get()) {
+        commitQueue.poll();
+        continue;
+      }
+
       if (lastCommitId.get() + 1 != committer.left) {
         break;
       }
