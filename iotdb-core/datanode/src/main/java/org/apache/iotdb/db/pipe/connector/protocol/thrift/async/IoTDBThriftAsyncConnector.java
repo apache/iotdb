@@ -78,6 +78,9 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftAsyncConnector.class);
 
+  private static final String THRIFT_ERROR_FORMATTER =
+      "Failed to borrow client from client pool or TException when sending to receiver %s:%s.";
+
   private static final AtomicReference<
           IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>>
       ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER = new AtomicReference<>();
@@ -94,8 +97,6 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       new PriorityQueue<>(Comparator.comparing(o -> o.left));
 
   private IoTDBThriftAsyncPipeTransferBatchReqBuilder tabletBatchBuilder;
-  // Flash-in-the-pan variable, will probably vanish with the incoming "commitId" hierarchy
-  private Event lastEvent;
 
   public IoTDBThriftAsyncConnector() {
     if (ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get() == null) {
@@ -173,11 +174,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       return;
     }
 
-    final long requestCommitId =
-        tabletInsertionEvent.equals(lastEvent)
-            ? commitIdGenerator.get()
-            : commitIdGenerator.incrementAndGet();
-    lastEvent = tabletInsertionEvent;
+    final long requestCommitId = commitIdGenerator.incrementAndGet();
 
     if (isTabletBatchModeEnabled) {
       if (tabletBatchBuilder.onEvent(tabletInsertionEvent, requestCommitId)) {
@@ -228,7 +225,10 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       final AsyncPipeDataTransferServiceClient client = borrowClient(targetNodeUrl);
       pipeTransferTabletBatchEventHandler.transfer(client);
     } catch (Exception ex) {
-      throw new PipeConnectionException(ex.getMessage(), ex);
+      LOGGER.warn(
+          String.format(THRIFT_ERROR_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()),
+          ex);
+      pipeTransferTabletBatchEventHandler.onError(ex);
     }
   }
 
@@ -241,7 +241,10 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       final AsyncPipeDataTransferServiceClient client = borrowClient(targetNodeUrl);
       pipeTransferInsertNodeReqHandler.transfer(client);
     } catch (Exception ex) {
-      throw new PipeConnectionException(ex.getMessage(), ex);
+      LOGGER.warn(
+          String.format(THRIFT_ERROR_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()),
+          ex);
+      pipeTransferInsertNodeReqHandler.onError(ex);
     }
   }
 
@@ -253,7 +256,10 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       final AsyncPipeDataTransferServiceClient client = borrowClient(targetNodeUrl);
       pipeTransferTabletReqHandler.transfer(client);
     } catch (Exception ex) {
-      throw new PipeConnectionException(ex.getMessage(), ex);
+      LOGGER.warn(
+          String.format(THRIFT_ERROR_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()),
+          ex);
+      pipeTransferTabletReqHandler.onError(ex);
     }
   }
 
@@ -290,11 +296,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       return;
     }
 
-    final long requestCommitId =
-        pipeTsFileInsertionEvent.equals(lastEvent)
-            ? commitIdGenerator.get()
-            : commitIdGenerator.incrementAndGet();
-    lastEvent = pipeTsFileInsertionEvent;
+    final long requestCommitId = commitIdGenerator.incrementAndGet();
 
     final PipeTransferTsFileInsertionEventHandler pipeTransferTsFileInsertionEventHandler =
         new PipeTransferTsFileInsertionEventHandler(
@@ -312,7 +314,10 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       final AsyncPipeDataTransferServiceClient client = borrowClient(targetNodeUrl);
       pipeTransferTsFileInsertionEventHandler.transfer(client);
     } catch (Exception ex) {
-      throw new PipeConnectionException(ex.getMessage(), ex);
+      LOGGER.warn(
+          String.format(THRIFT_ERROR_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()),
+          ex);
+      pipeTransferTsFileInsertionEventHandler.onError(ex);
     }
   }
 
