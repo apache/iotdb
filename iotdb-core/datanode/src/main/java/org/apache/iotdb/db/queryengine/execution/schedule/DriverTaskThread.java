@@ -42,23 +42,22 @@ public class DriverTaskThread extends AbstractDriverThread {
   private static final double DRIVER_TASK_EXECUTION_TIME_SLICE_IN_MS =
       IoTDBDescriptor.getInstance().getConfig().getDriverTaskExecutionTimeSliceInMs();
 
-  /** In multi-level feedback queue, levels with lower priority have longer time slices. */
-  private static final Duration[] TIME_SLICE_FOR_EACH_LEVEL;
+  /**
+   * In multi-level feedback queue, levels with lower priority have longer time slices. Currently,
+   * we assign (level + 1) * TimeSliceUnit to each level.
+   */
+  private static final Duration[] TIME_SLICE_FOR_EACH_LEVEL =
+      IntStream.range(0, MultilevelPriorityQueue.getNumOfPriorityLevels())
+          .mapToObj(
+              level ->
+                  new Duration(
+                      (level + 1) * DRIVER_TASK_EXECUTION_TIME_SLICE_IN_MS, TimeUnit.MILLISECONDS))
+          .toArray(Duration[]::new);
 
   // We manage thread pool size directly, so create an unlimited pool
   private static final Executor listeningExecutor =
       IoTDBThreadPoolFactory.newCachedThreadPool(
           ThreadName.DRIVER_TASK_SCHEDULER_NOTIFICATION.getName());
-
-  static {
-    TIME_SLICE_FOR_EACH_LEVEL =
-        IntStream.range(1, MultilevelPriorityQueue.getNumOfPriorityLevels() + 1)
-            .mapToObj(
-                level ->
-                    new Duration(
-                        level * DRIVER_TASK_EXECUTION_TIME_SLICE_IN_MS, TimeUnit.MILLISECONDS))
-            .toArray(Duration[]::new);
-  }
 
   private final Ticker ticker;
 
