@@ -822,7 +822,6 @@ public class MTreeBelowSGCachedImpl {
             IDeviceMNode<ICachedMNode> deviceMNode =
                 getParentOfNextMatchedNode().getAsDeviceMNode();
             int templateId = deviceMNode.getSchemaTemplateIdWithState();
-            PartialPath devicePath = deviceMNode.getPartialPath();
             if (templateId >= 0) {
               schemaTree.appendTemplateDevice(
                   deviceMNode.getPartialPath(), deviceMNode.isAligned(), templateId, null);
@@ -859,7 +858,6 @@ public class MTreeBelowSGCachedImpl {
             IDeviceMNode<ICachedMNode> deviceMNode =
                 getParentOfNextMatchedNode().getAsDeviceMNode();
             int templateId = deviceMNode.getSchemaTemplateIdWithState();
-            PartialPath devicePath = deviceMNode.getPartialPath();
             if (templateId >= 0) {
               schemaTree.appendTemplateDevice(
                   deviceMNode.getPartialPath(), deviceMNode.isAligned(), templateId, null);
