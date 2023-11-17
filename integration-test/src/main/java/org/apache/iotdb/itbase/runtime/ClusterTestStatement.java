@@ -17,7 +17,7 @@
  * under the License.
  */
 package org.apache.iotdb.itbase.runtime;
-g
+
 import org.apache.iotdb.jdbc.Config;
 
 import java.sql.Connection;
