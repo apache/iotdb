@@ -57,8 +57,6 @@ public interface IChunkMetadata {
 
   void setChunkLoader(IChunkLoader chunkLoader);
 
-  void setFilePath(String filePath);
-
   void setClosed(boolean closed);
 
   TSDataType getDataType();

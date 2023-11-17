@@ -21,12 +21,15 @@ package org.apache.iotdb.db.queryengine.plan.statement.component;
 
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.Literal;
+import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 /** This class maintains information of {@code FILL} clause. */
 public class FillComponent extends StatementNode {
 
   private FillPolicy fillPolicy;
   private Literal fillValue;
+
+  private TimeDuration timeDurationThreshold;
 
   public FillComponent() {
     // do nothing
@@ -48,6 +51,14 @@ public class FillComponent extends StatementNode {
     this.fillValue = fillValue;
   }
 
+  public TimeDuration getTimeDurationThreshold() {
+    return timeDurationThreshold;
+  }
+
+  public void setTimeDurationThreshold(TimeDuration timeDurationThreshold) {
+    this.timeDurationThreshold = timeDurationThreshold;
+  }
+
   public String toSQLString() {
     StringBuilder sqlBuilder = new StringBuilder();
     sqlBuilder.append("FILL(");
@@ -55,6 +66,9 @@ public class FillComponent extends StatementNode {
       sqlBuilder.append(fillPolicy.toString());
     } else {
       sqlBuilder.append(fillValue.toString());
+    }
+    if (timeDurationThreshold != null) {
+      sqlBuilder.append(", ").append(timeDurationThreshold);
     }
     sqlBuilder.append(')');
     return sqlBuilder.toString();

@@ -30,7 +30,10 @@ import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaMeasurementN
 import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaNode;
 import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeVisitorFactory;
 import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeVisitorWithLimitOffsetWrapper;
+import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -44,10 +47,14 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
 
 public class ClusterSchemaTreeTest {
   private static final Logger logger = LoggerFactory.getLogger(ClusterSchemaTreeTest.class);
@@ -723,20 +730,20 @@ public class ClusterSchemaTreeTest {
     ISchemaTree schemaTree = new ClusterSchemaTree(generateSchemaTree());
 
     List<DeviceSchemaInfo> deviceSchemaInfoList =
-        schemaTree.getMatchedDevices(new PartialPath("root.sg.d2.a"), false);
+        schemaTree.getMatchedDevices(new PartialPath("root.sg.d2.a"));
     Assert.assertEquals(1, deviceSchemaInfoList.size());
     DeviceSchemaInfo deviceSchemaInfo = deviceSchemaInfoList.get(0);
     Assert.assertEquals(new PartialPath("root.sg.d2.a"), deviceSchemaInfo.getDevicePath());
     Assert.assertTrue(deviceSchemaInfo.isAligned());
     Assert.assertEquals(2, deviceSchemaInfo.getMeasurements(Sets.newSet("*")).size());
 
-    deviceSchemaInfoList = schemaTree.getMatchedDevices(new PartialPath("root.sg.*"), false);
+    deviceSchemaInfoList = schemaTree.getMatchedDevices(new PartialPath("root.sg.*"));
     deviceSchemaInfoList.sort(Comparator.comparing(DeviceSchemaInfo::getDevicePath));
     Assert.assertEquals(2, deviceSchemaInfoList.size());
     Assert.assertEquals(new PartialPath("root.sg.d1"), deviceSchemaInfoList.get(0).getDevicePath());
     Assert.assertEquals(new PartialPath("root.sg.d2"), deviceSchemaInfoList.get(1).getDevicePath());
 
-    deviceSchemaInfoList = schemaTree.getMatchedDevices(new PartialPath("root.sg.**"), false);
+    deviceSchemaInfoList = schemaTree.getMatchedDevices(new PartialPath("root.sg.**"));
     deviceSchemaInfoList.sort(Comparator.comparing(DeviceSchemaInfo::getDevicePath));
     Assert.assertEquals(3, deviceSchemaInfoList.size());
     Assert.assertEquals(new PartialPath("root.sg.d1"), deviceSchemaInfoList.get(0).getDevicePath());
@@ -744,7 +751,7 @@ public class ClusterSchemaTreeTest {
     Assert.assertEquals(
         new PartialPath("root.sg.d2.a"), deviceSchemaInfoList.get(2).getDevicePath());
 
-    deviceSchemaInfoList = schemaTree.getMatchedDevices(new PartialPath("root.**"), false);
+    deviceSchemaInfoList = schemaTree.getMatchedDevices(new PartialPath("root.**"));
     deviceSchemaInfoList.sort(Comparator.comparing(DeviceSchemaInfo::getDevicePath));
     Assert.assertEquals(3, deviceSchemaInfoList.size());
     Assert.assertEquals(new PartialPath("root.sg.d1"), deviceSchemaInfoList.get(0).getDevicePath());
@@ -830,6 +837,112 @@ public class ClusterSchemaTreeTest {
     }
 
     testSchemaTree(schemaTree.getRoot());
+  }
+
+  @Test
+  public void testMergeSchemaTreeWithTemplate() throws Exception {
+    Template template1 =
+        new Template(
+            "t1",
+            Arrays.asList("s1", "s2", "s3"),
+            Arrays.asList(TSDataType.DOUBLE, TSDataType.INT32, TSDataType.BOOLEAN),
+            Arrays.asList(TSEncoding.RLE, TSEncoding.RLE, TSEncoding.RLE),
+            Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY, CompressionType.SNAPPY));
+    template1.setId(1);
+    ClusterSchemaTree schemaTree1 = new ClusterSchemaTree();
+    ClusterSchemaTree schemaTree2 = new ClusterSchemaTree();
+    schemaTree1.appendTemplateDevice(new PartialPath("root.sg1.v1.d1"), false, 1, template1);
+    schemaTree1.appendTemplateDevice(new PartialPath("root.sg1.v1.d2"), false, 1, template1);
+    schemaTree2.appendTemplateDevice(new PartialPath("root.sg1.v1"), false, 1, template1);
+    schemaTree1.mergeSchemaTree(schemaTree2);
+    List<DeviceSchemaInfo> deviceSchemaInfoList = schemaTree1.getAllDevices();
+    Assert.assertEquals(3, deviceSchemaInfoList.size());
+    for (DeviceSchemaInfo deviceSchemaInfo : deviceSchemaInfoList) {
+      Assert.assertEquals(1, deviceSchemaInfo.getTemplateId());
+      int measurementIndex = 1;
+      for (MeasurementPath measurementPath : deviceSchemaInfo.getMeasurementSchemaPathList()) {
+        Assert.assertEquals("s" + measurementIndex++, measurementPath.getMeasurement());
+      }
+    }
+    Assert.assertFalse(schemaTree1.hasNormalTimeSeries());
+    Assert.assertEquals(1, schemaTree1.getUsingTemplates().size());
+    checkDeviceUsingTemplate(
+        schemaTree1, 1, Sets.newSet("root.sg1.v1.d1", "root.sg1.v1.d2", "root.sg1.v1"));
+    Template template2 =
+        new Template(
+            "t2",
+            Arrays.asList("s11", "s22", "s33"),
+            Arrays.asList(TSDataType.DOUBLE, TSDataType.INT32, TSDataType.BOOLEAN),
+            Arrays.asList(TSEncoding.RLE, TSEncoding.RLE, TSEncoding.RLE),
+            Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY, CompressionType.SNAPPY));
+    template2.setId(2);
+    ClusterSchemaTree schemaTree3 = new ClusterSchemaTree();
+    schemaTree3.appendTemplateDevice(new PartialPath("root.sg2.d1"), false, 2, template2);
+    schemaTree1.mergeSchemaTree(schemaTree3);
+    Assert.assertFalse(schemaTree1.hasNormalTimeSeries());
+    Assert.assertEquals(2, schemaTree1.getUsingTemplates().size());
+
+    checkDeviceUsingTemplate(
+        schemaTree1, 1, Sets.newSet("root.sg1.v1.d1", "root.sg1.v1.d2", "root.sg1.v1"));
+    checkDeviceUsingTemplate(schemaTree1, 2, Sets.newSet("root.sg2.d1"));
+    for (DeviceSchemaInfo deviceSchemaInfo : deviceSchemaInfoList) {
+      if (deviceSchemaInfo.getDevicePath().startsWith("root.sg1")) {
+        Assert.assertEquals(1, deviceSchemaInfo.getTemplateId());
+        int measurementIndex = 1;
+        for (MeasurementPath measurementPath : deviceSchemaInfo.getMeasurementSchemaPathList()) {
+          Assert.assertEquals("s" + measurementIndex, measurementPath.getMeasurement());
+        }
+      } else {
+        Assert.assertEquals(2, deviceSchemaInfo.getTemplateId());
+        int measurementIndex = 1;
+        for (MeasurementPath measurementPath : deviceSchemaInfo.getMeasurementSchemaPathList()) {
+          Assert.assertEquals(
+              String.format("s%d%d", measurementIndex, measurementIndex),
+              measurementPath.getMeasurement());
+          measurementIndex++;
+        }
+      }
+    }
+    ClusterSchemaTree schemaTree4 = new ClusterSchemaTree();
+    schemaTree4.appendSingleMeasurementPath(
+        new MeasurementPath("root.sg3.d1.s1", TSDataType.INT32));
+    schemaTree1.mergeSchemaTree(schemaTree4);
+    Assert.assertTrue(schemaTree1.hasNormalTimeSeries());
+    Assert.assertEquals(2, schemaTree1.getUsingTemplates().size());
+    for (DeviceSchemaInfo deviceSchemaInfo : deviceSchemaInfoList) {
+      if (deviceSchemaInfo.getDevicePath().startsWith("root.sg1")) {
+        Assert.assertEquals(1, deviceSchemaInfo.getTemplateId());
+        int measurementIndex = 1;
+        for (MeasurementPath measurementPath : deviceSchemaInfo.getMeasurementSchemaPathList()) {
+          Assert.assertEquals("s" + measurementIndex, measurementPath.getMeasurement());
+        }
+      } else if (deviceSchemaInfo.getDevicePath().startsWith("root.sg2")) {
+        Assert.assertEquals(2, deviceSchemaInfo.getTemplateId());
+        int measurementIndex = 1;
+        for (MeasurementPath measurementPath : deviceSchemaInfo.getMeasurementSchemaPathList()) {
+          Assert.assertEquals(
+              String.format("s%d%d", measurementIndex, measurementIndex),
+              measurementPath.getMeasurement());
+          measurementIndex++;
+        }
+      } else {
+        Assert.assertEquals(NON_TEMPLATE, deviceSchemaInfo.getTemplateId());
+        Assert.assertEquals(1, deviceSchemaInfo.getMeasurementSchemaPathList().size());
+        Assert.assertEquals(
+            "s1", deviceSchemaInfo.getMeasurementSchemaPathList().get(0).getMeasurement());
+      }
+    }
+  }
+
+  private void checkDeviceUsingTemplate(
+      ISchemaTree schemaTree, int templateId, Set<String> expected) {
+    List<PartialPath> deviceUsingTemplate = schemaTree.getDeviceUsingTemplate(templateId);
+    Assert.assertEquals(expected.size(), deviceUsingTemplate.size());
+    for (PartialPath d : deviceUsingTemplate) {
+      Assert.assertTrue(expected.contains(d.getFullPath()));
+      expected.remove(d.getFullPath());
+    }
+    Assert.assertTrue(expected.isEmpty());
   }
 
   @Test

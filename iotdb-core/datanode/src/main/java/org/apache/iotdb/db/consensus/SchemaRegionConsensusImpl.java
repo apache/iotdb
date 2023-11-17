@@ -132,6 +132,8 @@ public class SchemaRegionConsensusImpl {
                                     .setRaftLogSizeMaxThreshold(CONF.getSchemaRatisLogMax())
                                     .setForceSnapshotInterval(
                                         CONF.getSchemaRatisPeriodicSnapshotInterval())
+                                    .setRetryTimesMax(10)
+                                    .setRetryWaitMillis(CONF.getConnectionTimeoutInMS() / 10)
                                     .build())
                             .setLeaderLogAppender(
                                 RatisConfig.LeaderLogAppender.newBuilder()

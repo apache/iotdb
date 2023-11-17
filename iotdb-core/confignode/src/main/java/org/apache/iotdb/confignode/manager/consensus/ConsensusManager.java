@@ -186,6 +186,9 @@ public class ConsensusManager {
                                       .setRaftLogSizeMaxThreshold(CONF.getConfigNodeRatisLogMax())
                                       .setForceSnapshotInterval(
                                           CONF.getConfigNodeRatisPeriodicSnapshotInterval())
+                                      .setRetryTimesMax(10)
+                                      .setRetryWaitMillis(
+                                          COMMON_CONF.getConnectionTimeoutInMS() / 10)
                                       .build())
                               .setRead(
                                   RatisConfig.Read.newBuilder()
