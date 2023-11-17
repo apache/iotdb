@@ -26,7 +26,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous
 
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFillFilter;
-import org.apache.iotdb.tsfile.access.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.${type.column};
 import org.apache.iotdb.tsfile.read.common.block.column.${type.column}Builder;
 import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
