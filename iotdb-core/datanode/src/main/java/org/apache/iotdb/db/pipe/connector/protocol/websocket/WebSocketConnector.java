@@ -181,7 +181,7 @@ public class WebSocketConnector implements PipeConnector {
         continue;
       }
 
-      if (lastCommitId.get() + 1 != committer.left) {
+      if (committer.left != lastCommitId.get() + 1) {
         break;
       }
 

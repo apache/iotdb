@@ -79,7 +79,8 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftAsyncConnector.class);
 
   private static final String THRIFT_ERROR_FORMATTER =
-      "Failed to borrow client from client pool or TException when sending to receiver %s:%s.";
+      "Failed to borrow client from client pool or exception occurred "
+          + "when sending to receiver %s:%s.";
 
   private static final AtomicReference<
           IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>>
