@@ -45,8 +45,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.PipeEnrichedInsertBaseStatement;
@@ -68,9 +67,11 @@ import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.time.ZoneId;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -266,19 +267,22 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
       PipeTransferTabletBatchReq req,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
-    final Pair<InsertRowsStatement, InsertMultiTabletsStatement> statementPair =
+    final Pair<List<InsertRowStatement>, List<InsertTabletStatement>> statementPair =
         req.constructStatements();
+    // Currently we do not deploy InsertRowsStatement and InsertMultiTabletsStatement
+    // since they may ignore some execution failure like no metadata, causing data
+    // losing problems.
     return new TPipeTransferResp(
         RpcUtils.squashResponseStatusList(
-            Stream.of(
-                    statementPair.getLeft().isEmpty()
-                        ? RpcUtils.SUCCESS_STATUS
-                        : executeStatement(
-                            statementPair.getLeft(), partitionFetcher, schemaFetcher),
-                    statementPair.getRight().isEmpty()
-                        ? RpcUtils.SUCCESS_STATUS
-                        : executeStatement(
-                            statementPair.getRight(), partitionFetcher, schemaFetcher))
+            Stream.concat(
+                    statementPair.getLeft().stream()
+                        .map(
+                            (Function<? super InsertRowStatement, TSStatus>)
+                                a -> executeStatement(a, partitionFetcher, schemaFetcher)),
+                    statementPair.getRight().stream()
+                        .map(
+                            (Function<? super InsertTabletStatement, TSStatus>)
+                                a -> executeStatement(a, partitionFetcher, schemaFetcher)))
                 .collect(Collectors.toList())));
   }
 

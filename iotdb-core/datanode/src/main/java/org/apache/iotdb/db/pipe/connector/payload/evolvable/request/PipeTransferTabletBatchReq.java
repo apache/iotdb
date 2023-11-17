@@ -24,9 +24,7 @@ import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -51,10 +49,7 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
     // Empty constructor
   }
 
-  public Pair<InsertRowsStatement, InsertMultiTabletsStatement> constructStatements() {
-    final InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
-    final InsertMultiTabletsStatement insertMultiTabletsStatement =
-        new InsertMultiTabletsStatement();
+  public Pair<List<InsertRowStatement>, List<InsertTabletStatement>> constructStatements() {
 
     final List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
     final List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>();
@@ -91,9 +86,7 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
       insertTabletStatementList.add(tabletReq.constructStatement());
     }
 
-    insertRowsStatement.setInsertRowStatementList(insertRowStatementList);
-    insertMultiTabletsStatement.setInsertTabletStatementList(insertTabletStatementList);
-    return new Pair<>(insertRowsStatement, insertMultiTabletsStatement);
+    return new Pair<>(insertRowStatementList, insertTabletStatementList);
   }
 
   /////////////////////////////// Thrift ///////////////////////////////
