@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.fa.IFAState;
 import org.apache.iotdb.commons.path.fa.IFATransition;
 import org.apache.iotdb.commons.schema.node.IMNode;
+import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.commons.schema.tree.AbstractTreeVisitor;
@@ -72,6 +73,9 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
 
   // default false means fullPath pattern match
   protected boolean isPrefixMatch = false;
+
+  private IMNodeIterator<N> currentChildrenIterator;
+  private IDeviceMNode<N> skipTemplateDevice;
 
   protected Traverser() {}
 
@@ -137,11 +141,17 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
 
   @Override
   protected N getChild(N parent, String childName) throws MetadataException {
+    return getChild(parent, childName, parent == skipTemplateDevice);
+  }
+
+  private N getChild(N parent, String childName, boolean skipTemplateChildren)
+      throws MetadataException {
     N child = null;
     if (parent.isAboveDatabase()) {
       child = parent.getChild(childName);
     } else {
       if (templateMap != null
+          && !skipTemplateChildren
           && !templateMap.isEmpty() // this task will cover some timeseries represented by template
           && (parent.isDevice()
               && parent.getAsDeviceMNode().getSchemaTemplateId()
@@ -177,51 +187,61 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
   @Override
   protected Iterator<N> getChildrenIterator(N parent, Iterator<String> childrenName)
       throws Exception {
-    return new IMNodeIterator<N>() {
-      private N next = null;
+    currentChildrenIterator =
+        new IMNodeIterator<N>() {
+          private N next = null;
+          private boolean skipTemplateChildren = false;
 
-      @Override
-      public boolean hasNext() {
-        if (next == null) {
-          while (next == null && childrenName.hasNext()) {
-            try {
-              next = getChild(parent, childrenName.next());
-            } catch (Throwable e) {
-              logger.warn(e.getMessage(), e);
-              throw new RuntimeException(e);
+          @Override
+          public boolean hasNext() {
+            if (next == null) {
+              while (next == null && childrenName.hasNext()) {
+                try {
+                  next = getChild(parent, childrenName.next(), skipTemplateChildren);
+                } catch (Throwable e) {
+                  logger.warn(e.getMessage(), e);
+                  throw new RuntimeException(e);
+                }
+              }
+            }
+            return next != null;
+          }
+
+          @Override
+          public N next() {
+            if (!hasNext()) {
+              throw new NoSuchElementException();
+            }
+            N result = next;
+            next = null;
+            return result;
+          }
+
+          @Override
+          public void skipTemplateChildren() {
+            skipTemplateChildren = true;
+          }
+
+          @Override
+          public void close() {
+            if (next != null) {
+              releaseNode(next);
+              next = null;
             }
           }
-        }
-        return next != null;
-      }
-
-      @Override
-      public N next() {
-        if (!hasNext()) {
-          throw new NoSuchElementException();
-        }
-        N result = next;
-        next = null;
-        return result;
-      }
-
-      @Override
-      public void close() {
-        if (next != null) {
-          releaseNode(next);
-          next = null;
-        }
-      }
-    };
+        };
+    return currentChildrenIterator;
   }
 
   @Override
   protected Iterator<N> getChildrenIterator(N parent) throws MetadataException {
     if (parent.isAboveDatabase()) {
-      return new MNodeIterator<>(parent.getChildren().values().iterator());
+      currentChildrenIterator = new MNodeIterator<>(parent.getChildren().values().iterator());
     } else {
-      return store.getTraverserIterator(parent, templateMap, skipPreDeletedSchema);
+      currentChildrenIterator =
+          store.getTraverserIterator(parent, templateMap, skipPreDeletedSchema);
     }
+    return currentChildrenIterator;
   }
 
   @Override
@@ -306,5 +326,12 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
       return patternFA.getNextState(sourceState, transition);
     }
     return null;
+  }
+
+  protected void skipTemplateChildren(IDeviceMNode<N> deviceMNode) {
+    skipTemplateDevice = deviceMNode;
+    if (currentChildrenIterator != null) {
+      currentChildrenIterator.skipTemplateChildren();
+    }
   }
 }
