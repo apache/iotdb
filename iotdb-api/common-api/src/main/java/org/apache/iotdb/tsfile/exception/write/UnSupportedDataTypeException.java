@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.exception;
+package org.apache.iotdb.tsfile.exception.write;
 
 public class UnSupportedDataTypeException extends RuntimeException {
 
