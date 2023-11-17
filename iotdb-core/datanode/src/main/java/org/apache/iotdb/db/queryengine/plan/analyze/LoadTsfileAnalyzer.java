@@ -205,15 +205,15 @@ public class LoadTsfileAnalyzer {
       // auto create or verify schema
       if (IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
           || loadTsFileStatement.isVerifySchema()) {
+        // check if the tsfile is empty
+        if (!timeseriesMetadataIterator.hasNext()) {
+          LOGGER.warn("device2TimeseriesMetadata is empty, because maybe the tsfile is empty");
+          return;
+        }
+
         while (timeseriesMetadataIterator.hasNext()) {
           Map<String, List<TimeseriesMetadata>> device2TimeseriesMetadata =
               timeseriesMetadataIterator.next();
-
-          // check if the tsfile is empty
-          if (device2TimeseriesMetadata.isEmpty()) {
-            LOGGER.warn("device2TimeseriesMetadata is empty, because maybe the tsfile is empty");
-            return;
-          }
 
           schemaAutoCreatorAndVerifier.autoCreateAndVerify(reader, device2TimeseriesMetadata);
 

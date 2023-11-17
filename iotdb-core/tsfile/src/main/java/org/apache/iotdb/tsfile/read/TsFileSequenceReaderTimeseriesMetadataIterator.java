@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.read;
 
+import org.apache.iotdb.tsfile.exception.TsFileSequenceReaderTimeseriesMetadataIteratorException;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -104,7 +105,12 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
       try {
         deserializeMetadataIndexEntry(indexEntryInfo, timeseriesMetadataMap);
       } catch (IOException e) {
-        throw new RuntimeException(e);
+        throw new TsFileSequenceReaderTimeseriesMetadataIteratorException(
+            String.format(
+                "TsFileSequenceReaderTimeseriesMetadataIterator: deserializeMetadataIndexEntry failed, "
+                    + "MetadataIndexEntryInfo: %s, "
+                    + e.getMessage(),
+                indexEntryInfo));
       }
     }
 
@@ -143,9 +149,12 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
       long endOffset,
       Map<String, List<TimeseriesMetadata>> timeseriesMetadataMap)
       throws IOException {
-    if (currentBuffer == null || !currentBuffer.hasRemaining()) {
-      currentBuffer = reader.readData(metadataIndexEntry.getOffset(), endOffset);
+    if (currentBuffer != null && currentBuffer.hasRemaining()) {
+      throw new TsFileSequenceReaderTimeseriesMetadataIteratorException(
+          "currentBuffer still has some data left before deserializeLeafMeasurement");
     }
+
+    currentBuffer = reader.readData(metadataIndexEntry.getOffset(), endOffset);
 
     timeseriesMetadataMap
         .computeIfAbsent(currentDeviceId, k -> new ArrayList<>())
