@@ -174,7 +174,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
     }
 
     final long requestCommitId =
-        lastEvent.equals(tabletInsertionEvent)
+        tabletInsertionEvent.equals(lastEvent)
             ? commitIdGenerator.get()
             : commitIdGenerator.incrementAndGet();
     lastEvent = tabletInsertionEvent;
@@ -291,7 +291,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
     }
 
     final long requestCommitId =
-        lastEvent.equals(pipeTsFileInsertionEvent)
+        pipeTsFileInsertionEvent.equals(lastEvent)
             ? commitIdGenerator.get()
             : commitIdGenerator.incrementAndGet();
     lastEvent = pipeTsFileInsertionEvent;
