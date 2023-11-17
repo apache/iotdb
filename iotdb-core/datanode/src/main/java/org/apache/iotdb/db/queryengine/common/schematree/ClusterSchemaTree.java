@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaEntityNode;
 import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaInternalNode;
 import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaMeasurementNode;
 import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaNode;
+import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeDeviceUsingTemplateVisitor;
 import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeDeviceVisitor;
 import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeVisitorFactory;
 import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeVisitorWithLimitOffsetWrapper;
@@ -368,6 +369,15 @@ public class ClusterSchemaTree implements ISchemaTree {
   @Override
   public List<Template> getUsingTemplates() {
     return new ArrayList<>(templateMap.values());
+  }
+
+  @Override
+  public List<PartialPath> getDeviceUsingTemplate(int templateId) {
+    try (SchemaTreeDeviceUsingTemplateVisitor visitor =
+        SchemaTreeVisitorFactory.createSchemaTreeDeviceUsingTemplateVisitor(
+            root, ALL_MATCH_PATTERN, templateId)) {
+      return visitor.getAllResult();
+    }
   }
 
   public void mergeSchemaTree(ClusterSchemaTree schemaTree) {
