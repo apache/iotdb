@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - 'rel/1.*'
+      - try_fix_ut
     paths-ignore:
       - 'docs/**'
       - 'site/**'
