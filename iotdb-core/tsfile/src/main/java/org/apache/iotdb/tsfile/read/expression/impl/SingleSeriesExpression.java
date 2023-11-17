@@ -21,18 +21,13 @@ package org.apache.iotdb.tsfile.read.expression.impl;
 
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.IUnaryExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.Serializable;
-import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class SingleSeriesExpression implements IUnaryExpression, Serializable {
+public class SingleSeriesExpression implements IUnaryExpression {
 
-  private static final long serialVersionUID = 7131207370394865228L;
   private Path seriesPath;
   private Filter filter;
 
@@ -44,18 +39,6 @@ public class SingleSeriesExpression implements IUnaryExpression, Serializable {
   @Override
   public ExpressionType getType() {
     return ExpressionType.SERIES;
-  }
-
-  @Override
-  public IExpression clone() {
-    return new SingleSeriesExpression(seriesPath.clone(), filter.copy());
-  }
-
-  @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write((byte) getType().ordinal(), byteBuffer);
-    seriesPath.serialize(byteBuffer);
-    filter.serialize(byteBuffer);
   }
 
   @Override

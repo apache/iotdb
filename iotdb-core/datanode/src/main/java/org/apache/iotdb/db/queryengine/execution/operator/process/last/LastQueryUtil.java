@@ -31,8 +31,8 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.operator.Gt;
-import org.apache.iotdb.tsfile.read.filter.operator.GtEq;
+import org.apache.iotdb.tsfile.read.filter.operator.TimeFilterOperators.TimeGt;
+import org.apache.iotdb.tsfile.read.filter.operator.TimeFilterOperators.TimeGtEq;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.collect.ImmutableList;
@@ -166,8 +166,8 @@ public class LastQueryUtil {
 
   public static boolean needUpdateCache(Filter timeFilter) {
     // Update the cache only when, the filter is gt (greater than) or ge (greater than or equal to)
-    return CACHE_ENABLED && (timeFilter == null || timeFilter instanceof GtEq)
-        || (timeFilter instanceof Gt);
+    return CACHE_ENABLED && (timeFilter == null || timeFilter instanceof TimeGtEq)
+        || (timeFilter instanceof TimeGt);
   }
 
   public static boolean needUpdateNullEntry(Filter timeFilter) {

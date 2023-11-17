@@ -49,9 +49,6 @@ import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.tsfile.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
-import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableMap;
@@ -70,6 +67,11 @@ import java.util.List;
 import java.util.Map;
 
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.DEVICE;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.and;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.groupByTime;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.gt;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.longValue;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.time;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -82,7 +84,7 @@ public class AnalyzeTest {
       Analysis actualAnalysis = analyzeSQL(sql);
 
       Analysis expectedAnalysis = new Analysis();
-      expectedAnalysis.setGlobalTimeFilter(TimeFilter.gt(100));
+      expectedAnalysis.setGlobalTimeFilter(gt(time(), longValue(100)));
       expectedAnalysis.setSelectExpressions(
           Sets.newHashSet(
               new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
@@ -123,7 +125,7 @@ public class AnalyzeTest {
               + "where time >= 100 and s2 >= 10 and s2 != 6;";
       actualAnalysis = analyzeSQL(sql);
       expectedAnalysis = new Analysis();
-      expectedAnalysis.setGlobalTimeFilter(TimeFilter.gtEq(100));
+      expectedAnalysis.setGlobalTimeFilter(gt(time(), longValue(100)));
       expectedAnalysis.setSelectExpressions(
           Sets.newHashSet(
               new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
@@ -194,7 +196,7 @@ public class AnalyzeTest {
 
       Analysis expectedAnalysis = new Analysis();
       expectedAnalysis.setGlobalTimeFilter(
-          new AndFilter(TimeFilter.gt(100), new GroupByFilter(10, 10, 0, 1000)));
+          and(gt(time(), longValue(100)), groupByTime(10, 10, 0, 1000)));
       expectedAnalysis.setSelectExpressions(
           Sets.newHashSet(
               new AdditionExpression(
@@ -281,7 +283,7 @@ public class AnalyzeTest {
       Analysis actualAnalysis = analyzeSQL(sql);
 
       Analysis expectedAnalysis = new Analysis();
-      expectedAnalysis.setGlobalTimeFilter(TimeFilter.gt(100));
+      expectedAnalysis.setGlobalTimeFilter(gt(time(), longValue(100)));
       expectedAnalysis.setSelectExpressions(
           Sets.newHashSet(
               new TimeSeriesOperand(
@@ -383,7 +385,7 @@ public class AnalyzeTest {
 
       Analysis expectedAnalysis = new Analysis();
       expectedAnalysis.setGlobalTimeFilter(
-          new AndFilter(TimeFilter.gt(100), new GroupByFilter(10, 10, 0, 1000)));
+          and(gt(time(), longValue(100)), groupByTime(10, 10, 0, 1000)));
       expectedAnalysis.setSelectExpressions(
           Sets.newHashSet(
               new TimeSeriesOperand(

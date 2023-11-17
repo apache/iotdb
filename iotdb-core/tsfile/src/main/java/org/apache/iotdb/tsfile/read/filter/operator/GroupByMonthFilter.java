@@ -17,19 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.read.filter;
+package org.apache.iotdb.tsfile.read.filter.operator;
 
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TimeDuration;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Calendar;
-import java.util.Objects;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
@@ -41,21 +34,19 @@ import static org.apache.iotdb.tsfile.utils.TimeDuration.getConsecutiveTimesInte
  * dynamically. Attention: it's only supported to access in ascending order now.
  */
 public class GroupByMonthFilter extends GroupByFilter {
-  private Calendar calendar = Calendar.getInstance();
+  private final Calendar calendar = Calendar.getInstance();
 
-  private TimeDuration originalSlidingStep;
-  private TimeDuration originalInterval;
+  private final TimeDuration originalSlidingStep;
+  private final TimeDuration originalInterval;
 
   // These fields will be serialized to remote nodes, as other fields may be updated during process
   private TimeZone timeZone;
-  private long originalStartTime;
-  private long originalEndTime;
+  private final long originalStartTime;
+  private final long originalEndTime;
 
-  private TimeUnit currPrecision;
+  private final TimeUnit currPrecision;
 
   private long[] startTimes;
-
-  public GroupByMonthFilter() {}
 
   public GroupByMonthFilter(
       TimeDuration interval,
@@ -79,22 +70,6 @@ public class GroupByMonthFilter extends GroupByFilter {
     initMonthGroupByParameters(timeZone);
   }
 
-  public GroupByMonthFilter(GroupByMonthFilter filter) {
-    super(filter.interval, filter.slidingStep, filter.startTime, filter.endTime);
-    originalStartTime = filter.originalStartTime;
-    originalEndTime = filter.originalEndTime;
-    originalSlidingStep = filter.originalSlidingStep;
-    originalInterval = filter.originalInterval;
-    calendar = Calendar.getInstance();
-    calendar.setTimeZone(filter.calendar.getTimeZone());
-    calendar.setTimeInMillis(filter.calendar.getTimeInMillis());
-    timeZone = filter.timeZone;
-    currPrecision = filter.currPrecision;
-    // the value in this array will not be changed, so we can copy reference directly
-    startTimes = filter.startTimes;
-  }
-
-  // TODO: time descending order
   @Override
   public boolean satisfy(long time, Object value) {
     if (time < originalStartTime || time >= endTime) {
@@ -126,11 +101,6 @@ public class GroupByMonthFilter extends GroupByFilter {
     }
   }
 
-  @Override
-  public Filter copy() {
-    return new GroupByMonthFilter(this);
-  }
-
   private boolean satisfyCurrentInterval(long startTime, long endTime) {
     if (endTime < this.startTime || startTime >= this.endTime) {
       return false;
@@ -152,65 +122,12 @@ public class GroupByMonthFilter extends GroupByFilter {
     }
   }
 
-  @Override
-  public void serialize(DataOutputStream outputStream) {
-    try {
-      outputStream.write(getSerializeId().ordinal());
-      originalInterval.serialize(outputStream);
-      originalSlidingStep.serialize(outputStream);
-      ReadWriteIOUtils.write(originalStartTime, outputStream);
-      ReadWriteIOUtils.write(originalEndTime, outputStream);
-      ReadWriteIOUtils.write(currPrecision.ordinal(), outputStream);
-      ReadWriteIOUtils.write(timeZone.getID(), outputStream);
-    } catch (IOException ignored) {
-      // ignored
-    }
-  }
-
-  @Override
-  public void deserialize(ByteBuffer buffer) {
-    originalInterval = TimeDuration.deserialize(buffer);
-    originalSlidingStep = TimeDuration.deserialize(buffer);
-    if (!originalInterval.containsMonth()) {
-      this.interval = originalInterval.nonMonthDuration;
-    }
-    if (!originalSlidingStep.containsMonth()) {
-      this.slidingStep = originalSlidingStep.nonMonthDuration;
-    }
-    originalStartTime = ReadWriteIOUtils.readLong(buffer);
-    originalEndTime = ReadWriteIOUtils.readLong(buffer);
-    currPrecision = TimeUnit.values()[ReadWriteIOUtils.readInt(buffer)];
-    timeZone = TimeZone.getTimeZone(ReadWriteIOUtils.readString(buffer));
-    startTime = originalStartTime;
-    endTime = originalEndTime;
-    initMonthGroupByParameters(timeZone);
-  }
-
   private boolean isContainedByCurrentInterval(long startTime, long endTime) {
     if (startTime < this.startTime || endTime > this.endTime) {
       return false;
     } else {
       return startTime - this.startTime < interval && endTime - this.startTime < interval;
     }
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    if (!(obj instanceof GroupByMonthFilter)) {
-      return false;
-    }
-    GroupByMonthFilter other = (GroupByMonthFilter) obj;
-    return this.originalInterval.equals(other.originalInterval)
-        && this.originalSlidingStep.equals(other.originalSlidingStep)
-        && this.originalStartTime == other.originalStartTime
-        && this.originalEndTime == other.originalEndTime
-        && this.currPrecision == other.currPrecision
-        && this.timeZone.equals(other.timeZone);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(originalInterval, originalSlidingStep, originalStartTime, originalEndTime);
   }
 
   private void initMonthGroupByParameters(TimeZone timeZone) {
@@ -262,10 +179,5 @@ public class GroupByMonthFilter extends GroupByFilter {
           calcPositiveIntervalByMonth(startTime, originalInterval, 1, timeZone, currPrecision)
               - startTime;
     }
-  }
-
-  @Override
-  public FilterSerializeId getSerializeId() {
-    return FilterSerializeId.GROUP_BY_MONTH;
   }
 }

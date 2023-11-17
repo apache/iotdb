@@ -27,7 +27,7 @@ import java.util.Objects;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
-public class TimeDuration implements Serializable {
+public class TimeDuration implements Serializable, Comparable<TimeDuration> {
   // month part of time duration
   public final int monthDuration;
   // non-month part of time duration, its precision is same as current time_precision
@@ -190,5 +190,14 @@ public class TimeDuration implements Serializable {
   @Override
   public int hashCode() {
     return Objects.hash(monthDuration, nonMonthDuration);
+  }
+
+  @Override
+  public int compareTo(TimeDuration other) {
+    int monthCompare = Integer.compare(monthDuration, other.monthDuration);
+    if (monthCompare != 0) {
+      return monthCompare;
+    }
+    return Long.compare(nonMonthDuration, other.nonMonthDuration);
   }
 }

@@ -40,7 +40,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.binary.SubtractionExpress
 import org.apache.iotdb.db.queryengine.plan.expression.binary.WhenThenExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.other.CaseWhenThenExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.ternary.BetweenExpression;
@@ -52,9 +51,10 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.NegationExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.UnaryExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ConvertExpressionToTimeFilterVisitor;
 import org.apache.iotdb.tsfile.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilter;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
@@ -143,7 +143,8 @@ public class ExpressionUtils {
             new LikeExpression(
                 childExpression,
                 ((LikeExpression) rawExpression).getPatternString(),
-                ((LikeExpression) rawExpression).getPattern());
+                ((LikeExpression) rawExpression).getPattern(),
+                ((LikeExpression) rawExpression).isNot());
         break;
       case LOGIC_NOT:
         resultExpression = new LogicNotExpression(childExpression);
@@ -156,7 +157,8 @@ public class ExpressionUtils {
             new RegularExpression(
                 childExpression,
                 ((RegularExpression) rawExpression).getPatternString(),
-                ((RegularExpression) rawExpression).getPattern());
+                ((RegularExpression) rawExpression).getPattern(),
+                ((RegularExpression) rawExpression).isNot());
         break;
       default:
         throw new UnknownExpressionTypeException(rawExpression.getExpressionType());
@@ -306,47 +308,6 @@ public class ExpressionUtils {
     }
   }
 
-  public static Filter constructTimeFilter(
-      ExpressionType expressionType, Expression timeExpression, Expression valueExpression) {
-    if (timeExpression instanceof TimestampOperand
-        && valueExpression instanceof ConstantOperand
-        && ((ConstantOperand) valueExpression).getDataType() == TSDataType.INT64) {
-      long value = Long.parseLong(((ConstantOperand) valueExpression).getValueString());
-      switch (expressionType) {
-        case LESS_THAN:
-          return TimeFilter.lt(value);
-        case LESS_EQUAL:
-          return TimeFilter.ltEq(value);
-        case GREATER_THAN:
-          return TimeFilter.gt(value);
-        case GREATER_EQUAL:
-          return TimeFilter.gtEq(value);
-        case EQUAL_TO:
-          return TimeFilter.eq(value);
-        case NON_EQUAL:
-          return TimeFilter.notEq(value);
-        default:
-          throw new UnknownExpressionTypeException(expressionType);
-      }
-    }
-    return null;
-  }
-
-  public static Pair<Filter, Boolean> getPairFromBetweenTimeFirst(
-      Expression firstExpression, Expression secondExpression, boolean not) {
-    if (firstExpression instanceof ConstantOperand
-        && secondExpression instanceof ConstantOperand
-        && ((ConstantOperand) firstExpression).getDataType() == TSDataType.INT64
-        && ((ConstantOperand) secondExpression).getDataType() == TSDataType.INT64) {
-      long value1 = Long.parseLong(((ConstantOperand) firstExpression).getValueString());
-      long value2 = Long.parseLong(((ConstantOperand) secondExpression).getValueString());
-      return new Pair<>(
-          not ? TimeFilter.notBetween(value1, value2) : TimeFilter.between(value1, value2), false);
-    } else {
-      return new Pair<>(null, true);
-    }
-  }
-
   public static Pair<Filter, Boolean> getPairFromBetweenTimeSecond(
       BetweenExpression predicate, Expression expression) {
     if (predicate.isNotBetween()) {
@@ -397,5 +358,9 @@ public class ExpressionUtils {
           expressions.get(0),
           constructBinaryFilterTreeWithAnd(expressions.subList(1, expressions.size())));
     }
+  }
+
+  public static Filter convertExpressionToTimeFilter(Expression expression) {
+    return expression.accept(new ConvertExpressionToTimeFilterVisitor(), null);
   }
 }

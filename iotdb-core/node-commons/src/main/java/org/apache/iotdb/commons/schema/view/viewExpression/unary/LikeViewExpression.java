@@ -36,21 +36,27 @@ public class LikeViewExpression extends UnaryViewExpression {
   private final String patternString;
   private final Pattern pattern;
 
-  public LikeViewExpression(ViewExpression expression, String patternString) {
+  private final boolean isNot;
+
+  public LikeViewExpression(ViewExpression expression, String patternString, boolean isNot) {
     super(expression);
     this.patternString = patternString;
+    this.isNot = isNot;
     pattern = this.compile();
   }
 
-  public LikeViewExpression(ViewExpression expression, String patternString, Pattern pattern) {
+  public LikeViewExpression(
+      ViewExpression expression, String patternString, Pattern pattern, boolean isNot) {
     super(expression);
     this.patternString = patternString;
     this.pattern = pattern;
+    this.isNot = isNot;
   }
 
   public LikeViewExpression(ByteBuffer byteBuffer) {
     super(ViewExpression.deserialize(byteBuffer));
     patternString = ReadWriteIOUtils.readString(byteBuffer);
+    isNot = ReadWriteIOUtils.readBool(byteBuffer);
     pattern = compile();
   }
 
@@ -58,6 +64,7 @@ public class LikeViewExpression extends UnaryViewExpression {
     super(ViewExpression.deserialize(inputStream));
     try {
       patternString = ReadWriteIOUtils.readString(inputStream);
+      isNot = ReadWriteIOUtils.readBool(inputStream);
       pattern = compile();
     } catch (IOException e) {
       throw new RuntimeException(e);
@@ -78,7 +85,8 @@ public class LikeViewExpression extends UnaryViewExpression {
 
   @Override
   public String toString(boolean isRoot) {
-    String basicString = this.expression.toString(false) + "LIKE " + this.patternString;
+    String basicString =
+        this.expression.toString(false) + (isNot ? "NOT LIKE " : "LIKE ") + this.patternString;
     if (isRoot) {
       return basicString;
     }
@@ -89,12 +97,14 @@ public class LikeViewExpression extends UnaryViewExpression {
   protected void serialize(ByteBuffer byteBuffer) {
     super.serialize(byteBuffer);
     ReadWriteIOUtils.write(patternString, byteBuffer);
+    ReadWriteIOUtils.write(isNot, byteBuffer);
   }
 
   @Override
   protected void serialize(OutputStream stream) throws IOException {
     super.serialize(stream);
     ReadWriteIOUtils.write(patternString, stream);
+    ReadWriteIOUtils.write(isNot, stream);
   }
   // endregion
 
@@ -104,6 +114,10 @@ public class LikeViewExpression extends UnaryViewExpression {
 
   public Pattern getPattern() {
     return pattern;
+  }
+
+  public boolean isNot() {
+    return isNot;
   }
 
   /**

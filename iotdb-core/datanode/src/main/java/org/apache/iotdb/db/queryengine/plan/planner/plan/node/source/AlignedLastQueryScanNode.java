@@ -28,7 +28,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
@@ -224,10 +223,5 @@ public class AlignedLastQueryScanNode extends LastSeriesSourceNode {
   @Override
   public PartialPath getPartitionPath() {
     return seriesPath;
-  }
-
-  @Override
-  public Filter getPartitionTimeFilter() {
-    return null;
   }
 }

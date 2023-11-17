@@ -26,8 +26,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TimeJoinNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
-import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 
 import org.junit.Test;
 
@@ -43,7 +41,6 @@ public class TimeJoinNodeSerdeTest {
             new PlanNodeId("TestSeriesScanNode"),
             new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
             Ordering.DESC,
-            TimeFilter.gt(100),
             null,
             100,
             100,
@@ -54,7 +51,6 @@ public class TimeJoinNodeSerdeTest {
             new MeasurementPath("root.sg.d1.s2", TSDataType.INT32),
             Ordering.DESC,
             null,
-            ValueFilter.gt(100),
             100,
             100,
             null);

@@ -34,11 +34,17 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.unary.FixedIntervalMultiRangeExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.unary.InExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 
 public class ExpressionFactory {
 
@@ -138,5 +144,31 @@ public class ExpressionFactory {
 
   public static WhenThenExpression whenThen(Expression whenExpression, Expression thenExpression) {
     return new WhenThenExpression(whenExpression, thenExpression);
+  }
+
+  public static LogicNotExpression not(Expression expression) {
+    return new LogicNotExpression(expression);
+  }
+
+  public static InExpression in(Expression Expression, LinkedHashSet<String> values) {
+    return new InExpression(Expression, false, values);
+  }
+
+  public static FixedIntervalMultiRangeExpression groupByTime(GroupByTimeParameter parameter) {
+    long startTime =
+        parameter.isLeftCRightO() ? parameter.getStartTime() : parameter.getStartTime() + 1;
+    long endTime = parameter.isLeftCRightO() ? parameter.getEndTime() : parameter.getEndTime() + 1;
+    return new FixedIntervalMultiRangeExpression(
+        time(), startTime, endTime, parameter.getInterval(), parameter.getSlidingStep());
+  }
+
+  public static FixedIntervalMultiRangeExpression groupByTime(
+      long startTime, long endTime, long interval, long slidingStep) {
+    return new FixedIntervalMultiRangeExpression(
+        time(),
+        startTime,
+        endTime,
+        new TimeDuration(0, interval),
+        new TimeDuration(0, slidingStep));
   }
 }

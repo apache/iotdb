@@ -21,8 +21,11 @@ package org.apache.iotdb.db.queryengine.common;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
+import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -53,6 +56,8 @@ public class MPPQueryContext {
   private final List<TEndPoint> endPointBlackList;
 
   private final TypeProvider typeProvider = new TypeProvider();
+
+  private Filter globalTimeFilter;
 
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
@@ -148,5 +153,14 @@ public class MPPQueryContext {
 
   public String getSql() {
     return sql;
+  }
+
+  public void generateGlobalTimeFilter(Analysis analysis) {
+    this.globalTimeFilter =
+        ExpressionUtils.convertExpressionToTimeFilter(analysis.getGlobalTimeFilter());
+  }
+
+  public Filter getGlobalTimeFilter() {
+    return globalTimeFilter;
   }
 }

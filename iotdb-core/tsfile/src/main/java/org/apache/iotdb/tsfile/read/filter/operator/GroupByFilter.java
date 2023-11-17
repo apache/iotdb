@@ -17,24 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.read.filter;
+package org.apache.iotdb.tsfile.read.filter.operator;
 
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.Serializable;
-import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 
-public class GroupByFilter implements Filter, Serializable {
+public class GroupByFilter implements Filter {
 
-  private static final long serialVersionUID = -1211805021419281440L;
   protected long interval;
   protected long slidingStep;
   protected long startTime;
@@ -47,12 +40,10 @@ public class GroupByFilter implements Filter, Serializable {
     this.endTime = endTime;
   }
 
-  public GroupByFilter(long startTime, long endTime) {
+  protected GroupByFilter(long startTime, long endTime) {
     this.startTime = startTime;
     this.endTime = endTime;
   }
-
-  public GroupByFilter() {}
 
   @Override
   public boolean satisfy(Statistics statistics) {
@@ -106,65 +97,9 @@ public class GroupByFilter implements Filter, Serializable {
   }
 
   @Override
-  public Filter copy() {
-    return new GroupByFilter(interval, slidingStep, startTime, endTime);
-  }
-
-  @Override
   public String toString() {
     return String.format(
         "GroupByFilter{[%d, %d], %d, %d}", startTime, endTime, interval, slidingStep);
-  }
-
-  @Override
-  public void serialize(DataOutputStream outputStream) {
-    try {
-      outputStream.write(getSerializeId().ordinal());
-      outputStream.writeLong(interval);
-      outputStream.writeLong(slidingStep);
-      outputStream.writeLong(startTime);
-      outputStream.writeLong(endTime);
-    } catch (IOException ignored) {
-      // ignored
-    }
-  }
-
-  @Override
-  public void deserialize(ByteBuffer buffer) {
-    interval = buffer.getLong();
-    slidingStep = buffer.getLong();
-    startTime = buffer.getLong();
-    endTime = buffer.getLong();
-  }
-
-  @Override
-  public FilterSerializeId getSerializeId() {
-    return FilterSerializeId.GROUP_BY;
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    if (!(obj instanceof GroupByFilter)) {
-      return false;
-    }
-    GroupByFilter other = ((GroupByFilter) obj);
-    return this.interval == other.interval
-        && this.slidingStep == other.slidingStep
-        && this.startTime == other.startTime
-        && this.endTime == other.endTime;
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(interval, slidingStep, startTime, endTime);
-  }
-
-  public long getStartTime() {
-    return startTime;
-  }
-
-  public long getEndTime() {
-    return endTime;
   }
 
   @Override

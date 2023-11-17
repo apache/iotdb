@@ -29,6 +29,7 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.UnknownExpressionTypeException;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.BinaryExpression;
@@ -39,9 +40,9 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.other.CaseWhenThenExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.InExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.UnaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.BindTypeForTimeSeriesOperandVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.CollectAggregationExpressionsVisitor;
@@ -56,13 +57,11 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.BindSch
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.ConcatDeviceAndBindSchemaForExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.ConcatDeviceAndBindSchemaForPredicateVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.ConcatExpressionWithSuffixPathsVisitor;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ReversePredicateVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
@@ -73,10 +72,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.checkConstantSatisfy;
-import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.constructTimeFilter;
-import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.getPairFromBetweenTimeFirst;
-import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.getPairFromBetweenTimeSecond;
-import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.getPairFromBetweenTimeThird;
 
 public class ExpressionAnalyzer {
 
@@ -482,13 +477,13 @@ public class ExpressionAnalyzer {
    * @param isFirstOr whether it is the first LogicOrExpression encountered
    * @return global time filter
    */
-  public static Pair<Filter, Boolean> extractGlobalTimeFilter(
+  public static Pair<Expression, Boolean> extractGlobalTimeFilter(
       Expression predicate, boolean canRewrite, boolean isFirstOr) {
     if (predicate.getExpressionType().equals(ExpressionType.LOGIC_AND)) {
-      Pair<Filter, Boolean> leftResultPair =
+      Pair<Expression, Boolean> leftResultPair =
           extractGlobalTimeFilter(
               ((BinaryExpression) predicate).getLeftExpression(), canRewrite, isFirstOr);
-      Pair<Filter, Boolean> rightResultPair =
+      Pair<Expression, Boolean> rightResultPair =
           extractGlobalTimeFilter(
               ((BinaryExpression) predicate).getRightExpression(), canRewrite, isFirstOr);
 
@@ -508,7 +503,7 @@ public class ExpressionAnalyzer {
 
       if (leftResultPair.left != null && rightResultPair.left != null) {
         return new Pair<>(
-            FilterFactory.and(leftResultPair.left, rightResultPair.left),
+            ExpressionFactory.and(leftResultPair.left, rightResultPair.left),
             leftResultPair.right || rightResultPair.right);
       } else if (leftResultPair.left != null) {
         return new Pair<>(leftResultPair.left, true);
@@ -517,9 +512,9 @@ public class ExpressionAnalyzer {
       }
       return new Pair<>(null, true);
     } else if (predicate.getExpressionType().equals(ExpressionType.LOGIC_OR)) {
-      Pair<Filter, Boolean> leftResultPair =
+      Pair<Expression, Boolean> leftResultPair =
           extractGlobalTimeFilter(((BinaryExpression) predicate).getLeftExpression(), false, false);
-      Pair<Filter, Boolean> rightResultPair =
+      Pair<Expression, Boolean> rightResultPair =
           extractGlobalTimeFilter(
               ((BinaryExpression) predicate).getRightExpression(), false, false);
 
@@ -531,34 +526,24 @@ public class ExpressionAnalyzer {
               .setRightExpression(new ConstantOperand(TSDataType.BOOLEAN, "true"));
         }
         return new Pair<>(
-            FilterFactory.or(leftResultPair.left, rightResultPair.left),
+            ExpressionFactory.or(leftResultPair.left, rightResultPair.left),
             leftResultPair.right || rightResultPair.right);
       }
       return new Pair<>(null, true);
     } else if (predicate.getExpressionType().equals(ExpressionType.LOGIC_NOT)) {
-      Pair<Filter, Boolean> childResultPair =
+      Pair<Expression, Boolean> childResultPair =
           extractGlobalTimeFilter(
               ((UnaryExpression) predicate).getExpression(), canRewrite, isFirstOr);
       if (childResultPair.left != null) {
-        return new Pair<>(FilterFactory.not(childResultPair.left), childResultPair.right);
+        return new Pair<>(ExpressionFactory.not(childResultPair.left), childResultPair.right);
       }
       return new Pair<>(null, true);
     } else if (predicate.isCompareBinaryExpression()) {
-      Filter timeInLeftFilter =
-          constructTimeFilter(
-              predicate.getExpressionType(),
-              ((BinaryExpression) predicate).getLeftExpression(),
-              ((BinaryExpression) predicate).getRightExpression());
-      if (timeInLeftFilter != null) {
-        return new Pair<>(timeInLeftFilter, false);
-      }
-      Filter timeInRightFilter =
-          constructTimeFilter(
-              predicate.getExpressionType(),
-              ((BinaryExpression) predicate).getRightExpression(),
-              ((BinaryExpression) predicate).getLeftExpression());
-      if (timeInRightFilter != null) {
-        return new Pair<>(timeInRightFilter, false);
+      Expression leftExpression = ((BinaryExpression) predicate).getLeftExpression();
+      Expression rightExpression = ((BinaryExpression) predicate).getRightExpression();
+      if (checkIsTimeFilter(leftExpression, rightExpression)
+          || checkIsTimeFilter(rightExpression, leftExpression)) {
+        return new Pair<>(predicate, false);
       }
       return new Pair<>(null, true);
     } else if (predicate.getExpressionType().equals(ExpressionType.LIKE)
@@ -568,21 +553,21 @@ public class ExpressionAnalyzer {
       Expression firstExpression = ((TernaryExpression) predicate).getFirstExpression();
       Expression secondExpression = ((TernaryExpression) predicate).getSecondExpression();
       Expression thirdExpression = ((TernaryExpression) predicate).getThirdExpression();
+
+      boolean isTimeFilter = false;
       if (firstExpression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
-        return getPairFromBetweenTimeFirst(
-            secondExpression, thirdExpression, ((BetweenExpression) predicate).isNotBetween());
+        isTimeFilter = checkBetweenExpressionIsTimeFilter(secondExpression, thirdExpression);
       } else if (secondExpression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
-        if (checkConstantSatisfy(firstExpression, thirdExpression)) {
-          return getPairFromBetweenTimeSecond((BetweenExpression) predicate, firstExpression);
-        } else {
-          return new Pair<>(null, true); // TODO return Filter.True/False
-        }
+        isTimeFilter =
+            checkConstantSatisfy(firstExpression, thirdExpression)
+                && checkBetweenExpressionIsTimeFilter(predicate, firstExpression);
       } else if (thirdExpression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
-        if (checkConstantSatisfy(secondExpression, firstExpression)) {
-          return getPairFromBetweenTimeThird((BetweenExpression) predicate, firstExpression);
-        } else {
-          return new Pair<>(null, true); // TODO return Filter.True/False
-        }
+        isTimeFilter =
+            checkConstantSatisfy(secondExpression, firstExpression)
+                && checkBetweenExpressionIsTimeFilter(predicate, firstExpression);
+      }
+      if (isTimeFilter) {
+        return new Pair<>(predicate, false);
       }
       return new Pair<>(null, true);
     } else if (predicate.getExpressionType().equals(ExpressionType.IS_NULL)) {
@@ -590,11 +575,7 @@ public class ExpressionAnalyzer {
     } else if (predicate.getExpressionType().equals(ExpressionType.IN)) {
       Expression timeExpression = ((InExpression) predicate).getExpression();
       if (timeExpression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
-        boolean not = ((InExpression) predicate).isNotIn();
-        Set<Long> values =
-            ((InExpression) predicate)
-                .getValues().stream().map(Long::parseLong).collect(Collectors.toSet());
-        return new Pair<>(not ? TimeFilter.notIn(values) : TimeFilter.in(values), false);
+        return new Pair<>(predicate, false);
       }
       return new Pair<>(null, true);
     } else if (predicate.getExpressionType().equals(ExpressionType.TIMESERIES)
@@ -606,6 +587,39 @@ public class ExpressionAnalyzer {
     } else {
       throw new UnknownExpressionTypeException(predicate.getExpressionType());
     }
+  }
+
+  private static boolean checkIsTimeFilter(Expression timeExpression, Expression valueExpression) {
+    return timeExpression.getExpressionType().equals(ExpressionType.TIMESTAMP)
+        && valueExpression instanceof ConstantOperand
+        && ((ConstantOperand) valueExpression).getDataType() == TSDataType.INT64;
+  }
+
+  private static boolean checkBetweenExpressionIsTimeFilter(
+      Expression firstExpression, Expression secondExpression) {
+    return firstExpression instanceof ConstantOperand
+        && secondExpression instanceof ConstantOperand
+        && ((ConstantOperand) firstExpression).getDataType() == TSDataType.INT64
+        && ((ConstantOperand) secondExpression).getDataType() == TSDataType.INT64;
+  }
+
+  public static Expression predicateRemoveNot(Expression predicate) {
+    if (predicate.getExpressionType().equals(ExpressionType.LOGIC_AND)) {
+      return ExpressionFactory.and(
+          predicateRemoveNot(((BinaryExpression) predicate).getLeftExpression()),
+          predicateRemoveNot(((BinaryExpression) predicate).getRightExpression()));
+    } else if (predicate.getExpressionType().equals(ExpressionType.LOGIC_OR)) {
+      return ExpressionFactory.or(
+          predicateRemoveNot(((BinaryExpression) predicate).getLeftExpression()),
+          predicateRemoveNot(((BinaryExpression) predicate).getRightExpression()));
+    } else if (predicate.getExpressionType().equals(ExpressionType.LOGIC_NOT)) {
+      return reversePredicate(((LogicNotExpression) predicate).getExpression());
+    }
+    return predicate;
+  }
+
+  private static Expression reversePredicate(Expression predicate) {
+    return new ReversePredicateVisitor().process(predicate, null);
   }
 
   public static boolean checkIfTimeFilterExist(Expression predicate) {

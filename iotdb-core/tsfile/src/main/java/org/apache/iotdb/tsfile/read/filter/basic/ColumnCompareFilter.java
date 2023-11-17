@@ -17,21 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.read.filter.factory;
+package org.apache.iotdb.tsfile.read.filter.basic;
 
-public enum FilterType {
-  VALUE_FILTER("value"),
-  TIME_FILTER("time"),
-  GROUP_BY_FILTER("group by");
+/* base class for Eq, NotEq, Lt, Gt, LtEq, GtEq */
+public abstract class ColumnCompareFilter<T extends Comparable<T>> implements Filter {
 
-  private String name;
+  protected final T constant;
 
-  FilterType(String name) {
-    this.name = name;
-  }
-
-  @Override
-  public String toString() {
-    return name;
+  protected ColumnCompareFilter(T constant) {
+    // ValueEq and ValueNotEq allow constant to be null, TimeEq, TimeEq, Lt, Gt, LtEq, GtEq however
+    // do not, so they guard against null in their own constructors.
+    this.constant = constant;
   }
 }

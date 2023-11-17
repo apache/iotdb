@@ -291,4 +291,8 @@ public class LocalExecutionPlanContext {
   public long getDataRegionTTL() {
     return dataRegionTTL;
   }
+
+  public Filter getGlobalTimeFilter() {
+    return driverContext.getFragmentInstanceContext().getTimeFilter();
+  }
 }

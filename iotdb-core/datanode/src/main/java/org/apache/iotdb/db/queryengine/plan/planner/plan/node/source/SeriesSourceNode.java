@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.source;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 public abstract class SeriesSourceNode extends SourceNode {
   protected SeriesSourceNode(PlanNodeId id) {
@@ -29,6 +28,4 @@ public abstract class SeriesSourceNode extends SourceNode {
   }
 
   public abstract PartialPath getPartitionPath();
-
-  public abstract Filter getPartitionTimeFilter();
 }

@@ -21,35 +21,17 @@ package org.apache.iotdb.tsfile.read.filter.operator;
 
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.filter.basic.BinaryFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.BinaryLogicalFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/** Either of the left and right operators of AndExpression must satisfy the condition. */
-public class OrFilter extends BinaryFilter implements Serializable {
+public class Or extends BinaryLogicalFilter {
 
-  private static final long serialVersionUID = -968055896528472694L;
-
-  public OrFilter() {}
-
-  public OrFilter(Filter left, Filter right) {
+  public Or(Filter left, Filter right) {
     super(left, right);
-  }
-
-  @Override
-  public String toString() {
-    return "(" + left + " || " + right + ")";
-  }
-
-  @Override
-  public Filter copy() {
-    return new OrFilter(left.copy(), right.copy());
   }
 
   @Override
@@ -77,11 +59,6 @@ public class OrFilter extends BinaryFilter implements Serializable {
   public boolean containStartEndTime(long startTime, long endTime) {
     return left.containStartEndTime(startTime, endTime)
         || right.containStartEndTime(startTime, endTime);
-  }
-
-  @Override
-  public FilterSerializeId getSerializeId() {
-    return FilterSerializeId.OR;
   }
 
   @Override
@@ -148,6 +125,6 @@ public class OrFilter extends BinaryFilter implements Serializable {
 
   @Override
   public Filter reverse() {
-    return FilterFactory.and(left.reverse(), right.reverse());
+    return new And(left.reverse(), right.reverse());
   }
 }

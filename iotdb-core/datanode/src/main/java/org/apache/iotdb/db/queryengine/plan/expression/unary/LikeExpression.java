@@ -34,21 +34,27 @@ public class LikeExpression extends UnaryExpression {
   private final String patternString;
   private final Pattern pattern;
 
-  public LikeExpression(Expression expression, String patternString) {
+  private final boolean isNot;
+
+  public LikeExpression(Expression expression, String patternString, boolean isNot) {
     super(expression);
     this.patternString = patternString;
+    this.isNot = isNot;
     pattern = compile();
   }
 
-  public LikeExpression(Expression expression, String patternString, Pattern pattern) {
+  public LikeExpression(
+      Expression expression, String patternString, Pattern pattern, boolean isNot) {
     super(expression);
     this.patternString = patternString;
     this.pattern = pattern;
+    this.isNot = isNot;
   }
 
   public LikeExpression(ByteBuffer byteBuffer) {
     super(Expression.deserialize(byteBuffer));
     patternString = ReadWriteIOUtils.readString(byteBuffer);
+    isNot = ReadWriteIOUtils.readBool(byteBuffer);
     pattern = compile();
   }
 
@@ -58,6 +64,10 @@ public class LikeExpression extends UnaryExpression {
 
   public Pattern getPattern() {
     return pattern;
+  }
+
+  public boolean isNot() {
+    return isNot;
   }
 
   /**
@@ -118,7 +128,7 @@ public class LikeExpression extends UnaryExpression {
 
   @Override
   protected String getExpressionStringInternal() {
-    return expression.getExpressionString() + " LIKE '" + pattern + "'";
+    return expression.getExpressionString() + (isNot ? " NOT" : "") + " LIKE '" + pattern + "'";
   }
 
   @Override
@@ -127,25 +137,22 @@ public class LikeExpression extends UnaryExpression {
   }
 
   @Override
-  protected Expression constructExpression(Expression childExpression) {
-    return new LikeExpression(childExpression, patternString, pattern);
-  }
-
-  @Override
   protected void serialize(ByteBuffer byteBuffer) {
     super.serialize(byteBuffer);
     ReadWriteIOUtils.write(patternString, byteBuffer);
+    ReadWriteIOUtils.write(isNot, byteBuffer);
   }
 
   @Override
   protected void serialize(DataOutputStream stream) throws IOException {
     super.serialize(stream);
     ReadWriteIOUtils.write(patternString, stream);
+    ReadWriteIOUtils.write(isNot, stream);
   }
 
   @Override
   public String getOutputSymbolInternal() {
-    return expression.getOutputSymbol() + " LIKE '" + pattern + "'";
+    return expression.getOutputSymbol() + (isNot ? " NOT" : "") + " LIKE '" + pattern + "'";
   }
 
   @Override

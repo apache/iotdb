@@ -44,9 +44,9 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilter;
 import org.apache.iotdb.tsfile.utils.TimeDuration;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -291,7 +291,7 @@ public class SeriesAggregationScanOperatorTest {
 
   @Test
   public void testAggregationWithTimeFilter3() throws Exception {
-    Filter timeFilter = new AndFilter(TimeFilter.gtEq(100), TimeFilter.ltEq(399));
+    Filter timeFilter = FilterFactory.and(TimeFilter.gtEq(100), TimeFilter.ltEq(399));
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
     List<Aggregator> aggregators = new ArrayList<>();
     AccumulatorFactory.createAccumulators(
@@ -331,7 +331,7 @@ public class SeriesAggregationScanOperatorTest {
             Collections.emptyMap(),
             true)
         .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.SINGLE)));
-    Filter timeFilter = new AndFilter(TimeFilter.gtEq(100), TimeFilter.ltEq(399));
+    Filter timeFilter = FilterFactory.and(TimeFilter.gtEq(100), TimeFilter.ltEq(399));
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         initSeriesAggregationScanOperator(aggregators, timeFilter, true, null);
     int count = 0;
@@ -384,7 +384,7 @@ public class SeriesAggregationScanOperatorTest {
   @Test
   public void testGroupByWithGlobalTimeFilter() throws Exception {
     int[] result = new int[] {0, 80, 100, 80};
-    Filter timeFilter = new AndFilter(TimeFilter.gtEq(120), TimeFilter.ltEq(379));
+    Filter timeFilter = FilterFactory.and(TimeFilter.gtEq(120), TimeFilter.ltEq(379));
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);

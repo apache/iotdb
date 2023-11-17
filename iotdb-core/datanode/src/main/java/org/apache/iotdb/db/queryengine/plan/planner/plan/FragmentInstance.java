@@ -31,9 +31,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
+import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeUtil;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -61,7 +60,7 @@ public class FragmentInstance implements IConsensusRequest {
 
   private TDataNodeLocation hostDataNode;
 
-  private Filter timeFilter;
+  private final Expression timeFilter;
 
   private final long timeOut;
 
@@ -83,7 +82,7 @@ public class FragmentInstance implements IConsensusRequest {
   public FragmentInstance(
       PlanFragment fragment,
       FragmentInstanceId id,
-      Filter timeFilter,
+      Expression timeFilter,
       QueryType type,
       long timeOut,
       SessionInfo sessionInfo) {
@@ -99,7 +98,7 @@ public class FragmentInstance implements IConsensusRequest {
   public FragmentInstance(
       PlanFragment fragment,
       FragmentInstanceId id,
-      Filter timeFilter,
+      Expression timeFilter,
       QueryType type,
       long timeOut,
       SessionInfo sessionInfo,
@@ -111,7 +110,7 @@ public class FragmentInstance implements IConsensusRequest {
   public FragmentInstance(
       PlanFragment fragment,
       FragmentInstanceId id,
-      Filter timeFilter,
+      Expression timeFilter,
       QueryType type,
       long timeOut,
       SessionInfo sessionInfo,
@@ -167,11 +166,7 @@ public class FragmentInstance implements IConsensusRequest {
     isHighestPriority = highestPriority;
   }
 
-  public void setTimeFilter(Filter timeFilter) {
-    this.timeFilter = timeFilter;
-  }
-
-  public Filter getTimeFilter() {
+  public Expression getTimeFilter() {
     return timeFilter;
   }
 
@@ -213,7 +208,7 @@ public class FragmentInstance implements IConsensusRequest {
     boolean hasSessionInfo = ReadWriteIOUtils.readBool(buffer);
     SessionInfo sessionInfo = hasSessionInfo ? SessionInfo.deserializeFrom(buffer) : null;
     boolean hasTimeFilter = ReadWriteIOUtils.readBool(buffer);
-    Filter timeFilter = hasTimeFilter ? FilterFactory.deserialize(buffer) : null;
+    Expression timeFilter = hasTimeFilter ? Expression.deserialize(buffer) : null;
     QueryType queryType = QueryType.values()[ReadWriteIOUtils.readInt(buffer)];
     int dataNodeFINum = ReadWriteIOUtils.readInt(buffer);
     FragmentInstance fragmentInstance =
@@ -237,7 +232,7 @@ public class FragmentInstance implements IConsensusRequest {
       }
       ReadWriteIOUtils.write(timeFilter != null, outputStream);
       if (timeFilter != null) {
-        timeFilter.serialize(outputStream);
+        Expression.serialize(timeFilter, outputStream);
       }
       ReadWriteIOUtils.write(type.ordinal(), outputStream);
       ReadWriteIOUtils.write(dataNodeFINum, outputStream);

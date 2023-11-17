@@ -54,8 +54,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.tsfile.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilter;
 
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -142,8 +142,7 @@ public class QueryLogicalPlanUtil {
             queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s4"), null));
 
     LastQueryNode lastQueryNode =
-        new LastQueryNode(
-            queryId.genPlanNodeId(), sourceNodeList, TimeFilter.gt(100), Ordering.ASC, false);
+        new LastQueryNode(queryId.genPlanNodeId(), sourceNodeList, Ordering.ASC, false);
 
     querySQLs.add(sql);
     sqlToPlanMap.put(sql, lastQueryNode);
@@ -177,14 +176,6 @@ public class QueryLogicalPlanUtil {
             Ordering.ASC,
             false));
 
-    for (PlanNode sourceNode : sourceNodeList) {
-      if (sourceNode instanceof SeriesScanNode) {
-        ((SeriesScanNode) sourceNode).setTimeFilter(TimeFilter.gt(100));
-      } else if (sourceNode instanceof AlignedSeriesScanNode) {
-        ((AlignedSeriesScanNode) sourceNode).setTimeFilter(TimeFilter.gt(100));
-      }
-    }
-
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC, sourceNodeList);
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), timeJoinNode, 10);
@@ -217,8 +208,6 @@ public class QueryLogicalPlanUtil {
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d1.s2"),
             Ordering.DESC));
-    sourceNodeList.forEach(
-        planNode -> ((SeriesScanNode) planNode).setTimeFilter(TimeFilter.gt(100)));
 
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList);
@@ -275,8 +264,6 @@ public class QueryLogicalPlanUtil {
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d1.s2"),
             Ordering.DESC));
-    sourceNodeList1.forEach(
-        planNode -> ((SeriesScanNode) planNode).setTimeFilter(TimeFilter.gt(100)));
 
     TimeJoinNode timeJoinNode1 =
         new TimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList1);
@@ -316,8 +303,6 @@ public class QueryLogicalPlanUtil {
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d2.s4"),
             Ordering.DESC));
-    sourceNodeList2.forEach(
-        planNode -> ((SeriesScanNode) planNode).setTimeFilter(TimeFilter.gt(100)));
 
     TimeJoinNode timeJoinNode2 =
         new TimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList2);
@@ -479,14 +464,6 @@ public class QueryLogicalPlanUtil {
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
             Ordering.DESC,
             null));
-    sourceNodeList.forEach(
-        node -> {
-          if (node instanceof SeriesAggregationScanNode) {
-            ((SeriesAggregationScanNode) node).setTimeFilter(timeFilter);
-          } else {
-            ((AlignedSeriesAggregationScanNode) node).setTimeFilter(timeFilter);
-          }
-        });
 
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC, sourceNodeList);
@@ -593,14 +570,6 @@ public class QueryLogicalPlanUtil {
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
             Ordering.DESC,
             null));
-    sourceNodeList.forEach(
-        node -> {
-          if (node instanceof SeriesAggregationScanNode) {
-            ((SeriesAggregationScanNode) node).setTimeFilter(timeFilter);
-          } else {
-            ((AlignedSeriesAggregationScanNode) node).setTimeFilter(timeFilter);
-          }
-        });
 
     GroupByLevelNode groupByLevelNode =
         new GroupByLevelNode(
@@ -706,7 +675,6 @@ public class QueryLogicalPlanUtil {
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
             Ordering.DESC,
             null));
-    sourceNodeList1.forEach(node -> ((SeriesAggregationScanNode) node).setTimeFilter(timeFilter));
 
     TimeJoinNode timeJoinNode1 =
         new TimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList1);
@@ -741,7 +709,6 @@ public class QueryLogicalPlanUtil {
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1"))))),
             Ordering.DESC,
             null));
-    sourceNodeList2.forEach(node -> ((SeriesAggregationScanNode) node).setTimeFilter(timeFilter));
 
     TimeJoinNode timeJoinNode2 =
         new TimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList2);
@@ -797,8 +764,6 @@ public class QueryLogicalPlanUtil {
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d1.s2"),
             Ordering.DESC));
-    sourceNodeList.forEach(
-        planNode -> ((SeriesScanNode) planNode).setTimeFilter(TimeFilter.gt(100)));
 
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList);
@@ -925,8 +890,6 @@ public class QueryLogicalPlanUtil {
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d1.s2"),
             Ordering.DESC));
-    sourceNodeList1.forEach(
-        planNode -> ((SeriesScanNode) planNode).setTimeFilter(TimeFilter.gt(100)));
 
     TimeJoinNode timeJoinNode1 =
         new TimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList1);
@@ -983,8 +946,6 @@ public class QueryLogicalPlanUtil {
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d2.s2"),
             Ordering.DESC));
-    sourceNodeList2.forEach(
-        planNode -> ((SeriesScanNode) planNode).setTimeFilter(TimeFilter.gt(100)));
 
     TimeJoinNode timeJoinNode2 =
         new TimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList2);

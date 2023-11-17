@@ -29,7 +29,7 @@ import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.reader.IAlignedPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
@@ -255,7 +255,7 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
     if (valueFilter == null) {
       this.valueFilter = filter;
     } else {
-      valueFilter = new AndFilter(this.valueFilter, filter);
+      valueFilter = FilterFactory.and(this.valueFilter, filter);
     }
   }
 

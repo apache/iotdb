@@ -178,7 +178,7 @@ public class Analysis {
   private boolean hasValueFilter = false;
 
   // a global time filter used in `initQueryDataSource` and filter push down
-  private Filter globalTimeFilter;
+  private Expression globalTimeFilter;
 
   // expression of output column to be calculated
   private Set<Expression> selectExpressions;
@@ -330,11 +330,11 @@ public class Analysis {
     redirectNodeList.add(endPoint);
   }
 
-  public Filter getGlobalTimeFilter() {
+  public Expression getGlobalTimeFilter() {
     return globalTimeFilter;
   }
 
-  public void setGlobalTimeFilter(Filter timeFilter) {
+  public void setGlobalTimeFilter(Expression timeFilter) {
     this.globalTimeFilter = timeFilter;
   }
 
@@ -348,8 +348,11 @@ public class Analysis {
 
   public TSDataType getType(Expression expression) {
     // NULL_Operand needn't check
-    if (expression.getExpressionType() == ExpressionType.NULL) {
+    if (expression.getExpressionType().equals(ExpressionType.NULL)) {
       return null;
+    }
+    if (expression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
+      return TSDataType.INT64;
     }
     TSDataType type = expressionTypes.get(NodeRef.of(expression));
     checkArgument(type != null, "Expression is not analyzed: %s", expression);

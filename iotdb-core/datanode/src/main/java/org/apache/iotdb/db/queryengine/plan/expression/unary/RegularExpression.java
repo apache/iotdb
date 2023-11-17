@@ -36,21 +36,27 @@ public class RegularExpression extends UnaryExpression {
   private final String patternString;
   private final Pattern pattern;
 
-  public RegularExpression(Expression expression, String patternString) {
+  private final boolean isNot;
+
+  public RegularExpression(Expression expression, String patternString, boolean isNot) {
     super(expression);
     this.patternString = patternString;
+    this.isNot = isNot;
     pattern = Pattern.compile(patternString);
   }
 
-  public RegularExpression(Expression expression, String patternString, Pattern pattern) {
+  public RegularExpression(
+      Expression expression, String patternString, Pattern pattern, boolean isNot) {
     super(expression);
     this.patternString = patternString;
     this.pattern = pattern;
+    this.isNot = isNot;
   }
 
   public RegularExpression(ByteBuffer byteBuffer) {
     super(Expression.deserialize(byteBuffer));
     patternString = ReadWriteIOUtils.readString(byteBuffer);
+    isNot = ReadWriteIOUtils.readBool(byteBuffer);
     pattern = Pattern.compile(Validate.notNull(patternString));
   }
 
@@ -62,14 +68,17 @@ public class RegularExpression extends UnaryExpression {
     return pattern;
   }
 
-  @Override
-  protected Expression constructExpression(Expression childExpression) {
-    return new RegularExpression(childExpression, patternString, pattern);
+  public boolean isNot() {
+    return isNot;
   }
 
   @Override
   protected String getExpressionStringInternal() {
-    return expression.getExpressionString() + " REGEXP '" + patternString + "'";
+    return expression.getExpressionString()
+        + (isNot ? " NOT" : "")
+        + " REGEXP '"
+        + patternString
+        + "'";
   }
 
   @Override
@@ -81,17 +90,19 @@ public class RegularExpression extends UnaryExpression {
   protected void serialize(ByteBuffer byteBuffer) {
     super.serialize(byteBuffer);
     ReadWriteIOUtils.write(patternString, byteBuffer);
+    ReadWriteIOUtils.write(isNot, byteBuffer);
   }
 
   @Override
   protected void serialize(DataOutputStream stream) throws IOException {
     super.serialize(stream);
     ReadWriteIOUtils.write(patternString, stream);
+    ReadWriteIOUtils.write(isNot, stream);
   }
 
   @Override
   public String getOutputSymbolInternal() {
-    return expression.getOutputSymbol() + " REGEXP '" + patternString + "'";
+    return expression.getOutputSymbol() + (isNot ? " NOT" : "") + " REGEXP '" + patternString + "'";
   }
 
   @Override

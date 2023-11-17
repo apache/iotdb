@@ -22,6 +22,8 @@ import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.ValueFilter;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -29,7 +31,7 @@ import org.junit.Test;
 
 import java.io.Serializable;
 
-import static org.apache.iotdb.tsfile.read.filter.operator.NotFilter.CONTAIN_NOT_ERR_MSG;
+import static org.apache.iotdb.tsfile.read.filter.operator.Not.CONTAIN_NOT_ERR_MSG;
 import static org.junit.Assert.fail;
 
 public class StatisticsFilterTest {
