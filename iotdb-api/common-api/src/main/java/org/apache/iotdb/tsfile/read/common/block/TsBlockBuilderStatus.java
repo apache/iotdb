@@ -17,7 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.access;
+package org.apache.iotdb.tsfile.read.common.block;
+
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilderStatus;
 
 public class TsBlockBuilderStatus {
 

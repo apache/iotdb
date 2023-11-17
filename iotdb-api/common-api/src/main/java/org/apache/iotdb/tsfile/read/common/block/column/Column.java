@@ -17,10 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.access;
+package org.apache.iotdb.tsfile.read.common.block.column;
 
-import org.apache.iotdb.tsfile.enums.ColumnEncoding;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 

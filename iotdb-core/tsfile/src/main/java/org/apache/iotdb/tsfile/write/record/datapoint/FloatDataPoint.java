@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.tsfile.write.record.datapoint;
 
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 
 import org.slf4j.Logger;
