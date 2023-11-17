@@ -59,10 +59,10 @@ public class PipeMetaSyncer {
   private final boolean pipeAutoRestartEnabled =
       PipeConfig.getInstance().getPipeAutoRestartEnabled();
 
-  // These variables record whether the last sync operation succeeded when there was no pipe in CN,
-  // and the version of PipeTaskInfo at that time. Before the next sync operation, if there is still
-  // no pipe in CN and PipeTaskInfo has not been modified during this period, it means the pipe
-  // metadata in DN has already been synced with CN, so this round of sync can be safely skipped.
+  // This variable is used to record whether the last sync operation was successful. If successful,
+  // before the next sync operation, it can be determined based on PipeTaskInfoVersion whether the
+  // pipe metadata in DN and the latest pipe metadata in CN have been synchronized and whether there
+  // is a pipe task in the current cluster, thereby skipping unnecessary skip operations.
   private boolean isLastPipeSyncSuccessful = false;
 
   PipeMetaSyncer(ConfigManager configManager) {
@@ -94,7 +94,7 @@ public class PipeMetaSyncer {
 
   private synchronized void sync() {
     if (isLastPipeSyncSuccessful
-        && configManager.getPipeManager().getPipeTaskCoordinator().isEmptySynced()) {
+        && configManager.getPipeManager().getPipeTaskCoordinator().canSkipNextSync()) {
       return;
     }
 

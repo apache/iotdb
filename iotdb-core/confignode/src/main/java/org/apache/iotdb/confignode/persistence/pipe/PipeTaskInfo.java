@@ -65,6 +65,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   private final PipeMetaKeeper pipeMetaKeeper;
 
+  // Pure in-memory object, not involved in snapshot serialization and deserialization.
   private final PipeTaskInfoVersion pipeTaskInfoVersion;
 
   public PipeTaskInfo() {
@@ -84,6 +85,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   private void acquireWriteLock() {
     pipeMetaKeeper.acquireWriteLock();
+    // We use the number of times obtaining the write lock of PipeMetaKeeper as the version number
+    // of PipeTaskInfo.
     pipeTaskInfoVersion.increaseLatestVersion();
   }
 
@@ -114,19 +117,20 @@ public class PipeTaskInfo implements SnapshotProcessor {
       isLastSyncedPipeTaskInfoEmpty = pipeMetaKeeper.isEmpty();
     }
 
-    public boolean isEmptySynced() {
+    public boolean canSkipNextSync() {
       return isLastSyncedPipeTaskInfoEmpty
           && pipeMetaKeeper.isEmpty()
           && lastSyncedVersion == latestVersion.get();
     }
   }
 
+  /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock}. */
   public void updateLastSyncedVersion() {
     pipeTaskInfoVersion.updateLastSyncedVersion();
   }
 
-  public boolean isEmptySynced() {
-    return pipeTaskInfoVersion.isEmptySynced();
+  public boolean canSkipNextSync() {
+    return pipeTaskInfoVersion.canSkipNextSync();
   }
 
   /////////////////////////////// Validator ///////////////////////////////
