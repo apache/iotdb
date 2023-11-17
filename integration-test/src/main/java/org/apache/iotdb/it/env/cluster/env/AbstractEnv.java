@@ -44,6 +44,7 @@ import org.apache.iotdb.it.env.cluster.config.*;
 import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
+import org.apache.iotdb.it.env.cluster.node.AINodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestLogger;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.itbase.env.BaseNodeWrapper;
@@ -81,6 +82,7 @@ public abstract class AbstractEnv implements BaseEnv {
   private final Random rand = new Random();
   protected List<ConfigNodeWrapper> configNodeWrapperList = Collections.emptyList();
   protected List<DataNodeWrapper> dataNodeWrapperList = Collections.emptyList();
+  protected List<MLNodeWrapper> aiNodeWrapperList = Collections.emptyList();
   protected String testMethodName = null;
   protected int index = 0;
   protected long startTime;
@@ -144,8 +146,13 @@ public abstract class AbstractEnv implements BaseEnv {
     initEnvironment(configNodesNum, dataNodesNum, retryCount);
   }
 
-  protected void initEnvironment(int configNodesNum, int dataNodesNum, int retryCount) {
-    this.retryCount = retryCount;
+  protected void initEnvironment(int configNodesNum, int dataNodesNum, int testWorkingRetryCount) {
+    initEnvironment(configNodesNum, dataNodesNum, testWorkingRetryCount, false);
+  }
+
+  protected void initEnvironment(
+      int configNodesNum, int dataNodesNum, int testWorkingRetryCount, boolean addAINode) {
+    this.testWorkingRetryCount = testWorkingRetryCount;
     this.configNodeWrapperList = new ArrayList<>();
     this.dataNodeWrapperList = new ArrayList<>();
 
@@ -256,7 +263,42 @@ public abstract class AbstractEnv implements BaseEnv {
       throw new AssertionError();
     }
 
+    if (addAINode) {
+      this.aiNodeWrapperList = new ArrayList<>();
+      startAINode(seedConfigNode, testClassName);
+    }
+
     checkClusterStatusWithoutUnknown();
+  }
+
+  private void startAINode(String seedConfigNode, String testClassName) {
+    String aiNodeEndPoint;
+    AINodeWrapper aiNodeWrapper =
+        new AINodeWrapper(
+            seedConfigNode,
+            testClassName,
+            testMethodName,
+            EnvUtils.searchAvailablePorts(),
+            startTime);
+    aiNodeWrapperList.add(aiNodeWrapper);
+    aiNodeEndPoint = aiNodeWrapper.getIpAndPortString();
+    aiNodeWrapper.createNodeDir();
+    aiNodeWrapper.createLogDir();
+    RequestDelegate<Void> AINodesDelegate =
+        new ParallelRequestDelegate<>(
+            Collections.singletonList(aiNodeEndPoint), NODE_START_TIMEOUT);
+
+    AINodesDelegate.addRequest(
+        () -> {
+          aiNodeWrapper.start();
+          return null;
+        });
+
+    try {
+      AINodesDelegate.requestAll();
+    } catch (SQLException e) {
+      logger.error("Start aiNodes failed", e);
+    }
   }
 
   public String getTestClassName() {
@@ -319,7 +361,9 @@ public abstract class AbstractEnv implements BaseEnv {
 
         // Check the number of nodes
         if (showClusterResp.getNodeStatus().size()
-            != configNodeWrapperList.size() + dataNodeWrapperList.size()) {
+            != configNodeWrapperList.size()
+                + dataNodeWrapperList.size()
+                + aiNodeWrapperList.size()) {
           flag = false;
         }
 
@@ -356,7 +400,7 @@ public abstract class AbstractEnv implements BaseEnv {
   @Override
   public void cleanClusterEnvironment() {
     List<AbstractNodeWrapper> allNodeWrappers =
-        Stream.concat(this.dataNodeWrapperList.stream(), this.configNodeWrapperList.stream())
+        Stream.concat(this.dataNodeWrapperList.stream(), this.configNodeWrapperList.stream(), this.aiNodeWrapperList.strea())
             .collect(Collectors.toList());
     allNodeWrappers.stream()
         .findAny()
