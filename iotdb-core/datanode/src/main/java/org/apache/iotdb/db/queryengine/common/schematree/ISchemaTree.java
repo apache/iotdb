@@ -85,6 +85,14 @@ public interface ISchemaTree {
   List<Template> getUsingTemplates();
 
   /**
+   * Get all devices using the given template.
+   *
+   * @param templateId template id
+   * @return device path list
+   */
+  List<PartialPath> getDeviceUsingTemplate(int templateId);
+
+  /**
    * If there is view in this schema tree, return true, else return false.
    *
    * @return whether there's view in this schema tree
