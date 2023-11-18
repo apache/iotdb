@@ -737,6 +737,11 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     }
 
     @Override
+    public void skipTemplateChildren() {
+      // do nothing
+    }
+
+    @Override
     public void close() {
       try {
         if (nextNode != null) {
