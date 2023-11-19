@@ -44,7 +44,7 @@ public class SmoothQueueSlidingWindowAggregator extends SlidingWindowAggregator 
     }
     while (!deque.isEmpty() && !curTimeRange.contains(deque.getFirst().getTime())) {
       PartialAggregationResult partialResult = deque.removeFirst();
-      this.accumulator.removeInput(partialResult.getPartialResult());
+      this.accumulator.removeIntermediate(partialResult.getPartialResult());
     }
   }
 

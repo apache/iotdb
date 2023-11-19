@@ -78,7 +78,7 @@ public class VarianceAccumulator implements Accumulator {
   }
 
   @Override
-  public void removeInput(Column[] input) {
+  public void removeIntermediate(Column[] input) {
     checkArgument(input.length == 1, "Input of variance should be 1");
     if (input[0].isNull(0)) {
       return;

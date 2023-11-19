@@ -79,7 +79,7 @@ public class AvgAccumulator implements Accumulator {
   }
 
   @Override
-  public void removeInput(Column[] input) {
+  public void removeIntermediate(Column[] input) {
     checkArgument(input.length == 2, "partialResult of Avg should be 2");
     if (input[0].isNull(0)) {
       return;
