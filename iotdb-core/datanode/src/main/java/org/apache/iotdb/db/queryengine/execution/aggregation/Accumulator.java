@@ -41,8 +41,8 @@ public interface Accumulator {
   void addInput(Column[] column, BitMap bitMap, int lastIndex);
 
   /**
-   * Sliding window constantly add and remove partial result in the window.
-   * Aggregation functions need to implement this method to support sliding window feature.
+   * Sliding window constantly add and remove partial result in the window. Aggregation functions
+   * need to implement this method to support sliding window feature.
    */
   default void removeIntermediate(Column[] partialResult) {
     throw new UnsupportedOperationException(
