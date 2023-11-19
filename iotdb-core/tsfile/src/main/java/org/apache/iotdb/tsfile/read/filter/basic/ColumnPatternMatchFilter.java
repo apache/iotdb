@@ -21,20 +21,13 @@ package org.apache.iotdb.tsfile.read.filter.basic;
 
 import java.util.Objects;
 import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
 
-/* base class for Like, NotLike, Regex, NotRegex */
+/* base class for Regex, NotRegex */
 public abstract class ColumnPatternMatchFilter implements Filter {
 
-  protected final String regex;
   protected final Pattern pattern;
 
-  protected ColumnPatternMatchFilter(String regex) {
-    this.regex = Objects.requireNonNull(regex, "regex cannot be null");
-    try {
-      this.pattern = Pattern.compile(regex);
-    } catch (PatternSyntaxException e) {
-      throw new PatternSyntaxException("Regular expression error", regex, e.getIndex());
-    }
+  protected ColumnPatternMatchFilter(Pattern pattern) {
+    this.pattern = Objects.requireNonNull(pattern, "pattern cannot be null");
   }
 }

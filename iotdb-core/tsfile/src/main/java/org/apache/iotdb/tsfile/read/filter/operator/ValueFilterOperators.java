@@ -33,6 +33,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.IValueFilter;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * These are the value column operators in a filter predicate expression tree. They are constructed
@@ -434,19 +435,19 @@ public final class ValueFilterOperators {
     }
   }
 
-  // base class for ValueLike, ValueNotLike, ValueRegex, ValueNotRegex
+  // base class for ValueRegex, ValueNotRegex
   abstract static class ValueColumnPatternMatchFilter extends ColumnPatternMatchFilter
       implements IDisableStatisticsValueFilter {
 
     protected final String measurement;
     private final String toString;
 
-    protected ValueColumnPatternMatchFilter(String measurement, String regex) {
-      super(regex);
+    protected ValueColumnPatternMatchFilter(String measurement, Pattern pattern) {
+      super(pattern);
       this.measurement = Objects.requireNonNull(measurement, "measurement cannot be null");
 
       String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
-      this.toString = name + "(" + measurement + ", " + regex + ")";
+      this.toString = name + "(" + measurement + ", " + pattern + ")";
     }
 
     public String getMeasurement() {
@@ -459,97 +460,10 @@ public final class ValueFilterOperators {
     }
   }
 
-  public static final class ValueLike extends ValueColumnPatternMatchFilter {
-
-    public ValueLike(String measurement, String regex) {
-      super(measurement, parseLikePatternToRegex(regex));
-    }
-
-    @Override
-    public boolean satisfy(long time, Object value) {
-      return pattern.matcher(value.toString()).find();
-    }
-
-    @Override
-    public Filter reverse() {
-      return new ValueNotLike(measurement, pattern.pattern());
-    }
-  }
-
-  public static final class ValueNotLike extends ValueColumnPatternMatchFilter {
-
-    public ValueNotLike(String measurement, String likePattern) {
-      super(measurement, parseLikePatternToRegex(likePattern));
-    }
-
-    @Override
-    public boolean satisfy(long time, Object value) {
-      return !pattern.matcher(value.toString()).find();
-    }
-
-    @Override
-    public Filter reverse() {
-      return new ValueLike(measurement, pattern.pattern());
-    }
-  }
-
-  private static String parseLikePatternToRegex(String value) {
-    String unescapeValue = unescapeString(value);
-    String specialRegexStr = ".^$*+?{}[]|()";
-    StringBuilder patternStrBuild = new StringBuilder();
-    patternStrBuild.append("^");
-    for (int i = 0; i < unescapeValue.length(); i++) {
-      String ch = String.valueOf(unescapeValue.charAt(i));
-      if (specialRegexStr.contains(ch)) {
-        ch = "\\" + unescapeValue.charAt(i);
-      }
-      if ((i == 0)
-          || (i > 0 && !"\\".equals(String.valueOf(unescapeValue.charAt(i - 1))))
-          || (i >= 2
-              && "\\\\"
-                  .equals(
-                      patternStrBuild.substring(
-                          patternStrBuild.length() - 2, patternStrBuild.length())))) {
-        String replaceStr = ch.replace("%", ".*?").replace("_", ".");
-        patternStrBuild.append(replaceStr);
-      } else {
-        patternStrBuild.append(ch);
-      }
-    }
-    patternStrBuild.append("$");
-    return patternStrBuild.toString();
-  }
-
-  /**
-   * This Method is for unescaping strings except '\' before special string '%', '_', '\', because
-   * we need to use '\' to judge whether to replace this to regexp string
-   */
-  private static String unescapeString(String value) {
-    StringBuilder out = new StringBuilder();
-    int curIndex = 0;
-    for (; curIndex < value.length(); curIndex++) {
-      String ch = String.valueOf(value.charAt(curIndex));
-      if ("\\".equals(ch)) {
-        if (curIndex < value.length() - 1) {
-          String nextChar = String.valueOf(value.charAt(curIndex + 1));
-          if ("%".equals(nextChar) || "_".equals(nextChar) || "\\".equals(nextChar)) {
-            out.append(ch);
-          }
-          if ("\\".equals(nextChar)) {
-            curIndex++;
-          }
-        }
-      } else {
-        out.append(ch);
-      }
-    }
-    return out.toString();
-  }
-
   public static final class ValueRegexp extends ValueColumnPatternMatchFilter {
 
-    public ValueRegexp(String measurement, String regex) {
-      super(measurement, regex);
+    public ValueRegexp(String measurement, Pattern pattern) {
+      super(measurement, pattern);
     }
 
     @Override
@@ -559,14 +473,14 @@ public final class ValueFilterOperators {
 
     @Override
     public Filter reverse() {
-      return new ValueNotRegexp(measurement, pattern.pattern());
+      return new ValueNotRegexp(measurement, pattern);
     }
   }
 
   public static final class ValueNotRegexp extends ValueColumnPatternMatchFilter {
 
-    public ValueNotRegexp(String measurement, String regex) {
-      super(measurement, regex);
+    public ValueNotRegexp(String measurement, Pattern pattern) {
+      super(measurement, pattern);
     }
 
     @Override
@@ -576,7 +490,7 @@ public final class ValueFilterOperators {
 
     @Override
     public Filter reverse() {
-      return new ValueRegexp(measurement, pattern.pattern());
+      return new ValueRegexp(measurement, pattern);
     }
   }
 

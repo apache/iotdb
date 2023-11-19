@@ -31,6 +31,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.regex.Pattern;
 
+import static org.apache.iotdb.tsfile.read.filter.factory.ValueFilter.compileRegex;
+
 public class RegularExpression extends UnaryExpression {
 
   private final String patternString;
@@ -42,7 +44,7 @@ public class RegularExpression extends UnaryExpression {
     super(expression);
     this.patternString = patternString;
     this.isNot = isNot;
-    pattern = Pattern.compile(patternString);
+    pattern = compileRegex(patternString);
   }
 
   public RegularExpression(
@@ -57,7 +59,7 @@ public class RegularExpression extends UnaryExpression {
     super(Expression.deserialize(byteBuffer));
     patternString = ReadWriteIOUtils.readString(byteBuffer);
     isNot = ReadWriteIOUtils.readBool(byteBuffer);
-    pattern = Pattern.compile(Validate.notNull(patternString));
+    pattern = compileRegex(Validate.notNull(patternString, "patternString cannot be null"));
   }
 
   public String getPatternString() {

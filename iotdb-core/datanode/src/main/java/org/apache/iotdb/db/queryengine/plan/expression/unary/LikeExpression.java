@@ -29,6 +29,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.regex.Pattern;
 
+import static org.apache.iotdb.tsfile.read.filter.factory.ValueFilter.compileRegex;
+import static org.apache.iotdb.tsfile.read.filter.factory.ValueFilter.parseLikePatternToRegex;
+
 public class LikeExpression extends UnaryExpression {
 
   private final String patternString;
@@ -40,7 +43,7 @@ public class LikeExpression extends UnaryExpression {
     super(expression);
     this.patternString = patternString;
     this.isNot = isNot;
-    pattern = compile();
+    pattern = compileRegex(parseLikePatternToRegex(patternString));
   }
 
   public LikeExpression(
@@ -55,7 +58,7 @@ public class LikeExpression extends UnaryExpression {
     super(Expression.deserialize(byteBuffer));
     patternString = ReadWriteIOUtils.readString(byteBuffer);
     isNot = ReadWriteIOUtils.readBool(byteBuffer);
-    pattern = compile();
+    pattern = compileRegex(parseLikePatternToRegex(patternString));
   }
 
   public String getPatternString() {
@@ -68,62 +71,6 @@ public class LikeExpression extends UnaryExpression {
 
   public boolean isNot() {
     return isNot;
-  }
-
-  /**
-   * The main idea of this part comes from
-   * https://codereview.stackexchange.com/questions/36861/convert-sql-like-to-regex/36864
-   */
-  private Pattern compile() {
-    String unescapeValue = unescapeString(patternString);
-    String specialRegexString = ".^$*+?{}[]|()";
-    StringBuilder patternBuilder = new StringBuilder();
-    patternBuilder.append("^");
-    for (int i = 0; i < unescapeValue.length(); i++) {
-      String ch = String.valueOf(unescapeValue.charAt(i));
-      if (specialRegexString.contains(ch)) {
-        ch = "\\" + unescapeValue.charAt(i);
-      }
-      if (i == 0
-          || !"\\".equals(String.valueOf(unescapeValue.charAt(i - 1)))
-          || i >= 2
-              && "\\\\"
-                  .equals(
-                      patternBuilder.substring(
-                          patternBuilder.length() - 2, patternBuilder.length()))) {
-        patternBuilder.append(ch.replace("%", ".*?").replace("_", "."));
-      } else {
-        patternBuilder.append(ch);
-      }
-    }
-    patternBuilder.append("$");
-    return Pattern.compile(patternBuilder.toString());
-  }
-
-  /**
-   * This Method is for un-escaping strings except '\' before special string '%', '_', '\', because
-   * we need to use '\' to judge whether to replace this to regexp string
-   */
-  private String unescapeString(String value) {
-    StringBuilder stringBuilder = new StringBuilder();
-    int curIndex = 0;
-    for (; curIndex < value.length(); curIndex++) {
-      String ch = String.valueOf(value.charAt(curIndex));
-      if ("\\".equals(ch)) {
-        if (curIndex < value.length() - 1) {
-          String nextChar = String.valueOf(value.charAt(curIndex + 1));
-          if ("%".equals(nextChar) || "_".equals(nextChar) || "\\".equals(nextChar)) {
-            stringBuilder.append(ch);
-          }
-          if ("\\".equals(nextChar)) {
-            curIndex++;
-          }
-        }
-      } else {
-        stringBuilder.append(ch);
-      }
-    }
-    return stringBuilder.toString();
   }
 
   @Override

@@ -47,6 +47,7 @@ import org.apache.iotdb.tsfile.read.filter.factory.ValueFilter;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import static org.apache.iotdb.tsfile.read.filter.operator.Not.CONTAIN_NOT_ERR_MSG;
 
@@ -159,11 +160,11 @@ public class ConvertExpressionToFilterVisitor extends PredicateVisitor<Filter, T
     }
 
     String measurement = ((TimeSeriesOperand) expression).getPath().getMeasurement();
-    String likePattern = likeExpression.getPatternString();
+    Pattern pattern = likeExpression.getPattern();
     boolean isNot = likeExpression.isNot();
     return isNot
-        ? ValueFilter.notLike(measurement, likePattern)
-        : ValueFilter.like(measurement, likePattern);
+        ? ValueFilter.notRegexp(measurement, pattern)
+        : ValueFilter.regexp(measurement, pattern);
   }
 
   @Override
@@ -174,11 +175,11 @@ public class ConvertExpressionToFilterVisitor extends PredicateVisitor<Filter, T
     }
 
     String measurement = ((TimeSeriesOperand) expression).getPath().getMeasurement();
-    String regex = regularExpression.getPatternString();
+    Pattern pattern = regularExpression.getPattern();
     boolean isNot = regularExpression.isNot();
     return isNot
-        ? ValueFilter.notRegexp(measurement, regex)
-        : ValueFilter.regexp(measurement, regex);
+        ? ValueFilter.notRegexp(measurement, pattern)
+        : ValueFilter.regexp(measurement, pattern);
   }
 
   @Override
