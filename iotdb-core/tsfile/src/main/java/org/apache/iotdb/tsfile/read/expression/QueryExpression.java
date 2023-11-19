@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.tsfile.read.expression;
 
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 import java.io.Serializable;

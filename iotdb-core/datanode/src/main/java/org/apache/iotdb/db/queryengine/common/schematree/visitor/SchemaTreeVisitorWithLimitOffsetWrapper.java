@@ -20,9 +20,11 @@
 package org.apache.iotdb.db.queryengine.common.schematree.visitor;
 
 import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaNode;
+import org.apache.iotdb.db.schemaengine.template.Template;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 
 public class SchemaTreeVisitorWithLimitOffsetWrapper<R> extends SchemaTreeVisitor<R> {
@@ -47,6 +49,10 @@ public class SchemaTreeVisitorWithLimitOffsetWrapper<R> extends SchemaTreeVisito
         curOffset++;
       }
     }
+  }
+
+  public void setTemplateMap(Map<Integer, Template> templateMap) {
+    visitor.setTemplateMap(templateMap);
   }
 
   @Override

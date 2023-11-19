@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.window;
 
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
-import org.apache.iotdb.tsfile.exception.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 
 public class WindowManagerFactory {
 

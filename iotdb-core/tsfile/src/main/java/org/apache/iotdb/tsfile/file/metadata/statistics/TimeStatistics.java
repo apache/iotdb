@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import org.openjdk.jol.info.ClassLayout;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -29,7 +31,9 @@ import java.nio.ByteBuffer;
 
 public class TimeStatistics extends Statistics<Long> {
 
-  static final int TIME_STATISTICS_FIXED_RAM_SIZE = 40;
+  public static final int INSTANCE_SIZE =
+      ClassLayout.parseClass(TimeStatistics.class).instanceSize();
+
   private static final String TIME = "Time";
   private static final String UPDATE_STATS = "update stats";
 
@@ -42,6 +46,11 @@ public class TimeStatistics extends Statistics<Long> {
   @Override
   public int getStatsSize() {
     return 0;
+  }
+
+  @Override
+  public long getRetainedSizeInBytes() {
+    return INSTANCE_SIZE;
   }
 
   @Override
@@ -109,11 +118,6 @@ public class TimeStatistics extends Statistics<Long> {
   @Override
   public void updateStats(long minValue, long maxValue) {
     throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, TIME, UPDATE_STATS));
-  }
-
-  @Override
-  public long calculateRamSize() {
-    return TIME_STATISTICS_FIXED_RAM_SIZE;
   }
 
   @Override

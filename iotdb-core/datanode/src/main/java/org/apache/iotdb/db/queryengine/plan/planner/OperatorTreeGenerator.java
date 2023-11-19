@@ -64,6 +64,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.TagAggregation
 import org.apache.iotdb.db.queryengine.execution.operator.process.TopKOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TransformOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFillFilter;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.ILinearFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.BinaryConstantFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.BooleanConstantFill;
@@ -71,6 +72,10 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.FloatConstantFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.IntConstantFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.LongConstantFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.filter.FixedIntervalFillFilter;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.filter.MonthIntervalMSFillFilter;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.filter.MonthIntervalNSFillFilter;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.filter.MonthIntervalUSFillFilter;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.identity.IdentityFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.identity.IdentityLinearFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear.DoubleLinearFill;
@@ -214,7 +219,7 @@ import org.apache.iotdb.db.queryengine.statistics.StatisticsManager;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFContext;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -222,6 +227,7 @@ import org.apache.iotdb.tsfile.read.filter.operator.Gt;
 import org.apache.iotdb.tsfile.read.filter.operator.GtEq;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -229,6 +235,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
 
 import java.io.File;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -249,6 +256,7 @@ import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.initTimeRangeIterator;
 import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
+import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.TIMESTAMP_PRECISION;
 
 /** This Visitor is responsible for transferring PlanNode Tree to Operator Tree. */
 public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionPlanContext> {
@@ -934,7 +942,18 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       case PREVIOUS:
         context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
         return new FillOperator(
-            operatorContext, getPreviousFill(inputColumns, inputDataTypes), child);
+            operatorContext,
+            getPreviousFill(
+                inputColumns,
+                inputDataTypes,
+                descriptor.getTimeDurationThreshold(),
+                ZoneId.of(
+                    context
+                        .getDriverContext()
+                        .getFragmentInstanceContext()
+                        .getSessionInfo()
+                        .getZoneId())),
+            child);
       case LINEAR:
         context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
         return new LinearFillOperator(
@@ -978,27 +997,66 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     return constantFill;
   }
 
-  private IFill[] getPreviousFill(int inputColumns, List<TSDataType> inputDataTypes) {
+  private IFill[] getPreviousFill(
+      int inputColumns,
+      List<TSDataType> inputDataTypes,
+      TimeDuration timeDurationThreshold,
+      ZoneId zoneId) {
+    IFillFilter filter;
+    if (timeDurationThreshold == null) {
+      filter = IFillFilter.TRUE;
+    } else if (!timeDurationThreshold.containsMonth()) {
+      filter = new FixedIntervalFillFilter(timeDurationThreshold.nonMonthDuration);
+    } else {
+      switch (TIMESTAMP_PRECISION) {
+        case "ms":
+          filter =
+              new MonthIntervalMSFillFilter(
+                  timeDurationThreshold.monthDuration,
+                  timeDurationThreshold.nonMonthDuration,
+                  zoneId);
+          break;
+        case "us":
+          filter =
+              new MonthIntervalUSFillFilter(
+                  timeDurationThreshold.monthDuration,
+                  timeDurationThreshold.nonMonthDuration,
+                  zoneId);
+          break;
+        case "ns":
+          filter =
+              new MonthIntervalNSFillFilter(
+                  timeDurationThreshold.monthDuration,
+                  timeDurationThreshold.nonMonthDuration,
+                  zoneId);
+          break;
+        default:
+          // this case will never reach
+          throw new UnsupportedOperationException(
+              "not supported time_precision: " + TIMESTAMP_PRECISION);
+      }
+    }
+
     IFill[] previousFill = new IFill[inputColumns];
     for (int i = 0; i < inputColumns; i++) {
       switch (inputDataTypes.get(i)) {
         case BOOLEAN:
-          previousFill[i] = new BooleanPreviousFill();
+          previousFill[i] = new BooleanPreviousFill(filter);
           break;
         case TEXT:
-          previousFill[i] = new BinaryPreviousFill();
+          previousFill[i] = new BinaryPreviousFill(filter);
           break;
         case INT32:
-          previousFill[i] = new IntPreviousFill();
+          previousFill[i] = new IntPreviousFill(filter);
           break;
         case INT64:
-          previousFill[i] = new LongPreviousFill();
+          previousFill[i] = new LongPreviousFill(filter);
           break;
         case FLOAT:
-          previousFill[i] = new FloatPreviousFill();
+          previousFill[i] = new FloatPreviousFill(filter);
           break;
         case DOUBLE:
-          previousFill[i] = new DoublePreviousFill();
+          previousFill[i] = new DoublePreviousFill(filter);
           break;
         default:
           throw new IllegalArgumentException(UNKNOWN_DATATYPE + inputDataTypes.get(i));
