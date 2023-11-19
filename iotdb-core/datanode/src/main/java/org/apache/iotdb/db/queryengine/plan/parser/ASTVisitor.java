@@ -199,8 +199,8 @@ import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.trigger.api.enums.TriggerType;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.TimeDuration;
@@ -1667,12 +1667,21 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       fillComponent.setFillPolicy(FillPolicy.LINEAR);
     } else if (ctx.PREVIOUS() != null) {
       fillComponent.setFillPolicy(FillPolicy.PREVIOUS);
+
     } else if (ctx.constant() != null) {
       fillComponent.setFillPolicy(FillPolicy.VALUE);
       Literal fillValue = parseLiteral(ctx.constant());
       fillComponent.setFillValue(fillValue);
     } else {
       throw new SemanticException("Unknown FILL type.");
+    }
+    if (ctx.interval != null) {
+      if (fillComponent.getFillPolicy() != FillPolicy.PREVIOUS) {
+        throw new SemanticException(
+            "Only FILL(PREVIOUS) support specifying the time duration threshold.");
+      }
+      fillComponent.setTimeDurationThreshold(
+          DateTimeUtils.constructTimeDuration(ctx.interval.getText()));
     }
     return fillComponent;
   }

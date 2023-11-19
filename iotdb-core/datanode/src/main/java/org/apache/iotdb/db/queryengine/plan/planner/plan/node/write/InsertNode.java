@@ -31,8 +31,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IDeviceID;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -131,6 +131,10 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
 
   public String[] getMeasurements() {
     return measurements;
+  }
+
+  public void setMeasurements(String[] measurements) {
+    this.measurements = measurements;
   }
 
   public TSDataType[] getDataTypes() {

@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import javax.annotation.Nonnull;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -30,14 +32,15 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
 
-public class RecoverProgressIndex implements ProgressIndex {
+public class RecoverProgressIndex extends ProgressIndex {
 
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
   private final Map<Integer, SimpleProgressIndex> dataNodeId2LocalIndex;
 
-  public RecoverProgressIndex() {
+  private RecoverProgressIndex() {
     this.dataNodeId2LocalIndex = new HashMap<>();
   }
 
@@ -80,7 +83,7 @@ public class RecoverProgressIndex implements ProgressIndex {
   }
 
   @Override
-  public boolean isAfter(ProgressIndex progressIndex) {
+  public boolean isAfter(@Nonnull ProgressIndex progressIndex) {
     lock.readLock().lock();
     try {
       if (progressIndex instanceof MinimumProgressIndex) {
@@ -181,6 +184,19 @@ public class RecoverProgressIndex implements ProgressIndex {
 
   public ProgressIndexType getType() {
     return ProgressIndexType.RECOVER_PROGRESS_INDEX;
+  }
+
+  @Override
+  public TotalOrderSumTuple getTotalOrderSumTuple() {
+    lock.readLock().lock();
+    try {
+      return ProgressIndex.TotalOrderSumTuple.sum(
+          dataNodeId2LocalIndex.values().stream()
+              .map(SimpleProgressIndex::getTotalOrderSumTuple)
+              .collect(Collectors.toList()));
+    } finally {
+      lock.readLock().unlock();
+    }
   }
 
   public static RecoverProgressIndex deserializeFrom(ByteBuffer byteBuffer) {

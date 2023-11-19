@@ -193,6 +193,14 @@ public class TimeDuration implements Serializable, Comparable<TimeDuration> {
   }
 
   @Override
+  public String toString() {
+    return "TimeDuration{"
+        + (monthDuration > 0 ? monthDuration + "mo, " : "")
+        + (nonMonthDuration > 0 ? nonMonthDuration : "")
+        + '}';
+  }
+
+  @Override
   public int compareTo(TimeDuration other) {
     int monthCompare = Integer.compare(monthDuration, other.monthDuration);
     if (monthCompare != 0) {

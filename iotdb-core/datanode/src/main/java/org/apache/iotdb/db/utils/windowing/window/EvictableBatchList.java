@@ -21,7 +21,7 @@ package org.apache.iotdb.db.utils.windowing.window;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.utils.Binary;
 

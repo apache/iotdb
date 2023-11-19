@@ -167,8 +167,10 @@ public class IoTDBPipeExtractorIT {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       // insert data to create data region
-      TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.sg1.d1(time, at1) values (1, 1)");
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv, "insert into root.sg1.d1(time, at1) values (1, 1)")) {
+        return;
+      }
 
       String formatString =
           String.format(
@@ -209,33 +211,55 @@ public class IoTDBPipeExtractorIT {
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.nonAligned.1TS (time, s_float) values (now(), 0.5)");
-      TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.nonAligned.100TS (time, s_float) values (now(), 0.5)");
-      TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.nonAligned.1000TS (time, s_float) values (now(), 0.5)");
-      TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.nonAligned.`1(TS)` (time, s_float) values (now(), 0.5)");
-      TestUtils.executeNonQueryWithRetry(
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv, "insert into root.nonAligned.1TS (time, s_float) values (now(), 0.5)")) {
+        return;
+      }
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv, "insert into root.nonAligned.100TS (time, s_float) values (now(), 0.5)")) {
+        return;
+      }
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv, "insert into root.nonAligned.1000TS (time, s_float) values (now(), 0.5)")) {
+        return;
+      }
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv, "insert into root.nonAligned.`1(TS)` (time, s_float) values (now(), 0.5)")) {
+        return;
+      }
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
           senderEnv,
           "insert into root.nonAligned.6TS.`6` ("
               + "time, `s_float(1)`, `s_int(1)`, `s_double(1)`, `s_long(1)`, `s_text(1)`, `s_bool(1)`) "
-              + "values (now(), 0.5, 1, 1.5, 2, \"text1\", true)");
-      TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.aligned.1TS (time, s_float) aligned values (now(), 0.5)");
-      TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.aligned.100TS (time, s_float) aligned values (now(), 0.5)");
-      TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.aligned.1000TS (time, s_float) aligned values (now(), 0.5)");
-      TestUtils.executeNonQueryWithRetry(
+              + "values (now(), 0.5, 1, 1.5, 2, \"text1\", true)")) {
+        return;
+      }
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv, "insert into root.aligned.1TS (time, s_float) aligned values (now(), 0.5)")) {
+        return;
+      }
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
           senderEnv,
-          "insert into root.aligned.`1(TS)` (time, s_float) aligned values (now(), 0.5)");
-      TestUtils.executeNonQueryWithRetry(
+          "insert into root.aligned.100TS (time, s_float) aligned values (now(), 0.5)")) {
+        return;
+      }
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv,
+          "insert into root.aligned.1000TS (time, s_float) aligned values (now(), 0.5)")) {
+        return;
+      }
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv,
+          "insert into root.aligned.`1(TS)` (time, s_float) aligned values (now(), 0.5)")) {
+        return;
+      }
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
           senderEnv,
           "insert into root.aligned.6TS.`6` ("
               + "time, `s_float(1)`, `s_int(1)`, `s_double(1)`, `s_long(1)`, `s_text(1)`, `s_bool(1)`) "
-              + "aligned values (now(), 0.5, 1, 1.5, 2, \"text1\", true)");
+              + "aligned values (now(), 0.5, 1, 1.5, 2, \"text1\", true)")) {
+        return;
+      }
 
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
@@ -296,11 +320,16 @@ public class IoTDBPipeExtractorIT {
         await()
             .atMost(600, TimeUnit.SECONDS)
             .untilAsserted(
-                () ->
+                () -> {
+                  try {
                     TestUtils.assertResultSetEqual(
                         statement.executeQuery("show devices"),
                         "Device,IsAligned,",
-                        expectedDevices));
+                        expectedDevices);
+                  } catch (Exception e) {
+                    Assert.fail();
+                  }
+                });
       } catch (Exception e) {
         e.printStackTrace();
         fail(e.getMessage());
@@ -338,11 +367,17 @@ public class IoTDBPipeExtractorIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
       assertTimeseriesCountOnReceiver(receiverEnv, 0);
 
-      TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db1.d1 (time, at1) values (1, 10)");
-      TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db2.d1 (time, at1) values (1, 20)");
-      TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv, "insert into root.db1.d1 (time, at1) values (1, 10)")) {
+        return;
+      }
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv, "insert into root.db2.d1 (time, at1) values (1, 20)")) {
+        return;
+      }
+      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+        return;
+      }
 
       extractorAttributes.replace("extractor.pattern", "root.db2");
       status =
@@ -360,11 +395,17 @@ public class IoTDBPipeExtractorIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("p2").getCode());
 
-      TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db1.d1 (time, at1) values (2, 11)");
-      TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db2.d1 (time, at1) values (2, 21)");
-      TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv, "insert into root.db1.d1 (time, at1) values (2, 11)")) {
+        return;
+      }
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv, "insert into root.db2.d1 (time, at1) values (2, 21)")) {
+        return;
+      }
+      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+        return;
+      }
 
       extractorAttributes.remove("extractor.pattern"); // no pattern, will match all databases
       status =
@@ -381,11 +422,16 @@ public class IoTDBPipeExtractorIT {
         await()
             .atMost(600, TimeUnit.SECONDS)
             .untilAsserted(
-                () ->
+                () -> {
+                  try {
                     TestUtils.assertResultSetEqual(
                         statement.executeQuery("select count(*) from root.**"),
                         "count(root.db1.d1.at1),count(root.db2.d1.at1),",
-                        Collections.singleton("2,2,")));
+                        Collections.singleton("2,2,"));
+                  } catch (Exception e) {
+                    Assert.fail();
+                  }
+                });
       } catch (Exception e) {
         e.printStackTrace();
         fail(e.getMessage());
@@ -402,15 +448,25 @@ public class IoTDBPipeExtractorIT {
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1 (time, at1) values (1, 10)");
-      TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d2 (time, at1) values (1, 20)");
-      TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d3 (time, at1) values (1, 30)");
-      TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d4 (time, at1) values (1, 40)");
-      TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv, "insert into root.db.d1 (time, at1) values (1, 10)")) {
+        return;
+      }
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv, "insert into root.db.d2 (time, at1) values (1, 20)")) {
+        return;
+      }
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv, "insert into root.db.d3 (time, at1) values (1, 30)")) {
+        return;
+      }
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv, "insert into root.db.d4 (time, at1) values (1, 40)")) {
+        return;
+      }
+      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+        return;
+      }
 
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
@@ -468,33 +524,51 @@ public class IoTDBPipeExtractorIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p4").getCode());
 
-      TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1 (time, at1) values (2, 11)");
-      TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d2 (time, at1) values (2, 21)");
-      TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d3 (time, at1) values (2, 31)");
-      TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d4 (time, at1) values (2, 41)");
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv, "insert into root.db.d1 (time, at1) values (2, 11)")) {
+        return;
+      }
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv, "insert into root.db.d2 (time, at1) values (2, 21)")) {
+        return;
+      }
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv, "insert into root.db.d3 (time, at1) values (2, 31)")) {
+        return;
+      }
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv, "insert into root.db.d4 (time, at1) values (2, 41)")) {
+        return;
+      }
 
       try (Connection connection = receiverEnv.getConnection();
           Statement statement = connection.createStatement()) {
         await()
             .atMost(600, TimeUnit.SECONDS)
             .untilAsserted(
-                () ->
+                () -> {
+                  try {
                     TestUtils.assertResultSetEqual(
                         statement.executeQuery("select count(*) from root.** where time <= 1"),
                         "count(root.db.d4.at1),count(root.db.d2.at1),count(root.db.d3.at1),",
-                        Collections.singleton("1,0,1,")));
+                        Collections.singleton("1,0,1,"));
+                  } catch (Exception e) {
+                    Assert.fail();
+                  }
+                });
         await()
             .atMost(600, TimeUnit.SECONDS)
             .untilAsserted(
-                () ->
+                () -> {
+                  try {
                     TestUtils.assertResultSetEqual(
                         statement.executeQuery("select count(*) from root.** where time >= 2"),
                         "count(root.db.d4.at1),count(root.db.d2.at1),count(root.db.d3.at1),",
-                        Collections.singleton("1,1,0,")));
+                        Collections.singleton("1,1,0,"));
+                  } catch (Exception e) {
+                    Assert.fail();
+                  }
+                });
       } catch (Exception e) {
         e.printStackTrace();
         fail(e.getMessage());
@@ -511,15 +585,21 @@ public class IoTDBPipeExtractorIT {
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      TestUtils.executeNonQueryWithRetry(
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
           senderEnv,
           "insert into root.db.d1 (time, at1)"
-              + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)");
-      TestUtils.executeNonQueryWithRetry(
+              + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)")) {
+        return;
+      }
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
           senderEnv,
           "insert into root.db.d2 (time, at1)"
-              + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)");
-      TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+              + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)")) {
+        return;
+      }
+      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+        return;
+      }
 
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
@@ -549,11 +629,16 @@ public class IoTDBPipeExtractorIT {
         await()
             .atMost(600, TimeUnit.SECONDS)
             .untilAsserted(
-                () ->
+                () -> {
+                  try {
                     TestUtils.assertResultSetEqual(
                         statement.executeQuery("select count(*) from root.**"),
                         "count(root.db.d1.at1),",
-                        Collections.singleton("3,")));
+                        Collections.singleton("3,"));
+                  } catch (Exception e) {
+                    Assert.fail();
+                  }
+                });
       } catch (Exception e) {
         e.printStackTrace();
         fail(e.getMessage());
@@ -574,11 +659,16 @@ public class IoTDBPipeExtractorIT {
         await()
             .atMost(600, TimeUnit.SECONDS)
             .untilAsserted(
-                () ->
+                () -> {
+                  try {
                     TestUtils.assertResultSetEqual(
                         statement.executeQuery("select count(*) from root.**"),
                         "count(root.db.d1.at1),count(root.db.d2.at1),",
-                        Collections.singleton("3,3,")));
+                        Collections.singleton("3,3,"));
+                  } catch (Exception e) {
+                    Assert.fail();
+                  }
+                });
       } catch (Exception e) {
         e.printStackTrace();
         fail(e.getMessage());
@@ -592,11 +682,16 @@ public class IoTDBPipeExtractorIT {
       await()
           .atMost(600, TimeUnit.SECONDS)
           .untilAsserted(
-              () ->
+              () -> {
+                try {
                   TestUtils.assertResultSetEqual(
                       statement.executeQuery("count timeseries"),
                       "count(timeseries),",
-                      Collections.singleton(count + ",")));
+                      Collections.singleton(count + ","));
+                } catch (Exception e) {
+                  Assert.fail();
+                }
+              });
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

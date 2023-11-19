@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.timer;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.execution.schedule.DriverTaskThread;
 
 import io.airlift.units.Duration;
 
@@ -33,7 +33,10 @@ import static com.google.common.base.Preconditions.checkState;
 public class RuleBasedTimeSliceAllocator implements ITimeSliceAllocator {
 
   private static final long EXECUTION_TIME_SLICE_IN_MS =
-      DriverTaskThread.EXECUTION_TIME_SLICE.roundTo(TimeUnit.MILLISECONDS);
+      new Duration(
+              IoTDBDescriptor.getInstance().getConfig().getDriverTaskExecutionTimeSliceInMs(),
+              TimeUnit.MILLISECONDS)
+          .roundTo(TimeUnit.MILLISECONDS);
 
   private final Map<OperatorContext, Integer> operatorToWeightMap;
 

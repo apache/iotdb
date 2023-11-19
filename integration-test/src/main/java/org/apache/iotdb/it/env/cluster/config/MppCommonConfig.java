@@ -121,6 +121,15 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setMaxInnerCompactionCandidateFileNum(
+      int maxInnerCompactionCandidateFileNum) {
+    setProperty(
+        "max_inner_compaction_candidate_file_num",
+        String.valueOf(maxInnerCompactionCandidateFileNum));
+    return this;
+  }
+
+  @Override
   public CommonConfig setAutoCreateSchemaEnabled(boolean enableAutoCreateSchema) {
     setProperty("enable_auto_create_schema", String.valueOf(enableAutoCreateSchema));
     return this;
@@ -398,6 +407,13 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled) {
     setProperty("pipe_air_gap_receiver_enabled", String.valueOf(isPipeAirGapReceiverEnabled));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDriverTaskExecutionTimeSliceInMs(long driverTaskExecutionTimeSliceInMs) {
+    setProperty(
+        "driver_task_execution_time_slice_in_ms", String.valueOf(driverTaskExecutionTimeSliceInMs));
     return this;
   }
 

@@ -29,7 +29,7 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -38,12 +38,12 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class CountPointProcessor implements PipeProcessor {
   private static final String AGGREGATE_SERIES_KEY = "aggregate-series";
-  private static AtomicLong writePointCount = new AtomicLong(0);
+  private static final AtomicLong writePointCount = new AtomicLong(0);
 
   private PartialPath aggregateSeries;
 
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
+  public void validate(PipeParameterValidator validator) {
     validator.validateRequiredAttribute(AGGREGATE_SERIES_KEY);
   }
 
@@ -54,12 +54,9 @@ public class CountPointProcessor implements PipeProcessor {
   }
 
   @Override
-  public void process(TabletInsertionEvent tabletInsertionEvent, EventCollector eventCollector)
-      throws Exception {
+  public void process(TabletInsertionEvent tabletInsertionEvent, EventCollector eventCollector) {
     tabletInsertionEvent.processTablet(
-        (tablet, rowCollector) -> {
-          writePointCount.addAndGet(tablet.rowSize);
-        });
+        (tablet, rowCollector) -> writePointCount.addAndGet(tablet.rowSize));
   }
 
   @Override
@@ -79,5 +76,7 @@ public class CountPointProcessor implements PipeProcessor {
   }
 
   @Override
-  public void close() throws Exception {}
+  public void close() {
+    // Do nothing
+  }
 }

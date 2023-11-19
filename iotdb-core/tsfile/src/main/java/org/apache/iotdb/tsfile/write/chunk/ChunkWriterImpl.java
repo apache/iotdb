@@ -21,10 +21,10 @@ package org.apache.iotdb.tsfile.write.chunk;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.encoding.encoder.SDTEncoder;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -368,6 +368,11 @@ public class ChunkWriterImpl implements IChunkWriter {
     }
     return estimateMaxSeriesMemSize() >= size
         || statistics.getCount() + pageWriter.getPointNumber() >= pointNum;
+  }
+
+  @Override
+  public boolean isEmpty() {
+    return statistics.getCount() + pageWriter.getPointNumber() == 0;
   }
 
   public TSDataType getDataType() {

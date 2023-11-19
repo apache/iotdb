@@ -68,6 +68,11 @@ public enum Metric {
   DATA_WRITTEN("data_written"),
   DATA_READ("data_read"),
   COMPACTION_TASK_COUNT("compaction_task_count"),
+  COMPACTION_TASK_MEMORY("compaction_task_memory"),
+  COMPACTION_TASK_MEMORY_DISTRIBUTION("compaction_task_memory_distribution"),
+  COMPACTION_TASK_SELECTION("compaction_task_selection"),
+  COMPACTION_TASK_SELECTION_COST("compaction_task_selection_cost"),
+  COMPACTION_TASK_SELECTED_FILE("compaction_task_selected_file"),
   // schema engine related
   MEM("mem"),
   CACHE("cache"),
@@ -121,8 +126,7 @@ public enum Metric {
   PIPE_HEARTBEAT_EVENT("pipe_heartbeat_event"),
   PIPE_WAL_INSERT_NODE_CACHE_HIT_RATE("pipe_wal_insert_node_cache_hit_rate"),
   PIPE_EXTRACTOR_TSFILE_EPOCH_STATE("pipe_extractor_tsfile_epoch_state"),
-  PIPE_MEM_COST("pipe_mem_cost"),
-  PIPE_MEM_USAGE("pipe_mem_usage"),
+  PIPE_MEM("pipe_mem"),
   PIPE_PINNED_MEMTABLE_COUNT("pipe_pinned_memtable_count"),
   PIPE_LINKED_TSFILE_COUNT("pipe_linked_tsfile_count"),
   ;

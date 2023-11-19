@@ -20,40 +20,37 @@ package org.apache.iotdb.tsfile.utils;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 
-import java.util.Arrays;
+import org.openjdk.jol.info.ClassLayout;
+
 import java.util.BitSet;
 import java.util.Objects;
 
+import static io.airlift.slice.SizeOf.sizeOfLongArray;
+
 public class BloomFilter {
+
+  private static final int INSTANCE_SIZE =
+      ClassLayout.parseClass(BloomFilter.class).instanceSize()
+          + ClassLayout.parseClass(BitSet.class).instanceSize();
 
   private static final int MINIMAL_SIZE = 256;
   private static final int MAXIMAL_HASH_FUNCTION_SIZE = 8;
   private static final int[] SEEDS = new int[] {5, 7, 11, 19, 31, 37, 43, 59};
-  private int size;
-  private int hashFunctionSize;
-  private BitSet bits;
-  private HashFunction[] func;
+
+  private final int size;
+  private final int hashFunctionSize;
+  private final BitSet bits;
 
   // do not try to initialize the filter by construction method
   private BloomFilter(byte[] bytes, int size, int hashFunctionSize) {
     this.size = size;
     this.hashFunctionSize = hashFunctionSize;
-    func = new HashFunction[hashFunctionSize];
-    for (int i = 0; i < hashFunctionSize; i++) {
-      func[i] = new HashFunction(size, SEEDS[i]);
-    }
-
     bits = BitSet.valueOf(bytes);
   }
 
   private BloomFilter(int size, int hashFunctionSize) {
     this.size = size;
     this.hashFunctionSize = hashFunctionSize;
-    func = new HashFunction[hashFunctionSize];
-    for (int i = 0; i < hashFunctionSize; i++) {
-      func[i] = new HashFunction(size, SEEDS[i]);
-    }
-
     bits = new BitSet(size);
   }
 
@@ -93,13 +90,9 @@ public class BloomFilter {
     return size;
   }
 
-  public void setSize(int size) {
-    this.size = size;
-  }
-
   public void add(String value) {
-    for (HashFunction f : func) {
-      bits.set(f.hash(value), true);
+    for (int i = 0; i < hashFunctionSize; i++) {
+      bits.set(hash(value, size, SEEDS[i]), true);
     }
   }
 
@@ -110,23 +103,20 @@ public class BloomFilter {
     boolean ret = true;
     int index = 0;
     while (ret && index < hashFunctionSize) {
-      ret = bits.get(func[index++].hash(value));
+      ret = bits.get(hash(value, size, SEEDS[index++]));
     }
 
     return ret;
   }
 
-  public int getBitCount() {
-    int res = 0;
-    for (int i = 0; i < size; i++) {
-      res += bits.get(i) ? 1 : 0;
-    }
-
-    return res;
-  }
-
   public byte[] serialize() {
     return bits.toByteArray();
+  }
+
+  public long getRetainedSizeInBytes() {
+    // calculated according to the implementation of BitSet, bits.size() returns words.length *
+    // BITS_PER_WORD and BITS_PER_WORD = (1 << 6) which is 64
+    return INSTANCE_SIZE + sizeOfLongArray(bits.size() / 64);
   }
 
   @Override
@@ -140,49 +130,20 @@ public class BloomFilter {
     BloomFilter that = (BloomFilter) o;
     return size == that.size
         && hashFunctionSize == that.hashFunctionSize
-        && Objects.equals(bits, that.bits)
-        && Arrays.equals(func, that.func);
+        && Objects.equals(bits, that.bits);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(size, hashFunctionSize, bits, func);
+    return Objects.hash(size, hashFunctionSize, bits);
   }
 
-  private class HashFunction {
-
-    private int cap;
-    private int seed;
-
-    HashFunction(int cap, int seed) {
-      this.cap = cap;
-      this.seed = seed;
+  private static int hash(String value, int cap, int seed) {
+    int res = Murmur128Hash.hash(value, seed);
+    if (res == Integer.MIN_VALUE) {
+      res = 0;
     }
 
-    public int hash(String value) {
-      int res = Murmur128Hash.hash(value, seed);
-      if (res == Integer.MIN_VALUE) {
-        res = 0;
-      }
-
-      return Math.abs(res) % cap;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) {
-        return true;
-      }
-      if (o == null || getClass() != o.getClass()) {
-        return false;
-      }
-      HashFunction that = (HashFunction) o;
-      return cap == that.cap && seed == that.seed;
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(cap, seed);
-    }
+    return Math.abs(res) % cap;
   }
 }
