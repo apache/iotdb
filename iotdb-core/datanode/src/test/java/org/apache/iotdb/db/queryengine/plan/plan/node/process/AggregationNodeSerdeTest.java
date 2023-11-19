@@ -22,7 +22,6 @@ import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -44,6 +43,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.in;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.timeSeries;
 import static org.junit.Assert.assertEquals;
 
 public class AggregationNodeSerdeTest {
@@ -63,9 +64,7 @@ public class AggregationNodeSerdeTest {
                     Collections.singletonList(
                         new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))))),
             Ordering.ASC,
-            ExpressionFactory.in(
-                ExpressionFactory.timeSeries("root.sg.d1.s1"),
-                Sets.newLinkedHashSet(Arrays.asList("s1", "s2"))),
+            in(timeSeries("root.sg.d1.s1"), Sets.newLinkedHashSet(Arrays.asList("s1", "s2"))),
             groupByTimeParameter,
             null);
     AggregationNode aggregationNode =

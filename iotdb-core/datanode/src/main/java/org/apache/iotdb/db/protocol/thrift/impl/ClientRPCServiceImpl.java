@@ -633,7 +633,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       TSDataType dataType,
       boolean isAligned,
       long startTime,
-      long endTme,
+      long endTime,
       long interval,
       TAggregationType aggregationType,
       List<DataRegion> dataRegionList)
@@ -645,7 +645,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           "dataRegionList.size() should only be 1 now,  current size is " + dataRegionSize);
     }
 
-    Filter timeFilter = TimeFilter.between(startTime, endTme - 1);
+    Filter timeFilter = TimeFilter.between(startTime, endTime - 1);
 
     QueryId queryId = new QueryId("stub_query");
     FragmentInstanceId instanceId =
@@ -675,7 +675,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(
-            startTime, endTme, new TimeDuration(0, interval), new TimeDuration(0, interval), true);
+            startTime, endTime, new TimeDuration(0, interval), new TimeDuration(0, interval), true);
 
     IMeasurementSchema measurementSchema = new MeasurementSchema(measurement, dataType);
     AbstractSeriesAggregationScanOperator operator;

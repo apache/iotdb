@@ -81,11 +81,11 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
       AlignedPath alignedPath,
       List<AggregationDescriptor> aggregationDescriptorList,
       Ordering scanOrder,
-      @Nullable Expression valueFilter,
+      @Nullable Expression pushDownPredicate,
       @Nullable GroupByTimeParameter groupByTimeParameter,
       TRegionReplicaSet dataRegionReplicaSet) {
     this(id, alignedPath, aggregationDescriptorList, scanOrder, groupByTimeParameter);
-    this.pushDownPredicate = valueFilter;
+    this.pushDownPredicate = pushDownPredicate;
     this.regionReplicaSet = dataRegionReplicaSet;
   }
 
@@ -214,9 +214,9 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
     }
     Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     byte isNull = ReadWriteIOUtils.readByte(byteBuffer);
-    Expression valueFilter = null;
+    Expression pushDownPredicate = null;
     if (isNull == 1) {
-      valueFilter = Expression.deserialize(byteBuffer);
+      pushDownPredicate = Expression.deserialize(byteBuffer);
     }
     isNull = ReadWriteIOUtils.readByte(byteBuffer);
     GroupByTimeParameter groupByTimeParameter = null;
@@ -229,7 +229,7 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
         alignedPath,
         aggregationDescriptorList,
         scanOrder,
-        valueFilter,
+        pushDownPredicate,
         groupByTimeParameter,
         null);
   }
@@ -257,7 +257,7 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
 
   @Override
   public PartialPath getPartitionPath() {
-    return alignedPath;
+    return getAlignedPath();
   }
 
   @Override

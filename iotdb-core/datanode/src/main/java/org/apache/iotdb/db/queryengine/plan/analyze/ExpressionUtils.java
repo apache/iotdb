@@ -360,7 +360,7 @@ public class ExpressionUtils {
     }
   }
 
-  public static Filter convertExpressionToTimeFilter(Expression expression) {
-    return expression.accept(new ConvertExpressionToTimeFilterVisitor(), null);
+  public static Filter convertPredicateToTimeFilter(Expression predicate) {
+    return predicate.accept(new ConvertExpressionToTimeFilterVisitor(), null);
   }
 }

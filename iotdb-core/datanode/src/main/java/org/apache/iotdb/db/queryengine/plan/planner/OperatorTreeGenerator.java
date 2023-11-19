@@ -133,13 +133,13 @@ import org.apache.iotdb.db.queryengine.execution.operator.window.WindowParameter
 import org.apache.iotdb.db.queryengine.execution.operator.window.WindowType;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer;
+import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ColumnTransformerVisitor;
-import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ConvertExpressionToFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
@@ -290,10 +290,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     Expression pushDownPredicate = node.getPushDownPredicate();
     if (pushDownPredicate != null) {
       pushDownFilter =
-          node.getPushDownPredicate()
-              .accept(new ConvertExpressionToFilterVisitor(), context.getTypeProvider());
+          PredicateUtils.convertPredicateToFilter(pushDownPredicate, context.getTypeProvider());
     }
-    seriesScanOptionsBuilder.withQueryFilter(pushDownFilter);
+    seriesScanOptionsBuilder.withPushDownFilter(pushDownFilter);
 
     PartialPath seriesPath = node.getSeriesPath();
     seriesScanOptionsBuilder.withAllSensors(
@@ -335,10 +334,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     Expression pushDownPredicate = node.getPushDownPredicate();
     if (pushDownPredicate != null) {
       pushDownFilter =
-          node.getPushDownPredicate()
-              .accept(new ConvertExpressionToFilterVisitor(), context.getTypeProvider());
+          PredicateUtils.convertPredicateToFilter(pushDownPredicate, context.getTypeProvider());
     }
-    seriesScanOptionsBuilder.withQueryFilter(pushDownFilter);
+    seriesScanOptionsBuilder.withPushDownFilter(pushDownFilter);
 
     seriesScanOptionsBuilder.withLimit(node.getLimit());
     seriesScanOptionsBuilder.withOffset(node.getOffset());
@@ -404,10 +402,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     Expression pushDownPredicate = node.getPushDownPredicate();
     if (pushDownPredicate != null) {
       pushDownFilter =
-          node.getPushDownPredicate()
-              .accept(new ConvertExpressionToFilterVisitor(), context.getTypeProvider());
+          PredicateUtils.convertPredicateToFilter(pushDownPredicate, context.getTypeProvider());
     }
-    scanOptionsBuilder.withQueryFilter(pushDownFilter);
+    scanOptionsBuilder.withPushDownFilter(pushDownFilter);
 
     scanOptionsBuilder.withAllSensors(
         context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()));
@@ -501,10 +498,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     Expression pushDownPredicate = node.getPushDownPredicate();
     if (pushDownPredicate != null) {
       pushDownFilter =
-          node.getPushDownPredicate()
-              .accept(new ConvertExpressionToFilterVisitor(), context.getTypeProvider());
+          PredicateUtils.convertPredicateToFilter(pushDownPredicate, context.getTypeProvider());
     }
-    scanOptionsBuilder.withQueryFilter(pushDownFilter);
+    scanOptionsBuilder.withPushDownFilter(pushDownFilter);
 
     scanOptionsBuilder.withAllSensors(new HashSet<>(seriesPath.getMeasurementList()));
 

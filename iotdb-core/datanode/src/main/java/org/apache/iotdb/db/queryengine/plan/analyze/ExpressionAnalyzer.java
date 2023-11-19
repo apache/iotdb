@@ -470,21 +470,21 @@ public class ExpressionAnalyzer {
   }
 
   /**
-   * Extract global time filter from query filter.
+   * Extract global time predicate from query predicate.
    *
-   * @param predicate raw query filter
+   * @param predicate raw query predicate
    * @param canRewrite determined by the father of current expression
    * @param isFirstOr whether it is the first LogicOrExpression encountered
-   * @return global time filter
+   * @return global time predicate
    */
-  public static Pair<Expression, Boolean> extractGlobalTimeFilter(
+  public static Pair<Expression, Boolean> extractGlobalTimePredicate(
       Expression predicate, boolean canRewrite, boolean isFirstOr) {
     if (predicate.getExpressionType().equals(ExpressionType.LOGIC_AND)) {
       Pair<Expression, Boolean> leftResultPair =
-          extractGlobalTimeFilter(
+          extractGlobalTimePredicate(
               ((BinaryExpression) predicate).getLeftExpression(), canRewrite, isFirstOr);
       Pair<Expression, Boolean> rightResultPair =
-          extractGlobalTimeFilter(
+          extractGlobalTimePredicate(
               ((BinaryExpression) predicate).getRightExpression(), canRewrite, isFirstOr);
 
       // rewrite predicate to avoid duplicate calculation on time filter
@@ -513,9 +513,10 @@ public class ExpressionAnalyzer {
       return new Pair<>(null, true);
     } else if (predicate.getExpressionType().equals(ExpressionType.LOGIC_OR)) {
       Pair<Expression, Boolean> leftResultPair =
-          extractGlobalTimeFilter(((BinaryExpression) predicate).getLeftExpression(), false, false);
+          extractGlobalTimePredicate(
+              ((BinaryExpression) predicate).getLeftExpression(), false, false);
       Pair<Expression, Boolean> rightResultPair =
-          extractGlobalTimeFilter(
+          extractGlobalTimePredicate(
               ((BinaryExpression) predicate).getRightExpression(), false, false);
 
       if (leftResultPair.left != null && rightResultPair.left != null) {
@@ -532,7 +533,7 @@ public class ExpressionAnalyzer {
       return new Pair<>(null, true);
     } else if (predicate.getExpressionType().equals(ExpressionType.LOGIC_NOT)) {
       Pair<Expression, Boolean> childResultPair =
-          extractGlobalTimeFilter(
+          extractGlobalTimePredicate(
               ((UnaryExpression) predicate).getExpression(), canRewrite, isFirstOr);
       if (childResultPair.left != null) {
         return new Pair<>(ExpressionFactory.not(childResultPair.left), childResultPair.right);

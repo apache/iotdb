@@ -84,7 +84,7 @@ public class AnalyzeTest {
       Analysis actualAnalysis = analyzeSQL(sql);
 
       Analysis expectedAnalysis = new Analysis();
-      expectedAnalysis.setGlobalTimeFilter(gt(time(), longValue(100)));
+      expectedAnalysis.setGlobalTimePredicate(gt(time(), longValue(100)));
       expectedAnalysis.setSelectExpressions(
           Sets.newHashSet(
               new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
@@ -125,7 +125,7 @@ public class AnalyzeTest {
               + "where time >= 100 and s2 >= 10 and s2 != 6;";
       actualAnalysis = analyzeSQL(sql);
       expectedAnalysis = new Analysis();
-      expectedAnalysis.setGlobalTimeFilter(gt(time(), longValue(100)));
+      expectedAnalysis.setGlobalTimePredicate(gt(time(), longValue(100)));
       expectedAnalysis.setSelectExpressions(
           Sets.newHashSet(
               new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
@@ -195,7 +195,7 @@ public class AnalyzeTest {
       Analysis actualAnalysis = analyzeSQL(sql);
 
       Analysis expectedAnalysis = new Analysis();
-      expectedAnalysis.setGlobalTimeFilter(
+      expectedAnalysis.setGlobalTimePredicate(
           and(gt(time(), longValue(100)), groupByTime(10, 10, 0, 1000)));
       expectedAnalysis.setSelectExpressions(
           Sets.newHashSet(
@@ -283,7 +283,7 @@ public class AnalyzeTest {
       Analysis actualAnalysis = analyzeSQL(sql);
 
       Analysis expectedAnalysis = new Analysis();
-      expectedAnalysis.setGlobalTimeFilter(gt(time(), longValue(100)));
+      expectedAnalysis.setGlobalTimePredicate(gt(time(), longValue(100)));
       expectedAnalysis.setSelectExpressions(
           Sets.newHashSet(
               new TimeSeriesOperand(
@@ -384,7 +384,7 @@ public class AnalyzeTest {
       Analysis actualAnalysis = analyzeSQL(sql);
 
       Analysis expectedAnalysis = new Analysis();
-      expectedAnalysis.setGlobalTimeFilter(
+      expectedAnalysis.setGlobalTimePredicate(
           and(gt(time(), longValue(100)), groupByTime(10, 10, 0, 1000)));
       expectedAnalysis.setSelectExpressions(
           Sets.newHashSet(
@@ -1115,7 +1115,8 @@ public class AnalyzeTest {
     assertEquals(expectedAnalysis.getSelectExpressions(), actualAnalysis.getSelectExpressions());
     assertEquals(expectedAnalysis.getHavingExpression(), actualAnalysis.getHavingExpression());
     assertEquals(expectedAnalysis.getRespDatasetHeader(), actualAnalysis.getRespDatasetHeader());
-    assertEquals(expectedAnalysis.getGlobalTimeFilter(), actualAnalysis.getGlobalTimeFilter());
+    assertEquals(
+        expectedAnalysis.getGlobalTimePredicate(), actualAnalysis.getGlobalTimePredicate());
   }
 
   private void orderByAnalysisEqualTest(Analysis actualAnalysis, Analysis expectedAnalysis) {

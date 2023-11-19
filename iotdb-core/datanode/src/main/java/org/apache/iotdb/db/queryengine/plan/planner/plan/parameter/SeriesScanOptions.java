@@ -35,7 +35,7 @@ public class SeriesScanOptions {
 
   private Filter globalTimeFilter;
 
-  private Filter queryFilter;
+  private Filter pushDownFilter;
 
   private final long limit;
   private final long offset;
@@ -44,12 +44,12 @@ public class SeriesScanOptions {
 
   public SeriesScanOptions(
       Filter globalTimeFilter,
-      Filter queryFilter,
+      Filter pushDownFilter,
       long limit,
       long offset,
       Set<String> allSensors) {
     this.globalTimeFilter = globalTimeFilter;
-    this.queryFilter = queryFilter;
+    this.pushDownFilter = pushDownFilter;
     this.limit = limit;
     this.offset = offset;
     this.allSensors = allSensors;
@@ -69,8 +69,8 @@ public class SeriesScanOptions {
     return globalTimeFilter;
   }
 
-  public Filter getQueryFilter() {
-    return queryFilter;
+  public Filter getPushDownFilter() {
+    return pushDownFilter;
   }
 
   public long getLimit() {
@@ -91,8 +91,8 @@ public class SeriesScanOptions {
 
   public void setTTL(long dataTTL) {
     this.globalTimeFilter = updateFilterUsingTTL(globalTimeFilter, dataTTL);
-    if (this.queryFilter != null) {
-      this.queryFilter = updateFilterUsingTTL(queryFilter, dataTTL);
+    if (this.pushDownFilter != null) {
+      this.pushDownFilter = updateFilterUsingTTL(pushDownFilter, dataTTL);
     }
   }
 
@@ -112,7 +112,7 @@ public class SeriesScanOptions {
   public static class Builder {
 
     private Filter globalTimeFilter = null;
-    private Filter queryFilter = null;
+    private Filter pushDownFilter = null;
     private long limit = 0L;
     private long offset = 0L;
 
@@ -123,8 +123,8 @@ public class SeriesScanOptions {
       return this;
     }
 
-    public Builder withQueryFilter(Filter queryFilter) {
-      this.queryFilter = queryFilter;
+    public Builder withPushDownFilter(Filter pushDownFilter) {
+      this.pushDownFilter = pushDownFilter;
       return this;
     }
 
@@ -143,7 +143,7 @@ public class SeriesScanOptions {
     }
 
     public SeriesScanOptions build() {
-      return new SeriesScanOptions(globalTimeFilter, queryFilter, limit, offset, allSensors);
+      return new SeriesScanOptions(globalTimeFilter, pushDownFilter, limit, offset, allSensors);
     }
   }
 }

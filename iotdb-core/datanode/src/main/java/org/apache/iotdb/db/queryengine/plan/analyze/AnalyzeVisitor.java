@@ -330,7 +330,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analyzeOutput(analysis, queryStatement, outputExpressions);
 
       // fetch partition information
-      analyzeDataPartition(analysis, queryStatement, schemaTree, context);
+      analyzeDataPartition(analysis, queryStatement, schemaTree, context.getGlobalTimeFilter());
 
     } catch (StatementAnalyzeException e) {
       throw new StatementAnalyzeException(
@@ -385,17 +385,17 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private void analyzeGlobalTimeFilter(Analysis analysis, QueryStatement queryStatement) {
-    Expression globalTimeFilter = null;
+    Expression globalTimePredicate = null;
     boolean hasValueFilter = false;
     if (queryStatement.getWhereCondition() != null) {
       WhereCondition whereCondition = queryStatement.getWhereCondition();
       Expression predicate = whereCondition.getPredicate();
 
       Pair<Expression, Boolean> resultPair =
-          ExpressionAnalyzer.extractGlobalTimeFilter(predicate, true, true);
-      globalTimeFilter = resultPair.left;
-      if (globalTimeFilter != null) {
-        globalTimeFilter = ExpressionAnalyzer.predicateRemoveNot(globalTimeFilter);
+          ExpressionAnalyzer.extractGlobalTimePredicate(predicate, true, true);
+      globalTimePredicate = resultPair.left;
+      if (globalTimePredicate != null) {
+        globalTimePredicate = ExpressionAnalyzer.predicateRemoveNot(globalTimePredicate);
       }
       hasValueFilter = resultPair.right;
 
@@ -410,7 +410,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         whereCondition.setPredicate(predicate);
       }
     }
-    analysis.setGlobalTimeFilter(globalTimeFilter);
+    analysis.setGlobalTimePredicate(globalTimePredicate);
     analysis.setHasValueFilter(hasValueFilter);
   }
 
@@ -433,7 +433,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getLastQueryHeader());
 
     // fetch partition information
-    analyzeDataPartition(analysis, queryStatement, schemaTree, context);
+    analyzeDataPartition(analysis, queryStatement, schemaTree, context.getGlobalTimeFilter());
 
     return analysis;
   }
@@ -1765,14 +1765,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(groupByTimeComponent);
     analysis.setGroupByTimeParameter(groupByTimeParameter);
 
-    Expression globalTimeFilter = analysis.getGlobalTimeFilter();
-    Expression groupByExpression = ExpressionFactory.groupByTime(groupByTimeParameter);
-    if (globalTimeFilter == null) {
-      globalTimeFilter = groupByExpression;
+    Expression globalTimePredicate = analysis.getGlobalTimePredicate();
+    Expression groupByTimePredicate = ExpressionFactory.groupByTime(groupByTimeParameter);
+    if (globalTimePredicate == null) {
+      globalTimePredicate = groupByTimePredicate;
     } else {
-      globalTimeFilter = ExpressionFactory.and(globalTimeFilter, groupByExpression);
+      globalTimePredicate = ExpressionFactory.and(globalTimePredicate, groupByTimePredicate);
     }
-    analysis.setGlobalTimeFilter(globalTimeFilter);
+    analysis.setGlobalTimePredicate(globalTimePredicate);
   }
 
   private void analyzeFill(Analysis analysis, QueryStatement queryStatement) {
@@ -1789,7 +1789,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Analysis analysis,
       QueryStatement queryStatement,
       ISchemaTree schemaTree,
-      MPPQueryContext context) {
+      Filter globalTimeFilter) {
     Set<String> deviceSet = new HashSet<>();
     if (queryStatement.isAlignByDevice()) {
       deviceSet =
@@ -1802,7 +1802,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
     }
     DataPartition dataPartition =
-        fetchDataPartitionByDevices(deviceSet, schemaTree, context.getGlobalTimeFilter());
+        fetchDataPartitionByDevices(deviceSet, schemaTree, globalTimeFilter);
     analysis.setDataPartitionInfo(dataPartition);
   }
 
@@ -2668,7 +2668,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           Collections.singletonList(
               new TimeSeriesOperand(showTimeSeriesStatement.getPathPattern())),
           schemaTree);
-      analyzeDataPartition(analysis, new QueryStatement(), schemaTree, context);
+      analyzeDataPartition(
+          analysis, new QueryStatement(), schemaTree, context.getGlobalTimeFilter());
     }
 
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowTimeSeriesHeader());

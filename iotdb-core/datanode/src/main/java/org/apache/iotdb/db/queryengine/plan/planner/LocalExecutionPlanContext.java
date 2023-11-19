@@ -293,6 +293,6 @@ public class LocalExecutionPlanContext {
   }
 
   public Filter getGlobalTimeFilter() {
-    return driverContext.getFragmentInstanceContext().getTimeFilter();
+    return driverContext.getFragmentInstanceContext().getGlobalTimeFilter();
   }
 }

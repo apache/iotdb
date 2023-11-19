@@ -93,11 +93,11 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
       MeasurementPath seriesPath,
       List<AggregationDescriptor> aggregationDescriptorList,
       Ordering scanOrder,
-      @Nullable Expression valueFilter,
+      @Nullable Expression pushDownPredicate,
       @Nullable GroupByTimeParameter groupByTimeParameter,
       TRegionReplicaSet dataRegionReplicaSet) {
     this(id, seriesPath, aggregationDescriptorList, scanOrder, groupByTimeParameter);
-    this.pushDownPredicate = valueFilter;
+    this.pushDownPredicate = pushDownPredicate;
     this.regionReplicaSet = dataRegionReplicaSet;
   }
 
@@ -221,9 +221,9 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
     }
     Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     byte isNull = ReadWriteIOUtils.readByte(byteBuffer);
-    Expression valueFilter = null;
+    Expression pushDownPredicate = null;
     if (isNull == 1) {
-      valueFilter = Expression.deserialize(byteBuffer);
+      pushDownPredicate = Expression.deserialize(byteBuffer);
     }
     isNull = ReadWriteIOUtils.readByte(byteBuffer);
     GroupByTimeParameter groupByTimeParameter = null;
@@ -236,7 +236,7 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
         partialPath,
         aggregationDescriptorList,
         scanOrder,
-        valueFilter,
+        pushDownPredicate,
         groupByTimeParameter,
         null);
   }
@@ -264,7 +264,7 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
 
   @Override
   public PartialPath getPartitionPath() {
-    return seriesPath;
+    return getSeriesPath();
   }
 
   @Override

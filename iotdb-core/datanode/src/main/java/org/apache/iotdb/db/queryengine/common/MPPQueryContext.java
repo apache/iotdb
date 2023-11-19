@@ -157,7 +157,7 @@ public class MPPQueryContext {
 
   public void generateGlobalTimeFilter(Analysis analysis) {
     this.globalTimeFilter =
-        ExpressionUtils.convertExpressionToTimeFilter(analysis.getGlobalTimeFilter());
+        ExpressionUtils.convertPredicateToTimeFilter(analysis.getGlobalTimePredicate());
   }
 
   public Filter getGlobalTimeFilter() {

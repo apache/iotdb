@@ -25,8 +25,8 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
-import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ConvertExpressionToTimeFilterVisitor;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
@@ -58,7 +58,7 @@ public class FragmentInstanceContext extends QueryContext {
   private final FragmentInstanceStateMachine stateMachine;
 
   private IDataRegionForQuery dataRegion;
-  private Filter timeFilter;
+  private Filter globalTimeFilter;
   private List<PartialPath> sourcePaths;
   // Shared by all scan operators in this fragment instance to avoid memory problem
   private QueryDataSource sharedQueryDataSource;
@@ -111,11 +111,16 @@ public class FragmentInstanceContext extends QueryContext {
       FragmentInstanceStateMachine stateMachine,
       SessionInfo sessionInfo,
       IDataRegionForQuery dataRegion,
-      Expression timeFilter,
+      Expression globalTimePredicate,
       Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap) {
     FragmentInstanceContext instanceContext =
         new FragmentInstanceContext(
-            id, stateMachine, sessionInfo, dataRegion, timeFilter, dataNodeQueryContextMap);
+            id,
+            stateMachine,
+            sessionInfo,
+            dataRegion,
+            globalTimePredicate,
+            dataNodeQueryContextMap);
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
@@ -141,14 +146,14 @@ public class FragmentInstanceContext extends QueryContext {
       FragmentInstanceStateMachine stateMachine,
       SessionInfo sessionInfo,
       IDataRegionForQuery dataRegion,
-      Expression timeFilter,
+      Expression globalTimePredicate,
       Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap) {
     this.id = id;
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
     this.sessionInfo = sessionInfo;
     this.dataRegion = dataRegion;
-    this.timeFilter = timeFilter.accept(new ConvertExpressionToTimeFilterVisitor(), null);
+    this.globalTimeFilter = ExpressionUtils.convertPredicateToTimeFilter(globalTimePredicate);
     this.dataNodeQueryContextMap = dataNodeQueryContextMap;
     this.dataNodeQueryContext = dataNodeQueryContextMap.get(id.getQueryId());
   }
@@ -168,13 +173,13 @@ public class FragmentInstanceContext extends QueryContext {
       FragmentInstanceStateMachine stateMachine,
       SessionInfo sessionInfo,
       IDataRegionForQuery dataRegion,
-      Filter timeFilter) {
+      Filter globalTimeFilter) {
     this.id = id;
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
     this.sessionInfo = sessionInfo;
     this.dataRegion = dataRegion;
-    this.timeFilter = timeFilter;
+    this.globalTimeFilter = globalTimeFilter;
     this.dataNodeQueryContextMap = null;
   }
 
@@ -299,8 +304,8 @@ public class FragmentInstanceContext extends QueryContext {
     return Optional.ofNullable(stateMachine.getFailureCauses().peek());
   }
 
-  public Filter getTimeFilter() {
-    return timeFilter;
+  public Filter getGlobalTimeFilter() {
+    return globalTimeFilter;
   }
 
   public IDataRegionForQuery getDataRegion() {
@@ -331,7 +336,7 @@ public class FragmentInstanceContext extends QueryContext {
               // filtered according to timeIndex
               selectedDeviceIdSet.size() == 1 ? selectedDeviceIdSet.iterator().next() : null,
               this,
-              timeFilter);
+              globalTimeFilter);
 
       // used files should be added before mergeLock is unlocked, or they may be deleted by
       // running merge
@@ -439,7 +444,7 @@ public class FragmentInstanceContext extends QueryContext {
     }
 
     dataRegion = null;
-    timeFilter = null;
+    globalTimeFilter = null;
     sourcePaths = null;
     sharedQueryDataSource = null;
     releaseDataNodeQueryContext();

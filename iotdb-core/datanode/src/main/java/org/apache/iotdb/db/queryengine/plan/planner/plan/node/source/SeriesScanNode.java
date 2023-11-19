@@ -232,14 +232,15 @@ public class SeriesScanNode extends SeriesSourceNode {
     MeasurementPath partialPath = (MeasurementPath) PathDeserializeUtil.deserialize(byteBuffer);
     Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     byte isNull = ReadWriteIOUtils.readByte(byteBuffer);
-    Expression valueFilter = null;
+    Expression pushDownPredicate = null;
     if (isNull == 1) {
-      valueFilter = Expression.deserialize(byteBuffer);
+      pushDownPredicate = Expression.deserialize(byteBuffer);
     }
     long limit = ReadWriteIOUtils.readLong(byteBuffer);
     long offset = ReadWriteIOUtils.readLong(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new SeriesScanNode(planNodeId, partialPath, scanOrder, valueFilter, limit, offset, null);
+    return new SeriesScanNode(
+        planNodeId, partialPath, scanOrder, pushDownPredicate, limit, offset, null);
   }
 
   @Override

@@ -296,7 +296,7 @@ public class SeriesScanUtil {
   @SuppressWarnings("squid:S3740")
   protected void filterFirstChunkMetadata() throws IOException {
     if (firstChunkMetadata != null && !isChunkOverlapped() && !firstChunkMetadata.isModified()) {
-      Filter queryFilter = scanOptions.getQueryFilter();
+      Filter queryFilter = scanOptions.getPushDownFilter();
       Statistics statistics = firstChunkMetadata.getStatistics();
       if (queryFilter == null || queryFilter.allSatisfy(statistics)) {
         long rowCount = statistics.getCount();
@@ -646,7 +646,7 @@ public class SeriesScanUtil {
       return res;
     } else {
       // next page is not overlapped, push down value filter & limit offset
-      Filter queryFilter = scanOptions.getQueryFilter();
+      Filter queryFilter = scanOptions.getPushDownFilter();
       if (queryFilter != null) {
         firstPageReader.setFilter(queryFilter);
       }
@@ -791,7 +791,7 @@ public class SeriesScanUtil {
               }
             }
 
-            Filter queryFilter = scanOptions.getQueryFilter();
+            Filter queryFilter = scanOptions.getPushDownFilter();
             if (queryFilter != null
                 && !queryFilter.satisfy(timeValuePair.getTimestamp(), valueForFilter)) {
               continue;
@@ -1051,7 +1051,7 @@ public class SeriesScanUtil {
     if (firstTimeSeriesMetadata != null
         && !isFileOverlapped()
         && !firstTimeSeriesMetadata.isModified()) {
-      Filter queryFilter = scanOptions.getQueryFilter();
+      Filter queryFilter = scanOptions.getPushDownFilter();
       Statistics statistics = firstTimeSeriesMetadata.getStatistics();
       if (queryFilter == null || queryFilter.allSatisfy(statistics)) {
         long rowCount = statistics.getCount();

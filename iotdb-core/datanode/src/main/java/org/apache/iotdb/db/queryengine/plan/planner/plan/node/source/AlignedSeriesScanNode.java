@@ -248,16 +248,23 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
     AlignedPath alignedPath = (AlignedPath) PathDeserializeUtil.deserialize(byteBuffer);
     Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     byte isNull = ReadWriteIOUtils.readByte(byteBuffer);
-    Expression valueFilter = null;
+    Expression pushDownPredicate = null;
     if (isNull == 1) {
-      valueFilter = Expression.deserialize(byteBuffer);
+      pushDownPredicate = Expression.deserialize(byteBuffer);
     }
     long limit = ReadWriteIOUtils.readLong(byteBuffer);
     long offset = ReadWriteIOUtils.readLong(byteBuffer);
     boolean queryAllSensors = ReadWriteIOUtils.readBool(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new AlignedSeriesScanNode(
-        planNodeId, alignedPath, scanOrder, valueFilter, limit, offset, null, queryAllSensors);
+        planNodeId,
+        alignedPath,
+        scanOrder,
+        pushDownPredicate,
+        limit,
+        offset,
+        null,
+        queryAllSensors);
   }
 
   @Override
@@ -304,6 +311,6 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
 
   @Override
   public PartialPath getPartitionPath() {
-    return alignedPath;
+    return getAlignedPath();
   }
 }

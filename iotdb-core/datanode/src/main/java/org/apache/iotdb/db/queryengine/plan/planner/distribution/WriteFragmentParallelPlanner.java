@@ -49,7 +49,7 @@ public class WriteFragmentParallelPlanner implements IFragmentParallelPlaner {
   @Override
   public List<FragmentInstance> parallelPlan() {
     PlanFragment fragment = subPlan.getPlanFragment();
-    Expression timeFilter = analysis.getGlobalTimeFilter();
+    Expression globalTimePredicate = analysis.getGlobalTimePredicate();
     PlanNode node = fragment.getPlanNodeTree();
     if (!(node instanceof WritePlanNode)) {
       throw new IllegalArgumentException("PlanNode should be IWritePlanNode in WRITE operation");
@@ -61,7 +61,7 @@ public class WriteFragmentParallelPlanner implements IFragmentParallelPlaner {
           new FragmentInstance(
               new PlanFragment(fragment.getId(), split),
               fragment.getId().genFragmentInstanceId(),
-              timeFilter,
+              globalTimePredicate,
               queryContext.getQueryType(),
               queryContext.getTimeOut(),
               queryContext.getSession());

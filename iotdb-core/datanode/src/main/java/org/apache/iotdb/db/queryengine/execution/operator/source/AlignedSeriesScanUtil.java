@@ -156,7 +156,7 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
     if (firstTimeSeriesMetadata != null
         && !isFileOverlapped()
         && !firstTimeSeriesMetadata.isModified()) {
-      Filter queryFilter = scanOptions.getQueryFilter();
+      Filter queryFilter = scanOptions.getPushDownFilter();
       Statistics statistics = firstTimeSeriesMetadata.getStatistics();
       if (queryFilter == null || queryFilter.allSatisfy(statistics)) {
         skipOffsetByTimeSeriesMetadata();
@@ -204,7 +204,7 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
   @Override
   protected void filterFirstChunkMetadata() throws IOException {
     if (firstChunkMetadata != null && !isChunkOverlapped() && !firstChunkMetadata.isModified()) {
-      Filter queryFilter = scanOptions.getQueryFilter();
+      Filter queryFilter = scanOptions.getPushDownFilter();
       Statistics statistics = firstChunkMetadata.getStatistics();
       if (queryFilter == null || queryFilter.allSatisfy(statistics)) {
         skipOffsetByChunkMetadata();

@@ -135,12 +135,12 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
   }
 
   private void produceFragmentInstance(PlanFragment fragment) {
-    Expression timeFilter = analysis.getGlobalTimeFilter();
+    Expression globalTimePredicate = analysis.getGlobalTimePredicate();
     FragmentInstance fragmentInstance =
         new FragmentInstance(
             fragment,
             fragment.getId().genFragmentInstanceId(),
-            timeFilter,
+            globalTimePredicate,
             queryContext.getQueryType(),
             queryContext.getTimeOut(),
             queryContext.getSession(),
