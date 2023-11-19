@@ -108,7 +108,7 @@ public class ConfigNodeConfig {
 
   /** RegionGroup allocate policy. */
   private RegionBalancer.RegionGroupAllocatePolicy regionGroupAllocatePolicy =
-      RegionBalancer.RegionGroupAllocatePolicy.GREEDY;
+      RegionBalancer.RegionGroupAllocatePolicy.GREEDY_COPY_SET;
 
   /** Max concurrent client number. */
   private int rpcMaxConcurrentClientNum = 65535;
