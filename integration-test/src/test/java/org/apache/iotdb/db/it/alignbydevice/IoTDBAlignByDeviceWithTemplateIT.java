@@ -373,7 +373,6 @@ public class IoTDBAlignByDeviceWithTemplateIT {
 
   @Test
   public void aliasTest() {
-    // 1. non align by device query
     String[] expectedHeader = new String[] {"Time,Device,aa,bb,s3,s2"};
     String[] retArray =
         new String[] {
@@ -407,6 +406,36 @@ public class IoTDBAlignByDeviceWithTemplateIT {
         "SELECT s1 as aa, s2 as bb, s3, s2 FROM root.sg2.** ALIGN BY DEVICE;",
         expectedHeader,
         retArray);
+
+    expectedHeader = new String[] {"Time,Device,a,b"};
+    retArray =
+        new String[] {
+          "1,root.sg1.d1,1.1,1.1,",
+          "2,root.sg1.d1,2.2,2.2,",
+          "1,root.sg1.d2,11.1,11.1,",
+          "2,root.sg1.d2,22.2,22.2,",
+          "1,root.sg1.d3,111.1,111.1,",
+          "4,root.sg1.d3,444.4,444.4,",
+          "1,root.sg1.d4,1111.1,1111.1,",
+          "5,root.sg1.d4,5555.5,5555.5,",
+        };
+    resultSetEqualTest(
+        "SELECT s1 as a, s1 as b  FROM root.sg1.** ALIGN BY DEVICE;", expectedHeader, retArray);
+
+    expectedHeader = new String[] {"Time,Device,a,b"};
+    retArray =
+        new String[] {
+          "1,root.sg2.d1,1.1,1.1,",
+          "2,root.sg2.d1,2.2,2.2,",
+          "1,root.sg2.d2,11.1,11.1,",
+          "2,root.sg2.d2,22.2,22.2,",
+          "1,root.sg2.d3,111.1,111.1,",
+          "4,root.sg2.d3,444.4,444.4,",
+          "1,root.sg2.d4,1111.1,1111.1,",
+          "5,root.sg2.d4,5555.5,5555.5,",
+        };
+    resultSetEqualTest(
+        "SELECT s1 as a, s1 as b  FROM root.sg2.** ALIGN BY DEVICE;", expectedHeader, retArray);
   }
 
   @Test
