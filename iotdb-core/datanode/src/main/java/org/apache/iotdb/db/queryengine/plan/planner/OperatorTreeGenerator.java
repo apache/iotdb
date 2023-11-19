@@ -2136,10 +2136,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     } else if (timeValuePair.getValue() == null) { // there is no data for this time series
       return null;
     } else if (!LastQueryUtil.satisfyFilter(
-        updateFilterUsingTTL(context.getLastQueryTimeFilter(), context.getDataRegionTTL()),
+        updateFilterUsingTTL(context.getGlobalTimeFilter(), context.getDataRegionTTL()),
         timeValuePair)) { // cached last value is not satisfied
 
-      if (!isFilterGtOrGe(context.getLastQueryTimeFilter())) {
+      if (!isFilterGtOrGe(context.getGlobalTimeFilter())) {
         // time filter is not > or >=, we still need to read from disk
         return createUpdateLastCacheOperator(node, context, node.getSeriesPath());
       } else { // otherwise, we just ignore it and return null
@@ -2256,7 +2256,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
     scanOptionsBuilder.withAllSensors(
         context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()));
-    scanOptionsBuilder.withGlobalTimeFilter(context.getLastQueryTimeFilter());
+    scanOptionsBuilder.withGlobalTimeFilter(context.getGlobalTimeFilter());
 
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         new SeriesAggregationScanOperator(
@@ -2287,12 +2287,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     ITimeRangeIterator timeRangeIterator = initTimeRangeIterator(null, false, false);
     long maxReturnSize = calculateMaxAggregationResultSizeForLastQuery(aggregators);
 
-    Filter timeFilter = context.getLastQueryTimeFilter();
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
     scanOptionsBuilder.withAllSensors(new HashSet<>(unCachedPath.getMeasurementList()));
-    if (timeFilter != null) {
-      scanOptionsBuilder.withGlobalTimeFilter(timeFilter);
-    }
+    scanOptionsBuilder.withGlobalTimeFilter(context.getGlobalTimeFilter());
 
     OperatorContext operatorContext =
         context
@@ -2348,7 +2345,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       } else if (timeValuePair.getValue() == null) {
         // there is no data for this time series, just ignore
       } else if (!LastQueryUtil.satisfyFilter(
-          updateFilterUsingTTL(context.getLastQueryTimeFilter(), context.getDataRegionTTL()),
+          updateFilterUsingTTL(context.getGlobalTimeFilter(), context.getDataRegionTTL()),
           timeValuePair)) { // cached last value is not satisfied
 
         if (!isFilterGtOrGe(context.getGlobalTimeFilter())) {
@@ -2377,7 +2374,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitLastQuery(LastQueryNode node, LocalExecutionPlanContext context) {
     Filter globalTimeFilter = context.getGlobalTimeFilter();
-    context.setLastQueryTimeFilter(globalTimeFilter);
     context.setNeedUpdateLastCache(LastQueryUtil.needUpdateCache(globalTimeFilter));
     context.setNeedUpdateNullEntry(LastQueryUtil.needUpdateNullEntry(globalTimeFilter));
 
