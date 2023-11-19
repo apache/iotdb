@@ -326,6 +326,10 @@ public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverT
     return LEVEL_THRESHOLD_SECONDS.length - 1;
   }
 
+  public static int getNumOfPriorityLevels() {
+    return LEVEL_THRESHOLD_SECONDS.length;
+  }
+
   // endregion
 
   @TestOnly

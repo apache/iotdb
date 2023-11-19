@@ -35,6 +35,11 @@ public class SchemaTreeVisitorFactory {
     return new SchemaTreeDeviceVisitor(root, pathPattern, isPrefixMatch);
   }
 
+  public static SchemaTreeDeviceUsingTemplateVisitor createSchemaTreeDeviceUsingTemplateVisitor(
+      SchemaNode root, PartialPath pathPattern, int templateId) {
+    return new SchemaTreeDeviceUsingTemplateVisitor(root, pathPattern, templateId);
+  }
+
   public static SchemaTreeVisitorWithLimitOffsetWrapper<MeasurementPath>
       createSchemaTreeMeasurementVisitor(
           SchemaNode root,
