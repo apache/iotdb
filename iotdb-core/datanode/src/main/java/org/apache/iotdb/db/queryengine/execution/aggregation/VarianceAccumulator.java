@@ -211,7 +211,7 @@ public class VarianceAccumulator implements Accumulator {
         continue;
       }
       if (!columns[1].isNull(i)) {
-        long value = columns[1].getInt(i);
+        long value = columns[1].getLong(i);
         count++;
         double delta = value - mean;
         mean += delta / count;

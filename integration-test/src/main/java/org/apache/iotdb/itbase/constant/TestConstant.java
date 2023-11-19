@@ -136,11 +136,11 @@ public class TestConstant {
   }
 
   public static String varPop(String path) {
-    return String.format("varPop(%s)", path);
+    return String.format("var_pop(%s)", path);
   }
 
   public static String varSamp(String path) {
-    return String.format("varSamp(%s)", path);
+    return String.format("var_samp(%s)", path);
   }
 
   public static String recordToInsert(TSRecord record) {
