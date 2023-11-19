@@ -217,15 +217,16 @@ public class QueryExecution implements IQueryExecution {
       return;
     }
 
-    long sTime = System.currentTimeMillis();
+    long lastRecordTime = System.currentTimeMillis();
     // check timeout for query first
     checkTimeOutForQuery();
     doLogicalPlan();
-    logger.warn("--- [doLogicalPlan] : {}ms", System.currentTimeMillis() - sTime);
-    sTime = System.currentTimeMillis();
+    logger.warn("--- [doLogicalPlan] : {}ms", System.currentTimeMillis() - lastRecordTime);
+    lastRecordTime = System.currentTimeMillis();
 
     doDistributedPlan();
-    logger.warn("--- [doDistributedPlan] : {}ms", System.currentTimeMillis() - sTime);
+    logger.warn("--- [doDistributedPlan] : {}ms", System.currentTimeMillis() - lastRecordTime);
+    lastRecordTime = System.currentTimeMillis();
 
     // update timeout after finishing plan stage
     context.setTimeOut(
@@ -237,6 +238,7 @@ public class QueryExecution implements IQueryExecution {
     }
     PERFORMANCE_OVERVIEW_METRICS.recordPlanCost(System.nanoTime() - startTime);
     schedule();
+    logger.warn("--- [schedule] : {}ms", System.currentTimeMillis() - lastRecordTime);
 
     // set partial insert error message
     // When some columns in one insert failed, other column will continue executing insertion.

@@ -362,7 +362,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             seriesPath,
             node.getScanOrder(),
             seriesScanOptionsBuilder.build(),
-            node.isQueryAllSensors());
+            node.isQueryAllSensors(),
+            context.getTypeProvider().getDataTypes());
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(seriesScanOperator);
     ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);

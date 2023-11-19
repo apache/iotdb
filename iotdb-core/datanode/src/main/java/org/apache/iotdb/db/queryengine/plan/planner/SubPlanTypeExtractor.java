@@ -48,6 +48,7 @@ public class SubPlanTypeExtractor {
     TypeProvider typeProvider = new TypeProvider();
     typeProvider.setSchemaList(allTypes.getSchemaList());
     typeProvider.setMeasurementList(allTypes.getMeasurementList());
+    typeProvider.setDataTypes(allTypes.getDataTypes());
     root.accept(new Visitor(typeProvider, allTypes), null);
     return typeProvider;
   }

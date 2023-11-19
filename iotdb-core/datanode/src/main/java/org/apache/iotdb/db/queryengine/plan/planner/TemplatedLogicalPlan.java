@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -35,6 +36,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.searchSourceExpressions;
 import static org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanVisitor.pushDownLimitToScanNode;
@@ -55,9 +57,6 @@ public class TemplatedLogicalPlan {
 
     measurementList = new ArrayList<>(analysis.getMeasurementList());
     schemaList = new ArrayList<>(analysis.getMeasurementSchemaList());
-
-    context.getTypeProvider().setMeasurementList(measurementList);
-    context.getTypeProvider().setSchemaList(schemaList);
   }
 
   public PlanNode visitQuery() {
@@ -176,6 +175,17 @@ public class TemplatedLogicalPlan {
               queryStatement.isGroupByTime(),
               queryStatement.getSelectComponent().getZoneId(),
               queryStatement.getResultTimeOrder());
+    }
+
+    if (context.getTypeProvider().getMeasurementList() == null) {
+      context.getTypeProvider().setMeasurementList(mergedMeasurementList);
+      context.getTypeProvider().setSchemaList(mergedSchemaList);
+      context
+          .getTypeProvider()
+          .setDataTypes(
+              mergedSchemaList.stream()
+                  .map(IMeasurementSchema::getType)
+                  .collect(Collectors.toList()));
     }
 
     return planBuilder.getRoot();

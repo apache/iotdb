@@ -35,9 +35,12 @@ public class TypeProvider {
 
   private final Map<String, TSDataType> typeMap;
 
-  // measurementList, schemaList is not null only when all devices in one template
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // All Queries Devices Set In One Template
+  /////////////////////////////////////////////////////////////////////////////////////////////////
   private List<String> measurementList;
   private List<IMeasurementSchema> schemaList;
+  private List<TSDataType> dataTypes;
 
   public TypeProvider() {
     this.typeMap = new HashMap<>();
@@ -103,6 +106,10 @@ public class TypeProvider {
     return Objects.hash(typeMap);
   }
 
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // All Queries Devices Set In One Template
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
   public void setMeasurementList(List<String> measurementList) {
     this.measurementList = measurementList;
   }
@@ -117,5 +124,13 @@ public class TypeProvider {
 
   public List<IMeasurementSchema> getSchemaList() {
     return this.schemaList;
+  }
+
+  public void setDataTypes(List<TSDataType> dataTypes) {
+    this.dataTypes = dataTypes;
+  }
+
+  public List<TSDataType> getDataTypes() {
+    return this.dataTypes;
   }
 }

@@ -30,11 +30,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-
-import com.google.common.base.Function;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -51,8 +48,6 @@ public class TemplatedLogicalPlanBuilder extends LogicalPlanBuilder {
   private final List<String> measurementList;
   private final List<IMeasurementSchema> schemaList;
 
-  private final Function<Expression, TSDataType> getPreAnalyzedType;
-
   public TemplatedLogicalPlanBuilder(
       Analysis analysis,
       MPPQueryContext context,
@@ -63,7 +58,6 @@ public class TemplatedLogicalPlanBuilder extends LogicalPlanBuilder {
     this.context = context;
     this.measurementList = measurementList;
     this.schemaList = schemaList;
-    this.getPreAnalyzedType = analysis::getType;
   }
 
   public TemplatedLogicalPlanBuilder planRawDataSource(
