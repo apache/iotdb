@@ -22,13 +22,13 @@ package org.apache.iotdb.tsfile.read.filter.operator;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.filter.basic.ColumnCompareFilter;
-import org.apache.iotdb.tsfile.read.filter.basic.ColumnPatternMatchFilter;
-import org.apache.iotdb.tsfile.read.filter.basic.ColumnRangeFilter;
-import org.apache.iotdb.tsfile.read.filter.basic.ColumnSetFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.IDisableStatisticsValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.IValueFilter;
+import org.apache.iotdb.tsfile.read.filter.operator.base.ColumnCompareFilter;
+import org.apache.iotdb.tsfile.read.filter.operator.base.ColumnPatternMatchFilter;
+import org.apache.iotdb.tsfile.read.filter.operator.base.ColumnRangeFilter;
+import org.apache.iotdb.tsfile.read.filter.operator.base.ColumnSetFilter;
 
 import java.util.Locale;
 import java.util.Objects;

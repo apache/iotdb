@@ -17,37 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.read.filter.basic;
+package org.apache.iotdb.tsfile.read.filter.operator.base;
 
-import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 
-/* base class for And, Or */
-public abstract class BinaryLogicalFilter implements Filter {
+/* base class for In, NotIn */
+public abstract class ColumnSetFilter<T extends Comparable<T>> {
 
-  protected final Filter left;
-  protected final Filter right;
+  protected final Set<T> candidates;
 
-  private final String toString;
-
-  protected BinaryLogicalFilter(Filter left, Filter right) {
-    this.left = Objects.requireNonNull(left, "left cannot be null");
-    this.right = Objects.requireNonNull(right, "right cannot be null");
-
-    String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
-    this.toString = name + "(" + left + ", " + right + ")";
-  }
-
-  public Filter getLeft() {
-    return left;
-  }
-
-  public Filter getRight() {
-    return right;
-  }
-
-  @Override
-  public String toString() {
-    return toString;
+  protected ColumnSetFilter(Set<T> candidates) {
+    this.candidates = Objects.requireNonNull(candidates, "candidates cannot be null");
   }
 }

@@ -17,17 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.read.filter.basic;
+package org.apache.iotdb.tsfile.read.filter.operator.base;
 
 import java.util.Objects;
-import java.util.Set;
+import java.util.regex.Pattern;
 
-/* base class for In, NotIn */
-public abstract class ColumnSetFilter<T extends Comparable<T>> implements Filter {
+/* base class for Regex, NotRegex */
+public abstract class ColumnPatternMatchFilter {
 
-  protected final Set<T> candidates;
+  protected final Pattern pattern;
 
-  protected ColumnSetFilter(Set<T> candidates) {
-    this.candidates = Objects.requireNonNull(candidates, "candidates cannot be null");
+  protected ColumnPatternMatchFilter(Pattern pattern) {
+    this.pattern = Objects.requireNonNull(pattern, "pattern cannot be null");
   }
 }

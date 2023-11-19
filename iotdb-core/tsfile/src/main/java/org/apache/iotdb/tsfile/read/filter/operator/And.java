@@ -21,13 +21,13 @@ package org.apache.iotdb.tsfile.read.filter.operator;
 
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.filter.basic.BinaryLogicalFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.operator.base.BinaryLogicalFilter;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class And extends BinaryLogicalFilter {
+public class And extends BinaryLogicalFilter implements Filter {
 
   public And(Filter left, Filter right) {
     super(left, right);

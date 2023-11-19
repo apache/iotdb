@@ -17,16 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.read.filter.basic;
+package org.apache.iotdb.tsfile.read.filter.operator.base;
 
-/* base class for Eq, NotEq, Lt, Gt, LtEq, GtEq */
-public abstract class ColumnCompareFilter<T extends Comparable<T>> implements Filter {
+import java.util.Objects;
 
-  protected final T constant;
+/* base class for BetweenAnd, NotBetweenAnd */
+public abstract class ColumnRangeFilter<T extends Comparable<T>> {
 
-  protected ColumnCompareFilter(T constant) {
-    // ValueEq and ValueNotEq allow constant to be null, TimeEq, TimeEq, Lt, Gt, LtEq, GtEq however
-    // do not, so they guard against null in their own constructors.
-    this.constant = constant;
+  protected final T min;
+  protected final T max;
+
+  protected ColumnRangeFilter(T min, T max) {
+    this.min = Objects.requireNonNull(min, "min cannot be null");
+    this.max = Objects.requireNonNull(max, "max cannot be null");
   }
 }

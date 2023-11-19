@@ -17,17 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.read.filter.basic;
+package org.apache.iotdb.tsfile.read.filter.operator.base;
 
-import java.util.Objects;
-import java.util.regex.Pattern;
+/* base class for Eq, NotEq, Lt, Gt, LtEq, GtEq */
+public abstract class ColumnCompareFilter<T extends Comparable<T>> {
 
-/* base class for Regex, NotRegex */
-public abstract class ColumnPatternMatchFilter implements Filter {
+  protected final T constant;
 
-  protected final Pattern pattern;
-
-  protected ColumnPatternMatchFilter(Pattern pattern) {
-    this.pattern = Objects.requireNonNull(pattern, "pattern cannot be null");
+  protected ColumnCompareFilter(T constant) {
+    // ValueEq and ValueNotEq allow constant to be null, TimeEq, TimeEq, Lt, Gt, LtEq, GtEq however
+    // do not, so they guard against null in their own constructors.
+    this.constant = constant;
   }
 }

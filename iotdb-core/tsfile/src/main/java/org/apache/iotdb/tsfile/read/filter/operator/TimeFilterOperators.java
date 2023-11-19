@@ -20,12 +20,12 @@
 package org.apache.iotdb.tsfile.read.filter.operator;
 
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.filter.basic.ColumnCompareFilter;
-import org.apache.iotdb.tsfile.read.filter.basic.ColumnRangeFilter;
-import org.apache.iotdb.tsfile.read.filter.basic.ColumnSetFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.IDisableStatisticsTimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.ITimeFilter;
+import org.apache.iotdb.tsfile.read.filter.operator.base.ColumnCompareFilter;
+import org.apache.iotdb.tsfile.read.filter.operator.base.ColumnRangeFilter;
+import org.apache.iotdb.tsfile.read.filter.operator.base.ColumnSetFilter;
 
 import java.util.ArrayList;
 import java.util.Arrays;
