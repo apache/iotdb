@@ -33,7 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/** Allocate Region through Greedy and CopySet Algorithm */
+/** Allocate Region through Greedy and CopySet Algorithm. */
 public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator {
 
   int replicationFactor;
@@ -77,7 +77,7 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
   }
 
   /**
-   * Prepare some statistics before dfs
+   * Prepare some statistics before dfs.
    *
    * @param replicationFactor replication factor in the cluster
    * @param availableDataNodeMap currently available DataNodes, ensure size() >= replicationFactor
@@ -132,7 +132,7 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
   /**
    * Dfs each possible allocation plan, and keep those with the highest priority: First Key: the sum
    * of Regions at the DataNodes in the allocation result is minimal, Second Key: the sum of
-   * intersected Regions with other allocated RegionGroups is minimal
+   * intersected Regions with other allocated RegionGroups is minimal.
    *
    * @param lastIndex last decided index in dataNodeIds
    * @param currentReplica current replica index
