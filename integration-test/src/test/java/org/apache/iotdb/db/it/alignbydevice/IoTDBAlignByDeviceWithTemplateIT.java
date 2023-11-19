@@ -92,7 +92,36 @@ public class IoTDBAlignByDeviceWithTemplateIT {
         };
     resultSetEqualTest("SELECT * FROM root.sg2.** ALIGN BY DEVICE;", expectedHeader, retArray);
 
+    expectedHeader = new String[] {"Time,Device,s3,s1,s2,s1"};
+    retArray =
+        new String[] {
+          "1,root.sg1.d1,1,1.1,false,1.1,",
+          "2,root.sg1.d1,2,2.2,false,2.2,",
+          "1,root.sg1.d2,11,11.1,false,11.1,",
+          "2,root.sg1.d2,22,22.2,false,22.2,",
+          "1,root.sg1.d3,null,111.1,true,111.1,",
+          "4,root.sg1.d3,44,444.4,true,444.4,",
+          "1,root.sg1.d4,1111,1111.1,true,1111.1,",
+          "5,root.sg1.d4,5555,5555.5,false,5555.5,",
+        };
+    resultSetEqualTest("SELECT *, s1 FROM root.sg1.** ALIGN BY DEVICE;", expectedHeader, retArray);
+
+    expectedHeader = new String[] {"Time,Device,s3,s1,s2,s1"};
+    retArray =
+        new String[] {
+          "1,root.sg2.d1,1,1.1,false,1.1,",
+          "2,root.sg2.d1,2,2.2,false,2.2,",
+          "1,root.sg2.d2,11,11.1,false,11.1,",
+          "2,root.sg2.d2,22,22.2,false,22.2,",
+          "1,root.sg2.d3,null,111.1,true,111.1,",
+          "4,root.sg2.d3,44,444.4,true,444.4,",
+          "1,root.sg2.d4,1111,1111.1,true,1111.1,",
+          "5,root.sg2.d4,5555,5555.5,false,5555.5,",
+        };
+    resultSetEqualTest("SELECT *, s1 FROM root.sg2.** ALIGN BY DEVICE;", expectedHeader, retArray);
+
     // 2. limit + offset
+    expectedHeader = new String[] {"Time,Device,s3,s1,s2"};
     retArray =
         new String[] {
           "2,root.sg1.d1,2,2.2,false,", "1,root.sg1.d2,11,11.1,false,",
@@ -338,6 +367,46 @@ public class IoTDBAlignByDeviceWithTemplateIT {
           "1,1111,1111.1,true,", "5,5555,5555.5,false,",
         };
     resultSetEqualTest("SELECT * FROM root.sg2.** slimit 3;", expectedHeader, retArray);
+
+    // 2. fill
+  }
+
+  @Test
+  public void aliasTest() {
+    // 1. non align by device query
+    String[] expectedHeader = new String[] {"Time,Device,aa,bb,s3,s2"};
+    String[] retArray =
+        new String[] {
+          "1,root.sg1.d1,1.1,false,1,false,",
+          "2,root.sg1.d1,2.2,false,2,false,",
+          "1,root.sg1.d2,11.1,false,11,false,",
+          "2,root.sg1.d2,22.2,false,22,false,",
+          "1,root.sg1.d3,111.1,true,null,true,",
+          "4,root.sg1.d3,444.4,true,44,true,",
+          "1,root.sg1.d4,1111.1,true,1111,true,",
+          "5,root.sg1.d4,5555.5,false,5555,false,",
+        };
+    resultSetEqualTest(
+        "SELECT s1 as aa, s2 as bb, s3, s2 FROM root.sg1.** ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+
+    expectedHeader = new String[] {"Time,Device,aa,bb,s3,s2"};
+    retArray =
+        new String[] {
+          "1,root.sg2.d1,1.1,false,1,false,",
+          "2,root.sg2.d1,2.2,false,2,false,",
+          "1,root.sg2.d2,11.1,false,11,false,",
+          "2,root.sg2.d2,22.2,false,22,false,",
+          "1,root.sg2.d3,111.1,true,null,true,",
+          "4,root.sg2.d3,444.4,true,44,true,",
+          "1,root.sg2.d4,1111.1,true,1111,true,",
+          "5,root.sg2.d4,5555.5,false,5555,false,",
+        };
+    resultSetEqualTest(
+        "SELECT s1 as aa, s2 as bb, s3, s2 FROM root.sg2.** ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
   }
 
   @Test

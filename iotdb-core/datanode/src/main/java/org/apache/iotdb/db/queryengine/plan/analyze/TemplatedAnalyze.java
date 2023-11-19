@@ -81,7 +81,7 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.no
  */
 public class TemplatedAnalyze {
 
-  private static final Logger logger = LoggerFactory.getLogger(TemplatedAnalyze.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TemplatedAnalyze.class);
 
   /** examine that if all devices are in same template */
   public static boolean canBuildPlanUseTemplate(
@@ -93,6 +93,7 @@ public class TemplatedAnalyze {
         || queryStatement.isGroupBy()
         || queryStatement.isGroupByTime()
         || queryStatement.isSelectInto()
+        || queryStatement.hasFill()
         || schemaTree.hasNormalTimeSeries()) {
       return false;
     }
@@ -103,24 +104,31 @@ public class TemplatedAnalyze {
     }
 
     Template template = templates.get(0);
-    List<String> measurementList = new ArrayList<>();
-    List<IMeasurementSchema> measurementSchemaList = new ArrayList<>();
+
+    List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
     if (template != null) {
       for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
         Expression expression = resultColumn.getExpression();
         if ("*".equals(expression.getOutputSymbol())) {
           for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
-            measurementList.add(entry.getKey());
-            measurementSchemaList.add(entry.getValue());
+            String measurementName = entry.getKey();
+            IMeasurementSchema measurementSchema = entry.getValue();
+            TimeSeriesOperand measurementPath =
+                new TimeSeriesOperand(
+                    new MeasurementPath(new String[] {measurementName}, measurementSchema));
+            outputExpressions.add(new Pair<>(measurementPath, null));
           }
           if (queryStatement.getSelectComponent().getResultColumns().size() == 1) {
             analysis.setTemplateWildCardQuery();
           }
         } else if (expression instanceof TimeSeriesOperand) {
-          String measurement = ((TimeSeriesOperand) expression).getPath().getMeasurement();
-          if (template.getSchemaMap().containsKey(measurement)) {
-            measurementList.add(measurement);
-            measurementSchemaList.add(template.getSchema(measurement));
+          String measurementName = ((TimeSeriesOperand) expression).getPath().getMeasurement();
+          if (template.getSchemaMap().containsKey(measurementName)) {
+            IMeasurementSchema measurementSchema = template.getSchemaMap().get(measurementName);
+            TimeSeriesOperand measurementPath =
+                new TimeSeriesOperand(
+                    new MeasurementPath(new String[] {measurementName}, measurementSchema));
+            outputExpressions.add(new Pair<>(measurementPath, resultColumn.getAlias()));
           }
         } else {
           return false;
@@ -128,43 +136,21 @@ public class TemplatedAnalyze {
       }
     }
 
-    analysis.setDeviceTemplate(template);
-    analysis.setMeasurementList(measurementList);
-    analysis.setMeasurementSchemaList(measurementSchemaList);
-
-    visitQuery(analysis, queryStatement, partitionFetcher, schemaTree);
-
-    return true;
-  }
-
-  /** add multi-threading impl */
-  public static void visitQuery(
-      Analysis analysis,
-      QueryStatement queryStatement,
-      IPartitionFetcher partitionFetcher,
-      ISchemaTree schemaTree) {
-
     long startTime = System.currentTimeMillis();
-
-    List<Pair<Expression, String>> outputExpressions;
+    analyzeSelect(queryStatement, analysis, outputExpressions, template);
+    LOGGER.warn("--- [analyzeSelect] : {}ms", System.currentTimeMillis() - startTime);
 
     List<PartialPath> deviceList = analyzeFrom(queryStatement, schemaTree);
-    logger.warn("--- [analyzeFrom] : {}ms", System.currentTimeMillis() - startTime);
+    LOGGER.warn("--- [analyzeFrom] : {}ms", System.currentTimeMillis() - startTime);
     startTime = System.currentTimeMillis();
 
     analyzeDeviceToWhere(analysis, queryStatement, schemaTree, deviceList);
-    logger.warn("--- [analyzeDeviceToWhere] : {}ms", System.currentTimeMillis() - startTime);
-    startTime = System.currentTimeMillis();
-
-    // deviceToSelectExpression, deviceToSourceTransformExpression and deviceToOutputExpression is
-    // all no need.
-    outputExpressions = analyzeSelect(analysis, queryStatement);
-    logger.warn("--- [analyzeSelect] : {}ms", System.currentTimeMillis() - startTime);
+    LOGGER.warn("--- [analyzeDeviceToWhere] : {}ms", System.currentTimeMillis() - startTime);
     startTime = System.currentTimeMillis();
 
     if (deviceList.isEmpty()) {
       analysis.setFinishQueryAfterAnalyze(true);
-      return;
+      return false;
     }
     analysis.setDeviceList(deviceList);
 
@@ -172,7 +158,7 @@ public class TemplatedAnalyze {
     analyzeDeviceToSourceTransform(analysis);
     analyzeDeviceToSource(analysis);
 
-    logger.warn(
+    LOGGER.warn(
         "--- [analyzeDeviceToSource + analyzeDeviceToSourceTransform] : {}ms",
         System.currentTimeMillis() - startTime);
     startTime = System.currentTimeMillis();
@@ -180,19 +166,47 @@ public class TemplatedAnalyze {
     analyzeDeviceViewOutput(analysis, queryStatement);
     analyzeDeviceViewInput(analysis);
 
-    logger.warn("--- [analyzeDeviceView] : {}ms", System.currentTimeMillis() - startTime);
+    LOGGER.warn("--- [analyzeDeviceView] : {}ms", System.currentTimeMillis() - startTime);
     startTime = System.currentTimeMillis();
 
     analyzeFill(analysis, queryStatement);
 
     // generate result set header according to output expressions
     analyzeOutput(analysis, queryStatement, outputExpressions);
-    logger.warn("--- [analyzeOutput] : {}ms", System.currentTimeMillis() - startTime);
+    LOGGER.warn("--- [analyzeOutput] : {}ms", System.currentTimeMillis() - startTime);
     startTime = System.currentTimeMillis();
 
     // fetch partition information
     analyzeDataPartition(analysis, schemaTree, partitionFetcher);
-    logger.warn("--- [analyzeDataPartition] : {}ms", System.currentTimeMillis() - startTime);
+    LOGGER.warn("--- [analyzeDataPartition] : {}ms", System.currentTimeMillis() - startTime);
+    return true;
+  }
+
+  private static void analyzeSelect(
+      QueryStatement queryStatement,
+      Analysis analysis,
+      List<Pair<Expression, String>> outputExpressions,
+      Template template) {
+    List<String> measurementList = new ArrayList<>();
+    List<IMeasurementSchema> measurementSchemaList = new ArrayList<>();
+    LinkedHashSet<Expression> selectExpressions = new LinkedHashSet<>();
+    selectExpressions.add(DEVICE_EXPRESSION);
+    if (queryStatement.isOutputEndTime()) {
+      selectExpressions.add(END_TIME_EXPRESSION);
+    }
+    for (Pair<Expression, String> pair : outputExpressions) {
+      if (!selectExpressions.contains(pair.left)) {
+        selectExpressions.add(pair.left);
+        String measurementName = ((TimeSeriesOperand) pair.getLeft()).getPath().getMeasurement();
+        measurementList.add(measurementName);
+        measurementSchemaList.add(template.getSchema(measurementName));
+      }
+    }
+    analysis.setOutputExpressions(outputExpressions);
+    analysis.setSelectExpressions(selectExpressions);
+    analysis.setDeviceTemplate(template);
+    analysis.setMeasurementList(measurementList);
+    analysis.setMeasurementSchemaList(measurementSchemaList);
   }
 
   private static List<PartialPath> analyzeFrom(
@@ -235,7 +249,7 @@ public class TemplatedAnalyze {
         whereExpression =
             normalizeExpression(analyzeWhereSplitByDevice(queryStatement, devicePath, schemaTree));
       } catch (MeasurementNotExistException e) {
-        logger.warn(
+        LOGGER.warn(
             "Meets MeasurementNotExistException in analyzeDeviceToWhere "
                 + "when executing align by device, error msg: {}",
             e.getMessage());
@@ -260,31 +274,6 @@ public class TemplatedAnalyze {
             queryStatement.getWhereCondition().getPredicate(), devicePath, schemaTree, true);
     return ExpressionUtils.constructQueryFilter(
         conJunctions.stream().distinct().collect(Collectors.toList()));
-  }
-
-  static List<Pair<Expression, String>> analyzeSelect(
-      Analysis analysis, QueryStatement queryStatement) {
-
-    List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
-
-    for (int i = 0; i < analysis.getMeasurementList().size(); i++) {
-      String measurementName = analysis.getMeasurementList().get(i);
-      IMeasurementSchema measurementSchema = analysis.getMeasurementSchemaList().get(i);
-      TimeSeriesOperand measurementPath =
-          new TimeSeriesOperand(
-              new MeasurementPath(new String[] {measurementName}, measurementSchema));
-      outputExpressions.add(new Pair<>(measurementPath, null));
-    }
-
-    Set<Expression> selectExpressions = new LinkedHashSet<>();
-    selectExpressions.add(DEVICE_EXPRESSION);
-    if (queryStatement.isOutputEndTime()) {
-      selectExpressions.add(END_TIME_EXPRESSION);
-    }
-    outputExpressions.forEach(pair -> selectExpressions.add(pair.getLeft()));
-    analysis.setSelectExpressions(selectExpressions);
-
-    return outputExpressions;
   }
 
   private static void analyzeDeviceToOrderBy(
