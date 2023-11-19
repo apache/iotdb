@@ -29,8 +29,8 @@ import org.apache.iotdb.db.queryengine.plan.expression.binary.LessThanExpression
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicAndExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicOrExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.NonEqualExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.other.GroupByTimeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.ternary.BetweenExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.unary.FixedIntervalMultiRangeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.IsNullExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression;
@@ -51,8 +51,8 @@ public class ReversePredicateVisitor extends PredicateVisitor<Expression, Void> 
   }
 
   @Override
-  public Expression visitFixedIntervalMultiRangeExpression(
-      FixedIntervalMultiRangeExpression fixedIntervalMultiRangeExpression, Void context) {
+  public Expression visitGroupByTimeExpression(
+      GroupByTimeExpression groupByTimeExpression, Void context) {
     throw new UnsupportedOperationException("GROUP BY TIME doesn't support reverse predicate");
   }
 

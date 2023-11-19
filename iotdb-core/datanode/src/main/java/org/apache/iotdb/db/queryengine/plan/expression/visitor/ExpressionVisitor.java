@@ -45,9 +45,9 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.other.CaseWhenThenExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.other.GroupByTimeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.ternary.TernaryExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.unary.FixedIntervalMultiRangeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.IsNullExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression;
@@ -77,11 +77,6 @@ public abstract class ExpressionVisitor<R, C> {
 
   public R visitInExpression(InExpression inExpression, C context) {
     return visitUnaryExpression(inExpression, context);
-  }
-
-  public R visitFixedIntervalMultiRangeExpression(
-      FixedIntervalMultiRangeExpression fixedIntervalMultiRangeExpression, C context) {
-    return visitUnaryExpression(fixedIntervalMultiRangeExpression, context);
   }
 
   public R visitIsNullExpression(IsNullExpression isNullExpression, C context) {
@@ -213,5 +208,9 @@ public abstract class ExpressionVisitor<R, C> {
 
   public R visitWhenThenExpression(WhenThenExpression whenThenExpression, C context) {
     return visitBinaryExpression(whenThenExpression, context);
+  }
+
+  public R visitGroupByTimeExpression(GroupByTimeExpression groupByTimeExpression, C context) {
+    throw new UnsupportedOperationException();
   }
 }

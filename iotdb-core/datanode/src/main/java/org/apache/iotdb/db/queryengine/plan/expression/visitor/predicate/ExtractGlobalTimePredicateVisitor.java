@@ -28,8 +28,8 @@ import org.apache.iotdb.db.queryengine.plan.expression.binary.LessThanExpression
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicAndExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicOrExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.NonEqualExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.other.GroupByTimeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.ternary.BetweenExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.unary.FixedIntervalMultiRangeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.IsNullExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression;
@@ -46,8 +46,8 @@ public class ExtractGlobalTimePredicateVisitor
   }
 
   @Override
-  public Expression visitFixedIntervalMultiRangeExpression(
-      FixedIntervalMultiRangeExpression fixedIntervalMultiRangeExpression, Context context) {
+  public Expression visitGroupByTimeExpression(
+      GroupByTimeExpression groupByTimeExpression, Context context) {
     return null;
   }
 

@@ -33,8 +33,8 @@ import org.apache.iotdb.db.queryengine.plan.expression.binary.NonEqualExpression
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
+import org.apache.iotdb.db.queryengine.plan.expression.other.GroupByTimeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.ternary.BetweenExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.unary.FixedIntervalMultiRangeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.IsNullExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression;
@@ -95,8 +95,8 @@ public class SchemaCompatibilityValidator
   }
 
   @Override
-  public Void visitFixedIntervalMultiRangeExpression(
-      FixedIntervalMultiRangeExpression fixedIntervalMultiRangeExpression, Context context) {
+  public Void visitGroupByTimeExpression(
+      GroupByTimeExpression groupByTimeExpression, Context context) {
     // needn't check
     return null;
   }

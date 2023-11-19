@@ -30,8 +30,8 @@ import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicAndExpression
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicOrExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.NonEqualExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.queryengine.plan.expression.other.GroupByTimeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.ternary.BetweenExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.unary.FixedIntervalMultiRangeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.IsNullExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression;
@@ -224,12 +224,12 @@ public class ConvertExpressionToTimeFilterVisitor extends PredicateVisitor<Filte
   }
 
   @Override
-  public Filter visitFixedIntervalMultiRangeExpression(
-      FixedIntervalMultiRangeExpression fixedIntervalMultiRangeExpression, Void context) {
-    long startTime = fixedIntervalMultiRangeExpression.getStartTime();
-    long endTime = fixedIntervalMultiRangeExpression.getEndTime();
-    TimeDuration interval = fixedIntervalMultiRangeExpression.getInterval();
-    TimeDuration slidingStep = fixedIntervalMultiRangeExpression.getSlidingStep();
+  public Filter visitGroupByTimeExpression(
+      GroupByTimeExpression groupByTimeExpression, Void context) {
+    long startTime = groupByTimeExpression.getStartTime();
+    long endTime = groupByTimeExpression.getEndTime();
+    TimeDuration interval = groupByTimeExpression.getInterval();
+    TimeDuration slidingStep = groupByTimeExpression.getSlidingStep();
 
     if (slidingStep.compareTo(interval) <= 0) {
       // slidingStep <= interval, full time range

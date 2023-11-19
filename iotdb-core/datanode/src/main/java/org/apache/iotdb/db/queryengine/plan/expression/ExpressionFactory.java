@@ -34,7 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.unary.FixedIntervalMultiRangeExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.other.GroupByTimeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
@@ -154,21 +154,17 @@ public class ExpressionFactory {
     return new InExpression(Expression, false, values);
   }
 
-  public static FixedIntervalMultiRangeExpression groupByTime(GroupByTimeParameter parameter) {
+  public static GroupByTimeExpression groupByTime(GroupByTimeParameter parameter) {
     long startTime =
         parameter.isLeftCRightO() ? parameter.getStartTime() : parameter.getStartTime() + 1;
     long endTime = parameter.isLeftCRightO() ? parameter.getEndTime() : parameter.getEndTime() + 1;
-    return new FixedIntervalMultiRangeExpression(
-        time(), startTime, endTime, parameter.getInterval(), parameter.getSlidingStep());
+    return new GroupByTimeExpression(
+        startTime, endTime, parameter.getInterval(), parameter.getSlidingStep());
   }
 
-  public static FixedIntervalMultiRangeExpression groupByTime(
+  public static GroupByTimeExpression groupByTime(
       long startTime, long endTime, long interval, long slidingStep) {
-    return new FixedIntervalMultiRangeExpression(
-        time(),
-        startTime,
-        endTime,
-        new TimeDuration(0, interval),
-        new TimeDuration(0, slidingStep));
+    return new GroupByTimeExpression(
+        startTime, endTime, new TimeDuration(0, interval), new TimeDuration(0, slidingStep));
   }
 }

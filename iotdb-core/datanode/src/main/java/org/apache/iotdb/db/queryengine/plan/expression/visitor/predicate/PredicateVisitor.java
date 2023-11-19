@@ -28,8 +28,8 @@ import org.apache.iotdb.db.queryengine.plan.expression.binary.LessThanExpression
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicAndExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicOrExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.NonEqualExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.other.GroupByTimeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.ternary.BetweenExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.unary.FixedIntervalMultiRangeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.IsNullExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression;
@@ -52,36 +52,51 @@ public abstract class PredicateVisitor<R, C> extends ExpressionVisitor<R, C> {
         "Unsupported expression type: " + expression.getExpressionType());
   }
 
+  @Override
   public abstract R visitInExpression(InExpression inExpression, C context);
 
-  public abstract R visitFixedIntervalMultiRangeExpression(
-      FixedIntervalMultiRangeExpression fixedIntervalMultiRangeExpression, C context);
-
+  @Override
   public abstract R visitIsNullExpression(IsNullExpression isNullExpression, C context);
 
+  @Override
   public abstract R visitLikeExpression(LikeExpression likeExpression, C context);
 
+  @Override
   public abstract R visitRegularExpression(RegularExpression regularExpression, C context);
 
+  @Override
   public abstract R visitLogicNotExpression(LogicNotExpression logicNotExpression, C context);
 
+  @Override
   public abstract R visitLogicAndExpression(LogicAndExpression logicAndExpression, C context);
 
+  @Override
   public abstract R visitLogicOrExpression(LogicOrExpression logicOrExpression, C context);
 
+  @Override
   public abstract R visitEqualToExpression(EqualToExpression equalToExpression, C context);
 
+  @Override
   public abstract R visitNonEqualExpression(NonEqualExpression nonEqualExpression, C context);
 
+  @Override
   public abstract R visitGreaterThanExpression(
       GreaterThanExpression greaterThanExpression, C context);
 
+  @Override
   public abstract R visitGreaterEqualExpression(
       GreaterEqualExpression greaterEqualExpression, C context);
 
+  @Override
   public abstract R visitLessThanExpression(LessThanExpression lessThanExpression, C context);
 
+  @Override
   public abstract R visitLessEqualExpression(LessEqualExpression lessEqualExpression, C context);
 
+  @Override
   public abstract R visitBetweenExpression(BetweenExpression betweenExpression, C context);
+
+  @Override
+  public abstract R visitGroupByTimeExpression(
+      GroupByTimeExpression groupByTimeExpression, C context);
 }
