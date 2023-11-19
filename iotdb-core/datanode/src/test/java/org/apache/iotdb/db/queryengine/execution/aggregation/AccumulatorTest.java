@@ -27,10 +27,13 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.DoubleColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.LongColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -531,5 +534,273 @@ public class AccumulatorTest {
     finalResult = new DoubleColumnBuilder(null, 1);
     sumAccumulator.outputFinal(finalResult);
     Assert.assertEquals(100d, finalResult.build().getDouble(0), 0.001);
+  }
+
+  @Test
+  public void stddevAccumulatorTest() {
+    Accumulator varPopAccumulator =
+            AccumulatorFactory.createAccumulator(
+                    TAggregationType.STDDEV,
+                    TSDataType.DOUBLE,
+                    Collections.emptyList(),
+                    Collections.emptyMap(),
+                    true);
+    // check intermediate type and final type
+    Assert.assertEquals(TSDataType.TEXT, varPopAccumulator.getIntermediateType()[0]);
+    Assert.assertEquals(TSDataType.DOUBLE, varPopAccumulator.getFinalType());
+    // check returning null when no data
+    ColumnBuilder[] intermediateResult = new ColumnBuilder[1];
+    intermediateResult[0] = new BinaryColumnBuilder(null, 1);
+    varPopAccumulator.outputIntermediate(intermediateResult);
+    Assert.assertTrue(intermediateResult[0].build().isNull(0));
+    ColumnBuilder finalResult = new DoubleColumnBuilder(null, 1);
+    varPopAccumulator.outputFinal(finalResult);
+    Assert.assertTrue(finalResult.build().isNull(0));
+    // check returning null when no enough data
+    intermediateResult[0].writeBinary(new Binary(new byte[0]));
+    varPopAccumulator.outputIntermediate(intermediateResult);
+    Assert.assertTrue(intermediateResult[0].build().isNull(0));
+    finalResult = new DoubleColumnBuilder(null, 1);
+    varPopAccumulator.outputFinal(finalResult);
+    Assert.assertTrue(finalResult.build().isNull(0));
+
+    Column[] timeAndValueColumn = getTimeAndValueColumn(0);
+    varPopAccumulator.addInput(timeAndValueColumn, null, rawData.getPositionCount() - 1);
+    Assert.assertFalse(varPopAccumulator.hasFinalResult());
+    intermediateResult[0] = new BinaryColumnBuilder(null, 1);
+    varPopAccumulator.outputIntermediate(intermediateResult);
+    byte[] result = intermediateResult[0].build().getBinary(0).getValues();
+    Assert.assertEquals(100, BytesUtils.bytesToLong(result, Long.BYTES));
+    Assert.assertEquals(49.50, BytesUtils.bytesToDouble(result, Long.BYTES), 0.001);
+    Assert.assertEquals(83325, BytesUtils.bytesToDouble(result, (Long.BYTES + Double.BYTES)), 0.001);
+
+    varPopAccumulator.addIntermediate(
+            new Column[] {
+                    intermediateResult[0].build(),
+            });
+    finalResult = new DoubleColumnBuilder(null, 1);
+    varPopAccumulator.outputFinal(finalResult);
+    Assert.assertEquals(28.938, finalResult.build().getDouble(0), 0.001);
+  }
+
+  @Test
+  public void stddevPopAccumulatorTest() {
+    Accumulator varPopAccumulator =
+            AccumulatorFactory.createAccumulator(
+                    TAggregationType.STDDEV_POP,
+                    TSDataType.DOUBLE,
+                    Collections.emptyList(),
+                    Collections.emptyMap(),
+                    true);
+    // check intermediate type and final type
+    Assert.assertEquals(TSDataType.TEXT, varPopAccumulator.getIntermediateType()[0]);
+    Assert.assertEquals(TSDataType.DOUBLE, varPopAccumulator.getFinalType());
+    // check returning null when no data
+    ColumnBuilder[] intermediateResult = new ColumnBuilder[1];
+    intermediateResult[0] = new BinaryColumnBuilder(null, 1);
+    varPopAccumulator.outputIntermediate(intermediateResult);
+    Assert.assertTrue(intermediateResult[0].build().isNull(0));
+    ColumnBuilder finalResult = new DoubleColumnBuilder(null, 1);
+    varPopAccumulator.outputFinal(finalResult);
+    Assert.assertTrue(finalResult.build().isNull(0));
+
+    Column[] timeAndValueColumn = getTimeAndValueColumn(0);
+    varPopAccumulator.addInput(timeAndValueColumn, null, rawData.getPositionCount() - 1);
+    Assert.assertFalse(varPopAccumulator.hasFinalResult());
+    intermediateResult[0] = new BinaryColumnBuilder(null, 1);
+    varPopAccumulator.outputIntermediate(intermediateResult);
+    byte[] result = intermediateResult[0].build().getBinary(0).getValues();
+    Assert.assertEquals(100, BytesUtils.bytesToLong(result, Long.BYTES));
+    Assert.assertEquals(49.50, BytesUtils.bytesToDouble(result, Long.BYTES), 0.001);
+    Assert.assertEquals(83325, BytesUtils.bytesToDouble(result, (Long.BYTES + Double.BYTES)), 0.001);
+
+    varPopAccumulator.addIntermediate(
+            new Column[] {
+                    intermediateResult[0].build(),
+            });
+    finalResult = new DoubleColumnBuilder(null, 1);
+    varPopAccumulator.outputFinal(finalResult);
+    Assert.assertEquals(28.866, finalResult.build().getDouble(0), 0.001);
+  }
+
+  @Test
+  public void stddevSampAccumulatorTest() {
+    Accumulator varPopAccumulator =
+            AccumulatorFactory.createAccumulator(
+                    TAggregationType.STDDEV_SAMP,
+                    TSDataType.DOUBLE,
+                    Collections.emptyList(),
+                    Collections.emptyMap(),
+                    true);
+    // check intermediate type and final type
+    Assert.assertEquals(TSDataType.TEXT, varPopAccumulator.getIntermediateType()[0]);
+    Assert.assertEquals(TSDataType.DOUBLE, varPopAccumulator.getFinalType());
+    // check returning null when no data
+    ColumnBuilder[] intermediateResult = new ColumnBuilder[1];
+    intermediateResult[0] = new BinaryColumnBuilder(null, 1);
+    varPopAccumulator.outputIntermediate(intermediateResult);
+    Assert.assertTrue(intermediateResult[0].build().isNull(0));
+    ColumnBuilder finalResult = new DoubleColumnBuilder(null, 1);
+    varPopAccumulator.outputFinal(finalResult);
+    Assert.assertTrue(finalResult.build().isNull(0));
+    // check returning null when no enough data
+    intermediateResult[0].writeBinary(new Binary(new byte[0]));
+    varPopAccumulator.outputIntermediate(intermediateResult);
+    Assert.assertTrue(intermediateResult[0].build().isNull(0));
+    finalResult = new DoubleColumnBuilder(null, 1);
+    varPopAccumulator.outputFinal(finalResult);
+    Assert.assertTrue(finalResult.build().isNull(0));
+
+    Column[] timeAndValueColumn = getTimeAndValueColumn(0);
+    varPopAccumulator.addInput(timeAndValueColumn, null, rawData.getPositionCount() - 1);
+    Assert.assertFalse(varPopAccumulator.hasFinalResult());
+    intermediateResult[0] = new BinaryColumnBuilder(null, 1);
+    varPopAccumulator.outputIntermediate(intermediateResult);
+    byte[] result = intermediateResult[0].build().getBinary(0).getValues();
+    Assert.assertEquals(100, BytesUtils.bytesToLong(result, Long.BYTES));
+    Assert.assertEquals(49.50, BytesUtils.bytesToDouble(result, Long.BYTES), 0.001);
+    Assert.assertEquals(83325, BytesUtils.bytesToDouble(result, (Long.BYTES + Double.BYTES)), 0.001);
+
+    varPopAccumulator.addIntermediate(
+            new Column[] {
+                    intermediateResult[0].build(),
+            });
+    finalResult = new DoubleColumnBuilder(null, 1);
+    varPopAccumulator.outputFinal(finalResult);
+    Assert.assertEquals(28.938, finalResult.build().getDouble(0), 0.001);
+  }
+
+  @Test
+  public void varianceAccumulatorTest() {
+    Accumulator varPopAccumulator =
+            AccumulatorFactory.createAccumulator(
+                    TAggregationType.VARIANCE,
+                    TSDataType.DOUBLE,
+                    Collections.emptyList(),
+                    Collections.emptyMap(),
+                    true);
+    // check intermediate type and final type
+    Assert.assertEquals(TSDataType.TEXT, varPopAccumulator.getIntermediateType()[0]);
+    Assert.assertEquals(TSDataType.DOUBLE, varPopAccumulator.getFinalType());
+    // check returning null when no data
+    ColumnBuilder[] intermediateResult = new ColumnBuilder[1];
+    intermediateResult[0] = new BinaryColumnBuilder(null, 1);
+    varPopAccumulator.outputIntermediate(intermediateResult);
+    Assert.assertTrue(intermediateResult[0].build().isNull(0));
+    ColumnBuilder finalResult = new DoubleColumnBuilder(null, 1);
+    varPopAccumulator.outputFinal(finalResult);
+    Assert.assertTrue(finalResult.build().isNull(0));
+    // check returning null when no enough data
+    intermediateResult[0].writeBinary(new Binary(new byte[0]));
+    varPopAccumulator.outputIntermediate(intermediateResult);
+    Assert.assertTrue(intermediateResult[0].build().isNull(0));
+    finalResult = new DoubleColumnBuilder(null, 1);
+    varPopAccumulator.outputFinal(finalResult);
+    Assert.assertTrue(finalResult.build().isNull(0));
+
+    Column[] timeAndValueColumn = getTimeAndValueColumn(0);
+    varPopAccumulator.addInput(timeAndValueColumn, null, rawData.getPositionCount() - 1);
+    Assert.assertFalse(varPopAccumulator.hasFinalResult());
+    intermediateResult[0] = new BinaryColumnBuilder(null, 1);
+    varPopAccumulator.outputIntermediate(intermediateResult);
+    byte[] result = intermediateResult[0].build().getBinary(0).getValues();
+    Assert.assertEquals(100, BytesUtils.bytesToLong(result, Long.BYTES));
+    Assert.assertEquals(49.50, BytesUtils.bytesToDouble(result, Long.BYTES), 0.001);
+    Assert.assertEquals(83325, BytesUtils.bytesToDouble(result, (Long.BYTES + Double.BYTES)), 0.001);
+
+    varPopAccumulator.addIntermediate(
+            new Column[] {
+                    intermediateResult[0].build(),
+            });
+    finalResult = new DoubleColumnBuilder(null, 1);
+    varPopAccumulator.outputFinal(finalResult);
+    Assert.assertEquals(837.437, finalResult.build().getDouble(0), 0.001);
+  }
+
+  @Test
+  public void varPopAccumulatorTest() {
+    Accumulator varPopAccumulator =
+            AccumulatorFactory.createAccumulator(
+                    TAggregationType.VAR_POP,
+                    TSDataType.DOUBLE,
+                    Collections.emptyList(),
+                    Collections.emptyMap(),
+                    true);
+    // check intermediate type and final type
+    Assert.assertEquals(TSDataType.TEXT, varPopAccumulator.getIntermediateType()[0]);
+    Assert.assertEquals(TSDataType.DOUBLE, varPopAccumulator.getFinalType());
+    // check returning null when no data
+    ColumnBuilder[] intermediateResult = new ColumnBuilder[1];
+    intermediateResult[0] = new BinaryColumnBuilder(null, 1);
+    varPopAccumulator.outputIntermediate(intermediateResult);
+    Assert.assertTrue(intermediateResult[0].build().isNull(0));
+    ColumnBuilder finalResult = new DoubleColumnBuilder(null, 1);
+    varPopAccumulator.outputFinal(finalResult);
+    Assert.assertTrue(finalResult.build().isNull(0));
+
+    Column[] timeAndValueColumn = getTimeAndValueColumn(0);
+    varPopAccumulator.addInput(timeAndValueColumn, null, rawData.getPositionCount() - 1);
+    Assert.assertFalse(varPopAccumulator.hasFinalResult());
+    intermediateResult[0] = new BinaryColumnBuilder(null, 1);
+    varPopAccumulator.outputIntermediate(intermediateResult);
+    byte[] result = intermediateResult[0].build().getBinary(0).getValues();
+    Assert.assertEquals(100, BytesUtils.bytesToLong(result, Long.BYTES));
+    Assert.assertEquals(49.50, BytesUtils.bytesToDouble(result, Long.BYTES), 0.001);
+    Assert.assertEquals(83325, BytesUtils.bytesToDouble(result, (Long.BYTES + Double.BYTES)), 0.001);
+
+    varPopAccumulator.addIntermediate(
+            new Column[] {
+                    intermediateResult[0].build(),
+            });
+    finalResult = new DoubleColumnBuilder(null, 1);
+    varPopAccumulator.outputFinal(finalResult);
+    Assert.assertEquals(833.25, finalResult.build().getDouble(0), 0.001);
+  }
+
+  @Test
+  public void varSampAccumulatorTest() {
+    Accumulator varPopAccumulator =
+            AccumulatorFactory.createAccumulator(
+                    TAggregationType.VAR_SAMP,
+                    TSDataType.DOUBLE,
+                    Collections.emptyList(),
+                    Collections.emptyMap(),
+                    true);
+    // check intermediate type and final type
+    Assert.assertEquals(TSDataType.TEXT, varPopAccumulator.getIntermediateType()[0]);
+    Assert.assertEquals(TSDataType.DOUBLE, varPopAccumulator.getFinalType());
+    // check returning null when no data
+    ColumnBuilder[] intermediateResult = new ColumnBuilder[1];
+    intermediateResult[0] = new BinaryColumnBuilder(null, 1);
+    varPopAccumulator.outputIntermediate(intermediateResult);
+    Assert.assertTrue(intermediateResult[0].build().isNull(0));
+    ColumnBuilder finalResult = new DoubleColumnBuilder(null, 1);
+    varPopAccumulator.outputFinal(finalResult);
+    Assert.assertTrue(finalResult.build().isNull(0));
+    // check returning null when no enough data
+    intermediateResult[0].writeBinary(new Binary(new byte[0]));
+    varPopAccumulator.outputIntermediate(intermediateResult);
+    Assert.assertTrue(intermediateResult[0].build().isNull(0));
+    finalResult = new DoubleColumnBuilder(null, 1);
+    varPopAccumulator.outputFinal(finalResult);
+    Assert.assertTrue(finalResult.build().isNull(0));
+
+    Column[] timeAndValueColumn = getTimeAndValueColumn(0);
+    varPopAccumulator.addInput(timeAndValueColumn, null, rawData.getPositionCount() - 1);
+    Assert.assertFalse(varPopAccumulator.hasFinalResult());
+    intermediateResult[0] = new BinaryColumnBuilder(null, 1);
+    varPopAccumulator.outputIntermediate(intermediateResult);
+    byte[] result = intermediateResult[0].build().getBinary(0).getValues();
+    Assert.assertEquals(100, BytesUtils.bytesToLong(result, Long.BYTES));
+    Assert.assertEquals(49.50, BytesUtils.bytesToDouble(result, Long.BYTES), 0.001);
+    Assert.assertEquals(83325, BytesUtils.bytesToDouble(result, (Long.BYTES + Double.BYTES)), 0.001);
+
+    varPopAccumulator.addIntermediate(
+            new Column[] {
+                    intermediateResult[0].build(),
+            });
+    finalResult = new DoubleColumnBuilder(null, 1);
+    varPopAccumulator.outputFinal(finalResult);
+    Assert.assertEquals(837.437, finalResult.build().getDouble(0), 0.001);
   }
 }

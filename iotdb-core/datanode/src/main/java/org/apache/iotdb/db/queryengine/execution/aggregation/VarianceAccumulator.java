@@ -53,13 +53,13 @@ public class VarianceAccumulator implements Accumulator {
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in aggregation VAR_POP : %s", seriesDataType));
+            String.format("Unsupported data type in aggregation variance : %s", seriesDataType));
     }
   }
 
   @Override
   public void addIntermediate(Column[] partialResult) {
-    checkArgument(partialResult.length == 1, "partialResult of VarPop should be 1");
+    checkArgument(partialResult.length == 1, "partialResult of variance should be 1");
     if (partialResult[0].isNull(0)) {
       return;
     }
@@ -79,7 +79,7 @@ public class VarianceAccumulator implements Accumulator {
 
   @Override
   public void removeInput(Column[] input) {
-    checkArgument(input.length == 1, "Input of VarPop should be 1");
+    checkArgument(input.length == 1, "Input of variance should be 1");
     if (input[0].isNull(0)) {
       return;
     }
@@ -117,7 +117,7 @@ public class VarianceAccumulator implements Accumulator {
 
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
-    checkArgument(columnBuilders.length == 1, "partialResult of VarPop should be 1");
+    checkArgument(columnBuilders.length == 1, "partialResult of variance should be 1");
     if (count == 0) {
       columnBuilders[0].appendNull();
     } else {
