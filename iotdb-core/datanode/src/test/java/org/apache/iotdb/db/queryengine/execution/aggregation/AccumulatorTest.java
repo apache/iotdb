@@ -31,9 +31,9 @@ import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.DoubleColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.LongColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
-
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
+
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -539,12 +539,12 @@ public class AccumulatorTest {
   @Test
   public void stddevAccumulatorTest() {
     Accumulator varPopAccumulator =
-            AccumulatorFactory.createAccumulator(
-                    TAggregationType.STDDEV,
-                    TSDataType.DOUBLE,
-                    Collections.emptyList(),
-                    Collections.emptyMap(),
-                    true);
+        AccumulatorFactory.createAccumulator(
+            TAggregationType.STDDEV,
+            TSDataType.DOUBLE,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true);
     // check intermediate type and final type
     Assert.assertEquals(TSDataType.TEXT, varPopAccumulator.getIntermediateType()[0]);
     Assert.assertEquals(TSDataType.DOUBLE, varPopAccumulator.getFinalType());
@@ -572,12 +572,13 @@ public class AccumulatorTest {
     byte[] result = intermediateResult[0].build().getBinary(0).getValues();
     Assert.assertEquals(100, BytesUtils.bytesToLong(result, Long.BYTES));
     Assert.assertEquals(49.50, BytesUtils.bytesToDouble(result, Long.BYTES), 0.001);
-    Assert.assertEquals(83325, BytesUtils.bytesToDouble(result, (Long.BYTES + Double.BYTES)), 0.001);
+    Assert.assertEquals(
+        83325, BytesUtils.bytesToDouble(result, (Long.BYTES + Double.BYTES)), 0.001);
 
     varPopAccumulator.addIntermediate(
-            new Column[] {
-                    intermediateResult[0].build(),
-            });
+        new Column[] {
+          intermediateResult[0].build(),
+        });
     finalResult = new DoubleColumnBuilder(null, 1);
     varPopAccumulator.outputFinal(finalResult);
     Assert.assertEquals(28.938, finalResult.build().getDouble(0), 0.001);
@@ -586,12 +587,12 @@ public class AccumulatorTest {
   @Test
   public void stddevPopAccumulatorTest() {
     Accumulator varPopAccumulator =
-            AccumulatorFactory.createAccumulator(
-                    TAggregationType.STDDEV_POP,
-                    TSDataType.DOUBLE,
-                    Collections.emptyList(),
-                    Collections.emptyMap(),
-                    true);
+        AccumulatorFactory.createAccumulator(
+            TAggregationType.STDDEV_POP,
+            TSDataType.DOUBLE,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true);
     // check intermediate type and final type
     Assert.assertEquals(TSDataType.TEXT, varPopAccumulator.getIntermediateType()[0]);
     Assert.assertEquals(TSDataType.DOUBLE, varPopAccumulator.getFinalType());
@@ -612,12 +613,13 @@ public class AccumulatorTest {
     byte[] result = intermediateResult[0].build().getBinary(0).getValues();
     Assert.assertEquals(100, BytesUtils.bytesToLong(result, Long.BYTES));
     Assert.assertEquals(49.50, BytesUtils.bytesToDouble(result, Long.BYTES), 0.001);
-    Assert.assertEquals(83325, BytesUtils.bytesToDouble(result, (Long.BYTES + Double.BYTES)), 0.001);
+    Assert.assertEquals(
+        83325, BytesUtils.bytesToDouble(result, (Long.BYTES + Double.BYTES)), 0.001);
 
     varPopAccumulator.addIntermediate(
-            new Column[] {
-                    intermediateResult[0].build(),
-            });
+        new Column[] {
+          intermediateResult[0].build(),
+        });
     finalResult = new DoubleColumnBuilder(null, 1);
     varPopAccumulator.outputFinal(finalResult);
     Assert.assertEquals(28.866, finalResult.build().getDouble(0), 0.001);
@@ -626,12 +628,12 @@ public class AccumulatorTest {
   @Test
   public void stddevSampAccumulatorTest() {
     Accumulator varPopAccumulator =
-            AccumulatorFactory.createAccumulator(
-                    TAggregationType.STDDEV_SAMP,
-                    TSDataType.DOUBLE,
-                    Collections.emptyList(),
-                    Collections.emptyMap(),
-                    true);
+        AccumulatorFactory.createAccumulator(
+            TAggregationType.STDDEV_SAMP,
+            TSDataType.DOUBLE,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true);
     // check intermediate type and final type
     Assert.assertEquals(TSDataType.TEXT, varPopAccumulator.getIntermediateType()[0]);
     Assert.assertEquals(TSDataType.DOUBLE, varPopAccumulator.getFinalType());
@@ -659,12 +661,13 @@ public class AccumulatorTest {
     byte[] result = intermediateResult[0].build().getBinary(0).getValues();
     Assert.assertEquals(100, BytesUtils.bytesToLong(result, Long.BYTES));
     Assert.assertEquals(49.50, BytesUtils.bytesToDouble(result, Long.BYTES), 0.001);
-    Assert.assertEquals(83325, BytesUtils.bytesToDouble(result, (Long.BYTES + Double.BYTES)), 0.001);
+    Assert.assertEquals(
+        83325, BytesUtils.bytesToDouble(result, (Long.BYTES + Double.BYTES)), 0.001);
 
     varPopAccumulator.addIntermediate(
-            new Column[] {
-                    intermediateResult[0].build(),
-            });
+        new Column[] {
+          intermediateResult[0].build(),
+        });
     finalResult = new DoubleColumnBuilder(null, 1);
     varPopAccumulator.outputFinal(finalResult);
     Assert.assertEquals(28.938, finalResult.build().getDouble(0), 0.001);
@@ -673,12 +676,12 @@ public class AccumulatorTest {
   @Test
   public void varianceAccumulatorTest() {
     Accumulator varPopAccumulator =
-            AccumulatorFactory.createAccumulator(
-                    TAggregationType.VARIANCE,
-                    TSDataType.DOUBLE,
-                    Collections.emptyList(),
-                    Collections.emptyMap(),
-                    true);
+        AccumulatorFactory.createAccumulator(
+            TAggregationType.VARIANCE,
+            TSDataType.DOUBLE,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true);
     // check intermediate type and final type
     Assert.assertEquals(TSDataType.TEXT, varPopAccumulator.getIntermediateType()[0]);
     Assert.assertEquals(TSDataType.DOUBLE, varPopAccumulator.getFinalType());
@@ -706,12 +709,13 @@ public class AccumulatorTest {
     byte[] result = intermediateResult[0].build().getBinary(0).getValues();
     Assert.assertEquals(100, BytesUtils.bytesToLong(result, Long.BYTES));
     Assert.assertEquals(49.50, BytesUtils.bytesToDouble(result, Long.BYTES), 0.001);
-    Assert.assertEquals(83325, BytesUtils.bytesToDouble(result, (Long.BYTES + Double.BYTES)), 0.001);
+    Assert.assertEquals(
+        83325, BytesUtils.bytesToDouble(result, (Long.BYTES + Double.BYTES)), 0.001);
 
     varPopAccumulator.addIntermediate(
-            new Column[] {
-                    intermediateResult[0].build(),
-            });
+        new Column[] {
+          intermediateResult[0].build(),
+        });
     finalResult = new DoubleColumnBuilder(null, 1);
     varPopAccumulator.outputFinal(finalResult);
     Assert.assertEquals(837.437, finalResult.build().getDouble(0), 0.001);
@@ -720,12 +724,12 @@ public class AccumulatorTest {
   @Test
   public void varPopAccumulatorTest() {
     Accumulator varPopAccumulator =
-            AccumulatorFactory.createAccumulator(
-                    TAggregationType.VAR_POP,
-                    TSDataType.DOUBLE,
-                    Collections.emptyList(),
-                    Collections.emptyMap(),
-                    true);
+        AccumulatorFactory.createAccumulator(
+            TAggregationType.VAR_POP,
+            TSDataType.DOUBLE,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true);
     // check intermediate type and final type
     Assert.assertEquals(TSDataType.TEXT, varPopAccumulator.getIntermediateType()[0]);
     Assert.assertEquals(TSDataType.DOUBLE, varPopAccumulator.getFinalType());
@@ -746,12 +750,13 @@ public class AccumulatorTest {
     byte[] result = intermediateResult[0].build().getBinary(0).getValues();
     Assert.assertEquals(100, BytesUtils.bytesToLong(result, Long.BYTES));
     Assert.assertEquals(49.50, BytesUtils.bytesToDouble(result, Long.BYTES), 0.001);
-    Assert.assertEquals(83325, BytesUtils.bytesToDouble(result, (Long.BYTES + Double.BYTES)), 0.001);
+    Assert.assertEquals(
+        83325, BytesUtils.bytesToDouble(result, (Long.BYTES + Double.BYTES)), 0.001);
 
     varPopAccumulator.addIntermediate(
-            new Column[] {
-                    intermediateResult[0].build(),
-            });
+        new Column[] {
+          intermediateResult[0].build(),
+        });
     finalResult = new DoubleColumnBuilder(null, 1);
     varPopAccumulator.outputFinal(finalResult);
     Assert.assertEquals(833.25, finalResult.build().getDouble(0), 0.001);
@@ -760,12 +765,12 @@ public class AccumulatorTest {
   @Test
   public void varSampAccumulatorTest() {
     Accumulator varPopAccumulator =
-            AccumulatorFactory.createAccumulator(
-                    TAggregationType.VAR_SAMP,
-                    TSDataType.DOUBLE,
-                    Collections.emptyList(),
-                    Collections.emptyMap(),
-                    true);
+        AccumulatorFactory.createAccumulator(
+            TAggregationType.VAR_SAMP,
+            TSDataType.DOUBLE,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true);
     // check intermediate type and final type
     Assert.assertEquals(TSDataType.TEXT, varPopAccumulator.getIntermediateType()[0]);
     Assert.assertEquals(TSDataType.DOUBLE, varPopAccumulator.getFinalType());
@@ -793,12 +798,13 @@ public class AccumulatorTest {
     byte[] result = intermediateResult[0].build().getBinary(0).getValues();
     Assert.assertEquals(100, BytesUtils.bytesToLong(result, Long.BYTES));
     Assert.assertEquals(49.50, BytesUtils.bytesToDouble(result, Long.BYTES), 0.001);
-    Assert.assertEquals(83325, BytesUtils.bytesToDouble(result, (Long.BYTES + Double.BYTES)), 0.001);
+    Assert.assertEquals(
+        83325, BytesUtils.bytesToDouble(result, (Long.BYTES + Double.BYTES)), 0.001);
 
     varPopAccumulator.addIntermediate(
-            new Column[] {
-                    intermediateResult[0].build(),
-            });
+        new Column[] {
+          intermediateResult[0].build(),
+        });
     finalResult = new DoubleColumnBuilder(null, 1);
     varPopAccumulator.outputFinal(finalResult);
     Assert.assertEquals(837.437, finalResult.build().getDouble(0), 0.001);
