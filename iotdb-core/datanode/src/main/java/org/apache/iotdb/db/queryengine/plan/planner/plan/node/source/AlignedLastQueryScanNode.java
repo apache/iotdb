@@ -222,6 +222,6 @@ public class AlignedLastQueryScanNode extends LastSeriesSourceNode {
 
   @Override
   public PartialPath getPartitionPath() {
-    return seriesPath;
+    return getSeriesPath();
   }
 }

@@ -214,7 +214,7 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
 
   @Override
   public PartialPath getPartitionPath() {
-    return seriesPath;
+    return getSeriesPath();
   }
 
   public String outputPathSymbol() {

@@ -19,14 +19,20 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ConvertExpressionToFilterVisitor;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.SchemaCompatibilityValidator;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 public class PredicateUtils {
 
   private PredicateUtils() {
     // util class
+  }
+
+  public static void validateSchemaCompatibility(Expression predicate, PartialPath path) {
+    SchemaCompatibilityValidator.validate(predicate, path);
   }
 
   public static Filter convertPredicateToFilter(Expression predicate, TypeProvider typeProvider) {

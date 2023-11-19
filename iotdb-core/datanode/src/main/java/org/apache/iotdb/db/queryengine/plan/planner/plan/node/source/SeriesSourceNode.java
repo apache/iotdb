@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.source;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 
 public abstract class SeriesSourceNode extends SourceNode {
@@ -28,4 +29,6 @@ public abstract class SeriesSourceNode extends SourceNode {
   }
 
   public abstract PartialPath getPartitionPath();
+
+    public abstract Expression getPushDownPredicate();
 }

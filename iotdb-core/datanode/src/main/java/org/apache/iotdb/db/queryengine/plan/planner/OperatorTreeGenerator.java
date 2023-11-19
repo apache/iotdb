@@ -196,6 +196,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeri
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
@@ -289,24 +290,13 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   @Override
   public Operator visitSeriesScan(SeriesScanNode node, LocalExecutionPlanContext context) {
-
-    SeriesScanOptions.Builder seriesScanOptionsBuilder = new SeriesScanOptions.Builder();
-    Filter globalTimeFilter = context.getGlobalTimeFilter();
-    seriesScanOptionsBuilder.withGlobalTimeFilter(globalTimeFilter);
-
-    Filter pushDownFilter = null;
-    Expression pushDownPredicate = node.getPushDownPredicate();
-    if (pushDownPredicate != null) {
-      pushDownFilter =
-          PredicateUtils.convertPredicateToFilter(pushDownPredicate, context.getTypeProvider());
-    }
-    seriesScanOptionsBuilder.withPushDownFilter(pushDownFilter);
-
     PartialPath seriesPath = node.getSeriesPath();
-    seriesScanOptionsBuilder.withAllSensors(
+
+    SeriesScanOptions.Builder scanOptionsBuilder = getSeriesScanOptionsBuilder(node, context);
+    scanOptionsBuilder.withAllSensors(
         context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()));
-    seriesScanOptionsBuilder.withLimit(node.getLimit());
-    seriesScanOptionsBuilder.withOffset(node.getOffset());
+    scanOptionsBuilder.withPushDownLimit(node.getPushDownLimit());
+    scanOptionsBuilder.withPushDownOffset(node.getPushDownOffset());
 
     OperatorContext operatorContext =
         context
@@ -321,7 +311,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.getPlanNodeId(),
             seriesPath,
             node.getScanOrder(),
-            seriesScanOptionsBuilder.build());
+                scanOptionsBuilder.build());
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(seriesScanOperator);
     ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
@@ -333,23 +323,12 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitAlignedSeriesScan(
       AlignedSeriesScanNode node, LocalExecutionPlanContext context) {
-    SeriesScanOptions.Builder seriesScanOptionsBuilder = new SeriesScanOptions.Builder();
-
-    Filter globalTimeFilter = context.getGlobalTimeFilter();
-    seriesScanOptionsBuilder.withGlobalTimeFilter(globalTimeFilter);
-
-    Filter pushDownFilter = null;
-    Expression pushDownPredicate = node.getPushDownPredicate();
-    if (pushDownPredicate != null) {
-      pushDownFilter =
-          PredicateUtils.convertPredicateToFilter(pushDownPredicate, context.getTypeProvider());
-    }
-    seriesScanOptionsBuilder.withPushDownFilter(pushDownFilter);
-
-    seriesScanOptionsBuilder.withLimit(node.getLimit());
-    seriesScanOptionsBuilder.withOffset(node.getOffset());
     AlignedPath seriesPath = node.getAlignedPath();
-    seriesScanOptionsBuilder.withAllSensors(new HashSet<>(seriesPath.getMeasurementList()));
+
+    SeriesScanOptions.Builder scanOptionsBuilder = getSeriesScanOptionsBuilder(node, context);
+    scanOptionsBuilder.withPushDownLimit(node.getPushDownLimit());
+    scanOptionsBuilder.withPushDownOffset(node.getPushDownOffset());
+    scanOptionsBuilder.withAllSensors(new HashSet<>(seriesPath.getMeasurementList()));
 
     OperatorContext operatorContext =
         context
@@ -364,7 +343,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.getPlanNodeId(),
             seriesPath,
             node.getScanOrder(),
-            seriesScanOptionsBuilder.build(),
+                scanOptionsBuilder.build(),
             node.isQueryAllSensors());
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(seriesScanOperator);
@@ -402,18 +381,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         AggregationUtil.calculateMaxAggregationResultSize(
             node.getAggregationDescriptorList(), timeRangeIterator, context.getTypeProvider());
 
-    SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
-    Filter globalTimeFilter = context.getGlobalTimeFilter();
-    scanOptionsBuilder.withGlobalTimeFilter(globalTimeFilter);
-
-    Filter pushDownFilter = null;
-    Expression pushDownPredicate = node.getPushDownPredicate();
-    if (pushDownPredicate != null) {
-      pushDownFilter =
-          PredicateUtils.convertPredicateToFilter(pushDownPredicate, context.getTypeProvider());
-    }
-    scanOptionsBuilder.withPushDownFilter(pushDownFilter);
-
+    SeriesScanOptions.Builder scanOptionsBuilder = getSeriesScanOptionsBuilder(node, context);
     scanOptionsBuilder.withAllSensors(
         context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()));
 
@@ -498,18 +466,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         AggregationUtil.calculateMaxAggregationResultSize(
             node.getAggregationDescriptorList(), timeRangeIterator, context.getTypeProvider());
 
-    SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
-    Filter globalTimeFilter = context.getGlobalTimeFilter();
-    scanOptionsBuilder.withGlobalTimeFilter(globalTimeFilter);
-
-    Filter pushDownFilter = null;
-    Expression pushDownPredicate = node.getPushDownPredicate();
-    if (pushDownPredicate != null) {
-      pushDownFilter =
-          PredicateUtils.convertPredicateToFilter(pushDownPredicate, context.getTypeProvider());
-    }
-    scanOptionsBuilder.withPushDownFilter(pushDownFilter);
-
+    SeriesScanOptions.Builder scanOptionsBuilder = getSeriesScanOptionsBuilder(node, context);
     scanOptionsBuilder.withAllSensors(new HashSet<>(seriesPath.getMeasurementList()));
 
     OperatorContext operatorContext =
@@ -537,6 +494,24 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     context.getDriverContext().setInputDriver(true);
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, aggregators.size());
     return seriesAggregationScanOperator;
+  }
+
+  private SeriesScanOptions.Builder getSeriesScanOptionsBuilder(
+          SeriesSourceNode node,  LocalExecutionPlanContext context) {
+    SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+
+    Filter globalTimeFilter = context.getGlobalTimeFilter();
+    scanOptionsBuilder.withGlobalTimeFilter(globalTimeFilter);
+
+    Filter pushDownFilter = null;
+    Expression pushDownPredicate = node.getPushDownPredicate();
+    if (pushDownPredicate != null) {
+      PredicateUtils.validateSchemaCompatibility(pushDownPredicate, node.getPartitionPath());
+      pushDownFilter =
+              PredicateUtils.convertPredicateToFilter(pushDownPredicate, context.getTypeProvider());
+    }
+    scanOptionsBuilder.withPushDownFilter(pushDownFilter);
+    return scanOptionsBuilder;
   }
 
   @Override

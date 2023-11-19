@@ -58,14 +58,14 @@ public class SeriesScanNode extends SeriesSourceNode {
   // The default order is TIMESTAMP_ASC, which means "order by timestamp asc"
   private Ordering scanOrder = Ordering.ASC;
 
-  // value filter for current series, could be null if doesn't exist
+  // push down predicate for current series, could be null if doesn't exist
   @Nullable private Expression pushDownPredicate;
 
-  // Limit for result set. The default value is -1, which means no limit
-  private long limit;
+  // push down limit for result set. The default value is -1, which means no limit
+  private long pushDownLimit;
 
-  // offset for result set. The default value is 0
-  private long offset;
+  // push down offset for result set. The default value is 0
+  private long pushDownOffset;
 
   // The id of DataRegion where the node will run
   private TRegionReplicaSet regionReplicaSet;
@@ -84,12 +84,12 @@ public class SeriesScanNode extends SeriesSourceNode {
       PlanNodeId id,
       MeasurementPath seriesPath,
       Ordering scanOrder,
-      long limit,
-      long offset,
+      long pushDownLimit,
+      long pushDownOffset,
       TRegionReplicaSet dataRegionReplicaSet) {
     this(id, seriesPath, scanOrder);
-    this.limit = limit;
-    this.offset = offset;
+    this.pushDownLimit = pushDownLimit;
+    this.pushDownOffset = pushDownOffset;
     this.regionReplicaSet = dataRegionReplicaSet;
   }
 
@@ -98,13 +98,13 @@ public class SeriesScanNode extends SeriesSourceNode {
       MeasurementPath seriesPath,
       Ordering scanOrder,
       @Nullable Expression pushDownPredicate,
-      long limit,
-      long offset,
+      long pushDownLimit,
+      long pushDownOffset,
       TRegionReplicaSet dataRegionReplicaSet) {
     this(id, seriesPath, scanOrder);
     this.pushDownPredicate = pushDownPredicate;
-    this.limit = limit;
-    this.offset = offset;
+    this.pushDownLimit = pushDownLimit;
+    this.pushDownOffset = pushDownOffset;
     this.regionReplicaSet = dataRegionReplicaSet;
   }
 
@@ -124,20 +124,20 @@ public class SeriesScanNode extends SeriesSourceNode {
     this.regionReplicaSet = dataRegion;
   }
 
-  public long getLimit() {
-    return limit;
+  public long getPushDownLimit() {
+    return pushDownLimit;
   }
 
-  public long getOffset() {
-    return offset;
+  public long getPushDownOffset() {
+    return pushDownOffset;
   }
 
-  public void setLimit(long limit) {
-    this.limit = limit;
+  public void setPushDownLimit(long pushDownLimit) {
+    this.pushDownLimit = pushDownLimit;
   }
 
-  public void setOffset(long offset) {
-    this.offset = offset;
+  public void setPushDownOffset(long pushDownOffset) {
+    this.pushDownOffset = pushDownOffset;
   }
 
   public Ordering getScanOrder() {
@@ -153,6 +153,7 @@ public class SeriesScanNode extends SeriesSourceNode {
   }
 
   @Nullable
+  @Override
   public Expression getPushDownPredicate() {
     return pushDownPredicate;
   }
@@ -183,8 +184,8 @@ public class SeriesScanNode extends SeriesSourceNode {
         getSeriesPath(),
         getScanOrder(),
         getPushDownPredicate(),
-        getLimit(),
-        getOffset(),
+        getPushDownLimit(),
+        getPushDownOffset(),
         this.regionReplicaSet);
   }
 
@@ -209,8 +210,8 @@ public class SeriesScanNode extends SeriesSourceNode {
       ReadWriteIOUtils.write((byte) 1, byteBuffer);
       Expression.serialize(pushDownPredicate, byteBuffer);
     }
-    ReadWriteIOUtils.write(limit, byteBuffer);
-    ReadWriteIOUtils.write(offset, byteBuffer);
+    ReadWriteIOUtils.write(pushDownLimit, byteBuffer);
+    ReadWriteIOUtils.write(pushDownOffset, byteBuffer);
   }
 
   @Override
@@ -224,8 +225,8 @@ public class SeriesScanNode extends SeriesSourceNode {
       ReadWriteIOUtils.write((byte) 1, stream);
       Expression.serialize(pushDownPredicate, stream);
     }
-    ReadWriteIOUtils.write(limit, stream);
-    ReadWriteIOUtils.write(offset, stream);
+    ReadWriteIOUtils.write(pushDownLimit, stream);
+    ReadWriteIOUtils.write(pushDownOffset, stream);
   }
 
   public static SeriesScanNode deserialize(ByteBuffer byteBuffer) {
@@ -264,8 +265,8 @@ public class SeriesScanNode extends SeriesSourceNode {
       return false;
     }
     SeriesScanNode that = (SeriesScanNode) o;
-    return limit == that.limit
-        && offset == that.offset
+    return pushDownLimit == that.pushDownLimit
+        && pushDownOffset == that.pushDownOffset
         && seriesPath.equals(that.seriesPath)
         && scanOrder == that.scanOrder
         && Objects.equals(pushDownPredicate, that.pushDownPredicate)
@@ -279,8 +280,8 @@ public class SeriesScanNode extends SeriesSourceNode {
         seriesPath,
         scanOrder,
         pushDownPredicate,
-        limit,
-        offset,
+            pushDownLimit,
+            pushDownOffset,
         regionReplicaSet);
   }
 

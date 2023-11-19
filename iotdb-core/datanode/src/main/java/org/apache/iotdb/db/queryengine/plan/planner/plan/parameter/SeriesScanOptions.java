@@ -37,21 +37,21 @@ public class SeriesScanOptions {
 
   private Filter pushDownFilter;
 
-  private final long limit;
-  private final long offset;
+  private final long pushDownLimit;
+  private final long pushDownOffset;
 
   private final Set<String> allSensors;
 
   public SeriesScanOptions(
       Filter globalTimeFilter,
       Filter pushDownFilter,
-      long limit,
-      long offset,
+      long pushDownLimit,
+      long pushDownOffset,
       Set<String> allSensors) {
     this.globalTimeFilter = globalTimeFilter;
     this.pushDownFilter = pushDownFilter;
-    this.limit = limit;
-    this.offset = offset;
+    this.pushDownLimit = pushDownLimit;
+    this.pushDownOffset = pushDownOffset;
     this.allSensors = allSensors;
   }
 
@@ -73,20 +73,12 @@ public class SeriesScanOptions {
     return pushDownFilter;
   }
 
-  public long getLimit() {
-    return limit;
-  }
-
-  public long getOffset() {
-    return offset;
-  }
-
   public Set<String> getAllSensors() {
     return allSensors;
   }
 
   public PaginationController getPaginationController() {
-    return new PaginationController(limit, offset);
+    return new PaginationController(pushDownLimit, pushDownOffset);
   }
 
   public void setTTL(long dataTTL) {
@@ -113,8 +105,8 @@ public class SeriesScanOptions {
 
     private Filter globalTimeFilter = null;
     private Filter pushDownFilter = null;
-    private long limit = 0L;
-    private long offset = 0L;
+    private long pushDownLimit = 0L;
+    private long pushDownOffset = 0L;
 
     private Set<String> allSensors;
 
@@ -128,13 +120,13 @@ public class SeriesScanOptions {
       return this;
     }
 
-    public Builder withLimit(long limit) {
-      this.limit = limit;
+    public Builder withPushDownLimit(long pushDownLimit) {
+      this.pushDownLimit = pushDownLimit;
       return this;
     }
 
-    public Builder withOffset(long offset) {
-      this.offset = offset;
+    public Builder withPushDownOffset(long pushDownOffset) {
+      this.pushDownOffset = pushDownOffset;
       return this;
     }
 
@@ -143,7 +135,7 @@ public class SeriesScanOptions {
     }
 
     public SeriesScanOptions build() {
-      return new SeriesScanOptions(globalTimeFilter, pushDownFilter, limit, offset, allSensors);
+      return new SeriesScanOptions(globalTimeFilter, pushDownFilter, pushDownLimit, pushDownOffset, allSensors);
     }
   }
 }

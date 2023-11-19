@@ -51,12 +51,6 @@ public class ReversePredicateVisitor extends PredicateVisitor<Expression, Void> 
   }
 
   @Override
-  public Expression visitGroupByTimeExpression(
-      GroupByTimeExpression groupByTimeExpression, Void context) {
-    throw new UnsupportedOperationException("GROUP BY TIME doesn't support reverse predicate");
-  }
-
-  @Override
   public Expression visitIsNullExpression(IsNullExpression isNullExpression, Void context) {
     return new IsNullExpression(isNullExpression.getExpression(), !isNullExpression.isNot());
   }
@@ -144,5 +138,11 @@ public class ReversePredicateVisitor extends PredicateVisitor<Expression, Void> 
         betweenExpression.getSecondExpression(),
         betweenExpression.getThirdExpression(),
         !betweenExpression.isNotBetween());
+  }
+
+  @Override
+  public Expression visitGroupByTimeExpression(
+      GroupByTimeExpression groupByTimeExpression, Void context) {
+    throw new UnsupportedOperationException("GROUP BY TIME cannot be reversed");
   }
 }

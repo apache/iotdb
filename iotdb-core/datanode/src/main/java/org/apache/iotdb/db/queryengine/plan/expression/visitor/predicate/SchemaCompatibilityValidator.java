@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate;
 
+import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -44,35 +45,29 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
 public class SchemaCompatibilityValidator
     extends PredicateVisitor<Void, SchemaCompatibilityValidator.Context> {
 
-  public static void validate(Expression predicate) {
-    predicate.accept(new SchemaCompatibilityValidator(), new Context());
+  public static void validate(Expression predicate, PartialPath path) {
+    predicate.accept(new SchemaCompatibilityValidator(), new Context(path));
   }
 
   protected static class Context {
 
-    private PartialPath checkedPath;
-    private boolean isAligned;
+    private final PartialPath checkedPath;
+    private final boolean isAligned;
 
-    public Context() {
-      // needn't init
+    public Context(PartialPath path) {
+      this.isAligned = path instanceof AlignedPath;
+      this.checkedPath = this.isAligned ? path.getDevicePath() : path;
     }
 
     public void check(MeasurementPath path) {
-      if (checkedPath == null) {
-        // init checkedPath
-        isAligned = path.isUnderAlignedEntity();
-        checkedPath = getComparePath(path);
-      } else {
-        if (isAligned != path.isUnderAlignedEntity() || !checkedPath.equals(getComparePath(path))) {
-          throw new IllegalArgumentException(
-              "The paths in the predicate are not compatible with each other.");
-        }
+      if (this.isAligned != path.isUnderAlignedEntity() || !this.checkedPath.equals(getComparePath(path))) {
+        throw new IllegalArgumentException(
+            "The paths in the predicate are not compatible with each other.");
       }
     }
 
     private PartialPath getComparePath(MeasurementPath path) {
-      if (path.isUnderAlignedEntity()) return path.getDevicePath();
-      return path;
+      return path.isUnderAlignedEntity() ? path.getDevicePath() : path;
     }
   }
 
@@ -90,13 +85,6 @@ public class SchemaCompatibilityValidator
 
   @Override
   public Void visitConstantOperand(ConstantOperand constantOperand, Context context) {
-    // needn't check
-    return null;
-  }
-
-  @Override
-  public Void visitGroupByTimeExpression(
-      GroupByTimeExpression groupByTimeExpression, Context context) {
     // needn't check
     return null;
   }
@@ -189,6 +177,13 @@ public class SchemaCompatibilityValidator
     betweenExpression.getFirstExpression().accept(this, context);
     betweenExpression.getSecondExpression().accept(this, context);
     betweenExpression.getThirdExpression().accept(this, context);
+    return null;
+  }
+
+  @Override
+  public Void visitGroupByTimeExpression(
+          GroupByTimeExpression groupByTimeExpression, Context context) {
+    // needn't check
     return null;
   }
 }

@@ -67,6 +67,7 @@ public abstract class SeriesAggregationSourceNode extends SeriesSourceNode {
   }
 
   @Nullable
+  @Override
   public Expression getPushDownPredicate() {
     return pushDownPredicate;
   }

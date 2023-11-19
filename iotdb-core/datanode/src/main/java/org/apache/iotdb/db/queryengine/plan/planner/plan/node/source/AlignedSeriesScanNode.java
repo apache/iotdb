@@ -57,11 +57,11 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
   // push down predicate for current series, could be null if it doesn't exist
   @Nullable private Expression pushDownPredicate;
 
-  // Limit for result set. The default value is -1, which means no limit
-  private long limit;
+  // push down limit for result set. The default value is -1, which means no limit
+  private long pushDownLimit;
 
-  // offset for result set. The default value is 0
-  private long offset;
+  // push down offset for result set. The default value is 0
+  private long pushDownOffset;
 
   // used for limit and offset push down optimizer, if we select all columns from aligned device, we
   // can use statistics to skip
@@ -86,13 +86,13 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
       PlanNodeId id,
       AlignedPath alignedPath,
       Ordering scanOrder,
-      long limit,
-      long offset,
+      long pushDownLimit,
+      long pushDownOffset,
       TRegionReplicaSet dataRegionReplicaSet,
       boolean lastLevelUseWildcard) {
     this(id, alignedPath, scanOrder, lastLevelUseWildcard);
-    this.limit = limit;
-    this.offset = offset;
+    this.pushDownLimit = pushDownLimit;
+    this.pushDownOffset = pushDownOffset;
     this.regionReplicaSet = dataRegionReplicaSet;
   }
 
@@ -101,14 +101,14 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
       AlignedPath alignedPath,
       Ordering scanOrder,
       @Nullable Expression pushDownPredicate,
-      long limit,
-      long offset,
+      long pushDownLimit,
+      long pushDownOffset,
       TRegionReplicaSet dataRegionReplicaSet,
       boolean lastLevelUseWildcard) {
     this(id, alignedPath, scanOrder, lastLevelUseWildcard);
     this.pushDownPredicate = pushDownPredicate;
-    this.limit = limit;
-    this.offset = offset;
+    this.pushDownLimit = pushDownLimit;
+    this.pushDownOffset = pushDownOffset;
     this.regionReplicaSet = dataRegionReplicaSet;
   }
 
@@ -121,6 +121,7 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
   }
 
   @Nullable
+  @Override
   public Expression getPushDownPredicate() {
     return pushDownPredicate;
   }
@@ -129,20 +130,20 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
     this.pushDownPredicate = pushDownPredicate;
   }
 
-  public long getLimit() {
-    return limit;
+  public long getPushDownLimit() {
+    return pushDownLimit;
   }
 
-  public long getOffset() {
-    return offset;
+  public long getPushDownOffset() {
+    return pushDownOffset;
   }
 
-  public void setLimit(long limit) {
-    this.limit = limit;
+  public void setPushDownLimit(long pushDownLimit) {
+    this.pushDownLimit = pushDownLimit;
   }
 
-  public void setOffset(long offset) {
-    this.offset = offset;
+  public void setPushDownOffset(long pushDownOffset) {
+    this.pushDownOffset = pushDownOffset;
   }
 
   @Override
@@ -191,8 +192,8 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
         getAlignedPath(),
         getScanOrder(),
         getPushDownPredicate(),
-        getLimit(),
-        getOffset(),
+        getPushDownLimit(),
+        getPushDownOffset(),
         this.regionReplicaSet,
         this.queryAllSensors);
   }
@@ -223,8 +224,8 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
       ReadWriteIOUtils.write((byte) 1, byteBuffer);
       Expression.serialize(pushDownPredicate, byteBuffer);
     }
-    ReadWriteIOUtils.write(limit, byteBuffer);
-    ReadWriteIOUtils.write(offset, byteBuffer);
+    ReadWriteIOUtils.write(pushDownLimit, byteBuffer);
+    ReadWriteIOUtils.write(pushDownOffset, byteBuffer);
     ReadWriteIOUtils.write(queryAllSensors, byteBuffer);
   }
 
@@ -239,8 +240,8 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
       ReadWriteIOUtils.write((byte) 1, stream);
       Expression.serialize(pushDownPredicate, stream);
     }
-    ReadWriteIOUtils.write(limit, stream);
-    ReadWriteIOUtils.write(offset, stream);
+    ReadWriteIOUtils.write(pushDownLimit, stream);
+    ReadWriteIOUtils.write(pushDownOffset, stream);
     ReadWriteIOUtils.write(queryAllSensors, stream);
   }
 
@@ -279,8 +280,8 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
       return false;
     }
     AlignedSeriesScanNode that = (AlignedSeriesScanNode) o;
-    return limit == that.limit
-        && offset == that.offset
+    return pushDownLimit == that.pushDownLimit
+        && pushDownOffset == that.pushDownOffset
         && alignedPath.equals(that.alignedPath)
         && scanOrder == that.scanOrder
         && Objects.equals(pushDownPredicate, that.pushDownPredicate)
@@ -295,8 +296,8 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
         alignedPath,
         scanOrder,
         pushDownPredicate,
-        limit,
-        offset,
+            pushDownLimit,
+            pushDownOffset,
         regionReplicaSet,
         queryAllSensors);
   }
