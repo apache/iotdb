@@ -20,7 +20,7 @@
 package org.apache.iotdb.tsfile.read.filter.operator;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.ColumnCompareFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.ColumnPatternMatchFilter;

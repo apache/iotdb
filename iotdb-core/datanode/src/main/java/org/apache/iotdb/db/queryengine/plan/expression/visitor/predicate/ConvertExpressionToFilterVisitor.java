@@ -39,7 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.IsNullExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.filter.factory.TimeFilter;
