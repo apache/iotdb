@@ -39,7 +39,12 @@ public enum BuiltinAggregationFunction {
   TIME_DURATION("time_duration"),
   MODE("mode"),
   COUNT_TIME("count_time"),
-  VAR_POP("var_pop");
+  STDDEV("stddev"),
+  STDDEV_POP("stddev_pop"),
+  STDDEV_SAMP("stddev_samp"),
+  VARIANCE("variance"),
+  VAR_POP("var_pop"),
+  VAR_SAMP("var_samp");
 
   private final String functionName;
 
@@ -80,7 +85,12 @@ public enum BuiltinAggregationFunction {
       case "count_if":
       case "mode":
       case "count_time":
-      case "var_pop": // TODO: check this
+      case "stddev":
+      case "stddev_pop":
+      case "stddev_samp":
+      case "variance":
+      case "var_pop":
+      case "var_samp":
         return false;
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + name);
@@ -105,7 +115,12 @@ public enum BuiltinAggregationFunction {
       case "sum":
       case "time_duration":
       case "mode":
+      case "stddev":
+      case "stddev_pop":
+      case "stddev_samp":
+      case "variance":
       case "var_pop":
+      case "var_samp":
         return true;
       case "count_if":
       case "count_time":

@@ -27,7 +27,7 @@ import java.util.List;
 
 /**
  * The aggregation result is calculated from all pre-aggregation results in the currently maintained
- * queue when calculating the COUNT, SUM, AVG and VAR_POP.
+ * queue when calculating the COUNT, SUM, AVG and STDDEV/VARIANCE relevant functions.
  */
 public class SmoothQueueSlidingWindowAggregator extends SlidingWindowAggregator {
   public SmoothQueueSlidingWindowAggregator(

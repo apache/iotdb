@@ -145,7 +145,12 @@ public class TypeInferenceUtils {
         return dataType;
       case SqlConstant.AVG:
       case SqlConstant.SUM:
+      case SqlConstant.STDDEV:
+      case SqlConstant.STDDEV_POP:
+      case SqlConstant.STDDEV_SAMP:
+      case SqlConstant.VARIANCE:
       case SqlConstant.VAR_POP:
+      case SqlConstant.VAR_SAMP:
         return TSDataType.DOUBLE;
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
@@ -163,7 +168,12 @@ public class TypeInferenceUtils {
       case SqlConstant.EXTREME:
       case SqlConstant.MIN_VALUE:
       case SqlConstant.MAX_VALUE:
+      case SqlConstant.STDDEV:
+      case SqlConstant.STDDEV_POP:
+      case SqlConstant.STDDEV_SAMP:
+      case SqlConstant.VARIANCE:
       case SqlConstant.VAR_POP:
+      case SqlConstant.VAR_SAMP:
         if (dataType.isNumeric()) {
           return;
         }
@@ -215,7 +225,12 @@ public class TypeInferenceUtils {
       case SqlConstant.LAST_VALUE:
       case SqlConstant.TIME_DURATION:
       case SqlConstant.MODE:
+      case SqlConstant.STDDEV:
+      case SqlConstant.STDDEV_POP:
+      case SqlConstant.STDDEV_SAMP:
+      case SqlConstant.VARIANCE:
       case SqlConstant.VAR_POP:
+      case SqlConstant.VAR_SAMP:
         return;
       case SqlConstant.COUNT_IF:
         Expression keepExpression = inputExpressions.get(1);

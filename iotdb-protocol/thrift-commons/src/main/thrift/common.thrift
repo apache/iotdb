@@ -191,5 +191,10 @@ enum TAggregationType {
   TIME_DURATION,
   MODE,
   COUNT_TIME,
-  VAR_POP
+  STDDEV,
+  STDDEV_POP,
+  STDDEV_SAMP,
+  VARIANCE,
+  VAR_POP,
+  VAR_SAMP
 }

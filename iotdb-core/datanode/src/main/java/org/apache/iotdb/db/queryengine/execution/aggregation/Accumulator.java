@@ -41,7 +41,8 @@ public interface Accumulator {
   void addInput(Column[] column, BitMap bitMap, int lastIndex);
 
   default void removeInput(Column[] partialResult) {
-    throw new UnsupportedOperationException("This type of accumulator does not support remove input!");
+    throw new UnsupportedOperationException(
+        "This type of accumulator does not support remove input!");
   }
 
   /**

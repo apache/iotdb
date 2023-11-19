@@ -13,14 +13,25 @@ import java.util.Arrays;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class VarPopAccumulator implements Accumulator {
+public class VarianceAccumulator implements Accumulator {
+  public enum VarianceType {
+    STDDEV_POP,
+    STDDEV_SAMP,
+    VAR_POP,
+    VAR_SAMP,
+  }
+
   private final TSDataType seriesDataType;
+
+  private final VarianceType varianceType;
+
   private long count;
   private double mean;
   private double m2;
 
-  public VarPopAccumulator(TSDataType seriesDataType) {
+  public VarianceAccumulator(TSDataType seriesDataType, VarianceType varianceType) {
     this.seriesDataType = seriesDataType;
+    this.varianceType = varianceType;
   }
 
   @Override
@@ -125,10 +136,35 @@ public class VarPopAccumulator implements Accumulator {
 
   @Override
   public void outputFinal(ColumnBuilder columnBuilder) {
-    if (count == 0) {
-      columnBuilder.appendNull();
-    } else {
-      columnBuilder.writeDouble(m2 / count);
+    switch (varianceType) {
+      case STDDEV_POP:
+        if (count == 0) {
+          columnBuilder.appendNull();
+        } else {
+          columnBuilder.writeDouble(Math.sqrt(m2 / count));
+        }
+        break;
+      case STDDEV_SAMP:
+        if (count < 2) {
+          columnBuilder.appendNull();
+        } else {
+          columnBuilder.writeDouble(Math.sqrt(m2 / (count - 1)));
+        }
+        break;
+      case VAR_POP:
+        if (count == 0) {
+          columnBuilder.appendNull();
+        } else {
+          columnBuilder.writeDouble(m2 / count);
+        }
+        break;
+      case VAR_SAMP:
+        if (count < 2) {
+          columnBuilder.appendNull();
+        } else {
+          columnBuilder.writeDouble(m2 / (count - 1));
+        }
+        break;
     }
   }
 
