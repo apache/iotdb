@@ -60,7 +60,8 @@ public class SchemaCompatibilityValidator
     }
 
     public void check(MeasurementPath path) {
-      if (this.isAligned != path.isUnderAlignedEntity() || !this.checkedPath.equals(getComparePath(path))) {
+      if (this.isAligned != path.isUnderAlignedEntity()
+          || !this.checkedPath.equals(getComparePath(path))) {
         throw new IllegalArgumentException(
             "The paths in the predicate are not compatible with each other.");
       }
@@ -182,7 +183,7 @@ public class SchemaCompatibilityValidator
 
   @Override
   public Void visitGroupByTimeExpression(
-          GroupByTimeExpression groupByTimeExpression, Context context) {
+      GroupByTimeExpression groupByTimeExpression, Context context) {
     // needn't check
     return null;
   }

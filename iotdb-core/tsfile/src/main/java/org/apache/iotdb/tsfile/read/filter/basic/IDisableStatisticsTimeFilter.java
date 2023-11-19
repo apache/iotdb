@@ -17,18 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.planner.plan.node.source;
+package org.apache.iotdb.tsfile.read.filter.basic;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.queryengine.plan.expression.Expression;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+public interface IDisableStatisticsTimeFilter extends ITimeFilter {
 
-public abstract class SeriesSourceNode extends SourceNode {
-  protected SeriesSourceNode(PlanNodeId id) {
-    super(id);
+  default boolean satisfyStartEndTime(long startTime, long endTime) {
+    return true;
   }
 
-  public abstract PartialPath getPartitionPath();
-
-  public abstract Expression getPushDownPredicate();
+  default boolean containStartEndTime(long startTime, long endTime) {
+    return false;
+  }
 }

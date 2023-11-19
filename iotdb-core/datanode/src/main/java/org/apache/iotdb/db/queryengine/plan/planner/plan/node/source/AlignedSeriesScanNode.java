@@ -296,8 +296,8 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
         alignedPath,
         scanOrder,
         pushDownPredicate,
-            pushDownLimit,
-            pushDownOffset,
+        pushDownLimit,
+        pushDownOffset,
         regionReplicaSet,
         queryAllSensors);
   }

@@ -22,7 +22,6 @@ package org.apache.iotdb.tsfile.read.filter.basic;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 
-import java.util.Collections;
 import java.util.List;
 
 /** Filter is a top level filter abstraction. */
@@ -66,9 +65,7 @@ public interface Filter {
    */
   boolean containStartEndTime(long startTime, long endTime);
 
-  default List<TimeRange> getTimeRanges() {
-    return Collections.emptyList();
-  }
+  List<TimeRange> getTimeRanges();
 
   Filter reverse();
 }

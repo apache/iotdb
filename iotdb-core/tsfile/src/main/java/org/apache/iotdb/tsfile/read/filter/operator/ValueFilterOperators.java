@@ -27,7 +27,8 @@ import org.apache.iotdb.tsfile.read.filter.basic.ColumnPatternMatchFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.ColumnRangeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.ColumnSetFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.ValueFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.IDisableStatisticsValueFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.IValueFilter;
 
 import java.util.Locale;
 import java.util.Objects;
@@ -35,7 +36,7 @@ import java.util.Set;
 
 /**
  * These are the value column operators in a filter predicate expression tree. They are constructed
- * by using the methods in {@link ValueFilter}
+ * by using the methods in {@link org.apache.iotdb.tsfile.read.filter.factory.ValueFilter}
  */
 public final class ValueFilterOperators {
 
@@ -45,7 +46,7 @@ public final class ValueFilterOperators {
 
   // base class for ValueEq, ValueNotEq, ValueLt, ValueGt, ValueLtEq, ValueGtEq
   abstract static class ValueColumnCompareFilter<T extends Comparable<T>>
-      extends ColumnCompareFilter<T> {
+      extends ColumnCompareFilter<T> implements IValueFilter {
 
     protected final String measurement;
     private final String toString;
@@ -65,16 +66,6 @@ public final class ValueFilterOperators {
     @Override
     public String toString() {
       return toString;
-    }
-
-    @Override
-    public boolean satisfyStartEndTime(long startTime, long endTime) {
-      return true;
-    }
-
-    @Override
-    public boolean containStartEndTime(long startTime, long endTime) {
-      return false;
     }
   }
 
@@ -288,8 +279,8 @@ public final class ValueFilterOperators {
   }
 
   // base class for ValueBetweenAnd, ValueNotBetweenAnd
-  abstract static class ValueColumnRangeFilter<T extends Comparable<T>>
-      extends ColumnRangeFilter<T> {
+  abstract static class ValueColumnRangeFilter<T extends Comparable<T>> extends ColumnRangeFilter<T>
+      implements IValueFilter {
 
     protected final String measurement;
     private final String toString;
@@ -309,16 +300,6 @@ public final class ValueFilterOperators {
     @Override
     public String toString() {
       return toString;
-    }
-
-    @Override
-    public boolean satisfyStartEndTime(long startTime, long endTime) {
-      return true;
-    }
-
-    @Override
-    public boolean containStartEndTime(long startTime, long endTime) {
-      return false;
     }
   }
 
@@ -395,7 +376,8 @@ public final class ValueFilterOperators {
   }
 
   // base class for ValueIn, ValueNotIn
-  abstract static class ValueColumnSetFilter<T extends Comparable<T>> extends ColumnSetFilter<T> {
+  abstract static class ValueColumnSetFilter<T extends Comparable<T>> extends ColumnSetFilter<T>
+      implements IDisableStatisticsValueFilter {
 
     protected final String measurement;
     private final String toString;
@@ -415,26 +397,6 @@ public final class ValueFilterOperators {
     @Override
     public String toString() {
       return toString;
-    }
-
-    @Override
-    public boolean satisfy(Statistics statistics) {
-      return true;
-    }
-
-    @Override
-    public boolean allSatisfy(Statistics statistics) {
-      return false;
-    }
-
-    @Override
-    public boolean satisfyStartEndTime(long startTime, long endTime) {
-      return true;
-    }
-
-    @Override
-    public boolean containStartEndTime(long startTime, long endTime) {
-      return false;
     }
   }
 
@@ -473,7 +435,8 @@ public final class ValueFilterOperators {
   }
 
   // base class for ValueLike, ValueNotLike, ValueRegex, ValueNotRegex
-  abstract static class ValueColumnPatternMatchFilter extends ColumnPatternMatchFilter {
+  abstract static class ValueColumnPatternMatchFilter extends ColumnPatternMatchFilter
+      implements IDisableStatisticsValueFilter {
 
     protected final String measurement;
     private final String toString;
@@ -493,26 +456,6 @@ public final class ValueFilterOperators {
     @Override
     public String toString() {
       return toString;
-    }
-
-    @Override
-    public boolean satisfy(Statistics statistics) {
-      return true;
-    }
-
-    @Override
-    public boolean allSatisfy(Statistics statistics) {
-      return false;
-    }
-
-    @Override
-    public boolean satisfyStartEndTime(long startTime, long endTime) {
-      return true;
-    }
-
-    @Override
-    public boolean containStartEndTime(long startTime, long endTime) {
-      return false;
     }
   }
 

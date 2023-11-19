@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.tsfile.read.filter.operator;
 
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.ColumnCompareFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.ColumnRangeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.ColumnSetFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.IDisableStatisticsTimeFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.ITimeFilter;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -37,7 +37,7 @@ import java.util.Set;
 
 /**
  * These are the time column operators in a filter predicate expression tree. They are constructed
- * by using the methods in {@link TimeFilter}
+ * by using the methods in {@link org.apache.iotdb.tsfile.read.filter.factory.TimeFilter}
  */
 public final class TimeFilterOperators {
 
@@ -46,7 +46,8 @@ public final class TimeFilterOperators {
   }
 
   // base class for TimeEq, TimeNotEq, TimeLt, TimeGt, TimeLtEq, TimeGtEq
-  abstract static class TimeColumnCompareFilter extends ColumnCompareFilter<Long> {
+  abstract static class TimeColumnCompareFilter extends ColumnCompareFilter<Long>
+      implements ITimeFilter {
 
     private final String toString;
 
@@ -61,16 +62,6 @@ public final class TimeFilterOperators {
     @Override
     public String toString() {
       return toString;
-    }
-
-    @Override
-    public boolean satisfy(Statistics statistics) {
-      return satisfyStartEndTime(statistics.getStartTime(), statistics.getEndTime());
-    }
-
-    @Override
-    public boolean allSatisfy(Statistics statistics) {
-      return containStartEndTime(statistics.getStartTime(), statistics.getEndTime());
     }
   }
 
@@ -286,7 +277,8 @@ public final class TimeFilterOperators {
   }
 
   // base class for TimeBetweenAnd, TimeNotBetweenAnd
-  abstract static class TimeColumnRangeFilter extends ColumnRangeFilter<Long> {
+  abstract static class TimeColumnRangeFilter extends ColumnRangeFilter<Long>
+      implements ITimeFilter {
 
     private final String toString;
 
@@ -301,16 +293,6 @@ public final class TimeFilterOperators {
     @Override
     public String toString() {
       return toString;
-    }
-
-    @Override
-    public boolean satisfy(Statistics statistics) {
-      return satisfyStartEndTime(statistics.getStartTime(), statistics.getEndTime());
-    }
-
-    @Override
-    public boolean allSatisfy(Statistics statistics) {
-      return containStartEndTime(statistics.getStartTime(), statistics.getEndTime());
     }
   }
 
@@ -386,7 +368,8 @@ public final class TimeFilterOperators {
   }
 
   // base class for TimeIn, TimeNotIn
-  abstract static class TimeColumnSetFilter extends ColumnSetFilter<Long> {
+  abstract static class TimeColumnSetFilter extends ColumnSetFilter<Long>
+      implements IDisableStatisticsTimeFilter {
 
     private final String toString;
 
@@ -400,26 +383,6 @@ public final class TimeFilterOperators {
     @Override
     public String toString() {
       return toString;
-    }
-
-    @Override
-    public boolean satisfy(Statistics statistics) {
-      return satisfyStartEndTime(statistics.getStartTime(), statistics.getEndTime());
-    }
-
-    @Override
-    public boolean allSatisfy(Statistics statistics) {
-      return containStartEndTime(statistics.getStartTime(), statistics.getEndTime());
-    }
-
-    @Override
-    public boolean satisfyStartEndTime(long startTime, long endTime) {
-      return true;
-    }
-
-    @Override
-    public boolean containStartEndTime(long startTime, long endTime) {
-      return false;
     }
   }
 

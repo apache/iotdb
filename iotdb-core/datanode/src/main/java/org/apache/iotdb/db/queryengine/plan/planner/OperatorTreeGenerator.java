@@ -311,7 +311,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.getPlanNodeId(),
             seriesPath,
             node.getScanOrder(),
-                scanOptionsBuilder.build());
+            scanOptionsBuilder.build());
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(seriesScanOperator);
     ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
@@ -343,7 +343,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.getPlanNodeId(),
             seriesPath,
             node.getScanOrder(),
-                scanOptionsBuilder.build(),
+            scanOptionsBuilder.build(),
             node.isQueryAllSensors());
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(seriesScanOperator);
@@ -497,7 +497,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   }
 
   private SeriesScanOptions.Builder getSeriesScanOptionsBuilder(
-          SeriesSourceNode node,  LocalExecutionPlanContext context) {
+      SeriesSourceNode node, LocalExecutionPlanContext context) {
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
 
     Filter globalTimeFilter = context.getGlobalTimeFilter();
@@ -508,7 +508,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     if (pushDownPredicate != null) {
       PredicateUtils.validateSchemaCompatibility(pushDownPredicate, node.getPartitionPath());
       pushDownFilter =
-              PredicateUtils.convertPredicateToFilter(pushDownPredicate, context.getTypeProvider());
+          PredicateUtils.convertPredicateToFilter(pushDownPredicate, context.getTypeProvider());
     }
     scanOptionsBuilder.withPushDownFilter(pushDownFilter);
     return scanOptionsBuilder;

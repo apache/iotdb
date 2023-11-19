@@ -280,8 +280,8 @@ public class SeriesScanNode extends SeriesSourceNode {
         seriesPath,
         scanOrder,
         pushDownPredicate,
-            pushDownLimit,
-            pushDownOffset,
+        pushDownLimit,
+        pushDownOffset,
         regionReplicaSet);
   }
 

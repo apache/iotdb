@@ -135,7 +135,8 @@ public class SeriesScanOptions {
     }
 
     public SeriesScanOptions build() {
-      return new SeriesScanOptions(globalTimeFilter, pushDownFilter, pushDownLimit, pushDownOffset, allSensors);
+      return new SeriesScanOptions(
+          globalTimeFilter, pushDownFilter, pushDownLimit, pushDownOffset, allSensors);
     }
   }
 }

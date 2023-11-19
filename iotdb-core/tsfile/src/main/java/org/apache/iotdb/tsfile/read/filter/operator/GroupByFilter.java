@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.tsfile.read.filter.operator;
 
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.basic.ITimeFilter;
 
 import java.util.Collections;
 import java.util.List;
 
-public class GroupByFilter implements Filter {
+public class GroupByFilter implements ITimeFilter {
 
   protected long interval;
   protected long slidingStep;
@@ -43,16 +43,6 @@ public class GroupByFilter implements Filter {
   protected GroupByFilter(long startTime, long endTime) {
     this.startTime = startTime;
     this.endTime = endTime;
-  }
-
-  @Override
-  public boolean satisfy(Statistics statistics) {
-    return satisfyStartEndTime(statistics.getStartTime(), statistics.getEndTime());
-  }
-
-  @Override
-  public boolean allSatisfy(Statistics statistics) {
-    return containStartEndTime(statistics.getStartTime(), statistics.getEndTime());
   }
 
   @Override
