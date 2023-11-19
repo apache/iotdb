@@ -392,14 +392,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Expression predicate = whereCondition.getPredicate();
 
       Pair<Expression, Boolean> resultPair =
-          ExpressionAnalyzer.extractGlobalTimePredicate(predicate, true, true);
+          PredicateUtils.extractGlobalTimePredicate(predicate, true, true);
       globalTimePredicate = resultPair.left;
       if (globalTimePredicate != null) {
-        globalTimePredicate = ExpressionAnalyzer.predicateRemoveNot(globalTimePredicate);
+        globalTimePredicate = PredicateUtils.predicateRemoveNot(globalTimePredicate);
       }
       hasValueFilter = resultPair.right;
 
-      predicate = ExpressionAnalyzer.evaluatePredicate(predicate);
+      predicate = PredicateUtils.simplifyPredicate(predicate);
 
       // set where condition to null if predicate is true or time filter.
       if (!hasValueFilter
@@ -753,7 +753,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             schemaTree,
             true);
     Expression havingExpression =
-        ExpressionUtils.constructQueryFilter(
+        PredicateUtils.combineConjuncts(
             conJunctions.stream().distinct().collect(Collectors.toList()));
     havingExpression = normalizeExpression(havingExpression);
 
@@ -816,7 +816,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
     }
 
-    havingExpression = ExpressionUtils.constructQueryFilter(new ArrayList<>(conJunctions));
+    havingExpression = PredicateUtils.combineConjuncts(new ArrayList<>(conJunctions));
     TSDataType outputType = analyzeExpressionType(analysis, havingExpression);
     if (outputType != TSDataType.BOOLEAN) {
       throw new SemanticException(
@@ -1308,7 +1308,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             schemaTree,
             true);
     Expression whereExpression =
-        ExpressionUtils.constructQueryFilter(
+        PredicateUtils.combineConjuncts(
             conJunctions.stream().distinct().collect(Collectors.toList()));
     whereExpression = normalizeExpression(whereExpression);
     TSDataType outputType = analyzeExpressionType(analysis, whereExpression);
@@ -1323,7 +1323,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     List<Expression> conJunctions =
         ExpressionAnalyzer.concatDeviceAndBindSchemaForPredicate(
             queryStatement.getWhereCondition().getPredicate(), devicePath, schemaTree, true);
-    return ExpressionUtils.constructQueryFilter(
+    return PredicateUtils.combineConjuncts(
         conJunctions.stream().distinct().collect(Collectors.toList()));
   }
 

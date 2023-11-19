@@ -42,6 +42,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.filter.factory.TimeFilter;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 import java.util.LinkedHashSet;
@@ -221,6 +222,30 @@ public class ConvertExpressionToTimeFilterVisitor extends PredicateVisitor<Filte
     return isNot
         ? TimeFilter.notBetween(minValue, maxValue)
         : TimeFilter.between(minValue, maxValue);
+  }
+
+  public static Pair<Filter, Boolean> getPairFromBetweenTimeSecond(
+      BetweenExpression predicate, Expression expression) {
+    if (predicate.isNotBetween()) {
+      return new Pair<>(
+          TimeFilter.gt(Long.parseLong(((ConstantOperand) expression).getValueString())), false);
+
+    } else {
+      return new Pair<>(
+          TimeFilter.ltEq(Long.parseLong(((ConstantOperand) expression).getValueString())), false);
+    }
+  }
+
+  public static Pair<Filter, Boolean> getPairFromBetweenTimeThird(
+      BetweenExpression predicate, Expression expression) {
+    if (predicate.isNotBetween()) {
+      return new Pair<>(
+          TimeFilter.lt(Long.parseLong(((ConstantOperand) expression).getValueString())), false);
+
+    } else {
+      return new Pair<>(
+          TimeFilter.gtEq(Long.parseLong(((ConstantOperand) expression).getValueString())), false);
+    }
   }
 
   @Override

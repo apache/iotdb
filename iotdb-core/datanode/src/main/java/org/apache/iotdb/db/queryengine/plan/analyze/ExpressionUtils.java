@@ -38,7 +38,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.binary.MultiplicationExpr
 import org.apache.iotdb.db.queryengine.plan.expression.binary.NonEqualExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.SubtractionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.WhenThenExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.other.CaseWhenThenExpression;
@@ -51,11 +50,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.NegationExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.UnaryExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ConvertExpressionToTimeFilterVisitor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.TimeFilter;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -306,61 +300,5 @@ public class ExpressionUtils {
         }
       }
     }
-  }
-
-  public static Pair<Filter, Boolean> getPairFromBetweenTimeSecond(
-      BetweenExpression predicate, Expression expression) {
-    if (predicate.isNotBetween()) {
-      return new Pair<>(
-          TimeFilter.gt(Long.parseLong(((ConstantOperand) expression).getValueString())), false);
-
-    } else {
-      return new Pair<>(
-          TimeFilter.ltEq(Long.parseLong(((ConstantOperand) expression).getValueString())), false);
-    }
-  }
-
-  public static Pair<Filter, Boolean> getPairFromBetweenTimeThird(
-      BetweenExpression predicate, Expression expression) {
-    if (predicate.isNotBetween()) {
-      return new Pair<>(
-          TimeFilter.lt(Long.parseLong(((ConstantOperand) expression).getValueString())), false);
-
-    } else {
-      return new Pair<>(
-          TimeFilter.gtEq(Long.parseLong(((ConstantOperand) expression).getValueString())), false);
-    }
-  }
-
-  public static boolean checkConstantSatisfy(
-      Expression firstExpression, Expression secondExpression) {
-    return firstExpression.isConstantOperand()
-        && secondExpression.isConstantOperand()
-        && ((ConstantOperand) firstExpression).getDataType() == TSDataType.INT64
-        && ((ConstantOperand) secondExpression).getDataType() == TSDataType.INT64
-        && (Long.parseLong(((ConstantOperand) firstExpression).getValueString())
-            <= Long.parseLong(((ConstantOperand) secondExpression).getValueString()));
-  }
-
-  public static Expression constructQueryFilter(List<Expression> expressions) {
-    if (expressions.size() == 1) {
-      return expressions.get(0);
-    }
-    return ExpressionUtils.constructBinaryFilterTreeWithAnd(expressions);
-  }
-
-  private static Expression constructBinaryFilterTreeWithAnd(List<Expression> expressions) {
-    // TODO: consider AVL tree
-    if (expressions.size() == 2) {
-      return new LogicAndExpression(expressions.get(0), expressions.get(1));
-    } else {
-      return new LogicAndExpression(
-          expressions.get(0),
-          constructBinaryFilterTreeWithAnd(expressions.subList(1, expressions.size())));
-    }
-  }
-
-  public static Filter convertPredicateToTimeFilter(Expression predicate) {
-    return predicate.accept(new ConvertExpressionToTimeFilterVisitor(), null);
   }
 }

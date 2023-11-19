@@ -25,7 +25,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils;
+import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
@@ -153,7 +153,7 @@ public class FragmentInstanceContext extends QueryContext {
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
     this.sessionInfo = sessionInfo;
     this.dataRegion = dataRegion;
-    this.globalTimeFilter = ExpressionUtils.convertPredicateToTimeFilter(globalTimePredicate);
+    this.globalTimeFilter = PredicateUtils.convertPredicateToTimeFilter(globalTimePredicate);
     this.dataNodeQueryContextMap = dataNodeQueryContextMap;
     this.dataNodeQueryContext = dataNodeQueryContextMap.get(id.getQueryId());
   }

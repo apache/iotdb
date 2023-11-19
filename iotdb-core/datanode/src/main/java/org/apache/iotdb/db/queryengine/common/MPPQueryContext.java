@@ -22,7 +22,7 @@ package org.apache.iotdb.db.queryengine.common;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
-import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils;
+import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -157,7 +157,7 @@ public class MPPQueryContext {
 
   public void generateGlobalTimeFilter(Analysis analysis) {
     this.globalTimeFilter =
-        ExpressionUtils.convertPredicateToTimeFilter(analysis.getGlobalTimePredicate());
+        PredicateUtils.convertPredicateToTimeFilter(analysis.getGlobalTimePredicate());
   }
 
   public Filter getGlobalTimeFilter() {
