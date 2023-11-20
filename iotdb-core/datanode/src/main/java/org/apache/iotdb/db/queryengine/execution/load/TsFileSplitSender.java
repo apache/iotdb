@@ -98,7 +98,6 @@ public class TsFileSplitSender {
   private Map<TConsensusGroupId, Exception> phaseTwoFailures = new HashMap<>();
   private long maxSplitSize;
   private PieceNodeSplitter pieceNodeSplitter = new ClusteringMeasurementSplitter(1.0, 10);
-  //        private PieceNodeSplitter pieceNodeSplitter = new OrderedMeasurementSplitter();
   private CompressionType compressionType = CompressionType.LZ4;
   private Statistic statistic = new Statistic();
   private ExecutorService splitNodeService;
@@ -237,6 +236,7 @@ public class TsFileSplitSender {
         try {
           Thread.sleep(RETRY_INTERVAL_MS);
         } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
           locationException = e;
           break;
         }
@@ -274,7 +274,10 @@ public class TsFileSplitSender {
     for (Pair<TRegionReplicaSet, Future<Void>> loadFuture : loadFutures) {
       try {
         loadFuture.right.get();
-      } catch (InterruptedException | ExecutionException e) {
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        phaseTwoFailures.put(loadFuture.left.regionId, e);
+      } catch (ExecutionException e) {
         phaseTwoFailures.put(loadFuture.left.regionId, e);
       }
     }
@@ -319,7 +322,11 @@ public class TsFileSplitSender {
     for (Pair<Future<List<LoadTsFilePieceNode>>, TRegionReplicaSet> pair : splitFutures) {
       try {
         subNodes = pair.left.get();
-      } catch (InterruptedException | ExecutionException e) {
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.error("Unexpected error during splitting node", e);
+        return false;
+      } catch (ExecutionException e) {
         logger.error("Unexpected error during splitting node", e);
         return false;
       }
@@ -370,6 +377,7 @@ public class TsFileSplitSender {
       try {
         Thread.sleep(RETRY_INTERVAL_MS);
       } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
         return false;
       }
     }
@@ -471,7 +479,11 @@ public class TsFileSplitSender {
             "{} splits are generated after {}ms", subNodes.size(), elapsedTime / 1_000_000L);
 
         splitFutures.add(new Pair<>(submitSplitPieceNode(pieceNode), replicaSet));
-      } catch (InterruptedException | ExecutionException e) {
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.error("Unexpected error during splitting node", e);
+        return false;
+      } catch (ExecutionException e) {
         logger.error("Unexpected error during splitting node", e);
         return false;
       }

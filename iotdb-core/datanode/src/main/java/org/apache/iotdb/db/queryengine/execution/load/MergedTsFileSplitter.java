@@ -287,6 +287,7 @@ public class MergedTsFileSplitter {
         try {
           nextSplit = nextSplits.take();
         } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
           return false;
         }
         return !(nextSplit instanceof EmptyTsFileData);
@@ -316,7 +317,10 @@ public class MergedTsFileSplitter {
           asyncTask.get();
         } catch (CancellationException ignored) {
 
-        } catch (InterruptedException | ExecutionException e) {
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          throw new IOException(e);
+        } catch (ExecutionException e) {
           throw new IOException(e);
         }
       }
@@ -342,6 +346,7 @@ public class MergedTsFileSplitter {
         try {
           nextSplits.put(chunkData);
         } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
           throw new IOException(e);
         }
       }
@@ -564,6 +569,7 @@ public class MergedTsFileSplitter {
         try {
           nextSplits.put(new EmptyTsFileData());
         } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
           asyncTask.cancel(true);
         }
       }
@@ -664,6 +670,7 @@ public class MergedTsFileSplitter {
         try {
           nextSplits.put(chunkData);
         } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
           return false;
         }
       }

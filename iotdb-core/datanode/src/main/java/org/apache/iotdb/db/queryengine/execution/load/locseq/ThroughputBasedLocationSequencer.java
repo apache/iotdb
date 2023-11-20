@@ -38,7 +38,7 @@ public class ThroughputBasedLocationSequencer implements LocationSequencer {
   private static final Logger logger =
       LoggerFactory.getLogger(ThroughputBasedLocationSequencer.class);
   private Random random = new Random();
-  private long resampleThresholdMS = 10000000;
+  private long resampleThresholdMS = 10_000_000;
   private List<TDataNodeLocation> orderedLocations;
 
   public ThroughputBasedLocationSequencer(
@@ -140,7 +140,7 @@ public class ThroughputBasedLocationSequencer implements LocationSequencer {
       newTotalRank += location.right;
     }
     for (Pair<TDataNodeLocation, Double> location : locations) {
-      location.right = location.right / newTotalRank;
+      location.right = newTotalRank == 0.0 ? 0.0 : location.right / newTotalRank;
     }
     logger.debug("New ranks {}", locations);
     return chosenPair;
