@@ -68,4 +68,8 @@ public interface Filter {
   List<TimeRange> getTimeRanges();
 
   Filter reverse();
+
+  default Filter copy() {
+    return this;
+  }
 }

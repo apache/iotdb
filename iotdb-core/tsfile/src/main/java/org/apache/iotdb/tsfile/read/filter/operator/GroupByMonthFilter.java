@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.tsfile.read.filter.operator;
 
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.basic.IStatefulFilter;
 import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 import java.util.Arrays;
@@ -34,7 +36,7 @@ import static org.apache.iotdb.tsfile.utils.TimeDuration.getConsecutiveTimesInte
  * GroupByMonthFilter is used to handle natural month slidingStep and interval by generating
  * dynamically. Attention: it's only supported to access in ascending order now.
  */
-public class GroupByMonthFilter extends GroupByFilter {
+public class GroupByMonthFilter extends GroupByFilter implements IStatefulFilter {
   private final Calendar calendar = Calendar.getInstance();
 
   private final TimeDuration originalSlidingStep;
@@ -210,5 +212,11 @@ public class GroupByMonthFilter extends GroupByFilter {
             currPrecision);
     result = 31 * result + Arrays.hashCode(startTimes);
     return result;
+  }
+
+  @Override
+  public Filter copy() {
+    return new GroupByMonthFilter(
+            originalInterval, originalSlidingStep, originalStartTime, originalEndTime, timeZone, currPrecision);
   }
 }

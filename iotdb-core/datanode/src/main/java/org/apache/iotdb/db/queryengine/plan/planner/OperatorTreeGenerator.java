@@ -501,7 +501,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
 
     Filter globalTimeFilter = context.getGlobalTimeFilter();
-    scanOptionsBuilder.withGlobalTimeFilter(globalTimeFilter);
+    if(globalTimeFilter != null) {
+      scanOptionsBuilder.withGlobalTimeFilter(globalTimeFilter.copy());
+    }
 
     Filter pushDownFilter = null;
     Expression pushDownPredicate = node.getPushDownPredicate();
@@ -511,6 +513,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           PredicateUtils.convertPredicateToFilter(pushDownPredicate, context.getTypeProvider());
     }
     scanOptionsBuilder.withPushDownFilter(pushDownFilter);
+
     return scanOptionsBuilder;
   }
 
