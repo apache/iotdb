@@ -2093,14 +2093,13 @@ public class TsFileSequenceReader implements AutoCloseable {
    *
    * @return full path -> datatype
    */
-  public Map<String, TSDataType> getFullPathDataTypeMapIntern() throws IOException {
+  public Map<String, TSDataType> getFullPathDataTypeMap() throws IOException {
     final Map<String, TSDataType> result = new HashMap<>();
     for (final String device : getAllDevices()) {
       Map<String, TimeseriesMetadata> timeseriesMetadataMap = readDeviceMetadata(device);
       for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataMap.values()) {
         result.put(
-            (device + TsFileConstant.PATH_SEPARATOR + timeseriesMetadata.getMeasurementId())
-                .intern(),
+            device + TsFileConstant.PATH_SEPARATOR + timeseriesMetadata.getMeasurementId(),
             timeseriesMetadata.getTsDataType());
       }
     }
@@ -2115,19 +2114,6 @@ public class TsFileSequenceReader implements AutoCloseable {
         result
             .computeIfAbsent(device, d -> new ArrayList<>())
             .add(timeseriesMetadata.getMeasurementId());
-      }
-    }
-    return result;
-  }
-
-  public Map<String, List<String>> getDeviceMeasurementsMapIntern() throws IOException {
-    Map<String, List<String>> result = new HashMap<>();
-    for (String device : getAllDevices()) {
-      Map<String, TimeseriesMetadata> timeseriesMetadataMap = readDeviceMetadata(device);
-      for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataMap.values()) {
-        result
-            .computeIfAbsent(device.intern(), d -> new ArrayList<>())
-            .add(timeseriesMetadata.getMeasurementId().intern());
       }
     }
     return result;

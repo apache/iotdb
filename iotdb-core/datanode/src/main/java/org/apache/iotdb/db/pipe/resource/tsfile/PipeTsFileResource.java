@@ -81,7 +81,7 @@ public class PipeTsFileResource implements Closeable {
       LOGGER.info("Creating TsFileReader for file in cache: {}", hardlinkOrCopiedFile.getPath());
       sequenceReader = new TsFileSequenceReader(hardlinkOrCopiedFile.getPath(), true, true);
       reader = new TsFileReader(sequenceReader);
-      deviceMeasurementsMap = sequenceReader.getDeviceMeasurementsMapIntern();
+      deviceMeasurementsMap = sequenceReader.getDeviceMeasurementsMap();
       deviceIsAlignedMap = new HashMap<>();
       final TsFileDeviceIterator deviceIsAlignedIterator =
           sequenceReader.getAllDevicesIteratorWithIsAligned();
@@ -89,7 +89,7 @@ public class PipeTsFileResource implements Closeable {
         final Pair<String, Boolean> deviceIsAlignedPair = deviceIsAlignedIterator.next();
         deviceIsAlignedMap.put(deviceIsAlignedPair.getLeft(), deviceIsAlignedPair.getRight());
       }
-      measurementDataTypeMap = sequenceReader.getFullPathDataTypeMapIntern();
+      measurementDataTypeMap = sequenceReader.getFullPathDataTypeMap();
       sequenceReader.clearCachedDeviceMetadata();
     }
   }

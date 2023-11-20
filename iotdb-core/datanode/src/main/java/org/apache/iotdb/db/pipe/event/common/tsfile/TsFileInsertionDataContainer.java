@@ -111,7 +111,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
         tsFileSequenceReader = new TsFileSequenceReader(tsFile.getPath(), true, true);
         tsFileReader = new TsFileReader(tsFileSequenceReader);
         deviceIsAlignedMap = readDeviceIsAlignedMap();
-        measurementDataTypeMap = tsFileSequenceReader.getFullPathDataTypeMapIntern();
+        measurementDataTypeMap = tsFileSequenceReader.getFullPathDataTypeMap();
       } else {
         tsFileReader = PipeResourceManager.tsfile().getTsFileReaderFromCache(tsFile);
         deviceIsAlignedMap = PipeResourceManager.tsfile().getDeviceIsAlignedMapFromCache(tsFile);
@@ -132,7 +132,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
     Map<String, List<String>> originalDeviceMeasurementsMap =
         PipeResourceManager.tsfile().getDeviceMeasurementsMapFromCache(tsFile);
     if (originalDeviceMeasurementsMap == null) {
-      originalDeviceMeasurementsMap = tsFileSequenceReader.getDeviceMeasurementsMapIntern();
+      originalDeviceMeasurementsMap = tsFileSequenceReader.getDeviceMeasurementsMap();
     }
 
     final Map<String, List<String>> filteredDeviceMeasurementsMap = new HashMap<>();
