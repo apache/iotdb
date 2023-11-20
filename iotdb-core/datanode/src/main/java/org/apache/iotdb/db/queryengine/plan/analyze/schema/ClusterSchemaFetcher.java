@@ -82,17 +82,19 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     patternTree.constructTree();
     List<PartialPath> pathPatternList = patternTree.getAllPathPatterns();
     List<PartialPath> explicitPathList = new ArrayList<>();
-    List<PartialPath> explicitDevicePatternList = new ArrayList<>();
+    Set<PartialPath> explicitDevicePatternList = new HashSet<>();
+    int explicitDevicePatternCount = 0;
     for (PartialPath pattern : pathPatternList) {
       if (!pattern.hasWildcard()) {
         explicitPathList.add(pattern);
       } else if (pattern.hasExplicitDevice()
           && templateManager.checkTemplateSetInfo(pattern) != null) {
-        explicitDevicePatternList.add(pattern);
+        explicitDevicePatternList.add(pattern.getDevicePath());
+        explicitDevicePatternCount++;
       }
     }
 
-    if (explicitPathList.size() + explicitDevicePatternList.size() < pathPatternList.size()) {
+    if (explicitPathList.size() + explicitDevicePatternCount < pathPatternList.size()) {
       return clusterSchemaFetchExecutor.fetchSchemaOfFuzzyMatch(patternTree, false, context);
     }
 
@@ -120,7 +122,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
       if (isAllCached && !explicitPathList.isEmpty()) {
         for (PartialPath fullPath : explicitPathList) {
-          cachedSchema = schemaCache.get(fullPath);
+          cachedSchema = schemaCache.getMatchedSchemaWithoutTemplate(fullPath);
           if (cachedSchema.isEmpty()) {
             isAllCached = false;
             break;

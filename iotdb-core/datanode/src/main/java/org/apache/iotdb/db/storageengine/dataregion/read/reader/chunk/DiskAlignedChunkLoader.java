@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
@@ -47,12 +48,15 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
   // it's only exact while using limit & offset push down
   private final boolean queryAllSensors;
 
+  private final TsFileResource resource;
+
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
 
-  public DiskAlignedChunkLoader(boolean debug, boolean queryAllSensors) {
+  public DiskAlignedChunkLoader(boolean debug, boolean queryAllSensors, TsFileResource resource) {
     this.debug = debug;
     this.queryAllSensors = queryAllSensors;
+    this.resource = resource;
   }
 
   @Override
@@ -71,15 +75,31 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
     long t1 = System.nanoTime();
     try {
       AlignedChunkMetadata alignedChunkMetadata = (AlignedChunkMetadata) chunkMetaData;
+      ChunkMetadata timeChunkMetadata = (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata();
       Chunk timeChunk =
           ChunkCache.getInstance()
-              .get((ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata(), debug);
+              .get(
+                  new ChunkCache.ChunkCacheKey(
+                      resource.getTsFilePath(),
+                      resource.getTsFileID(),
+                      timeChunkMetadata.getOffsetOfChunkHeader()),
+                  timeChunkMetadata.getDeleteIntervalList(),
+                  timeChunkMetadata.getStatistics(),
+                  debug);
       List<Chunk> valueChunkList = new ArrayList<>();
       for (IChunkMetadata valueChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
         valueChunkList.add(
             valueChunkMetadata == null
                 ? null
-                : ChunkCache.getInstance().get((ChunkMetadata) valueChunkMetadata, debug));
+                : ChunkCache.getInstance()
+                    .get(
+                        new ChunkCache.ChunkCacheKey(
+                            resource.getTsFilePath(),
+                            resource.getTsFileID(),
+                            valueChunkMetadata.getOffsetOfChunkHeader()),
+                        valueChunkMetadata.getDeleteIntervalList(),
+                        valueChunkMetadata.getStatistics(),
+                        debug));
       }
 
       long t2 = System.nanoTime();

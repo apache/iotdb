@@ -97,6 +97,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -117,7 +118,7 @@ public class DataNode implements DataNodeMBean {
 
   private static final File SYSTEM_PROPERTIES =
       SystemFileFactory.INSTANCE.getFile(
-          config.getSchemaDir() + File.separator + IoTDBStartCheck.PROPERTIES_FILE_NAME);
+          config.getSystemDir() + File.separator + IoTDBStartCheck.PROPERTIES_FILE_NAME);
 
   /**
    * When joining a cluster or getting configuration this node will retry at most "DEFAULT_RETRY"
@@ -139,6 +140,9 @@ public class DataNode implements DataNodeMBean {
 
   private static final String REGISTER_INTERRUPTION =
       "Unexpected interruption when waiting to register to the cluster";
+
+  private boolean schemaRegionConsensusStarted = false;
+  private boolean dataRegionConsensusStarted = false;
 
   private DataNode() {
     // We do not init anything here, so that we can re-initialize the instance in IT.
@@ -162,8 +166,14 @@ public class DataNode implements DataNodeMBean {
       // Check if this DataNode is start for the first time and do other pre-checks
       isFirstStart = prepareDataNode();
 
-      // Set target ConfigNodeList from iotdb-datanode.properties file
-      ConfigNodeInfo.getInstance().updateConfigNodeList(config.getTargetConfigNodeList());
+      if (isFirstStart) {
+        // Set target ConfigNodeList from iotdb-datanode.properties file
+        ConfigNodeInfo.getInstance()
+            .updateConfigNodeList(Collections.singletonList(config.getSeedConfigNode()));
+      } else {
+        // Load registered ConfigNodes from system.properties
+        ConfigNodeInfo.getInstance().loadConfigNodeList();
+      }
 
       // Pull and check system configurations from ConfigNode-leader
       pullAndCheckSystemConfigurations();
@@ -201,15 +211,18 @@ public class DataNode implements DataNodeMBean {
         SYSTEM_PROPERTIES.deleteOnExit();
       }
       stop();
+      System.exit(-1);
     }
   }
 
   /** Prepare cluster IoTDB-DataNode */
   private boolean prepareDataNode() throws StartupException, IOException {
+    long startTime = System.currentTimeMillis();
     // Set cluster mode
     config.setClusterMode(true);
 
     // Notice: Consider this DataNode as first start if the system.properties file doesn't exist
+    IoTDBStartCheck.getInstance().checkOldSystemConfig();
     boolean isFirstStart = IoTDBStartCheck.getInstance().checkIsFirstStart();
 
     // Set this node
@@ -219,6 +232,8 @@ public class DataNode implements DataNodeMBean {
     // Startup checks
     DataNodeStartupCheck checks = new DataNodeStartupCheck(IoTDBConstant.DN_ROLE, config);
     checks.startUpCheck();
+    long endTime = System.currentTimeMillis();
+    logger.info("The DataNode is prepared successfully, which takes {} ms", (endTime - startTime));
     return isFirstStart;
   }
 
@@ -235,7 +250,7 @@ public class DataNode implements DataNodeMBean {
    */
   private void pullAndCheckSystemConfigurations() throws StartupException {
     logger.info("Pulling system configurations from the ConfigNode-leader...");
-
+    long startTime = System.currentTimeMillis();
     /* Pull system configurations */
     int retry = DEFAULT_RETRY;
     TSystemConfigurationResp configurationResp = null;
@@ -245,11 +260,9 @@ public class DataNode implements DataNodeMBean {
         configurationResp = configNodeClient.getSystemConfiguration();
         break;
       } catch (TException | ClientManagerException e) {
-        // Read ConfigNodes from system.properties and retry
         logger.warn(
             "Cannot pull system configurations from ConfigNode-leader, because: {}",
             e.getMessage());
-        ConfigNodeInfo.getInstance().loadConfigNodeList();
         retry--;
       }
 
@@ -262,7 +275,9 @@ public class DataNode implements DataNodeMBean {
         retry = -1;
       }
     }
-    if (configurationResp == null) {
+    if (configurationResp == null
+        || !configurationResp.isSetStatus()
+        || configurationResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // All tries failed
       logger.error(
           "Cannot pull system configurations from ConfigNode-leader after {} retries",
@@ -300,8 +315,10 @@ public class DataNode implements DataNodeMBean {
     } catch (Exception e) {
       throw new StartupException(e.getMessage());
     }
-
-    logger.info("Successfully pull system configurations from ConfigNode-leader.");
+    long endTime = System.currentTimeMillis();
+    logger.info(
+        "Successfully pull system configurations from ConfigNode-leader, which takes {} ms",
+        (endTime - startTime));
   }
 
   /**
@@ -353,7 +370,7 @@ public class DataNode implements DataNodeMBean {
    */
   private void sendRegisterRequestToConfigNode() throws StartupException, IOException {
     logger.info("Sending register request to ConfigNode-leader...");
-
+    long startTime = System.currentTimeMillis();
     /* Send register request */
     int retry = DEFAULT_RETRY;
     TDataNodeRegisterReq req = new TDataNodeRegisterReq();
@@ -367,9 +384,7 @@ public class DataNode implements DataNodeMBean {
         dataNodeRegisterResp = configNodeClient.registerDataNode(req);
         break;
       } catch (TException | ClientManagerException e) {
-        // Read ConfigNodes from system.properties and retry
         logger.warn("Cannot register to the cluster, because: {}", e.getMessage());
-        ConfigNodeInfo.getInstance().loadConfigNodeList();
         retry--;
       }
 
@@ -386,7 +401,7 @@ public class DataNode implements DataNodeMBean {
       // All tries failed
       logger.error(
           "Cannot register into cluster after {} retries. "
-              + "Please check dn_target_config_node_list in iotdb-datanode.properties.",
+              + "Please check dn_seed_config_node in iotdb-datanode.properties.",
           DEFAULT_RETRY);
       throw new StartupException("Cannot register into the cluster.");
     }
@@ -401,8 +416,11 @@ public class DataNode implements DataNodeMBean {
 
       storeRuntimeConfigurations(
           dataNodeRegisterResp.getConfigNodeList(), dataNodeRegisterResp.getRuntimeConfiguration());
-
-      logger.info("Successfully register to the cluster: {}", config.getClusterName());
+      long endTime = System.currentTimeMillis();
+      logger.info(
+          "Successfully register to the cluster: {} , which takes {} ms.",
+          config.getClusterName(),
+          (endTime - startTime));
     } else {
       /* Throw exception when register failed */
       logger.error(dataNodeRegisterResp.getStatus().getMessage());
@@ -412,7 +430,7 @@ public class DataNode implements DataNodeMBean {
 
   private void sendRestartRequestToConfigNode() throws StartupException {
     logger.info("Sending restart request to ConfigNode-leader...");
-
+    long startTime = System.currentTimeMillis();
     /* Send restart request */
     int retry = DEFAULT_RETRY;
     TDataNodeRestartReq req = new TDataNodeRestartReq();
@@ -427,10 +445,8 @@ public class DataNode implements DataNodeMBean {
         dataNodeRestartResp = configNodeClient.restartDataNode(req);
         break;
       } catch (TException | ClientManagerException e) {
-        // Read ConfigNodes from system.properties and retry
         logger.warn(
             "Cannot send restart request to the ConfigNode-leader, because: {}", e.getMessage());
-        ConfigNodeInfo.getInstance().loadConfigNodeList();
         retry--;
       }
 
@@ -447,7 +463,7 @@ public class DataNode implements DataNodeMBean {
       // All tries failed
       logger.error(
           "Cannot send restart DataNode request to ConfigNode-leader after {} retries. "
-              + "Please check dn_target_config_node_list in iotdb-datanode.properties.",
+              + "Please check dn_seed_config_node in iotdb-datanode.properties.",
           DEFAULT_RETRY);
       throw new StartupException("Cannot send restart DataNode request to ConfigNode-leader.");
     }
@@ -456,7 +472,11 @@ public class DataNode implements DataNodeMBean {
       /* Store runtime configurations when restart request is accepted */
       storeRuntimeConfigurations(
           dataNodeRestartResp.getConfigNodeList(), dataNodeRestartResp.getRuntimeConfiguration());
-      logger.info("Restart request to cluster: {} is accepted.", config.getClusterName());
+      long endTime = System.currentTimeMillis();
+      logger.info(
+          "Restart request to cluster: {} is accepted, which takes {} ms.",
+          config.getClusterName(),
+          (endTime - startTime));
     } else {
       /* Throw exception when restart is rejected */
       throw new StartupException(dataNodeRestartResp.getStatus().getMessage());
@@ -485,8 +505,19 @@ public class DataNode implements DataNodeMBean {
     logger.info("IoTDB DataNode has started.");
 
     try {
+      long startTime = System.currentTimeMillis();
       SchemaRegionConsensusImpl.getInstance().start();
+      long schemaRegionEndTime = System.currentTimeMillis();
+      logger.info(
+          "SchemaRegion consensus start successfully, which takes {} ms.",
+          (schemaRegionEndTime - startTime));
+      schemaRegionConsensusStarted = true;
       DataRegionConsensusImpl.getInstance().start();
+      long dataRegionEndTime = System.currentTimeMillis();
+      logger.info(
+          "DataRegion consensus start successfully, which takes {} ms.",
+          (dataRegionEndTime - schemaRegionEndTime));
+      dataRegionConsensusStarted = true;
     } catch (IOException e) {
       throw new StartupException(e);
     }
@@ -531,7 +562,7 @@ public class DataNode implements DataNodeMBean {
 
     logger.info(
         "IoTDB DataNode is setting up, some databases may not be ready now, please wait several seconds...");
-
+    long startTime = System.currentTimeMillis();
     while (!StorageEngine.getInstance().isAllSgReady()) {
       try {
         TimeUnit.MILLISECONDS.sleep(1000);
@@ -541,7 +572,8 @@ public class DataNode implements DataNodeMBean {
         return;
       }
     }
-
+    long endTime = System.currentTimeMillis();
+    logger.info("Wait for all databases ready, which takes {} ms.", (endTime - startTime));
     // Must init after SchemaEngine and StorageEngine prepared well
     DataNodeRegionManager.getInstance().init();
 
@@ -557,10 +589,6 @@ public class DataNode implements DataNodeMBean {
   private void setUpRPCService() throws StartupException {
     // Start InternalRPCService to indicate that the current DataNode can accept cluster scheduling
     registerManager.register(DataNodeInternalRPCService.getInstance());
-    // Start InternalRPCService to indicate that the current DataNode can accept request from MLNode
-    if (config.isEnableMLNodeService()) {
-      registerManager.register(MLNodeRPCService.getInstance());
-    }
 
     // Notice: During the period between starting the internal RPC service
     // and starting the client RPC service , some requests may fail because
@@ -609,11 +637,11 @@ public class DataNode implements DataNodeMBean {
   }
 
   /**
-   * Generate dataNodeConfiguration.
+   * Generate dataNodeConfiguration. Warning: Don't private this method !!!
    *
    * @return TDataNodeConfiguration
    */
-  private TDataNodeConfiguration generateDataNodeConfiguration() {
+  public TDataNodeConfiguration generateDataNodeConfiguration() {
     // Set DataNodeLocation
     TDataNodeLocation location = generateDataNodeLocation();
 
@@ -640,6 +668,7 @@ public class DataNode implements DataNodeMBean {
   }
 
   private void prepareUDFResources() throws StartupException {
+    long startTime = System.currentTimeMillis();
     initUDFRelatedInstance();
     if (resourcesInformationHolder.getUDFInformationList() == null
         || resourcesInformationHolder.getUDFInformationList().isEmpty()) {
@@ -669,8 +698,8 @@ public class DataNode implements DataNodeMBean {
     } catch (Exception e) {
       throw new StartupException(e);
     }
-
-    logger.debug("successfully registered all the UDFs");
+    long endTime = System.currentTimeMillis();
+    logger.debug("successfully registered all the UDFs, which takes {} ms.", (endTime - startTime));
     if (logger.isDebugEnabled()) {
       for (UDFInformation udfInformation :
           UDFManagementService.getInstance().getAllUDFInformation()) {
@@ -743,6 +772,7 @@ public class DataNode implements DataNodeMBean {
   }
 
   private void prepareTriggerResources() throws StartupException {
+    long startTime = System.currentTimeMillis();
     initTriggerRelatedInstance();
     if (resourcesInformationHolder.getTriggerInformationList() == null
         || resourcesInformationHolder.getTriggerInformationList().isEmpty()) {
@@ -773,7 +803,7 @@ public class DataNode implements DataNodeMBean {
     } catch (Exception e) {
       throw new StartupException(e);
     }
-    logger.debug("successfully registered all the triggers");
+
     if (logger.isDebugEnabled()) {
       for (TriggerInformation triggerInformation :
           TriggerManagementService.getInstance().getAllTriggerInformationInTriggerTable()) {
@@ -787,6 +817,9 @@ public class DataNode implements DataNodeMBean {
     }
     // Start TriggerInformationUpdater
     triggerInformationUpdater.startTriggerInformationUpdater();
+    long endTime = System.currentTimeMillis();
+    logger.info(
+        "successfully registered all the triggers, which takes {} ms.", (endTime - startTime));
   }
 
   private void getJarOfTriggers(List<TriggerInformation> triggerInformationList)
@@ -848,7 +881,10 @@ public class DataNode implements DataNodeMBean {
   }
 
   private void preparePipeResources() throws StartupException {
+    long startTime = System.currentTimeMillis();
     PipeAgent.runtime().preparePipeResources(resourcesInformationHolder);
+    long endTime = System.currentTimeMillis();
+    logger.info("Prepare pipe resources successfully, which takes {} ms.", (endTime - startTime));
   }
 
   private void getPipeInformationList(List<ByteBuffer> allPipeInformation) {
@@ -862,19 +898,23 @@ public class DataNode implements DataNodeMBean {
   }
 
   private void initSchemaEngine() {
-    long time = System.currentTimeMillis();
+    long startTime = System.currentTimeMillis();
     SchemaEngine.getInstance().init();
-    long end = System.currentTimeMillis() - time;
-    logger.info("Spent {}ms to recover schema.", end);
+    long endTime = System.currentTimeMillis();
+    logger.info("Recover schema successfully, which takes {} ms.", (endTime - startTime));
   }
 
   public void stop() {
     deactivate();
-
+    SchemaEngine.getInstance().clear();
     try {
       MetricService.getInstance().stop();
-      SchemaRegionConsensusImpl.getInstance().stop();
-      DataRegionConsensusImpl.getInstance().stop();
+      if (schemaRegionConsensusStarted) {
+        SchemaRegionConsensusImpl.getInstance().stop();
+      }
+      if (dataRegionConsensusStarted) {
+        DataRegionConsensusImpl.getInstance().stop();
+      }
     } catch (Exception e) {
       logger.error("Stop data node error", e);
     }

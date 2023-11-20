@@ -34,6 +34,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
@@ -89,18 +90,18 @@ public class ShowFunctionsTask implements IConfigTask {
 
   private static void appendUDFInformation(TsBlockBuilder builder, UDFInformation udfInformation) {
     builder.getTimeColumnBuilder().writeLong(0L);
-    builder.getColumnBuilder(0).writeBinary(Binary.valueOf(udfInformation.getFunctionName()));
-    builder.getColumnBuilder(1).writeBinary(Binary.valueOf(getFunctionType(udfInformation)));
-    builder.getColumnBuilder(2).writeBinary(Binary.valueOf(udfInformation.getClassName()));
+    builder.getColumnBuilder(0).writeBinary(BytesUtils.valueOf(udfInformation.getFunctionName()));
+    builder.getColumnBuilder(1).writeBinary(BytesUtils.valueOf(getFunctionType(udfInformation)));
+    builder.getColumnBuilder(2).writeBinary(BytesUtils.valueOf(udfInformation.getClassName()));
     builder.declarePosition();
   }
 
   private static void appendNativeFunctions(TsBlockBuilder builder) {
-    final Binary functionType = Binary.valueOf(FUNCTION_TYPE_NATIVE);
-    final Binary className = Binary.valueOf("");
+    final Binary functionType = BytesUtils.valueOf(FUNCTION_TYPE_NATIVE);
+    final Binary className = BytesUtils.valueOf("");
     for (String functionName : BuiltinAggregationFunction.getNativeFunctionNames()) {
       builder.getTimeColumnBuilder().writeLong(0L);
-      builder.getColumnBuilder(0).writeBinary(Binary.valueOf(functionName.toUpperCase()));
+      builder.getColumnBuilder(0).writeBinary(BytesUtils.valueOf(functionName.toUpperCase()));
       builder.getColumnBuilder(1).writeBinary(functionType);
       builder.getColumnBuilder(2).writeBinary(className);
       builder.declarePosition();
@@ -108,11 +109,11 @@ public class ShowFunctionsTask implements IConfigTask {
   }
 
   private static void appendBuiltInScalarFunctions(TsBlockBuilder builder) {
-    final Binary functionType = Binary.valueOf(FUNCTION_TYPE_BUILTIN_SCALAR);
-    final Binary className = Binary.valueOf("");
+    final Binary functionType = BytesUtils.valueOf(FUNCTION_TYPE_BUILTIN_SCALAR);
+    final Binary className = BytesUtils.valueOf("");
     for (String functionName : BuiltinScalarFunction.getNativeFunctionNames()) {
       builder.getTimeColumnBuilder().writeLong(0L);
-      builder.getColumnBuilder(0).writeBinary(Binary.valueOf(functionName.toUpperCase()));
+      builder.getColumnBuilder(0).writeBinary(BytesUtils.valueOf(functionName.toUpperCase()));
       builder.getColumnBuilder(1).writeBinary(functionType);
       builder.getColumnBuilder(2).writeBinary(className);
       builder.declarePosition();

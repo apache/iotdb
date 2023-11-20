@@ -52,13 +52,11 @@ import java.util.Map;
 import java.util.Set;
 
 public class DistributionPlanner {
-  private Analysis analysis;
-  private MPPQueryContext context;
-  private LogicalQueryPlan logicalPlan;
+  private final Analysis analysis;
+  private final MPPQueryContext context;
+  private final LogicalQueryPlan logicalPlan;
 
   private final List<PlanOptimizer> optimizers;
-
-  private int planFragmentIndex = 0;
 
   public DistributionPlanner(Analysis analysis, LogicalQueryPlan logicalPlan) {
     this.analysis = analysis;
@@ -81,11 +79,7 @@ public class DistributionPlanner {
   public PlanNode addExchangeNode(PlanNode root) {
     ExchangeNodeAdder adder = new ExchangeNodeAdder(this.analysis);
     NodeGroupContext nodeGroupContext =
-        new NodeGroupContext(
-            context,
-            analysis.getStatement() instanceof QueryStatement
-                && (((QueryStatement) analysis.getStatement()).isAlignByDevice()),
-            root);
+        new NodeGroupContext(context, analysis.getStatement(), root);
     PlanNode newRoot = adder.visit(root, nodeGroupContext);
     adjustUpStream(newRoot, nodeGroupContext);
     return newRoot;
@@ -177,12 +171,13 @@ public class DistributionPlanner {
   }
 
   public SubPlan splitFragment(PlanNode root) {
-    FragmentBuilder fragmentBuilder = new FragmentBuilder(context);
+    FragmentBuilder fragmentBuilder = new FragmentBuilder();
     return fragmentBuilder.splitToSubPlan(root);
   }
 
   public DistributedQueryPlan planFragments() {
     PlanNode rootAfterRewrite = rewriteSource();
+
     PlanNode rootWithExchange = addExchangeNode(rootAfterRewrite);
     if (analysis.getStatement() != null && analysis.getStatement().isQuery()) {
       analysis
@@ -196,7 +191,7 @@ public class DistributionPlanner {
     List<FragmentInstance> fragmentInstances = planFragmentInstances(subPlan);
     // Only execute this step for READ operation
     if (context.getQueryType() == QueryType.READ) {
-      SetSinkForRootInstance(subPlan, fragmentInstances);
+      setSinkForRootInstance(subPlan, fragmentInstances);
     }
     return new DistributedQueryPlan(
         logicalPlan.getContext(), subPlan, subPlan.getPlanFragmentList(), fragmentInstances);
@@ -213,7 +208,7 @@ public class DistributionPlanner {
   }
 
   // TODO: (xingtanzjr) Maybe we should handle ResultNode in LogicalPlanner ?
-  public void SetSinkForRootInstance(SubPlan subPlan, List<FragmentInstance> instances) {
+  public void setSinkForRootInstance(SubPlan subPlan, List<FragmentInstance> instances) {
     FragmentInstance rootInstance = null;
     for (FragmentInstance instance : instances) {
       if (instance.getFragment().getId().equals(subPlan.getPlanFragment().getId())) {
@@ -249,11 +244,6 @@ public class DistributionPlanner {
   }
 
   private class FragmentBuilder {
-    private MPPQueryContext context;
-
-    public FragmentBuilder(MPPQueryContext context) {
-      this.context = context;
-    }
 
     public SubPlan splitToSubPlan(PlanNode root) {
       SubPlan rootSubPlan = createSubPlan(root);

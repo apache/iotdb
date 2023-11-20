@@ -43,11 +43,11 @@ public interface IUserManager extends SnapshotProcessor {
    *
    * @param username is not null or empty
    * @param password is not null or empty
-   * @param firstInit is first init admin
+   * @param validCheck is whether check user's name and password
    * @return True if the user is successfully created, false when the user already exists.
    * @throws AuthException if the given username or password is illegal.
    */
-  boolean createUser(String username, String password, boolean firstInit) throws AuthException;
+  boolean createUser(String username, String password, boolean validCheck) throws AuthException;
 
   /**
    * Delete a user.
@@ -65,10 +65,11 @@ public interface IUserManager extends SnapshotProcessor {
    * @param path The seriesPath on which the privilege takes effect. If the privilege is a
    *     seriesPath-free privilege, this should be "root".
    * @param privilegeId An integer that represents a privilege.
+   * @param grantOpt Whether the privilege can be granted to other role/user.
    * @return True if the permission is successfully added, false if the permission already exists.
    * @throws AuthException If the user does not exist or the privilege or the seriesPath is illegal.
    */
-  boolean grantPrivilegeToUser(String username, PartialPath path, int privilegeId)
+  boolean grantPrivilegeToUser(String username, PartialPath path, int privilegeId, boolean grantOpt)
       throws AuthException;
 
   /**
@@ -151,4 +152,10 @@ public interface IUserManager extends SnapshotProcessor {
    * @throws AuthException
    */
   void replaceAllUsers(Map<String, User> users) throws AuthException;
+
+  void setPreVersion(boolean perVersion);
+
+  boolean preVersion();
+
+  void checkAndRefreshPathPri();
 }

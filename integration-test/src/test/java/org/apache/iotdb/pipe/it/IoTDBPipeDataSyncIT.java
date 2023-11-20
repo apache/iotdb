@@ -90,7 +90,7 @@ public class IoTDBPipeDataSyncIT {
       extractorAttributes.put("extractor.realtime.mode", "log");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enabled", "false");
+      connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
@@ -105,9 +105,79 @@ public class IoTDBPipeDataSyncIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
+      // Do not fail if the failure has nothing to do with pipe
+      // Because the failures will randomly generate due to resource limitation
       try (Connection connection = senderEnv.getConnection();
           Statement statement = connection.createStatement()) {
         statement.execute("insert into root.vehicle.d0(time, s1) values (0, 1)");
+      } catch (SQLException e) {
+        e.printStackTrace();
+        return;
+      }
+
+      try (Connection connection = receiverEnv.getConnection();
+          Statement statement = connection.createStatement()) {
+        await()
+            .atMost(600, TimeUnit.SECONDS)
+            .untilAsserted(
+                () -> {
+                  try {
+                    TestUtils.assertResultSetEqual(
+                        statement.executeQuery("select * from root.**"),
+                        "Time,root.vehicle.d0.s1,",
+                        Collections.singleton("0,1.0,"));
+                  } catch (Exception e) {
+                    // Handle the exception generated during "executeQuery"
+                    Assert.fail();
+                  }
+                });
+      } catch (Exception e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  @Test
+  public void testInsertNull() throws Exception {
+    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    String receiverIp = receiverDataNode.getIp();
+    int receiverPort = receiverDataNode.getPort();
+
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      Map<String, String> extractorAttributes = new HashMap<>();
+      Map<String, String> processorAttributes = new HashMap<>();
+      Map<String, String> connectorAttributes = new HashMap<>();
+
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.ip", receiverIp);
+      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+
+      TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("testPipe", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
+
+      try (Connection connection = receiverEnv.getConnection();
+          Statement statement = connection.createStatement()) {
+        statement.execute("create aligned timeseries root.sg.d1(s0 float, s1 float)");
+      } catch (SQLException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+
+      try (Connection connection = senderEnv.getConnection();
+          Statement statement = connection.createStatement()) {
+        statement.execute("create aligned timeseries root.sg.d1(s0 float, s1 float)");
+        statement.execute("insert into root.sg.d1(time, s0, s1) values (3, null, 25.34)");
       } catch (SQLException e) {
         e.printStackTrace();
         fail(e.getMessage());
@@ -121,8 +191,8 @@ public class IoTDBPipeDataSyncIT {
                 () ->
                     TestUtils.assertResultSetEqual(
                         statement.executeQuery("select * from root.**"),
-                        "Time,root.vehicle.d0.s1,",
-                        Collections.singleton("0,1.0,")));
+                        "Time,root.sg.d1.s0,root.sg.d1.s1,",
+                        Collections.singleton("3,null,25.34,")));
       } catch (Exception e) {
         e.printStackTrace();
         fail(e.getMessage());

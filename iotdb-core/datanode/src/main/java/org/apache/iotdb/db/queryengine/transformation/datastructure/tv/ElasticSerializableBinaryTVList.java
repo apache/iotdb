@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.transformation.datastructure.tv;
 import org.apache.iotdb.commons.udf.utils.UDFBinaryTransformer;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.SerializableList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.udf.api.type.Binary;
 
 import java.io.IOException;
@@ -52,8 +53,7 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
 
   @Override
   public void putString(long timestamp, String value) throws IOException {
-    org.apache.iotdb.tsfile.utils.Binary binary =
-        org.apache.iotdb.tsfile.utils.Binary.valueOf(value);
+    org.apache.iotdb.tsfile.utils.Binary binary = BytesUtils.valueOf(value);
     super.putBinary(timestamp, UDFBinaryTransformer.transformToUDFBinary(binary));
     totalByteArrayLengthLimit += byteArrayLengthForMemoryControl;
     totalByteArrayLength += binary.getLength();
@@ -113,7 +113,7 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
       newElasticSerializableTVList.bitMaps.add(null);
     }
     newElasticSerializableTVList.size = internalListEvictionUpperBound * newInternalTVListCapacity;
-    org.apache.iotdb.tsfile.utils.Binary empty = org.apache.iotdb.tsfile.utils.Binary.valueOf("");
+    org.apache.iotdb.tsfile.utils.Binary empty = BytesUtils.valueOf("");
     for (int i = newElasticSerializableTVList.size; i < evictionUpperBound; ++i) {
       newElasticSerializableTVList.putBinary(i, UDFBinaryTransformer.transformToUDFBinary(empty));
     }

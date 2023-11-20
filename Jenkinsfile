@@ -38,7 +38,7 @@ pipeline {
     }
 
     options {
-        timeout(time: 4, unit: 'HOURS')
+        timeout(time: 8, unit: 'HOURS')
         // When we have test-fails e.g. we don't need to run the remaining steps
         skipStagesAfterUnstable()
     }
@@ -190,7 +190,7 @@ BUILD-FAILURE: Job '${env.JOB_NAME} [${env.BRANCH_NAME}] [${env.BUILD_NUMBER}]':
 
 Check console output at "<a href="${env.BUILD_URL}">${env.JOB_NAME} [${env.BRANCH_NAME}] [${env.BUILD_NUMBER}]</a>"
 """,
-                        to: "dev@iotdb.apache.org"
+                        to: "notifications@iotdb.apache.org"
                     )
                 }
             }
@@ -207,7 +207,7 @@ BUILD-UNSTABLE: Job '${env.JOB_NAME} [${env.BRANCH_NAME}] [${env.BUILD_NUMBER}]'
 
 Check console output at "<a href="${env.BUILD_URL}">${env.JOB_NAME} [${env.BRANCH_NAME}] [${env.BUILD_NUMBER}]</a>"
 """,
-                        to: "dev@iotdb.apache.org"
+                        to: "notifications@iotdb.apache.org"
                     )
                 }
             }
@@ -224,7 +224,7 @@ BUILD-STABLE: Job '${env.JOB_NAME} [${env.BRANCH_NAME}] [${env.BUILD_NUMBER}]':
 
 Is back to normal.
 """,
-                        to: "dev@iotdb.apache.org"
+                        to: "notifications@iotdb.apache.org"
                     )
                 }
             }

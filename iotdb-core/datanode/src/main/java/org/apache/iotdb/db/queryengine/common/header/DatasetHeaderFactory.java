@@ -185,14 +185,6 @@ public class DatasetHeaderFactory {
     return new DatasetHeader(ColumnHeaderConstant.showThrottleQuotaColumnHeaders, true);
   }
 
-  public static DatasetHeader getShowModelsHeader() {
-    return new DatasetHeader(ColumnHeaderConstant.showModelsColumnHeaders, true);
-  }
-
-  public static DatasetHeader getShowTrailsHeader() {
-    return new DatasetHeader(ColumnHeaderConstant.showTrailsColumnHeaders, true);
-  }
-
   public static DatasetHeader getShowLogicalViewHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showLogicalViewColumnHeaders, true);
   }

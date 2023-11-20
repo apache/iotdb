@@ -48,7 +48,8 @@ public class IoTDBThriftAsyncPipeTransferBatchReqBuilder extends PipeTransferBat
       throws IOException, WALPipeException {
     final TPipeTransferReq req = buildTabletInsertionReq(event);
 
-    if (events.isEmpty() || !events.get(events.size() - 1).equals(event)) {
+    if (requestCommitIds.isEmpty()
+        || !requestCommitIds.get(requestCommitIds.size() - 1).equals(requestCommitId)) {
       reqs.add(req);
 
       if (event instanceof EnrichedEvent) {
@@ -64,7 +65,7 @@ public class IoTDBThriftAsyncPipeTransferBatchReqBuilder extends PipeTransferBat
       bufferSize += req.getBody().length;
     }
 
-    return bufferSize >= maxBatchSizeInBytes
+    return bufferSize >= getMaxBatchSizeInBytes()
         || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs;
   }
 
@@ -85,5 +86,9 @@ public class IoTDBThriftAsyncPipeTransferBatchReqBuilder extends PipeTransferBat
 
   public List<Long> deepcopyRequestCommitIds() {
     return new ArrayList<>(requestCommitIds);
+  }
+
+  public long getLastCommitId() {
+    return requestCommitIds.isEmpty() ? -1 : requestCommitIds.get(requestCommitIds.size() - 1);
   }
 }

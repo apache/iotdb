@@ -70,4 +70,12 @@ public interface ITaskScheduler {
    * @param task the task to be switched.
    */
   void toAborted(DriverTask task);
+
+  /**
+   * Add a time watch for the task. The task will be aborted if it can not be finished in the given
+   * amount of time.
+   *
+   * @param task the target task.
+   */
+  void enforceTimeLimit(DriverTask task);
 }

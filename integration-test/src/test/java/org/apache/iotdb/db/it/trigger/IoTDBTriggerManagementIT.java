@@ -24,7 +24,6 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
 import org.junit.Before;
@@ -56,9 +55,9 @@ public class IoTDBTriggerManagementIT {
           + "test-classes"
           + File.separator;
 
-  private static final String TRIGGER_JAR_PREFIX =
+  public static final String TRIGGER_JAR_PREFIX =
       new File(TRIGGER_COUNTER_PREFIX).toURI().toString();
-  private static final String TRIGGER_FILE_TIMES_COUNTER =
+  public static final String TRIGGER_FILE_TIMES_COUNTER =
       "org.apache.iotdb.db.trigger.example.TriggerFireTimesCounter";
 
   private static final String STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX =
@@ -522,118 +521,6 @@ public class IoTDBTriggerManagementIT {
           String.format("drop trigger %s", STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "all"));
     } catch (Exception e) {
       assertTrue(e.getMessage().contains("has not been created"));
-    }
-  }
-
-  @Test
-  public void testCreateAuth() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-
-      statement.execute("CREATE USER `zmty` 'zmty'");
-
-      try (Connection connection2 = EnvFactory.getEnv().getConnection("zmty", "zmty");
-          Statement statement2 = connection2.createStatement()) {
-        try {
-          statement2.execute(
-              String.format(
-                  "create stateless trigger %s before insert on root.test.stateless.a as '%s' using URI '%s' with (\"name\"=\"%s\")",
-                  STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a",
-                  TRIGGER_FILE_TIMES_COUNTER,
-                  TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
-                  STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a"));
-          fail();
-        } catch (Exception e) {
-          assertEquals(
-              TSStatusCode.NO_PERMISSION.getStatusCode()
-                  + ": No permissions for this operation, please add privilege USE_TRIGGER",
-              e.getMessage());
-        }
-
-        statement.execute("GRANT USER `zmty` PRIVILEGES USE_TRIGGER on root.test.stateless.a");
-
-        try {
-          statement2.execute(
-              String.format(
-                  "create stateless trigger %s before insert on root.test.stateless.a as '%s' using URI '%s' with (\"name\"=\"%s\")",
-                  STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a",
-                  TRIGGER_FILE_TIMES_COUNTER,
-                  TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
-                  STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a"));
-        } catch (Exception e) {
-          fail(e.getMessage());
-        }
-
-        try {
-          statement2.execute(
-              String.format(
-                  "create stateless trigger %s before insert on root.test.stateless.b as '%s' using URI '%s' with (\"name\"=\"%s\")",
-                  STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "b",
-                  TRIGGER_FILE_TIMES_COUNTER,
-                  TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
-                  STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "b"));
-          fail();
-        } catch (Exception e) {
-          assertEquals(
-              TSStatusCode.NO_PERMISSION.getStatusCode()
-                  + ": No permissions for this operation, please add privilege USE_TRIGGER",
-              e.getMessage());
-        }
-      }
-    } catch (Exception e) {
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
-  public void testDropAuth() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-
-      statement.execute("CREATE USER `zmty` 'zmty'");
-
-      try (Connection connection2 = EnvFactory.getEnv().getConnection("zmty", "zmty");
-          Statement statement2 = connection2.createStatement()) {
-        try {
-          statement.execute(
-              String.format(
-                  "create stateless trigger %s before insert on root.test.stateless.a as '%s' using URI '%s' with (\"name\"=\"%s\")",
-                  STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a",
-                  TRIGGER_FILE_TIMES_COUNTER,
-                  TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
-                  STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a"));
-
-          statement2.execute("drop trigger " + STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a");
-          fail();
-        } catch (Exception e) {
-          assertEquals(
-              TSStatusCode.NO_PERMISSION.getStatusCode()
-                  + ": No permissions for this operation, please add privilege USE_TRIGGER",
-              e.getMessage());
-        }
-
-        statement.execute("GRANT USER `zmty` PRIVILEGES USE_TRIGGER on root.test.stateless.b");
-
-        try {
-          statement2.execute("drop trigger " + STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a");
-          fail();
-        } catch (Exception e) {
-          assertEquals(
-              TSStatusCode.NO_PERMISSION.getStatusCode()
-                  + ": No permissions for this operation, please add privilege USE_TRIGGER",
-              e.getMessage());
-        }
-
-        statement.execute("GRANT USER `zmty` PRIVILEGES USE_TRIGGER on root.test.stateless.a");
-
-        try {
-          statement2.execute("drop trigger " + STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a");
-        } catch (Exception e) {
-          fail(e.getMessage());
-        }
-      }
-    } catch (Exception e) {
-      fail(e.getMessage());
     }
   }
 }

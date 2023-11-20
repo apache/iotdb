@@ -86,9 +86,10 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
     }
     long memIncr = 0;
     for (Map.Entry<String, Long> entry : flushedTimeMap.entrySet()) {
-      if (flushTimeMapForPartition.put(entry.getKey(), entry.getValue()) == null) {
+      if (!flushTimeMapForPartition.containsKey(entry.getKey())) {
         memIncr += HASHMAP_NODE_BASIC_SIZE + 2L * entry.getKey().length();
       }
+      flushTimeMapForPartition.merge(entry.getKey(), entry.getValue(), Math::max);
     }
     long finalMemIncr = memIncr;
     memCostForEachPartition.compute(
@@ -111,7 +112,9 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
 
   @Override
   public void setMultiDeviceGlobalFlushedTime(Map<String, Long> globalFlushedTimeMap) {
-    globalLatestFlushedTimeForEachDevice.putAll(globalFlushedTimeMap);
+    for (Map.Entry<String, Long> entry : globalFlushedTimeMap.entrySet()) {
+      globalLatestFlushedTimeForEachDevice.merge(entry.getKey(), entry.getValue(), Math::max);
+    }
   }
 
   @Override
@@ -130,6 +133,9 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
         path,
         (k, v) -> {
           if (v == null) {
+            v = recoverFlushTime(timePartitionId, path);
+          }
+          if (v == Long.MIN_VALUE) {
             long memCost = HASHMAP_NODE_BASIC_SIZE + 2L * path.length();
             memCostForEachPartition.compute(
                 timePartitionId, (k1, v1) -> v1 == null ? memCost : v1 + memCost);
@@ -186,7 +192,7 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
     for (Map.Entry<String, Long> entry : updateMap.entrySet()) {
       partitionLatestFlushedTimeForEachDevice
           .computeIfAbsent(partitionId, id -> new HashMap<>())
-          .put(entry.getKey(), entry.getValue());
+          .merge(entry.getKey(), entry.getValue(), Math::max);
       updateNewlyFlushedPartitionLatestFlushedTimeForEachDevice(
           partitionId, entry.getKey(), entry.getValue());
       if (globalLatestFlushedTimeForEachDevice.getOrDefault(entry.getKey(), Long.MIN_VALUE)

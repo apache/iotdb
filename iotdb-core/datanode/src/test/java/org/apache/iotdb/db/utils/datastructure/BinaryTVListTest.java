@@ -20,6 +20,7 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.junit.Assert;
@@ -34,7 +35,7 @@ public class BinaryTVListTest {
   public void testBinaryTVList() {
     BinaryTVList tvList = BinaryTVList.newList();
     for (int i = 0; i < 1000; i++) {
-      tvList.putBinary(i, Binary.valueOf(String.valueOf(i)));
+      tvList.putBinary(i, BytesUtils.valueOf(String.valueOf(i)));
     }
     for (int i = 0; i < tvList.rowCount; i++) {
       Assert.assertEquals(String.valueOf(i), tvList.getBinary(i).toString());
@@ -49,7 +50,7 @@ public class BinaryTVListTest {
     List<Long> timeList = new ArrayList<>();
     for (int i = 1000; i >= 0; i--) {
       timeList.add((long) i);
-      binaryList[1000 - i] = Binary.valueOf(String.valueOf(i));
+      binaryList[1000 - i] = BytesUtils.valueOf(String.valueOf(i));
     }
     tvList.putBinaries(
         ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), binaryList, null, 0, 1000);
@@ -66,7 +67,7 @@ public class BinaryTVListTest {
     BitMap bitMap = new BitMap(1001);
     for (int i = 1000; i >= 0; i--) {
       timeList.add((long) i);
-      binaryList[1000 - i] = Binary.valueOf(String.valueOf(i));
+      binaryList[1000 - i] = BytesUtils.valueOf(String.valueOf(i));
       if (i % 100 == 0) {
         bitMap.mark(i);
       }
@@ -81,7 +82,7 @@ public class BinaryTVListTest {
         continue;
       }
       Assert.assertEquals(
-          Binary.valueOf(String.valueOf(i)), tvList.getBinary((int) i - nullCnt - 1));
+          BytesUtils.valueOf(String.valueOf(i)), tvList.getBinary((int) i - nullCnt - 1));
       Assert.assertEquals(i, tvList.getTime((int) i - nullCnt - 1));
     }
   }
@@ -94,7 +95,7 @@ public class BinaryTVListTest {
     BitMap bitMap = new BitMap(1001);
     for (int i = 1000; i >= 0; i--) {
       timeList.add((long) i);
-      binaryList[i] = Binary.valueOf(String.valueOf(i));
+      binaryList[i] = BytesUtils.valueOf(String.valueOf(i));
       if (i % 100 == 0) {
         bitMap.mark(i);
       }
@@ -114,7 +115,7 @@ public class BinaryTVListTest {
   public void testCalculateChunkSize() {
     BinaryTVList tvList = BinaryTVList.newList();
     for (int i = 0; i < 10; i++) {
-      tvList.putBinary(i, Binary.valueOf(String.valueOf(i)));
+      tvList.putBinary(i, BytesUtils.valueOf(String.valueOf(i)));
     }
     Assert.assertEquals(tvList.memoryBinaryChunkSize, 360);
 
@@ -123,7 +124,7 @@ public class BinaryTVListTest {
     BitMap bitMap = new BitMap(10);
     for (int i = 0; i < 10; i++) {
       timeList.add((long) i + 10);
-      binaryList[i] = Binary.valueOf(String.valueOf(i));
+      binaryList[i] = BytesUtils.valueOf(String.valueOf(i));
       if (i % 2 == 0) {
         bitMap.mark(i);
       }

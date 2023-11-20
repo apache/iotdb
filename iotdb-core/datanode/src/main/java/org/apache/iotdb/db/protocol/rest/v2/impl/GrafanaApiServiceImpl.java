@@ -113,7 +113,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
           COORDINATOR.execute(
               statement,
               queryId,
-              null,
+              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
               sql.getSql(),
               partitionFetcher,
               schemaFetcher,
@@ -180,7 +180,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
           COORDINATOR.execute(
               statement,
               queryId,
-              null,
+              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
               sql,
               partitionFetcher,
               schemaFetcher,
@@ -196,7 +196,8 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
       }
       IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
       try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
-        if (((QueryStatement) statement).isGroupByLevel()) {
+        if (((QueryStatement) statement).isAggregationQuery()
+            && !((QueryStatement) statement).isGroupByTime()) {
           return QueryDataSetHandler.fillAggregationPlanDataSet(queryExecution, 0);
         } else {
           return QueryDataSetHandler.fillDataSetWithTimestamps(queryExecution, 0, timePrecision);
@@ -241,7 +242,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
             COORDINATOR.execute(
                 statement,
                 queryId,
-                null,
+                SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
                 sql,
                 partitionFetcher,
                 schemaFetcher,

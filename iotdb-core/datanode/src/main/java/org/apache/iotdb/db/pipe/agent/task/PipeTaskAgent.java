@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.agent.task;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
@@ -36,11 +37,12 @@ import org.apache.iotdb.db.pipe.task.PipeBuilder;
 import org.apache.iotdb.db.pipe.task.PipeTask;
 import org.apache.iotdb.db.pipe.task.PipeTaskBuilder;
 import org.apache.iotdb.db.pipe.task.PipeTaskManager;
-import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
+import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -52,6 +54,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -117,6 +120,10 @@ public class PipeTaskAgent {
   }
 
   ////////////////////////// Pipe Task Management Entry //////////////////////////
+
+  public int getLeaderDataRegionCount() {
+    return pipeTaskManager.getLeaderDataRegionCount();
+  }
 
   public synchronized TPushPipeMetaRespExceptionMessage handleSinglePipeMetaChanges(
       PipeMeta pipeMetaFromConfigNode) {
@@ -401,6 +408,71 @@ public class PipeTaskAgent {
   }
 
   private void stopAllPipesWithCriticalExceptionInternal() {
+    // 1. track exception in all pipe tasks that share the same connector that have critical
+    // exceptions.
+    final int currentDataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    final Map<PipeParameters, PipeRuntimeConnectorCriticalException>
+        reusedConnectorParameters2ExceptionMap = new HashMap<>();
+
+    pipeMetaKeeper
+        .getPipeMetaList()
+        .forEach(
+            pipeMeta -> {
+              final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
+              final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
+
+              runtimeMeta
+                  .getConsensusGroupId2TaskMetaMap()
+                  .values()
+                  .forEach(
+                      pipeTaskMeta -> {
+                        if (pipeTaskMeta.getLeaderDataNodeId() != currentDataNodeId) {
+                          return;
+                        }
+
+                        for (final PipeRuntimeException e : pipeTaskMeta.getExceptionMessages()) {
+                          if (e instanceof PipeRuntimeConnectorCriticalException) {
+                            reusedConnectorParameters2ExceptionMap.putIfAbsent(
+                                staticMeta.getConnectorParameters(),
+                                (PipeRuntimeConnectorCriticalException) e);
+                          }
+                        }
+                      });
+            });
+    pipeMetaKeeper
+        .getPipeMetaList()
+        .forEach(
+            pipeMeta -> {
+              final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
+              final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
+
+              runtimeMeta
+                  .getConsensusGroupId2TaskMetaMap()
+                  .values()
+                  .forEach(
+                      pipeTaskMeta -> {
+                        if (pipeTaskMeta.getLeaderDataNodeId() == currentDataNodeId
+                            && reusedConnectorParameters2ExceptionMap.containsKey(
+                                staticMeta.getConnectorParameters())
+                            && !pipeTaskMeta.containsExceptionMessage(
+                                reusedConnectorParameters2ExceptionMap.get(
+                                    staticMeta.getConnectorParameters()))) {
+                          final PipeRuntimeConnectorCriticalException exception =
+                              reusedConnectorParameters2ExceptionMap.get(
+                                  staticMeta.getConnectorParameters());
+                          pipeTaskMeta.trackExceptionMessage(exception);
+                          LOGGER.warn(
+                              "Pipe {} (creation time = {}) will be stopped because of critical exception "
+                                  + "(occurred time {}) in connector {}.",
+                              staticMeta.getPipeName(),
+                              DateTimeUtils.convertLongToDate(staticMeta.getCreationTime(), "ms"),
+                              DateTimeUtils.convertLongToDate(exception.getTimeStamp(), "ms"),
+                              staticMeta.getConnectorParameters());
+                        }
+                      });
+            });
+
+    // 2. stop all pipes that have critical exceptions.
     pipeMetaKeeper
         .getPipeMetaList()
         .forEach(
@@ -417,6 +489,13 @@ public class PipeTaskAgent {
                           for (final PipeRuntimeException e : pipeTaskMeta.getExceptionMessages()) {
                             if (e instanceof PipeRuntimeCriticalException) {
                               stopPipe(staticMeta.getPipeName(), staticMeta.getCreationTime());
+                              LOGGER.warn(
+                                  "Pipe {} (creation time = {}) was stopped because of critical exception "
+                                      + "(occurred time {}).",
+                                  staticMeta.getPipeName(),
+                                  DateTimeUtils.convertLongToDate(
+                                      staticMeta.getCreationTime(), "ms"),
+                                  DateTimeUtils.convertLongToDate(e.getTimeStamp(), "ms"));
                               return;
                             }
                           }
@@ -777,13 +856,7 @@ public class PipeTaskAgent {
 
   ///////////////////////// Heartbeat /////////////////////////
 
-  public synchronized void collectPipeMetaList(THeartbeatReq req, THeartbeatResp resp)
-      throws TException {
-    // If the pipe heartbeat is separated from the cluster heartbeat, then the lock doesn't
-    // need to be acquired
-    if (!req.isNeedPipeMetaList()) {
-      return;
-    }
+  public synchronized void collectPipeMetaList(THeartbeatResp resp) throws TException {
     // Try the lock instead of directly acquire it to prevent the block of the cluster heartbeat
     // 10s is the half of the HEARTBEAT_TIMEOUT_TIME defined in class BaseNodeCache in ConfigNode
     if (!tryReadLockWithTimeOut(10)) {
@@ -843,6 +916,6 @@ public class PipeTaskAgent {
     }
     resp.setPipeMetaList(pipeMetaBinaryList);
 
-    PipeInsertionDataNodeListener.getInstance().listenToHeartbeat();
+    PipeInsertionDataNodeListener.getInstance().listenToHeartbeat(true);
   }
 }

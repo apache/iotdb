@@ -21,9 +21,11 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.fa.IFAState;
 import org.apache.iotdb.commons.path.fa.IFATransition;
 import org.apache.iotdb.commons.schema.node.IMNode;
+import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.commons.schema.tree.AbstractTreeVisitor;
@@ -71,6 +73,7 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
 
   // default false means fullPath pattern match
   protected boolean isPrefixMatch = false;
+  private IDeviceMNode<N> skipTemplateDevice;
 
   protected Traverser() {}
 
@@ -81,11 +84,17 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
    * @param path use wildcard to specify which part to traverse
    * @param store MTree store to traverse
    * @param isPrefixMatch prefix match or not
+   * @param scope traversing scope
    * @throws MetadataException path does not meet the expected rules
    */
-  protected Traverser(N startNode, PartialPath path, IMTreeStore<N> store, boolean isPrefixMatch)
+  protected Traverser(
+      N startNode,
+      PartialPath path,
+      IMTreeStore<N> store,
+      boolean isPrefixMatch,
+      PathPatternTree scope)
       throws MetadataException {
-    super(startNode, path, isPrefixMatch);
+    super(startNode, path, isPrefixMatch, scope);
     this.store = store.getWithReentrantReadLock();
     initStack();
     String[] nodes = path.getNodes();
@@ -95,6 +104,22 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
     }
     this.startNode = startNode;
     this.nodes = nodes;
+  }
+
+  /**
+   * To traverse subtree under startNode.
+   *
+   * @param startNode denote which tree to traverse by passing its root
+   * @param fullPathTree must not contain any wildcard
+   * @param store MTree store to traverse
+   * @param scope traversing scope
+   */
+  protected Traverser(
+      N startNode, PathPatternTree fullPathTree, IMTreeStore<N> store, PathPatternTree scope) {
+    super(startNode, fullPathTree, scope);
+    this.store = store.getWithReentrantReadLock();
+    initStack();
+    this.startNode = startNode;
   }
 
   /**
@@ -114,11 +139,17 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
 
   @Override
   protected N getChild(N parent, String childName) throws MetadataException {
+    return getChild(parent, childName, parent == skipTemplateDevice);
+  }
+
+  private N getChild(N parent, String childName, boolean skipTemplateChildren)
+      throws MetadataException {
     N child = null;
     if (parent.isAboveDatabase()) {
       child = parent.getChild(childName);
     } else {
       if (templateMap != null
+          && !skipTemplateChildren
           && !templateMap.isEmpty() // this task will cover some timeseries represented by template
           && (parent.isDevice()
               && parent.getAsDeviceMNode().getSchemaTemplateId()
@@ -156,13 +187,14 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
       throws Exception {
     return new IMNodeIterator<N>() {
       private N next = null;
+      private boolean skipTemplateChildren = false;
 
       @Override
       public boolean hasNext() {
         if (next == null) {
           while (next == null && childrenName.hasNext()) {
             try {
-              next = getChild(parent, childrenName.next());
+              next = getChild(parent, childrenName.next(), skipTemplateChildren);
             } catch (Throwable e) {
               logger.warn(e.getMessage(), e);
               throw new RuntimeException(e);
@@ -183,6 +215,11 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
       }
 
       @Override
+      public void skipTemplateChildren() {
+        skipTemplateChildren = true;
+      }
+
+      @Override
       public void close() {
         if (next != null) {
           releaseNode(next);
@@ -194,6 +231,7 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
 
   @Override
   protected Iterator<N> getChildrenIterator(N parent) throws MetadataException {
+    IMNodeIterator<N> currentChildrenIterator;
     if (parent.isAboveDatabase()) {
       return new MNodeIterator<>(parent.getChildren().values().iterator());
     } else {
@@ -283,5 +321,13 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
       return patternFA.getNextState(sourceState, transition);
     }
     return null;
+  }
+
+  protected void skipTemplateChildren(IDeviceMNode<N> deviceMNode) {
+    skipTemplateDevice = deviceMNode;
+    Iterator<N> iterator = getCurrentChildrenIterator();
+    if (iterator instanceof IMNodeIterator) {
+      ((IMNodeIterator<N>) iterator).skipTemplateChildren();
+    }
   }
 }

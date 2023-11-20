@@ -198,8 +198,7 @@ public class RecoverReadTest {
     // restart the cluster
     miniCluster.restart();
 
-    // query during redo: get exception that ratis is under recovery
-    Assert.assertThrows(RatisUnderRecoveryException.class, () -> miniCluster.readThrough(0));
+    Assert.assertEquals(10, miniCluster.mustRead(0));
   }
 
   @Test

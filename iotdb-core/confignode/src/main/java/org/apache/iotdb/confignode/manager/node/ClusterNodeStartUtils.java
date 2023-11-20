@@ -71,7 +71,7 @@ public class ClusterNodeStartUtils {
               "Reject %s start. Because the ClusterName of the current %s and the target cluster are inconsistent. "
                   + "ClusterName of the current Node: %s, ClusterName of the target cluster: %s."
                   + POSSIBLE_SOLUTIONS
-                  + "\t1. Change the target_config_node_list parameter in %s to join the correct cluster."
+                  + "\t1. Change the seed_config_node parameter in %s to join the correct cluster."
                   + "\n\t2. Change the cluster_name parameter in %s to match the target cluster",
               nodeType.getNodeType(),
               nodeType.getNodeType(),
@@ -145,7 +145,7 @@ public class ClusterNodeStartUtils {
               "Reject %s restart. Because the ClusterName of the current %s and the target cluster are inconsistent. "
                   + "ClusterName of the current Node: %s, ClusterName of the target cluster: %s."
                   + POSSIBLE_SOLUTIONS
-                  + "\t1. Change the target_config_node_list parameter in %s to join the correct cluster."
+                  + "\t1. Change the seed_config_node parameter in %s to join the correct cluster."
                   + "\n\t2. Change the cluster_name parameter in %s to match the target cluster",
               nodeType.getNodeType(),
               nodeType.getNodeType(),

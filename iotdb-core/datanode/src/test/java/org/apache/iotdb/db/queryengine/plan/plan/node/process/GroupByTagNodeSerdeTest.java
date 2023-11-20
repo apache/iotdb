@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
+import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -56,7 +57,7 @@ public class GroupByTagNodeSerdeTest {
   @Test
   public void testSerializeAndDeserialize() throws IllegalPathException, IOException {
     GroupByTimeParameter groupByTimeParameter =
-        new GroupByTimeParameter(1, 100, 1, 1, true, true, true);
+        new GroupByTimeParameter(1, 100, new TimeDuration(1, 0), new TimeDuration(1, 0), true);
     CrossSeriesAggregationDescriptor s1MaxTime =
         new CrossSeriesAggregationDescriptor(
             TAggregationType.MAX_TIME.name().toLowerCase(),

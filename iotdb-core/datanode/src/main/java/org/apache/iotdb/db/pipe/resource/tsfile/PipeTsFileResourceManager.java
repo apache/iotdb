@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.resource.tsfile;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,6 +34,9 @@ import java.util.Map;
 public class PipeTsFileResourceManager {
 
   private final Map<String, Integer> hardlinkOrCopiedFileToReferenceMap = new HashMap<>();
+
+  /** Cache the File objects here to avoid redundancy */
+  private final Map<String, File> fileNameToFileMap = new HashMap<>();
 
   /**
    * given a file, create a hardlink or copy it to pipe dir, maintain a reference count for the
@@ -63,13 +67,14 @@ public class PipeTsFileResourceManager {
     // file in pipe dir. if so, increase reference count and return it
     final File hardlinkOrCopiedFile = getHardlinkOrCopiedFileInPipeDir(file);
     if (increaseReferenceIfExists(hardlinkOrCopiedFile.getPath())) {
-      return hardlinkOrCopiedFile;
+      return fileNameToFileMap.get(hardlinkOrCopiedFile.getPath());
     }
 
     // if the file is not a hardlink or copied file, and there is no related hardlink or copied
     // file in pipe dir, create a hardlink or copy it to pipe dir, maintain a reference count for
     // the hardlink or copied file, and return the hardlink or copied file.
     hardlinkOrCopiedFileToReferenceMap.put(hardlinkOrCopiedFile.getPath(), 1);
+    fileNameToFileMap.put(hardlinkOrCopiedFile.getPath(), hardlinkOrCopiedFile);
     // if the file is a tsfile, create a hardlink in pipe dir and return it.
     // otherwise, copy the file (.mod or .resource) to pipe dir and return it.
     return isTsFile
@@ -96,8 +101,8 @@ public class PipeTsFileResourceManager {
   }
 
   private static String getPipeTsFileDirPath(File file) throws IOException {
-    while (!file.getName().equals(IoTDBConstant.SEQUENCE_FLODER_NAME)
-        && !file.getName().equals(IoTDBConstant.UNSEQUENCE_FLODER_NAME)) {
+    while (!file.getName().equals(IoTDBConstant.SEQUENCE_FOLDER_NAME)
+        && !file.getName().equals(IoTDBConstant.UNSEQUENCE_FOLDER_NAME)) {
       file = file.getParentFile();
     }
     return file.getParentFile().getCanonicalPath()
@@ -109,8 +114,8 @@ public class PipeTsFileResourceManager {
 
   private static String getRelativeFilePath(File file) {
     StringBuilder builder = new StringBuilder(file.getName());
-    while (!file.getName().equals(IoTDBConstant.SEQUENCE_FLODER_NAME)
-        && !file.getName().equals(IoTDBConstant.UNSEQUENCE_FLODER_NAME)) {
+    while (!file.getName().equals(IoTDBConstant.SEQUENCE_FOLDER_NAME)
+        && !file.getName().equals(IoTDBConstant.UNSEQUENCE_FOLDER_NAME)) {
       file = file.getParentFile();
       builder =
           new StringBuilder(file.getName())
@@ -161,6 +166,7 @@ public class PipeTsFileResourceManager {
     if (updatedReference != null && updatedReference == 0) {
       Files.deleteIfExists(hardlinkOrCopiedFile.toPath());
       hardlinkOrCopiedFileToReferenceMap.remove(hardlinkOrCopiedFile.getPath());
+      fileNameToFileMap.remove(hardlinkOrCopiedFile.getPath());
     }
   }
 
@@ -172,5 +178,17 @@ public class PipeTsFileResourceManager {
    */
   public synchronized int getFileReferenceCount(File hardlinkOrCopiedFile) {
     return hardlinkOrCopiedFileToReferenceMap.getOrDefault(hardlinkOrCopiedFile.getPath(), 0);
+  }
+
+  public synchronized void pinTsFileResource(TsFileResource resource) throws IOException {
+    increaseFileReference(resource.getTsFile(), true);
+  }
+
+  public synchronized void unpinTsFileResource(TsFileResource resource) throws IOException {
+    decreaseFileReference(getHardlinkOrCopiedFileInPipeDir(resource.getTsFile()));
+  }
+
+  public int getLinkedTsfileCount() {
+    return hardlinkOrCopiedFileToReferenceMap.size();
   }
 }

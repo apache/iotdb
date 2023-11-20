@@ -23,12 +23,15 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
+import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
@@ -38,6 +41,7 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
+import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
@@ -143,7 +147,11 @@ public class MTreeBelowSGCachedImpl {
     // recover MNode
     try (MNodeCollector<Void, ICachedMNode> collector =
         new MNodeCollector<Void, ICachedMNode>(
-            this.rootNode, new PartialPath(storageGroupMNode.getFullPath()), this.store, true) {
+            this.rootNode,
+            new PartialPath(storageGroupMNode.getFullPath()),
+            this.store,
+            true,
+            SchemaConstant.ALL_MATCH_SCOPE) {
           @Override
           protected Void collectMNode(ICachedMNode node) {
             if (node.isMeasurement()) {
@@ -177,7 +185,11 @@ public class MTreeBelowSGCachedImpl {
     // recover MNode
     try (MNodeCollector<Void, ICachedMNode> collector =
         new MNodeCollector<Void, ICachedMNode>(
-            this.rootNode, new PartialPath(storageGroupMNode.getFullPath()), this.store, true) {
+            this.rootNode,
+            new PartialPath(storageGroupMNode.getFullPath()),
+            this.store,
+            true,
+            SchemaConstant.ALL_MATCH_SCOPE) {
           @Override
           protected Void collectMNode(ICachedMNode node) {
             if (node.isMeasurement()) {
@@ -292,7 +304,9 @@ public class MTreeBelowSGCachedImpl {
             throw new PathAlreadyExistException(path.getFullPath());
           }
 
-          if (device.isDevice() && device.getAsDeviceMNode().isAligned()) {
+          if (device.isDevice()
+              && device.getAsDeviceMNode().isAlignedNullable() != null
+              && device.getAsDeviceMNode().isAligned()) {
             throw new AlignedTimeseriesException(
                 "timeseries under this device is aligned, please use createAlignedTimeseries or change device.",
                 device.getFullPath());
@@ -307,6 +321,11 @@ public class MTreeBelowSGCachedImpl {
               replaceStorageGroupMNode(entityMNode.getAsDatabaseMNode());
             }
             device = entityMNode.getAsMNode();
+          }
+
+          // create a non-aligned timeseries
+          if (entityMNode.isAlignedNullable() == null) {
+            entityMNode.setAligned(false);
           }
 
           IMeasurementMNode<ICachedMNode> measurementMNode =
@@ -374,7 +393,9 @@ public class MTreeBelowSGCachedImpl {
             }
           }
 
-          if (device.isDevice() && !device.getAsDeviceMNode().isAligned()) {
+          if (device.isDevice()
+              && device.getAsDeviceMNode().isAlignedNullable() != null
+              && !device.getAsDeviceMNode().isAligned()) {
             throw new AlignedTimeseriesException(
                 "Timeseries under this device is not aligned, please use createTimeseries or change device.",
                 devicePath.getFullPath());
@@ -390,6 +411,11 @@ public class MTreeBelowSGCachedImpl {
               replaceStorageGroupMNode(entityMNode.getAsDatabaseMNode());
             }
             device = entityMNode.getAsMNode();
+          }
+
+          // create a aligned timeseries
+          if (entityMNode.isAlignedNullable() == null) {
+            entityMNode.setAligned(true);
           }
 
           for (int i = 0; i < measurements.size(); i++) {
@@ -594,6 +620,7 @@ public class MTreeBelowSGCachedImpl {
     ICachedMNode curNode = entityMNode.getAsMNode();
     if (!entityMNode.isUseTemplate()) {
       boolean hasMeasurement = false;
+      boolean hasNonViewMeasurement = false;
       ICachedMNode child;
       IMNodeIterator<ICachedMNode> iterator = store.getChildrenIterator(curNode);
       try {
@@ -602,7 +629,10 @@ public class MTreeBelowSGCachedImpl {
           unPinMNode(child);
           if (child.isMeasurement()) {
             hasMeasurement = true;
-            break;
+            if (!child.getAsMeasurementMNode().isLogicalView()) {
+              hasNonViewMeasurement = true;
+              break;
+            }
           }
         }
       } finally {
@@ -616,6 +646,9 @@ public class MTreeBelowSGCachedImpl {
             replaceStorageGroupMNode(curNode.getAsDatabaseMNode());
           }
         }
+      } else if (!hasNonViewMeasurement) {
+        // has some measurement but they are all logical view
+        store.updateMNode(entityMNode.getAsMNode(), o -> o.getAsDeviceMNode().setAligned(null));
       }
     }
 
@@ -647,12 +680,13 @@ public class MTreeBelowSGCachedImpl {
       throws MetadataException {
     List<PartialPath> result = new ArrayList<>();
     try (MeasurementUpdater<ICachedMNode> updater =
-        new MeasurementUpdater<ICachedMNode>(rootNode, pathPattern, store, false) {
+        new MeasurementUpdater<ICachedMNode>(
+            rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
           protected void updateMeasurement(IMeasurementMNode<ICachedMNode> node)
               throws MetadataException {
-            node.setPreDeleted(true);
-            store.updateMNode(node.getAsMNode());
+            store.updateMNode(
+                node.getAsMNode(), o -> o.getAsMeasurementMNode().setPreDeleted(true));
             result.add(getPartialPathFromRootToNode(node.getAsMNode()));
           }
         }) {
@@ -665,12 +699,13 @@ public class MTreeBelowSGCachedImpl {
       throws MetadataException {
     List<PartialPath> result = new ArrayList<>();
     try (MeasurementUpdater<ICachedMNode> updater =
-        new MeasurementUpdater<ICachedMNode>(rootNode, pathPattern, store, false) {
+        new MeasurementUpdater<ICachedMNode>(
+            rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
           protected void updateMeasurement(IMeasurementMNode<ICachedMNode> node)
               throws MetadataException {
-            node.setPreDeleted(false);
-            store.updateMNode(node.getAsMNode());
+            store.updateMNode(
+                node.getAsMNode(), o -> o.getAsMeasurementMNode().setPreDeleted(false));
             result.add(getPartialPathFromRootToNode(node.getAsMNode()));
           }
         }) {
@@ -683,7 +718,8 @@ public class MTreeBelowSGCachedImpl {
       throws MetadataException {
     List<PartialPath> result = new LinkedList<>();
     try (MeasurementCollector<Void, ICachedMNode> collector =
-        new MeasurementCollector<Void, ICachedMNode>(rootNode, pathPattern, store, false) {
+        new MeasurementCollector<Void, ICachedMNode>(
+            rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
           protected Void collectMeasurement(IMeasurementMNode<ICachedMNode> node) {
             if (node.isPreDeleted()) {
@@ -701,7 +737,8 @@ public class MTreeBelowSGCachedImpl {
       throws MetadataException {
     Set<PartialPath> result = new HashSet<>();
     try (MeasurementCollector<Void, ICachedMNode> collector =
-        new MeasurementCollector<Void, ICachedMNode>(rootNode, pathPattern, store, false) {
+        new MeasurementCollector<Void, ICachedMNode>(
+            rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
           protected Void collectMeasurement(IMeasurementMNode<ICachedMNode> node) {
             if (node.isPreDeleted()) {
@@ -774,34 +811,73 @@ public class MTreeBelowSGCachedImpl {
   // endregion
 
   // region Interfaces and Implementation for metadata info Query
-
-  public List<MeasurementPath> fetchSchema(
+  public ClusterSchemaTree fetchSchema(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
       throws MetadataException {
-    List<MeasurementPath> result = new LinkedList<>();
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
     try (MeasurementCollector<Void, ICachedMNode> collector =
-        new MeasurementCollector<Void, ICachedMNode>(rootNode, pathPattern, store, false) {
-
+        new MeasurementCollector<Void, ICachedMNode>(
+            rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
           protected Void collectMeasurement(IMeasurementMNode<ICachedMNode> node) {
-            if (node.isPreDeleted()) {
-              return null;
+            IDeviceMNode<ICachedMNode> deviceMNode =
+                getParentOfNextMatchedNode().getAsDeviceMNode();
+            int templateId = deviceMNode.getSchemaTemplateIdWithState();
+            if (templateId >= 0) {
+              schemaTree.appendTemplateDevice(
+                  deviceMNode.getPartialPath(), deviceMNode.isAligned(), templateId, null);
+              skipTemplateChildren(deviceMNode);
+            } else {
+              MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
+              if (nodes[nodes.length - 1].equals(node.getAlias())) {
+                // only when user query with alias, the alias in path will be set
+                path.setMeasurementAlias(node.getAlias());
+              }
+              if (withTags) {
+                path.setTagMap(tagGetter.apply(node));
+              }
+              schemaTree.appendSingleMeasurementPath(path);
             }
-            MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
-            if (nodes[nodes.length - 1].equals(node.getAlias())) {
-              // only when user query with alias, the alias in path will be set
-              path.setMeasurementAlias(node.getAlias());
-            }
-            if (withTags) {
-              path.setTagMap(tagGetter.apply(node));
-            }
-            result.add(path);
             return null;
           }
         }) {
       collector.setTemplateMap(templateMap, nodeFactory);
+      collector.setSkipPreDeletedSchema(true);
       collector.traverse();
     }
-    return result;
+    return schemaTree;
+  }
+
+  public ClusterSchemaTree fetchSchemaWithoutWildcard(
+      PathPatternTree patternTree, Map<Integer, Template> templateMap, boolean withTags)
+      throws MetadataException {
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+    try (MeasurementCollector<Void, ICachedMNode> collector =
+        new MeasurementCollector<Void, ICachedMNode>(
+            rootNode, patternTree, store, SchemaConstant.ALL_MATCH_SCOPE) {
+          protected Void collectMeasurement(IMeasurementMNode<ICachedMNode> node) {
+            IDeviceMNode<ICachedMNode> deviceMNode =
+                getParentOfNextMatchedNode().getAsDeviceMNode();
+            int templateId = deviceMNode.getSchemaTemplateIdWithState();
+            if (templateId >= 0) {
+              schemaTree.appendTemplateDevice(
+                  deviceMNode.getPartialPath(), deviceMNode.isAligned(), templateId, null);
+              skipTemplateChildren(deviceMNode);
+            } else {
+              MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
+              path.setMeasurementAlias(node.getAlias());
+              if (withTags) {
+                path.setTagMap(tagGetter.apply(node));
+              }
+              schemaTree.appendSingleMeasurementPath(path);
+            }
+            return null;
+          }
+        }) {
+      collector.setTemplateMap(templateMap, nodeFactory);
+      collector.setSkipPreDeletedSchema(true);
+      collector.traverse();
+    }
+    return schemaTree;
   }
 
   // endregion
@@ -850,6 +926,147 @@ public class MTreeBelowSGCachedImpl {
   }
   // endregion
 
+  // region Interfaces and Implementation for Logical View
+
+  public void createLogicalView(PartialPath path, ViewExpression viewExpression)
+      throws MetadataException {
+    String[] nodeNames = path.getNodes();
+    if (nodeNames.length <= 2) {
+      throw new IllegalPathException(path.getFullPath());
+    }
+    MetaFormatUtils.checkTimeseries(path);
+    PartialPath devicePath = path.getDevicePath();
+    ICachedMNode deviceParent = checkAndAutoCreateInternalPath(devicePath);
+
+    try {
+      // synchronize check and add, we need addChild and add Alias become atomic operation
+      // only write on mtree will be synchronized
+      synchronized (this) {
+        ICachedMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
+        try {
+          String leafName = path.getMeasurement();
+          if (device.hasChild(leafName)) {
+            ICachedMNode node = device.getChild(leafName);
+            if (node.isMeasurement()) {
+              if (node.getAsMeasurementMNode().isPreDeleted()) {
+                throw new MeasurementInBlackListException(path);
+              } else {
+                throw new MeasurementAlreadyExistException(
+                    path.getFullPath(), node.getAsMeasurementMNode().getMeasurementPath());
+              }
+            } else {
+              throw new PathAlreadyExistException(path.getFullPath());
+            }
+          }
+
+          IDeviceMNode<ICachedMNode> entityMNode;
+          if (device.isDevice()) {
+            entityMNode = device.getAsDeviceMNode();
+          } else {
+            entityMNode = store.setToEntity(device);
+            if (entityMNode.isDatabase()) {
+              replaceStorageGroupMNode(entityMNode.getAsDatabaseMNode());
+            }
+            // this parent has no measurement before. The leafName is his first child who is a
+            // logical
+            // view.
+            entityMNode.setAligned(null);
+            device = entityMNode.getAsMNode();
+          }
+
+          IMeasurementMNode<ICachedMNode> viewMNode =
+              nodeFactory.createLogicalViewMNode(
+                  entityMNode, leafName, new LogicalViewSchema(leafName, viewExpression));
+          store.addChild(entityMNode.getAsMNode(), leafName, viewMNode.getAsMNode());
+          unPinMNode(viewMNode.getAsMNode());
+        } finally {
+          unPinMNode(device);
+        }
+      }
+    } finally {
+      if (deviceParent != null) {
+        unPinMNode(deviceParent);
+      }
+    }
+  }
+
+  public List<PartialPath> constructLogicalViewBlackList(PartialPath pathPattern)
+      throws MetadataException {
+    List<PartialPath> result = new ArrayList<>();
+    try (MeasurementUpdater<ICachedMNode> updater =
+        new MeasurementUpdater<ICachedMNode>(
+            rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
+          protected void updateMeasurement(IMeasurementMNode<ICachedMNode> node)
+              throws MetadataException {
+            if (node.isLogicalView()) {
+              store.updateMNode(
+                  node.getAsMNode(), o -> o.getAsMeasurementMNode().setPreDeleted(true));
+              result.add(getPartialPathFromRootToNode(node.getAsMNode()));
+            }
+          }
+        }) {
+      updater.update();
+    }
+    return result;
+  }
+
+  public List<PartialPath> rollbackLogicalViewBlackList(PartialPath pathPattern)
+      throws MetadataException {
+    List<PartialPath> result = new ArrayList<>();
+    try (MeasurementUpdater<ICachedMNode> updater =
+        new MeasurementUpdater<ICachedMNode>(
+            rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
+          protected void updateMeasurement(IMeasurementMNode<ICachedMNode> node)
+              throws MetadataException {
+            if (node.isLogicalView()) {
+              store.updateMNode(
+                  node.getAsMNode(), o -> o.getAsMeasurementMNode().setPreDeleted(false));
+              result.add(getPartialPathFromRootToNode(node.getAsMNode()));
+            }
+          }
+        }) {
+      updater.update();
+    }
+    return result;
+  }
+
+  public List<PartialPath> getPreDeletedLogicalView(PartialPath pathPattern)
+      throws MetadataException {
+    List<PartialPath> result = new LinkedList<>();
+    try (MeasurementCollector<Void, ICachedMNode> collector =
+        new MeasurementCollector<Void, ICachedMNode>(
+            rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
+          protected Void collectMeasurement(IMeasurementMNode<ICachedMNode> node) {
+            if (node.isLogicalView() && node.isPreDeleted()) {
+              result.add(getPartialPathFromRootToNode(node.getAsMNode()));
+            }
+            return null;
+          }
+        }) {
+      collector.traverse();
+    }
+    return result;
+  }
+
+  public void alterLogicalView(PartialPath path, ViewExpression expression)
+      throws MetadataException {
+    IMeasurementMNode<ICachedMNode> leafMNode = getMeasurementMNode(path);
+    try {
+      if (!leafMNode.isLogicalView()) {
+        throw new MetadataException(String.format("[%s] is no view.", path));
+      }
+      store.updateMNode(
+          leafMNode.getAsMNode(),
+          o ->
+              o.getAsMeasurementMNode()
+                  .setSchema(new LogicalViewSchema(leafMNode.getName(), expression)));
+    } finally {
+      unPinMNode(leafMNode.getAsMNode());
+    }
+  }
+
+  // endregion
+
   // region Interfaces and Implementation for Template check and query
 
   public void activateTemplate(PartialPath activatePath, Template template)
@@ -886,13 +1103,16 @@ public class MTreeBelowSGCachedImpl {
         }
       }
 
-      if (!entityMNode.isAligned()) {
-        entityMNode.setAligned(template.isDirectAligned());
-      }
-      entityMNode.setUseTemplate(true);
-      entityMNode.setSchemaTemplateId(template.getId());
+      store.updateMNode(
+          entityMNode.getAsMNode(),
+          o -> {
+            if (!entityMNode.isAligned()) {
+              entityMNode.setAligned(template.isDirectAligned());
+            }
+            entityMNode.setUseTemplate(true);
+            entityMNode.setSchemaTemplateId(template.getId());
+          });
 
-      store.updateMNode(entityMNode.getAsMNode());
       regionStatistics.activateTemplate(template.getId());
     } finally {
       unPinPath(cur);
@@ -923,13 +1143,16 @@ public class MTreeBelowSGCachedImpl {
         }
       }
 
-      if (!entityMNode.isAligned()) {
-        entityMNode.setAligned(isAligned);
-      }
-      entityMNode.setUseTemplate(true);
-      entityMNode.setSchemaTemplateId(templateId);
+      store.updateMNode(
+          entityMNode.getAsMNode(),
+          o -> {
+            if (!entityMNode.isAligned()) {
+              entityMNode.setAligned(isAligned);
+            }
+            entityMNode.setUseTemplate(true);
+            entityMNode.setSchemaTemplateId(templateId);
+          });
 
-      store.updateMNode(entityMNode.getAsMNode());
       regionStatistics.activateTemplate(templateId);
     } finally {
       unPinPath(cur);
@@ -941,14 +1164,15 @@ public class MTreeBelowSGCachedImpl {
     Map<PartialPath, List<Integer>> resultTemplateSetInfo = new HashMap<>();
     for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
       try (EntityUpdater<ICachedMNode> updater =
-          new EntityUpdater<ICachedMNode>(rootNode, entry.getKey(), store, false) {
+          new EntityUpdater<ICachedMNode>(
+              rootNode, entry.getKey(), store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
             protected void updateEntity(IDeviceMNode<ICachedMNode> node) throws MetadataException {
               if (entry.getValue().contains(node.getSchemaTemplateId())) {
                 resultTemplateSetInfo.put(
                     node.getPartialPath(), Collections.singletonList(node.getSchemaTemplateId()));
-                node.preDeactivateTemplate();
-                store.updateMNode(node.getAsMNode());
+                store.updateMNode(
+                    node.getAsMNode(), o -> o.getAsDeviceMNode().preDeactivateTemplate());
               }
             }
           }) {
@@ -963,15 +1187,16 @@ public class MTreeBelowSGCachedImpl {
     Map<PartialPath, List<Integer>> resultTemplateSetInfo = new HashMap<>();
     for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
       try (EntityUpdater<ICachedMNode> updater =
-          new EntityUpdater<ICachedMNode>(rootNode, entry.getKey(), store, false) {
+          new EntityUpdater<ICachedMNode>(
+              rootNode, entry.getKey(), store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
             protected void updateEntity(IDeviceMNode<ICachedMNode> node) throws MetadataException {
               if (entry.getValue().contains(node.getSchemaTemplateId())
                   && node.isPreDeactivateTemplate()) {
                 resultTemplateSetInfo.put(
                     node.getPartialPath(), Collections.singletonList(node.getSchemaTemplateId()));
-                node.rollbackPreDeactivateTemplate();
-                store.updateMNode(node.getAsMNode());
+                store.updateMNode(
+                    node.getAsMNode(), o -> o.getAsDeviceMNode().rollbackPreDeactivateTemplate());
               }
             }
           }) {
@@ -986,7 +1211,8 @@ public class MTreeBelowSGCachedImpl {
     Map<PartialPath, List<Integer>> resultTemplateSetInfo = new HashMap<>();
     for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
       try (EntityUpdater<ICachedMNode> collector =
-          new EntityUpdater<ICachedMNode>(rootNode, entry.getKey(), store, false) {
+          new EntityUpdater<ICachedMNode>(
+              rootNode, entry.getKey(), store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
             protected void updateEntity(IDeviceMNode<ICachedMNode> node) throws MetadataException {
               if (entry.getValue().contains(node.getSchemaTemplateId())
@@ -994,8 +1220,8 @@ public class MTreeBelowSGCachedImpl {
                 resultTemplateSetInfo.put(
                     node.getPartialPath(), Collections.singletonList(node.getSchemaTemplateId()));
                 regionStatistics.deactivateTemplate(node.getSchemaTemplateId());
-                node.deactivateTemplate();
-                store.updateMNode(node.getAsMNode());
+                store.updateMNode(
+                    node.getAsMNode(), o -> o.getAsDeviceMNode().deactivateTemplate());
               }
             }
           }) {
@@ -1011,7 +1237,7 @@ public class MTreeBelowSGCachedImpl {
   public long countPathsUsingTemplate(PartialPath pathPattern, int templateId)
       throws MetadataException {
     try (EntityCounter<ICachedMNode> counter =
-        new EntityCounter<>(rootNode, pathPattern, store, false)) {
+        new EntityCounter<>(rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE)) {
       counter.setSchemaTemplateFilter(templateId);
       return counter.count();
     }
@@ -1041,8 +1267,8 @@ public class MTreeBelowSGCachedImpl {
   }
 
   // TODO: This interface should not be exposed to SchemaRegion
-  public void updateMNode(ICachedMNode node) throws MetadataException {
-    store.updateMNode(node);
+  public void updateMNode(ICachedMNode node, Consumer<ICachedMNode> operation) {
+    store.updateMNode(node, operation);
   }
 
   // endregion
@@ -1053,7 +1279,11 @@ public class MTreeBelowSGCachedImpl {
       throws MetadataException {
     EntityCollector<IDeviceSchemaInfo, ICachedMNode> collector =
         new EntityCollector<IDeviceSchemaInfo, ICachedMNode>(
-            rootNode, showDevicesPlan.getPath(), store, showDevicesPlan.isPrefixMatch()) {
+            rootNode,
+            showDevicesPlan.getPath(),
+            store,
+            showDevicesPlan.isPrefixMatch(),
+            showDevicesPlan.getScope()) {
 
           protected IDeviceSchemaInfo collectEntity(IDeviceMNode<ICachedMNode> node) {
             PartialPath device = getPartialPathFromRootToNode(node.getAsMNode());
@@ -1118,7 +1348,11 @@ public class MTreeBelowSGCachedImpl {
       throws MetadataException {
     MeasurementCollector<ITimeSeriesSchemaInfo, ICachedMNode> collector =
         new MeasurementCollector<ITimeSeriesSchemaInfo, ICachedMNode>(
-            rootNode, showTimeSeriesPlan.getPath(), store, showTimeSeriesPlan.isPrefixMatch()) {
+            rootNode,
+            showTimeSeriesPlan.getPath(),
+            store,
+            showTimeSeriesPlan.isPrefixMatch(),
+            showTimeSeriesPlan.getScope()) {
 
           protected ITimeSeriesSchemaInfo collectMeasurement(IMeasurementMNode<ICachedMNode> node) {
             return new ITimeSeriesSchemaInfo() {
@@ -1190,7 +1424,11 @@ public class MTreeBelowSGCachedImpl {
       throws MetadataException {
     MNodeCollector<INodeSchemaInfo, ICachedMNode> collector =
         new MNodeCollector<INodeSchemaInfo, ICachedMNode>(
-            rootNode, showNodesPlan.getPath(), store, showNodesPlan.isPrefixMatch()) {
+            rootNode,
+            showNodesPlan.getPath(),
+            store,
+            showNodesPlan.isPrefixMatch(),
+            showNodesPlan.getScope()) {
 
           protected INodeSchemaInfo collectMNode(ICachedMNode node) {
             return new ShowNodesResult(

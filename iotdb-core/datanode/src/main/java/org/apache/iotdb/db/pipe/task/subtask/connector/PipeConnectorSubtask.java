@@ -24,7 +24,9 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.execution.scheduler.PipeSubtaskScheduler;
+import org.apache.iotdb.db.pipe.metric.PipeConnectorMetrics;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.task.subtask.DecoratingLock;
 import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
 import org.apache.iotdb.db.utils.ErrorHandlingUtils;
@@ -57,13 +59,37 @@ public class PipeConnectorSubtask extends PipeSubtask {
   protected final DecoratingLock callbackDecoratingLock = new DecoratingLock();
   protected ExecutorService subtaskCallbackListeningExecutor;
 
+  // For controlling subtask submitting, making sure that a subtask is submitted to only one thread
+  // at a time
+  protected volatile boolean isSubmitted = false;
+
+  // Record these variables to provide corresponding value to tag key of monitoring metrics
+  private final String attributeSortedString;
+  private final int connectorIndex;
+
+  // Now parallel connectors run the same time, thus the heartbeat events are not sure
+  // to trigger the general event transfer function, causing potentially such as
+  // the random delay of the batch transmission. Therefore, here we inject cron events
+  // when no event can be pulled.
+  private static final PipeHeartbeatEvent CRON_HEARTBEAT_EVENT =
+      new PipeHeartbeatEvent("cron", false);
+  private static final long CRON_HEARTBEAT_EVENT_INJECT_INTERVAL_SECONDS =
+      PipeConfig.getInstance().getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds();
+  private long lastHeartbeatEventInjectTime = System.currentTimeMillis();
+
   public PipeConnectorSubtask(
       String taskID,
+      long creationTime,
+      String attributeSortedString,
+      int connectorIndex,
       BoundedBlockingPendingQueue<Event> inputPendingQueue,
       PipeConnector outputPipeConnector) {
-    super(taskID);
+    super(taskID, creationTime);
+    this.attributeSortedString = attributeSortedString;
+    this.connectorIndex = connectorIndex;
     this.inputPendingQueue = inputPendingQueue;
     this.outputPipeConnector = outputPipeConnector;
+    PipeConnectorMetrics.getInstance().register(this);
   }
 
   @Override
@@ -88,49 +114,95 @@ public class PipeConnectorSubtask extends PipeSubtask {
   }
 
   @Override
-  protected synchronized boolean executeOnce() {
-    final Event event = lastEvent != null ? lastEvent : inputPendingQueue.waitedPoll();
-    // Record this event for retrying on connection failure or other exceptions
-    lastEvent = event;
-    if (event == null) {
+  protected boolean executeOnce() {
+    if (isClosed.get()) {
       return false;
     }
 
+    final Event event = lastEvent != null ? lastEvent : inputPendingQueue.waitedPoll();
+    // Record this event for retrying on connection failure or other exceptions
+    setLastEvent(event);
+
     try {
+      if (event == null) {
+        if (System.currentTimeMillis() - lastHeartbeatEventInjectTime
+            > CRON_HEARTBEAT_EVENT_INJECT_INTERVAL_SECONDS) {
+          transferHeartbeatEvent(CRON_HEARTBEAT_EVENT);
+        }
+        return false;
+      }
+
       if (event instanceof TabletInsertionEvent) {
         outputPipeConnector.transfer((TabletInsertionEvent) event);
+        PipeConnectorMetrics.getInstance().markTabletEvent(taskID);
       } else if (event instanceof TsFileInsertionEvent) {
         outputPipeConnector.transfer((TsFileInsertionEvent) event);
+        PipeConnectorMetrics.getInstance().markTsFileEvent(taskID);
       } else if (event instanceof PipeHeartbeatEvent) {
-        try {
-          outputPipeConnector.heartbeat();
-          outputPipeConnector.transfer(event);
-        } catch (Exception e) {
-          throw new PipeConnectionException(
-              "PipeConnector: " + outputPipeConnector.getClass().getName() + " heartbeat failed",
-              e);
-        }
-        ((PipeHeartbeatEvent) event).onTransferred();
+        transferHeartbeatEvent((PipeHeartbeatEvent) event);
       } else {
         outputPipeConnector.transfer(event);
       }
 
-      releaseLastEvent();
+      releaseLastEvent(true);
     } catch (PipeConnectionException e) {
-      throw e;
+      if (!isClosed.get()) {
+        throw e;
+      } else {
+        LOGGER.info("PipeConnectionException in pipe transfer, ignored because pipe is dropped.");
+        releaseLastEvent(false);
+      }
     } catch (Exception e) {
-      throw new PipeException(
-          "Error occurred during executing PipeConnector#transfer, perhaps need to check "
-              + "whether the implementation of PipeConnector is correct "
-              + "according to the pipe-api description.",
-          e);
+      if (!isClosed.get()) {
+        throw new PipeException(
+            "Error occurred during executing PipeConnector#transfer, perhaps need to check "
+                + "whether the implementation of PipeConnector is correct "
+                + "according to the pipe-api description.",
+            e);
+      } else {
+        LOGGER.info("Exception in pipe transfer, ignored because pipe is dropped.");
+        releaseLastEvent(false);
+      }
     }
 
     return true;
   }
 
+  private void transferHeartbeatEvent(PipeHeartbeatEvent event) {
+    try {
+      outputPipeConnector.heartbeat();
+      outputPipeConnector.transfer(event);
+    } catch (Exception e) {
+      throw new PipeConnectionException(
+          "PipeConnector: "
+              + outputPipeConnector.getClass().getName()
+              + " heartbeat failed, or encountered failure when transferring generic event.",
+          e);
+    }
+
+    lastHeartbeatEventInjectTime = System.currentTimeMillis();
+
+    event.onTransferred();
+    PipeConnectorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
+  }
+
   @Override
-  public void onFailure(@NotNull Throwable throwable) {
+  public synchronized void onSuccess(Boolean hasAtLeastOneEventProcessed) {
+    isSubmitted = false;
+
+    super.onSuccess(hasAtLeastOneEventProcessed);
+  }
+
+  @Override
+  public synchronized void onFailure(@NotNull Throwable throwable) {
+    isSubmitted = false;
+
+    if (isClosed.get()) {
+      LOGGER.info("onFailure in pipe transfer, ignored because pipe is dropped.");
+      releaseLastEvent(false);
+      return;
+    }
+
     // Retry to connect to the target system if the connection is broken
     if (throwable instanceof PipeConnectionException) {
       LOGGER.warn(
@@ -192,8 +264,6 @@ public class PipeConnectorSubtask extends PipeSubtask {
               MAX_RETRY_TIMES,
               taskID,
               throwable);
-
-          // FIXME: non-EnrichedEvent should be reported to the ConfigNode instead of being logged
         }
 
         // Although the pipe task will be stopped, we still don't release the last event here
@@ -215,9 +285,15 @@ public class PipeConnectorSubtask extends PipeSubtask {
     super.onFailure(new PipeRuntimeConnectorCriticalException(throwable.getMessage()));
   }
 
+  /**
+   * Submit a subTask to the executor to keep it running. Note that the function will be called when
+   * connector starts or the subTask finishes the last round, Thus the "isRunning" sign is added to
+   * avoid concurrent problem of the two, ensuring two or more submitting threads generates only one
+   * winner.
+   */
   @Override
-  public void submitSelf() {
-    if (shouldStopSubmittingSelf.get()) {
+  public synchronized void submitSelf() {
+    if (shouldStopSubmittingSelf.get() || isSubmitted) {
       return;
     }
 
@@ -225,26 +301,56 @@ public class PipeConnectorSubtask extends PipeSubtask {
     try {
       final ListenableFuture<Boolean> nextFuture = subtaskWorkerThreadPoolExecutor.submit(this);
       Futures.addCallback(nextFuture, this, subtaskCallbackListeningExecutor);
+      isSubmitted = true;
     } finally {
       callbackDecoratingLock.markAsDecorated();
     }
   }
 
   @Override
-  // Synchronized for outputPipeConnector.close() and releaseLastEvent() in super.close()
-  // make sure that the lastEvent will not be updated after pipeProcessor.close() to avoid
-  // resource leak because of the lastEvent is not released.
-  public synchronized void close() {
+  public void close() {
+    PipeConnectorMetrics.getInstance().deregister(taskID);
+    isClosed.set(true);
     try {
       outputPipeConnector.close();
-
-      // Should be called after outputPipeConnector.close()
-      super.close();
     } catch (Exception e) {
       LOGGER.info(
           "Error occurred during closing PipeConnector, perhaps need to check whether the "
               + "implementation of PipeConnector is correct according to the pipe-api description.",
           e);
+    } finally {
+      inputPendingQueue.forEach(
+          event -> {
+            if (event instanceof EnrichedEvent) {
+              ((EnrichedEvent) event).clearReferenceCount(PipeEventCollector.class.getName());
+            }
+          });
+      inputPendingQueue.clear();
+
+      // Should be called after outputPipeConnector.close()
+      super.close();
     }
+  }
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  public String getAttributeSortedString() {
+    return attributeSortedString;
+  }
+
+  public int getConnectorIndex() {
+    return connectorIndex;
+  }
+
+  public Integer getTsFileInsertionEventCount() {
+    return inputPendingQueue.getTsFileInsertionEventCount();
+  }
+
+  public Integer getTabletInsertionEventCount() {
+    return inputPendingQueue.getTabletInsertionEventCount();
+  }
+
+  public Integer getPipeHeartbeatEventCount() {
+    return inputPendingQueue.getPipeHeartbeatEventCount();
   }
 }

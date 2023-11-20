@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory.ModsSerializer;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
@@ -31,19 +33,14 @@ import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Set;
 
 /** QueryContext contains the shared information with in a query. */
 public class QueryContext {
 
-  /**
-   * The outer key is the path of a ModificationFile, the inner key in the name of a timeseries and
-   * the value is the Modifications of a timeseries in this file.
-   */
-  private final Map<String, Map<String, List<Modification>>> filePathModCache =
-      new ConcurrentHashMap<>();
   /**
    * The key is the path of a ModificationFile and the value is all Modifications in this file. We
    * use this field because each call of Modification.getModifications() return a copy of the
@@ -63,14 +60,16 @@ public class QueryContext {
 
   private volatile boolean isInterrupted = false;
 
+  private final Set<TsFileID> nonExistentModFiles = new HashSet<>();
+
   public QueryContext() {}
 
   public QueryContext(long queryId) {
-    this(queryId, false, System.currentTimeMillis(), "", 0);
+    this(queryId, false, System.currentTimeMillis(), 0);
   }
 
   /** Every time we generate the queryContext, register it to queryTimeManager. */
-  public QueryContext(long queryId, boolean debug, long startTime, String statement, long timeout) {
+  public QueryContext(long queryId, boolean debug, long startTime, long timeout) {
     this.queryId = queryId;
     this.debug = debug;
     this.startTime = startTime;
@@ -81,38 +80,40 @@ public class QueryContext {
    * Find the modifications of timeseries 'path' in 'modFile'. If they are not in the cache, read
    * them from 'modFile' and put then into the cache.
    */
-  public List<Modification> getPathModifications(ModificationFile modFile, PartialPath path) {
+  public List<Modification> getPathModifications(TsFileResource tsFileResource, PartialPath path) {
     // if the mods file does not exist, do not add it to the cache
-    if (!modFile.exists()) {
+    if (nonExistentModFiles.contains(tsFileResource.getTsFileID())) {
       return Collections.emptyList();
     }
-    Map<String, List<Modification>> fileModifications =
-        filePathModCache.computeIfAbsent(modFile.getFilePath(), k -> new ConcurrentHashMap<>());
-    return fileModifications.computeIfAbsent(
-        path.getFullPath(),
-        k -> {
-          PatternTreeMap<Modification, ModsSerializer> allModifications =
-              fileModCache.get(modFile.getFilePath());
-          if (allModifications == null) {
-            allModifications = PatternTreeMapFactory.getModsPatternTreeMap();
-            for (Modification modification : modFile.getModificationsIter()) {
-              allModifications.append(modification.getPath(), modification);
-            }
-            fileModCache.put(modFile.getFilePath(), allModifications);
-          }
-          return ModificationFile.sortAndMerge(allModifications.getOverlapped(path));
-        });
+
+    ModificationFile modFile = tsFileResource.getModFile();
+    if (!modFile.exists()) {
+      nonExistentModFiles.add(tsFileResource.getTsFileID());
+      return Collections.emptyList();
+    }
+
+    PatternTreeMap<Modification, ModsSerializer> allModifications =
+        fileModCache.get(modFile.getFilePath());
+    if (allModifications == null) {
+      allModifications = PatternTreeMapFactory.getModsPatternTreeMap();
+      for (Modification modification : modFile.getModificationsIter()) {
+        allModifications.append(modification.getPath(), modification);
+      }
+      fileModCache.put(modFile.getFilePath(), allModifications);
+    }
+    return ModificationFile.sortAndMerge(allModifications.getOverlapped(path));
   }
 
   /**
    * Find the modifications of all aligned 'paths' in 'modFile'. If they are not in the cache, read
    * them from 'modFile' and put then into the cache.
    */
-  public List<List<Modification>> getPathModifications(ModificationFile modFile, AlignedPath path) {
+  public List<List<Modification>> getPathModifications(
+      TsFileResource tsFileResource, AlignedPath path) {
     int n = path.getMeasurementList().size();
     List<List<Modification>> ans = new ArrayList<>(n);
     for (int i = 0; i < n; i++) {
-      ans.add(getPathModifications(modFile, path.getPathWithMeasurement(i)));
+      ans.add(getPathModifications(tsFileResource, path.getPathWithMeasurement(i)));
     }
     return ans;
   }

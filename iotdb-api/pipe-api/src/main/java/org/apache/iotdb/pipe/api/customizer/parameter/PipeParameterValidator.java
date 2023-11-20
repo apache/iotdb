@@ -61,15 +61,11 @@ public class PipeParameterValidator {
       return this;
     }
 
-    final String actualValue = parameters.getString(key);
+    final String actualValue = parameters.getStringByKeys(key);
     for (String optionalValue : optionalValues) {
       if (actualValue.equals(optionalValue)) {
         return this;
       }
-    }
-
-    if (canBeOptional) {
-      return this;
     }
 
     throw new PipeAttributeNotProvidedException(

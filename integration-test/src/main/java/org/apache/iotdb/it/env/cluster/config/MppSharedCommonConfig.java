@@ -21,6 +21,8 @@ package org.apache.iotdb.it.env.cluster.config;
 
 import org.apache.iotdb.itbase.env.CommonConfig;
 
+import java.util.concurrent.TimeUnit;
+
 public class MppSharedCommonConfig implements CommonConfig {
 
   private final MppCommonConfig cnConfig;
@@ -112,6 +114,14 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setEnableCrossSpaceCompaction(boolean enableCrossSpaceCompaction) {
     cnConfig.setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
     dnConfig.setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setMaxInnerCompactionCandidateFileNum(
+      int maxInnerCompactionCandidateFileNum) {
+    cnConfig.setMaxInnerCompactionCandidateFileNum(maxInnerCompactionCandidateFileNum);
+    dnConfig.setMaxInnerCompactionCandidateFileNum(maxInnerCompactionCandidateFileNum);
     return this;
   }
 
@@ -225,6 +235,28 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setTimestampPrecision(String timestampPrecision) {
     cnConfig.setTimestampPrecision(timestampPrecision);
     dnConfig.setTimestampPrecision(timestampPrecision);
+    return this;
+  }
+
+  @Override
+  public TimeUnit getTimestampPrecision() {
+    String precision = dnConfig.properties.getProperty("timestamp_precision", "ms");
+    switch (precision) {
+      case "ms":
+        return TimeUnit.MILLISECONDS;
+      case "us":
+        return TimeUnit.MICROSECONDS;
+      case "ns":
+        return TimeUnit.NANOSECONDS;
+      default:
+        throw new UnsupportedOperationException(precision);
+    }
+  }
+
+  @Override
+  public CommonConfig setTimestampPrecisionCheckEnabled(boolean timestampPrecisionCheckEnabled) {
+    cnConfig.setTimestampPrecisionCheckEnabled(timestampPrecisionCheckEnabled);
+    dnConfig.setTimestampPrecisionCheckEnabled(timestampPrecisionCheckEnabled);
     return this;
   }
 
@@ -345,16 +377,16 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setClusterSchemaLimitLevel(String clusterSchemaLimitLevel) {
-    dnConfig.setClusterSchemaLimitLevel(clusterSchemaLimitLevel);
-    cnConfig.setClusterSchemaLimitLevel(clusterSchemaLimitLevel);
+  public CommonConfig setClusterTimeseriesLimitThreshold(long clusterSchemaLimitThreshold) {
+    dnConfig.setClusterTimeseriesLimitThreshold(clusterSchemaLimitThreshold);
+    cnConfig.setClusterTimeseriesLimitThreshold(clusterSchemaLimitThreshold);
     return this;
   }
 
   @Override
-  public CommonConfig setClusterSchemaLimitThreshold(long clusterSchemaLimitThreshold) {
-    dnConfig.setClusterSchemaLimitThreshold(clusterSchemaLimitThreshold);
-    cnConfig.setClusterSchemaLimitThreshold(clusterSchemaLimitThreshold);
+  public CommonConfig setClusterDeviceLimitThreshold(long clusterDeviceLimitThreshold) {
+    dnConfig.setClusterDeviceLimitThreshold(clusterDeviceLimitThreshold);
+    cnConfig.setClusterDeviceLimitThreshold(clusterDeviceLimitThreshold);
     return this;
   }
 
@@ -376,6 +408,20 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setSchemaRegionPerDataNode(double schemaRegionPerDataNode) {
     dnConfig.setSchemaRegionPerDataNode(schemaRegionPerDataNode);
     cnConfig.setSchemaRegionPerDataNode(schemaRegionPerDataNode);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled) {
+    dnConfig.setPipeAirGapReceiverEnabled(isPipeAirGapReceiverEnabled);
+    cnConfig.setPipeAirGapReceiverEnabled(isPipeAirGapReceiverEnabled);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDriverTaskExecutionTimeSliceInMs(long driverTaskExecutionTimeSliceInMs) {
+    dnConfig.setDriverTaskExecutionTimeSliceInMs(driverTaskExecutionTimeSliceInMs);
+    cnConfig.setDriverTaskExecutionTimeSliceInMs(driverTaskExecutionTimeSliceInMs);
     return this;
   }
 }

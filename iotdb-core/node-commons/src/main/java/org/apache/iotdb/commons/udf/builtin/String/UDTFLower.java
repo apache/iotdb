@@ -18,7 +18,11 @@
  */
 package org.apache.iotdb.commons.udf.builtin.String;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -56,6 +60,23 @@ public class UDTFLower implements UDTF {
     if (row.isNull(0)) {
       return null;
     }
-    return Binary.valueOf(row.getString(0).toLowerCase());
+    return BytesUtils.valueOf(row.getString(0).toLowerCase());
+  }
+
+  @Override
+  public void transform(Column[] columns, ColumnBuilder builder) throws Exception {
+    Binary[] inputs = columns[0].getBinaries();
+    boolean[] isNulls = columns[0].isNull();
+
+    int count = columns[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
+      if (isNulls[i]) {
+        builder.appendNull();
+      } else {
+        String str = inputs[i].getStringValue(TSFileConfig.STRING_CHARSET);
+        String res = str.toLowerCase();
+        builder.writeBinary(BytesUtils.valueOf(res));
+      }
+    }
   }
 }

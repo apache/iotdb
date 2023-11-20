@@ -19,19 +19,17 @@
 
 package org.apache.iotdb.db.pipe.agent.plugin;
 
-import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.plugin.meta.DataNodePipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoaderManager;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
-import org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant;
-import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
-import org.apache.iotdb.db.pipe.config.constant.PipeProcessorConstant;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.pipe.api.PipeProcessor;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -51,8 +49,15 @@ public class PipePluginAgent {
 
   private final DataNodePipePluginMetaKeeper pipePluginMetaKeeper;
 
+  private final PipeExtractorConstructor pipeExtractorConstructor;
+  private final PipeProcessorConstructor pipeProcessorConstructor;
+  private final PipeConnectorConstructor pipeConnectorConstructor;
+
   public PipePluginAgent() {
     this.pipePluginMetaKeeper = new DataNodePipePluginMetaKeeper();
+    this.pipeExtractorConstructor = new PipeExtractorConstructor(pipePluginMetaKeeper);
+    this.pipeProcessorConstructor = new PipeProcessorConstructor(pipePluginMetaKeeper);
+    this.pipeConnectorConstructor = new PipeConnectorConstructor(pipePluginMetaKeeper);
   }
 
   /////////////////////////////// Lock ///////////////////////////////
@@ -199,57 +204,60 @@ public class PipePluginAgent {
     }
   }
 
+  /**
+   * Validation should have the granularity of "DataNode level", not "DataRegion level", because a
+   * DataNode may have no DataRegion at all when creating pipe
+   */
+  public void validate(CreatePipeStatement createPipeStatement) throws Exception {
+    final PipeParameters extractorParameters =
+        new PipeParameters(createPipeStatement.getExtractorAttributes());
+    final PipeExtractor temporaryExtractor = reflectExtractor(extractorParameters);
+    try {
+      temporaryExtractor.validate(new PipeParameterValidator(extractorParameters));
+    } finally {
+      try {
+        temporaryExtractor.close();
+      } catch (Exception e) {
+        LOGGER.warn("Failed to close temporary extractor: {}", e.getMessage());
+      }
+    }
+
+    final PipeParameters processorParameters =
+        new PipeParameters(createPipeStatement.getProcessorAttributes());
+    final PipeProcessor temporaryProcessor = reflectProcessor(processorParameters);
+    try {
+      temporaryProcessor.validate(new PipeParameterValidator(processorParameters));
+    } finally {
+      try {
+        temporaryProcessor.close();
+      } catch (Exception e) {
+        LOGGER.warn("Failed to close temporary processor: {}", e.getMessage());
+      }
+    }
+
+    final PipeParameters connectorParameters =
+        new PipeParameters(createPipeStatement.getConnectorAttributes());
+    final PipeConnector temporaryConnector = reflectConnector(connectorParameters);
+    try {
+      temporaryConnector.validate(new PipeParameterValidator(connectorParameters));
+    } finally {
+      try {
+        temporaryConnector.close();
+      } catch (Exception e) {
+        LOGGER.warn("Failed to close temporary connector: {}", e.getMessage());
+      }
+    }
+  }
+
   public PipeExtractor reflectExtractor(PipeParameters extractorParameters) {
-    return (PipeExtractor)
-        reflect(
-            extractorParameters.getStringOrDefault(
-                PipeExtractorConstant.EXTRACTOR_KEY,
-                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName()));
+    return pipeExtractorConstructor.reflectPlugin(extractorParameters);
   }
 
   public PipeProcessor reflectProcessor(PipeParameters processorParameters) {
-    return (PipeProcessor)
-        reflect(
-            processorParameters.getStringOrDefault(
-                PipeProcessorConstant.PROCESSOR_KEY,
-                BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName()));
+    return pipeProcessorConstructor.reflectPlugin(processorParameters);
   }
 
   public PipeConnector reflectConnector(PipeParameters connectorParameters) {
-    if (!connectorParameters.hasAttribute(PipeConnectorConstant.CONNECTOR_KEY)) {
-      throw new PipeException(
-          "Failed to reflect PipeConnector instance because "
-              + "'connector' is not specified in the parameters.");
-    }
-    return (PipeConnector)
-        reflect(connectorParameters.getString(PipeConnectorConstant.CONNECTOR_KEY));
-  }
-
-  private PipePlugin reflect(String pluginName) {
-    PipePluginMeta information = pipePluginMetaKeeper.getPipePluginMeta(pluginName);
-    if (information == null) {
-      String errorMessage =
-          String.format(
-              "Failed to reflect PipePlugin instance, because "
-                  + "PipePlugin %s has not been registered.",
-              pluginName.toUpperCase());
-      LOGGER.warn(errorMessage);
-      throw new PipeException(errorMessage);
-    }
-
-    try {
-      return (PipePlugin)
-          pipePluginMetaKeeper.getPluginClass(pluginName).getDeclaredConstructor().newInstance();
-    } catch (InstantiationException
-        | InvocationTargetException
-        | NoSuchMethodException
-        | IllegalAccessException e) {
-      String errorMessage =
-          String.format(
-              "Failed to reflect PipePlugin %s(%s) instance, because %s",
-              pluginName, information.getClassName(), e);
-      LOGGER.warn(errorMessage, e);
-      throw new PipeException(errorMessage);
-    }
+    return pipeConnectorConstructor.reflectPlugin(connectorParameters);
   }
 }

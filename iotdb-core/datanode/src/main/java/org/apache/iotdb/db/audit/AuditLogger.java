@@ -21,20 +21,23 @@ package org.apache.iotdb.db.audit;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.protocol.session.ClientSession;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
-import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -43,6 +46,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.validation.constraints.NotNull;
 
+import java.time.ZoneId;
 import java.util.List;
 
 import static org.apache.iotdb.db.pipe.receiver.legacy.loader.ILoader.SCHEMA_FETCHER;
@@ -59,6 +63,8 @@ public class AuditLogger {
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final List<AuditLogStorage> auditLogStorageList = config.getAuditLogStorage();
+  private static final SessionInfo sessionInfo =
+      new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault().getId());
 
   private static final List<AuditLogOperation> auditLogOperationList =
       config.getAuditLogOperation();
@@ -79,11 +85,15 @@ public class AuditLogger {
     InsertRowStatement insertStatement = new InsertRowStatement();
     insertStatement.setDevicePath(
         DEVICE_PATH_CACHE.getPartialPath(String.format(AUDIT_LOG_DEVICE, username)));
-    insertStatement.setTime(DateTimeUtils.currentTime());
+    insertStatement.setTime(CommonDateTimeUtils.currentTime());
     insertStatement.setMeasurements(new String[] {LOG, USERNAME, ADDRESS});
     insertStatement.setAligned(false);
     insertStatement.setValues(
-        new Object[] {new Binary(log), new Binary(username), new Binary(address)});
+        new Object[] {
+          new Binary(log, TSFileConfig.STRING_CHARSET),
+          new Binary(username, TSFileConfig.STRING_CHARSET),
+          new Binary(address, TSFileConfig.STRING_CHARSET)
+        });
     insertStatement.setDataTypes(
         new TSDataType[] {TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT});
     return insertStatement;
@@ -108,7 +118,7 @@ public class AuditLogger {
           COORDINATOR.execute(
               generateInsertStatement(log, address, username),
               SESSION_MANAGER.requestQueryId(),
-              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
+              sessionInfo,
               "",
               ClusterPartitionFetcher.getInstance(),
               SCHEMA_FETCHER);

@@ -65,7 +65,8 @@ public abstract class AbstractMemTable implements IMemTable {
   private final Map<IDeviceID, IWritableMemChunkGroup> memTableMap;
 
   /**
-   * The initial value is true because we want calculate the text data size when recover memTable.
+   * The initial value is true because we want to calculate the text data size when recover
+   * memTable.
    */
   protected boolean disableMemControl = true;
 
@@ -95,13 +96,27 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private final long createdTime = System.currentTimeMillis();
 
-  private static final String METRIC_POINT_IN = "pointsIn";
+  private String database;
+  private String dataRegionId;
+
+  private static final String METRIC_POINT_IN = Metric.POINTS_IN.toString();
 
   protected AbstractMemTable() {
+    this.database = null;
+    this.dataRegionId = null;
     this.memTableMap = new HashMap<>();
   }
 
-  protected AbstractMemTable(Map<IDeviceID, IWritableMemChunkGroup> memTableMap) {
+  protected AbstractMemTable(String database, String dataRegionId) {
+    this.database = database;
+    this.dataRegionId = dataRegionId;
+    this.memTableMap = new HashMap<>();
+  }
+
+  protected AbstractMemTable(
+      String database, String dataRegionId, Map<IDeviceID, IWritableMemChunkGroup> memTableMap) {
+    this.database = database;
+    this.dataRegionId = dataRegionId;
     this.memTableMap = memTableMap;
   }
 
@@ -194,7 +209,11 @@ public abstract class AbstractMemTable implements IMemTable {
             Metric.QUANTITY.toString(),
             MetricLevel.CORE,
             Tag.NAME.toString(),
-            METRIC_POINT_IN);
+            METRIC_POINT_IN,
+            Tag.DATABASE.toString(),
+            database,
+            Tag.REGION.toString(),
+            dataRegionId);
   }
 
   @Override
@@ -210,7 +229,7 @@ public abstract class AbstractMemTable implements IMemTable {
     List<TSDataType> dataTypes = new ArrayList<>();
     for (int i = 0; i < insertRowNode.getMeasurements().length; i++) {
       // Use measurements[i] to ignore failed partial insert
-      if (measurements[i] == null) {
+      if (measurements[i] == null || values[i] == null) {
         schemaList.add(null);
         continue;
       }
@@ -233,7 +252,11 @@ public abstract class AbstractMemTable implements IMemTable {
             Metric.QUANTITY.toString(),
             MetricLevel.CORE,
             Tag.NAME.toString(),
-            METRIC_POINT_IN);
+            METRIC_POINT_IN,
+            Tag.DATABASE.toString(),
+            database,
+            Tag.REGION.toString(),
+            dataRegionId);
   }
 
   @Override
@@ -252,7 +275,11 @@ public abstract class AbstractMemTable implements IMemTable {
               Metric.QUANTITY.toString(),
               MetricLevel.CORE,
               Tag.NAME.toString(),
-              METRIC_POINT_IN);
+              METRIC_POINT_IN,
+              Tag.DATABASE.toString(),
+              database,
+              Tag.REGION.toString(),
+              dataRegionId);
     } catch (RuntimeException e) {
       throw new WriteProcessException(e);
     }
@@ -274,7 +301,11 @@ public abstract class AbstractMemTable implements IMemTable {
               Metric.QUANTITY.toString(),
               MetricLevel.CORE,
               Tag.NAME.toString(),
-              METRIC_POINT_IN);
+              METRIC_POINT_IN,
+              Tag.DATABASE.toString(),
+              database,
+              Tag.REGION.toString(),
+              dataRegionId);
     } catch (RuntimeException e) {
       throw new WriteProcessException(e);
     }
@@ -629,7 +660,12 @@ public abstract class AbstractMemTable implements IMemTable {
   public Map<String, Long> getMaxTime() {
     Map<String, Long> latestTimeForEachDevice = new HashMap<>();
     for (Entry<IDeviceID, IWritableMemChunkGroup> entry : memTableMap.entrySet()) {
-      latestTimeForEachDevice.put(entry.getKey().toStringID(), entry.getValue().getMaxTime());
+      // When insert null values in to IWritableMemChunkGroup, the maxTime will not be updated.
+      // In this scenario, the maxTime will be Long.MIN_VALUE. We shouldn't return this device.
+      long maxTime = entry.getValue().getMaxTime();
+      if (maxTime != Long.MIN_VALUE) {
+        latestTimeForEachDevice.put(entry.getKey().toStringID(), maxTime);
+      }
     }
     return latestTimeForEachDevice;
   }
@@ -645,11 +681,28 @@ public abstract class AbstractMemTable implements IMemTable {
       if (isSignal) {
         memTable = new NotifyFlushMemTable();
       } else {
+        // database will be updated when deserialize
         PrimitiveMemTable primitiveMemTable = new PrimitiveMemTable();
         primitiveMemTable.deserialize(stream);
         memTable = primitiveMemTable;
       }
       return memTable;
     }
+  }
+
+  @Override
+  public String getDatabase() {
+    return database;
+  }
+
+  @Override
+  public String getDataRegionId() {
+    return dataRegionId;
+  }
+
+  @Override
+  public void setDatabaseAndDataRegionId(String database, String dataRegionId) {
+    this.database = database;
+    this.dataRegionId = dataRegionId;
   }
 }

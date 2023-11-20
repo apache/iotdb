@@ -23,6 +23,8 @@ import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.openjdk.jol.info.ClassLayout;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -32,13 +34,14 @@ import java.util.Objects;
 /** Statistics for int type. */
 public class IntegerStatistics extends Statistics<Integer> {
 
+  public static final int INSTANCE_SIZE =
+      ClassLayout.parseClass(IntegerStatistics.class).instanceSize();
+
   private int minValue;
   private int maxValue;
   private int firstValue;
   private int lastValue;
   private long sumValue;
-
-  static final int INTEGER_STATISTICS_FIXED_RAM_SIZE = 64;
 
   @Override
   public TSDataType getType() {
@@ -49,6 +52,11 @@ public class IntegerStatistics extends Statistics<Integer> {
   @Override
   public int getStatsSize() {
     return 24;
+  }
+
+  @Override
+  public long getRetainedSizeInBytes() {
+    return INSTANCE_SIZE;
   }
 
   public void initializeStats(int min, int max, int first, int last, long sum) {
@@ -111,11 +119,6 @@ public class IntegerStatistics extends Statistics<Integer> {
     for (int i = 0; i < batchSize; i++) {
       updateStats(values[i]);
     }
-  }
-
-  @Override
-  public long calculateRamSize() {
-    return INTEGER_STATISTICS_FIXED_RAM_SIZE;
   }
 
   @Override

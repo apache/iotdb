@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.common.block;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -70,7 +71,7 @@ public class TsBlockSerdeTest {
       longColumnBuilder.writeLong(i);
       doubleColumnBuilder.writeDouble(i + i / 10D);
       booleanColumnBuilder.writeBoolean(true);
-      binaryColumnBuilder.writeBinary(new Binary("foo"));
+      binaryColumnBuilder.writeBinary(new Binary("foo", TSFileConfig.STRING_CHARSET));
       tsBlockBuilder.declarePosition();
     }
 

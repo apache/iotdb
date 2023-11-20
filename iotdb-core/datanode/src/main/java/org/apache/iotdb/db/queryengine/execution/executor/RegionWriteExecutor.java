@@ -37,7 +37,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -684,14 +683,11 @@ public class RegionWriteExecutor {
       ISchemaRegion schemaRegion =
           schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
       try {
-        List<MeasurementPath> measurementPathList =
-            schemaRegion.fetchSchema(node.getPath(), Collections.emptyMap(), false);
+        MeasurementPath measurementPath = schemaRegion.fetchMeasurementPath(node.getPath());
         if (node.isAlterView()) {
-          if (measurementPathList.isEmpty()) {
-            throw new PathNotExistException(node.getPath().getFullPath());
-          } else if (!measurementPathList.get(0).getMeasurementSchema().isLogicalView()) {
+          if (!measurementPath.getMeasurementSchema().isLogicalView()) {
             throw new MetadataException(
-                String.format("%s is not view.", measurementPathList.get(0).getFullPath()));
+                String.format("%s is not view.", measurementPath.getFullPath()));
           }
         }
         return super.visitAlterTimeSeries(node, context);

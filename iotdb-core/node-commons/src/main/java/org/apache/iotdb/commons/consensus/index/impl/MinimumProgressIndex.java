@@ -22,14 +22,19 @@ package org.apache.iotdb.commons.consensus.index.impl;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 
+import javax.annotation.Nonnull;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
-public class MinimumProgressIndex implements ProgressIndex {
+public class MinimumProgressIndex extends ProgressIndex {
 
-  public MinimumProgressIndex() {}
+  public static final MinimumProgressIndex INSTANCE = new MinimumProgressIndex();
+  private static final TotalOrderSumTuple TOTAL_ORDER_SUM_TUPLE = new TotalOrderSumTuple();
+
+  private MinimumProgressIndex() {}
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {
@@ -42,7 +47,7 @@ public class MinimumProgressIndex implements ProgressIndex {
   }
 
   @Override
-  public boolean isAfter(ProgressIndex progressIndex) {
+  public boolean isAfter(@Nonnull ProgressIndex progressIndex) {
     return false;
   }
 
@@ -77,12 +82,17 @@ public class MinimumProgressIndex implements ProgressIndex {
     return ProgressIndexType.MINIMUM_PROGRESS_INDEX;
   }
 
+  @Override
+  public TotalOrderSumTuple getTotalOrderSumTuple() {
+    return TOTAL_ORDER_SUM_TUPLE;
+  }
+
   public static MinimumProgressIndex deserializeFrom(ByteBuffer byteBuffer) {
-    return new MinimumProgressIndex();
+    return INSTANCE;
   }
 
   public static MinimumProgressIndex deserializeFrom(InputStream stream) {
-    return new MinimumProgressIndex();
+    return INSTANCE;
   }
 
   @Override

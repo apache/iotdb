@@ -109,7 +109,6 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.USER_DIR;
 import static org.apache.iotdb.it.env.cluster.EnvUtils.fromConsensusAbbrToFullName;
 import static org.apache.iotdb.it.env.cluster.EnvUtils.getTimeForLogDirectory;
 import static org.apache.iotdb.it.env.cluster.EnvUtils.getValueOfIndex;
-import static org.junit.Assert.fail;
 
 public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   private static final Logger logger = IoTDBTestLogger.logger;
@@ -124,6 +123,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   private Process instance;
   private final String nodeAddress;
   private int nodePort;
+  private int metricPort;
   private long startTime;
 
   /**
@@ -162,6 +162,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     this.portList = portList;
     this.nodeAddress = "127.0.0.1";
     this.nodePort = portList[0];
+    this.metricPort = portList[portList.length - 2];
     jmxPort = this.portList[portList.length - 1];
     // these properties can't be mutated.
     immutableCommonProperties.setProperty(UDF_LIB_DIR, MppBaseConfig.NULL_VALUE);
@@ -184,7 +185,9 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     String destPath = getNodePath();
     try {
       try {
-        PathUtils.deleteDirectory(Paths.get(destPath));
+        if (new File(destPath).exists()) {
+          PathUtils.deleteDirectory(Paths.get(destPath));
+        }
       } catch (NoSuchFileException e) {
         // ignored
       }
@@ -201,13 +204,14 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
                     LinkOption.NOFOLLOW_LINKS,
                     StandardCopyOption.COPY_ATTRIBUTES);
               } catch (IOException e) {
+                logger.error("Got error copying files to node dest dir", e);
                 throw new RuntimeException(e);
               }
             });
       }
     } catch (IOException ex) {
       logger.error("Copy node dir failed", ex);
-      fail();
+      throw new AssertionError();
     }
   }
 
@@ -219,7 +223,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
       FileUtils.createParentDirectories(new File(getLogPath()));
     } catch (IOException ex) {
       logger.error("Copy node dir failed", ex);
-      fail();
+      throw new AssertionError();
     }
   }
 
@@ -238,12 +242,12 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
           TimeUnit.SECONDS.sleep(1);
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
-          fail("Delete node dir failed. " + e);
+          throw new AssertionError("Delete node dir failed. " + e);
         }
       }
     }
     lastException.printStackTrace();
-    fail("Delete node dir failed.");
+    throw new AssertionError("Delete node dir failed.");
   }
 
   /**
@@ -298,7 +302,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
       outputCommonConfig.persistent(getTargetCommonConfigPath());
       outputNodeConfig.persistent(getTargetNodeConfigPath());
     } catch (IOException ex) {
-      fail("Change the config of node failed. " + ex);
+      throw new AssertionError("Change the config of node failed. " + ex);
     }
     this.jvmConfig.override(jvmConfig);
   }
@@ -438,7 +442,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
       this.instance = processBuilder.start();
       logger.info("In test {} {} started.", getTestLogDirName(), getId());
     } catch (IOException ex) {
-      fail("Start node failed. " + ex);
+      throw new AssertionError("Start node failed. " + ex);
     }
   }
 
@@ -466,6 +470,11 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   @Override
   public final int getPort() {
     return this.nodePort;
+  }
+
+  @Override
+  public final int getMetricPort() {
+    return this.metricPort;
   }
 
   public void setPort(int port) {

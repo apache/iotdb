@@ -140,7 +140,7 @@ public class TsFileReaderTest {
 
   private void queryTest(int rowCount) throws IOException {
     Filter filter = TimeFilter.lt(1480562618100L);
-    Filter filter2 = ValueFilter.gt(new Binary("dog"));
+    Filter filter2 = ValueFilter.gt(new Binary("dog", TSFileConfig.STRING_CHARSET));
     Filter filter3 =
         FilterFactory.and(TimeFilter.gtEq(1480562618000L), TimeFilter.ltEq(1480562618100L));
 

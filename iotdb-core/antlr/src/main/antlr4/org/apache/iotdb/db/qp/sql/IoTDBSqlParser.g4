@@ -41,7 +41,7 @@ ddlStatement
     // Timeseries & Path
     | createTimeseries | dropTimeseries | alterTimeseries
     | showDevices | showTimeseries | showChildPaths | showChildNodes | countDevices | countTimeseries | countNodes
-    // Schema Template
+    // Device Template
     | createSchemaTemplate | createTimeseriesUsingSchemaTemplate | dropSchemaTemplate | dropTimeseriesOfSchemaTemplate
     | showSchemaTemplates | showNodesInSchemaTemplate | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
     | setSchemaTemplate | unsetSchemaTemplate
@@ -61,8 +61,6 @@ ddlStatement
     // Cluster
     | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes
     | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList | migrateRegion
-    // ML Model
-    | createModel | dropModel | showModels | showTrails
     // Quota
     | setSpaceQuota | showSpaceQuota | setThrottleQuota | showThrottleQuota
     // View
@@ -241,10 +239,10 @@ tagContainsExpression
     ;
 
 
-// Schema Template ==================================================================================
-// ---- Create Schema Template
+// Device Template ==================================================================================
+// ---- Create Device Template
 createSchemaTemplate
-    : CREATE SCHEMA TEMPLATE templateName=identifier
+    : CREATE (SCHEMA | DEVICE) TEMPLATE templateName=identifier
     ALIGNED? (LR_BRACKET templateMeasurementClause (COMMA templateMeasurementClause)* RR_BRACKET)?
     ;
 
@@ -252,53 +250,53 @@ templateMeasurementClause
     : nodeNameWithoutWildcard attributeClauses
     ;
 
-// ---- Create Timeseries Of Schema Template
+// ---- Create Timeseries Of Device Template
 createTimeseriesUsingSchemaTemplate
-    : CREATE TIMESERIES (OF | USING) SCHEMA TEMPLATE ON prefixPath
+    : CREATE TIMESERIES (OF | USING) (SCHEMA | DEVICE) TEMPLATE ON prefixPath
     ;
 
-// ---- Drop Schema Template
+// ---- Drop Device Template
 dropSchemaTemplate
-    : DROP SCHEMA TEMPLATE templateName=identifier
+    : DROP (SCHEMA | DEVICE) TEMPLATE templateName=identifier
     ;
 
-// ---- Drop Timeseries of Schema Template
+// ---- Drop Timeseries of Device Template
 dropTimeseriesOfSchemaTemplate
-    : ((DELETE | DROP) TIMESERIES OF | DEACTIVATE) SCHEMA TEMPLATE (templateName=identifier) ? FROM prefixPath (COMMA prefixPath)*
+    : ((DELETE | DROP) TIMESERIES OF | DEACTIVATE) (SCHEMA | DEVICE) TEMPLATE (templateName=identifier) ? FROM prefixPath (COMMA prefixPath)*
     ;
 
-// ---- Show Schema Template
+// ---- Show Device Template
 showSchemaTemplates
-    : SHOW SCHEMA TEMPLATES
+    : SHOW (SCHEMA | DEVICE) TEMPLATES
     ;
 
-// ---- Show Measurements In Schema Template
+// ---- Show Measurements In Device Template
 showNodesInSchemaTemplate
-    : SHOW NODES operator_in SCHEMA TEMPLATE templateName=identifier
+    : SHOW NODES operator_in (SCHEMA | DEVICE) TEMPLATE templateName=identifier
     ;
 
-// ---- Show Paths Set Schema Template
+// ---- Show Paths Set Device Template
 showPathsSetSchemaTemplate
-    : SHOW PATHS SET SCHEMA TEMPLATE templateName=identifier
+    : SHOW PATHS SET (SCHEMA | DEVICE) TEMPLATE templateName=identifier
     ;
 
-// ---- Show Paths Using Schema Template
+// ---- Show Paths Using Device Template
 showPathsUsingSchemaTemplate
-    : SHOW PATHS prefixPath? USING SCHEMA TEMPLATE templateName=identifier
+    : SHOW PATHS prefixPath? USING (SCHEMA | DEVICE) TEMPLATE templateName=identifier
     ;
 
-// ---- Set Schema Template
+// ---- Set Device Template
 setSchemaTemplate
-    : SET SCHEMA TEMPLATE templateName=identifier TO prefixPath
+    : SET (SCHEMA | DEVICE) TEMPLATE templateName=identifier TO prefixPath
     ;
 
-// ---- Unset Schema Template
+// ---- Unset Device Template
 unsetSchemaTemplate
-    : UNSET SCHEMA TEMPLATE templateName=identifier FROM prefixPath
+    : UNSET (SCHEMA | DEVICE) TEMPLATE templateName=identifier FROM prefixPath
     ;
 
 alterSchemaTemplate
-    : ALTER SCHEMA TEMPLATE templateName=identifier ADD LR_BRACKET templateMeasurementClause (COMMA templateMeasurementClause)* RR_BRACKET
+    : ALTER (SCHEMA | DEVICE) TEMPLATE templateName=identifier ADD LR_BRACKET templateMeasurementClause (COMMA templateMeasurementClause)* RR_BRACKET
     ;
 
 
@@ -521,7 +519,7 @@ createPipe
     ;
 
 extractorAttributesClause
-    : WITH EXTRACTOR
+    : WITH (EXTRACTOR | SOURCE)
         LR_BRACKET
         (extractorAttributeClause COMMA)* extractorAttributeClause?
         RR_BRACKET
@@ -543,7 +541,7 @@ processorAttributeClause
     ;
 
 connectorAttributesClause
-    : WITH CONNECTOR
+    : WITH (CONNECTOR | SINK)
         LR_BRACKET
         (connectorAttributeClause COMMA)* connectorAttributeClause?
         RR_BRACKET
@@ -566,7 +564,7 @@ stopPipe
     ;
 
 showPipes
-    : SHOW ((PIPE pipeName=identifier) | PIPES (WHERE CONNECTOR USED BY pipeName=identifier)?)
+    : SHOW ((PIPE pipeName=identifier) | PIPES (WHERE (CONNECTOR | SINK) USED BY pipeName=identifier)?)
     ;
 
 // Pipe Plugin =========================================================================================
@@ -580,31 +578,6 @@ dropPipePlugin
 
 showPipePlugins
     : SHOW PIPEPLUGINS
-    ;
-
-// ML Model =========================================================================================
-// ---- Create Model
-createModel
-    : CREATE AUTO? MODEL modelId=identifier
-        WITH attributePair (COMMA attributePair)*
-        BEGIN
-            selectStatement
-        END
-    ;
-
-// ---- Drop Model
-dropModel
-    : DROP MODEL modelId=identifier
-    ;
-
-// ---- Show Models
-showModels
-    : SHOW MODELS
-    ;
-
-// ---- Show Trails
-showTrails
-    : SHOW TRAILS modelId=identifier
     ;
 
 // Create Logical View
@@ -752,7 +725,7 @@ sortKey
 
 // ---- Fill Clause
 fillClause
-    : FILL LR_BRACKET (LINEAR | PREVIOUS | constant) RR_BRACKET
+    : FILL LR_BRACKET (LINEAR | PREVIOUS | constant) (COMMA interval=DURATION_LITERAL)? RR_BRACKET
     ;
 
 // ---- Pagination Clause
@@ -846,32 +819,37 @@ alterUser
 
 // Grant User Privileges
 grantUser
-    : GRANT USER userName=identifier PRIVILEGES privileges (ON prefixPath (COMMA prefixPath)*)?
+    : GRANT privileges ON prefixPath (COMMA prefixPath)* TO USER userName=identifier (grantOpt)?
     ;
 
 // Grant Role Privileges
 grantRole
-    : GRANT ROLE roleName=identifier PRIVILEGES privileges (ON prefixPath (COMMA prefixPath)*)?
+    : GRANT privileges ON prefixPath (COMMA prefixPath)* TO ROLE roleName=identifier (grantOpt)?
+    ;
+
+// Grant Option
+grantOpt
+    : WITH GRANT OPTION
     ;
 
 // Grant User Role
 grantRoleToUser
-    : GRANT roleName=identifier TO userName=identifier
+    : GRANT ROLE roleName=identifier TO userName=identifier
     ;
 
 // Revoke User Privileges
 revokeUser
-    : REVOKE USER userName=identifier PRIVILEGES privileges (ON prefixPath (COMMA prefixPath)*)?
+    : REVOKE privileges ON prefixPath (COMMA prefixPath)* FROM USER userName=identifier
     ;
 
 // Revoke Role Privileges
 revokeRole
-    : REVOKE ROLE roleName=identifier PRIVILEGES privileges (ON prefixPath (COMMA prefixPath)*)?
+    : REVOKE privileges ON prefixPath (COMMA prefixPath)* FROM ROLE roleName=identifier
     ;
 
 // Revoke Role From User
 revokeRoleFromUser
-    : REVOKE roleName=identifier FROM userName=identifier
+    : REVOKE ROLE roleName=identifier FROM userName=identifier
     ;
 
 // Drop User
@@ -894,14 +872,14 @@ listRole
     : LIST ROLE (OF USER userName=usernameWithRoot)?
     ;
 
-// List Privileges of Users On Specific Path
+// List Privileges of Users
 listPrivilegesUser
-    : LIST PRIVILEGES USER userName=usernameWithRoot (ON prefixPath (COMMA prefixPath)*)?
+    : LIST PRIVILEGES OF USER userName=usernameWithRoot
     ;
 
-// List Privileges of Roles On Specific Path
+// List Privileges of Roles
 listPrivilegesRole
-    : LIST PRIVILEGES ROLE roleName=identifier (ON prefixPath (COMMA prefixPath)*)?
+    : LIST PRIVILEGES OF ROLE roleName=identifier
     ;
 
 privileges

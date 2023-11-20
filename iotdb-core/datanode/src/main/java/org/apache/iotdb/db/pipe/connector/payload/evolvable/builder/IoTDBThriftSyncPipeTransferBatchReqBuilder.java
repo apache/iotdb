@@ -59,7 +59,7 @@ public class IoTDBThriftSyncPipeTransferBatchReqBuilder extends PipeTransferBatc
       bufferSize += req.getBody().length;
     }
 
-    return bufferSize >= maxBatchSizeInBytes
+    return bufferSize >= getMaxBatchSizeInBytes()
         || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs;
   }
 
@@ -68,7 +68,8 @@ public class IoTDBThriftSyncPipeTransferBatchReqBuilder extends PipeTransferBatc
 
     for (final Event event : events) {
       if (event instanceof EnrichedEvent) {
-        ((EnrichedEvent) event).decreaseReferenceCount(IoTDBThriftSyncConnector.class.getName());
+        ((EnrichedEvent) event)
+            .decreaseReferenceCount(IoTDBThriftSyncConnector.class.getName(), true);
       }
     }
     events.clear();

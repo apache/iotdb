@@ -36,6 +36,7 @@ import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
@@ -1020,9 +1021,7 @@ public class PartitionManager {
     }
 
     if (req.isSetTimeStamp()) {
-      plan.setTimeSlotId(
-          new TTimePartitionSlot(
-              req.getTimeStamp() - req.getTimeStamp() % COMMON_CONFIG.getTimePartitionInterval()));
+      plan.setTimeSlotId(TimePartitionUtils.getTimePartitionSlot(req.getTimeStamp()));
     }
     try {
       return (GetRegionIdResp) getConsensusManager().read(plan);

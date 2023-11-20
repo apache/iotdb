@@ -154,7 +154,7 @@ public class DeleteDatabaseProcedure
               env.deleteDatabaseConfig(deleteDatabaseSchema.getName());
 
           // Delete Database metrics
-          PartitionMetrics.unbindDatabasePartitionMetrics(
+          PartitionMetrics.unbindDatabaseRelatedMetricsWhenUpdate(
               MetricService.getInstance(), deleteDatabaseSchema.getName());
 
           // try sync delete schemaengine region
@@ -219,7 +219,11 @@ public class DeleteDatabaseProcedure
     } catch (ConsensusException | TException | IOException e) {
       if (isRollbackSupported(state)) {
         setFailure(
-            new ProcedureException("[DeleteDatabaseProcedure] Delete Database failed " + state));
+            new ProcedureException(
+                "[DeleteDatabaseProcedure] Delete database "
+                    + deleteDatabaseSchema.getName()
+                    + " failed "
+                    + state));
       } else {
         LOG.error(
             "[DeleteDatabaseProcedure] Retriable error trying to delete database {}, state {}",

@@ -41,6 +41,7 @@ public class RatisConfig {
   private final Impl impl;
   private final LeaderLogAppender leaderLogAppender;
   private final Read read;
+  private final Utils utils;
 
   private RatisConfig(
       Rpc rpc,
@@ -52,7 +53,8 @@ public class RatisConfig {
       Client client,
       Impl impl,
       LeaderLogAppender leaderLogAppender,
-      Read read) {
+      Read read,
+      Utils utils) {
     this.rpc = rpc;
     this.leaderElection = leaderElection;
     this.snapshot = snapshot;
@@ -63,6 +65,7 @@ public class RatisConfig {
     this.impl = impl;
     this.leaderLogAppender = leaderLogAppender;
     this.read = read;
+    this.utils = utils;
   }
 
   public Rpc getRpc() {
@@ -105,6 +108,10 @@ public class RatisConfig {
     return read;
   }
 
+  public Utils getUtils() {
+    return utils;
+  }
+
   public static Builder newBuilder() {
     return new Builder();
   }
@@ -117,11 +124,11 @@ public class RatisConfig {
     private ThreadPool threadPool;
     private Log log;
     private Grpc grpc;
-
     private Client client;
     private Impl impl;
     private LeaderLogAppender leaderLogAppender;
     private Read read;
+    private Utils utils;
 
     public RatisConfig build() {
       return new RatisConfig(
@@ -135,7 +142,8 @@ public class RatisConfig {
           Optional.ofNullable(impl).orElseGet(() -> Impl.newBuilder().build()),
           Optional.ofNullable(leaderLogAppender)
               .orElseGet(() -> LeaderLogAppender.newBuilder().build()),
-          Optional.ofNullable(read).orElseGet(() -> Read.newBuilder().build()));
+          Optional.ofNullable(read).orElseGet(() -> Read.newBuilder().build()),
+          Optional.ofNullable(utils).orElseGet(() -> Utils.newBuilder().build()));
     }
 
     public Builder setRpc(Rpc rpc) {
@@ -186,6 +194,10 @@ public class RatisConfig {
     public Builder setRead(Read read) {
       this.read = read;
       return this;
+    }
+
+    public void setUtils(Utils utils) {
+      this.utils = utils;
     }
   }
 
@@ -255,7 +267,13 @@ public class RatisConfig {
       private TimeDuration timeoutMax = TimeDuration.valueOf(4, TimeUnit.SECONDS);
       private TimeDuration requestTimeout = TimeDuration.valueOf(20, TimeUnit.SECONDS);
       private TimeDuration sleepTime = TimeDuration.valueOf(1, TimeUnit.SECONDS);
-      private TimeDuration slownessTimeout = TimeDuration.valueOf(10, TimeUnit.MINUTES);
+      /**
+       * TODO: After introducing version 3.0 of Ratis, we plan to reduce the value of this parameter
+       * because a new parameter will be introduced later. For more details, please refer to `<a
+       * href="https://lists.apache.org/thread/vxd97lpllqtdb8cdbt3nxvg1kv6kjfss">email</a>`. It is
+       * set to 100 years instead of Long.MAX_VALUE to avoid potential overflows when shifting time.
+       */
+      private TimeDuration slownessTimeout = TimeDuration.valueOf(100 * 365L, TimeUnit.DAYS);
 
       private TimeDuration firstElectionTimeoutMin =
           TimeDuration.valueOf(50, TimeUnit.MILLISECONDS);
@@ -927,18 +945,22 @@ public class RatisConfig {
     private final int retryTimesMax;
     private final long retryWaitMillis;
 
-    private final long triggerSnapshotTime;
-    private final long triggerSnapshotFileSize;
+    private final long checkAndTakeSnapshotInterval;
+    private final long raftLogSizeMaxThreshold;
+
+    private final long forceSnapshotInterval;
 
     public Impl(
         int retryTimesMax,
         long retryWaitMillis,
-        long triggerSnapshotTime,
-        long triggerSnapshotFileSize) {
+        long checkAndTakeSnapshotInterval,
+        long raftLogSizeMaxThreshold,
+        long forceSnapshotInterval) {
       this.retryTimesMax = retryTimesMax;
       this.retryWaitMillis = retryWaitMillis;
-      this.triggerSnapshotTime = triggerSnapshotTime;
-      this.triggerSnapshotFileSize = triggerSnapshotFileSize;
+      this.checkAndTakeSnapshotInterval = checkAndTakeSnapshotInterval;
+      this.raftLogSizeMaxThreshold = raftLogSizeMaxThreshold;
+      this.forceSnapshotInterval = forceSnapshotInterval;
     }
 
     public int getRetryTimesMax() {
@@ -949,12 +971,16 @@ public class RatisConfig {
       return retryWaitMillis;
     }
 
-    public long getTriggerSnapshotTime() {
-      return triggerSnapshotTime;
+    public long getCheckAndTakeSnapshotInterval() {
+      return checkAndTakeSnapshotInterval;
     }
 
-    public long getTriggerSnapshotFileSize() {
-      return triggerSnapshotFileSize;
+    public long getRaftLogSizeMaxThreshold() {
+      return raftLogSizeMaxThreshold;
+    }
+
+    public long getForceSnapshotInterval() {
+      return forceSnapshotInterval;
     }
 
     public static Impl.Builder newBuilder() {
@@ -967,13 +993,19 @@ public class RatisConfig {
       private long retryWaitMillis = 500;
 
       // 120s
-      private long triggerSnapshotTime = 120;
+      private long checkAndTakeSnapshotInterval = 120;
       // 20GB
-      private long triggerSnapshotFileSize = 20L << 30;
+      private long raftLogSizeMaxThreshold = 20L << 30;
+      // -1L means no force, measured in seconds
+      private long forceSnapshotInterval = -1;
 
       public Impl build() {
         return new Impl(
-            retryTimesMax, retryWaitMillis, triggerSnapshotTime, triggerSnapshotFileSize);
+            retryTimesMax,
+            retryWaitMillis,
+            checkAndTakeSnapshotInterval,
+            raftLogSizeMaxThreshold,
+            forceSnapshotInterval);
       }
 
       public Impl.Builder setRetryTimesMax(int retryTimesMax) {
@@ -986,13 +1018,18 @@ public class RatisConfig {
         return this;
       }
 
-      public Impl.Builder setTriggerSnapshotTime(long triggerSnapshotTime) {
-        this.triggerSnapshotTime = triggerSnapshotTime;
+      public Impl.Builder setCheckAndTakeSnapshotInterval(long checkAndTakeSnapshotInterval) {
+        this.checkAndTakeSnapshotInterval = checkAndTakeSnapshotInterval;
         return this;
       }
 
-      public Impl.Builder setTriggerSnapshotFileSize(long triggerSnapshotFileSize) {
-        this.triggerSnapshotFileSize = triggerSnapshotFileSize;
+      public Impl.Builder setRaftLogSizeMaxThreshold(long raftLogSizeMaxThreshold) {
+        this.raftLogSizeMaxThreshold = raftLogSizeMaxThreshold;
+        return this;
+      }
+
+      public Impl.Builder setForceSnapshotInterval(long forceSnapshotInterval) {
+        this.forceSnapshotInterval = forceSnapshotInterval;
         return this;
       }
     }
@@ -1101,6 +1138,36 @@ public class RatisConfig {
 
       public Read build() {
         return new Read(readOption, readTimeout);
+      }
+    }
+  }
+
+  public static class Utils {
+
+    private final int sleepDeviationThresholdMs;
+
+    private Utils(int sleepDeviationThresholdMs) {
+      this.sleepDeviationThresholdMs = sleepDeviationThresholdMs;
+    }
+
+    public int getSleepDeviationThresholdMs() {
+      return sleepDeviationThresholdMs;
+    }
+
+    public static Utils.Builder newBuilder() {
+      return new Utils.Builder();
+    }
+
+    public static class Builder {
+
+      private int sleepDeviationThresholdMs = 4 * 1000;
+
+      public Utils build() {
+        return new Utils(sleepDeviationThresholdMs);
+      }
+
+      public void setSleepDeviationThresholdMs(int sleepDeviationThresholdMs) {
+        this.sleepDeviationThresholdMs = sleepDeviationThresholdMs;
       }
     }
   }

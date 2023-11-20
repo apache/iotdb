@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.itbase.env;
 
+import java.util.concurrent.TimeUnit;
+
 /** This interface is used to handle properties in iotdb-common.properties. */
 public interface CommonConfig {
 
@@ -45,6 +47,8 @@ public interface CommonConfig {
   CommonConfig setEnableMemControl(boolean enableMemControl);
 
   CommonConfig setEnableCrossSpaceCompaction(boolean enableCrossSpaceCompaction);
+
+  CommonConfig setMaxInnerCompactionCandidateFileNum(int maxInnerCompactionCandidateFileNum);
 
   CommonConfig setAutoCreateSchemaEnabled(boolean enableAutoCreateSchema);
 
@@ -78,6 +82,10 @@ public interface CommonConfig {
 
   CommonConfig setTimestampPrecision(String timestampPrecision);
 
+  TimeUnit getTimestampPrecision();
+
+  CommonConfig setTimestampPrecisionCheckEnabled(boolean timestampPrecisionCheckEnabled);
+
   CommonConfig setConfigNodeRatisSnapshotTriggerThreshold(int ratisSnapshotTriggerThreshold);
 
   CommonConfig setMaxDegreeOfIndexNode(int maxDegreeOfIndexNode);
@@ -106,9 +114,9 @@ public interface CommonConfig {
 
   CommonConfig setWriteMemoryProportion(String writeMemoryProportion);
 
-  CommonConfig setClusterSchemaLimitLevel(String clusterSchemaLimitLevel);
+  CommonConfig setClusterTimeseriesLimitThreshold(long clusterTimeseriesLimitThreshold);
 
-  CommonConfig setClusterSchemaLimitThreshold(long clusterSchemaLimitThreshold);
+  CommonConfig setClusterDeviceLimitThreshold(long clusterDeviceLimitThreshold);
 
   CommonConfig setDatabaseLimitThreshold(long databaseLimitThreshold);
 
@@ -121,4 +129,8 @@ public interface CommonConfig {
   CommonConfig setDataRegionPerDataNode(double dataRegionPerDataNode);
 
   CommonConfig setSchemaRegionPerDataNode(double schemaRegionPerDataNode);
+
+  CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled);
+
+  CommonConfig setDriverTaskExecutionTimeSliceInMs(long driverTaskExecutionTimeSliceInMs);
 }

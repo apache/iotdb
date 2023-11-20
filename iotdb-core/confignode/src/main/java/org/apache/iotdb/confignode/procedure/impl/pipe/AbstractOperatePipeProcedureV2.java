@@ -26,6 +26,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeMetaSyncProcedure;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.pipe.task.OperatePipeTaskState;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
@@ -71,45 +72,85 @@ public abstract class AbstractOperatePipeProcedureV2
 
   @Override
   protected ProcedureLockState acquireLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
-    configNodeProcedureEnv.getSchedulerLock().lock();
-    try {
-      if (configNodeProcedureEnv.getNodeLock().tryLock(this)) {
-        pipeTaskInfo =
-            configNodeProcedureEnv
-                .getConfigManager()
-                .getPipeManager()
-                .getPipeTaskCoordinator()
-                .lock();
-        LOGGER.info("ProcedureId {} acquire lock.", getProcId());
-        return ProcedureLockState.LOCK_ACQUIRED;
-      }
-      configNodeProcedureEnv.getNodeLock().waitProcedure(this);
-      LOGGER.info("ProcedureId {} wait for lock.", getProcId());
-      return ProcedureLockState.LOCK_EVENT_WAIT;
-    } finally {
-      configNodeProcedureEnv.getSchedulerLock().unlock();
-    }
-  }
-
-  @Override
-  protected void releaseLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
-    configNodeProcedureEnv.getSchedulerLock().lock();
-    try {
-      LOGGER.info("ProcedureId {} release lock.", getProcId());
-      if (pipeTaskInfo != null) {
+    LOGGER.info("ProcedureId {} try to acquire pipe lock.", getProcId());
+    pipeTaskInfo =
         configNodeProcedureEnv
             .getConfigManager()
             .getPipeManager()
             .getPipeTaskCoordinator()
-            .unlock();
-      }
-      if (configNodeProcedureEnv.getNodeLock().releaseLock(this)) {
+            .tryLock();
+    if (pipeTaskInfo == null) {
+      LOGGER.warn("ProcedureId {} failed to acquire pipe lock.", getProcId());
+    } else {
+      LOGGER.info("ProcedureId {} acquired pipe lock.", getProcId());
+    }
+
+    final ProcedureLockState procedureLockState = super.acquireLock(configNodeProcedureEnv);
+    switch (procedureLockState) {
+      case LOCK_ACQUIRED:
+        if (pipeTaskInfo == null) {
+          LOGGER.warn(
+              "ProcedureId {}: LOCK_ACQUIRED. The following procedure should not be executed without pipe lock.",
+              getProcId());
+        } else {
+          LOGGER.info(
+              "ProcedureId {}: LOCK_ACQUIRED. The following procedure should be executed with pipe lock.",
+              getProcId());
+        }
+        break;
+      case LOCK_EVENT_WAIT:
+        if (pipeTaskInfo == null) {
+          LOGGER.warn("ProcedureId {}: LOCK_EVENT_WAIT. Without acquiring pipe lock.", getProcId());
+        } else {
+          LOGGER.info("ProcedureId {}: LOCK_EVENT_WAIT. Pipe lock will be released.", getProcId());
+          configNodeProcedureEnv
+              .getConfigManager()
+              .getPipeManager()
+              .getPipeTaskCoordinator()
+              .unlock();
+          pipeTaskInfo = null;
+        }
+        break;
+      default:
+        if (pipeTaskInfo == null) {
+          LOGGER.error(
+              "ProcedureId {}: {}. Invalid lock state. Without acquiring pipe lock.",
+              getProcId(),
+              procedureLockState);
+        } else {
+          LOGGER.error(
+              "ProcedureId {}: {}. Invalid lock state. Pipe lock will be released.",
+              getProcId(),
+              procedureLockState);
+          configNodeProcedureEnv
+              .getConfigManager()
+              .getPipeManager()
+              .getPipeTaskCoordinator()
+              .unlock();
+          pipeTaskInfo = null;
+        }
+        break;
+    }
+    return procedureLockState;
+  }
+
+  @Override
+  protected void releaseLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
+    super.releaseLock(configNodeProcedureEnv);
+
+    if (pipeTaskInfo == null) {
+      LOGGER.warn("ProcedureId {} release lock. No need to release pipe lock.", getProcId());
+    } else {
+      LOGGER.info("ProcedureId {} release lock. Pipe lock will be released.", getProcId());
+      if (this instanceof PipeMetaSyncProcedure) {
         configNodeProcedureEnv
-            .getNodeLock()
-            .wakeWaitingProcedures(configNodeProcedureEnv.getScheduler());
+            .getConfigManager()
+            .getPipeManager()
+            .getPipeTaskCoordinator()
+            .updateLastSyncedVersion();
       }
-    } finally {
-      configNodeProcedureEnv.getSchedulerLock().unlock();
+      configNodeProcedureEnv.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
+      pipeTaskInfo = null;
     }
   }
 
@@ -145,6 +186,13 @@ public abstract class AbstractOperatePipeProcedureV2
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, OperatePipeTaskState state)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+    if (pipeTaskInfo == null) {
+      LOGGER.warn(
+          "ProcedureId {}: Pipe lock is not acquired, executeFromState's execution will be skipped.",
+          getProcId());
+      return Flow.NO_MORE_STATE;
+    }
+
     try {
       switch (state) {
         case VALIDATE_TASK:
@@ -170,7 +218,8 @@ public abstract class AbstractOperatePipeProcedureV2
       // Retry before rollback
       if (getCycles() < RETRY_THRESHOLD) {
         LOGGER.warn(
-            "Encountered error when trying to {} at state [{}], retry [{}/{}]",
+            "ProcedureId {}: Encountered error when trying to {} at state [{}], retry [{}/{}]",
+            getProcId(),
             getOperation(),
             state,
             getCycles() + 1,
@@ -180,14 +229,17 @@ public abstract class AbstractOperatePipeProcedureV2
         TimeUnit.MILLISECONDS.sleep(3000L);
       } else {
         LOGGER.warn(
-            "All {} retries failed when trying to {} at state [{}], will rollback...",
+            "ProcedureId {}: All {} retries failed when trying to {} at state [{}], will rollback...",
+            getProcId(),
             RETRY_THRESHOLD,
             getOperation(),
             state,
             e);
         setFailure(
             new ProcedureException(
-                String.format("Fail to %s because %s", getOperation().name(), e.getMessage())));
+                String.format(
+                    "ProcedureId %s: Fail to %s because %s",
+                    getProcId(), getOperation().name(), e.getMessage())));
       }
     }
     return Flow.HAS_MORE_STATE;
@@ -201,29 +253,59 @@ public abstract class AbstractOperatePipeProcedureV2
   @Override
   protected void rollbackState(ConfigNodeProcedureEnv env, OperatePipeTaskState state)
       throws IOException, InterruptedException, ProcedureException {
+    if (pipeTaskInfo == null) {
+      LOGGER.warn(
+          "ProcedureId {}: Pipe lock is not acquired, rollbackState({})'s execution will be skipped.",
+          getProcId(),
+          state);
+      return;
+    }
+
     switch (state) {
       case VALIDATE_TASK:
-        rollbackFromValidateTask(env);
+        try {
+          rollbackFromValidateTask(env);
+        } catch (Exception e) {
+          LOGGER.warn("ProcedureId {}: Failed to rollback from validate task.", getProcId(), e);
+        }
         break;
       case CALCULATE_INFO_FOR_TASK:
-        rollbackFromCalculateInfoForTask(env);
+        try {
+          rollbackFromCalculateInfoForTask(env);
+        } catch (Exception e) {
+          LOGGER.warn(
+              "ProcedureId {}: Failed to rollback from calculate info for task.", getProcId(), e);
+        }
         break;
       case WRITE_CONFIG_NODE_CONSENSUS:
-        // rollbackFromWriteConfigNodeConsensus can be called before rollbackFromOperateOnDataNodes
-        // so we need to check if rollbackFromOperateOnDataNodes is successful executed
-        // if yes, we don't need to call rollbackFromWriteConfigNodeConsensus again
-        if (!isRollbackFromOperateOnDataNodesSuccessful) {
-          rollbackFromWriteConfigNodeConsensus(env);
+        try {
+          // rollbackFromWriteConfigNodeConsensus can be called before
+          // rollbackFromOperateOnDataNodes.
+          // So we need to check if rollbackFromOperateOnDataNodes is successfully executed.
+          // If yes, we don't need to call rollbackFromWriteConfigNodeConsensus again.
+          if (!isRollbackFromOperateOnDataNodesSuccessful) {
+            rollbackFromWriteConfigNodeConsensus(env);
+          }
+        } catch (Exception e) {
+          LOGGER.warn(
+              "ProcedureId {}: Failed to rollback from write config node consensus.",
+              getProcId(),
+              e);
         }
         break;
       case OPERATE_ON_DATA_NODES:
-        // We have to make sure that rollbackFromOperateOnDataNodes is executed before
-        // rollbackFromWriteConfigNodeConsensus, because rollbackFromOperateOnDataNodes is
-        // executed based on the consensus of config nodes that is written by
-        // rollbackFromWriteConfigNodeConsensus
-        rollbackFromWriteConfigNodeConsensus(env);
-        rollbackFromOperateOnDataNodes(env);
-        isRollbackFromOperateOnDataNodesSuccessful = true;
+        try {
+          // We have to make sure that rollbackFromOperateOnDataNodes is executed before
+          // rollbackFromWriteConfigNodeConsensus, because rollbackFromOperateOnDataNodes is
+          // executed based on the consensus of config nodes that is written by
+          // rollbackFromWriteConfigNodeConsensus
+          rollbackFromWriteConfigNodeConsensus(env);
+          rollbackFromOperateOnDataNodes(env);
+          isRollbackFromOperateOnDataNodesSuccessful = true;
+        } catch (Exception e) {
+          LOGGER.warn(
+              "ProcedureId {}: Failed to rollback from operate on data nodes.", getProcId(), e);
+        }
         break;
       default:
         LOGGER.error("Unsupported roll back STATE [{}]", state);

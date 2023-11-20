@@ -34,7 +34,6 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGr
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
@@ -119,7 +118,6 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
   public AlignedTimeSeriesMetadata generateTimeSeriesMetadata(
       List<ReadOnlyMemChunk> readOnlyMemChunk, List<IChunkMetadata> chunkMetadataList) {
     TimeseriesMetadata timeTimeSeriesMetadata = new TimeseriesMetadata();
-    timeTimeSeriesMetadata.setOffsetOfChunkMetaDataList(-1);
     timeTimeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
     timeTimeSeriesMetadata.setMeasurementId("");
     timeTimeSeriesMetadata.setTsDataType(TSDataType.VECTOR);
@@ -131,7 +129,6 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     List<TimeseriesMetadata> valueTimeSeriesMetadataList = new ArrayList<>();
     for (IMeasurementSchema valueChunkMetadata : (partialPath.getSchemaList())) {
       TimeseriesMetadata valueMetadata = new TimeseriesMetadata();
-      valueMetadata.setOffsetOfChunkMetaDataList(-1);
       valueMetadata.setDataSizeOfChunkMetaDataList(-1);
       valueMetadata.setMeasurementId(valueChunkMetadata.getMeasurementId());
       valueMetadata.setTsDataType(valueChunkMetadata.getType());
@@ -140,8 +137,10 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     }
 
     boolean[] exist = new boolean[partialPath.getSchemaList().size()];
+    boolean modified = false;
     for (IChunkMetadata chunkMetadata : chunkMetadataList) {
       AlignedChunkMetadata alignedChunkMetadata = (AlignedChunkMetadata) chunkMetadata;
+      modified = (modified || alignedChunkMetadata.isModified());
       timeStatistics.mergeStatistics(alignedChunkMetadata.getTimeChunkMetadata().getStatistics());
       for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
         if (alignedChunkMetadata.getValueChunkMetadataList().get(i) != null) {
@@ -172,7 +171,9 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
         }
       }
     }
+
     timeTimeSeriesMetadata.setStatistics(timeStatistics);
+    timeTimeSeriesMetadata.setModified(modified);
 
     for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
       if (!exist[i]) {
@@ -261,9 +262,8 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
   @Override
   public List<IChunkMetadata> getVisibleMetadataListFromWriter(
       RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context) {
-    ModificationFile modificationFile = tsFileResource.getModFile();
     List<List<Modification>> modifications =
-        context.getPathModifications(modificationFile, partialPath);
+        context.getPathModifications(tsFileResource, partialPath);
 
     List<AlignedChunkMetadata> chunkMetadataList = new ArrayList<>();
     List<ChunkMetadata> timeChunkMetadataList =
@@ -318,18 +318,18 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
    */
   @Override
   public ITimeSeriesMetadata generateTimeSeriesMetadata(
-      List<ReadOnlyMemChunk> readOnlyMemChunk, List<IChunkMetadata> chunkMetadataList)
-      throws IOException {
+      List<ReadOnlyMemChunk> readOnlyMemChunk, List<IChunkMetadata> chunkMetadataList) {
     TimeseriesMetadata timeSeriesMetadata = new TimeseriesMetadata();
     timeSeriesMetadata.setMeasurementId(partialPath.getMeasurementSchema().getMeasurementId());
     timeSeriesMetadata.setTsDataType(partialPath.getMeasurementSchema().getType());
-    timeSeriesMetadata.setOffsetOfChunkMetaDataList(-1);
     timeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
 
     Statistics<? extends Serializable> seriesStatistics =
         Statistics.getStatsByType(timeSeriesMetadata.getTsDataType());
     // flush chunkMetadataList one by one
+    boolean isModified = false;
     for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+      isModified = (isModified || chunkMetadata.isModified());
       seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
     }
 
@@ -339,6 +339,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
       }
     }
     timeSeriesMetadata.setStatistics(seriesStatistics);
+    timeSeriesMetadata.setModified(isModified);
     return timeSeriesMetadata;
   }
 
@@ -409,8 +410,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
   @Override
   public List<IChunkMetadata> getVisibleMetadataListFromWriter(
       RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context) {
-    ModificationFile modificationFile = tsFileResource.getModFile();
-    List<Modification> modifications = context.getPathModifications(modificationFile, partialPath);
+    List<Modification> modifications = context.getPathModifications(tsFileResource, partialPath);
 
     List<IChunkMetadata> chunkMetadataList =
         new ArrayList<>(

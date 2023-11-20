@@ -503,6 +503,7 @@ enum TSConnectionType {
   THRIFT_BASED
   MQTT_BASED
   INTERNAL
+  REST_BASED
 }
 
 struct TSConnectionInfo {

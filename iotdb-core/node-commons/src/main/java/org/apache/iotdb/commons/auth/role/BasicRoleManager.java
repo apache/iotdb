@@ -19,30 +19,35 @@
 package org.apache.iotdb.commons.auth.role;
 
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.concurrent.HashLock;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 
 /**
  * This class reads roles from local files through LocalFileRoleAccessor and manages them in a hash
- * map.
+ * map. We save all roles in our memory. Before providing service, we should load all role
+ * information from filesystem. Access filesystem only happens at starting、taking snapshot、 loading
+ * snapshot.
  */
 public abstract class BasicRoleManager implements IRoleManager {
 
   protected Map<String, Role> roleMap;
   protected IRoleAccessor accessor;
   protected HashLock lock;
+
+  private boolean preVersion = false;
 
   BasicRoleManager(LocalFileRoleAccessor accessor) {
     this.roleMap = new HashMap<>();
@@ -51,66 +56,40 @@ public abstract class BasicRoleManager implements IRoleManager {
   }
 
   @Override
-  public Role getRole(String rolename) throws AuthException {
+  public Role getRole(String rolename) {
     lock.readLock(rolename);
     Role role = roleMap.get(rolename);
-    try {
-      if (role == null) {
-        role = accessor.loadRole(rolename);
-        if (role != null) {
-          roleMap.put(rolename, role);
-        }
-      }
-    } catch (IOException e) {
-      throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
-    } finally {
-      lock.readUnlock(rolename);
-    }
+    lock.readUnlock(rolename);
     return role;
   }
 
   @Override
   public boolean createRole(String rolename) throws AuthException {
-    AuthUtils.validateRolename(rolename);
 
     Role role = getRole(rolename);
     if (role != null) {
       return false;
     }
     lock.writeLock(rolename);
-    try {
-      role = new Role(rolename);
-      accessor.saveRole(role);
-      roleMap.put(rolename, role);
-      return true;
-    } catch (IOException e) {
-      throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
-    } finally {
-      lock.writeUnlock(rolename);
-    }
+    role = new Role(rolename);
+    roleMap.put(rolename, role);
+    lock.writeUnlock(rolename);
+    return true;
   }
 
   @Override
-  public boolean deleteRole(String rolename) throws AuthException {
+  public boolean deleteRole(String rolename) {
     lock.writeLock(rolename);
     try {
-      if (accessor.deleteRole(rolename)) {
-        roleMap.remove(rolename);
-        return true;
-      } else {
-        return false;
-      }
-    } catch (IOException e) {
-      throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
+      return roleMap.remove(rolename) != null;
     } finally {
       lock.writeUnlock(rolename);
     }
   }
 
   @Override
-  public boolean grantPrivilegeToRole(String rolename, PartialPath path, int privilegeId)
-      throws AuthException {
-    AuthUtils.validatePrivilegeOnPath(path, privilegeId);
+  public void grantPrivilegeToRole(
+      String rolename, PartialPath path, int privilegeId, boolean grantOpt) throws AuthException {
     lock.writeLock(rolename);
     try {
       Role role = getRole(rolename);
@@ -118,18 +97,26 @@ public abstract class BasicRoleManager implements IRoleManager {
         throw new AuthException(
             TSStatusCode.ROLE_NOT_EXIST, String.format("No such role %s", rolename));
       }
-      if (role.hasPrivilege(path, privilegeId)) {
-        return false;
+      if (path != null) {
+        if (preVersion) {
+          AuthUtils.validatePath(path);
+          if (role.getServiceReady()) {
+            try {
+              AuthUtils.validatePatternPath(path);
+            } catch (AuthException e) {
+              role.setServiceReady(false);
+            }
+          }
+        } else {
+          AuthUtils.validatePatternPath(path);
+        }
+        role.addPathPrivilege(path, privilegeId, grantOpt);
+      } else {
+        role.getSysPrivilege().add(privilegeId);
+        if (grantOpt) {
+          role.getSysPriGrantOpt().add(privilegeId);
+        }
       }
-      Set<Integer> privilegesCopy = new HashSet<>(role.getPrivileges(path));
-      role.addPrivilege(path, privilegeId);
-      try {
-        accessor.saveRole(role);
-      } catch (IOException e) {
-        role.setPrivileges(path, privilegesCopy);
-        throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
-      }
-      return true;
     } finally {
       lock.writeUnlock(rolename);
     }
@@ -138,7 +125,6 @@ public abstract class BasicRoleManager implements IRoleManager {
   @Override
   public boolean revokePrivilegeFromRole(String rolename, PartialPath path, int privilegeId)
       throws AuthException {
-    AuthUtils.validatePrivilegeOnPath(path, privilegeId);
     lock.writeLock(rolename);
     try {
       Role role = getRole(rolename);
@@ -146,15 +132,30 @@ public abstract class BasicRoleManager implements IRoleManager {
         throw new AuthException(
             TSStatusCode.ROLE_NOT_EXIST, String.format("No such role %s", rolename));
       }
-      if (PrivilegeType.isStorable(privilegeId) && !role.hasPrivilege(path, privilegeId)) {
-        return false;
-      }
-      role.removePrivilege(path, privilegeId);
-      try {
-        accessor.saveRole(role);
-      } catch (IOException e) {
-        role.addPrivilege(path, privilegeId);
-        throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
+      if (preVersion) {
+        if (path != null) {
+          if (!AuthUtils.hasPrivilege(path, privilegeId, role.getPathPrivilegeList())) {
+            return false;
+          }
+          AuthUtils.validatePath(path);
+          AuthUtils.removePrivilegePre(path, privilegeId, role.getPathPrivilegeList());
+        } else {
+          if (role.getSysPrivilege().contains(privilegeId)) {
+            return false;
+          }
+          role.getSysPrivilege().remove(privilegeId);
+        }
+      } else {
+        if (!role.hasPrivilegeToRevoke(path, privilegeId)) {
+          return false;
+        }
+        if (path != null) {
+          AuthUtils.validatePatternPath(path);
+          role.removePathPrivilege(path, privilegeId);
+        } else {
+          role.getSysPrivilege().remove(privilegeId);
+          role.getSysPriGrantOpt().remove(privilegeId);
+        }
       }
       return true;
     } finally {
@@ -163,14 +164,23 @@ public abstract class BasicRoleManager implements IRoleManager {
   }
 
   @Override
-  public void reset() {
+  public void reset() throws AuthException {
     accessor.reset();
     roleMap.clear();
+    for (String roleName : accessor.listAllRoles()) {
+      try {
+        roleMap.put(roleName, accessor.loadRole(roleName));
+      } catch (IOException e) {
+        throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
+      }
+    }
   }
 
   @Override
   public List<String> listAllRoles() {
-    List<String> rtlist = accessor.listAllRoles();
+
+    List<String> rtlist = new ArrayList<>();
+    roleMap.forEach((name, item) -> rtlist.add(name));
     rtlist.sort(null);
     return rtlist;
   }
@@ -190,5 +200,43 @@ public abstract class BasicRoleManager implements IRoleManager {
         }
       }
     }
+  }
+
+  @Override
+  public void setPreVersion(boolean preVersion) {
+    this.preVersion = preVersion;
+  }
+
+  @Override
+  @TestOnly
+  public boolean preVersion() {
+    return this.preVersion;
+  }
+
+  @Override
+  public void checkAndRefreshPathPri() {
+    roleMap.forEach(
+        (rolename, role) -> {
+          if (!role.getServiceReady()) {
+            List<PathPrivilege> priCopy = new ArrayList<>();
+            for (PathPrivilege pathPri : role.getPathPrivilegeList()) {
+              try {
+                AuthUtils.validatePatternPath(pathPri.getPath());
+                priCopy.add(pathPri);
+              } catch (AuthException e) {
+                PartialPath path = pathPri.getPath();
+                try {
+                  for (Integer pri : pathPri.getPrivileges()) {
+                    AuthUtils.addPrivilege(AuthUtils.convertPatternPath(path), pri, priCopy, false);
+                  }
+                } catch (IllegalPathException illegalE) {
+                  //
+                }
+              }
+            }
+            role.setPrivilegeList(priCopy);
+          }
+          role.setServiceReady(true);
+        });
   }
 }

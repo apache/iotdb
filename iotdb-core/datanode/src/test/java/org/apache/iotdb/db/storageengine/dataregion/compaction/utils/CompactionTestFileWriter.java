@@ -31,12 +31,13 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-public class CompactionTestFileWriter {
+public class CompactionTestFileWriter implements Closeable {
 
   private TsFileResource resource;
   private TsFileIOWriter fileWriter;
@@ -170,6 +171,34 @@ public class CompactionTestFileWriter {
     }
   }
 
+  public void generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
+      List<String> measurementNames,
+      TimeRange[] toGenerateChunkTimeRanges,
+      TSEncoding encoding,
+      CompressionType compressionType,
+      List<Boolean> nullMeasurements)
+      throws IOException {
+    List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
+    for (String measurementName : measurementNames) {
+      measurementSchemas.add(
+          new MeasurementSchema(measurementName, TSDataType.INT32, encoding, compressionType));
+    }
+    for (TimeRange toGenerateChunk : toGenerateChunkTimeRanges) {
+      AlignedChunkWriterImpl alignedChunkWriter = new AlignedChunkWriterImpl(measurementSchemas);
+      currentDeviceStartTime = Math.min(toGenerateChunk.getMin(), currentDeviceStartTime);
+      currentDeviceEndTime = Math.max(toGenerateChunk.getMax(), currentDeviceEndTime);
+      for (long time = toGenerateChunk.getMin(); time <= toGenerateChunk.getMax(); time++) {
+        alignedChunkWriter.getTimeChunkWriter().write(time);
+        for (int i = 0; i < measurementNames.size(); i++) {
+          alignedChunkWriter
+              .getValueChunkWriterByIndex(i)
+              .write(time, new Random().nextInt(), nullMeasurements.get(i));
+        }
+      }
+      alignedChunkWriter.writeToFileWriter(fileWriter);
+    }
+  }
+
   public void generateSimpleAlignedSeriesToCurrentDevice(
       List<String> measurementNames,
       TimeRange[][] toGenerateChunkPageTimeRanges,
@@ -195,6 +224,40 @@ public class CompactionTestFileWriter {
                 .getValueChunkWriterByIndex(i)
                 .getPageWriter()
                 .write(time, new Random().nextInt(), false);
+          }
+        }
+        alignedChunkWriter.sealCurrentPage();
+      }
+      alignedChunkWriter.writeToFileWriter(fileWriter);
+    }
+  }
+
+  public void generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
+      List<String> measurementNames,
+      TimeRange[][] toGenerateChunkPageTimeRanges,
+      TSEncoding encoding,
+      CompressionType compressionType,
+      List<Boolean> nullMeasurement)
+      throws IOException {
+    List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
+    for (String measurementName : measurementNames) {
+      measurementSchemas.add(
+          new MeasurementSchema(measurementName, TSDataType.INT32, encoding, compressionType));
+    }
+    for (TimeRange[] toGenerateChunk : toGenerateChunkPageTimeRanges) {
+      AlignedChunkWriterImpl alignedChunkWriter = new AlignedChunkWriterImpl(measurementSchemas);
+      for (TimeRange toGeneratePageTimeRange : toGenerateChunk) {
+        currentDeviceStartTime = Math.min(toGeneratePageTimeRange.getMin(), currentDeviceStartTime);
+        currentDeviceEndTime = Math.max(toGeneratePageTimeRange.getMax(), currentDeviceEndTime);
+        for (long time = toGeneratePageTimeRange.getMin();
+            time <= toGeneratePageTimeRange.getMax();
+            time++) {
+          alignedChunkWriter.write(time);
+          for (int i = 0; i < measurementNames.size(); i++) {
+            alignedChunkWriter
+                .getValueChunkWriterByIndex(i)
+                .getPageWriter()
+                .write(time, new Random().nextInt(), nullMeasurement.get(i));
           }
         }
         alignedChunkWriter.sealCurrentPage();
@@ -234,5 +297,43 @@ public class CompactionTestFileWriter {
       }
       alignedChunkWriter.writeToFileWriter(fileWriter);
     }
+  }
+
+  public void generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
+      List<String> measurementNames,
+      TimeRange[][][] toGenerateChunkPageTimeRanges,
+      TSEncoding encoding,
+      CompressionType compressionType,
+      List<Boolean> nullMeasurements)
+      throws IOException {
+    List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
+    for (String measurementName : measurementNames) {
+      measurementSchemas.add(
+          new MeasurementSchema(measurementName, TSDataType.INT32, encoding, compressionType));
+    }
+    for (TimeRange[][] toGenerateChunk : toGenerateChunkPageTimeRanges) {
+      AlignedChunkWriterImpl alignedChunkWriter = new AlignedChunkWriterImpl(measurementSchemas);
+      for (TimeRange[] toGeneratePageTimeRanges : toGenerateChunk) {
+        for (TimeRange pointsTimeRange : toGeneratePageTimeRanges) {
+          currentDeviceStartTime = Math.min(pointsTimeRange.getMin(), currentDeviceStartTime);
+          currentDeviceEndTime = Math.max(pointsTimeRange.getMax(), currentDeviceEndTime);
+          for (long time = pointsTimeRange.getMin(); time <= pointsTimeRange.getMax(); time++) {
+            alignedChunkWriter.write(time);
+            for (int i = 0; i < measurementNames.size(); i++) {
+              alignedChunkWriter
+                  .getValueChunkWriterByIndex(i)
+                  .getPageWriter()
+                  .write(time, new Random().nextInt(), nullMeasurements.get(i));
+            }
+          }
+        }
+        alignedChunkWriter.sealCurrentPage();
+      }
+      alignedChunkWriter.writeToFileWriter(fileWriter);
+    }
+  }
+
+  public TsFileIOWriter getFileWriter() {
+    return fileWriter;
   }
 }

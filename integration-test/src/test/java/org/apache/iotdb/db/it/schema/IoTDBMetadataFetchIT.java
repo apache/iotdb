@@ -131,7 +131,7 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
                 Arrays.asList(
                     "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,LZ4,null,null,null,null,BASE,",
                     "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,null,null,BASE,",
-                    "root.ln.wf01.wt02.s1,null,root.ln.wf01.wt02,INT32,RLE,LZ4,null,null,null,null,BASE,",
+                    "root.ln.wf01.wt02.s1,null,root.ln.wf01.wt02,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,",
                     "root.ln.wf01.wt02.s2,null,root.ln.wf01.wt02,DOUBLE,GORILLA,LZ4,null,null,null,null,BASE,")),
             new HashSet<>(
                 Arrays.asList(
@@ -141,7 +141,7 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
                 Arrays.asList(
                     "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,LZ4,null,null,null,null,BASE,",
                     "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,null,null,BASE,",
-                    "root.ln.wf01.wt02.s1,null,root.ln.wf01.wt02,INT32,RLE,LZ4,null,null,null,null,BASE,",
+                    "root.ln.wf01.wt02.s1,null,root.ln.wf01.wt02,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,",
                     "root.ln.wf01.wt02.s2,null,root.ln.wf01.wt02,DOUBLE,GORILLA,LZ4,null,null,null,null,BASE,",
                     "root.ln1.wf01.wt01.status,null,root.ln1.wf01.wt01,BOOLEAN,PLAIN,LZ4,null,null,null,null,BASE,",
                     "root.ln1.wf01.wt01.temperature,null,root.ln1.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,null,null,BASE,",
@@ -717,7 +717,7 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
           "create aligned timeseries root.sg.d(s1(alias1) int32 tags('tag1'='v1', 'tag2'='v2'), s2 double attributes('attr3'='v3'))");
       String[] expected =
           new String[] {
-            "root.sg.d.s1,alias1,root.sg,INT32,RLE,LZ4,{\"tag1\":\"v1\",\"tag2\":\"v2\"},null,null,null,BASE,",
+            "root.sg.d.s1,alias1,root.sg,INT32,TS_2DIFF,LZ4,{\"tag1\":\"v1\",\"tag2\":\"v2\"},null,null,null,BASE,",
             "root.sg.d.s2,null,root.sg,DOUBLE,GORILLA,LZ4,null,{\"attr3\":\"v3\"},null,null,BASE,"
           };
 
@@ -785,7 +785,7 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
       Set<String> standard =
           new HashSet<>(
               Arrays.asList(
-                  "root.sg1.d0.s0,null,root.sg1,INT32,RLE,LZ4,null,null,null,null,BASE,\n",
+                  "root.sg1.d0.s0,null,root.sg1,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,\n",
                   "root.sg1.d0.s1,null,root.sg1,INT32,PLAIN,LZ4,null,null,SDT,{compdev=2},BASE,\n",
                   "root.sg1.d0.s2,null,root.sg1,INT32,PLAIN,LZ4,null,null,SDT,{compdev=0.01, compmintime=2, compmaxtime=15},BASE,\n"));
       try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg1.d0.*")) {

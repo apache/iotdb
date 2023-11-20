@@ -71,6 +71,8 @@ public abstract class Driver implements IDriver {
 
   protected final DriverLock exclusiveLock = new DriverLock();
 
+  private boolean isHighestPriority;
+
   protected enum State {
     ALIVE,
     NEED_DESTRUCTION,
@@ -169,6 +171,16 @@ public abstract class Driver implements IDriver {
   @Override
   public void setDriverTaskId(DriverTaskId driverTaskId) {
     this.driverContext.setDriverTaskID(driverTaskId);
+  }
+
+  @Override
+  public boolean isHighestPriority() {
+    return isHighestPriority;
+  }
+
+  @Override
+  public void setHighestPriority(boolean isHighestPriority) {
+    this.isHighestPriority = isHighestPriority;
   }
 
   @Override

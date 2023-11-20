@@ -41,7 +41,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import jersey.repackaged.com.google.common.util.concurrent.SettableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,13 +81,7 @@ public class ConfigExecution implements IQueryExecution {
     this.executor = executor;
     this.stateMachine = new QueryStateMachine(context.getQueryId(), executor);
     this.taskFuture = SettableFuture.create();
-    this.task =
-        statement.accept(
-            new ConfigTaskVisitor(),
-            new ConfigTaskVisitor.TaskContext(
-                context.getQueryId().getId(),
-                context.getSql(),
-                context.getSession() == null ? null : context.getSession().getUserName()));
+    this.task = statement.accept(new ConfigTaskVisitor(), context);
     this.resultSetConsumed = false;
     configTaskExecutor = ClusterConfigTaskExecutor.getInstance();
   }

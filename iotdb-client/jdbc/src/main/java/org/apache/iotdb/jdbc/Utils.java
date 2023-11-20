@@ -32,7 +32,11 @@ public class Utils {
     "squid:S5843",
     "squid:S5998"
   }) // Regular expressions should not be too complicated
-  static final Pattern URL_PATTERN = Pattern.compile("([^:]+):([0-9]{1,5})(/|\\?.*=.*(&.*=.*)*)?");
+  static final Pattern SUFFIX_URL_PATTERN = Pattern.compile("([0-9]{1,5})(/|\\\\?.*=.*(&.*=.*)*)?");
+
+  static final String COLON = ":";
+  static final String SLASH = "/";
+  static final String PARAMETER_SEPARATOR = "?";
 
   static final String RPC_COMPRESS = "rpc_compress";
 
@@ -45,11 +49,18 @@ public class Utils {
     if (url.trim().equalsIgnoreCase(Config.IOTDB_URL_PREFIX)) {
       return params;
     }
+
     boolean isUrlLegal = false;
     Matcher matcher = null;
+    String host = null;
+    String suffixURL = null;
     if (url.startsWith(Config.IOTDB_URL_PREFIX)) {
       String subURL = url.substring(Config.IOTDB_URL_PREFIX.length());
-      matcher = URL_PATTERN.matcher(subURL);
+      int i = subURL.lastIndexOf(COLON);
+      host = subURL.substring(0, i);
+      suffixURL = subURL.substring(i + 1);
+
+      matcher = SUFFIX_URL_PATTERN.matcher(suffixURL);
       if (matcher.matches() && parseUrlParam(subURL, info)) {
         isUrlLegal = true;
       }
@@ -59,8 +70,16 @@ public class Utils {
           "Error url format, url should be jdbc:iotdb://anything:port/ or jdbc:iotdb://anything:port?property1=value1&property2=value2");
     }
 
-    params.setHost(matcher.group(1));
-    params.setPort(Integer.parseInt(matcher.group(2)));
+    params.setHost(host);
+
+    // parse port
+    String port = suffixURL;
+    if (suffixURL.contains(PARAMETER_SEPARATOR)) {
+      port = suffixURL.split("\\" + PARAMETER_SEPARATOR)[0];
+    } else if (suffixURL.contains(SLASH)) {
+      port = suffixURL.substring(0, suffixURL.length() - 1);
+    }
+    params.setPort(Integer.parseInt(port));
 
     if (info.containsKey(Config.AUTH_USER)) {
       params.setUsername(info.getProperty(Config.AUTH_USER));
@@ -84,6 +103,18 @@ public class Utils {
     }
     if (info.containsKey(Config.TIME_ZONE)) {
       params.setTimeZone(info.getProperty(Config.TIME_ZONE));
+    }
+
+    if (info.containsKey(Config.USE_SSL)) {
+      params.setUseSSL(Boolean.parseBoolean(info.getProperty(Config.USE_SSL)));
+    }
+
+    if (info.containsKey(Config.TRUST_STORE)) {
+      params.setTrustStore(info.getProperty(Config.TRUST_STORE));
+    }
+
+    if (info.containsKey(Config.TRUST_STORE_PWD)) {
+      params.setTrustStorePwd(info.getProperty(Config.TRUST_STORE_PWD));
     }
 
     return params;
@@ -118,6 +149,9 @@ public class Utils {
             return false;
           }
           break;
+        case Config.USE_SSL:
+        case Config.TRUST_STORE:
+        case Config.TRUST_STORE_PWD:
         case Config.VERSION:
         case Config.NETWORK_TIMEOUT:
           info.put(key, value);

@@ -83,7 +83,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -160,8 +163,14 @@ public class TsFileProcessor {
   private static final String FLUSH_QUERY_WRITE_RELEASE =
       "{}: {} get flushQueryLock write lock released";
 
+  /**
+   * Whether this file keeps TsFile format. If the file violates TsFile format, then it shouldn't be
+   * captured by pipe engine.
+   */
+  private boolean isTsFileFormatValidForPipe = true;
+
   /** close file listener. */
-  private final List<CloseFileListener> closeFileListeners = new ArrayList<>();
+  private final List<CloseFileListener> closeFileListeners = new CopyOnWriteArrayList<>();
 
   /** flush file listener. */
   private final List<FlushListener> flushListeners = new ArrayList<>();
@@ -276,6 +285,7 @@ public class TsFileProcessor {
 
     startTime = System.nanoTime();
 
+    PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowNode);
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
@@ -305,7 +315,11 @@ public class TsFileProcessor {
   }
 
   private void createNewWorkingMemTable() throws WriteProcessException {
-    workMemTable = MemTableManager.getInstance().getAvailableMemTable(storageGroupName);
+    workMemTable =
+        MemTableManager.getInstance()
+            .getAvailableMemTable(
+                dataRegionInfo.getDataRegion().getDatabaseName(),
+                dataRegionInfo.getDataRegion().getDataRegionId());
     walNode.onMemTableCreated(workMemTable, tsFileResource.getTsFilePath());
   }
 
@@ -382,6 +396,7 @@ public class TsFileProcessor {
 
     startTime = System.nanoTime();
 
+    PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertTabletNode);
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
@@ -847,7 +862,7 @@ public class TsFileProcessor {
   }
 
   /** async close one tsfile, register and close it by another thread */
-  public void asyncClose() {
+  public Future<?> asyncClose() {
     flushQueryLock.writeLock().lock();
     if (logger.isDebugEnabled()) {
       logger.debug(
@@ -876,7 +891,7 @@ public class TsFileProcessor {
       }
 
       if (shouldClose) {
-        return;
+        return CompletableFuture.completedFuture(null);
       }
       // when a flush thread serves this TsFileProcessor (because the processor is submitted by
       // registerTsFileProcessor()), the thread will seal the corresponding TsFile and
@@ -891,16 +906,16 @@ public class TsFileProcessor {
       IMemTable tmpMemTable = workMemTable == null ? new NotifyFlushMemTable() : workMemTable;
 
       try {
-        PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(tsFileResource);
         PipeInsertionDataNodeListener.getInstance()
             .listenToTsFile(
-                dataRegionInfo.getDataRegion().getDataRegionId(), tsFileResource, false);
+                dataRegionInfo.getDataRegion().getDataRegionId(), tsFileResource, false, false);
 
         // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
         // flushing memTable in System module.
-        addAMemtableIntoFlushingList(tmpMemTable);
+        Future<?> future = addAMemtableIntoFlushingList(tmpMemTable);
         logger.info("Memtable {} has been added to flushing list", tmpMemTable);
         shouldClose = true;
+        return future;
       } catch (Exception e) {
         logger.error(
             "{}: {} async close failed, because",
@@ -915,6 +930,7 @@ public class TsFileProcessor {
             FLUSH_QUERY_WRITE_RELEASE, storageGroupName, tsFileResource.getTsFile().getName());
       }
     }
+    return CompletableFuture.completedFuture(null);
   }
 
   /**
@@ -1003,7 +1019,7 @@ public class TsFileProcessor {
    * queue, set the current working memtable as null and then register the tsfileProcessor into the
    * flushManager again.
    */
-  private void addAMemtableIntoFlushingList(IMemTable tobeFlushed) throws IOException {
+  private Future<?> addAMemtableIntoFlushingList(IMemTable tobeFlushed) throws IOException {
     Map<String, Long> lastTimeForEachDevice = new HashMap<>();
     if (sequence) {
       lastTimeForEachDevice = tobeFlushed.getMaxTime();
@@ -1042,7 +1058,7 @@ public class TsFileProcessor {
       totalMemTableSize += tobeFlushed.memSize();
     }
     workMemTable = null;
-    FlushManager.getInstance().registerTsFileProcessor(this);
+    return FlushManager.getInstance().registerTsFileProcessor(this);
   }
 
   /** put back the memtable to MemTablePool and make metadata in writer visible */
@@ -1239,6 +1255,11 @@ public class TsFileProcessor {
 
     // for sync flush
     syncReleaseFlushedMemTable(memTableToFlush);
+    try {
+      writer.getTsFileOutput().force();
+    } catch (IOException e) {
+      logger.error("fsync memTable data to disk error,", e);
+    }
 
     // call flushed listener after memtable is released safely
     for (FlushListener flushListener : flushListeners) {
@@ -1324,7 +1345,7 @@ public class TsFileProcessor {
       String dataRegionId = dataRegionInfo.getDataRegion().getDataRegionId();
       WritingMetrics.getInstance()
           .recordTsFileCompressionRatioOfFlushingMemTable(dataRegionId, compressionRatio);
-      CompressionRatio.getInstance().updateRatio(compressionRatio);
+      CompressionRatio.getInstance().updateRatio(totalMemTableSize, writer.getPos());
     } catch (IOException e) {
       logger.error(
           "{}: {} update compression ratio failed",
@@ -1373,6 +1394,7 @@ public class TsFileProcessor {
     // remove this processor from Closing list in DataRegion,
     // mark the TsFileResource closed, no need writer anymore
     writer.close();
+    isTsFileFormatValidForPipe = false; // empty file, no need to be captured by pipe
     for (CloseFileListener closeFileListener : closeFileListeners) {
       closeFileListener.onClosed(this);
     }
@@ -1386,6 +1408,11 @@ public class TsFileProcessor {
         tsFileResource.getTsFile().getAbsoluteFile());
 
     writer = null;
+  }
+
+  /** Only useful after TsFile is closed. */
+  public boolean isTsFileFormatValidForPipe() {
+    return isTsFileFormatValidForPipe;
   }
 
   public boolean isManagedByFlushManager() {

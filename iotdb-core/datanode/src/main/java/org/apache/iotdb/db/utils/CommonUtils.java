@@ -21,6 +21,7 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -38,6 +39,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 @SuppressWarnings("java:S106") // for console outputs
 public class CommonUtils {
@@ -94,13 +96,14 @@ public class CommonUtils {
           if ((value.startsWith(SqlConstant.QUOTE) && value.endsWith(SqlConstant.QUOTE))
               || (value.startsWith(SqlConstant.DQUOTE) && value.endsWith(SqlConstant.DQUOTE))) {
             if (value.length() == 1) {
-              return new Binary(value);
+              return new Binary(value, TSFileConfig.STRING_CHARSET);
             } else {
-              return new Binary(value.substring(1, value.length() - 1));
+              return new Binary(
+                  value.substring(1, value.length() - 1), TSFileConfig.STRING_CHARSET);
             }
           }
 
-          return new Binary(value);
+          return new Binary(value, TSFileConfig.STRING_CHARSET);
         default:
           throw new QueryProcessException("Unsupported data type:" + dataType);
       }
@@ -110,6 +113,9 @@ public class CommonUtils {
   }
 
   public static boolean checkCanCastType(TSDataType src, TSDataType dest) {
+    if (Objects.isNull(src)) {
+      return true;
+    }
     switch (src) {
       case INT32:
         if (dest == TSDataType.INT64 || dest == TSDataType.FLOAT || dest == TSDataType.DOUBLE) {
@@ -128,6 +134,9 @@ public class CommonUtils {
   }
 
   public static Object castValue(TSDataType srcDataType, TSDataType destDataType, Object value) {
+    if (Objects.isNull(value)) {
+      return null;
+    }
     switch (srcDataType) {
       case INT32:
         if (destDataType == TSDataType.INT64) {
@@ -203,7 +212,7 @@ public class CommonUtils {
         case DOUBLE:
           return Double.parseDouble(value);
         case TEXT:
-          return new Binary(value);
+          return new Binary(value, TSFileConfig.STRING_CHARSET);
         default:
           throw new QueryProcessException("Unsupported data type:" + dataType);
       }

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.statement.crud;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -30,7 +31,6 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.utils.CommonUtils;
-import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -118,19 +118,14 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   public List<TTimePartitionSlot> getTimePartitionSlots() {
     List<TTimePartitionSlot> result = new ArrayList<>();
-    long startTime =
-        (times[0] / TimePartitionUtils.timePartitionInterval)
-            * TimePartitionUtils.timePartitionInterval; // included
-    long endTime = startTime + TimePartitionUtils.timePartitionInterval; // excluded
-    TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartition(times[0]);
+    long upperBoundOfTimePartition = TimePartitionUtils.getTimePartitionUpperBound(times[0]);
+    TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[0]);
     for (int i = 1; i < times.length; i++) { // times are sorted in session API.
-      if (times[i] >= endTime) {
+      if (times[i] >= upperBoundOfTimePartition) {
         result.add(timePartitionSlot);
         // next init
-        endTime =
-            (times[i] / TimePartitionUtils.timePartitionInterval + 1)
-                * TimePartitionUtils.timePartitionInterval;
-        timePartitionSlot = TimePartitionUtils.getTimePartition(times[i]);
+        upperBoundOfTimePartition = TimePartitionUtils.getTimePartitionUpperBound(times[i]);
+        timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[i]);
       }
     }
     result.add(timePartitionSlot);

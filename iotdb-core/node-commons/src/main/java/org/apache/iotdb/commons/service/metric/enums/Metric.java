@@ -36,6 +36,7 @@ public enum Metric {
   SERIES_SLOT_NUM_IN_DATABASE("series_slot_num_in_database"),
   TIME_SLOT_NUM_IN_DATABASE("time_slot_num_in_database"),
   REGION_GROUP_NUM_IN_DATABASE("region_group_num_in_database"),
+  REPLICATION_FACTOR("replication_factor"),
   // protocol related
   ENTRY("entry"),
   SESSION_IDLE_TIME("session_idle_time"),
@@ -45,10 +46,13 @@ public enum Metric {
   // consensus related
   STAGE("stage"),
   IOT_CONSENSUS("iot_consensus"),
+  IOT_SEND_LOG("iot_send_log"),
+  IOT_RECEIVE_LOG("iot_receive_log"),
   RATIS_CONSENSUS_WRITE("ratis_consensus_write"),
   RATIS_CONSENSUS_READ("ratis_consensus_read"),
   // storage engine related
   POINTS("points"),
+  POINTS_IN("points_in"),
   COST_TASK("cost_task"),
   QUEUE("queue"),
   FLUSHING_MEM_TABLE_STATUS("flushing_mem_table_status"),
@@ -64,6 +68,11 @@ public enum Metric {
   DATA_WRITTEN("data_written"),
   DATA_READ("data_read"),
   COMPACTION_TASK_COUNT("compaction_task_count"),
+  COMPACTION_TASK_MEMORY("compaction_task_memory"),
+  COMPACTION_TASK_MEMORY_DISTRIBUTION("compaction_task_memory_distribution"),
+  COMPACTION_TASK_SELECTION("compaction_task_selection"),
+  COMPACTION_TASK_SELECTION_COST("compaction_task_selection_cost"),
+  COMPACTION_TASK_SELECTED_FILE("compaction_task_selected_file"),
   // schema engine related
   MEM("mem"),
   CACHE("cache"),
@@ -90,7 +99,37 @@ public enum Metric {
   LOCAL_EXECUTION_PLANNER("local_execution_planner"),
   // file related
   FILE_SIZE("file_size"),
-  FILE_COUNT("file_count");
+  FILE_COUNT("file_count"),
+  // pipe related
+  UNASSIGNED_TABLET_COUNT("unassigned_tablet_count"),
+  UNASSIGNED_TSFILE_COUNT("unassigned_tsfile_count"),
+  UNASSIGNED_HEARTBEAT_COUNT("unassigned_heartbeat_count"),
+  UNPROCESSED_TABLET_COUNT("unprocessed_tablet_count"),
+  UNPROCESSED_HISTORICAL_TSFILE_COUNT("unprocessed_historical_tsfile_count"),
+  UNPROCESSED_REALTIME_TSFILE_COUNT("unprocessed_realtime_tsfile_count"),
+  UNPROCESSED_HEARTBEAT_COUNT("unprocessed_heartbeat_count"),
+  BUFFERED_TABLET_COUNT("buffered_tablet_count"),
+  BUFFERED_TSFILE_COUNT("buffered_tsfile_count"),
+  BUFFERED_HEARTBEAT_COUNT("buffered_heartbeat_count"),
+  UNTRANSFERRED_TABLET_COUNT("untransferred_tablet_count"),
+  UNTRANSFERRED_TSFILE_COUNT("untransferred_tsfile_count"),
+  UNTRANSFERRED_HEARTBEAT_COUNT("untransferred_heartbeat_count"),
+  PIPE_EXTRACTOR_TABLET_SUPPLY("pipe_extractor_tablet_supply"),
+  PIPE_EXTRACTOR_TSFILE_SUPPLY("pipe_extractor_tsfile_supply"),
+  PIPE_EXTRACTOR_HEARTBEAT_SUPPLY("pipe_extractor_heartbeat_supply"),
+  PIPE_PROCESSOR_TABLET_PROCESS("pipe_processor_tablet_process"),
+  PIPE_PROCESSOR_TSFILE_PROCESS("pipe_processor_tsfile_process"),
+  PIPE_PROCESSOR_HEARTBEAT_PROCESS("pipe_processor_heartbeat_process"),
+  PIPE_CONNECTOR_TABLET_TRANSFER("pipe_connector_tablet_transfer"),
+  PIPE_CONNECTOR_TSFILE_TRANSFER("pipe_connector_tsfile_transfer"),
+  PIPE_CONNECTOR_HEARTBEAT_TRANSFER("pipe_connector_heartbeat_transfer"),
+  PIPE_HEARTBEAT_EVENT("pipe_heartbeat_event"),
+  PIPE_WAL_INSERT_NODE_CACHE_HIT_RATE("pipe_wal_insert_node_cache_hit_rate"),
+  PIPE_EXTRACTOR_TSFILE_EPOCH_STATE("pipe_extractor_tsfile_epoch_state"),
+  PIPE_MEM("pipe_mem"),
+  PIPE_PINNED_MEMTABLE_COUNT("pipe_pinned_memtable_count"),
+  PIPE_LINKED_TSFILE_COUNT("pipe_linked_tsfile_count"),
+  ;
 
   final String value;
 

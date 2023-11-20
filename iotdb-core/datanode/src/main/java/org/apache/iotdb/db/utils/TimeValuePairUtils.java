@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -110,7 +111,7 @@ public class TimeValuePairUtils {
       case DOUBLE:
         return new TimeValuePair(0, new TsDouble(0.0));
       case TEXT:
-        return new TimeValuePair(0, new TsBinary(new Binary("")));
+        return new TimeValuePair(0, new TsBinary(new Binary("", TSFileConfig.STRING_CHARSET)));
       default:
         throw new UnsupportedOperationException("Unrecognized datatype: " + dataType);
     }

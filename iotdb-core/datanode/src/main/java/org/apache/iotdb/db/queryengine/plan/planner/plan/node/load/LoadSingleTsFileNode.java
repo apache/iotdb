@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
@@ -31,7 +32,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -54,22 +54,21 @@ import java.util.function.Function;
 public class LoadSingleTsFileNode extends WritePlanNode {
   private static final Logger logger = LoggerFactory.getLogger(LoadSingleTsFileNode.class);
 
-  private File tsFile;
-  private TsFileResource resource;
+  private final File tsFile;
+  private final TsFileResource resource;
+  private final boolean deleteAfterLoad;
+  private final long writePointCount;
   private boolean needDecodeTsFile;
-  private boolean deleteAfterLoad;
 
   private TRegionReplicaSet localRegionReplicaSet;
 
-  public LoadSingleTsFileNode(PlanNodeId id) {
-    super(id);
-  }
-
-  public LoadSingleTsFileNode(PlanNodeId id, TsFileResource resource, boolean deleteAfterLoad) {
+  public LoadSingleTsFileNode(
+      PlanNodeId id, TsFileResource resource, boolean deleteAfterLoad, long writePointCount) {
     super(id);
     this.tsFile = resource.getTsFile();
     this.resource = resource;
     this.deleteAfterLoad = deleteAfterLoad;
+    this.writePointCount = writePointCount;
   }
 
   public boolean isTsFileEmpty() {
@@ -85,9 +84,9 @@ public class LoadSingleTsFileNode extends WritePlanNode {
         .forEach(
             o -> {
               slotList.add(
-                  new Pair<>(o, TimePartitionUtils.getTimePartition(resource.getStartTime(o))));
+                  new Pair<>(o, TimePartitionUtils.getTimePartitionSlot(resource.getStartTime(o))));
               slotList.add(
-                  new Pair<>(o, TimePartitionUtils.getTimePartition(resource.getEndTime(o))));
+                  new Pair<>(o, TimePartitionUtils.getTimePartitionSlot(resource.getEndTime(o))));
             });
 
     if (slotList.isEmpty()) {
@@ -100,7 +99,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
       needDecodeTsFile = !isDispatchedToLocal(new HashSet<>(partitionFetcher.apply(slotList)));
     }
 
-    PipeAgent.runtime().assignRecoverProgressIndexForTsFileRecovery(resource);
+    PipeAgent.runtime().assignProgressIndexForTsFileLoad(resource);
 
     // we serialize the resource file even if the tsfile does not need to be decoded
     // or the resource file is already existed because we need to serialize the
@@ -136,6 +135,10 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
   public boolean isDeleteAfterLoad() {
     return deleteAfterLoad;
+  }
+
+  public long getWritePointCount() {
+    return writePointCount;
   }
 
   /**

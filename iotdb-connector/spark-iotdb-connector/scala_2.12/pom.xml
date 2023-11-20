@@ -24,10 +24,17 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>spark-iotdb-connector</artifactId>
-        <version>1.3.0-SNAPSHOT</version>
+        <version>1.3.1-SNAPSHOT</version>
     </parent>
     <artifactId>spark-iotdb-connector_2.12</artifactId>
     <name>IoTDB: Connector: Apache Spark (Scala 2.12)</name>
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-sql-api_2.12</artifactId>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
     <build>
         <sourceDirectory>../src/main/scala</sourceDirectory>
         <plugins>

@@ -56,11 +56,6 @@ public class PipeEnrichedLoadTsFileStatement extends LoadTsFileStatement {
   }
 
   @Override
-  public boolean isAuthenticationRequired() {
-    return loadTsFileStatement.isAuthenticationRequired();
-  }
-
-  @Override
   public void setDeleteAfterLoad(boolean deleteAfterLoad) {
     loadTsFileStatement.setDeleteAfterLoad(deleteAfterLoad);
   }
@@ -113,6 +108,16 @@ public class PipeEnrichedLoadTsFileStatement extends LoadTsFileStatement {
   @Override
   public List<TsFileResource> getResources() {
     return loadTsFileStatement.getResources();
+  }
+
+  @Override
+  public void addWritePointCount(long writePointCount) {
+    loadTsFileStatement.addWritePointCount(writePointCount);
+  }
+
+  @Override
+  public long getWritePointCount(int resourceIndex) {
+    return loadTsFileStatement.getWritePointCount(resourceIndex);
   }
 
   @Override

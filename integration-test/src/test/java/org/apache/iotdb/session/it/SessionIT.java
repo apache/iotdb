@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -92,7 +93,7 @@ public class SessionIT {
         double[] sensor2 = (double[]) values[1];
         sensor2[row] = 0.1 + time;
         Binary[] sensor3 = (Binary[]) values[2];
-        sensor3[row] = Binary.valueOf("ha" + time);
+        sensor3[row] = BytesUtils.valueOf("ha" + time);
         long[] sensor4 = (long[]) values[3];
         sensor4[row] = time;
       }

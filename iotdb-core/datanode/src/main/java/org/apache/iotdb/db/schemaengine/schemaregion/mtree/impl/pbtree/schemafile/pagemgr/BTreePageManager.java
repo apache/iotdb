@@ -303,7 +303,8 @@ public class BTreePageManager extends PageManager {
     tarPage.getAsSegmentedPage().removeRecord(getSegIndex(recSegAddr), node.getName());
 
     // remove segments belongs to node
-    if (!node.isMeasurement()) {
+    if (!node.isMeasurement() && getNodeAddress(node) > 0) {
+      // node with maliciously modified address may result in orphan pages
       long delSegAddr = getNodeAddress(node);
       tarPage = getPageInstance(getPageIndex(delSegAddr));
 
@@ -317,6 +318,9 @@ public class BTreePageManager extends PageManager {
       }
 
       if (tarPage.getAsInternalPage() != null) {
+        // If the deleted one points to an Internal (root of BTree), there are two BTrees to handle:
+        //  one mapping node names to record buffers, and another mapping aliases to names. </br>
+        // All of those are turned into SegmentedPage.
         Deque<Integer> cascadePages = new ArrayDeque<>(tarPage.getAsInternalPage().getAllRecords());
         cascadePages.add(tarPage.getPageIndex());
 

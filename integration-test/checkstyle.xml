@@ -29,7 +29,7 @@
     </module>
     <module name="TreeWalker">
         <module name="ImportControl">
-            <property name="file" value="integration-test/import-control.xml"/>
+            <property name="file" value="${baseDir}/import-control.xml"/>
             <property name="path" value="^.*(IT|TestUtils|TestConstant)\.java$"/>
             <message key="import.control.disallowed" value="{0} is not allowed to use in integration test."/>
         </module>
@@ -41,7 +41,7 @@
         <module name="Regexp">
             <property name="format" value="(@RunWith\(IoTDBTestRunner\.class\))|(extends AbstractSchemaIT)"/>
             <property name="ignoreComments" value="true"/>
-            <property name="illegalPattern" value="false" />
+            <property name="illegalPattern" value="false"/>
             <property name="message" value="Test cases should run with IoTDBTestRunner."/>
         </module>
     </module>

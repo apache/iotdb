@@ -65,8 +65,8 @@ public class PipeMetaDeSerTest {
     PipeStaticMeta pipeStaticMeta1 = PipeStaticMeta.deserialize(staticByteBuffer);
     Assert.assertEquals(pipeStaticMeta, pipeStaticMeta1);
 
-    HybridProgressIndex hybridProgressIndex = new HybridProgressIndex();
-    hybridProgressIndex.updateToMinimumIsAfterProgressIndex(new SimpleProgressIndex(1, 2));
+    HybridProgressIndex hybridProgressIndex =
+        new HybridProgressIndex(new SimpleProgressIndex(1, 2));
     hybridProgressIndex.updateToMinimumIsAfterProgressIndex(new SimpleProgressIndex(2, 4));
     hybridProgressIndex.updateToMinimumIsAfterProgressIndex(new IoTProgressIndex(3, 6L));
 
@@ -76,7 +76,7 @@ public class PipeMetaDeSerTest {
               {
                 put(
                     new TConsensusGroupId(TConsensusGroupType.DataRegion, 123),
-                    new PipeTaskMeta(new MinimumProgressIndex(), 987));
+                    new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 987));
                 put(
                     new TConsensusGroupId(TConsensusGroupType.DataRegion, 234),
                     new PipeTaskMeta(new IoTProgressIndex(1, 2L), 789));

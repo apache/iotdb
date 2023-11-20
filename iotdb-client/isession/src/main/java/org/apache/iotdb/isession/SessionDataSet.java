@@ -211,6 +211,15 @@ public class SessionDataSet implements AutoCloseable {
     return new RowRecord(ioTDBRpcDataSet.time, outFields);
   }
 
+  /**
+   * Iterate ResultSet using this method isn't very efficient, because it will use RowRecord to
+   * represent a row which contains much object creation and converting overhead If you just want to
+   * get each value of each column row by row, you can use SessionDataSet.iterator() to get
+   * DataIterator, and use DataIterator.getXXX() function to get current row's specified column
+   * value.
+   *
+   * @return One complete row saved in RowRecord
+   */
   public RowRecord next() throws StatementExecutionException, IoTDBConnectionException {
     if (!ioTDBRpcDataSet.hasCachedRecord && !hasNext()) {
       return null;

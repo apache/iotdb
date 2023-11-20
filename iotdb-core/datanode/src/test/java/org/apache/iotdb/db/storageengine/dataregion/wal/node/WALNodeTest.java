@@ -35,6 +35,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -68,7 +69,9 @@ public class WALNodeTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String identifier = String.valueOf(Integer.MAX_VALUE);
   private static final String logDirectory = TestConstant.BASE_OUTPUT_PATH.concat("wal-test");
-  private static final String devicePath = "root.test_sg.test_d";
+  private static final String databasePath = "root.test_sg";
+  private static final String devicePath = databasePath + ".test_d";
+  private static final String dataRegionId = "1";
   private WALMode prevMode;
   private boolean prevIsClusterMode;
   private WALNode walNode;
@@ -186,7 +189,7 @@ public class WALNodeTest {
       ((long[]) columns[2])[r] = 10000L + r;
       ((int[]) columns[3])[r] = 100 + r;
       ((boolean[]) columns[4])[r] = (r % 2 == 0);
-      ((Binary[]) columns[5])[r] = new Binary("hh" + r);
+      ((Binary[]) columns[5])[r] = new Binary("hh" + r, TSFileConfig.STRING_CHARSET);
     }
 
     BitMap[] bitMaps = new BitMap[dataTypes.length];
@@ -226,7 +229,7 @@ public class WALNodeTest {
     for (int i = 0; i < memTablesNum; ++i) {
       Callable<Void> writeTask =
           () -> {
-            IMemTable memTable = new PrimitiveMemTable();
+            IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
             long memTableId = memTable.getMemTableId();
             String tsFilePath = logDirectory + File.separator + memTableId + ".tsfile";
             long firstFileVersionId = walNode.getCurrentLogVersion();
@@ -260,7 +263,7 @@ public class WALNodeTest {
     List<WALFlushListener> walFlushListeners = new ArrayList<>();
     // write until log is rolled
     long time = 0;
-    IMemTable memTable = new PrimitiveMemTable();
+    IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
     long memTableId = memTable.getMemTableId();
     String tsFilePath = logDirectory + File.separator + memTableId + ".tsfile";
     walNode.onMemTableCreated(memTable, tsFilePath);
@@ -273,7 +276,7 @@ public class WALNodeTest {
       walFlushListeners.add(walFlushListener);
     }
     walNode.onMemTableFlushed(memTable);
-    walNode.onMemTableCreated(new PrimitiveMemTable(), tsFilePath);
+    walNode.onMemTableCreated(new PrimitiveMemTable(databasePath, dataRegionId), tsFilePath);
     // check existence of _0-0-0.wal file and _1-0-1.wal file
     assertTrue(
         new File(

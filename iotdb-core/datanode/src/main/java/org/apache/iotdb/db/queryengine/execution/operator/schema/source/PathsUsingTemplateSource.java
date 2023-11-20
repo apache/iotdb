@@ -21,12 +21,14 @@ package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -39,12 +41,15 @@ import java.util.NoSuchElementException;
 public class PathsUsingTemplateSource implements ISchemaSource<IDeviceSchemaInfo> {
 
   private final List<PartialPath> pathPatternList;
+  private final PathPatternTree scope;
 
   private final int templateId;
 
-  PathsUsingTemplateSource(List<PartialPath> pathPatternList, int templateId) {
+  PathsUsingTemplateSource(
+      List<PartialPath> pathPatternList, int templateId, PathPatternTree scope) {
     this.pathPatternList = pathPatternList;
     this.templateId = templateId;
+    this.scope = scope;
   }
 
   @Override
@@ -61,7 +66,9 @@ public class PathsUsingTemplateSource implements ISchemaSource<IDeviceSchemaInfo
   public void transformToTsBlockColumns(
       IDeviceSchemaInfo device, TsBlockBuilder builder, String database) {
     builder.getTimeColumnBuilder().writeLong(0L);
-    builder.getColumnBuilder(0).writeBinary(new Binary(device.getFullPath()));
+    builder
+        .getColumnBuilder(0)
+        .writeBinary(new Binary(device.getFullPath(), TSFileConfig.STRING_CHARSET));
     builder.declarePosition();
   }
 
@@ -126,7 +133,7 @@ public class PathsUsingTemplateSource implements ISchemaSource<IDeviceSchemaInfo
           currentDeviceReader =
               schemaRegion.getDeviceReader(
                   SchemaRegionReadPlanFactory.getShowDevicesPlan(
-                      pathPatternIterator.next(), 0, 0, false, templateId));
+                      pathPatternIterator.next(), 0, 0, false, templateId, scope));
           if (currentDeviceReader.hasNext()) {
             return true;
           } else {

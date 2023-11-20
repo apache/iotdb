@@ -431,7 +431,7 @@ public class TestUtils {
 
   static class MiniClusterFactory {
     private final int replicas = 3;
-    private final ConsensusGroupId gid = new DataRegionId(1);
+    private ConsensusGroupId gid = new DataRegionId(1);
     private final Function<Integer, File> peerStorageProvider =
         peerId -> new File("target" + java.io.File.separator + peerId);
 
@@ -445,6 +445,11 @@ public class TestUtils {
 
     MiniClusterFactory setSMProvider(Supplier<IStateMachine> smProvider) {
       this.smProvider = smProvider;
+      return this;
+    }
+
+    MiniClusterFactory setGid(ConsensusGroupId gid) {
+      this.gid = gid;
       return this;
     }
 

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -130,6 +131,10 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
 
   public String[] getMeasurements() {
     return measurements;
+  }
+
+  public void setMeasurements(String[] measurements) {
+    this.measurements = measurements;
   }
 
   public TSDataType[] getDataTypes() {
@@ -278,6 +283,13 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
 
   public int getFailedMeasurementNumber() {
     return failedMeasurementNumber;
+  }
+
+  public boolean allMeasurementFailed() {
+    if (measurements != null) {
+      return failedMeasurementNumber >= measurements.length;
+    }
+    return true;
   }
   // endregion
 

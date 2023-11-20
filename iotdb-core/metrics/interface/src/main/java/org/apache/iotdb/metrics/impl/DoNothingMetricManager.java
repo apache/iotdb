@@ -42,17 +42,17 @@ public class DoNothingMetricManager extends AbstractMetricManager {
   public static final DoNothingTimer DO_NOTHING_TIMER = new DoNothingTimer();
 
   @Override
-  public Counter createCounter(MetricInfo metricInfo) {
+  public Counter createCounter() {
     return DO_NOTHING_COUNTER;
   }
 
   @Override
-  public <T> AutoGauge createAutoGauge(MetricInfo metricInfo, T obj, ToDoubleFunction<T> mapper) {
+  public <T> AutoGauge createAutoGauge(T obj, ToDoubleFunction<T> mapper) {
     return DO_NOTHING_AUTO_GAUGE;
   }
 
   @Override
-  public Gauge createGauge(MetricInfo metricInfo) {
+  public Gauge createGauge() {
     return DO_NOTHING_GAUGE;
   }
 
@@ -62,12 +62,12 @@ public class DoNothingMetricManager extends AbstractMetricManager {
   }
 
   @Override
-  public Rate createRate(MetricInfo metricInfo) {
+  public Rate createRate() {
     return DO_NOTHING_RATE;
   }
 
   @Override
-  public Timer createTimer(MetricInfo metricInfo) {
+  public Timer createTimer() {
     return DO_NOTHING_TIMER;
   }
 

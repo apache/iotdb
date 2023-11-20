@@ -20,6 +20,7 @@ package org.apache.iotdb.db.auth.role;
 
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.role.LocalFileRoleManager;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -61,13 +62,14 @@ public class LocalFileRoleManagerTest {
 
   @Test
   public void test() throws AuthException, IllegalPathException {
-    Role[] roles = new Role[5];
+    Role[] roles = new Role[4];
     for (int i = 0; i < roles.length; i++) {
       roles[i] = new Role("role" + i);
       for (int j = 0; j <= i; j++) {
         PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.a.b.c" + j));
         pathPrivilege.getPrivileges().add(j);
-        roles[i].getPrivilegeList().add(pathPrivilege);
+        roles[i].getPathPrivilegeList().add(pathPrivilege);
+        roles[i].getSysPrivilege().add(j + 4);
       }
     }
 
@@ -84,18 +86,6 @@ public class LocalFileRoleManagerTest {
 
     assertFalse(manager.createRole(roles[0].getName()));
     boolean caught = false;
-    try {
-      manager.createRole("too");
-    } catch (AuthException e) {
-      caught = true;
-    }
-    assertTrue(caught);
-    try {
-      manager.createRole("rolename ");
-    } catch (AuthException e) {
-      caught = true;
-    }
-    assertTrue(caught);
 
     // delete
     assertFalse(manager.deleteRole("not a role"));
@@ -107,22 +97,18 @@ public class LocalFileRoleManagerTest {
     role = manager.getRole(roles[0].getName());
     PartialPath path = new PartialPath("root.a.b.c");
     int privilegeId = 0;
-    assertFalse(role.hasPrivilege(path, privilegeId));
-    assertTrue(manager.grantPrivilegeToRole(role.getName(), path, privilegeId));
-    assertTrue(manager.grantPrivilegeToRole(role.getName(), path, privilegeId + 1));
-    assertFalse(manager.grantPrivilegeToRole(role.getName(), path, privilegeId));
+    assertFalse(role.hasPrivilegeToRevoke(path, privilegeId));
+    manager.grantPrivilegeToRole(role.getName(), path, privilegeId, false);
+    manager.grantPrivilegeToRole(role.getName(), path, privilegeId + 1, false);
+    // grant again will success
+    manager.grantPrivilegeToRole(role.getName(), path, privilegeId, false);
     role = manager.getRole(roles[0].getName());
-    assertTrue(role.hasPrivilege(path, privilegeId));
+    assertTrue(role.hasPrivilegeToRevoke(path, privilegeId));
+    manager.grantPrivilegeToRole(role.getName(), null, PrivilegeType.MAINTAIN.ordinal(), true);
+    manager.grantPrivilegeToRole(role.getName(), null, PrivilegeType.MAINTAIN.ordinal(), true);
     caught = false;
     try {
-      manager.grantPrivilegeToRole("not a role", path, privilegeId);
-    } catch (AuthException e) {
-      caught = true;
-    }
-    assertTrue(caught);
-    caught = false;
-    try {
-      manager.grantPrivilegeToRole(role.getName(), path, -1);
+      manager.grantPrivilegeToRole("not a role", path, privilegeId, false);
     } catch (AuthException e) {
       caught = true;
     }
@@ -132,16 +118,14 @@ public class LocalFileRoleManagerTest {
     role = manager.getRole(roles[0].getName());
     assertTrue(manager.revokePrivilegeFromRole(role.getName(), path, privilegeId));
     assertFalse(manager.revokePrivilegeFromRole(role.getName(), path, privilegeId));
+    assertFalse(
+        manager.revokePrivilegeFromRole(role.getName(), null, PrivilegeType.USE_PIPE.ordinal()));
+    assertTrue(
+        manager.revokePrivilegeFromRole(role.getName(), null, PrivilegeType.MAINTAIN.ordinal()));
+    assertEquals(manager.getRole(role.getName()).getSysPriGrantOpt().size(), 0);
     caught = false;
     try {
       manager.revokePrivilegeFromRole("not a role", path, privilegeId);
-    } catch (AuthException e) {
-      caught = true;
-    }
-    assertTrue(caught);
-    caught = false;
-    try {
-      manager.revokePrivilegeFromRole(role.getName(), path, -1);
     } catch (AuthException e) {
       caught = true;
     }
@@ -153,5 +137,51 @@ public class LocalFileRoleManagerTest {
     for (int i = 0; i < roles.length - 1; i++) {
       assertEquals(roles[i].getName(), rolenames.get(i));
     }
+  }
+
+  @Test
+  public void testPathCheckForUpgrade() throws AuthException, IllegalPathException {
+    manager.createRole("test");
+    manager.setPreVersion(true);
+
+    // turn to root.d.a
+    manager.grantPrivilegeToRole(
+        "test", new PartialPath("root.d.a"), PrivilegeType.READ_SCHEMA.ordinal(), false);
+    // turn to root.**
+    manager.grantPrivilegeToRole(
+        "test", new PartialPath("root.d*.a"), PrivilegeType.READ_DATA.ordinal(), false);
+    // turn to root.**
+    manager.grantPrivilegeToRole(
+        "test", new PartialPath("root.d*.a"), PrivilegeType.READ_SCHEMA.ordinal(), false);
+    // turn to root.**
+    manager.grantPrivilegeToRole(
+        "test", new PartialPath("root.*.a.b"), PrivilegeType.READ_SCHEMA.ordinal(), false);
+    // turn to root.ds.a.**
+    manager.grantPrivilegeToRole(
+        "test", new PartialPath("root.ds.a.b*"), PrivilegeType.READ_SCHEMA.ordinal(), false);
+    // turn to root.ds.a.b
+    manager.grantPrivilegeToRole(
+        "test", new PartialPath("root.ds.a.b"), PrivilegeType.READ_SCHEMA.ordinal(), false);
+    assertFalse(manager.getRole("test").getServiceReady());
+    // after this operation, the user has these privileges:
+    // root.d.a : read_schema
+    // root.** : read_data, read_schema
+    // root.ds.a.** :read_schema
+    // root.ds.a.b : read_schema
+    manager.checkAndRefreshPathPri();
+    Role role = manager.getRole("test");
+    assertTrue(role.getServiceReady());
+    assertEquals(4, role.getPathPrivilegeList().size());
+    manager.revokePrivilegeFromRole(
+        "test", new PartialPath("root.**"), PrivilegeType.READ_SCHEMA.ordinal());
+    manager.revokePrivilegeFromRole(
+        "test", new PartialPath("root.**"), PrivilegeType.READ_DATA.ordinal());
+    assertEquals(3, role.getPathPrivilegeList().size());
+    assertTrue(
+        role.checkPathPrivilege(
+            new PartialPath("root.ds.a.**"), PrivilegeType.READ_SCHEMA.ordinal()));
+    assertFalse(
+        role.checkPathPrivilege(
+            new PartialPath("root.ds.a.**"), PrivilegeType.READ_DATA.ordinal()));
   }
 }

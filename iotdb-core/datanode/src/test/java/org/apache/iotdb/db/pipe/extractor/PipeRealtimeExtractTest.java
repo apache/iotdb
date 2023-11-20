@@ -88,7 +88,7 @@ public class PipeRealtimeExtractTest {
         new File(
             tmpDir.getPath()
                 + File.separator
-                + IoTDBConstant.SEQUENCE_FLODER_NAME
+                + IoTDBConstant.SEQUENCE_FOLDER_NAME
                 + File.separator
                 + "root.sg");
   }
@@ -287,7 +287,7 @@ public class PipeRealtimeExtractTest {
                         false),
                     resource);
             PipeInsertionDataNodeListener.getInstance()
-                .listenToTsFile(dataRegionId, resource, false);
+                .listenToTsFile(dataRegionId, resource, false, false);
           }
         });
   }

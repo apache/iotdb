@@ -24,6 +24,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -787,7 +788,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           case TEXT:
             tsBlockBuilder
                 .getColumnBuilder(j)
-                .writeBinary(new Binary(valuesInRow.get(j).toString()));
+                .writeBinary(
+                    new Binary(valuesInRow.get(j).toString(), TSFileConfig.STRING_CHARSET));
             break;
           case FLOAT:
             tsBlockBuilder.getColumnBuilder(j).writeFloat((float) valuesInRow.get(j));

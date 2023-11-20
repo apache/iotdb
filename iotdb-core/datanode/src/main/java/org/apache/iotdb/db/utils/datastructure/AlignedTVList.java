@@ -74,6 +74,9 @@ public abstract class AlignedTVList extends TVList {
   // If a sensor chunk size of Text datatype reaches the threshold, this flag will be set true
   boolean reachMaxChunkSizeFlag;
 
+  // not null when constructed by queries
+  BitMap rowBitMap;
+
   AlignedTVList(List<TSDataType> types) {
     super();
     indices = new ArrayList<>(types.size());
@@ -125,6 +128,7 @@ public abstract class AlignedTVList extends TVList {
     alignedTvList.values = values;
     alignedTvList.bitMaps = bitMaps;
     alignedTvList.rowCount = this.rowCount;
+    alignedTvList.rowBitMap = getRowBitMap();
     return alignedTvList;
   }
 
@@ -910,8 +914,15 @@ public abstract class AlignedTVList extends TVList {
     boolean[] timeDuplicateInfo = null;
     // time column
     for (int sortedRowIndex = 0; sortedRowIndex < rowCount; sortedRowIndex++) {
-      if (sortedRowIndex == rowCount - 1
-          || getTime(sortedRowIndex) != getTime(sortedRowIndex + 1)) {
+      // skip empty row
+      if (rowBitMap != null && rowBitMap.isMarked(sortedRowIndex)) {
+        continue;
+      }
+      int nextRowIndex = sortedRowIndex + 1;
+      while (nextRowIndex < rowCount && rowBitMap != null && rowBitMap.isMarked(nextRowIndex)) {
+        nextRowIndex++;
+      }
+      if (nextRowIndex == rowCount || getTime(sortedRowIndex) != getTime(nextRowIndex)) {
         timeBuilder.writeLong(getTime(sortedRowIndex));
         validRowCount++;
       } else {
@@ -920,6 +931,7 @@ public abstract class AlignedTVList extends TVList {
         }
         timeDuplicateInfo[sortedRowIndex] = true;
       }
+      sortedRowIndex = nextRowIndex - 1;
     }
 
     // value columns
@@ -932,6 +944,10 @@ public abstract class AlignedTVList extends TVList {
       }
       ColumnBuilder valueBuilder = builder.getColumnBuilder(columnIndex);
       for (int sortedRowIndex = 0; sortedRowIndex < rowCount; sortedRowIndex++) {
+        // skip empty row
+        if (rowBitMap != null && rowBitMap.isMarked(getValueIndex(sortedRowIndex))) {
+          continue;
+        }
         // skip time duplicated rows
         if (Objects.nonNull(timeDuplicateInfo)) {
           if (!isNullValue(getValueIndex(sortedRowIndex), columnIndex)) {
@@ -1198,5 +1214,47 @@ public abstract class AlignedTVList extends TVList {
     AlignedTVList tvList = AlignedTVList.newAlignedList(dataTypes);
     tvList.putAlignedValues(times, values, bitMaps, 0, rowCount);
     return tvList;
+  }
+
+  public BitMap getRowBitMap() {
+    // row exists when any column value exists
+    if (bitMaps == null) {
+      return null;
+    }
+    for (int columnIndex = 0; columnIndex < values.size(); columnIndex++) {
+      if (values.get(columnIndex) != null && bitMaps.get(columnIndex) == null) {
+        return null;
+      }
+    }
+
+    byte[] rowBitsArr = new byte[rowCount / Byte.SIZE + 1];
+    for (int row = 0; row < rowCount; row += Byte.SIZE) {
+      boolean isFirstColumn = true;
+      byte rowBits = 0x00;
+      for (int columnIndex = 0; columnIndex < values.size(); columnIndex++) {
+        List<BitMap> columnBitMaps = bitMaps.get(columnIndex);
+        byte columnBits;
+        if (values.get(columnIndex) == null) {
+          columnBits = (byte) 0xFF;
+        } else if (columnBitMaps == null || columnBitMaps.get(row / ARRAY_SIZE) == null) {
+          // row exists when any column value exists
+          rowBits = 0x00;
+          break;
+        } else {
+          columnBits =
+              columnBitMaps.get(row / ARRAY_SIZE).getByteArray()[(row % ARRAY_SIZE) / Byte.SIZE];
+        }
+        // set row to null when all column values are null
+        if (isFirstColumn) {
+          rowBits = columnBits;
+          isFirstColumn = false;
+        } else {
+          rowBits &= columnBits;
+        }
+      }
+      rowBitsArr[row / Byte.SIZE] = rowBits;
+    }
+
+    return new BitMap(rowCount, rowBitsArr);
   }
 }

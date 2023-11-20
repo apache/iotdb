@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.execution.aggregation.LastValueDescAccumu
 import org.apache.iotdb.db.queryengine.execution.aggregation.MaxTimeDescAccumulator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -69,11 +70,11 @@ public class LastQueryUtil {
     // Time
     builder.getTimeColumnBuilder().writeLong(lastTime);
     // timeseries
-    builder.getColumnBuilder(0).writeBinary(new Binary(fullPath));
+    builder.getColumnBuilder(0).writeBinary(new Binary(fullPath, TSFileConfig.STRING_CHARSET));
     // value
-    builder.getColumnBuilder(1).writeBinary(new Binary(lastValue));
+    builder.getColumnBuilder(1).writeBinary(new Binary(lastValue, TSFileConfig.STRING_CHARSET));
     // dataType
-    builder.getColumnBuilder(2).writeBinary(new Binary(dataType));
+    builder.getColumnBuilder(2).writeBinary(new Binary(dataType, TSFileConfig.STRING_CHARSET));
     builder.declarePosition();
   }
 
@@ -84,9 +85,9 @@ public class LastQueryUtil {
     // timeseries
     builder.getColumnBuilder(0).writeBinary(fullPath);
     // value
-    builder.getColumnBuilder(1).writeBinary(new Binary(lastValue));
+    builder.getColumnBuilder(1).writeBinary(new Binary(lastValue, TSFileConfig.STRING_CHARSET));
     // dataType
-    builder.getColumnBuilder(2).writeBinary(new Binary(dataType));
+    builder.getColumnBuilder(2).writeBinary(new Binary(dataType, TSFileConfig.STRING_CHARSET));
     builder.declarePosition();
   }
 

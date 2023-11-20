@@ -20,6 +20,7 @@ package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
@@ -202,7 +203,7 @@ public class MemUtils {
       memUsed += ((Binary) stringDataPoint.getValue()).getLength();
       // encoding string reference and its memory
       memUsed += 8;
-      memUsed += getStringMem(((Binary) stringDataPoint.getValue()).getTextEncodingType());
+      memUsed += getStringMem(TSFileConfig.STRING_ENCODING);
     } else {
       logger.error("Unsupported data point type");
     }

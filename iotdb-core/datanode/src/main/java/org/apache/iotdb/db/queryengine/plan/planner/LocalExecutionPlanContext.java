@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperato
 import org.apache.iotdb.db.queryengine.execution.timer.RuleBasedTimeSliceAllocator;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -237,7 +238,8 @@ public class LocalExecutionPlanContext {
     if (cachedLastValueAndPathList == null) {
       cachedLastValueAndPathList = new ArrayList<>();
     }
-    cachedLastValueAndPathList.add(new Pair<>(timeValuePair, new Binary(fullPath)));
+    cachedLastValueAndPathList.add(
+        new Pair<>(timeValuePair, new Binary(fullPath, TSFileConfig.STRING_CHARSET)));
   }
 
   public List<Pair<TimeValuePair, Binary>> getCachedLastValueAndPathList() {

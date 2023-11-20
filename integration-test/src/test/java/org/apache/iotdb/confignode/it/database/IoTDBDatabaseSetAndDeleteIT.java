@@ -27,6 +27,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCountDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
@@ -46,6 +47,8 @@ import org.junit.runner.RunWith;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+
+import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE_BINARY;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
@@ -86,19 +89,25 @@ public class IoTDBDatabaseSetAndDeleteIT {
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
       // test count all Databases
-      TCountDatabaseResp countResp = client.countMatchedDatabases(Arrays.asList("root", "**"));
+      TCountDatabaseResp countResp =
+          client.countMatchedDatabases(
+              new TGetDatabaseReq(Arrays.asList("root", "**"), ALL_MATCH_SCOPE_BINARY));
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), countResp.getStatus().getCode());
       Assert.assertEquals(2, countResp.getCount());
 
       // test count one Database
-      countResp = client.countMatchedDatabases(Arrays.asList("root", "sg0"));
+      countResp =
+          client.countMatchedDatabases(
+              new TGetDatabaseReq(Arrays.asList("root", "sg0"), ALL_MATCH_SCOPE_BINARY));
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), countResp.getStatus().getCode());
       Assert.assertEquals(1, countResp.getCount());
 
       // test query all DatabaseSchemas
-      TDatabaseSchemaResp getResp = client.getMatchedDatabaseSchemas(Arrays.asList("root", "**"));
+      TDatabaseSchemaResp getResp =
+          client.getMatchedDatabaseSchemas(
+              new TGetDatabaseReq(Arrays.asList("root", "**"), ALL_MATCH_SCOPE_BINARY));
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getResp.getStatus().getCode());
       Map<String, TDatabaseSchema> schemaMap = getResp.getDatabaseSchemaMap();
@@ -134,7 +143,9 @@ public class IoTDBDatabaseSetAndDeleteIT {
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
       // test setter results
-      getResp = client.getMatchedDatabaseSchemas(Arrays.asList("root", "sg1"));
+      getResp =
+          client.getMatchedDatabaseSchemas(
+              new TGetDatabaseReq(Arrays.asList("root", "sg1"), ALL_MATCH_SCOPE_BINARY));
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getResp.getStatus().getCode());
       schemaMap = getResp.getDatabaseSchemaMap();
@@ -169,7 +180,9 @@ public class IoTDBDatabaseSetAndDeleteIT {
       List<String> sgs = Arrays.asList(sg0, sg1);
       deleteStorageGroupsReq.setPrefixPathList(sgs);
       TSStatus deleteSgStatus = client.deleteDatabases(deleteStorageGroupsReq);
-      TDatabaseSchemaResp root = client.getMatchedDatabaseSchemas(Arrays.asList("root", "*"));
+      TDatabaseSchemaResp root =
+          client.getMatchedDatabaseSchemas(
+              new TGetDatabaseReq(Arrays.asList("root", "*"), ALL_MATCH_SCOPE_BINARY));
       Assert.assertTrue(root.getDatabaseSchemaMap().isEmpty());
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), deleteSgStatus.getCode());
     }

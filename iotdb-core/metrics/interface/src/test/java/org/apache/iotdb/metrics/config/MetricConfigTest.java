@@ -21,7 +21,6 @@ package org.apache.iotdb.metrics.config;
 
 import org.apache.iotdb.metrics.config.MetricConfig.IoTDBReporterConfig;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
-import org.apache.iotdb.metrics.utils.MetricFrameType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.junit.Test;
@@ -37,7 +36,6 @@ public class MetricConfigTest {
     properties.setProperty("cn_enable_metric", "true");
     properties.setProperty("cn_enable_performance_stat", "true");
     properties.setProperty("cn_metric_reporter_list", "JMX,PROMETHEUS,IOTDB");
-    properties.setProperty("cn_metric_frame_type", "DROPWIZARD");
     properties.setProperty("cn_metric_level", "ALL");
     properties.setProperty("cn_metric_async_collect_period", "10");
     properties.setProperty("cn_metric_prometheus_reporter_port", "9090");
@@ -54,7 +52,6 @@ public class MetricConfigTest {
     MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
 
     assertEquals(3, metricConfig.getMetricReporterList().size());
-    assertEquals(MetricFrameType.DROPWIZARD, metricConfig.getMetricFrameType());
     assertEquals(MetricLevel.ALL, metricConfig.getMetricLevel());
     assertEquals(10, (int) metricConfig.getAsyncCollectPeriodInSecond());
     assertEquals(9090, (int) metricConfig.getPrometheusReporterPort());
@@ -75,7 +72,6 @@ public class MetricConfigTest {
     properties.setProperty("dn_enable_metric", "true");
     properties.setProperty("dn_enable_performance_stat", "true");
     properties.setProperty("dn_metric_reporter_list", "JMX,PROMETHEUS,IOTDB");
-    properties.setProperty("dn_metric_frame_type", "DROPWIZARD");
     properties.setProperty("dn_metric_level", "ALL");
     properties.setProperty("dn_metric_async_collect_period", "10");
     properties.setProperty("dn_metric_prometheus_reporter_port", "9090");
@@ -93,7 +89,6 @@ public class MetricConfigTest {
     MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
 
     assertEquals(3, metricConfig.getMetricReporterList().size());
-    assertEquals(MetricFrameType.DROPWIZARD, metricConfig.getMetricFrameType());
     assertEquals(MetricLevel.ALL, metricConfig.getMetricLevel());
     assertEquals(10, (int) metricConfig.getAsyncCollectPeriodInSecond());
     assertEquals(9090, (int) metricConfig.getPrometheusReporterPort());

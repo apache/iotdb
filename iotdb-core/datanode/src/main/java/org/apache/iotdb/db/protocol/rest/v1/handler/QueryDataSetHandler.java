@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildPathsSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
@@ -182,7 +183,7 @@ public class QueryDataSetHandler {
           } else {
             targetDataSetColumn.add(
                 column.getDataType().equals(TSDataType.TEXT)
-                    ? column.getBinary(i).getStringValue()
+                    ? column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET)
                     : column.getObject(i));
           }
         }
@@ -238,7 +239,7 @@ public class QueryDataSetHandler {
           } else {
             targetDataSetColumn.add(
                 column.getDataType().equals(TSDataType.TEXT)
-                    ? column.getBinary(i).getStringValue()
+                    ? column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET)
                     : column.getObject(i));
           }
         }

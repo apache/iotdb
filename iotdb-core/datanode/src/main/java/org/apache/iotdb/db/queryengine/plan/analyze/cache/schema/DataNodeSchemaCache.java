@@ -22,13 +22,14 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.ITemplateManager;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -37,12 +38,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.function.Function;
+import java.util.function.IntFunction;
+import java.util.function.IntPredicate;
+
+import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
 
 /**
  * This class takes the responsibility of metadata cache management of all DataRegions under
@@ -115,7 +116,8 @@ public class DataNodeSchemaCache {
   }
 
   public ClusterSchemaTree get(PartialPath fullPath) {
-    ClusterSchemaTree clusterSchemaTree = deviceUsingTemplateSchemaCache.get(fullPath);
+    ClusterSchemaTree clusterSchemaTree =
+        deviceUsingTemplateSchemaCache.get(fullPath.getDevicePath());
     if (clusterSchemaTree == null || clusterSchemaTree.isEmpty()) {
       return timeSeriesSchemaCache.get(fullPath);
     } else {
@@ -123,8 +125,24 @@ public class DataNodeSchemaCache {
     }
   }
 
-  public ClusterSchemaTree getMatchedSchemaWithTemplate(PartialPath path) {
-    return deviceUsingTemplateSchemaCache.getMatchedSchemaWithTemplate(path);
+  /**
+   * Get schema info under the given device if the device path is a template activated path.
+   *
+   * @param devicePath full path of the device
+   * @return empty if cache miss or the device path is not a template activated path
+   */
+  public ClusterSchemaTree getMatchedSchemaWithTemplate(PartialPath devicePath) {
+    return deviceUsingTemplateSchemaCache.getMatchedSchemaWithTemplate(devicePath);
+  }
+
+  /**
+   * Get schema info under the given full path that must not be a template series.
+   *
+   * @param fullPath full path
+   * @return empty if cache miss
+   */
+  public ClusterSchemaTree getMatchedSchemaWithoutTemplate(PartialPath fullPath) {
+    return timeSeriesSchemaCache.get(fullPath);
   }
 
   public List<Integer> computeWithoutTemplate(ISchemaComputation schemaComputation) {
@@ -159,29 +177,17 @@ public class DataNodeSchemaCache {
    * associated device.
    */
   public void put(ClusterSchemaTree tree) {
-    Optional<Pair<Template, ?>> templateInfo;
     PartialPath devicePath;
-    Set<PartialPath> templateDevices = new HashSet<>();
-    Set<PartialPath> commonDevices = new HashSet<>();
-    for (MeasurementPath path : tree.getAllMeasurement()) {
-      devicePath = path.getDevicePath();
-      if (templateDevices.contains(devicePath)) {
-        continue;
-      }
-
-      if (commonDevices.contains(devicePath)) {
-        timeSeriesSchemaCache.putSingleMeasurementPath(tree.getBelongedDatabase(path), path);
-        continue;
-      }
-
-      templateInfo = Optional.ofNullable(templateManager.checkTemplateSetInfo(devicePath));
-      if (templateInfo.isPresent()) {
+    for (DeviceSchemaInfo deviceSchemaInfo : tree.getAllDevices()) {
+      devicePath = deviceSchemaInfo.getDevicePath();
+      if (deviceSchemaInfo.getTemplateId() != NON_TEMPLATE) {
         deviceUsingTemplateSchemaCache.put(
-            devicePath, tree.getBelongedDatabase(devicePath), templateInfo.get().left.getId());
-        templateDevices.add(devicePath);
+            devicePath, tree.getBelongedDatabase(devicePath), deviceSchemaInfo.getTemplateId());
       } else {
-        timeSeriesSchemaCache.putSingleMeasurementPath(tree.getBelongedDatabase(path), path);
-        commonDevices.add(devicePath);
+        for (MeasurementPath measurementPath : deviceSchemaInfo.getMeasurementSchemaPathList()) {
+          timeSeriesSchemaCache.putSingleMeasurementPath(
+              tree.getBelongedDatabase(devicePath), measurementPath);
+        }
       }
     }
   }
@@ -191,6 +197,7 @@ public class DataNodeSchemaCache {
   }
 
   /** get SchemaCacheEntry and update last cache */
+  @TestOnly
   public void updateLastCache(
       PartialPath devicePath,
       String measurement,
@@ -207,20 +214,25 @@ public class DataNodeSchemaCache {
       String[] measurements,
       MeasurementSchema[] measurementSchemas,
       boolean isAligned,
-      Function<Integer, TimeValuePair> timeValuePairProvider,
-      Function<Integer, Boolean> shouldUpdateProvider,
+      IntFunction<TimeValuePair> timeValuePairProvider,
+      IntPredicate shouldUpdateProvider,
       boolean highPriorityUpdate,
       Long latestFlushedTime) {
-    timeSeriesSchemaCache.updateLastCache(
-        database,
-        devicePath,
-        measurements,
-        measurementSchemas,
-        isAligned,
-        timeValuePairProvider,
-        shouldUpdateProvider,
-        highPriorityUpdate,
-        latestFlushedTime);
+    takeReadLock();
+    try {
+      timeSeriesSchemaCache.updateLastCache(
+          database,
+          devicePath,
+          measurements,
+          measurementSchemas,
+          isAligned,
+          timeValuePairProvider,
+          shouldUpdateProvider,
+          highPriorityUpdate,
+          latestFlushedTime);
+    } finally {
+      releaseReadLock();
+    }
   }
 
   /**
@@ -233,8 +245,34 @@ public class DataNodeSchemaCache {
       TimeValuePair timeValuePair,
       boolean highPriorityUpdate,
       Long latestFlushedTime) {
-    timeSeriesSchemaCache.updateLastCache(
-        storageGroup, measurementPath, timeValuePair, highPriorityUpdate, latestFlushedTime);
+    takeReadLock();
+    try {
+      timeSeriesSchemaCache.updateLastCache(
+          storageGroup, measurementPath, timeValuePair, highPriorityUpdate, latestFlushedTime);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public void invalidate(String database) {
+    deviceUsingTemplateSchemaCache.invalidateCache(database);
+    timeSeriesSchemaCache.invalidate(database);
+  }
+
+  public void invalidate(List<PartialPath> partialPathList) {
+    boolean doPrecise = true;
+    for (PartialPath partialPath : partialPathList) {
+      if (partialPath.getDevicePath().hasWildcard()) {
+        doPrecise = false;
+        break;
+      }
+    }
+    if (doPrecise) {
+      deviceUsingTemplateSchemaCache.invalidateCache(partialPathList);
+      timeSeriesSchemaCache.invalidate(partialPathList);
+    } else {
+      invalidateAll();
+    }
   }
 
   public void invalidateAll() {

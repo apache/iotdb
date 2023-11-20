@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.schema.ClusterSchemaQuotaLevel;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
@@ -39,6 +38,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.metadata.SeriesOverflowException;
+import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionMemMetric;
 import org.apache.iotdb.db.schemaengine.rescon.DataNodeSchemaQuotaManager;
@@ -288,8 +288,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public ISchemaRegionMetric createSchemaRegionMetric() {
-    return new SchemaRegionMemMetric(regionStatistics);
+  public ISchemaRegionMetric createSchemaRegionMetric(String database) {
+    return new SchemaRegionMemMetric(regionStatistics, database);
   }
 
   /**
@@ -683,12 +683,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public void checkSchemaQuota(PartialPath devicePath, int timeSeriesNum)
       throws SchemaQuotaExceededException {
-    if (schemaQuotaManager.getLevel().equals(ClusterSchemaQuotaLevel.TIMESERIES)) {
-      schemaQuotaManager.checkMeasurementLevel(timeSeriesNum);
-    } else if (schemaQuotaManager.getLevel().equals(ClusterSchemaQuotaLevel.DEVICE)) {
-      if (!mtree.checkDeviceNodeExists(devicePath)) {
-        schemaQuotaManager.checkDeviceLevel();
-      }
+    if (!mtree.checkDeviceNodeExists(devicePath)) {
+      schemaQuotaManager.check(timeSeriesNum, 1);
+    } else {
+      schemaQuotaManager.check(timeSeriesNum, 0);
     }
   }
 
@@ -911,10 +909,26 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   // region Interfaces for timeseries, measurement and schema info Query
 
   @Override
-  public List<MeasurementPath> fetchSchema(
-      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
+  public MeasurementPath fetchMeasurementPath(PartialPath fullPath) throws MetadataException {
+    IMeasurementMNode<IMemMNode> node = mtree.getMeasurementMNode(fullPath);
+    MeasurementPath res = new MeasurementPath(node.getPartialPath(), node.getSchema());
+    res.setUnderAlignedEntity(node.getParent().getAsDeviceMNode().isAligned());
+    return res;
+  }
+
+  @Override
+  public ClusterSchemaTree fetchSchema(
+      PathPatternTree patternTree, Map<Integer, Template> templateMap, boolean withTags)
       throws MetadataException {
-    return mtree.fetchSchema(pathPattern, templateMap, withTags);
+    if (patternTree.isContainWildcard()) {
+      ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+      for (PartialPath path : patternTree.getAllPathPatterns()) {
+        schemaTree.mergeSchemaTree(mtree.fetchSchema(path, templateMap, withTags));
+      }
+      return schemaTree;
+    } else {
+      return mtree.fetchSchemaWithoutWildcard(patternTree, templateMap, withTags);
+    }
   }
 
   // endregion

@@ -20,17 +20,18 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
-import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -146,24 +147,28 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
     List<WritePlanNode> result = new ArrayList<>();
 
-    Map<TRegionReplicaSet, List<InsertRowNode>> splitMap = new HashMap<>();
-    Map<TRegionReplicaSet, List<Integer>> splitMapForIndex = new HashMap<>();
+    Map<TRegionReplicaSet, Map<TTimePartitionSlot, List<InsertRowNode>>> splitMap = new HashMap<>();
+    Map<TRegionReplicaSet, Map<TTimePartitionSlot, List<Integer>>> splitMapForIndex =
+        new HashMap<>();
 
     for (int i = 0; i < insertRowNodeList.size(); i++) {
       InsertRowNode insertRowNode = insertRowNodeList.get(i);
+      TTimePartitionSlot timePartitionSlot =
+          TimePartitionUtils.getTimePartitionSlot(insertRowNode.getTime());
       TRegionReplicaSet dataRegionReplicaSet =
           analysis
               .getDataPartitionInfo()
-              .getDataRegionReplicaSetForWriting(
-                  devicePath.getFullPath(),
-                  TimePartitionUtils.getTimePartition(insertRowNode.getTime()));
-      List<InsertRowNode> tmpMap =
-          splitMap.computeIfAbsent(dataRegionReplicaSet, k -> new ArrayList<>());
-      List<Integer> tmpIndexMap =
-          splitMapForIndex.computeIfAbsent(dataRegionReplicaSet, k -> new ArrayList<>());
-
-      tmpMap.add(insertRowNode);
-      tmpIndexMap.add(insertRowNodeIndexList.get(i));
+              .getDataRegionReplicaSetForWriting(devicePath.getFullPath(), timePartitionSlot);
+      Map<TTimePartitionSlot, List<InsertRowNode>> tmpMap =
+          splitMap.computeIfAbsent(dataRegionReplicaSet, k -> new HashMap<>());
+      Map<TTimePartitionSlot, List<Integer>> tmpIndexMap =
+          splitMapForIndex.computeIfAbsent(dataRegionReplicaSet, k -> new HashMap<>());
+      List<InsertRowNode> tmpList =
+          tmpMap.computeIfAbsent(timePartitionSlot, k -> new ArrayList<>());
+      List<Integer> tmpIndexList =
+          tmpIndexMap.computeIfAbsent(timePartitionSlot, k -> new ArrayList<>());
+      tmpList.add(insertRowNode);
+      tmpIndexList.add(insertRowNodeIndexList.get(i));
 
       if (i == insertRowNodeList.size() - 1) {
         analysis.setRedirectNodeList(
@@ -172,12 +177,17 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
       }
     }
 
-    for (Map.Entry<TRegionReplicaSet, List<InsertRowNode>> entry : splitMap.entrySet()) {
-      InsertRowsOfOneDeviceNode reducedNode = new InsertRowsOfOneDeviceNode(this.getPlanNodeId());
-      reducedNode.setInsertRowNodeList(entry.getValue());
-      reducedNode.setInsertRowNodeIndexList(splitMapForIndex.get(entry.getKey()));
-      reducedNode.setDataRegionReplicaSet(entry.getKey());
-      result.add(reducedNode);
+    for (Map.Entry<TRegionReplicaSet, Map<TTimePartitionSlot, List<InsertRowNode>>> entry1 :
+        splitMap.entrySet()) {
+      for (Map.Entry<TTimePartitionSlot, List<InsertRowNode>> entry :
+          entry1.getValue().entrySet()) {
+        InsertRowsOfOneDeviceNode reducedNode = new InsertRowsOfOneDeviceNode(this.getPlanNodeId());
+        reducedNode.setInsertRowNodeList(entry.getValue());
+        reducedNode.setInsertRowNodeIndexList(
+            splitMapForIndex.get(entry1.getKey()).get(entry.getKey()));
+        reducedNode.setDataRegionReplicaSet(entry1.getKey());
+        result.add(reducedNode);
+      }
     }
     return result;
   }

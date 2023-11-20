@@ -44,35 +44,46 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   // used to filter data
   private final long startTime;
   private final long endTime;
+  private final boolean needParseTime;
+  private boolean isTsFileFormatValid = true;
 
   private final TsFileResource resource;
   private File tsFile;
 
+  private final boolean isLoaded;
   private final boolean isGeneratedByPipe;
 
   private final AtomicBoolean isClosed;
-
   private TsFileInsertionDataContainer dataContainer;
 
-  public PipeTsFileInsertionEvent(TsFileResource resource, boolean isGeneratedByPipe) {
-    this(resource, isGeneratedByPipe, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
+  public PipeTsFileInsertionEvent(
+      TsFileResource resource, boolean isLoaded, boolean isGeneratedByPipe) {
+    this(resource, isLoaded, isGeneratedByPipe, null, null, Long.MIN_VALUE, Long.MAX_VALUE, false);
   }
 
   public PipeTsFileInsertionEvent(
       TsFileResource resource,
+      boolean isLoaded,
       boolean isGeneratedByPipe,
       PipeTaskMeta pipeTaskMeta,
       String pattern,
       long startTime,
-      long endTime) {
+      long endTime,
+      boolean needParseTime) {
     super(pipeTaskMeta, pattern);
 
     this.startTime = startTime;
     this.endTime = endTime;
+    this.needParseTime = needParseTime;
+
+    if (needParseTime) {
+      isTimeParsed = false;
+    }
 
     this.resource = resource;
     tsFile = resource.getTsFile();
 
+    this.isLoaded = isLoaded;
     this.isGeneratedByPipe = isGeneratedByPipe;
 
     isClosed = new AtomicBoolean(resource.isClosed());
@@ -83,15 +94,22 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
         processor.addCloseFileListener(
             o -> {
               synchronized (isClosed) {
+                isTsFileFormatValid = o.isTsFileFormatValidForPipe();
                 isClosed.set(true);
                 isClosed.notifyAll();
               }
             });
       }
     }
+    // check again after register close listener in case TsFile is closed during the process
+    isClosed.set(resource.isClosed());
   }
 
-  public void waitForTsFileClose() throws InterruptedException {
+  /**
+   * @return {@code false} if this file can't be sent by pipe due to format violations. {@code true}
+   *     otherwise.
+   */
+  public boolean waitForTsFileClose() throws InterruptedException {
     if (!isClosed.get()) {
       synchronized (isClosed) {
         while (!isClosed.get()) {
@@ -99,14 +117,15 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
         }
       }
     }
+    return isTsFileFormatValid;
   }
 
   public File getTsFile() {
     return tsFile;
   }
 
-  public boolean hasTimeFilter() {
-    return startTime != Long.MIN_VALUE || endTime != Long.MAX_VALUE;
+  public boolean getIsLoaded() {
+    return isLoaded;
   }
 
   /////////////////////////// EnrichedEvent ///////////////////////////
@@ -151,7 +170,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
           String.format(
               "Interrupted when waiting for closing TsFile %s.", resource.getTsFilePath()));
       Thread.currentThread().interrupt();
-      return new MinimumProgressIndex();
+      return MinimumProgressIndex.INSTANCE;
     }
   }
 
@@ -159,7 +178,14 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       PipeTaskMeta pipeTaskMeta, String pattern) {
     return new PipeTsFileInsertionEvent(
-        resource, isGeneratedByPipe, pipeTaskMeta, pattern, startTime, endTime);
+        resource,
+        isLoaded,
+        isGeneratedByPipe,
+        pipeTaskMeta,
+        pattern,
+        startTime,
+        endTime,
+        needParseTime);
   }
 
   @Override
@@ -180,16 +206,29 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
       }
       return dataContainer.toTabletInsertionEvents();
     } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      close();
+
       final String errorMsg =
           String.format(
               "Interrupted when waiting for closing TsFile %s.", resource.getTsFilePath());
       LOGGER.warn(errorMsg, e);
-      Thread.currentThread().interrupt();
       throw new PipeException(errorMsg);
     } catch (IOException e) {
+      close();
+
       final String errorMsg = String.format("Read TsFile %s error.", resource.getTsFilePath());
       LOGGER.warn(errorMsg, e);
       throw new PipeException(errorMsg);
+    }
+  }
+
+  /** Release the resource of data container. */
+  @Override
+  public void close() {
+    if (dataContainer != null) {
+      dataContainer.close();
+      dataContainer = null;
     }
   }
 

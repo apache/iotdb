@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -162,8 +163,12 @@ public class ClusterSchemaManager {
       // Cache DatabaseSchema
       result = getConsensusManager().write(databaseSchemaPlan);
       // Bind Database metrics
-      PartitionMetrics.bindDatabasePartitionMetrics(
-          MetricService.getInstance(), configManager, databaseSchemaPlan.getSchema().getName());
+      PartitionMetrics.bindDatabaseRelatedMetricsWhenUpdate(
+          MetricService.getInstance(),
+          configManager,
+          databaseSchemaPlan.getSchema().getName(),
+          databaseSchemaPlan.getSchema().getDataReplicationFactor(),
+          databaseSchemaPlan.getSchema().getSchemaReplicationFactor());
       // Adjust the maximum RegionGroup number of each Database
       adjustMaxRegionGroupNum();
     } catch (ConsensusException e) {
@@ -233,7 +238,13 @@ public class ClusterSchemaManager {
 
     // Alter DatabaseSchema
     try {
-      return getConsensusManager().write(databaseSchemaPlan);
+      result = getConsensusManager().write(databaseSchemaPlan);
+      PartitionMetrics.bindDatabaseReplicationFactorMetricsWhenUpdate(
+          MetricService.getInstance(),
+          databaseSchemaPlan.getSchema().getName(),
+          databaseSchemaPlan.getSchema().getDataReplicationFactor(),
+          databaseSchemaPlan.getSchema().getSchemaReplicationFactor());
+      return result;
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -285,10 +296,10 @@ public class ClusterSchemaManager {
    *
    * @return DatabaseSchemaResp
    */
-  public DatabaseSchemaResp getMatchedDatabaseSchema(GetDatabasePlan getStorageGroupPlan) {
+  public DatabaseSchemaResp getMatchedDatabaseSchema(GetDatabasePlan getDatabasePlan) {
     DatabaseSchemaResp resp;
     try {
-      resp = (DatabaseSchemaResp) getConsensusManager().read(getStorageGroupPlan);
+      resp = (DatabaseSchemaResp) getConsensusManager().read(getDatabasePlan);
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_READ_ERROR, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -778,8 +789,9 @@ public class ClusterSchemaManager {
   }
 
   /** show path set template xx */
-  public TGetPathsSetTemplatesResp getPathsSetTemplate(String templateName) {
-    GetPathsSetTemplatePlan getPathsSetTemplatePlan = new GetPathsSetTemplatePlan(templateName);
+  public TGetPathsSetTemplatesResp getPathsSetTemplate(String templateName, PathPatternTree scope) {
+    GetPathsSetTemplatePlan getPathsSetTemplatePlan =
+        new GetPathsSetTemplatePlan(templateName, scope);
     PathInfoResp pathInfoResp;
     try {
       pathInfoResp = (PathInfoResp) getConsensusManager().read(getPathsSetTemplatePlan);
@@ -853,7 +865,8 @@ public class ClusterSchemaManager {
       return new Pair<>(templateResp.getStatus(), null);
     }
 
-    GetPathsSetTemplatePlan getPathsSetTemplatePlan = new GetPathsSetTemplatePlan(templateName);
+    GetPathsSetTemplatePlan getPathsSetTemplatePlan =
+        new GetPathsSetTemplatePlan(templateName, SchemaConstant.ALL_MATCH_SCOPE);
     PathInfoResp pathInfoResp;
     try {
       pathInfoResp = (PathInfoResp) getConsensusManager().read(getPathsSetTemplatePlan);
@@ -939,7 +952,8 @@ public class ClusterSchemaManager {
     }
 
     // check is template set on some path, block all template set operation
-    GetPathsSetTemplatePlan getPathsSetTemplatePlan = new GetPathsSetTemplatePlan(templateName);
+    GetPathsSetTemplatePlan getPathsSetTemplatePlan =
+        new GetPathsSetTemplatePlan(templateName, SchemaConstant.ALL_MATCH_SCOPE);
     PathInfoResp pathInfoResp;
     try {
       pathInfoResp = (PathInfoResp) getConsensusManager().read(getPathsSetTemplatePlan);
@@ -1063,12 +1077,35 @@ public class ClusterSchemaManager {
     }
   }
 
-  public long getSchemaQuotaCount() {
-    return schemaQuotaStatistics.getSchemaQuotaCount(getPartitionManager().getAllSchemaPartition());
+  /**
+   * Only leader use this interface. Get the remain schema quota of specified schema region.
+   *
+   * @return pair of <series quota, device quota>, -1 means no limit
+   */
+  public Pair<Long, Long> getSchemaQuotaRemain() {
+    boolean isDeviceLimit = schemaQuotaStatistics.getDeviceThreshold() != -1;
+    boolean isSeriesLimit = schemaQuotaStatistics.getSeriesThreshold() != -1;
+    if (isSeriesLimit || isDeviceLimit) {
+      Set<Integer> schemaPartitionSet = getPartitionManager().getAllSchemaPartition();
+      return new Pair<>(
+          isSeriesLimit ? schemaQuotaStatistics.getSeriesQuotaRemain(schemaPartitionSet) : -1L,
+          isDeviceLimit ? schemaQuotaStatistics.getDeviceQuotaRemain(schemaPartitionSet) : -1L);
+    } else {
+      return new Pair<>(-1L, -1L);
+    }
   }
 
-  public void updateSchemaQuota(Map<Integer, Long> schemaCountMap) {
-    schemaQuotaStatistics.updateCount(schemaCountMap);
+  public void updateTimeSeriesUsage(Map<Integer, Long> seriesUsage) {
+    schemaQuotaStatistics.updateTimeSeriesUsage(seriesUsage);
+  }
+
+  public void updateDeviceUsage(Map<Integer, Long> deviceUsage) {
+    schemaQuotaStatistics.updateDeviceUsage(deviceUsage);
+  }
+
+  public void updateSchemaQuotaConfiguration(long seriesThreshold, long deviceThreshold) {
+    schemaQuotaStatistics.setDeviceThreshold(deviceThreshold);
+    schemaQuotaStatistics.setSeriesThreshold(seriesThreshold);
   }
 
   public void clearSchemaQuotaCache() {

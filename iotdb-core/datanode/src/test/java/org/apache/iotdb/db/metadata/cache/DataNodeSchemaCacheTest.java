@@ -20,12 +20,17 @@
 package org.apache.iotdb.db.metadata.cache;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.SchemaCacheEntry;
+import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
+import org.apache.iotdb.db.schemaengine.template.Template;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -35,10 +40,14 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
 
 public class DataNodeSchemaCacheTest {
   DataNodeSchemaCache dataNodeSchemaCache;
@@ -54,6 +63,7 @@ public class DataNodeSchemaCacheTest {
   @After
   public void tearDown() throws Exception {
     dataNodeSchemaCache.cleanUp();
+    ClusterTemplateManager.getInstance().clear();
   }
 
   @Test
@@ -67,14 +77,15 @@ public class DataNodeSchemaCacheTest {
     dataNodeSchemaCache.put((ClusterSchemaTree) generateSchemaTree1());
 
     Map<PartialPath, SchemaCacheEntry> schemaCacheEntryMap =
-        dataNodeSchemaCache.get(device1, measurements).getAllMeasurement().stream()
+        dataNodeSchemaCache.get(device1, measurements).getAllDevices().stream()
+            .flatMap(deviceSchemaInfo -> deviceSchemaInfo.getMeasurementSchemaPathList().stream())
             .collect(
                 Collectors.toMap(
                     o -> new PartialPath(o.getNodes()),
                     o ->
                         new SchemaCacheEntry(
                             "root.sg1",
-                            (MeasurementSchema) o.getMeasurementSchema(),
+                            o.getMeasurementSchema(),
                             o.getTagMap(),
                             o.isUnderAlignedEntity())));
     Assert.assertEquals(
@@ -99,14 +110,15 @@ public class DataNodeSchemaCacheTest {
     dataNodeSchemaCache.put((ClusterSchemaTree) generateSchemaTree2());
 
     schemaCacheEntryMap =
-        dataNodeSchemaCache.get(device1, otherMeasurements).getAllMeasurement().stream()
+        dataNodeSchemaCache.get(device1, otherMeasurements).getAllDevices().stream()
+            .flatMap(deviceSchemaInfo -> deviceSchemaInfo.getMeasurementSchemaPathList().stream())
             .collect(
                 Collectors.toMap(
                     o -> new PartialPath(o.getNodes()),
                     o ->
                         new SchemaCacheEntry(
                             "root.sg1",
-                            (MeasurementSchema) o.getMeasurementSchema(),
+                            o.getMeasurementSchema(),
                             o.getTagMap(),
                             o.isUnderAlignedEntity())));
     Assert.assertEquals(
@@ -284,5 +296,58 @@ public class DataNodeSchemaCacheTest {
     Assert.assertEquals(
         new TimeValuePair(2, new TsPrimitiveType.TsInt(2)),
         dataNodeSchemaCache.getLastCache(new PartialPath("root.db.d.s3")));
+  }
+
+  @Test
+  public void testPut() throws Exception {
+    ClusterSchemaTree clusterSchemaTree = new ClusterSchemaTree();
+    Template template1 =
+        new Template(
+            "t1",
+            Arrays.asList("s1", "s2"),
+            Arrays.asList(TSDataType.DOUBLE, TSDataType.INT32),
+            Arrays.asList(TSEncoding.RLE, TSEncoding.RLE),
+            Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
+    template1.setId(1);
+    Template template2 =
+        new Template(
+            "t2",
+            Arrays.asList("t1", "t2", "t3"),
+            Arrays.asList(TSDataType.DOUBLE, TSDataType.INT32, TSDataType.INT64),
+            Arrays.asList(TSEncoding.RLE, TSEncoding.RLE, TSEncoding.RLBE),
+            Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY, CompressionType.SNAPPY));
+    template2.setId(2);
+    ClusterTemplateManager.getInstance().putTemplate(template1);
+    ClusterTemplateManager.getInstance().putTemplate(template2);
+    clusterSchemaTree.appendTemplateDevice(new PartialPath("root.sg1.d1"), false, 1, template1);
+    clusterSchemaTree.appendTemplateDevice(new PartialPath("root.sg1.d2"), false, 2, template2);
+    clusterSchemaTree.setDatabases(Collections.singleton("root.sg1"));
+    clusterSchemaTree.appendSingleMeasurementPath(
+        new MeasurementPath("root.sg1.d3.s1", TSDataType.FLOAT));
+    dataNodeSchemaCache.put(clusterSchemaTree);
+    ClusterSchemaTree d1Tree =
+        dataNodeSchemaCache.getMatchedSchemaWithTemplate(new PartialPath("root.sg1.d1"));
+    ClusterSchemaTree d2Tree =
+        dataNodeSchemaCache.getMatchedSchemaWithTemplate(new PartialPath("root.sg1.d2"));
+    ClusterSchemaTree d3Tree =
+        dataNodeSchemaCache.getMatchedSchemaWithoutTemplate(new PartialPath("root.sg1.d3.s1"));
+    List<MeasurementPath> measurementPaths = d1Tree.searchMeasurementPaths(ALL_MATCH_PATTERN).left;
+    Assert.assertEquals(2, measurementPaths.size());
+    for (MeasurementPath measurementPath : measurementPaths) {
+      Assert.assertEquals(
+          template1.getSchema(measurementPath.getMeasurement()),
+          measurementPath.getMeasurementSchema());
+    }
+    measurementPaths = d2Tree.searchMeasurementPaths(ALL_MATCH_PATTERN).left;
+    Assert.assertEquals(3, measurementPaths.size());
+    for (MeasurementPath measurementPath : measurementPaths) {
+      Assert.assertEquals(
+          template2.getSchema(measurementPath.getMeasurement()),
+          measurementPath.getMeasurementSchema());
+    }
+    measurementPaths = d3Tree.searchMeasurementPaths(ALL_MATCH_PATTERN).left;
+    Assert.assertEquals(1, measurementPaths.size());
+    Assert.assertEquals(TSDataType.FLOAT, measurementPaths.get(0).getMeasurementSchema().getType());
+    Assert.assertEquals("root.sg1.d3.s1", measurementPaths.get(0).getFullPath());
   }
 }

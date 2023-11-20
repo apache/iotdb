@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process;
 import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -133,9 +134,9 @@ public class TagAggregationOperator extends AbstractConsumeAllOperator {
 
     for (int i = 0; i < group.size(); i++) {
       if (group.get(i) == null) {
-        columnBuilders[i].writeBinary(new Binary("NULL"));
+        columnBuilders[i].writeBinary(new Binary("NULL", TSFileConfig.STRING_CHARSET));
       } else {
-        columnBuilders[i].writeBinary(new Binary(group.get(i)));
+        columnBuilders[i].writeBinary(new Binary(group.get(i), TSFileConfig.STRING_CHARSET));
       }
     }
     for (int i = 0; i < aggregators.size(); i++) {

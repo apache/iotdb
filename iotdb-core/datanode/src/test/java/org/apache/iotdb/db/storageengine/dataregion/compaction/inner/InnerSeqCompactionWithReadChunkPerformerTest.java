@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -39,6 +40,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionF
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTimeseriesType;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
@@ -60,7 +62,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class InnerSeqCompactionWithReadChunkPerformerTest {
   static final String COMPACTION_TEST_SG = "root.compactionTest";
@@ -100,6 +101,7 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
     CompactionClearUtils.clearAllCompactionFiles();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
+    BloomFilterCache.getInstance().clear();
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanAllDir();
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(prevMaxDegreeOfIndexNode);
@@ -1060,7 +1062,7 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
 
   @Test
   public void testCompactionWithDeletionsDuringCompactions()
-      throws MetadataException, IOException, DataRegionException {
+      throws MetadataException, IOException, DataRegionException, InterruptedException {
     // create source seq files
     List<TsFileResource> sourceResources = new ArrayList<>();
     List<List<Long>> chunkPagePointsNum = new ArrayList<>();
@@ -1092,7 +1094,7 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
             COMPACTION_TEST_SG);
     vsgp.getTsFileResourceManager().addAll(sourceResources, true);
     // delete data before compaction
-    vsgp.deleteByDevice(new PartialPath(fullPaths[0]), 0, 1000, 0, null);
+    vsgp.deleteByDevice(new PartialPath(fullPaths[0]), 0, 1000, 0);
 
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
@@ -1101,13 +1103,12 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
             sourceResources,
             true,
             new ReadChunkCompactionPerformer(),
-            new AtomicInteger(0),
             0);
     task.setSourceFilesToCompactionCandidate();
-    task.checkValidAndSetMerging();
+    sourceResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
     // delete data during compaction
-    vsgp.deleteByDevice(new PartialPath(fullPaths[0]), 0, 1200, 0, null);
-    vsgp.deleteByDevice(new PartialPath(fullPaths[0]), 0, 1800, 0, null);
+    vsgp.deleteByDevice(new PartialPath(fullPaths[0]), 0, 1200, 0);
+    vsgp.deleteByDevice(new PartialPath(fullPaths[0]), 0, 1800, 0);
     for (int i = 0; i < sourceResources.size() - 1; i++) {
       TsFileResource resource = sourceResources.get(i);
       resource.resetModFile();

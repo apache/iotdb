@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
+import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -55,6 +59,8 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
 
   private static final String UNSUPPORTED_TYPE = "Unsupported data type:";
+
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   public AlignedWritableMemChunk(List<IMeasurementSchema> schemaList) {
     this.measurementIndexMap = new LinkedHashMap<>();
@@ -325,6 +331,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   public void encode(IChunkWriter chunkWriter) {
     AlignedChunkWriterImpl alignedChunkWriter = (AlignedChunkWriterImpl) chunkWriter;
 
+    BitMap rowBitMap = list.getRowBitMap();
     boolean[] timeDuplicateInfo = null;
     List<Integer> pageRange = new ArrayList<>();
     int range = 0;
@@ -339,12 +346,19 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
         range = 0;
       }
 
-      if (sortedRowIndex != list.rowCount() - 1 && time == list.getTime(sortedRowIndex + 1)) {
+      int nextRowIndex = sortedRowIndex + 1;
+      while (nextRowIndex < list.rowCount()
+          && rowBitMap != null
+          && rowBitMap.isMarked(nextRowIndex)) {
+        nextRowIndex++;
+      }
+      if (nextRowIndex != list.rowCount() && time == list.getTime(nextRowIndex)) {
         if (Objects.isNull(timeDuplicateInfo)) {
           timeDuplicateInfo = new boolean[list.rowCount()];
         }
         timeDuplicateInfo[sortedRowIndex] = true;
       }
+      sortedRowIndex = nextRowIndex - 1;
     }
 
     if (range != 0) {
@@ -352,25 +366,42 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     }
 
     List<TSDataType> dataTypes = list.getTsDataTypes();
+    Pair<Long, Integer>[] lastValidPointIndexForTimeDupCheck = new Pair[dataTypes.size()];
+
     for (int pageNum = 0; pageNum < pageRange.size() / 2; pageNum += 1) {
       for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
         // Pair of Time and Index
-        Pair<Long, Integer> lastValidPointIndexForTimeDupCheck = null;
-        if (Objects.nonNull(timeDuplicateInfo)) {
-          lastValidPointIndexForTimeDupCheck = new Pair<>(Long.MIN_VALUE, null);
+        if (Objects.nonNull(timeDuplicateInfo)
+            && lastValidPointIndexForTimeDupCheck[columnIndex] == null) {
+          lastValidPointIndexForTimeDupCheck[columnIndex] = new Pair<>(Long.MIN_VALUE, null);
         }
+        TSDataType tsDataType = dataTypes.get(columnIndex);
         for (int sortedRowIndex = pageRange.get(pageNum * 2);
             sortedRowIndex <= pageRange.get(pageNum * 2 + 1);
             sortedRowIndex++) {
-
+          // skip empty row
+          if (rowBitMap != null && rowBitMap.isMarked(list.getValueIndex(sortedRowIndex))) {
+            continue;
+          }
           // skip time duplicated rows
           long time = list.getTime(sortedRowIndex);
           if (Objects.nonNull(timeDuplicateInfo)) {
             if (!list.isNullValue(list.getValueIndex(sortedRowIndex), columnIndex)) {
-              lastValidPointIndexForTimeDupCheck.left = time;
-              lastValidPointIndexForTimeDupCheck.right = list.getValueIndex(sortedRowIndex);
+              lastValidPointIndexForTimeDupCheck[columnIndex].left = time;
+              lastValidPointIndexForTimeDupCheck[columnIndex].right =
+                  list.getValueIndex(sortedRowIndex);
             }
             if (timeDuplicateInfo[sortedRowIndex]) {
+              if (!list.isNullValue(sortedRowIndex, columnIndex)) {
+                long recordSize =
+                    MemUtils.getRecordSize(
+                        tsDataType,
+                        tsDataType == TSDataType.TEXT
+                            ? list.getBinaryByValueIndex(sortedRowIndex, columnIndex)
+                            : null,
+                        CONFIG.isEnableMemControl());
+                CompressionRatio.decreaseDuplicatedMemorySize(recordSize);
+              }
               continue;
             }
           }
@@ -385,15 +416,15 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
           // write(T:3,V:null)
 
           int originRowIndex;
-          if (Objects.nonNull(lastValidPointIndexForTimeDupCheck)
-              && (time == lastValidPointIndexForTimeDupCheck.left)) {
-            originRowIndex = lastValidPointIndexForTimeDupCheck.right;
+          if (Objects.nonNull(lastValidPointIndexForTimeDupCheck[columnIndex])
+              && (time == lastValidPointIndexForTimeDupCheck[columnIndex].left)) {
+            originRowIndex = lastValidPointIndexForTimeDupCheck[columnIndex].right;
           } else {
             originRowIndex = list.getValueIndex(sortedRowIndex);
           }
 
           boolean isNull = list.isNullValue(originRowIndex, columnIndex);
-          switch (dataTypes.get(columnIndex)) {
+          switch (tsDataType) {
             case BOOLEAN:
               alignedChunkWriter.writeByColumn(
                   time, list.getBooleanByValueIndex(originRowIndex, columnIndex), isNull);
@@ -430,6 +461,10 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       for (int sortedRowIndex = pageRange.get(pageNum * 2);
           sortedRowIndex <= pageRange.get(pageNum * 2 + 1);
           sortedRowIndex++) {
+        // skip empty row
+        if (rowBitMap != null && rowBitMap.isMarked(list.getValueIndex(sortedRowIndex))) {
+          continue;
+        }
         if (Objects.isNull(timeDuplicateInfo) || !timeDuplicateInfo[sortedRowIndex]) {
           times[pointsInPage++] = list.getTime(sortedRowIndex);
         }

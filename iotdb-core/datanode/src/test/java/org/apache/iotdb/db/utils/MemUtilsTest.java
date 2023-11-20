@@ -22,8 +22,10 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.BooleanDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
@@ -56,7 +58,7 @@ public class MemUtilsTest {
       new long[] {2},
       new float[] {3},
       new double[] {4},
-      new Binary[] {new Binary("5")}
+      new Binary[] {new Binary("5", TSFileConfig.STRING_CHARSET)}
     };
     TSDataType[] dataTypes = new TSDataType[6];
     int sizeSum = 0;
@@ -116,7 +118,7 @@ public class MemUtilsTest {
     totalSize += MemUtils.getDataPointMem(point5);
     record.addTuple(point5);
 
-    DataPoint point6 = new StringDataPoint("s5", Binary.valueOf("123"));
+    DataPoint point6 = new StringDataPoint("s5", BytesUtils.valueOf("123"));
     Assert.assertEquals(MemUtils.getStringMem("s6") + 129, MemUtils.getDataPointMem(point6));
     totalSize += MemUtils.getDataPointMem(point6);
     record.addTuple(point6);

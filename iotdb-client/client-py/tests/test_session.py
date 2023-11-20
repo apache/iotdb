@@ -59,8 +59,16 @@ def session_test(use_session_pool=False):
         db: IoTDBContainer
 
         if use_session_pool:
-            pool_config = PoolConfig(db.get_container_host_ip(), db.get_exposed_port(6667), "root", "root", None, 1024,
-                                     "Asia/Shanghai", 3)
+            pool_config = PoolConfig(
+                db.get_container_host_ip(),
+                db.get_exposed_port(6667),
+                "root",
+                "root",
+                None,
+                1024,
+                "Asia/Shanghai",
+                3,
+            )
             session_pool = create_session_pool(pool_config, 1, 3000)
             session = session_pool.get_session()
         else:
@@ -170,14 +178,14 @@ def session_test(use_session_pool=False):
 
         # delete time series
         if (
-                session.delete_time_series(
-                    [
-                        "root.sg_test_01.d_01.s_07",
-                        "root.sg_test_01.d_01.s_08",
-                        "root.sg_test_01.d_01.s_09",
-                    ]
-                )
-                < 0
+            session.delete_time_series(
+                [
+                    "root.sg_test_01.d_01.s_07",
+                    "root.sg_test_01.d_01.s_08",
+                    "root.sg_test_01.d_01.s_09",
+                ]
+            )
+            < 0
         ):
             test_fail()
             print_message("delete time series failed")
@@ -213,10 +221,10 @@ def session_test(use_session_pool=False):
             TSDataType.TEXT,
         ]
         if (
-                session.insert_record(
-                    "root.sg_test_01.d_01", 1, measurements_, data_types_, values_
-                )
-                < 0
+            session.insert_record(
+                "root.sg_test_01.d_01", 1, measurements_, data_types_, values_
+            )
+            < 0
         ):
             test_fail()
             print_message("insert record failed")
@@ -233,10 +241,10 @@ def session_test(use_session_pool=False):
         data_type_list_ = [data_types_, data_types_]
         device_ids_ = ["root.sg_test_01.d_01", "root.sg_test_01.d_02"]
         if (
-                session.insert_records(
-                    device_ids_, [2, 3], measurements_list_, data_type_list_, values_list_
-                )
-                < 0
+            session.insert_records(
+                device_ids_, [2, 3], measurements_list_, data_type_list_, values_list_
+            )
+            < 0
         ):
             test_fail()
             print_message("insert records failed")
@@ -353,14 +361,14 @@ def session_test(use_session_pool=False):
         values_list = [[False, 22, 33], [True, 1, 23], [False, 15, 26]]
 
         if (
-                session.insert_records_of_one_device(
-                    "root.sg_test_01.d_01",
-                    time_list,
-                    measurements_list,
-                    data_types_list,
-                    values_list,
-                )
-                < 0
+            session.insert_records_of_one_device(
+                "root.sg_test_01.d_01",
+                time_list,
+                measurements_list,
+                data_types_list,
+                values_list,
+            )
+            < 0
         ):
             test_fail()
             print_message("insert records of one device failed")

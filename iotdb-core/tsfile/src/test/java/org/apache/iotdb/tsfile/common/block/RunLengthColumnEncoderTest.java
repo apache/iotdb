@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.common.block;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
@@ -96,6 +97,8 @@ public class RunLengthColumnEncoderTest {
 
   @Test
   public void testTextColumn() {
-    testInternal(new BinaryColumn(1, Optional.empty(), new Binary[] {new Binary("foo")}));
+    testInternal(
+        new BinaryColumn(
+            1, Optional.empty(), new Binary[] {new Binary("foo", TSFileConfig.STRING_CHARSET)}));
   }
 }

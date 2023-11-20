@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.IndexedBlockingReserveQueue;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTask;
 
@@ -44,6 +45,13 @@ public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverT
   private final PriorityQueue<DriverTask>[] levelWaitingSplits;
 
   /**
+   * This queue is independent of the other priority queues and has the highest priority. It is used
+   * to assign the highest execution priority to tasks like "ShowQuery," without considering
+   * cumulative execution time.
+   */
+  private final PriorityQueue<DriverTask> highestPriorityLevelQueue;
+
+  /**
    * Total amount of time each LEVEL has occupied, which decides which level we will take task from.
    */
   private final AtomicLong[] levelScheduledTime;
@@ -65,6 +73,8 @@ public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverT
     this.levelScheduledTime = new AtomicLong[LEVEL_THRESHOLD_SECONDS.length];
     this.levelMinScheduledTime = new AtomicLong[LEVEL_THRESHOLD_SECONDS.length];
     this.levelWaitingSplits = new PriorityQueue[LEVEL_THRESHOLD_SECONDS.length];
+    this.highestPriorityLevelQueue =
+        new PriorityQueue<>(new DriverTask.SchedulePriorityComparator());
     for (int level = 0; level < LEVEL_THRESHOLD_SECONDS.length; level++) {
       levelScheduledTime[level] = new AtomicLong();
       levelMinScheduledTime[level] = new AtomicLong(-1);
@@ -72,6 +82,8 @@ public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverT
     }
     this.levelTimeMultiplier = levelTimeMultiplier;
   }
+
+  // region overridden functions
 
   /**
    * During periods of time when a level has no waiting splits, it will not accumulate scheduled
@@ -86,6 +98,12 @@ public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverT
   @Override
   public void pushToQueue(DriverTask task) {
     checkArgument(task != null, "DriverTask to be pushed is null");
+    // Push tasks with the highest priority(Currently, only ShowQuery related tasks) into
+    // highestPriorityLevelQueue directly.
+    if (task.isHighestPriority()) {
+      highestPriorityLevelQueue.offer(task);
+      return;
+    }
 
     int level = task.getPriority().getLevel();
     if (levelWaitingSplits[level].isEmpty()) {
@@ -101,7 +119,13 @@ public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverT
     levelWaitingSplits[level].offer(task);
   }
 
+  @Override
   protected DriverTask pollFirst() {
+    // Always choose tasks in the highestPriorityLevelQueue first.
+    if (!highestPriorityLevelQueue.isEmpty()) {
+      return highestPriorityLevelQueue.poll();
+    }
+
     DriverTask result;
     while (true) {
       result = chooseLevelAndTask();
@@ -118,6 +142,66 @@ public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverT
       return result;
     }
   }
+
+  @Override
+  protected DriverTask remove(DriverTask driverTask) {
+    checkArgument(driverTask != null, "driverTask is null");
+    if (highestPriorityLevelQueue.remove(driverTask)) {
+      return driverTask;
+    }
+    for (PriorityQueue<DriverTask> level : levelWaitingSplits) {
+      if (level.remove(driverTask)) {
+        return driverTask;
+      }
+    }
+    return null;
+  }
+
+  @Override
+  protected boolean isEmpty() {
+    if (!highestPriorityLevelQueue.isEmpty()) {
+      return false;
+    }
+    for (PriorityQueue<DriverTask> level : levelWaitingSplits) {
+      if (!level.isEmpty()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  @Override
+  protected boolean contains(DriverTask driverTask) {
+    if (highestPriorityLevelQueue.contains(driverTask)) {
+      return true;
+    }
+    for (PriorityQueue<DriverTask> level : levelWaitingSplits) {
+      if (level.contains(driverTask)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @Override
+  protected DriverTask get(DriverTask driverTask) {
+    // We do not support get() for MultilevelPriorityQueue since it is inefficient and not
+    // necessary.
+    throw new UnsupportedOperationException(
+        "MultilevelPriorityQueue does not support access element by get.");
+  }
+
+  @Override
+  protected void clearAllElements() {
+    highestPriorityLevelQueue.clear();
+    for (PriorityQueue<DriverTask> level : levelWaitingSplits) {
+      level.clear();
+    }
+  }
+
+  // endregion
+
+  // region helper functions
 
   /**
    * We attempt to give each level a target amount of scheduled time, which is configurable using
@@ -150,52 +234,6 @@ public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverT
     DriverTask result = levelWaitingSplits[selectedLevel].poll();
     checkState(result != null, "result driverTask cannot be null");
     return result;
-  }
-
-  @Override
-  protected DriverTask remove(DriverTask driverTask) {
-    checkArgument(driverTask != null, "driverTask is null");
-    for (PriorityQueue<DriverTask> level : levelWaitingSplits) {
-      if (level.remove(driverTask)) {
-        return driverTask;
-      }
-    }
-    return null;
-  }
-
-  @Override
-  protected boolean isEmpty() {
-    for (PriorityQueue<DriverTask> level : levelWaitingSplits) {
-      if (!level.isEmpty()) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  @Override
-  protected boolean contains(DriverTask driverTask) {
-    for (PriorityQueue<DriverTask> level : levelWaitingSplits) {
-      if (level.contains(driverTask)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  @Override
-  protected DriverTask get(DriverTask driverTask) {
-    // We do not support get() for MultilevelPriorityQueue since it is inefficient and not
-    // necessary.
-    throw new UnsupportedOperationException(
-        "MultilevelPriorityQueue does not support access element by get.");
-  }
-
-  @Override
-  protected void clearAllElements() {
-    for (PriorityQueue<DriverTask> level : levelWaitingSplits) {
-      level.clear();
-    }
   }
 
   /**
@@ -286,5 +324,16 @@ public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverT
     }
 
     return LEVEL_THRESHOLD_SECONDS.length - 1;
+  }
+
+  public static int getNumOfPriorityLevels() {
+    return LEVEL_THRESHOLD_SECONDS.length;
+  }
+
+  // endregion
+
+  @TestOnly
+  public PriorityQueue<DriverTask> getHighestPriorityLevelQueue() {
+    return highestPriorityLevelQueue;
   }
 }

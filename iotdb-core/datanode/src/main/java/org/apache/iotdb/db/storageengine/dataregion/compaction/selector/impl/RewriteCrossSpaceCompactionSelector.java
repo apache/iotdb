@@ -23,12 +23,17 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.MergeException;
+import org.apache.iotdb.db.service.metrics.CompactionMetrics;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICrossSpaceSelector;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractCompactionEstimator;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractCrossSpaceEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossSpaceCompactionCandidate;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.DeviceInfo;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCrossCompactionTaskResource;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.TsFileResourceCandidate;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
@@ -38,6 +43,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -58,7 +64,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
   private final int maxCrossCompactionFileNum;
   private final long maxCrossCompactionFileSize;
 
-  private AbstractCompactionEstimator compactionEstimator;
+  private final AbstractCrossSpaceEstimator compactionEstimator;
 
   public RewriteCrossSpaceCompactionSelector(
       String logicalStorageGroupName,
@@ -80,8 +86,9 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileSize();
 
     this.compactionEstimator =
-        ICompactionSelector.getCompactionEstimator(
-            IoTDBDescriptor.getInstance().getConfig().getCrossCompactionPerformer(), false);
+        (AbstractCrossSpaceEstimator)
+            ICompactionSelector.getCompactionEstimator(
+                IoTDBDescriptor.getInstance().getConfig().getCrossCompactionPerformer(), false);
   }
 
   /**
@@ -110,6 +117,9 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
   @SuppressWarnings({"squid:S1163", "squid:S1143"})
   public CrossCompactionTaskResource selectOneTaskResources(CrossSpaceCompactionCandidate candidate)
       throws MergeException {
+    if (candidate.getSeqFiles().isEmpty() || candidate.getUnseqFiles().isEmpty()) {
+      return new CrossCompactionTaskResource();
+    }
     try {
       LOGGER.debug(
           "Selecting cross compaction task resources from {} seqFile, {} unseqFiles",
@@ -128,10 +138,31 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     }
   }
 
-  private boolean isAllFileCandidateValid(
-      List<CrossSpaceCompactionCandidate.TsFileResourceCandidate> tsFileResourceCandidates) {
-    for (CrossSpaceCompactionCandidate.TsFileResourceCandidate candidate :
-        tsFileResourceCandidates) {
+  public InsertionCrossCompactionTaskResource selectOneInsertionTask(
+      CrossSpaceCompactionCandidate candidate) throws MergeException {
+    if (candidate.getUnseqFileCandidates().isEmpty()) {
+      return new InsertionCrossCompactionTaskResource();
+    }
+    InsertionCrossSpaceCompactionSelector insertionCrossSpaceCompactionSelector =
+        new InsertionCrossSpaceCompactionSelector(candidate);
+    try {
+      LOGGER.debug(
+          "Selecting insertion cross compaction task resources from {} seqFile, {} unseqFiles",
+          candidate.getSeqFiles().size(),
+          candidate.getUnseqFiles().size());
+      InsertionCrossCompactionTaskResource result =
+          insertionCrossSpaceCompactionSelector.executeInsertionCrossSpaceCompactionTaskSelection();
+      if (result.isValid()) {
+        return result;
+      }
+    } catch (IOException e) {
+      throw new MergeException(e);
+    }
+    return new InsertionCrossCompactionTaskResource();
+  }
+
+  private boolean isAllFileCandidateValid(List<TsFileResourceCandidate> tsFileResourceCandidates) {
+    for (TsFileResourceCandidate candidate : tsFileResourceCandidates) {
       if (!candidate.isValidCandidate) {
         return false;
       }
@@ -162,7 +193,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
 
       if (!split.atLeastOneSeqFileSelected) {
         LOGGER.debug("Unseq file {} does not overlap with any seq files.", unseqFile);
-        CrossSpaceCompactionCandidate.TsFileResourceCandidate latestSealedSeqFile =
+        TsFileResourceCandidate latestSealedSeqFile =
             getLatestSealedSeqFile(candidate.getSeqFileCandidates());
         if (latestSealedSeqFile == null) {
           break;
@@ -173,8 +204,15 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         }
       }
 
+      List<TsFileResource> newSelectedSeqResources = new ArrayList<>(taskResource.getSeqFiles());
+      newSelectedSeqResources.addAll(targetSeqFiles);
+      List<TsFileResource> newSelectedUnseqResources =
+          new ArrayList<>(taskResource.getUnseqFiles());
+      newSelectedUnseqResources.add(unseqFile);
+
       long memoryCost =
-          compactionEstimator.estimateCrossCompactionMemory(targetSeqFiles, unseqFile);
+          compactionEstimator.estimateCrossCompactionMemory(
+              newSelectedSeqResources, newSelectedUnseqResources);
       if (!canAddToTaskResource(taskResource, unseqFile, targetSeqFiles, memoryCost)) {
         break;
       }
@@ -190,11 +228,10 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     return taskResource;
   }
 
-  private CrossSpaceCompactionCandidate.TsFileResourceCandidate getLatestSealedSeqFile(
-      List<CrossSpaceCompactionCandidate.TsFileResourceCandidate> seqResourceCandidateList) {
+  private TsFileResourceCandidate getLatestSealedSeqFile(
+      List<TsFileResourceCandidate> seqResourceCandidateList) {
     for (int i = seqResourceCandidateList.size() - 1; i >= 0; i--) {
-      CrossSpaceCompactionCandidate.TsFileResourceCandidate seqResourceCandidate =
-          seqResourceCandidateList.get(i);
+      TsFileResourceCandidate seqResourceCandidate = seqResourceCandidateList.get(i);
       if (seqResourceCandidate.resource.isClosed()) {
         // We must select the latest sealed and valid seq file to compact with, in order to avoid
         // overlapping of the new compacted files with the subsequent seq files.
@@ -254,7 +291,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
 
     return taskResource.getTotalFileNums() + 1 + seqFiles.size() <= maxCrossCompactionFileNum
         && taskResource.getTotalFileSize() + totalFileSize <= maxCrossCompactionFileSize
-        && taskResource.getTotalMemoryCost() + memoryCost < memoryBudget;
+        && memoryCost < memoryBudget;
   }
 
   private boolean canSubmitCrossTask(
@@ -271,13 +308,21 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
    * @return Returns whether the file was found and submits the merge task
    */
   @Override
+  public List<CrossCompactionTaskResource> selectCrossSpaceTask(
+      List<TsFileResource> sequenceFileList, List<TsFileResource> unsequenceFilelist) {
+    return selectCrossSpaceTask(sequenceFileList, unsequenceFilelist, false);
+  }
+
+  public List<CrossCompactionTaskResource> selectInsertionCrossSpaceTask(
+      List<TsFileResource> sequenceFileList, List<TsFileResource> unsequenceFileList) {
+    return selectCrossSpaceTask(sequenceFileList, unsequenceFileList, true);
+  }
+
   @SuppressWarnings({"squid:S1135", "squid:S2696"})
   public List<CrossCompactionTaskResource> selectCrossSpaceTask(
-      List<TsFileResource> sequenceFileList, List<TsFileResource> unsequenceFileList) {
-    if (!canSubmitCrossTask(sequenceFileList, unsequenceFileList)) {
-      return Collections.emptyList();
-    }
-
+      List<TsFileResource> sequenceFileList,
+      List<TsFileResource> unsequenceFileList,
+      boolean isInsertionTask) {
     // TODO: (xingtanzjr) need to confirm what this ttl is used for
     long startTime = System.currentTimeMillis();
     long ttlLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
@@ -287,15 +332,21 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     CrossSpaceCompactionCandidate candidate =
         new CrossSpaceCompactionCandidate(sequenceFileList, unsequenceFileList, ttlLowerBound);
     try {
-      CrossCompactionTaskResource taskResources = selectOneTaskResources(candidate);
+      CrossCompactionTaskResource taskResources;
+      if (isInsertionTask) {
+        taskResources = selectOneInsertionTask(candidate);
+      } else {
+        taskResources = selectOneTaskResources(candidate);
+      }
       String sgDataRegionId = logicalStorageGroupName + "-" + dataRegionId;
       if (!taskResources.isValid()) {
         if (!hasPrintedLog) {
           LOGGER.info(
-              "{} [Compaction] Total source files: {} seqFiles, {} unseqFiles. "
+              "{} [{}] Total source files: {} seqFiles, {} unseqFiles. "
                   + "Candidate source files: {} seqFiles, {} unseqFiles. "
                   + "Cannot select any files because they do not meet the conditions "
                   + "or may be occupied by other compaction threads.",
+              isInsertionTask ? "InsertionCrossSpaceCompaction" : "CrossSpaceCompaction",
               sgDataRegionId,
               sequenceFileList.size(),
               unsequenceFileList.size(),
@@ -305,8 +356,9 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         }
         return Collections.emptyList();
       }
+      long timeCost = System.currentTimeMillis() - startTime;
       LOGGER.info(
-          "{} [Compaction] Total source files: {} seqFiles, {} unseqFiles. "
+          "{} [{}] Total source files: {} seqFiles, {} unseqFiles. "
               + "Candidate source files: {} seqFiles, {} unseqFiles. "
               + "Selected source files: {} seqFiles, "
               + "{} unseqFiles, total memory cost {} MB, "
@@ -315,6 +367,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
               + "total selected unseq file size is {} MB, "
               + "time consumption {}ms.",
           sgDataRegionId,
+          isInsertionTask ? "InsertionCrossSpaceCompaction" : "CrossSpaceCompaction",
           sequenceFileList.size(),
           unsequenceFileList.size(),
           candidate.getSeqFiles().size(),
@@ -325,7 +378,10 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           (float) (taskResources.getTotalFileSize()) / 1024 / 1024,
           taskResources.getTotalSeqFileSize() / 1024 / 1024,
           taskResources.getTotalUnseqFileSize() / 1024 / 1024,
-          System.currentTimeMillis() - startTime);
+          timeCost);
+      CompactionMetrics.getInstance()
+          .updateCompactionTaskSelectionTimeCost(
+              isInsertionTask ? CompactionTaskType.INSERTION : CompactionTaskType.CROSS, timeCost);
       hasPrintedLog = false;
       return Collections.singletonList(taskResources);
 
@@ -333,5 +389,141 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       LOGGER.error("{} cannot select file for cross space compaction", logicalStorageGroupName, e);
     }
     return Collections.emptyList();
+  }
+
+  public static class InsertionCrossSpaceCompactionSelector {
+
+    private List<TsFileResourceCandidate> seqFiles;
+    private List<TsFileResourceCandidate> unseqFiles;
+
+    public InsertionCrossSpaceCompactionSelector(CrossSpaceCompactionCandidate candidate) {
+      seqFiles = candidate.getSeqFileCandidates();
+      unseqFiles = candidate.getUnseqFileCandidates();
+    }
+
+    private InsertionCrossCompactionTaskResource executeInsertionCrossSpaceCompactionTaskSelection()
+        throws IOException {
+      InsertionCrossCompactionTaskResource result = new InsertionCrossCompactionTaskResource();
+      if (unseqFiles.isEmpty()) {
+        return result;
+      }
+      if (seqFiles.isEmpty()) {
+        result.toInsertUnSeqFile = unseqFiles.get(0).resource;
+        // ensure the target position is the head of seq space
+        result.targetFileTimestamp =
+            Math.min(System.currentTimeMillis(), getTimestampInFileName(unseqFiles.get(0)));
+      } else {
+        for (TsFileResourceCandidate unseqFile : unseqFiles) {
+          // skip unseq file which is overlapped with files in seq space
+          if (!unseqFile.resource.isInsertionCompactionTaskCandidate()) {
+            continue;
+          }
+          result = selectCurrentUnSeqFile(unseqFile);
+          if (result.isValid()) {
+            break;
+          }
+        }
+      }
+      // select the first unseq file to exclude other CrossSpaceCompactionTask
+      // or InsertionCrossSpaceCompactionTask in current time partition
+      TsFileResourceCandidate firstUnseqFile = unseqFiles.get(0);
+      result.firstUnSeqFileInParitition = firstUnseqFile.resource;
+      return result;
+    }
+
+    private InsertionCrossCompactionTaskResource selectCurrentUnSeqFile(
+        TsFileResourceCandidate unseqFile) throws IOException {
+      int previousSeqFileIndex = 0;
+      int nextSeqFileIndex = seqFiles.size();
+      InsertionCrossCompactionTaskResource result = new InsertionCrossCompactionTaskResource();
+
+      boolean hasPreviousSeqFile = false;
+      for (DeviceInfo unseqDeviceInfo : unseqFile.getDevices()) {
+        String deviceId = unseqDeviceInfo.deviceId;
+        long startTimeOfUnSeqDevice = unseqDeviceInfo.startTime;
+        long endTimeOfUnSeqDevice = unseqDeviceInfo.endTime;
+        for (int i = 0; i < seqFiles.size(); i++) {
+          TsFileResourceCandidate seqFile = seqFiles.get(i);
+          if (seqFile.unsealed()) {
+            nextSeqFileIndex = Math.min(nextSeqFileIndex, i);
+          }
+          if (!seqFile.containsDevice(deviceId)) {
+            continue;
+          }
+          DeviceInfo seqDeviceInfo = seqFile.getDeviceInfoById(deviceId);
+          long startTimeOfSeqDevice = seqDeviceInfo.startTime;
+          long endTimeOfSeqDevice = seqDeviceInfo.endTime;
+
+          // overlap
+          if (startTimeOfUnSeqDevice <= endTimeOfSeqDevice
+              && endTimeOfUnSeqDevice >= startTimeOfSeqDevice) {
+            unseqFile.resource.setInsertionCompactionTaskCandidate(false);
+            return result;
+          }
+
+          if (startTimeOfUnSeqDevice > endTimeOfSeqDevice) {
+            previousSeqFileIndex = Math.max(previousSeqFileIndex, i);
+            hasPreviousSeqFile = true;
+            continue;
+          }
+          nextSeqFileIndex = Math.min(nextSeqFileIndex, i);
+          break;
+        }
+      }
+
+      // select position to insert
+      if (hasPreviousSeqFile) {
+        boolean insertLastInSeqSpace =
+            nextSeqFileIndex == seqFiles.size() && previousSeqFileIndex == seqFiles.size() - 1;
+        if (insertLastInSeqSpace) {
+          TsFileResourceCandidate prev = seqFiles.get(previousSeqFileIndex);
+          long prevTimestamp = getTimestampInFileName(prev);
+          if (prev.isValidCandidate) {
+            result.prevSeqFile = prev.resource;
+            result.targetFileTimestamp = prevTimestamp + 1;
+            result.toInsertUnSeqFile = unseqFile.resource;
+          }
+          return result;
+        }
+        // insert the TsFileResource between 'prev' and 'next' in seq space
+        for (int i = previousSeqFileIndex;
+            i < Math.min(nextSeqFileIndex, seqFiles.size() - 1);
+            i++) {
+          TsFileResourceCandidate prev = seqFiles.get(i);
+          TsFileResourceCandidate next = seqFiles.get(i + 1);
+          if (prev.isValidCandidate && next.isValidCandidate) {
+            long prevTimestamp = getTimestampInFileName(prev);
+            long nextTimestamp = getTimestampInFileName(next);
+            if (nextTimestamp - prevTimestamp > 1) {
+              result.prevSeqFile = prev.resource;
+              result.nextSeqFile = next.resource;
+              result.targetFileTimestamp =
+                  prevTimestamp + Math.max(1, (nextTimestamp - prevTimestamp) / 2);
+              result.toInsertUnSeqFile = unseqFile.resource;
+              break;
+            }
+          }
+        }
+
+      } else {
+        // insert the TsFileResource to the head of seq space
+        TsFileResourceCandidate next = seqFiles.get(0);
+        long nextTimestamp = getTimestampInFileName(next);
+        if (nextTimestamp < 1) {
+          return result;
+        }
+        result.nextSeqFile = next.resource;
+        result.targetFileTimestamp = nextTimestamp / 2;
+        result.toInsertUnSeqFile = unseqFile.resource;
+      }
+      return result;
+    }
+
+    private long getTimestampInFileName(TsFileResourceCandidate tsFileResourceCandidate)
+        throws IOException {
+      return TsFileNameGenerator.getTsFileName(
+              tsFileResourceCandidate.resource.getTsFile().getName())
+          .getTime();
+    }
   }
 }

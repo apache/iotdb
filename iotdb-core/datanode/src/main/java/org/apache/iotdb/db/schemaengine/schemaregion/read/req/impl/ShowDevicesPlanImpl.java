@@ -21,6 +21,7 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.read.req.impl;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowDevicesPlan;
 
@@ -38,8 +39,9 @@ public class ShowDevicesPlanImpl extends AbstractShowSchemaPlanImpl implements I
       long offset,
       boolean isPrefixMatch,
       int schemaTemplateId,
-      SchemaFilter schemaFilter) {
-    super(path, limit, offset, isPrefixMatch);
+      SchemaFilter schemaFilter,
+      PathPatternTree scope) {
+    super(path, limit, offset, isPrefixMatch, scope);
     this.schemaTemplateId = schemaTemplateId;
     this.schemaFilter = schemaFilter;
   }
