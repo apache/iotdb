@@ -307,6 +307,8 @@ public class Utils {
     RaftServerConfigKeys.Rpc.setFirstElectionTimeoutMax(
         properties, config.getRpc().getFirstElectionTimeoutMax());
 
+    /* linearizable means we can obtain consistent data from followers.
+    If we prefer latency, we can directly use staleRead */
     RaftServerConfigKeys.Read.setOption(properties, RaftServerConfigKeys.Read.Option.LINEARIZABLE);
     RaftServerConfigKeys.Read.setTimeout(properties, config.getRead().getReadTimeout());
 
