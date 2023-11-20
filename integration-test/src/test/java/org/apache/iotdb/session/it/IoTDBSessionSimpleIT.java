@@ -93,7 +93,7 @@ public class IoTDBSessionSimpleIT {
       schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE));
       schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT));
 
-      Tablet tablet = new Tablet("root.sg.d1", schemaList, 10);
+      Tablet tablet = new Tablet("root.sg.d", schemaList, 10);
 
       long timestamp = System.currentTimeMillis();
 
