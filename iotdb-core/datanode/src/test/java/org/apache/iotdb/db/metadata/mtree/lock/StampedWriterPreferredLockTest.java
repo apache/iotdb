@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mtree.lock;
 
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.StampedWriterPreferredLock;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.StampedWriterPreferredLock;
 
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;

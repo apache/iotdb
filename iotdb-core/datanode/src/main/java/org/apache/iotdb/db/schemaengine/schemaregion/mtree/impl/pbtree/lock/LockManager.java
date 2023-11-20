@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock;
 
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.StampedWriterPreferredLock;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
 import java.util.LinkedList;

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree;
+package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock;
 
 import java.util.HashMap;
 import java.util.Map;
