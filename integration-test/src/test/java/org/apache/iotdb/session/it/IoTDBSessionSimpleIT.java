@@ -93,7 +93,7 @@ public class IoTDBSessionSimpleIT {
       schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE));
       schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT));
 
-      Tablet tablet = new Tablet("root.sg.d", schemaList, 10);
+      Tablet tablet = new Tablet("root.sg.d1", schemaList, 10);
 
       long timestamp = System.currentTimeMillis();
 
@@ -123,8 +123,70 @@ public class IoTDBSessionSimpleIT {
         assertEquals(15L, rowRecord.getFields().get(2).getLongV());
       }
     } catch (Exception e) {
-      e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void insertPartialTabletsTest() {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.createTimeseries(
+          "root.sg.d2.s2", TSDataType.BOOLEAN, TSEncoding.PLAIN, CompressionType.SNAPPY);
+
+      List<MeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
+      schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE));
+      schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT));
+
+      Tablet tablet1 = new Tablet("root.sg.d1", schemaList, 10);
+      Tablet tablet2 = new Tablet("root.sg.d2", schemaList, 10);
+      Tablet tablet3 = new Tablet("root.sg.d3", schemaList, 10);
+
+      Map<String, Tablet> tabletMap = new HashMap<>();
+      tabletMap.put("root.sg.d1", tablet1);
+      tabletMap.put("root.sg.d2", tablet2);
+      tabletMap.put("root.sg.d3", tablet3);
+
+      long timestamp = System.currentTimeMillis();
+
+      for (long row = 0; row < 15; row++) {
+        int rowIndex1 = tablet1.rowSize++;
+        tablet1.addTimestamp(rowIndex1, timestamp);
+        tablet1.addValue("s1", rowIndex1, 1L);
+        tablet1.addValue("s2", rowIndex1, 1D);
+        tablet1.addValue("s3", rowIndex1, new Binary("1", TSFileConfig.STRING_CHARSET));
+
+        int rowIndex2 = tablet2.rowSize++;
+        tablet2.addTimestamp(rowIndex2, timestamp);
+        tablet2.addValue("s1", rowIndex2, 1L);
+        tablet2.addValue("s2", rowIndex2, 1D);
+        tablet2.addValue("s3", rowIndex2, new Binary("1", TSFileConfig.STRING_CHARSET));
+
+        int rowIndex3 = tablet3.rowSize++;
+        tablet3.addTimestamp(rowIndex3, timestamp);
+        tablet3.addValue("s1", rowIndex3, 1L);
+        tablet3.addValue("s2", rowIndex3, 1D);
+        tablet3.addValue("s3", rowIndex3, new Binary("1", TSFileConfig.STRING_CHARSET));
+
+        if (tablet1.rowSize == tablet1.getMaxRowNumber()) {
+          session.insertTablets(tabletMap);
+          tablet1.reset();
+          tablet2.reset();
+          tablet3.reset();
+        }
+        timestamp++;
+      }
+
+      if (tablet1.rowSize != 0) {
+        session.insertTablets(tabletMap);
+        tablet1.reset();
+        tablet2.reset();
+        tablet3.reset();
+      }
+      fail();
+    } catch (Exception e) {
+      Assert.assertTrue(e.getMessage().contains("DataType"));
     }
   }
 
