@@ -41,6 +41,7 @@ import org.apache.thrift.TException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -566,8 +567,13 @@ public class IoTDBPipeClusterIT {
     }
   }
 
+  @Ignore(
+      "Currently ignore this test because this test intends to test the behaviour when the sender has"
+          + " a temporary node joined and then removed, but in reality it just tears it down. In this"
+          + " circumstance the IT may fail. However, the \"remove\" method is currently not provided thus"
+          + " we ignore this test now.")
   @Test
-  public void testNewDataNodeFailureAfterTransferringData() throws Exception {
+  public void testNewDataNodeFailureParallelToTransferringData() throws Exception {
     DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     String receiverIp = receiverDataNode.getIp();
@@ -605,7 +611,7 @@ public class IoTDBPipeClusterIT {
 
       senderEnv.registerNewDataNode(false);
       senderEnv.startDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
-      senderEnv.shutdownDataNode(senderEnv.getDataNodeWrapperList().size() - 1); // ctrl + c
+      senderEnv.shutdownDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
       senderEnv.getDataNodeWrapperList().remove(senderEnv.getDataNodeWrapperList().size() - 1);
       ((AbstractEnv) senderEnv).testWorkingNoUnknown();
 

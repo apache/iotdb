@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.utils.windowing.configuration;
 
 import org.apache.iotdb.db.utils.windowing.exception.WindowingException;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class SlidingTimeWindowConfiguration extends Configuration {
 

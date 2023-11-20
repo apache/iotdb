@@ -37,7 +37,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferVie
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -229,7 +229,7 @@ public abstract class AbstractMemTable implements IMemTable {
     List<TSDataType> dataTypes = new ArrayList<>();
     for (int i = 0; i < insertRowNode.getMeasurements().length; i++) {
       // Use measurements[i] to ignore failed partial insert
-      if (measurements[i] == null) {
+      if (measurements[i] == null || values[i] == null) {
         schemaList.add(null);
         continue;
       }

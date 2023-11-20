@@ -37,6 +37,7 @@ import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
+import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionCachedMetric;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaRegionStatistics;
@@ -85,8 +86,8 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IAlterLogica
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.ICreateLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.utils.SchemaUtils;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -976,22 +977,27 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   // region Interfaces for timeseries, measurement and schema info Query
 
   @Override
-  public List<MeasurementPath> fetchSchema(
-      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
-      throws MetadataException {
-    return mtree.fetchSchema(pathPattern, templateMap, withTags);
+  public MeasurementPath fetchMeasurementPath(PartialPath fullPath) throws MetadataException {
+    IMeasurementMNode<ICachedMNode> node = mtree.getMeasurementMNode(fullPath);
+    try {
+      MeasurementPath res = new MeasurementPath(node.getPartialPath(), node.getSchema());
+      res.setUnderAlignedEntity(node.getParent().getAsDeviceMNode().isAligned());
+      return res;
+    } finally {
+      mtree.unPinMNode(node.getAsMNode());
+    }
   }
 
   @Override
-  public List<MeasurementPath> fetchSchema(
+  public ClusterSchemaTree fetchSchema(
       PathPatternTree patternTree, Map<Integer, Template> templateMap, boolean withTags)
       throws MetadataException {
     if (patternTree.isContainWildcard()) {
-      List<MeasurementPath> res = new ArrayList<>();
+      ClusterSchemaTree schemaTree = new ClusterSchemaTree();
       for (PartialPath path : patternTree.getAllPathPatterns()) {
-        res.addAll(mtree.fetchSchema(path, templateMap, withTags));
+        schemaTree.mergeSchemaTree(mtree.fetchSchema(path, templateMap, withTags));
       }
-      return res;
+      return schemaTree;
     } else {
       return mtree.fetchSchemaWithoutWildcard(patternTree, templateMap, withTags);
     }

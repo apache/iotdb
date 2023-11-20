@@ -170,4 +170,13 @@ public class PipeTaskCoordinator {
   public boolean hasAnyPipe() {
     return !pipeTaskInfo.isEmpty();
   }
+
+  /** Caller should ensure that the method is called in the write lock of {@link #pipeTaskInfo}. */
+  public void updateLastSyncedVersion() {
+    pipeTaskInfo.updateLastSyncedVersion();
+  }
+
+  public boolean canSkipNextSync() {
+    return pipeTaskInfo.canSkipNextSync();
+  }
 }

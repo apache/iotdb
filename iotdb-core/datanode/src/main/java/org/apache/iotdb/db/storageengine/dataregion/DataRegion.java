@@ -790,7 +790,7 @@ public class DataRegion implements IDataRegionForQuery {
           for (Map<String, List<ChunkMetadata>> metaMap : writer.getMetadatasForQuery().values()) {
             for (List<ChunkMetadata> metadatas : metaMap.values()) {
               for (ChunkMetadata chunkMetadata : metadatas) {
-                chunkMetadataSize += chunkMetadata.calculateRamSize();
+                chunkMetadataSize += chunkMetadata.getRetainedSizeInBytes();
               }
             }
           }

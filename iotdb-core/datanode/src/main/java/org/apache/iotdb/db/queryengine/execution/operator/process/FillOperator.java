@@ -22,8 +22,8 @@ package org.apache.iotdb.db.queryengine.execution.operator.process;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
-import org.apache.iotdb.tsfile.access.Column;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -71,7 +71,7 @@ public class FillOperator implements ProcessOperator {
     Column[] valueColumns = new Column[outputColumnCount];
 
     for (int i = 0; i < outputColumnCount; i++) {
-      valueColumns[i] = fillArray[i].fill(block.getColumn(i));
+      valueColumns[i] = fillArray[i].fill(block.getTimeColumn(), block.getColumn(i));
     }
 
     return TsBlock.wrapBlocksWithoutCopy(

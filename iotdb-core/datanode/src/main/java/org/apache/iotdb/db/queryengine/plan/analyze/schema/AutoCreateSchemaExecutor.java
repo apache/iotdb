@@ -50,11 +50,10 @@ import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
@@ -254,14 +253,7 @@ class AutoCreateSchemaExecutor {
       MPPQueryContext context) {
     internalActivateTemplate(devicePath, context);
     Template template = templateManager.getTemplate(templateId);
-    for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
-      schemaTree.appendSingleMeasurement(
-          devicePath.concatNode(entry.getKey()),
-          entry.getValue(),
-          null,
-          null,
-          template.isDirectAligned());
-    }
+    schemaTree.appendTemplateDevice(devicePath, template.isDirectAligned(), templateId, template);
   }
 
   void autoActivateTemplate(
@@ -285,15 +277,8 @@ class AutoCreateSchemaExecutor {
       devicePath = entry.getKey();
       // Take the latest template
       template = templateManager.getTemplate(entry.getValue().left.getId());
-      for (Map.Entry<String, IMeasurementSchema> measurementEntry :
-          template.getSchemaMap().entrySet()) {
-        schemaTree.appendSingleMeasurement(
-            devicePath.concatNode(measurementEntry.getKey()),
-            measurementEntry.getValue(),
-            null,
-            null,
-            template.isDirectAligned());
-      }
+      schemaTree.appendTemplateDevice(
+          devicePath, template.isDirectAligned(), template.getId(), template);
     }
   }
 
@@ -438,15 +423,8 @@ class AutoCreateSchemaExecutor {
         devicePath = entry.getKey();
         // Take the latest template
         template = templateManager.getTemplate(entry.getValue().left.getId());
-        for (Map.Entry<String, IMeasurementSchema> measurementEntry :
-            template.getSchemaMap().entrySet()) {
-          schemaTree.appendSingleMeasurement(
-              devicePath.concatNode(measurementEntry.getKey()),
-              measurementEntry.getValue(),
-              null,
-              null,
-              template.isDirectAligned());
-        }
+        schemaTree.appendTemplateDevice(
+            devicePath, template.isDirectAligned(), template.getId(), template);
       }
     }
 

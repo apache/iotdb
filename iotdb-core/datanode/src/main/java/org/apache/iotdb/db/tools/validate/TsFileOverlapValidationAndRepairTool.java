@@ -250,8 +250,7 @@ public class TsFileOverlapValidationAndRepairTool {
           continue;
         }
 
-        TsFileResource resource = new TsFileResource();
-        resource.setFile(tsfile);
+        TsFileResource resource = new TsFileResource(tsfile);
         resource.deserialize();
         resource.close();
         resources.add(resource);

@@ -79,7 +79,8 @@ public class CacheHitRatioMonitor implements CacheHitRatioMonitorMXBean, IServic
 
   @Override
   public long getChunkCacheAverageSize() {
-    return ChunkCache.getInstance().getAverageSize();
+    // doesn't implement
+    return 0;
   }
 
   @Override

@@ -45,7 +45,7 @@ import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.apache.iotdb.tsfile.utils.FSUtils;
@@ -988,7 +988,7 @@ public class IoTDBConfig {
   private String readConsistencyLevel = "strong";
 
   /** Maximum execution time of a DriverTask */
-  private int driverTaskExecutionTimeSliceInMs = 100;
+  private int driverTaskExecutionTimeSliceInMs = 200;
 
   /** Maximum size of wal buffer used in IoTConsensus. Unit: byte */
   private long throttleThreshold = 50 * 1024 * 1024 * 1024L;
