@@ -20,8 +20,8 @@
 package org.apache.iotdb.tsfile.utils;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 
@@ -659,6 +659,11 @@ public class ReadWriteIOUtils {
 
   /** read string from byteBuffer with user define length. */
   public static String readStringWithLength(ByteBuffer buffer, int length) {
+    if (length < 0) {
+      return null;
+    } else if (length == 0) {
+      return "";
+    }
     byte[] bytes = new byte[length];
     buffer.get(bytes, 0, length);
     return new String(bytes, 0, length);

@@ -30,6 +30,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.wri
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -138,6 +139,10 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
 
       if (!iChunkMetadataList.isEmpty()) {
         // modify chunk metadatas
+        String pathStr =
+            deviceId
+                + TsFileConstant.PATH_SEPARATOR
+                + iChunkMetadataList.get(0).getMeasurementUid();
         ModificationUtils.modifyChunkMetaData(
             iChunkMetadataList,
             getModificationsFromCache(

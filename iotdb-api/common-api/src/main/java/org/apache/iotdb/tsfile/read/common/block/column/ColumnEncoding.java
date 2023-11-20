@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.enums;
+package org.apache.iotdb.tsfile.read.common.block.column;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

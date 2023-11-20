@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import java.util.Map;
+
 /**
  * This class acts as common measurement schema format during system module interactions, mainly in
  * analyzer and SchemaFetcher. Currently, this class cooperates with DeviceSchemaInfo and wraps
@@ -33,12 +35,15 @@ public class MeasurementSchemaInfo implements IMeasurementSchemaInfo {
 
   private final String name;
   private final String alias;
+  private Map<String, String> tagMap;
   private final IMeasurementSchema schema;
 
-  public MeasurementSchemaInfo(String name, IMeasurementSchema schema, String alias) {
+  public MeasurementSchemaInfo(
+      String name, IMeasurementSchema schema, String alias, Map<String, String> tagMap) {
     this.name = name;
     this.schema = schema;
     this.alias = alias;
+    this.tagMap = tagMap;
   }
 
   public String getName() {
@@ -55,6 +60,11 @@ public class MeasurementSchemaInfo implements IMeasurementSchemaInfo {
     } else {
       return (MeasurementSchema) this.schema;
     }
+  }
+
+  @Override
+  public Map<String, String> getTagMap() {
+    return tagMap;
   }
 
   @Override
