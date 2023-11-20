@@ -150,8 +150,8 @@ public class ExpressionFactory {
     return new LogicNotExpression(expression);
   }
 
-  public static InExpression in(Expression Expression, LinkedHashSet<String> values) {
-    return new InExpression(Expression, false, values);
+  public static InExpression in(Expression expression, LinkedHashSet<String> values) {
+    return new InExpression(expression, false, values);
   }
 
   public static GroupByTimeExpression groupByTime(GroupByTimeParameter parameter) {

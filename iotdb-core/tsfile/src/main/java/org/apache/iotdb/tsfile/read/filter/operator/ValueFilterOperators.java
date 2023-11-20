@@ -91,6 +91,11 @@ public final class ValueFilterOperators {
     }
 
     @Override
+    public boolean satisfy(long time, Object value) {
+      return constant.equals(value);
+    }
+
+    @Override
     public boolean satisfy(Statistics statistics) {
       if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
         return true;
@@ -109,11 +114,6 @@ public final class ValueFilterOperators {
     }
 
     @Override
-    public boolean satisfy(long time, Object value) {
-      return constant.equals(value);
-    }
-
-    @Override
     public Filter reverse() {
       return new ValueNotEq<>(measurement, constant);
     }
@@ -125,6 +125,11 @@ public final class ValueFilterOperators {
     // constant can be null
     public ValueNotEq(String measurement, T constant) {
       super(measurement, constant);
+    }
+
+    @Override
+    public boolean satisfy(long time, Object value) {
+      return !constant.equals(value);
     }
 
     @Override
@@ -146,11 +151,6 @@ public final class ValueFilterOperators {
     }
 
     @Override
-    public boolean satisfy(long time, Object value) {
-      return !constant.equals(value);
-    }
-
-    @Override
     public Filter reverse() {
       return new ValueEq<>(measurement, constant);
     }
@@ -161,6 +161,11 @@ public final class ValueFilterOperators {
     // constant cannot be null
     public ValueLt(String measurement, T constant) {
       super(measurement, Objects.requireNonNull(constant, "constant cannot be null"));
+    }
+
+    @Override
+    public boolean satisfy(long time, Object value) {
+      return constant.compareTo((T) value) > 0;
     }
 
     @Override
@@ -180,11 +185,6 @@ public final class ValueFilterOperators {
     }
 
     @Override
-    public boolean satisfy(long time, Object value) {
-      return constant.compareTo((T) value) > 0;
-    }
-
-    @Override
     public Filter reverse() {
       return new ValueGtEq<>(measurement, constant);
     }
@@ -195,6 +195,11 @@ public final class ValueFilterOperators {
     // constant cannot be null
     public ValueLtEq(String measurement, T constant) {
       super(measurement, Objects.requireNonNull(constant, "constant cannot be null"));
+    }
+
+    @Override
+    public boolean satisfy(long time, Object value) {
+      return constant.compareTo((T) value) >= 0;
     }
 
     @Override
@@ -214,11 +219,6 @@ public final class ValueFilterOperators {
     }
 
     @Override
-    public boolean satisfy(long time, Object value) {
-      return constant.compareTo((T) value) >= 0;
-    }
-
-    @Override
     public Filter reverse() {
       return new ValueGt<>(measurement, constant);
     }
@@ -229,6 +229,11 @@ public final class ValueFilterOperators {
     // constant cannot be null
     public ValueGt(String measurement, T constant) {
       super(measurement, Objects.requireNonNull(constant, "constant cannot be null"));
+    }
+
+    @Override
+    public boolean satisfy(long time, Object value) {
+      return constant.compareTo((T) value) < 0;
     }
 
     @Override
@@ -248,11 +253,6 @@ public final class ValueFilterOperators {
     }
 
     @Override
-    public boolean satisfy(long time, Object value) {
-      return constant.compareTo((T) value) < 0;
-    }
-
-    @Override
     public Filter reverse() {
       return new ValueLtEq<>(measurement, constant);
     }
@@ -263,6 +263,11 @@ public final class ValueFilterOperators {
     // constant cannot be null
     public ValueGtEq(String measurement, T constant) {
       super(measurement, Objects.requireNonNull(constant, "constant cannot be null"));
+    }
+
+    @Override
+    public boolean satisfy(long time, Object value) {
+      return constant.compareTo((T) value) <= 0;
     }
 
     @Override
@@ -279,11 +284,6 @@ public final class ValueFilterOperators {
         return false;
       }
       return constant.compareTo((T) statistics.getMinValue()) <= 0;
-    }
-
-    @Override
-    public boolean satisfy(long time, Object value) {
-      return constant.compareTo((T) value) <= 0;
     }
 
     @Override
@@ -339,6 +339,11 @@ public final class ValueFilterOperators {
     }
 
     @Override
+    public boolean satisfy(long time, Object value) {
+      return min.compareTo((T) value) <= 0 && max.compareTo((T) value) >= 0;
+    }
+
+    @Override
     public boolean satisfy(Statistics statistics) {
       if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
         return true;
@@ -357,11 +362,6 @@ public final class ValueFilterOperators {
     }
 
     @Override
-    public boolean satisfy(long time, Object value) {
-      return min.compareTo((T) value) <= 0 && max.compareTo((T) value) >= 0;
-    }
-
-    @Override
     public Filter reverse() {
       return new ValueNotBetweenAnd<>(measurement, min, max);
     }
@@ -372,6 +372,11 @@ public final class ValueFilterOperators {
 
     public ValueNotBetweenAnd(String measurement, T min, T max) {
       super(measurement, min, max);
+    }
+
+    @Override
+    public boolean satisfy(long time, Object value) {
+      return min.compareTo((T) value) > 0 || max.compareTo((T) value) < 0;
     }
 
     @Override
@@ -390,11 +395,6 @@ public final class ValueFilterOperators {
       }
       return (((T) statistics.getMinValue()).compareTo(max) > 0
           || ((T) statistics.getMaxValue()).compareTo(min) < 0);
-    }
-
-    @Override
-    public boolean satisfy(long time, Object value) {
-      return min.compareTo((T) value) > 0 || max.compareTo((T) value) < 0;
     }
 
     @Override

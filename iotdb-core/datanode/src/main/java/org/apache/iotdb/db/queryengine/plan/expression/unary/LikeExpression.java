@@ -29,8 +29,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.regex.Pattern;
 
-import static org.apache.iotdb.tsfile.read.filter.factory.ValueFilter.compileRegex;
-import static org.apache.iotdb.tsfile.read.filter.factory.ValueFilter.parseLikePatternToRegex;
+import static org.apache.iotdb.tsfile.utils.RegexUtils.compileRegex;
+import static org.apache.iotdb.tsfile.utils.RegexUtils.parseLikePatternToRegex;
 
 public class LikeExpression extends UnaryExpression {
 

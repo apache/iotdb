@@ -99,7 +99,8 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(String.format("SeriesScan-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("Series: %s", node.getSeriesPath()));
 
-    long limit = node.getPushDownLimit(), offset = node.getPushDownOffset();
+    long limit = node.getPushDownLimit();
+    long offset = node.getPushDownOffset();
     if (limit > 0) {
       boxValue.add(String.format("Limit: %s", limit));
     }
@@ -119,7 +120,8 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
             "Series: %s%s",
             node.getAlignedPath().getDevice(), node.getAlignedPath().getMeasurementList()));
 
-    long limit = node.getPushDownLimit(), offset = node.getPushDownOffset();
+    long limit = node.getPushDownLimit();
+    long offset = node.getPushDownOffset();
     if (limit > 0) {
       boxValue.add(String.format("Limit: %s", limit));
     }

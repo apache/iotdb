@@ -33,11 +33,17 @@ public class Not implements Filter {
   private final String toString;
 
   public static final String CONTAIN_NOT_ERR_MSG =
-      "This predicate contains a not! Did you forget to run this predicate through PredicateRemoveNotRewriter? ";
+      "This predicate contains a not! "
+          + "Did you forget to run this predicate through PredicateRemoveNotRewriter? ";
 
   public Not(Filter filter) {
     this.filter = Objects.requireNonNull(filter, "filter cannot be null");
     this.toString = "not(" + filter + ")";
+  }
+
+  @Override
+  public boolean satisfy(long time, Object value) {
+    return !filter.satisfy(time, value);
   }
 
   @Override
@@ -48,11 +54,6 @@ public class Not implements Filter {
   @Override
   public boolean allSatisfy(Statistics statistics) {
     throw new UnsupportedOperationException(CONTAIN_NOT_ERR_MSG + this);
-  }
-
-  @Override
-  public boolean satisfy(long time, Object value) {
-    return !filter.satisfy(time, value);
   }
 
   @Override

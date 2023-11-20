@@ -217,6 +217,11 @@ public class GroupByMonthFilter extends GroupByFilter implements IStatefulFilter
   @Override
   public Filter copy() {
     return new GroupByMonthFilter(
-            originalInterval, originalSlidingStep, originalStartTime, originalEndTime, timeZone, currPrecision);
+        originalInterval,
+        originalSlidingStep,
+        originalStartTime,
+        originalEndTime,
+        timeZone,
+        currPrecision);
   }
 }

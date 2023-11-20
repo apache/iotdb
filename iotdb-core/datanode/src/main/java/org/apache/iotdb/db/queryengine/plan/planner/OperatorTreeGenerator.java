@@ -501,7 +501,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
 
     Filter globalTimeFilter = context.getGlobalTimeFilter();
-    if(globalTimeFilter != null) {
+    if (globalTimeFilter != null) {
       scanOptionsBuilder.withGlobalTimeFilter(globalTimeFilter.copy());
     }
 

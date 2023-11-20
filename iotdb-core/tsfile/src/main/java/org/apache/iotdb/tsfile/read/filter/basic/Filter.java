@@ -28,6 +28,14 @@ import java.util.List;
 public interface Filter {
 
   /**
+   * To examine whether the single point(with time and value) is satisfied with the filter.
+   *
+   * @param time single point time
+   * @param value single point value
+   */
+  boolean satisfy(long time, Object value);
+
+  /**
    * To examine whether there are data points satisfied with the filter.
    *
    * @param statistics statistics with min time, max time, min value, max value.
@@ -40,14 +48,6 @@ public interface Filter {
    * @param statistics statistics with min time, max time, min value, max value.
    */
   boolean allSatisfy(Statistics statistics);
-
-  /**
-   * To examine whether the single point(with time and value) is satisfied with the filter.
-   *
-   * @param time single point time
-   * @param value single point value
-   */
-  boolean satisfy(long time, Object value);
 
   /**
    * To examine whether the min time and max time are satisfied with the filter.

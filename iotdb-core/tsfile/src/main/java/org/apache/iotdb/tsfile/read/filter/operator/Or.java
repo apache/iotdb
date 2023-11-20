@@ -35,6 +35,11 @@ public class Or extends BinaryLogicalFilter implements Filter {
   }
 
   @Override
+  public boolean satisfy(long time, Object value) {
+    return left.satisfy(time, value) || right.satisfy(time, value);
+  }
+
+  @Override
   public boolean satisfy(Statistics statistics) {
     return left.satisfy(statistics) || right.satisfy(statistics);
   }
@@ -42,11 +47,6 @@ public class Or extends BinaryLogicalFilter implements Filter {
   @Override
   public boolean allSatisfy(Statistics statistics) {
     return left.allSatisfy(statistics) || right.allSatisfy(statistics);
-  }
-
-  @Override
-  public boolean satisfy(long time, Object value) {
-    return left.satisfy(time, value) || right.satisfy(time, value);
   }
 
   @Override
