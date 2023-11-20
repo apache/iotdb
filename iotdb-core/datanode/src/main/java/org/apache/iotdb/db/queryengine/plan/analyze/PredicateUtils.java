@@ -281,6 +281,9 @@ public class PredicateUtils {
   }
 
   public static Filter convertPredicateToTimeFilter(Expression predicate) {
+    if(predicate == null) {
+      return null;
+    }
     return predicate.accept(new ConvertExpressionToTimeFilterVisitor(), null);
   }
 
