@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.WrappedRunnable;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
@@ -106,5 +107,11 @@ public class PipePeriodicalJobExecutor {
       executorFuture = null;
       LOGGER.info("Pipe periodical job executor is stopped successfully.");
     }
+  }
+
+  @TestOnly
+  public synchronized void clear() {
+    periodicalJobs.clear();
+    LOGGER.info("All pipe periodical jobs are cleared successfully.");
   }
 }
