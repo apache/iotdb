@@ -19,11 +19,9 @@
 
 package org.apache.iotdb.db.pipe.resource.tsfile;
 
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileReader;
@@ -41,8 +39,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class PipeTsFileResourceManager {
@@ -52,39 +48,36 @@ public class PipeTsFileResourceManager {
       new HashMap<>();
   private final ReentrantLock lock = new ReentrantLock();
 
-  private static final ScheduledExecutorService PIPE_TSFILE_RESOURCE_TTL_CHECKER =
-      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-          ThreadName.PIPE_TSFILE_RESOURCE_TTL_CHECKER.getName());
-
   public PipeTsFileResourceManager() {
-    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-        PIPE_TSFILE_RESOURCE_TTL_CHECKER,
-        () -> {
-          final Iterator<Map.Entry<String, PipeTsFileResource>> iterator =
-              hardlinkOrCopiedFileToPipeTsFileResourceMap.entrySet().iterator();
-          while (iterator.hasNext()) {
-            final Map.Entry<String, PipeTsFileResource> entry = iterator.next();
+    PipeAgent.runtime()
+        .registerPeriodicalJob(
+            "PipeTsFileResourceManager#ttlCheck()",
+            this::ttlCheck,
+            Math.max(PipeTsFileResource.TSFILE_MIN_TIME_TO_LIVE_IN_MS / 1000, 1));
+  }
 
-            lock.lock();
-            try {
-              if (entry.getValue().closeIfOutOfTimeToLive()) {
-                iterator.remove();
-              } else {
-                LOGGER.info(
-                    "Pipe file (file name: {}) is still referenced {} times",
-                    entry.getKey(),
-                    entry.getValue().getReferenceCount());
-              }
-            } catch (IOException e) {
-              LOGGER.warn("failed to close PipeTsFileResource when checking TTL: ", e);
-            } finally {
-              lock.unlock();
-            }
-          }
-        },
-        PipeTsFileResource.TSFILE_MIN_TIME_TO_LIVE_IN_MS,
-        PipeTsFileResource.TSFILE_MIN_TIME_TO_LIVE_IN_MS,
-        TimeUnit.MILLISECONDS);
+  private void ttlCheck() {
+    final Iterator<Map.Entry<String, PipeTsFileResource>> iterator =
+        hardlinkOrCopiedFileToPipeTsFileResourceMap.entrySet().iterator();
+    while (iterator.hasNext()) {
+      final Map.Entry<String, PipeTsFileResource> entry = iterator.next();
+
+      lock.lock();
+      try {
+        if (entry.getValue().closeIfOutOfTimeToLive()) {
+          iterator.remove();
+        } else {
+          LOGGER.info(
+              "Pipe file (file name: {}) is still referenced {} times",
+              entry.getKey(),
+              entry.getValue().getReferenceCount());
+        }
+      } catch (IOException e) {
+        LOGGER.warn("failed to close PipeTsFileResource when checking TTL: ", e);
+      } finally {
+        lock.unlock();
+      }
+    }
   }
 
   /**

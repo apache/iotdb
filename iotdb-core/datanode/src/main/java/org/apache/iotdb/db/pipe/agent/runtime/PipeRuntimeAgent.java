@@ -134,4 +134,10 @@ public class PipeRuntimeAgent implements IService {
       PipeAgent.task().stopAllPipesWithCriticalException();
     }
   }
+
+  /////////////////////////// Periodical Job Executor ///////////////////////////
+
+  public void registerPeriodicalJob(String id, Runnable periodicalJob, long intervalInSeconds) {
+    pipePeriodicalJobExecutor.register(id, periodicalJob, intervalInSeconds);
+  }
 }

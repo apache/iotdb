@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.resource.memory;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
@@ -57,6 +58,14 @@ public class PipeMemoryManager {
   private long usedMemorySizeInBytes;
 
   private final Set<PipeMemoryBlock> allocatedBlocks = new HashSet<>();
+
+  public PipeMemoryManager() {
+    PipeAgent.runtime()
+        .registerPeriodicalJob(
+            "PipeMemoryManager#tryExpandAll()",
+            this::tryExpandAll,
+            PipeConfig.getInstance().getPipeMemoryExpanderIntervalSeconds());
+  }
 
   public synchronized PipeMemoryBlock forceAllocate(long sizeInBytes)
       throws PipeRuntimeOutOfMemoryCriticalException {

@@ -21,14 +21,16 @@ package org.apache.iotdb.db.pipe.agent.runtime;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.WrappedRunnable;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.pipe.extractor.realtime.listener.PipeInsertionDataNodeListener;
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -45,34 +47,44 @@ public class PipePeriodicalJobExecutor {
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
           ThreadName.PIPE_RUNTIME_PERIODICAL_JOB_EXECUTOR.getName());
 
-  private static final long CRON_EVENT_INJECTOR_INTERVAL_SECONDS =
+  private static final long MIN_INTERVAL_SECONDS =
       PipeConfig.getInstance().getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds();
-  private long cronEventInjectRoundsInterval;
-
-  private static final long MEMORY_EXPANDER_INTERVAL_SECONDS =
-      PipeConfig.getInstance().getPipeMemoryExpanderIntervalSeconds();
-  private long memoryExpandRoundsInterval;
-
-  // Currently we use the CRON_EVENT_INJECTOR_INTERVAL_SECONDS as minimum interval
-  private static final long EXECUTOR_INTERVAL_SECONDS = CRON_EVENT_INJECTOR_INTERVAL_SECONDS;
   private long rounds;
-
   private Future<?> executorFuture;
+
+  // <Periodical job, Interval in rounds>
+  private static final List<Pair<WrappedRunnable, Long>> periodicalJobs = new ArrayList<>();
+
+  public synchronized void register(String id, Runnable periodicalJob, long intervalInSeconds) {
+    periodicalJobs.add(
+        new Pair<>(
+            new WrappedRunnable() {
+              @Override
+              public void runMayThrow() {
+                try {
+                  periodicalJob.run();
+                } catch (Exception e) {
+                  LOGGER.warn("Periodical job {} failed.", id, e);
+                }
+              }
+            },
+            Math.max(intervalInSeconds / MIN_INTERVAL_SECONDS, 1)));
+    LOGGER.info(
+        "Pipe periodical job {} is registered successfully. Interval: {} seconds.",
+        id,
+        Math.max(intervalInSeconds / MIN_INTERVAL_SECONDS, 1) * MIN_INTERVAL_SECONDS);
+  }
 
   public synchronized void start() {
     if (executorFuture == null) {
       rounds = 0;
-      cronEventInjectRoundsInterval =
-          Math.max(CRON_EVENT_INJECTOR_INTERVAL_SECONDS / EXECUTOR_INTERVAL_SECONDS, 1);
-      memoryExpandRoundsInterval =
-          Math.max(MEMORY_EXPANDER_INTERVAL_SECONDS / EXECUTOR_INTERVAL_SECONDS, 1);
 
       executorFuture =
           ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
               PERIODICAL_JOB_EXECUTOR,
               this::execute,
-              EXECUTOR_INTERVAL_SECONDS,
-              EXECUTOR_INTERVAL_SECONDS,
+              MIN_INTERVAL_SECONDS,
+              MIN_INTERVAL_SECONDS,
               TimeUnit.SECONDS);
       LOGGER.info("Pipe periodical job executor is started successfully.");
     }
@@ -81,12 +93,10 @@ public class PipePeriodicalJobExecutor {
   private synchronized void execute() {
     ++rounds;
 
-    if (rounds % cronEventInjectRoundsInterval == 0) {
-      PipeInsertionDataNodeListener.getInstance().listenToHeartbeat(false);
-    }
-
-    if (rounds % memoryExpandRoundsInterval == 0) {
-      PipeResourceManager.memory().tryExpandAll();
+    for (final Pair<WrappedRunnable, Long> periodicalJob : periodicalJobs) {
+      if (rounds % periodicalJob.right == 0) {
+        periodicalJob.left.run();
+      }
     }
   }
 
