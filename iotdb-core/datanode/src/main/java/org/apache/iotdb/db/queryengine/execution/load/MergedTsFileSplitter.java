@@ -580,7 +580,7 @@ public class MergedTsFileSplitter {
         }
       }
 
-      consumeAllAlignedChunkData(reader.position(), pageIndex2ChunkData);
+      consumeAllAlignedChunkData(pageIndex2ChunkData);
       handleModification(offset2Deletions, Long.MAX_VALUE);
       close();
       if (asyncExecutor != null) {
