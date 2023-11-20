@@ -412,6 +412,7 @@ public class LogicalPlanBuilder {
   public LogicalPlanBuilder planAggregationSource(
       AggregationStep curStep,
       Ordering scanOrder,
+      boolean isOutputEndTime,
       Filter timeFilter,
       GroupByTimeParameter groupByTimeParameter,
       Set<Expression> aggregationExpressions,
@@ -441,6 +442,7 @@ public class LogicalPlanBuilder {
             descendingAggregations,
             countTimeAggregations,
             scanOrder,
+            isOutputEndTime,
             timeFilter,
             groupByTimeParameter);
     updateTypeProvider(aggregationExpressions);
@@ -450,6 +452,7 @@ public class LogicalPlanBuilder {
         sourceNodeList,
         curStep,
         scanOrder,
+        isOutputEndTime,
         groupByTimeParameter,
         aggregationExpressions,
         crossGroupByAggregations,
@@ -460,6 +463,7 @@ public class LogicalPlanBuilder {
   public LogicalPlanBuilder planAggregationSourceWithIndexAdjust(
       AggregationStep curStep,
       Ordering scanOrder,
+      boolean isOutputEndTime,
       Filter timeFilter,
       GroupByTimeParameter groupByTimeParameter,
       Set<Expression> aggregationExpressions,
@@ -497,6 +501,7 @@ public class LogicalPlanBuilder {
             descendingAggregations,
             countTimeAggregations,
             scanOrder,
+            isOutputEndTime,
             timeFilter,
             groupByTimeParameter);
     updateTypeProvider(aggregationExpressions);
@@ -519,6 +524,7 @@ public class LogicalPlanBuilder {
         sourceNodeList,
         curStep,
         scanOrder,
+        isOutputEndTime,
         groupByTimeParameter,
         aggregationExpressions,
         crossGroupByExpressions,
@@ -596,6 +602,7 @@ public class LogicalPlanBuilder {
       Map<PartialPath, List<AggregationDescriptor>> descendingAggregations,
       Map<PartialPath, List<AggregationDescriptor>> countTimeAggregations,
       Ordering scanOrder,
+      boolean isOutputEndTime,
       Filter timeFilter,
       GroupByTimeParameter groupByTimeParameter) {
 
@@ -615,6 +622,7 @@ public class LogicalPlanBuilder {
               pathAggregationsEntry.getKey(),
               pathAggregationsEntry.getValue(),
               scanOrder,
+              isOutputEndTime,
               groupByTimeParameter,
               timeFilter));
     }
@@ -629,6 +637,7 @@ public class LogicalPlanBuilder {
                 pathAggregationsEntry.getKey(),
                 pathAggregationsEntry.getValue(),
                 scanOrder.reverse(),
+                isOutputEndTime,
                 null,
                 timeFilter));
       }
@@ -640,6 +649,7 @@ public class LogicalPlanBuilder {
       List<PlanNode> sourceNodeList,
       AggregationStep curStep,
       Ordering scanOrder,
+      boolean isOutputEndTime,
       GroupByTimeParameter groupByTimeParameter,
       Set<Expression> aggregationExpressions,
       LinkedHashMap<Expression, Set<Expression>> crossGroupByExpressions,
@@ -655,7 +665,12 @@ public class LogicalPlanBuilder {
 
         this.root =
             createSlidingWindowAggregationNode(
-                this.getRoot(), aggregationExpressions, groupByTimeParameter, curStep, scanOrder);
+                this.getRoot(),
+                aggregationExpressions,
+                groupByTimeParameter,
+                curStep,
+                isOutputEndTime,
+                scanOrder);
 
         if (crossGroupByExpressions != null) {
           curStep = AggregationStep.FINAL;
@@ -958,9 +973,6 @@ public class LogicalPlanBuilder {
               updateTypeProviderByPartialAggregation(
                   aggregationDescriptor, context.getTypeProvider()));
     }
-    if (outputEndTime) {
-      context.getTypeProvider().setType(ENDTIME, TSDataType.INT64);
-    }
     this.root =
         new AggregationNode(
             context.getQueryId().genPlanNodeId(),
@@ -978,6 +990,7 @@ public class LogicalPlanBuilder {
       Set<Expression> aggregationExpressions,
       GroupByTimeParameter groupByTimeParameter,
       AggregationStep curStep,
+      boolean outputEndTime,
       Ordering scanOrder) {
     if (aggregationExpressions == null) {
       return this;
@@ -985,7 +998,12 @@ public class LogicalPlanBuilder {
 
     this.root =
         createSlidingWindowAggregationNode(
-            this.getRoot(), aggregationExpressions, groupByTimeParameter, curStep, scanOrder);
+            this.getRoot(),
+            aggregationExpressions,
+            groupByTimeParameter,
+            curStep,
+            outputEndTime,
+            scanOrder);
     return this;
   }
 
@@ -994,6 +1012,7 @@ public class LogicalPlanBuilder {
       Set<Expression> aggregationExpressions,
       GroupByTimeParameter groupByTimeParameter,
       AggregationStep curStep,
+      boolean outputEndTime,
       Ordering scanOrder) {
     List<AggregationDescriptor> aggregationDescriptorList =
         constructAggregationDescriptorList(aggregationExpressions, curStep);
@@ -1002,6 +1021,7 @@ public class LogicalPlanBuilder {
         child,
         aggregationDescriptorList,
         groupByTimeParameter,
+        outputEndTime,
         scanOrder);
   }
 
@@ -1097,6 +1117,7 @@ public class LogicalPlanBuilder {
       PartialPath selectPath,
       List<AggregationDescriptor> aggregationDescriptorList,
       Ordering scanOrder,
+      boolean isOutputEndTime,
       GroupByTimeParameter groupByTimeParameter,
       Filter timeFilter) {
     if (selectPath instanceof MeasurementPath) { // non-aligned series
@@ -1106,6 +1127,7 @@ public class LogicalPlanBuilder {
               (MeasurementPath) selectPath,
               aggregationDescriptorList,
               scanOrder,
+              isOutputEndTime,
               groupByTimeParameter);
       seriesAggregationScanNode.setTimeFilter(timeFilter);
       // TODO: push down value filter

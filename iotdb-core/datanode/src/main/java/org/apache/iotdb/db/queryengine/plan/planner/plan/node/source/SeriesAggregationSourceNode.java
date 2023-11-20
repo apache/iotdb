@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.source;
 
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
@@ -27,8 +28,10 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import javax.annotation.Nullable;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public abstract class SeriesAggregationSourceNode extends SeriesSourceNode {
 
@@ -40,6 +43,10 @@ public abstract class SeriesAggregationSourceNode extends SeriesSourceNode {
   // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
   // The default order is TIMESTAMP_ASC, which means "order by timestamp asc"
   protected Ordering scanOrder = Ordering.ASC;
+
+  // Whether operator should output endTime in window
+  // This parameter is used in group by time
+  protected boolean isOutputEndTime = false;
 
   // time filter for current series, could be null if it doesn't exist
   @Nullable protected Filter timeFilter;
@@ -72,6 +79,14 @@ public abstract class SeriesAggregationSourceNode extends SeriesSourceNode {
   @Nullable
   public Filter getTimeFilter() {
     return timeFilter;
+  }
+
+  public boolean isOutputEndTime() {
+    return isOutputEndTime;
+  }
+
+  public void setOutputEndTime(boolean outputEndTime) {
+    isOutputEndTime = outputEndTime;
   }
 
   public void setTimeFilter(@Nullable Filter timeFilter) {
@@ -108,7 +123,8 @@ public abstract class SeriesAggregationSourceNode extends SeriesSourceNode {
         && scanOrder == that.scanOrder
         && Objects.equals(timeFilter, that.timeFilter)
         && Objects.equals(valueFilter, that.valueFilter)
-        && Objects.equals(groupByTimeParameter, that.groupByTimeParameter);
+        && Objects.equals(groupByTimeParameter, that.groupByTimeParameter)
+        && Objects.equals(isOutputEndTime, that.isOutputEndTime);
   }
 
   @Override
@@ -119,6 +135,22 @@ public abstract class SeriesAggregationSourceNode extends SeriesSourceNode {
         scanOrder,
         timeFilter,
         valueFilter,
-        groupByTimeParameter);
+        groupByTimeParameter,
+        isOutputEndTime);
+  }
+
+  @Override
+  public List<String> getOutputColumnNames() {
+    List<String> outputColumnNames = new ArrayList<>();
+    if (isOutputEndTime) {
+      outputColumnNames.add(ColumnHeaderConstant.ENDTIME);
+    }
+    outputColumnNames.addAll(
+        aggregationDescriptorList.stream()
+            .map(AggregationDescriptor::getOutputColumnNames)
+            .flatMap(List::stream)
+            .collect(Collectors.toList()));
+
+    return outputColumnNames;
   }
 }

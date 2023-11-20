@@ -45,7 +45,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 /**
  * This node is responsible to do the aggregation calculation for one series. It will read the
@@ -104,9 +103,34 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
     this.regionReplicaSet = dataRegionReplicaSet;
   }
 
-  @Override
-  public Ordering getScanOrder() {
-    return scanOrder;
+  public SeriesAggregationScanNode(
+      PlanNodeId id,
+      MeasurementPath seriesPath,
+      List<AggregationDescriptor> aggregationDescriptorList,
+      Ordering scanOrder,
+      boolean isOutputEndTime,
+      @Nullable GroupByTimeParameter groupByTimeParameter) {
+    this(id, seriesPath, aggregationDescriptorList);
+    this.scanOrder = scanOrder;
+    this.groupByTimeParameter = groupByTimeParameter;
+    this.isOutputEndTime = isOutputEndTime;
+  }
+
+  public SeriesAggregationScanNode(
+      PlanNodeId id,
+      MeasurementPath seriesPath,
+      List<AggregationDescriptor> aggregationDescriptorList,
+      Ordering scanOrder,
+      boolean isOutputEndTime,
+      @Nullable Filter timeFilter,
+      @Nullable Filter valueFilter,
+      @Nullable GroupByTimeParameter groupByTimeParameter,
+      TRegionReplicaSet dataRegionReplicaSet) {
+    this(id, seriesPath, aggregationDescriptorList, scanOrder, groupByTimeParameter);
+    this.timeFilter = timeFilter;
+    this.valueFilter = valueFilter;
+    this.regionReplicaSet = dataRegionReplicaSet;
+    this.isOutputEndTime = isOutputEndTime;
   }
 
   public MeasurementPath getSeriesPath() {
@@ -135,18 +159,11 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
         getSeriesPath(),
         getAggregationDescriptorList(),
         getScanOrder(),
+        isOutputEndTime(),
         getTimeFilter(),
         getValueFilter(),
         getGroupByTimeParameter(),
         getRegionReplicaSet());
-  }
-
-  @Override
-  public List<String> getOutputColumnNames() {
-    return aggregationDescriptorList.stream()
-        .map(AggregationDescriptor::getOutputColumnNames)
-        .flatMap(List::stream)
-        .collect(Collectors.toList());
   }
 
   @Override
@@ -179,6 +196,7 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
       aggregationDescriptor.serialize(byteBuffer);
     }
     ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
+    ReadWriteIOUtils.write(isOutputEndTime, byteBuffer);
     if (timeFilter == null) {
       ReadWriteIOUtils.write((byte) 0, byteBuffer);
     } else {
@@ -208,6 +226,7 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
       aggregationDescriptor.serialize(stream);
     }
     ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
+    ReadWriteIOUtils.write(isOutputEndTime, stream);
     if (timeFilter == null) {
       ReadWriteIOUtils.write((byte) 0, stream);
     } else {
@@ -236,6 +255,7 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
       aggregationDescriptorList.add(AggregationDescriptor.deserialize(byteBuffer));
     }
     Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    boolean isOutputEndTime = ReadWriteIOUtils.readBool(byteBuffer);
     byte isNull = ReadWriteIOUtils.readByte(byteBuffer);
     Filter timeFilter = null;
     if (isNull == 1) {
@@ -257,6 +277,7 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
         partialPath,
         aggregationDescriptorList,
         scanOrder,
+        isOutputEndTime,
         timeFilter,
         valueFilter,
         groupByTimeParameter,

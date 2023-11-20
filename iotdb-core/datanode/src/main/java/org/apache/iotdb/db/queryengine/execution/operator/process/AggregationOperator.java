@@ -46,6 +46,8 @@ public class AggregationOperator extends AbstractConsumeAllOperator {
   // Current interval of aggregation window [curStartTime, curEndTime)
   private TimeRange curTimeRange;
 
+  private boolean isOutputEndTime = false;
+
   private final List<Aggregator> aggregators;
 
   // Using for building result tsBlock
@@ -64,6 +66,36 @@ public class AggregationOperator extends AbstractConsumeAllOperator {
     this.aggregators = aggregators;
     this.timeRangeIterator = timeRangeIterator;
     List<TSDataType> dataTypes = new ArrayList<>();
+    for (Aggregator aggregator : aggregators) {
+      dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
+    }
+    this.resultTsBlockBuilder = new TsBlockBuilder(dataTypes);
+
+    this.childrenRetainedSize =
+        children.stream().mapToLong(Operator::calculateRetainedSizeAfterCallingNext).sum();
+    this.maxRetainedSize =
+        childrenRetainedSize == 0
+            ? 0
+            : children.stream().mapToLong(Operator::calculateMaxReturnSize).sum();
+
+    this.maxReturnSize = maxReturnSize;
+  }
+
+  public AggregationOperator(
+      OperatorContext operatorContext,
+      List<Aggregator> aggregators,
+      ITimeRangeIterator timeRangeIterator,
+      List<Operator> children,
+      boolean isOutputEndTime,
+      long maxReturnSize) {
+    super(operatorContext, children);
+    this.aggregators = aggregators;
+    this.timeRangeIterator = timeRangeIterator;
+    this.isOutputEndTime = isOutputEndTime;
+    List<TSDataType> dataTypes = new ArrayList<>();
+    if (isOutputEndTime) {
+      dataTypes.add(TSDataType.INT64);
+    }
     for (Aggregator aggregator : aggregators) {
       dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
     }
@@ -159,7 +191,6 @@ public class AggregationOperator extends AbstractConsumeAllOperator {
 
   private void updateResultTsBlock() {
     curTimeRange = null;
-    appendAggregationResult(
-        resultTsBlockBuilder, aggregators, timeRangeIterator.currentOutputTime());
+    appendAggregationResult(resultTsBlockBuilder, aggregators, isOutputEndTime, timeRangeIterator);
   }
 }

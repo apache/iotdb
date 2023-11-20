@@ -47,6 +47,8 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
   // Current interval of pre-aggregation window [curStartTime, curEndTime)
   private TimeRange curSubTimeRange;
 
+  private boolean isOutputEndTime = false;
+
   public SlidingWindowAggregationOperator(
       OperatorContext operatorContext,
       List<Aggregator> aggregators,
@@ -66,6 +68,34 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
     }
     this.resultTsBlockBuilder = new TsBlockBuilder(dataTypes);
 
+    this.timeRangeIterator = timeRangeIterator;
+    this.subTimeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending, true);
+  }
+
+  public SlidingWindowAggregationOperator(
+      OperatorContext operatorContext,
+      List<Aggregator> aggregators,
+      ITimeRangeIterator timeRangeIterator,
+      Operator child,
+      boolean ascending,
+      boolean isOutputEndTime,
+      GroupByTimeParameter groupByTimeParameter,
+      long maxReturnSize) {
+    super(operatorContext, aggregators, child, ascending, maxReturnSize);
+    checkArgument(
+        groupByTimeParameter != null,
+        "GroupByTimeParameter cannot be null in SlidingWindowAggregationOperator");
+
+    List<TSDataType> dataTypes = new ArrayList<>();
+    if (isOutputEndTime) {
+      dataTypes.add(TSDataType.INT64);
+    }
+    for (Aggregator aggregator : aggregators) {
+      dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
+    }
+
+    this.resultTsBlockBuilder = new TsBlockBuilder(dataTypes);
+    this.isOutputEndTime = isOutputEndTime;
     this.timeRangeIterator = timeRangeIterator;
     this.subTimeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending, true);
   }
@@ -145,7 +175,6 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
   @Override
   protected void updateResultTsBlock() {
     curTimeRange = null;
-    appendAggregationResult(
-        resultTsBlockBuilder, aggregators, timeRangeIterator.currentOutputTime());
+    appendAggregationResult(resultTsBlockBuilder, aggregators, isOutputEndTime, timeRangeIterator);
   }
 }

@@ -62,4 +62,28 @@ public class SeriesAggregationScanOperator extends AbstractSeriesAggregationScan
         groupByTimeParameter,
         maxReturnSize);
   }
+
+  public SeriesAggregationScanOperator(
+      PlanNodeId sourceId,
+      PartialPath seriesPath,
+      Ordering scanOrder,
+      boolean isOutputEndTime,
+      SeriesScanOptions scanOptions,
+      OperatorContext context,
+      List<Aggregator> aggregators,
+      ITimeRangeIterator timeRangeIterator,
+      GroupByTimeParameter groupByTimeParameter,
+      long maxReturnSize) {
+    super(
+        sourceId,
+        context,
+        new SeriesScanUtil(seriesPath, scanOrder, scanOptions, context.getInstanceContext()),
+        1,
+        aggregators,
+        timeRangeIterator,
+        scanOrder.isAscending(),
+        isOutputEndTime,
+        groupByTimeParameter,
+        maxReturnSize);
+  }
 }
