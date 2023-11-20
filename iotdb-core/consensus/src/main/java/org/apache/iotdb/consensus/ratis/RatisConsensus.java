@@ -342,7 +342,7 @@ class RatisConsensus implements IConsensus {
     try {
       reply = doRead(raftGroupId, request, isLinearizableRead);
       // allow stale read if current linearizable read returns successfully
-      if (readOption == RatisConfig.Read.Option.DEFAULT && isLinearizableRead) {
+      if (canServeStaleRead != null && isLinearizableRead) {
         canServeStaleRead.get(groupId).set(true);
       }
     } catch (ReadException | ReadIndexException e) {
@@ -775,11 +775,11 @@ class RatisConsensus implements IConsensus {
   }
 
   private void onLeaderChanged(RaftGroupMemberId groupMemberId, RaftPeerId leaderId) {
-    if (canServeStaleRead != null) {
+    Optional.ofNullable(canServeStaleRead).ifPresent(m -> {
       final ConsensusGroupId gid =
           Utils.fromRaftGroupIdToConsensusGroupId(groupMemberId.getGroupId());
       canServeStaleRead.computeIfAbsent(gid, id -> new AtomicBoolean()).set(false);
-    }
+    });
   }
 
   @TestOnly
