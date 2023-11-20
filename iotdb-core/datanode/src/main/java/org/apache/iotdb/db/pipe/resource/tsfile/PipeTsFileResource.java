@@ -73,9 +73,6 @@ public class PipeTsFileResource implements Closeable {
                   PipeConfig.getInstance().getPipeMemoryAllocateForTsFileSequenceReaderInBytes(),
                   0.5f);
       if (allocatedMemoryBlock == null) {
-        LOGGER.info(
-            "Fail to create TsFileReader for file in cache because no enough memory: {}",
-            hardlinkOrCopiedFile.getPath());
         return;
       }
       LOGGER.info("Creating TsFileReader for file in cache: {}", hardlinkOrCopiedFile.getPath());
