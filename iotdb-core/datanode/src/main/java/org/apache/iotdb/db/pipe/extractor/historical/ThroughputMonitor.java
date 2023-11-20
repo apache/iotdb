@@ -36,7 +36,7 @@ public class ThroughputMonitor {
   /** <timestamp, throughput> */
   private final Queue<Pair<Long, Double>> history = new ArrayDeque<>(maxRecordNum);
 
-  public void record(long timestamp, double throughput) {
+  public void recordThroughput(long timestamp, double throughput) {
     synchronized (history) {
       if (history.size() >= maxRecordNum) {
         history.remove();

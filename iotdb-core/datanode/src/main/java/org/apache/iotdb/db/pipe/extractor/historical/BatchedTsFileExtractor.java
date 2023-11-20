@@ -106,7 +106,7 @@ public class BatchedTsFileExtractor extends PipeHistoricalDataRegionTsFileExtrac
     long timeout = (long) parameters.get(PipeBatchTsFileInsertionEvent.CONNECTOR_TIMEOUT_MS);
     double throughput =
         (double) parameters.get(PipeBatchTsFileInsertionEvent.CONNECTOR_THROUGHPUT_MBPS_KEY);
-    throughputMonitor.record(System.currentTimeMillis(), throughput);
+    throughputMonitor.recordThroughput(System.currentTimeMillis(), throughput);
     double avg = throughputMonitor.calculateAverage();
     LOGGER.info(
         "Connector timed out: throughput={}MB/s, timeout={}ms, estimatedThroughput={}MB/s",
@@ -124,7 +124,7 @@ public class BatchedTsFileExtractor extends PipeHistoricalDataRegionTsFileExtrac
     double throughput =
         (double) parameters.get(PipeBatchTsFileInsertionEvent.CONNECTOR_THROUGHPUT_MBPS_KEY);
     LOGGER.info("Connector succeeds with throughput: {}MB/s", throughput);
-    throughputMonitor.record(System.currentTimeMillis(), throughput);
+    throughputMonitor.recordThroughput(System.currentTimeMillis(), throughput);
     return null;
   }
 }

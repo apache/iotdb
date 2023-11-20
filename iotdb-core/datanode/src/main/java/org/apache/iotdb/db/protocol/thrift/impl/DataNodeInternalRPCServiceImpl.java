@@ -411,51 +411,30 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     List<CompressionType> compressionTypes = new ArrayList<>();
     boolean isAligned = false;
     for (TsFileData data : pieceNode.getAllTsFileData()) {
-      if (data.isModification()) {
-        continue;
-      }
-
-      ChunkData chunkData = (ChunkData) data;
-      String device = chunkData.getDevice();
-      String measurement = chunkData.firstMeasurement();
-      if (currDevice == null) {
-        currDevice = device;
-        currMeasurement = measurement;
-      } else if (!currDevice.equals(device)) {
-        validatingSchema.devicePaths.add(new PartialPath(currDevice));
-        validatingSchema.measurements.add(measurements.toArray(new String[0]));
-        validatingSchema.dataTypes.add(dataTypes.toArray(new TSDataType[0]));
-        validatingSchema.encodings.add(encodings.toArray(new TSEncoding[0]));
-        validatingSchema.compressionTypes.add(compressionTypes.toArray(new CompressionType[0]));
-        validatingSchema.isAlignedList.add(isAligned);
-        currDevice = device;
-        currMeasurement = measurement;
-        measurements.clear();
-        ;
-        dataTypes.clear();
-        encodings.clear();
-        compressionTypes.clear();
-      } else if (currMeasurement.equals(measurement)) {
-        continue;
-      }
-
-      if (chunkData.isAligned()) {
-        AlignedChunkData alignedChunkData = (AlignedChunkData) chunkData;
-        for (ChunkHeader header : alignedChunkData.getChunkHeaderList()) {
-          measurements.add(header.getMeasurementID());
-          dataTypes.add(header.getDataType());
-          encodings.add(header.getEncodingType());
-          compressionTypes.add(header.getCompressionType());
+      if (!data.isModification()) {
+        ChunkData chunkData = (ChunkData) data;
+        String device = chunkData.getDevice();
+        String measurement = chunkData.firstMeasurement();
+        if (currDevice == null) {
+          currDevice = device;
+          currMeasurement = measurement;
+        } else if (!currDevice.equals(device)) {
+          validatingSchema.devicePaths.add(new PartialPath(currDevice));
+          validatingSchema.measurements.add(measurements.toArray(new String[0]));
+          validatingSchema.dataTypes.add(dataTypes.toArray(new TSDataType[0]));
+          validatingSchema.encodings.add(encodings.toArray(new TSEncoding[0]));
+          validatingSchema.compressionTypes.add(compressionTypes.toArray(new CompressionType[0]));
+          validatingSchema.isAlignedList.add(isAligned);
+          currDevice = device;
+          currMeasurement = measurement;
+          measurements.clear();
+          dataTypes.clear();
+          encodings.clear();
+          compressionTypes.clear();
+        } else if (currMeasurement.equals(measurement)) {
+          continue;
         }
-        isAligned = true;
-      } else {
-        NonAlignedChunkData nonAlignedChunkData = (NonAlignedChunkData) chunkData;
-        ChunkHeader header = nonAlignedChunkData.getChunkHeader();
-        measurements.add(header.getMeasurementID());
-        dataTypes.add(header.getDataType());
-        encodings.add(header.getEncodingType());
-        compressionTypes.add(header.getCompressionType());
-        isAligned = false;
+        isAligned = extractSchema(chunkData, measurements, dataTypes, encodings, compressionTypes);
       }
     }
 
@@ -466,6 +445,57 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     validatingSchema.compressionTypes.add(compressionTypes.toArray(new CompressionType[0]));
     validatingSchema.isAlignedList.add(isAligned);
     return validatingSchema;
+  }
+
+  private boolean extractSchema(ChunkData chunkData, List<String> measurements,
+      List<TSDataType> dataTypes, List<TSEncoding> encodings,
+      List<CompressionType> compressionTypes) {
+    if (chunkData.isAligned()) {
+      AlignedChunkData alignedChunkData = (AlignedChunkData) chunkData;
+      for (ChunkHeader header : alignedChunkData.getChunkHeaderList()) {
+        measurements.add(header.getMeasurementID());
+        dataTypes.add(header.getDataType());
+        encodings.add(header.getEncodingType());
+        compressionTypes.add(header.getCompressionType());
+      }
+      return true;
+    } else {
+      NonAlignedChunkData nonAlignedChunkData = (NonAlignedChunkData) chunkData;
+      ChunkHeader header = nonAlignedChunkData.getChunkHeader();
+      measurements.add(header.getMeasurementID());
+      dataTypes.add(header.getDataType());
+      encodings.add(header.getEncodingType());
+      compressionTypes.add(header.getCompressionType());
+      return false;
+    }
+  }
+
+  private TLoadResp ensureSchema(TTsFilePieceReq req, IClientSession session,
+      LoadTsFilePieceNode pieceNode) throws TException {
+    TSStatus status = AuthorityChecker.checkUser(req.getUsername(), req.getPassword());
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return createTLoadResp(status);
+    }
+
+    try {
+      ValidatingSchema validatingSchema = extractValidatingSchema(pieceNode);
+      SESSION_MANAGER.registerSession(session);
+      SESSION_MANAGER.supplySession(
+          session, req.getUsername(), ZoneId.systemDefault().getId(), ClientVersion.V_1_0);
+
+      MPPQueryContext queryContext =
+          new MPPQueryContext(
+              "",
+              COORDINATOR.createQueryId(),
+              SESSION_MANAGER.getSessionInfo(session),
+              DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT,
+              DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT);
+      SchemaValidator.validate(schemaFetcher, validatingSchema, queryContext);
+    } catch (IllegalPathException e) {
+      throw new TException(e);
+    }
+
+    return null;
   }
 
   @Override
@@ -492,27 +522,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
       if (req.needSchemaRegistration
           && IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
-        TSStatus status = AuthorityChecker.checkUser(req.getUsername(), req.getPassword());
-        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          return createTLoadResp(status);
-        }
-
-        try {
-          ValidatingSchema validatingSchema = extractValidatingSchema(pieceNode);
-          SESSION_MANAGER.registerSession(session);
-          SESSION_MANAGER.supplySession(
-              session, req.getUsername(), ZoneId.systemDefault().getId(), ClientVersion.V_1_0);
-
-          MPPQueryContext queryContext =
-              new MPPQueryContext(
-                  "",
-                  COORDINATOR.createQueryId(),
-                  SESSION_MANAGER.getSessionInfo(session),
-                  DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT,
-                  DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT);
-          SchemaValidator.validate(schemaFetcher, validatingSchema, queryContext);
-        } catch (IllegalPathException e) {
-          throw new TException(e);
+        TLoadResp resp = ensureSchema(req, session, pieceNode);
+        if (resp != null) {
+          return resp;
         }
       }
 

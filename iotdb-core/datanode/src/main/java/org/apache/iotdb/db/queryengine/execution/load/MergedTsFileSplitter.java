@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.load;
 
+import java.util.Objects;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
@@ -74,7 +75,7 @@ import java.util.function.Function;
 
 public class MergedTsFileSplitter {
 
-  private static final Logger logger = LoggerFactory.getLogger(TsFileSplitter.class);
+  private static final Logger logger = LoggerFactory.getLogger(MergedTsFileSplitter.class);
 
   private final List<File> tsFiles;
   private final Function<TsFileData, Boolean> consumer;
@@ -99,26 +100,30 @@ public class MergedTsFileSplitter {
     taskPriorityQueue = new PriorityQueue<>();
   }
 
-  public void splitTsFileByDataPartition() throws IOException, IllegalStateException {
+  private int initSplitTasks() throws IOException {
     long startTime = System.nanoTime();
-    int i = 0;
-    for (; i < tsFiles.size(); i++) {
+    int fileIndex = 0;
+    for (; fileIndex < tsFiles.size(); fileIndex++) {
       // only allow at most maxConcurrentFileNum files to be merged at the same time
       if (taskPriorityQueue.size() > maxConcurrentFileNum) {
         break;
       }
 
-      File tsFile = tsFiles.get(i);
-      SplitTask splitTask = new SplitTask(tsFile, asyncExecutor, i);
-      logger.info("Start to split {}", tsFiles.get(i));
+      File tsFile = tsFiles.get(fileIndex);
+      SplitTask splitTask = new SplitTask(tsFile, asyncExecutor, fileIndex);
+      logger.info("Start to split {}", tsFiles.get(fileIndex));
       if (splitTask.hasNext()) {
         taskPriorityQueue.add(splitTask);
       }
     }
     statistic.initTime = System.nanoTime() - startTime;
+    return fileIndex;
+  }
+  public void splitTsFileByDataPartition() throws IOException, IllegalStateException {
+    int fileIndex = initSplitTasks();
 
     while (!taskPriorityQueue.isEmpty()) {
-      startTime = System.nanoTime();
+      long startTime = System.nanoTime();
       SplitTask task = taskPriorityQueue.poll();
       TsFileData tsFileData = task.removeNext();
       statistic.fetchDataTime += System.nanoTime() - startTime;
@@ -133,12 +138,12 @@ public class MergedTsFileSplitter {
         taskPriorityQueue.add(task);
       } else {
         // when a file is exhausted, add the next non-empty file
-        for (; i < tsFiles.size(); i++) {
-          SplitTask splitTask = new SplitTask(tsFiles.get(i), asyncExecutor, i);
-          logger.info("Start to split {}", tsFiles.get(i));
+        for (; fileIndex < tsFiles.size(); fileIndex++) {
+          SplitTask splitTask = new SplitTask(tsFiles.get(fileIndex), asyncExecutor, fileIndex);
+          logger.info("Start to split {}", tsFiles.get(fileIndex));
           if (splitTask.hasNext()) {
             taskPriorityQueue.add(splitTask);
-            i++;
+            fileIndex++;
             break;
           }
         }
@@ -197,6 +202,23 @@ public class MergedTsFileSplitter {
     }
 
     @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      SplitTask task = (SplitTask) o;
+      return Objects.equals(tsFile, task.tsFile);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(tsFile);
+    }
+
+    @Override
     public int compareTo(SplitTask o) {
       try {
         TsFileData thisNext = showNext();
@@ -223,7 +245,7 @@ public class MergedTsFileSplitter {
         }
         return Integer.compare(this.fileId, o.fileId);
       } catch (IOException e) {
-        throw new RuntimeException(e);
+        throw new IllegalStateException(e);
       }
     }
 
@@ -249,12 +271,7 @@ public class MergedTsFileSplitter {
         asyncTask =
             asyncExecutor.submit(
                 () -> {
-                  try {
-                    asyncComputeNext();
-                  } catch (Throwable e) {
-                    logger.info("Exception during splitting", e);
-                    throw e;
-                  }
+                  asyncComputeNext();
                   return null;
                 });
       }
@@ -316,7 +333,7 @@ public class MergedTsFileSplitter {
         try {
           asyncTask.get();
         } catch (CancellationException ignored) {
-
+          Thread.currentThread().interrupt();
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           throw new IOException(e);
@@ -336,7 +353,8 @@ public class MergedTsFileSplitter {
         // e.g. the marker after processing a chunk
         return marker;
       }
-      return marker = reader.readMarker();
+      marker = reader.readMarker();
+      return marker;
     }
 
     private void insertNewChunk(ChunkData chunkData) throws IOException {
@@ -366,7 +384,7 @@ public class MergedTsFileSplitter {
           case MetaMarker.ONLY_ONE_PAGE_TIME_CHUNK_HEADER:
             long chunkOffset = reader.position();
             boolean chunkDataGenerated =
-                consumeAllAlignedChunkData(chunkOffset, pageIndex2ChunkData);
+                consumeAllAlignedChunkData(pageIndex2ChunkData);
             handleModification(offset2Deletions, chunkOffset);
             if (chunkDataGenerated) {
               return;
@@ -583,7 +601,9 @@ public class MergedTsFileSplitter {
       }
 
       @Override
-      public void writeToFileWriter(TsFileIOWriter writer) throws IOException {}
+      public void writeToFileWriter(TsFileIOWriter writer) throws IOException {
+        // placeholder class
+      }
 
       @Override
       public boolean isModification() {
@@ -591,7 +611,9 @@ public class MergedTsFileSplitter {
       }
 
       @Override
-      public void serialize(DataOutputStream stream) throws IOException {}
+      public void serialize(DataOutputStream stream) throws IOException {
+        // placeholder class
+      }
 
       @Override
       public int getSplitId() {
@@ -599,7 +621,9 @@ public class MergedTsFileSplitter {
       }
 
       @Override
-      public void setSplitId(int sid) {}
+      public void setSplitId(int sid) {
+        // placeholder class
+      }
     }
 
     private void getAllModification(Map<Long, List<Deletion>> offset2Deletions) throws IOException {
@@ -657,7 +681,7 @@ public class MergedTsFileSplitter {
     }
 
     private boolean consumeAllAlignedChunkData(
-        long offset, Map<Integer, List<AlignedChunkData>> pageIndex2ChunkData) {
+        Map<Integer, List<AlignedChunkData>> pageIndex2ChunkData) {
       if (pageIndex2ChunkData.isEmpty()) {
         return false;
       }

@@ -172,69 +172,74 @@ public class TsFileListInsertionDataContainer implements AutoCloseable {
 
   /** @return TabletInsertionEvent in a streaming way */
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
-    return () ->
-        new Iterator<TabletInsertionEvent>() {
+    return this::tabletInsertionEventsIterator;
+  }
 
-          private TsFileInsertionDataTabletIterator tabletIterator = null;
+  public Iterator<TabletInsertionEvent> tabletInsertionEventsIterator() {
+    return new TabletInsertionEventIterator();
 
-          @Override
-          public boolean hasNext() {
-            while (tabletIterator == null || !tabletIterator.hasNext()) {
-              if (!deviceMeasurementsMapIterators.get(currFileIndex).hasNext()) {
-                if (currFileIndex >= tsFileReaders.size()) {
-                  close();
-                  return false;
-                } else {
-                  currFileIndex++;
-                  continue;
-                }
-              }
+  }
 
-              final Map.Entry<String, List<String>> entry =
-                  deviceMeasurementsMapIterators.get(currFileIndex).next();
+  public class TabletInsertionEventIterator implements Iterator<TabletInsertionEvent> {
+    private TsFileInsertionDataTabletIterator tabletIterator = null;
 
-              try {
-                tabletIterator =
-                    new TsFileInsertionDataTabletIterator(
-                        tsFileReaders.get(currFileIndex),
-                        measurementDataTypeMaps.get(currFileIndex),
-                        entry.getKey(),
-                        entry.getValue(),
-                        timeFilterExpression);
-              } catch (IOException e) {
-                close();
-                throw new PipeException("failed to create TsFileInsertionDataTabletIterator", e);
-              }
-            }
-
-            return true;
+    @Override
+    public boolean hasNext() {
+      while (tabletIterator == null || !tabletIterator.hasNext()) {
+        if (!deviceMeasurementsMapIterators.get(currFileIndex).hasNext()) {
+          if (currFileIndex >= tsFileReaders.size()) {
+            close();
+            return false;
+          } else {
+            currFileIndex++;
+            continue;
           }
+        }
 
-          @Override
-          public TabletInsertionEvent next() {
-            if (!hasNext()) {
-              close();
-              throw new NoSuchElementException();
-            }
+        final Map.Entry<String, List<String>> entry =
+            deviceMeasurementsMapIterators.get(currFileIndex).next();
 
-            final Tablet tablet = tabletIterator.next();
-            final boolean isAligned =
-                deviceIsAlignedMaps.get(currFileIndex).getOrDefault(tablet.deviceId, false);
+        try {
+          tabletIterator =
+              new TsFileInsertionDataTabletIterator(
+                  tsFileReaders.get(currFileIndex),
+                  measurementDataTypeMaps.get(currFileIndex),
+                  entry.getKey(),
+                  entry.getValue(),
+                  timeFilterExpression);
+        } catch (IOException e) {
+          close();
+          throw new PipeException("failed to create TsFileInsertionDataTabletIterator", e);
+        }
+      }
 
-            final TabletInsertionEvent next;
-            if (!hasNext()) {
-              next =
-                  new PipeRawTabletInsertionEvent(
-                      tablet, isAligned, pipeTaskMeta, sourceEvent, true);
-              close();
-            } else {
-              next =
-                  new PipeRawTabletInsertionEvent(
-                      tablet, isAligned, pipeTaskMeta, sourceEvent, false);
-            }
-            return next;
-          }
-        };
+      return true;
+    }
+
+    @Override
+    public TabletInsertionEvent next() {
+      if (!hasNext()) {
+        close();
+        throw new NoSuchElementException();
+      }
+
+      final Tablet tablet = tabletIterator.next();
+      final boolean isAligned =
+          deviceIsAlignedMaps.get(currFileIndex).getOrDefault(tablet.deviceId, false);
+
+      final TabletInsertionEvent next;
+      if (!hasNext()) {
+        next =
+            new PipeRawTabletInsertionEvent(
+                tablet, isAligned, pipeTaskMeta, sourceEvent, true);
+        close();
+      } else {
+        next =
+            new PipeRawTabletInsertionEvent(
+                tablet, isAligned, pipeTaskMeta, sourceEvent, false);
+      }
+      return next;
+    }
   }
 
   @Override

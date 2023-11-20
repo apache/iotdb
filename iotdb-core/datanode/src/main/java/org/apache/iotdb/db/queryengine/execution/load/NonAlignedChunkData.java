@@ -45,6 +45,8 @@ import java.nio.ByteBuffer;
 
 public class NonAlignedChunkData implements ChunkData {
 
+  private static final String MSG_UNSUPPORTED_DATA_TYPE = "Data type %s is not supported.";
+
   private final TTimePartitionSlot timePartitionSlot;
   private final String device;
   private final ChunkHeader chunkHeader;
@@ -187,7 +189,7 @@ public class NonAlignedChunkData implements ChunkData {
             break;
           default:
             throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", chunkHeader.getDataType()));
+                String.format(MSG_UNSUPPORTED_DATA_TYPE, chunkHeader.getDataType()));
         }
       }
     }
@@ -222,7 +224,7 @@ public class NonAlignedChunkData implements ChunkData {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Data type %s is not supported.", chunkHeader.getDataType()));
+              String.format(MSG_UNSUPPORTED_DATA_TYPE, chunkHeader.getDataType()));
       }
     }
   }
@@ -280,7 +282,7 @@ public class NonAlignedChunkData implements ChunkData {
               break;
             default:
               throw new UnSupportedDataTypeException(
-                  String.format("Data type %s is not supported.", chunkHeader.getDataType()));
+                  String.format(MSG_UNSUPPORTED_DATA_TYPE, chunkHeader.getDataType()));
           }
         }
 

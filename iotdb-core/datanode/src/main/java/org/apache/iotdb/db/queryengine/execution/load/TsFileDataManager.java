@@ -108,20 +108,19 @@ public class TsFileDataManager {
 
     for (TRegionReplicaSet sortedReplicaSet : sortedReplicaSets) {
       LoadTsFilePieceNode pieceNode = replicaSet2Piece.get(sortedReplicaSet);
-      if (pieceNode.getDataSize() == 0) { // total data size has been reduced to 0
-        break;
-      }
-      if (!dispatchFunction.dispatchOnePieceNode(pieceNode, sortedReplicaSet)) {
-        return false;
-      }
+      if (pieceNode.getDataSize() > 0) { // total data size has been reduced to 0
+        if (!dispatchFunction.dispatchOnePieceNode(pieceNode, sortedReplicaSet)) {
+          return false;
+        }
 
-      dataSize -= pieceNode.getDataSize();
-      replicaSet2Piece.put(
-          sortedReplicaSet,
-          new LoadTsFilePieceNode(
-              planNodeId, targetFile)); // can not just remove, because of deletion
-      if (!flushAll && dataSize <= maxMemorySize) {
-        break;
+        dataSize -= pieceNode.getDataSize();
+        replicaSet2Piece.put(
+            sortedReplicaSet,
+            new LoadTsFilePieceNode(
+                planNodeId, targetFile)); // can not just remove, because of deletion
+        if (!flushAll && dataSize <= maxMemorySize) {
+          break;
+        }
       }
     }
     return true;

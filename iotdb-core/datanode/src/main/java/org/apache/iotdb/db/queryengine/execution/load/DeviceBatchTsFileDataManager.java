@@ -38,6 +38,7 @@ public class DeviceBatchTsFileDataManager extends TsFileDataManager {
     super(dispatchFunction, planNodeId, targetFile, partitionBatchFetcher, maxMemorySize, userName);
   }
 
+  @Override
   protected boolean addOrSendChunkData(ChunkData chunkData) {
     if (currentDeviceId != null && !currentDeviceId.equals(chunkData.getDevice())) {
       // a new device, flush previous data first
