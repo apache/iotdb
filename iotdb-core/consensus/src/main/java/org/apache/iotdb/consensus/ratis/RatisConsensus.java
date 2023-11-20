@@ -775,11 +775,13 @@ class RatisConsensus implements IConsensus {
   }
 
   private void onLeaderChanged(RaftGroupMemberId groupMemberId, RaftPeerId leaderId) {
-    Optional.ofNullable(canServeStaleRead).ifPresent(m -> {
-      final ConsensusGroupId gid =
-          Utils.fromRaftGroupIdToConsensusGroupId(groupMemberId.getGroupId());
-      canServeStaleRead.computeIfAbsent(gid, id -> new AtomicBoolean()).set(false);
-    });
+    Optional.ofNullable(canServeStaleRead)
+        .ifPresent(
+            m -> {
+              final ConsensusGroupId gid =
+                  Utils.fromRaftGroupIdToConsensusGroupId(groupMemberId.getGroupId());
+              canServeStaleRead.computeIfAbsent(gid, id -> new AtomicBoolean()).set(false);
+            });
   }
 
   @TestOnly
