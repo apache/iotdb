@@ -26,8 +26,7 @@ import org.apache.iotdb.spark.tsfile.qp.QueryProcessor
 import org.apache.iotdb.spark.tsfile.qp.common.{BasicOperator, FilterOperator, SQLConstant, TSQueryPlan}
 import org.apache.iotdb.tsfile.common.constant.QueryConstant
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata
-import org.apache.iotdb.tsfile.enums.TSDataType
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding
+import org.apache.iotdb.tsfile.file.metadata.enums.{TSDataType, TSEncoding}
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader
 import org.apache.iotdb.tsfile.read.common.Path
 import org.apache.iotdb.tsfile.read.expression.impl.{BinaryExpression, GlobalTimeExpression, SingleSeriesExpression}

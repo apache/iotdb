@@ -70,8 +70,8 @@ import org.apache.iotdb.db.schemaengine.schemaregion.utils.filter.DeviceFilterVi
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeSpaceQuotaManager;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -704,18 +704,13 @@ public class MTreeBelowSGMemoryImpl {
     try (MeasurementCollector<Void, IMemMNode> collector =
         new MeasurementCollector<Void, IMemMNode>(
             rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
-          private final Set<PartialPath> visitedTemplateDevice = new HashSet<>();
-
           protected Void collectMeasurement(IMeasurementMNode<IMemMNode> node) {
             IDeviceMNode<IMemMNode> deviceMNode = getParentOfNextMatchedNode().getAsDeviceMNode();
             int templateId = deviceMNode.getSchemaTemplateIdWithState();
-            PartialPath devicePath = deviceMNode.getPartialPath();
             if (templateId >= 0) {
-              if (!visitedTemplateDevice.contains(devicePath)) {
-                schemaTree.appendTemplateDevice(
-                    deviceMNode.getPartialPath(), deviceMNode.isAligned(), templateId, null);
-                visitedTemplateDevice.add(devicePath);
-              }
+              schemaTree.appendTemplateDevice(
+                  deviceMNode.getPartialPath(), deviceMNode.isAligned(), templateId, null);
+              skipTemplateChildren(deviceMNode);
             } else {
               MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
               if (nodes[nodes.length - 1].equals(node.getAlias())) {
@@ -744,18 +739,13 @@ public class MTreeBelowSGMemoryImpl {
     try (MeasurementCollector<Void, IMemMNode> collector =
         new MeasurementCollector<Void, IMemMNode>(
             rootNode, patternTree, store, SchemaConstant.ALL_MATCH_SCOPE) {
-          private final Set<PartialPath> visitedTemplateDevice = new HashSet<>();
-
           protected Void collectMeasurement(IMeasurementMNode<IMemMNode> node) {
             IDeviceMNode<IMemMNode> deviceMNode = getParentOfNextMatchedNode().getAsDeviceMNode();
             int templateId = deviceMNode.getSchemaTemplateIdWithState();
-            PartialPath devicePath = deviceMNode.getPartialPath();
             if (templateId >= 0) {
-              if (!visitedTemplateDevice.contains(devicePath)) {
-                schemaTree.appendTemplateDevice(
-                    deviceMNode.getPartialPath(), deviceMNode.isAligned(), templateId, null);
-                visitedTemplateDevice.add(devicePath);
-              }
+              schemaTree.appendTemplateDevice(
+                  deviceMNode.getPartialPath(), deviceMNode.isAligned(), templateId, null);
+              skipTemplateChildren(deviceMNode);
             } else {
               MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
               path.setMeasurementAlias(node.getAlias());
