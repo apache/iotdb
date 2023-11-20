@@ -744,7 +744,7 @@ class RatisConsensus implements IConsensus {
     try {
       return clientManager.borrowClient(group);
     } catch (ClientManagerException e) {
-      logger.error(String.format("Borrow client from pool for group %s failed.", group), e);
+      logger.error("Borrow client from pool for group {} failed.", group, e);
       // rethrow the exception
       throw e;
     }
