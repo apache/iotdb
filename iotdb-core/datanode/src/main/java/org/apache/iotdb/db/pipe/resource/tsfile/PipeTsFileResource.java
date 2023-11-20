@@ -45,7 +45,7 @@ public class PipeTsFileResource implements Closeable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileResource.class);
 
-  public static final long TSFILE_MIN_TIME_TO_LIVE_IN_MS = 1000L * 10;
+  public static final long TSFILE_MIN_TIME_TO_LIVE_IN_MS = 1000L * 20;
   private final AtomicLong lastUnpinToZeroTime = new AtomicLong(Long.MAX_VALUE);
   private final File hardlinkOrCopiedFile;
   private final AtomicInteger referenceCount;

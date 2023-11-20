@@ -25,6 +25,7 @@ import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -61,10 +62,10 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
   private final PipeTaskMeta pipeTaskMeta; // used to report progress
   private final EnrichedEvent sourceEvent; // used to report progress
 
-  private boolean isSelfHoldReader = false;
+  private final boolean isTsFileSequenceReaderCached;
   private PipeMemoryBlock
-      allocatedMemoryBlock; // only used when TsFileReader can't be created in cache
-
+      allocatedMemoryBlockForTsFileSequenceReader; // only used when isTsFileSequenceReaderCached ==
+  // false
   private TsFileSequenceReader tsFileSequenceReader;
   private final TsFileReader tsFileReader;
 
@@ -98,29 +99,35 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
     try {
       tsFileSequenceReader = PipeResourceManager.tsfile().getTsFileSequenceReaderFromCache(tsFile);
+
       if (tsFileSequenceReader == null) {
         // TsFileSequenceReader is not in cache, we need to create it here and close it later.
-        isSelfHoldReader = true;
-        LOGGER.info(
-            "TsFileSequenceReader can't be created in cache, will create it outside of cache.");
-
-        allocatedMemoryBlock =
+        isTsFileSequenceReaderCached = false;
+        allocatedMemoryBlockForTsFileSequenceReader =
             PipeResourceManager.memory()
                 .forceAllocate(
                     PipeConfig.getInstance().getPipeMemoryAllocateForTsFileSequenceReaderInBytes());
+        LOGGER.info(
+            "TsFileSequenceReader {} can't be created in cache, will create it outside of cache.",
+            tsFile.getPath());
         tsFileSequenceReader = new TsFileSequenceReader(tsFile.getPath(), true, true);
+
         tsFileReader = new TsFileReader(tsFileSequenceReader);
         deviceIsAlignedMap = readDeviceIsAlignedMap();
         measurementDataTypeMap = tsFileSequenceReader.getFullPathDataTypeMap();
       } else {
-        tsFileReader = PipeResourceManager.tsfile().getTsFileReaderFromCache(tsFile);
-        deviceIsAlignedMap = PipeResourceManager.tsfile().getDeviceIsAlignedMapFromCache(tsFile);
-        measurementDataTypeMap =
-            PipeResourceManager.tsfile().getMeasurementDataTypeMapFromCache(tsFile);
+        isTsFileSequenceReaderCached = true;
+        final PipeTsFileResourceManager tsFileResourceManager = PipeResourceManager.tsfile();
+
+        tsFileReader = tsFileResourceManager.getTsFileReaderFromCache(tsFile);
+        deviceIsAlignedMap = tsFileResourceManager.getDeviceIsAlignedMapFromCache(tsFile);
+        measurementDataTypeMap = tsFileResourceManager.getMeasurementDataTypeMapFromCache(tsFile);
       }
       deviceMeasurementsMapIterator =
           filterDeviceMeasurementsMapByPattern(tsFile).entrySet().iterator();
-      tsFileSequenceReader.clearCachedDeviceMetadata(); // No longer need this.
+
+      // No longer need this. Help GC.
+      tsFileSequenceReader.clearCachedDeviceMetadata();
     } catch (Exception e) {
       close();
       throw e;
@@ -244,7 +251,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
   @Override
   public void close() {
-    if (!isSelfHoldReader) {
+    if (isTsFileSequenceReaderCached) {
       // Only need to close if the TsFileReader is created in this class.
       return;
     }
@@ -265,8 +272,8 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
       LOGGER.warn("Failed to close TsFileSequenceReader", e);
     }
 
-    if (allocatedMemoryBlock != null) {
-      allocatedMemoryBlock.close();
+    if (allocatedMemoryBlockForTsFileSequenceReader != null) {
+      allocatedMemoryBlockForTsFileSequenceReader.close();
     }
   }
 }
