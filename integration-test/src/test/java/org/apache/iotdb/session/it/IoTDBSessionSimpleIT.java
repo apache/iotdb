@@ -186,7 +186,7 @@ public class IoTDBSessionSimpleIT {
       }
       fail();
     } catch (Exception e) {
-      Assert.assertTrue(e.getMessage().contains("DataType"));
+      Assert.assertTrue(e.getMessage().contains("data type of root.sg.d2.s2 is not consistent"));
     }
   }
 
