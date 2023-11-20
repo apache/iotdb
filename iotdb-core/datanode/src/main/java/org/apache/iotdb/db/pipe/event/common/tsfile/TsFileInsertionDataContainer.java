@@ -212,7 +212,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
                   new PipeRawTabletInsertionEvent(
                       tablet,
                       isAligned,
-                      sourceEvent.getPipeName(),
+                      sourceEvent != null ? sourceEvent.getPipeName() : null,
                       pipeTaskMeta,
                       sourceEvent,
                       true);
@@ -222,7 +222,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
                   new PipeRawTabletInsertionEvent(
                       tablet,
                       isAligned,
-                      sourceEvent.getPipeName(),
+                      sourceEvent != null ? sourceEvent.getPipeName() : null,
                       pipeTaskMeta,
                       sourceEvent,
                       false);
