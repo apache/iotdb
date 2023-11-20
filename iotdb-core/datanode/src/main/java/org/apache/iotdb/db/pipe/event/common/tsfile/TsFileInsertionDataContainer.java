@@ -62,9 +62,10 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
   private final PipeTaskMeta pipeTaskMeta; // used to report progress
   private final EnrichedEvent sourceEvent; // used to report progress
 
-  private final boolean isTsFileSequenceReaderCached;
-  private PipeMemoryBlock allocatedMemoryBlockForTsFileSequenceReader;
-  private TsFileSequenceReader tsFileSequenceReader;
+  private final boolean canBeConstructedFromCache;
+  private final PipeMemoryBlock allocatedMemoryBlockWhenNotConstructedFromCache;
+
+  private final TsFileSequenceReader tsFileSequenceReader;
   private final TsFileReader tsFileReader;
 
   private final Iterator<Map.Entry<String, List<String>>> deviceMeasurementsMapIterator;
@@ -96,27 +97,29 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
     this.sourceEvent = sourceEvent;
 
     try {
-      tsFileSequenceReader = PipeResourceManager.tsfile().getTsFileSequenceReaderFromCache(tsFile);
+      final PipeTsFileResourceManager tsFileResourceManager = PipeResourceManager.tsfile();
 
-      if (tsFileSequenceReader == null) {
-        // TsFileSequenceReader is not in cache, we need to create it here and close it later.
-        isTsFileSequenceReaderCached = false;
-        allocatedMemoryBlockForTsFileSequenceReader =
+      canBeConstructedFromCache = tsFileResourceManager.tryCacheObjects(tsFile);
+      if (canBeConstructedFromCache) {
+        allocatedMemoryBlockWhenNotConstructedFromCache = null;
+
+        tsFileSequenceReader = tsFileResourceManager.getTsFileSequenceReaderFromCache(tsFile);
+        tsFileReader = tsFileResourceManager.getTsFileReaderFromCache(tsFile);
+
+        deviceIsAlignedMap = tsFileResourceManager.getDeviceIsAlignedMapFromCache(tsFile);
+        measurementDataTypeMap = tsFileResourceManager.getMeasurementDataTypeMapFromCache(tsFile);
+      } else {
+        // We need to create it here and close it later.
+        allocatedMemoryBlockWhenNotConstructedFromCache =
             PipeResourceManager.memory()
                 .forceAllocate(
                     PipeConfig.getInstance().getPipeMemoryAllocateForTsFileSequenceReaderInBytes());
-        tsFileSequenceReader = new TsFileSequenceReader(tsFile.getPath(), true, true);
 
+        tsFileSequenceReader = new TsFileSequenceReader(tsFile.getPath(), true, true);
         tsFileReader = new TsFileReader(tsFileSequenceReader);
+
         deviceIsAlignedMap = readDeviceIsAlignedMap();
         measurementDataTypeMap = tsFileSequenceReader.getFullPathDataTypeMap();
-      } else {
-        isTsFileSequenceReaderCached = true;
-        final PipeTsFileResourceManager tsFileResourceManager = PipeResourceManager.tsfile();
-
-        tsFileReader = tsFileResourceManager.getTsFileReaderFromCache(tsFile);
-        deviceIsAlignedMap = tsFileResourceManager.getDeviceIsAlignedMapFromCache(tsFile);
-        measurementDataTypeMap = tsFileResourceManager.getMeasurementDataTypeMapFromCache(tsFile);
       }
       deviceMeasurementsMapIterator =
           filterDeviceMeasurementsMapByPattern(tsFile).entrySet().iterator();
@@ -246,7 +249,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
   @Override
   public void close() {
-    if (isTsFileSequenceReaderCached) {
+    if (canBeConstructedFromCache) {
       // Only need to close if the TsFileReader is created in this class.
       return;
     }
@@ -267,8 +270,8 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
       LOGGER.warn("Failed to close TsFileSequenceReader", e);
     }
 
-    if (allocatedMemoryBlockForTsFileSequenceReader != null) {
-      allocatedMemoryBlockForTsFileSequenceReader.close();
+    if (allocatedMemoryBlockWhenNotConstructedFromCache != null) {
+      allocatedMemoryBlockWhenNotConstructedFromCache.close();
     }
   }
 }

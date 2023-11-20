@@ -245,6 +245,17 @@ public class PipeTsFileResourceManager {
     }
   }
 
+  public boolean tryCacheObjects(File hardlinkOrCopiedTsFile) throws IOException {
+    lock.lock();
+    try {
+      final PipeTsFileResource resource =
+          hardlinkOrCopiedFileToPipeTsFileResourceMap.get(hardlinkOrCopiedTsFile.getPath());
+      return resource != null && resource.tryCacheObjects();
+    } finally {
+      lock.unlock();
+    }
+  }
+
   /**
    * get the cached {@link TsFileSequenceReader} of the tsfile.
    *
@@ -258,7 +269,7 @@ public class PipeTsFileResourceManager {
     try {
       final PipeTsFileResource resource =
           hardlinkOrCopiedFileToPipeTsFileResourceMap.get(hardlinkOrCopiedTsFile.getPath());
-      return resource == null ? null : resource.getTsFileSequenceReader();
+      return resource == null ? null : resource.tryGetTsFileSequenceReader();
     } finally {
       lock.unlock();
     }
@@ -276,7 +287,7 @@ public class PipeTsFileResourceManager {
     try {
       final PipeTsFileResource resource =
           hardlinkOrCopiedFileToPipeTsFileResourceMap.get(hardlinkOrCopiedTsFile.getPath());
-      return resource == null ? null : resource.getTsFileReader();
+      return resource == null ? null : resource.tryGetTsFileReader();
     } finally {
       lock.unlock();
     }
@@ -288,7 +299,7 @@ public class PipeTsFileResourceManager {
     try {
       final PipeTsFileResource resource =
           hardlinkOrCopiedFileToPipeTsFileResourceMap.get(hardlinkOrCopiedTsFile.getPath());
-      return resource == null ? null : resource.getDeviceMeasurementsMap();
+      return resource == null ? null : resource.tryGetDeviceMeasurementsMap();
     } finally {
       lock.unlock();
     }
@@ -300,7 +311,7 @@ public class PipeTsFileResourceManager {
     try {
       final PipeTsFileResource resource =
           hardlinkOrCopiedFileToPipeTsFileResourceMap.get(hardlinkOrCopiedTsFile.getPath());
-      return resource == null ? null : resource.getDeviceIsAlignedMap();
+      return resource == null ? null : resource.tryGetDeviceIsAlignedMap();
     } finally {
       lock.unlock();
     }
@@ -312,7 +323,7 @@ public class PipeTsFileResourceManager {
     try {
       final PipeTsFileResource resource =
           hardlinkOrCopiedFileToPipeTsFileResourceMap.get(hardlinkOrCopiedTsFile.getPath());
-      return resource == null ? null : resource.getMeasurementDataTypeMap();
+      return resource == null ? null : resource.tryGetMeasurementDataTypeMap();
     } finally {
       lock.unlock();
     }
