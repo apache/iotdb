@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.execution.load;
 
-import java.util.Objects;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
@@ -61,6 +60,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.TreeMap;
@@ -119,6 +119,7 @@ public class MergedTsFileSplitter {
     statistic.initTime = System.nanoTime() - startTime;
     return fileIndex;
   }
+
   public void splitTsFileByDataPartition() throws IOException, IllegalStateException {
     int fileIndex = initSplitTasks();
 
@@ -383,8 +384,7 @@ public class MergedTsFileSplitter {
           case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
           case MetaMarker.ONLY_ONE_PAGE_TIME_CHUNK_HEADER:
             long chunkOffset = reader.position();
-            boolean chunkDataGenerated =
-                consumeAllAlignedChunkData(pageIndex2ChunkData);
+            boolean chunkDataGenerated = consumeAllAlignedChunkData(pageIndex2ChunkData);
             handleModification(offset2Deletions, chunkOffset);
             if (chunkDataGenerated) {
               return;

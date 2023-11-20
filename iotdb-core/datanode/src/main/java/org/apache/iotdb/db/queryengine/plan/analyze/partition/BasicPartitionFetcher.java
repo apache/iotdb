@@ -60,8 +60,10 @@ import java.util.Set;
 
 public abstract class BasicPartitionFetcher implements IPartitionFetcher {
 
-  private static final String ERR_GET_DATA_PARTITION = "An error occurred when executing getDataPartition():";
-  private static final String ERR_GET_OR_CREATE_DATA_PARTITION = "An error occurred when executing getOrCreateDataPartition():";
+  private static final String ERR_GET_DATA_PARTITION =
+      "An error occurred when executing getDataPartition():";
+  private static final String ERR_GET_OR_CREATE_DATA_PARTITION =
+      "An error occurred when executing getOrCreateDataPartition():";
 
   protected static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -168,12 +170,10 @@ public abstract class BasicPartitionFetcher implements IPartitionFetcher {
           partitionCache.updateDataPartitionCache(dataPartitionTableResp.getDataPartitionTable());
         } else {
           throw new StatementAnalyzeException(
-              ERR_GET_DATA_PARTITION
-                  + dataPartitionTableResp.getStatus().getMessage());
+              ERR_GET_DATA_PARTITION + dataPartitionTableResp.getStatus().getMessage());
         }
       } catch (ClientManagerException | TException e) {
-        throw new StatementAnalyzeException(
-            ERR_GET_DATA_PARTITION + e.getMessage());
+        throw new StatementAnalyzeException(ERR_GET_DATA_PARTITION + e.getMessage());
       }
     }
     return dataPartition;
@@ -193,12 +193,10 @@ public abstract class BasicPartitionFetcher implements IPartitionFetcher {
         return parseDataPartitionResp(dataPartitionTableResp);
       } else {
         throw new StatementAnalyzeException(
-            ERR_GET_DATA_PARTITION
-                + dataPartitionTableResp.getStatus().getMessage());
+            ERR_GET_DATA_PARTITION + dataPartitionTableResp.getStatus().getMessage());
       }
     } catch (ClientManagerException | TException e) {
-      throw new StatementAnalyzeException(
-          ERR_GET_DATA_PARTITION + e.getMessage());
+      throw new StatementAnalyzeException(ERR_GET_DATA_PARTITION + e.getMessage());
     }
   }
 
@@ -217,12 +215,10 @@ public abstract class BasicPartitionFetcher implements IPartitionFetcher {
           partitionCache.updateDataPartitionCache(dataPartitionTableResp.getDataPartitionTable());
         } else {
           throw new StatementAnalyzeException(
-              ERR_GET_OR_CREATE_DATA_PARTITION
-                  + dataPartitionTableResp.getStatus().getMessage());
+              ERR_GET_OR_CREATE_DATA_PARTITION + dataPartitionTableResp.getStatus().getMessage());
         }
       } catch (ClientManagerException | TException e) {
-        throw new StatementAnalyzeException(
-            ERR_GET_OR_CREATE_DATA_PARTITION + e.getMessage());
+        throw new StatementAnalyzeException(ERR_GET_OR_CREATE_DATA_PARTITION + e.getMessage());
       }
     }
     return dataPartition;
@@ -252,8 +248,7 @@ public abstract class BasicPartitionFetcher implements IPartitionFetcher {
                   dataPartitionTableResp.getStatus().getCode()));
         }
       } catch (ClientManagerException | TException e) {
-        throw new StatementAnalyzeException(
-            ERR_GET_OR_CREATE_DATA_PARTITION + e.getMessage());
+        throw new StatementAnalyzeException(ERR_GET_OR_CREATE_DATA_PARTITION + e.getMessage());
       }
     }
     return dataPartition;

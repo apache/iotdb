@@ -192,8 +192,7 @@ public class TsFileSplitSender {
     return success;
   }
 
-  private boolean loadInGroup(
-      TDataNodeLocation dataNodeLocation, TLoadCommandReq loadCommandReq)
+  private boolean loadInGroup(TDataNodeLocation dataNodeLocation, TLoadCommandReq loadCommandReq)
       throws SocketException, FragmentInstanceDispatchException, InterruptedException {
     TEndPoint endPoint = dataNodeLocation.getInternalEndPoint();
 
@@ -221,6 +220,7 @@ public class TsFileSplitSender {
     }
     return false;
   }
+
   private Void loadInGroup(
       TRegionReplicaSet replicaSet, TLoadCommandReq loadCommandReq, AtomicBoolean hasTimeout)
       throws SocketException {

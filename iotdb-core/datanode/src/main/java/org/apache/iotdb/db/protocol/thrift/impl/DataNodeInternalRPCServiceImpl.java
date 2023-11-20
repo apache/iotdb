@@ -423,7 +423,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           validatingSchema.getMeasurements().add(measurements.toArray(new String[0]));
           validatingSchema.getDataTypes().add(dataTypes.toArray(new TSDataType[0]));
           validatingSchema.getEncodings().add(encodings.toArray(new TSEncoding[0]));
-          validatingSchema.getCompressionTypes().add(compressionTypes.toArray(new CompressionType[0]));
+          validatingSchema
+              .getCompressionTypes()
+              .add(compressionTypes.toArray(new CompressionType[0]));
           validatingSchema.getIsAlignedList().add(isAligned);
           currDevice = device;
           currMeasurement = measurement;
@@ -447,8 +449,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return validatingSchema;
   }
 
-  private boolean extractSchema(ChunkData chunkData, List<String> measurements,
-      List<TSDataType> dataTypes, List<TSEncoding> encodings,
+  private boolean extractSchema(
+      ChunkData chunkData,
+      List<String> measurements,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
       List<CompressionType> compressionTypes) {
     if (chunkData.isAligned()) {
       AlignedChunkData alignedChunkData = (AlignedChunkData) chunkData;
@@ -470,8 +475,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
   }
 
-  private TLoadResp ensureSchema(TTsFilePieceReq req, IClientSession session,
-      LoadTsFilePieceNode pieceNode) throws TException {
+  private TLoadResp ensureSchema(
+      TTsFilePieceReq req, IClientSession session, LoadTsFilePieceNode pieceNode)
+      throws TException {
     TSStatus status = AuthorityChecker.checkUser(req.getUsername(), req.getPassword());
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return createTLoadResp(status);

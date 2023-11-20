@@ -184,8 +184,9 @@ public class ClusteringMeasurementSplitter implements PieceNodeSplitter {
         newNodeA.addTsFileData(tsFileData);
       } else {
         ChunkData chunkData = (ChunkData) tsFileData;
-        if (currMeasurement == null || currMeasurement.equals(chunkData.firstMeasurement()) ||
-            sizeTarget > 0) {
+        if (currMeasurement == null
+            || currMeasurement.equals(chunkData.firstMeasurement())
+            || sizeTarget > 0) {
           // the first chunk or chunk of the same series, add it to A
           // or the chunk of the next series and splitA is not
           currMeasurement = chunkData.firstMeasurement();
@@ -489,7 +490,9 @@ public class ClusteringMeasurementSplitter implements PieceNodeSplitter {
 
       randomCentroid(tagVectorMap);
 
-      for (int i = 0; i < maxIteration && System.currentTimeMillis() - splitStartTime <= splitTimeBudget; i++) {
+      for (int i = 0;
+          i < maxIteration && System.currentTimeMillis() - splitStartTime <= splitTimeBudget;
+          i++) {
         if (!assignCentroid(tagVectorMap, distance)) {
           // centroid not updated, end
           break;

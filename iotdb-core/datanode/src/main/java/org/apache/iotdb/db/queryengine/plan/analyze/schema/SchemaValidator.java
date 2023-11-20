@@ -106,8 +106,7 @@ public class SchemaValidator {
       return dataTypes;
     }
 
-    public void setDataTypes(
-        List<TSDataType[]> dataTypes) {
+    public void setDataTypes(List<TSDataType[]> dataTypes) {
       this.dataTypes = dataTypes;
     }
 
@@ -115,8 +114,7 @@ public class SchemaValidator {
       return encodings;
     }
 
-    public void setEncodings(
-        List<TSEncoding[]> encodings) {
+    public void setEncodings(List<TSEncoding[]> encodings) {
       this.encodings = encodings;
     }
 
@@ -124,14 +122,12 @@ public class SchemaValidator {
       return compressionTypes;
     }
 
-    public void setCompressionTypes(
-        List<CompressionType[]> compressionTypes) {
+    public void setCompressionTypes(List<CompressionType[]> compressionTypes) {
       this.compressionTypes = compressionTypes;
     }
 
     public List<Boolean> getIsAlignedList() {
       return isAlignedList;
     }
-
   }
 }

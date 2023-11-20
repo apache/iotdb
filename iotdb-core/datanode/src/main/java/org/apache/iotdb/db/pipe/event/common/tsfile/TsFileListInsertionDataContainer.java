@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile;
 
-import java.util.Collections;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -43,6 +42,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -177,7 +177,6 @@ public class TsFileListInsertionDataContainer implements AutoCloseable {
 
   public Iterator<TabletInsertionEvent> tabletInsertionEventsIterator() {
     return new TabletInsertionEventIterator();
-
   }
 
   public class TabletInsertionEventIterator implements Iterator<TabletInsertionEvent> {
@@ -229,14 +228,10 @@ public class TsFileListInsertionDataContainer implements AutoCloseable {
 
       final TabletInsertionEvent next;
       if (!hasNext()) {
-        next =
-            new PipeRawTabletInsertionEvent(
-                tablet, isAligned, pipeTaskMeta, sourceEvent, true);
+        next = new PipeRawTabletInsertionEvent(tablet, isAligned, pipeTaskMeta, sourceEvent, true);
         close();
       } else {
-        next =
-            new PipeRawTabletInsertionEvent(
-                tablet, isAligned, pipeTaskMeta, sourceEvent, false);
+        next = new PipeRawTabletInsertionEvent(tablet, isAligned, pipeTaskMeta, sourceEvent, false);
       }
       return next;
     }

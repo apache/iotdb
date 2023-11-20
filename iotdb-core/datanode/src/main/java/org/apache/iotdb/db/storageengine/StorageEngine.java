@@ -101,7 +101,8 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 
 public class StorageEngine implements IService {
 
-  private static final String MSG_NO_SUCH_UUID = "No load TsFile uuid %s recorded for execute load command %s.";
+  private static final String MSG_NO_SUCH_UUID =
+      "No load TsFile uuid %s recorded for execute load command %s.";
   private static final Logger logger = LoggerFactory.getLogger(StorageEngine.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -808,8 +809,7 @@ public class StorageEngine implements IService {
             status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
             status.setMessage(
                 String.format(
-                    MSG_NO_SUCH_UUID,
-                    loadCommandNode.getUuid(), loadCommandNode.getLoadCommand()));
+                    MSG_NO_SUCH_UUID, loadCommandNode.getUuid(), loadCommandNode.getLoadCommand()));
           }
           break;
         case ROLLBACK:
@@ -820,8 +820,7 @@ public class StorageEngine implements IService {
             status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
             status.setMessage(
                 String.format(
-                    MSG_NO_SUCH_UUID,
-                    loadCommandNode.getUuid(), loadCommandNode.getLoadCommand()));
+                    MSG_NO_SUCH_UUID, loadCommandNode.getUuid(), loadCommandNode.getLoadCommand()));
           }
           break;
         default:
@@ -850,10 +849,7 @@ public class StorageEngine implements IService {
             status = RpcUtils.SUCCESS_STATUS;
           } else {
             status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
-            status.setMessage(
-                String.format(
-                    MSG_NO_SUCH_UUID,
-                    uuid, loadCommand));
+            status.setMessage(String.format(MSG_NO_SUCH_UUID, uuid, loadCommand));
           }
           break;
         case ROLLBACK:
@@ -861,10 +857,7 @@ public class StorageEngine implements IService {
             status = RpcUtils.SUCCESS_STATUS;
           } else {
             status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
-            status.setMessage(
-                String.format(
-                    MSG_NO_SUCH_UUID,
-                    uuid, loadCommand));
+            status.setMessage(String.format(MSG_NO_SUCH_UUID, uuid, loadCommand));
           }
           break;
         default:

@@ -144,8 +144,8 @@ public class LoadTsFileSchedulerTest extends TestBase {
 
   public void printPhaseResult() {
     System.out.print("Phase one:\n");
-    for (Entry<TEndPoint, Map<ConsensusGroupId, Map<String, Map<File, Set<Integer>>>>>
-        entry : phaseOneResults.entrySet()) {
+    for (Entry<TEndPoint, Map<ConsensusGroupId, Map<String, Map<File, Set<Integer>>>>> entry :
+        phaseOneResults.entrySet()) {
       TEndPoint endPoint = entry.getKey();
       for (Entry<ConsensusGroupId, Map<String, Map<File, Set<Integer>>>> consensusGroupIdMapEntry :
           entry.getValue().entrySet()) {
