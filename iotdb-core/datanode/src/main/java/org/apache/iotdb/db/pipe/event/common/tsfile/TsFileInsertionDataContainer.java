@@ -63,9 +63,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
   private final EnrichedEvent sourceEvent; // used to report progress
 
   private final boolean isTsFileSequenceReaderCached;
-  private PipeMemoryBlock
-      allocatedMemoryBlockForTsFileSequenceReader; // only used when isTsFileSequenceReaderCached ==
-  // false
+  private PipeMemoryBlock allocatedMemoryBlockForTsFileSequenceReader;
   private TsFileSequenceReader tsFileSequenceReader;
   private final TsFileReader tsFileReader;
 

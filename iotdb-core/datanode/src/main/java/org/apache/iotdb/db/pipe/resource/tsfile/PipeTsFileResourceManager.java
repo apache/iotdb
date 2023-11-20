@@ -42,6 +42,7 @@ import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class PipeTsFileResourceManager {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileResourceManager.class);
 
   private final Map<String, PipeTsFileResource> hardlinkOrCopiedFileToPipeTsFileResourceMap =
@@ -102,15 +103,14 @@ public class PipeTsFileResourceManager {
   public File increaseFileReference(File file, boolean isTsFile) throws IOException {
     lock.lock();
     try {
-      // if the file is already a hardlink or copied file, just increase reference count and return
-      // it
+      // if the file is already a hardlink or copied file,
+      // just increase reference count and return it
       if (increaseReferenceIfExists(file.getPath())) {
         return file;
       }
 
       // if the file is not a hardlink or copied file, check if there is a related hardlink or
-      // copied
-      // file in pipe dir. if so, increase reference count and return it
+      // copied file in pipe dir. if so, increase reference count and return it
       final File hardlinkOrCopiedFile = getHardlinkOrCopiedFileInPipeDir(file);
       if (increaseReferenceIfExists(hardlinkOrCopiedFile.getPath())) {
         return hardlinkOrCopiedFileToPipeTsFileResourceMap
@@ -136,7 +136,7 @@ public class PipeTsFileResourceManager {
   }
 
   private boolean increaseReferenceIfExists(String path) {
-    PipeTsFileResource resource = hardlinkOrCopiedFileToPipeTsFileResourceMap.get(path);
+    final PipeTsFileResource resource = hardlinkOrCopiedFileToPipeTsFileResourceMap.get(path);
     if (resource != null) {
       resource.increaseAndGetReference();
       return true;
@@ -218,8 +218,8 @@ public class PipeTsFileResourceManager {
   public void decreaseFileReference(File hardlinkOrCopiedFile) {
     lock.lock();
     try {
-      String filePath = hardlinkOrCopiedFile.getPath();
-      PipeTsFileResource resource = hardlinkOrCopiedFileToPipeTsFileResourceMap.get(filePath);
+      final String filePath = hardlinkOrCopiedFile.getPath();
+      final PipeTsFileResource resource = hardlinkOrCopiedFileToPipeTsFileResourceMap.get(filePath);
       if (resource != null) {
         resource.decreaseAndGetReference();
       }
@@ -237,8 +237,8 @@ public class PipeTsFileResourceManager {
   public int getFileReferenceCount(File hardlinkOrCopiedFile) {
     lock.lock();
     try {
-      String filePath = hardlinkOrCopiedFile.getPath();
-      PipeTsFileResource resource = hardlinkOrCopiedFileToPipeTsFileResourceMap.get(filePath);
+      final String filePath = hardlinkOrCopiedFile.getPath();
+      final PipeTsFileResource resource = hardlinkOrCopiedFileToPipeTsFileResourceMap.get(filePath);
       return resource != null ? resource.getReferenceCount() : 0;
     } finally {
       lock.unlock();
@@ -258,10 +258,7 @@ public class PipeTsFileResourceManager {
     try {
       final PipeTsFileResource resource =
           hardlinkOrCopiedFileToPipeTsFileResourceMap.get(hardlinkOrCopiedTsFile.getPath());
-      if (resource == null) {
-        return null;
-      }
-      return resource.getTsFileSequenceReader();
+      return resource == null ? null : resource.getTsFileSequenceReader();
     } finally {
       lock.unlock();
     }
@@ -279,10 +276,7 @@ public class PipeTsFileResourceManager {
     try {
       final PipeTsFileResource resource =
           hardlinkOrCopiedFileToPipeTsFileResourceMap.get(hardlinkOrCopiedTsFile.getPath());
-      if (resource == null) {
-        return null;
-      }
-      return resource.getTsFileReader();
+      return resource == null ? null : resource.getTsFileReader();
     } finally {
       lock.unlock();
     }
@@ -294,10 +288,7 @@ public class PipeTsFileResourceManager {
     try {
       final PipeTsFileResource resource =
           hardlinkOrCopiedFileToPipeTsFileResourceMap.get(hardlinkOrCopiedTsFile.getPath());
-      if (resource == null) {
-        return null;
-      }
-      return resource.getDeviceMeasurementsMap();
+      return resource == null ? null : resource.getDeviceMeasurementsMap();
     } finally {
       lock.unlock();
     }
@@ -309,10 +300,7 @@ public class PipeTsFileResourceManager {
     try {
       final PipeTsFileResource resource =
           hardlinkOrCopiedFileToPipeTsFileResourceMap.get(hardlinkOrCopiedTsFile.getPath());
-      if (resource == null) {
-        return null;
-      }
-      return resource.getDeviceIsAlignedMap();
+      return resource == null ? null : resource.getDeviceIsAlignedMap();
     } finally {
       lock.unlock();
     }
@@ -324,10 +312,7 @@ public class PipeTsFileResourceManager {
     try {
       final PipeTsFileResource resource =
           hardlinkOrCopiedFileToPipeTsFileResourceMap.get(hardlinkOrCopiedTsFile.getPath());
-      if (resource == null) {
-        return null;
-      }
-      return resource.getMeasurementDataTypeMap();
+      return resource == null ? null : resource.getMeasurementDataTypeMap();
     } finally {
       lock.unlock();
     }
