@@ -392,7 +392,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       valueSeriesPaths.add(
           valueChunkMetadata == null
               ? null
-              : new PartialPath(currentDevice.left, valueChunkMetadata.getMeasurementUid()));
+              : CompactionPathUtils.getPath(
+                  currentDevice.left, valueChunkMetadata.getMeasurementUid()));
     }
 
     for (Modification modification : modifications) {
