@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.SimplePlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByTagNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryMergeNode;
@@ -45,10 +46,12 @@ public class SubPlanTypeExtractor {
   private SubPlanTypeExtractor() {}
 
   public static TypeProvider extractor(PlanNode root, TypeProvider allTypes) {
-    TypeProvider typeProvider = new TypeProvider();
-    typeProvider.setSchemaList(allTypes.getSchemaList());
-    typeProvider.setMeasurementList(allTypes.getMeasurementList());
-    typeProvider.setDataTypes(allTypes.getDataTypes());
+    TypeProvider typeProvider =
+        new TypeProvider(
+            allTypes.getMeasurementList(),
+            allTypes.getSchemaList(),
+            allTypes.getDataTypes(),
+            allTypes.getAllSensors());
     root.accept(new Visitor(typeProvider, allTypes), null);
     return typeProvider;
   }
@@ -156,6 +159,14 @@ public class SubPlanTypeExtractor {
 
     @Override
     public Void visitLastQueryTransform(LastQueryTransformNode node, Void context) {
+      return visitPlan(node, context);
+    }
+
+    @Override
+    public Void visitSingleDeviceView(SingleDeviceViewNode node, Void context) {
+      if (typeProvider.getMeasurementList() != null) {
+        return null;
+      }
       return visitPlan(node, context);
     }
 

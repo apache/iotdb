@@ -187,6 +187,7 @@ public class TemplatedLogicalPlan {
               mergedSchemaList.stream()
                   .map(IMeasurementSchema::getType)
                   .collect(Collectors.toList()));
+      context.getTypeProvider().setAllSensors(new HashSet<>(mergedMeasurementList));
     }
 
     return planBuilder.getRoot();

@@ -346,7 +346,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     seriesScanOptionsBuilder.withLimit(node.getLimit());
     seriesScanOptionsBuilder.withOffset(node.getOffset());
     AlignedPath seriesPath = node.getAlignedPath();
-    seriesScanOptionsBuilder.withAllSensors(new HashSet<>(seriesPath.getMeasurementList()));
+    seriesScanOptionsBuilder.withAllSensors(
+        context.getTypeProvider().getAllSensors() != null
+            ? context.getTypeProvider().getAllSensors()
+            : new HashSet<>(seriesPath.getMeasurementList()));
 
     OperatorContext operatorContext =
         context
@@ -2557,8 +2560,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   private List<TSDataType> getInputColumnTypesUseTemplate(
       PlanNode node, TypeProvider typeProvider) {
-    // in template situation, the children of FilterNode/TransformNode can be TimeJoinNode,
-    // ScanNode, any others?
+    // Only templated device + filter situation can invoke this method,
+    // the children of FilterNode/TransformNode can be TimeJoinNode, ScanNode, any others?
     List<TSDataType> dataTypes = new ArrayList<>();
     for (PlanNode child : node.getChildren()) {
       if (child instanceof SeriesScanNode) {
@@ -2569,7 +2572,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .getAlignedPath()
             .getSchemaList()
             .forEach(c -> dataTypes.add(c.getType()));
-        // dataTypes.add(((AlignedSeriesScanNode) child).getAlignedPath().getSeriesType());
       } else {
         dataTypes.addAll(getInputColumnTypesUseTemplate(child, typeProvider));
       }
@@ -2584,6 +2586,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   }
 
   private List<TSDataType> getOutputColumnTypesOfTimeJoinNode(PlanNode node) {
+    // Only templated device situation can invoke this method,
     // the children of TimeJoinNode can only be ScanNode or TimeJoinNode
     List<TSDataType> dataTypes = new ArrayList<>();
     for (PlanNode child : node.getChildren()) {

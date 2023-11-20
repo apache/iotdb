@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 public class TypeProvider {
 
@@ -41,6 +42,7 @@ public class TypeProvider {
   private List<String> measurementList;
   private List<IMeasurementSchema> schemaList;
   private List<TSDataType> dataTypes;
+  private Set<String> allSensors;
 
   public TypeProvider() {
     this.typeMap = new HashMap<>();
@@ -48,6 +50,20 @@ public class TypeProvider {
 
   public TypeProvider(Map<String, TSDataType> typeMap) {
     this.typeMap = typeMap;
+  }
+
+  public TypeProvider(
+      List<String> measurementList,
+      List<IMeasurementSchema> schemaList,
+      List<TSDataType> dataTypes,
+      Set<String> allSensors) {
+    if (measurementList != null) {
+      this.measurementList = measurementList;
+      this.schemaList = schemaList;
+      this.dataTypes = dataTypes;
+      this.allSensors = allSensors;
+    }
+    this.typeMap = new HashMap<>();
   }
 
   public TSDataType getType(String symbol) {
@@ -132,5 +148,13 @@ public class TypeProvider {
 
   public List<TSDataType> getDataTypes() {
     return this.dataTypes;
+  }
+
+  public void setAllSensors(Set<String> allSensors) {
+    this.allSensors = allSensors;
+  }
+
+  public Set<String> getAllSensors() {
+    return this.allSensors;
   }
 }
