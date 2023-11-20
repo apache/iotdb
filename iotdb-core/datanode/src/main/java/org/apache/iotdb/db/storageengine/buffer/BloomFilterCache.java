@@ -25,13 +25,11 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
-import org.apache.iotdb.tsfile.utils.FilePathUtils;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.github.benmanes.caffeine.cache.Weigher;
+import org.openjdk.jol.info.ClassLayout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,19 +41,19 @@ import java.util.concurrent.atomic.AtomicLong;
 @SuppressWarnings("squid:S6548")
 public class BloomFilterCache {
 
-  private static final Logger logger = LoggerFactory.getLogger(BloomFilterCache.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(BloomFilterCache.class);
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final long MEMORY_THRESHOLD_IN_BLOOM_FILTER_CACHE =
-      config.getAllocateMemoryForBloomFilterCache();
-  private static final boolean CACHE_ENABLE = config.isMetaDataCacheEnable();
+      CONFIG.getAllocateMemoryForBloomFilterCache();
+  private static final boolean CACHE_ENABLE = CONFIG.isMetaDataCacheEnable();
   private final AtomicLong entryAverageSize = new AtomicLong(0);
 
   private final LoadingCache<BloomFilterCacheKey, BloomFilter> lruCache;
 
   private BloomFilterCache() {
     if (CACHE_ENABLE) {
-      logger.info("BloomFilterCache size = {}", MEMORY_THRESHOLD_IN_BLOOM_FILTER_CACHE);
+      LOGGER.info("BloomFilterCache size = {}", MEMORY_THRESHOLD_IN_BLOOM_FILTER_CACHE);
     }
     lruCache =
         Caffeine.newBuilder()
@@ -63,10 +61,7 @@ public class BloomFilterCache {
             .weigher(
                 (Weigher<BloomFilterCacheKey, BloomFilter>)
                     (key, bloomFilter) ->
-                        (int)
-                            (RamUsageEstimator.shallowSizeOf(key)
-                                + RamUsageEstimator.sizeOf(key.tsFilePrefixPath)
-                                + RamUsageEstimator.sizeOf(bloomFilter)))
+                        (int) (key.getRetainedSizeInBytes() + bloomFilter.getRetainedSizeInBytes()))
             .recordStats()
             .build(
                 key -> {
@@ -137,22 +132,30 @@ public class BloomFilterCache {
 
   public static class BloomFilterCacheKey {
 
+    private static final int INSTANCE_SIZE =
+        ClassLayout.parseClass(BloomFilterCacheKey.class).instanceSize();
+
     // There is no need to add this field size while calculating the size of BloomFilterCacheKey,
     // because filePath is get from TsFileResource, different BloomFilterCacheKey of the same file
     // share this String.
     private final String filePath;
-    private final String tsFilePrefixPath;
+    private final int regionId;
+    private final long timePartitionId;
     private final long tsFileVersion;
     // high 32 bit is compaction level, low 32 bit is merge count
     private final long compactionVersion;
 
-    public BloomFilterCacheKey(String filePath) {
+    public BloomFilterCacheKey(
+        String filePath,
+        int regionId,
+        long timePartitionId,
+        long tsFileVersion,
+        long compactionVersion) {
       this.filePath = filePath;
-      Pair<String, long[]> tsFilePrefixPathAndTsFileVersionPair =
-          FilePathUtils.getTsFilePrefixPathAndTsFileVersionPair(filePath);
-      this.tsFilePrefixPath = tsFilePrefixPathAndTsFileVersionPair.left;
-      this.tsFileVersion = tsFilePrefixPathAndTsFileVersionPair.right[0];
-      this.compactionVersion = tsFilePrefixPathAndTsFileVersionPair.right[1];
+      this.regionId = regionId;
+      this.timePartitionId = timePartitionId;
+      this.tsFileVersion = tsFileVersion;
+      this.compactionVersion = compactionVersion;
     }
 
     @Override
@@ -163,15 +166,20 @@ public class BloomFilterCache {
       if (o == null || getClass() != o.getClass()) {
         return false;
       }
-      BloomFilterCache.BloomFilterCacheKey that = (BloomFilterCache.BloomFilterCacheKey) o;
-      return tsFileVersion == that.tsFileVersion
-          && compactionVersion == that.compactionVersion
-          && tsFilePrefixPath.equals(that.tsFilePrefixPath);
+      BloomFilterCacheKey that = (BloomFilterCacheKey) o;
+      return regionId == that.regionId
+          && timePartitionId == that.timePartitionId
+          && tsFileVersion == that.tsFileVersion
+          && compactionVersion == that.compactionVersion;
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(tsFilePrefixPath, tsFileVersion, compactionVersion);
+      return Objects.hash(regionId, timePartitionId, tsFileVersion, compactionVersion);
+    }
+
+    public long getRetainedSizeInBytes() {
+      return INSTANCE_SIZE;
     }
   }
 

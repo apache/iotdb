@@ -83,7 +83,7 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
   @Override
   public void onError(Exception exception) {
     LOGGER.warn(
-        "Failed to transfer TabletInsertionEvent {} (requestCommitId={}).",
+        "Failed to transfer TabletInsertionEvent {} (request commit id={}).",
         event,
         event instanceof EnrichedEvent ? ((EnrichedEvent) event).getCommitId() : null,
         exception);

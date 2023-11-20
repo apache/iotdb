@@ -87,7 +87,7 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
   @Override
   public void onError(Exception exception) {
     LOGGER.warn(
-        "Failed to transfer TabletInsertionEvent {} (requestCommitId={}).",
+        "Failed to transfer TabletInsertionEvent batch {} (request commit ids={}).",
         events,
         requestCommitIds,
         exception);

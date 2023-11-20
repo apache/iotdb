@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.execution.driver.IDriver;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.IndexedBlockingQueue;
+import org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue.MultilevelPriorityQueue;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTask;
 import org.apache.iotdb.db.utils.SetThreadName;
 
@@ -33,14 +34,25 @@ import io.airlift.units.Duration;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
 
 /** The worker thread of {@link DriverTask}. */
 public class DriverTaskThread extends AbstractDriverThread {
 
-  public static final Duration EXECUTION_TIME_SLICE =
-      new Duration(
-          IoTDBDescriptor.getInstance().getConfig().getDriverTaskExecutionTimeSliceInMs(),
-          TimeUnit.MILLISECONDS);
+  private static final double DRIVER_TASK_EXECUTION_TIME_SLICE_IN_MS =
+      IoTDBDescriptor.getInstance().getConfig().getDriverTaskExecutionTimeSliceInMs();
+
+  /**
+   * In multi-level feedback queue, levels with lower priority have longer time slices. Currently,
+   * we assign (level + 1) * TimeSliceUnit to each level.
+   */
+  private static final Duration[] TIME_SLICE_FOR_EACH_LEVEL =
+      IntStream.range(0, MultilevelPriorityQueue.getNumOfPriorityLevels())
+          .mapToObj(
+              level ->
+                  new Duration(
+                      (level + 1) * DRIVER_TASK_EXECUTION_TIME_SLICE_IN_MS, TimeUnit.MILLISECONDS))
+          .toArray(Duration[]::new);
 
   // We manage thread pool size directly, so create an unlimited pool
   private static final Executor listeningExecutor =
@@ -67,7 +79,8 @@ public class DriverTaskThread extends AbstractDriverThread {
       return;
     }
     IDriver driver = task.getDriver();
-    ListenableFuture<?> future = driver.processFor(EXECUTION_TIME_SLICE);
+    Duration timeSlice = getExecutionTimeSliceForDriverTask(task);
+    ListenableFuture<?> future = driver.processFor(timeSlice);
     // If the future is cancelled, the task is in an error and should be thrown.
     if (future.isCancelled()) {
       task.setAbortCause(DriverTaskAbortedException.BY_ALREADY_BEING_CANCELLED);
@@ -77,7 +90,7 @@ public class DriverTaskThread extends AbstractDriverThread {
     long quantaScheduledNanos = ticker.read() - startNanos;
     ExecutionContext context = new ExecutionContext();
     context.setScheduledTimeInNanos(quantaScheduledNanos);
-    context.setTimeSlice(EXECUTION_TIME_SLICE);
+    context.setTimeSlice(timeSlice);
     if (driver.isFinished()) {
       scheduler.runningToFinished(task, context);
       return;
@@ -96,5 +109,15 @@ public class DriverTaskThread extends AbstractDriverThread {
           },
           listeningExecutor);
     }
+  }
+
+  private Duration getExecutionTimeSliceForDriverTask(DriverTask driverTask) {
+    if (driverTask.isHighestPriority()) {
+      // highestPriorityTask has the same time slice as level0 task
+      return TIME_SLICE_FOR_EACH_LEVEL[0];
+    }
+    // no need to check whether the level of DriverTask is out of bound since it has been checked
+    // when DriverTask is polled out from MultiLevelPriorityQueue
+    return TIME_SLICE_FOR_EACH_LEVEL[driverTask.getPriority().getLevel()];
   }
 }

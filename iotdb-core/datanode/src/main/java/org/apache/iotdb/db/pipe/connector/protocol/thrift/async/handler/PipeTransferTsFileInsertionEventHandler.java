@@ -164,7 +164,7 @@ public class PipeTransferTsFileInsertionEventHandler
   @Override
   public void onError(Exception exception) {
     LOGGER.warn(
-        "Failed to transfer tsfile {} (request commit id {}).",
+        "Failed to transfer TsFileInsertionEvent {} (request commit id {}).",
         tsFile,
         event.getCommitId(),
         exception);

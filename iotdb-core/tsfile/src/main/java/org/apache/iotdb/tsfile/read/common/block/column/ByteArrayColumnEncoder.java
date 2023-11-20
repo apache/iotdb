@@ -19,8 +19,7 @@
 
 package org.apache.iotdb.tsfile.read.common.block.column;
 
-import org.apache.iotdb.tsfile.access.Column;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
