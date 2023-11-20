@@ -49,7 +49,9 @@ import java.util.stream.Collectors;
 public abstract class AbstractCompactionEstimator {
 
   private static final Map<File, FileInfo> globalFileInfoCacheForFailedCompaction =
-      Collections.synchronizedMap(new LRUMap<>(1000));
+      Collections.synchronizedMap(
+          new LRUMap<>(
+              IoTDBDescriptor.getInstance().getConfig().getGlobalCompactionFileInfoCacheSize()));
   protected Map<TsFileResource, FileInfo> fileInfoCache = new HashMap<>();
   protected Map<TsFileResource, DeviceTimeIndex> deviceTimeIndexCache = new HashMap<>();
 
