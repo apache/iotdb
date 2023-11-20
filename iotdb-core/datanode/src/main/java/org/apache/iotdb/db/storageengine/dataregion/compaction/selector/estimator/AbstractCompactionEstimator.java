@@ -28,9 +28,12 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeInd
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 
-import java.io.Closeable;
+import org.apache.commons.collections4.map.LRUMap;
+
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -43,8 +46,10 @@ import java.util.stream.Collectors;
  * Estimate the memory cost of one compaction task with specific source files based on its
  * corresponding implementation.
  */
-public abstract class AbstractCompactionEstimator implements Closeable {
+public abstract class AbstractCompactionEstimator {
 
+  private static final Map<File, FileInfo> globalFileInfoCacheForFailedCompaction =
+      Collections.synchronizedMap(new LRUMap<>(1000));
   protected Map<TsFileResource, FileInfo> fileInfoCache = new HashMap<>();
   protected Map<TsFileResource, DeviceTimeIndex> deviceTimeIndexCache = new HashMap<>();
 
@@ -70,10 +75,17 @@ public abstract class AbstractCompactionEstimator implements Closeable {
     if (fileInfoCache.containsKey(resource)) {
       return fileInfoCache.get(resource);
     }
+    File file = new File(resource.getTsFilePath());
+    if (globalFileInfoCacheForFailedCompaction.containsKey(file)) {
+      FileInfo fileInfo = globalFileInfoCacheForFailedCompaction.get(file);
+      fileInfoCache.put(resource, fileInfo);
+      return fileInfo;
+    }
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(resource.getTsFilePath(), true, false)) {
       FileInfo fileInfo = CompactionEstimateUtils.calculateFileInfo(reader);
       fileInfoCache.put(resource, fileInfo);
+      globalFileInfoCacheForFailedCompaction.put(file, fileInfo);
       return fileInfo;
     }
   }
@@ -136,8 +148,17 @@ public abstract class AbstractCompactionEstimator implements Closeable {
     return (DeviceTimeIndex) timeIndex;
   }
 
-  public void close() throws IOException {
+  public void cleanup(List<TsFileResource> compactionTaskSourceFiles) {
     deviceTimeIndexCache.clear();
     fileInfoCache.clear();
+    compactionTaskSourceFiles.forEach(
+        resource -> globalFileInfoCacheForFailedCompaction.remove(resource.getTsFile()));
+  }
+
+  public static void removeFileInfoFromGlobalFileInfoCache(TsFileResource resource) {
+    if (resource == null || resource.getTsFile() == null) {
+      return;
+    }
+    globalFileInfoCacheForFailedCompaction.remove(resource.getTsFile());
   }
 }
