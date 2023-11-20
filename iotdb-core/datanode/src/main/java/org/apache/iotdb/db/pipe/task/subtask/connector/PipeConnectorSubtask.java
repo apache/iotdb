@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.task.subtask.connector;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.execution.scheduler.PipeSubtaskScheduler;
@@ -352,5 +353,17 @@ public class PipeConnectorSubtask extends PipeSubtask {
 
   public Integer getPipeHeartbeatEventCount() {
     return inputPendingQueue.getPipeHeartbeatEventCount();
+  }
+
+  public Integer getAsyncConnectorRetryEventQueueSize() {
+    return outputPipeConnector instanceof IoTDBThriftAsyncConnector
+        ? ((IoTDBThriftAsyncConnector) outputPipeConnector).getRetryEventQueueSize()
+        : 0;
+  }
+
+  public Integer getAsyncConnectorCommitQueueSize() {
+    return outputPipeConnector instanceof IoTDBThriftAsyncConnector
+        ? ((IoTDBThriftAsyncConnector) outputPipeConnector).getCommitQueueSize()
+        : 0;
   }
 }
