@@ -171,7 +171,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
 
     long commitId = ((EnrichedEvent) tabletInsertionEvent).getCommitId();
     if (isTabletBatchModeEnabled) {
-      if (tabletBatchBuilder.onEvent(tabletInsertionEvent, commitId)) {
+      if (tabletBatchBuilder.onEvent(tabletInsertionEvent)) {
         final PipeTransferTabletBatchEventHandler pipeTransferTabletBatchEventHandler =
             new PipeTransferTabletBatchEventHandler(tabletBatchBuilder, this);
 

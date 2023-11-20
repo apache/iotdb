@@ -106,17 +106,19 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
    * @param event the given event
    * @return true if the batch can be transferred
    */
-  public boolean onEvent(TabletInsertionEvent event, long requestCommitId)
-      throws IOException, WALPipeException {
+  public boolean onEvent(TabletInsertionEvent event) throws IOException, WALPipeException {
+    if (!(event instanceof EnrichedEvent)) {
+      return false;
+    }
+
+    long requestCommitId = ((EnrichedEvent) event).getCommitId();
     final TPipeTransferReq req = buildTabletInsertionReq(event);
 
     if (requestCommitIds.isEmpty()
         || !requestCommitIds.get(requestCommitIds.size() - 1).equals(requestCommitId)) {
       reqs.add(req);
 
-      if (event instanceof EnrichedEvent) {
-        ((EnrichedEvent) event).increaseReferenceCount(PipeTransferBatchReqBuilder.class.getName());
-      }
+      ((EnrichedEvent) event).increaseReferenceCount(PipeTransferBatchReqBuilder.class.getName());
       events.add(event);
       requestCommitIds.add(requestCommitId);
 

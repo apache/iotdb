@@ -262,8 +262,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
 
     try {
       if (isTabletBatchModeEnabled) {
-        if (tabletBatchBuilder.onEvent(
-            tabletInsertionEvent, ((EnrichedEvent) tabletInsertionEvent).getCommitId())) {
+        if (tabletBatchBuilder.onEvent(tabletInsertionEvent)) {
           doTransfer(client); // committed in doTransfer()
         }
       } else {
