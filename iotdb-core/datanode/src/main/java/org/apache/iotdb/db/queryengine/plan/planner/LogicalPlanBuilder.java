@@ -135,7 +135,7 @@ import static org.apache.iotdb.db.utils.constant.SqlConstant.MAX_TIME;
 
 public class LogicalPlanBuilder {
 
-  private PlanNode root;
+  protected PlanNode root;
 
   private final MPPQueryContext context;
 

@@ -41,6 +41,11 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.searchSourceExpressions;
 import static org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanVisitor.pushDownLimitToScanNode;
 
+/**
+ * This class provides accelerated implementation for multiple devices align by device query. This
+ * optimization is only used for devices set in only one template, using template can avoid many
+ * unnecessary judgements.
+ */
 public class TemplatedLogicalPlan {
 
   private final Analysis analysis;
@@ -55,25 +60,18 @@ public class TemplatedLogicalPlan {
     this.queryStatement = queryStatement;
     this.context = context;
 
-    measurementList = new ArrayList<>(analysis.getMeasurementList());
-    schemaList = new ArrayList<>(analysis.getMeasurementSchemaList());
+    measurementList = analysis.getMeasurementList();
+    schemaList = analysis.getMeasurementSchemaList();
   }
 
   public PlanNode visitQuery() {
-    LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
+    LogicalPlanBuilder planBuilder =
+        new TemplatedLogicalPlanBuilder(analysis, context, measurementList, schemaList);
 
     Map<String, PlanNode> deviceToSubPlanMap = new LinkedHashMap<>();
     for (PartialPath devicePath : analysis.getDeviceList()) {
       String deviceName = devicePath.getFullPath();
-      PlanNode rootNode =
-          visitQueryBody(
-              devicePath,
-              analysis,
-              queryStatement,
-              analysis.getDeviceToWhereExpression() != null
-                  ? analysis.getDeviceToWhereExpression().get(deviceName)
-                  : null,
-              context);
+      PlanNode rootNode = visitQueryBody(devicePath, analysis, queryStatement, context);
 
       LogicalPlanBuilder subPlanBuilder =
           new TemplatedLogicalPlanBuilder(analysis, context, measurementList, schemaList)
@@ -122,7 +120,6 @@ public class TemplatedLogicalPlan {
       PartialPath devicePath,
       Analysis analysis,
       QueryStatement queryStatement,
-      Expression whereExpression,
       MPPQueryContext context) {
 
     List<String> mergedMeasurementList = measurementList;
@@ -130,7 +127,11 @@ public class TemplatedLogicalPlan {
 
     // to fix this query: `select s1 from root.** where s2>1 align by device`
     // or `select s1 from root.** order by s2 align by device`.
-    if (!analysis.isTemplateWildCardQuery() && whereExpression != null) {
+    Expression whereExpression =
+        analysis.getDeviceToWhereExpression() != null
+            ? analysis.getDeviceToWhereExpression().get(devicePath.getFullPath())
+            : null;
+    if (whereExpression != null && !analysis.isTemplateWildCardQuery()) {
       mergedMeasurementList = new ArrayList<>(measurementList);
       mergedSchemaList = new ArrayList<>(schemaList);
       Set<String> selectExpressions = new HashSet<>(measurementList);

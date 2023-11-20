@@ -136,6 +136,10 @@ public class TemplatedAnalyze {
       }
     }
 
+    if (queryStatement.hasOrderByExpression()) {
+      return false;
+    }
+
     long startTime = System.currentTimeMillis();
     analyzeSelect(queryStatement, analysis, outputExpressions, template);
     LOGGER.warn("--- [analyzeSelect] : {}ms", System.currentTimeMillis() - startTime);
@@ -216,7 +220,6 @@ public class TemplatedAnalyze {
 
     Set<PartialPath> deviceSet = new HashSet<>();
     for (PartialPath devicePattern : devicePatternList) {
-      // get all matched devices
       deviceSet.addAll(
           schemaTree.getMatchedDevices(devicePattern).stream()
               .map(DeviceSchemaInfo::getDevicePath)
@@ -347,6 +350,7 @@ public class TemplatedAnalyze {
 
   private static void analyzeDeviceViewInput(Analysis analysis) {
     List<Integer> indexes = new ArrayList<>();
+
     // index-0 is `Device`
     for (int i = 1; i < analysis.getSelectExpressions().size(); i++) {
       indexes.add(i);

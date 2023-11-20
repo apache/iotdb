@@ -38,9 +38,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * This class provides accelerated implementation for multiple devices align by device query. This
+ * optimization is only used for devices set in only one template, using template can avoid many
+ * unnecessary judgements.
+ */
 public class TemplatedLogicalPlanBuilder extends LogicalPlanBuilder {
-  private PlanNode root;
-
   private final MPPQueryContext context;
 
   private final Analysis analysis;
@@ -132,11 +135,6 @@ public class TemplatedLogicalPlanBuilder extends LogicalPlanBuilder {
     updateTypeProvider(Collections.singletonList(filterExpression));
 
     return this;
-  }
-
-  @Override
-  public PlanNode getRoot() {
-    return root;
   }
 
   @Override

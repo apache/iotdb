@@ -232,14 +232,11 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
 
   @Override
   protected Iterator<N> getChildrenIterator(N parent) throws MetadataException {
-    IMNodeIterator<N> currentChildrenIterator;
     if (parent.isAboveDatabase()) {
-      currentChildrenIterator = new MNodeIterator<>(parent.getChildren().values().iterator());
+      return new MNodeIterator<>(parent.getChildren().values().iterator());
     } else {
-      currentChildrenIterator =
-          store.getTraverserIterator(parent, templateMap, skipPreDeletedSchema);
+      return store.getTraverserIterator(parent, templateMap, skipPreDeletedSchema);
     }
-    return currentChildrenIterator;
   }
 
   @Override
