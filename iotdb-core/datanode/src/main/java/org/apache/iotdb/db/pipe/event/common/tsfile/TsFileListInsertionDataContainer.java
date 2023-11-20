@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile;
 
+import java.util.Collections;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -124,37 +125,38 @@ public class TsFileListInsertionDataContainer implements AutoCloseable {
     for (Map.Entry<String, List<String>> entry :
         tsFileSequenceReaders.get(i).getDeviceMeasurementsMap().entrySet()) {
       final String deviceId = entry.getKey();
+      List<String> filteredMeasurements = Collections.emptyList();
 
       // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
       // in this case, all data can be matched without checking the measurements
       if (pattern == null
           || pattern.length() <= deviceId.length() && deviceId.startsWith(pattern)) {
-        if (!entry.getValue().isEmpty()) {
-          filteredDeviceMeasurementsMap.put(deviceId, entry.getValue());
-        }
+        filteredMeasurements = entry.getValue();
       }
-
       // case 2: for example, pattern is root.a.b.c and device is root.a.b
       // in this case, we need to check the full path
       else if (pattern.length() > deviceId.length() && pattern.startsWith(deviceId)) {
-        final List<String> filteredMeasurements = new ArrayList<>();
-
-        for (final String measurement : entry.getValue()) {
-          // low cost check comes first
-          if (pattern.length() == deviceId.length() + measurement.length() + 1
-              // high cost check comes later
-              && pattern.endsWith(TsFileConstant.PATH_SEPARATOR + measurement)) {
-            filteredMeasurements.add(measurement);
-          }
-        }
-
-        if (!filteredMeasurements.isEmpty()) {
-          filteredDeviceMeasurementsMap.put(deviceId, filteredMeasurements);
-        }
+        filteredMeasurements = filterMeasurements(entry.getValue(), deviceId);
+      }
+      if (!filteredMeasurements.isEmpty()) {
+        filteredDeviceMeasurementsMap.put(deviceId, filteredMeasurements);
       }
     }
 
     return filteredDeviceMeasurementsMap;
+  }
+
+  private List<String> filterMeasurements(List<String> measurements, String deviceId) {
+    for (final String measurement : measurements) {
+      // low cost check comes first
+      if (pattern.length() == deviceId.length() + measurement.length() + 1
+          // high cost check comes later
+          && pattern.endsWith(TsFileConstant.PATH_SEPARATOR + measurement)) {
+        // if one measurement matches, other cannot match
+        return Collections.singletonList(measurement);
+      }
+    }
+    return Collections.emptyList();
   }
 
   private Map<String, Boolean> readDeviceIsAlignedMap(int i) throws IOException {
