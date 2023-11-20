@@ -483,9 +483,13 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   @Override
-  public long getEstimatedMemoryCost() throws IOException {
+  public long getEstimatedMemoryCost() {
     if (innerSpaceEstimator != null && memoryCost == 0L) {
-      memoryCost = innerSpaceEstimator.estimateInnerCompactionMemory(selectedTsFileResourceList);
+      try {
+        memoryCost = innerSpaceEstimator.estimateInnerCompactionMemory(selectedTsFileResourceList);
+      } catch (IOException e) {
+        innerSpaceEstimator.cleanup();
+      }
     }
     return memoryCost;
   }

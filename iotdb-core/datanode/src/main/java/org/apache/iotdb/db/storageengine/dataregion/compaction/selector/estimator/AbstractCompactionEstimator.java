@@ -150,11 +150,9 @@ public abstract class AbstractCompactionEstimator {
     return (DeviceTimeIndex) timeIndex;
   }
 
-  public void cleanup(List<TsFileResource> compactionTaskSourceFiles) {
+  public void cleanup() {
     deviceTimeIndexCache.clear();
     fileInfoCache.clear();
-    compactionTaskSourceFiles.forEach(
-        resource -> globalFileInfoCacheForFailedCompaction.remove(resource.getTsFile()));
   }
 
   public static void removeFileInfoFromGlobalFileInfoCache(TsFileResource resource) {

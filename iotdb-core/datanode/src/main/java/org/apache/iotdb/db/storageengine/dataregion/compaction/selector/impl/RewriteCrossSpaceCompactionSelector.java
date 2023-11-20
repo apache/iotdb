@@ -129,6 +129,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       return executeTaskResourceSelection(candidate);
     } catch (IOException e) {
       throw new MergeException(e);
+    } finally {
+      compactionEstimator.cleanup();
     }
   }
 
