@@ -261,7 +261,7 @@ public class LoadTsfileAnalyzer {
 
         for (final TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
           final TSDataType dataType = timeseriesMetadata.getTsDataType();
-          if (dataType.equals(TSDataType.VECTOR)) {
+          if (TSDataType.VECTOR.equals(dataType)) {
             tsfileDevice2IsAligned.put(device, true);
 
             // not a timeseries, skip

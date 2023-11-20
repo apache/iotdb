@@ -55,7 +55,7 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
       this.reader.readFileMetadata();
     }
 
-    MetadataIndexNode metadataIndexNode = reader.tsFileMetaData.getMetadataIndex();
+    final MetadataIndexNode metadataIndexNode = reader.tsFileMetaData.getMetadataIndex();
     long curEntryEndOffset = metadataIndexNode.getEndOffset();
     List<MetadataIndexEntry> metadataIndexEntryList = metadataIndexNode.getChildren();
     this.needChunkMetadata = needChunkMetadata;
@@ -80,7 +80,7 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
       throw new NoSuchElementException();
     }
 
-    Map<String, List<TimeseriesMetadata>> timeseriesMetadataMap = new HashMap<>();
+    final Map<String, List<TimeseriesMetadata>> timeseriesMetadataMap = new HashMap<>();
 
     while (currentTimeseriesMetadataCount < MAX_TIMESERIES_METADATA_COUNT) {
 
@@ -100,7 +100,7 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
       }
 
       // 2. Deserialize MetadataIndexEntry
-      MetadataIndexEntryInfo indexEntryInfo = metadataIndexEntryStack.pop();
+      final MetadataIndexEntryInfo indexEntryInfo = metadataIndexEntryStack.pop();
 
       try {
         deserializeMetadataIndexEntry(indexEntryInfo, timeseriesMetadataMap);
@@ -162,7 +162,7 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
   }
 
   private List<TimeseriesMetadata> deserializesTimeseriesMetadata() {
-    List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
+    final List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
     while (currentBuffer.hasRemaining()
         && currentTimeseriesMetadataCount < MAX_TIMESERIES_METADATA_COUNT) {
       timeseriesMetadataList.add(
@@ -179,7 +179,7 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
       currentDeviceId = metadataIndexEntry.getName();
     }
 
-    MetadataIndexNode metadataIndexNode =
+    final MetadataIndexNode metadataIndexNode =
         MetadataIndexNode.deserializeFrom(
             reader.readData(metadataIndexEntry.getOffset(), endOffset));
     MetadataIndexNodeType metadataIndexNodeType = metadataIndexNode.getNodeType();
