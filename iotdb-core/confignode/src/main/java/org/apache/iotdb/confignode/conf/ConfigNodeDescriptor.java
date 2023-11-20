@@ -435,7 +435,7 @@ public class ConfigNodeDescriptor {
         Boolean.parseBoolean(
             properties
                 .getProperty(
-                    "procedure_core_worker_thread_count",
+                    "enable_auto_create_database",
                     String.valueOf(conf.isEnableAutoCreateDatabase()))
                 .trim()));
 
