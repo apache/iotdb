@@ -139,10 +139,6 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
 
       if (!iChunkMetadataList.isEmpty()) {
         // modify chunk metadatas
-        String pathStr =
-            deviceId
-                + TsFileConstant.PATH_SEPARATOR
-                + iChunkMetadataList.get(0).getMeasurementUid();
         ModificationUtils.modifyChunkMetaData(
             iChunkMetadataList,
             getModificationsFromCache(
