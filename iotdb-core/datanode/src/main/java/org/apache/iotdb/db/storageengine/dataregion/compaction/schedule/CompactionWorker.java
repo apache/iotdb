@@ -36,7 +36,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.validation.constraints.NotNull;
 
-import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -104,7 +103,6 @@ public class CompactionWorker implements Runnable {
       taskSuccess = true;
       return true;
     } catch (FileCannotTransitToCompactingException
-        | IOException
         | CompactionMemoryNotEnoughException
         | CompactionFileCountExceededException e) {
       log.info("CompactionTask {} cannot be executed. Reason: {}", task, e);
