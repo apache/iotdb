@@ -28,8 +28,6 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.commons.partition.DataPartition;
-import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.StorageExecutor;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
@@ -200,16 +198,15 @@ public class LoadTsFileScheduler implements IScheduler {
   }
 
   private boolean firstPhase(LoadSingleTsFileNode node) {
-    final TsFileDataManager tsFileDataManager = new TsFileDataManager(this, node);
+    final TsFileDataManager tsFileDataManager =
+        new TsFileDataManager(
+            this::dispatchOnePieceNode,
+            node.getPlanNodeId(),
+            node.getTsFileResource().getTsFile(),
+            partitionFetcher,
+            MAX_MEMORY_SIZE,
+            queryContext.getSession().getUserName());
     try {
-      TsFileDataManager tsFileDataManager =
-          new TsFileDataManager(
-              this::dispatchOnePieceNode,
-              node.getPlanNodeId(),
-              node.getTsFileResource().getTsFile(),
-              partitionFetcher,
-              MAX_MEMORY_SIZE,
-              queryContext.getSession().getUserName());
       new TsFileSplitter(
               node.getTsFileResource().getTsFile(), tsFileDataManager::addOrSendTsFileData, 0)
           .splitTsFileByDataPartition();

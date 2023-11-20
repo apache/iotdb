@@ -170,4 +170,8 @@ public class TsFileDataManager {
     }
     return true;
   }
+
+  public void clear() {
+    replicaSet2Piece.clear();
+  }
 }
