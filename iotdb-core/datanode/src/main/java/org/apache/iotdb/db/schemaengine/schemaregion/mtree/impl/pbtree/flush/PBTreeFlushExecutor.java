@@ -61,6 +61,9 @@ public class PBTreeFlushExecutor {
   }
 
   public void flushVolatileNodes() throws MetadataException, IOException {
+    if (needLock) {
+      lockManager.writeLock(subtreeRoot);
+    }
     try {
       file.writeMNode(this.subtreeRoot);
     } catch (MetadataException | IOException e) {
@@ -70,6 +73,10 @@ public class PBTreeFlushExecutor {
           e);
       cacheManager.updateCacheStatusAfterFlushFailure(this.subtreeRoot);
       throw e;
+    } finally {
+      if (needLock) {
+        lockManager.writeUnlock(subtreeRoot);
+      }
     }
 
     Deque<Iterator<ICachedMNode>> volatileSubtreeStack = new ArrayDeque<>();

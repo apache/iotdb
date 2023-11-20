@@ -432,7 +432,7 @@ public abstract class CacheManager implements ICacheManager {
       if (node == null) {
         break;
       }
-      lockManager.threadReadLock(node.getParent());
+      lockManager.threadReadLock(node.getParent(), true);
       try {
         cacheEntry = getCacheEntry(node);
         // the operation that may change the cache status of a node should be synchronized

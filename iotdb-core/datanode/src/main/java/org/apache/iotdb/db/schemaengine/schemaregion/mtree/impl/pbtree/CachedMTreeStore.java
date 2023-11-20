@@ -325,14 +325,14 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   }
 
   final void updateMNode(ICachedMNode node, Consumer<ICachedMNode> operation, boolean needLock) {
-    if (needLock) {
+    if (needLock && !node.isDatabase()) {
       lockManager.threadReadLock(node.getParent());
     }
     try {
       operation.accept(node);
       cacheManager.updateCacheStatusAfterUpdate(node);
     } finally {
-      if (needLock) {
+      if (needLock && !node.isDatabase()) {
         lockManager.threadReadUnlock(node.getParent());
       }
     }
@@ -410,13 +410,13 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   }
 
   final void pin(ICachedMNode node, boolean needLock) throws MetadataException {
-    if (needLock) {
+    if (needLock && !node.isDatabase()) {
       lockManager.threadReadLock(node.getParent());
     }
     try {
       cacheManager.pinMNode(node);
     } finally {
-      if (needLock) {
+      if (needLock && !node.isDatabase()) {
         lockManager.threadReadUnlock(node.getParent());
       }
     }
@@ -436,7 +436,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   }
 
   final void unPin(ICachedMNode node, boolean needLock) {
-    if (needLock) {
+    if (needLock && !node.isDatabase()) {
       lockManager.threadReadLock(node.getParent());
     }
     try {
@@ -444,7 +444,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
         ensureMemoryStatus();
       }
     } finally {
-      if (needLock) {
+      if (needLock && !node.isDatabase()) {
         lockManager.threadReadUnlock(node.getParent());
       }
     }
