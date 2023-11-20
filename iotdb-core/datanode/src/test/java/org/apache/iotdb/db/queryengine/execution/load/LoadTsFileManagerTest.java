@@ -136,7 +136,7 @@ public class LoadTsFileManagerTest extends TestBase {
     }
   }
 
-  public TLoadResp handleTsFilePieceNode(TTsFilePieceReq req, TEndPoint tEndpoint)
+  public TLoadResp handleTsFilePieceNode(TTsFilePieceReq req, TEndPoint tEndPoint)
       throws TException, IOException {
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
@@ -165,7 +165,7 @@ public class LoadTsFileManagerTest extends TestBase {
           .forEach(
               dataNodeLocation -> {
                 TEndPoint otherPoint = dataNodeLocation.getInternalEndPoint();
-                if (!otherPoint.equals(tEndpoint)) {
+                if (!otherPoint.equals(tEndPoint)) {
                   try {
                     handleTsFilePieceNode(req, otherPoint);
                   } catch (TException | IOException e) {
@@ -180,7 +180,7 @@ public class LoadTsFileManagerTest extends TestBase {
         .setStatus(new TSStatus().setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }
 
-  public TLoadResp handleTsLoadCommand(TLoadCommandReq req, TEndPoint tEndpoint)
+  public TLoadResp handleTsLoadCommand(TLoadCommandReq req, TEndPoint tEndPoint)
       throws LoadFileException, IOException {
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
@@ -191,7 +191,7 @@ public class LoadTsFileManagerTest extends TestBase {
       TRegionReplicaSet regionReplicaSet = groupId2ReplicaSetMap.get(groupId);
       for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
         TEndPoint otherPoint = dataNodeLocation.getInternalEndPoint();
-        if (!otherPoint.equals(tEndpoint)) {
+        if (!otherPoint.equals(tEndPoint)) {
           handleTsLoadCommand(req, otherPoint);
         }
       }

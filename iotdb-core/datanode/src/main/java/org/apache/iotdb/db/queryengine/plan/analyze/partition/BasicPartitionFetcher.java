@@ -60,6 +60,9 @@ import java.util.Set;
 
 public abstract class BasicPartitionFetcher implements IPartitionFetcher {
 
+  private static final String ERR_GET_DATA_PARTITION = "An error occurred when executing getDataPartition():";
+  private static final String ERR_GET_OR_CREATE_DATA_PARTITION = "An error occurred when executing getOrCreateDataPartition():";
+
   protected static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   protected final SeriesPartitionExecutor partitionExecutor;
@@ -92,7 +95,7 @@ public abstract class BasicPartitionFetcher implements IPartitionFetcher {
           partitionCache.updateSchemaPartitionCache(
               schemaPartitionTableResp.getSchemaPartitionTable());
         } else {
-          throw new RuntimeException(
+          throw new IllegalStateException(
               new IoTDBException(
                   schemaPartitionTableResp.getStatus().getMessage(),
                   schemaPartitionTableResp.getStatus().getCode()));
@@ -122,7 +125,7 @@ public abstract class BasicPartitionFetcher implements IPartitionFetcher {
           partitionCache.updateSchemaPartitionCache(
               schemaPartitionTableResp.getSchemaPartitionTable());
         } else {
-          throw new RuntimeException(
+          throw new IllegalStateException(
               new IoTDBException(
                   schemaPartitionTableResp.getStatus().getMessage(),
                   schemaPartitionTableResp.getStatus().getCode()));
@@ -165,12 +168,12 @@ public abstract class BasicPartitionFetcher implements IPartitionFetcher {
           partitionCache.updateDataPartitionCache(dataPartitionTableResp.getDataPartitionTable());
         } else {
           throw new StatementAnalyzeException(
-              "An error occurred when executing getDataPartition():"
+              ERR_GET_DATA_PARTITION
                   + dataPartitionTableResp.getStatus().getMessage());
         }
       } catch (ClientManagerException | TException e) {
         throw new StatementAnalyzeException(
-            "An error occurred when executing getDataPartition():" + e.getMessage());
+            ERR_GET_DATA_PARTITION + e.getMessage());
       }
     }
     return dataPartition;
@@ -190,12 +193,12 @@ public abstract class BasicPartitionFetcher implements IPartitionFetcher {
         return parseDataPartitionResp(dataPartitionTableResp);
       } else {
         throw new StatementAnalyzeException(
-            "An error occurred when executing getDataPartition():"
+            ERR_GET_DATA_PARTITION
                 + dataPartitionTableResp.getStatus().getMessage());
       }
     } catch (ClientManagerException | TException e) {
       throw new StatementAnalyzeException(
-          "An error occurred when executing getDataPartition():" + e.getMessage());
+          ERR_GET_DATA_PARTITION + e.getMessage());
     }
   }
 
@@ -214,12 +217,12 @@ public abstract class BasicPartitionFetcher implements IPartitionFetcher {
           partitionCache.updateDataPartitionCache(dataPartitionTableResp.getDataPartitionTable());
         } else {
           throw new StatementAnalyzeException(
-              "An error occurred when executing getOrCreateDataPartition():"
+              ERR_GET_OR_CREATE_DATA_PARTITION
                   + dataPartitionTableResp.getStatus().getMessage());
         }
       } catch (ClientManagerException | TException e) {
         throw new StatementAnalyzeException(
-            "An error occurred when executing getOrCreateDataPartition():" + e.getMessage());
+            ERR_GET_OR_CREATE_DATA_PARTITION + e.getMessage());
       }
     }
     return dataPartition;
@@ -243,14 +246,14 @@ public abstract class BasicPartitionFetcher implements IPartitionFetcher {
           dataPartition = parseDataPartitionResp(dataPartitionTableResp);
           partitionCache.updateDataPartitionCache(dataPartitionTableResp.getDataPartitionTable());
         } else {
-          throw new RuntimeException(
+          throw new IllegalStateException(
               new IoTDBException(
                   dataPartitionTableResp.getStatus().getMessage(),
                   dataPartitionTableResp.getStatus().getCode()));
         }
       } catch (ClientManagerException | TException e) {
         throw new StatementAnalyzeException(
-            "An error occurred when executing getOrCreateDataPartition():" + e.getMessage());
+            ERR_GET_OR_CREATE_DATA_PARTITION + e.getMessage());
       }
     }
     return dataPartition;

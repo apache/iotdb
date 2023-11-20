@@ -27,6 +27,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.partition.PartitionCache;
 
+@SuppressWarnings("java:S6548")
 public class ClusterPartitionFetcher extends BasicPartitionFetcher {
   private final IClientManager<ConfigRegionId, ConfigNodeClient> configNodeClientManager =
       ConfigNodeClientManager.getInstance();

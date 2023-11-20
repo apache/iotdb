@@ -184,22 +184,16 @@ public class ClusteringMeasurementSplitter implements PieceNodeSplitter {
         newNodeA.addTsFileData(tsFileData);
       } else {
         ChunkData chunkData = (ChunkData) tsFileData;
-        if (currMeasurement == null || currMeasurement.equals(chunkData.firstMeasurement())) {
+        if (currMeasurement == null || currMeasurement.equals(chunkData.firstMeasurement()) ||
+            sizeTarget > 0) {
           // the first chunk or chunk of the same series, add it to A
+          // or the chunk of the next series and splitA is not
           currMeasurement = chunkData.firstMeasurement();
           newNodeA.addTsFileData(tsFileData);
           sizeTarget -= chunkData.getDataSize();
-        } else {
-          // chunk of the next series
-          if (sizeTarget < 0) {
-            // splitA is full, break to fill splitB
-            break;
-          } else {
-            // splitA is not full, also add this series to A
-            currMeasurement = chunkData.firstMeasurement();
-            newNodeA.addTsFileData(tsFileData);
-            sizeTarget -= chunkData.getDataSize();
-          }
+        } else if (sizeTarget < 0) {
+          // a new series but splitA is full, break to fill splitB
+          break;
         }
       }
     }
@@ -455,7 +449,7 @@ public class ClusteringMeasurementSplitter implements PieceNodeSplitter {
 
   public class KMeans implements Clustering {
 
-    private int k;
+    private int clusterNum;
     private int maxIteration;
     private double[][] centroids;
     private AtomicInteger[] centroidCounters;
@@ -463,11 +457,11 @@ public class ClusteringMeasurementSplitter implements PieceNodeSplitter {
     private Map<Entry<String, double[]>, Integer> recordCentroidMapping;
     private int vecLength = 0;
 
-    public KMeans(int k, int maxIteration) {
-      this.k = k;
+    public KMeans(int clusterNum, int maxIteration) {
+      this.clusterNum = clusterNum;
       this.maxIteration = maxIteration;
-      this.centroids = new double[k][];
-      this.centroidCounters = new AtomicInteger[k];
+      this.centroids = new double[clusterNum][];
+      this.centroidCounters = new AtomicInteger[clusterNum];
       for (int i = 0; i < centroidCounters.length; i++) {
         centroidCounters[i] = new AtomicInteger();
       }
@@ -484,26 +478,24 @@ public class ClusteringMeasurementSplitter implements PieceNodeSplitter {
     @Override
     public List<List<String>> cluster(Map<String, double[]> tagVectorMap, VectorDistance distance) {
       recordCentroidMapping.clear();
-      if (k > tagVectorMap.size()) {
-        k = tagVectorMap.size();
-        this.centroids = new double[k][];
+      if (clusterNum > tagVectorMap.size()) {
+        clusterNum = tagVectorMap.size();
+        this.centroids = new double[clusterNum][];
       }
 
       for (Entry<String, double[]> entry : tagVectorMap.entrySet()) {
         vecLength = entry.getValue().length;
       }
 
-      randomCentroid(vecLength, tagVectorMap);
+      randomCentroid(tagVectorMap);
 
-      for (int i = 0; i < maxIteration; i++) {
+      for (int i = 0; i < maxIteration && System.currentTimeMillis() - splitStartTime <= splitTimeBudget; i++) {
         if (!assignCentroid(tagVectorMap, distance)) {
+          // centroid not updated, end
           break;
         }
         newCentroid();
         clearCentroidCounter();
-        if (System.currentTimeMillis() - splitStartTime > splitTimeBudget) {
-          break;
-        }
       }
 
       Map<Integer, List<Entry<String, double[]>>> centroidRecordMap =
@@ -542,9 +534,9 @@ public class ClusteringMeasurementSplitter implements PieceNodeSplitter {
                 List<Entry<String, double[]>> records = e.getValue();
                 int recordNum = records.size();
                 double[] sumVec = new double[vecLength];
-                for (Entry<String, double[]> record : records) {
+                for (Entry<String, double[]> rec : records) {
                   for (int i = 0; i < sumVec.length; i++) {
-                    sumVec[i] += record.getValue()[i];
+                    sumVec[i] += rec.getValue()[i];
                   }
                 }
                 for (int i = 0; i < sumVec.length; i++) {
@@ -590,26 +582,15 @@ public class ClusteringMeasurementSplitter implements PieceNodeSplitter {
       return centroidUpdated.get();
     }
 
-    private void randomCentroid(int vecLength, Map<String, double[]> tagVectorMap) {
+    private void randomCentroid(Map<String, double[]> tagVectorMap) {
       pickRandomCentroid(tagVectorMap);
-      // genRandomCentroid(vecLength);
     }
 
     private void pickRandomCentroid(Map<String, double[]> tagVectorMap) {
       List<double[]> recordVectors = new ArrayList<>(tagVectorMap.values());
       Collections.shuffle(recordVectors);
-      for (int i = 0; i < k; i++) {
+      for (int i = 0; i < clusterNum; i++) {
         centroids[i] = recordVectors.get(i);
-      }
-    }
-
-    private void genRandomCentroid(int vecLength) {
-      for (int i = 0; i < k; i++) {
-        double[] centroid = new double[vecLength];
-        for (int j = 0; j < vecLength; j++) {
-          centroid[j] = random.nextDouble();
-        }
-        centroids[i] = centroid;
       }
     }
   }

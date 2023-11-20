@@ -133,7 +133,7 @@ public class ThroughputBasedLocationSequencer implements LocationSequencer {
               .map(p -> new Pair<>(p.left.getDataNodeId(), p.right))
               .collect(Collectors.toList()));
     }
-    Pair<TDataNodeLocation, Double> chosenPair = locations.remove(chosen);
+    final Pair<TDataNodeLocation, Double> chosenPair = locations.remove(chosen);
     // update ranks
     double newTotalRank = 0.0;
     for (Pair<TDataNodeLocation, Double> location : locations) {

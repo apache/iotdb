@@ -164,14 +164,14 @@ public class TestBase {
     return (splitChunkNum + fileNum) * seriesNum * deviceNum;
   }
 
-  public TLoadResp handleTsFilePieceNode(TTsFilePieceReq req, TEndPoint tEndpoint)
+  public TLoadResp handleTsFilePieceNode(TTsFilePieceReq req, TEndPoint tEndPoint)
       throws TException, IOException {
     return new TLoadResp()
         .setAccepted(true)
         .setStatus(new TSStatus().setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }
 
-  public TLoadResp handleTsLoadCommand(TLoadCommandReq req, TEndPoint tEndpoint)
+  public TLoadResp handleTsLoadCommand(TLoadCommandReq req, TEndPoint tEndPoint)
       throws LoadFileException, IOException {
     return new TLoadResp()
         .setAccepted(true)
@@ -420,12 +420,12 @@ public class TestBase {
 
   public static String getTestTsFilePath(
       String logicalStorageGroupName,
-      long VirtualStorageGroupId,
-      long TimePartitionId,
+      long virtualStorageGroupId,
+      long timePartitionId,
       long tsFileVersion) {
     String filePath =
         String.format(
-            TEST_TSFILE_PATH, logicalStorageGroupName, VirtualStorageGroupId, TimePartitionId);
+            TEST_TSFILE_PATH, logicalStorageGroupName, virtualStorageGroupId, timePartitionId);
     return TsFileGeneratorUtils.getTsFilePath(filePath, tsFileVersion);
   }
 }

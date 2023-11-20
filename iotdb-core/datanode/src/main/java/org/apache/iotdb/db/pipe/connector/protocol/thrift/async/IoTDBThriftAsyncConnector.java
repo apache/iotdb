@@ -467,15 +467,16 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
         pipeTsFileInsertionEvent.getTsFiles().size(),
         targetConfigNodes);
 
-    if (splitSender.getStatistic().hasP2Timeout) {
-      double throughput = splitSender.getStatistic().p2ThroughputMBPS();
+    if (splitSender.getStatistic().isHasP2Timeout()) {
+      double throughput = splitSender.getStatistic().p2ThroughputMbps();
       Map<String, Object> param = new HashMap<>(2);
       param.put(
-          PipeBatchTsFileInsertionEvent.CONNECTOR_TIMEOUT_MS, splitSender.getStatistic().p2Timeout);
+          PipeBatchTsFileInsertionEvent.CONNECTOR_TIMEOUT_MS,
+          splitSender.getStatistic().getP2Timeout());
       param.put(PipeBatchTsFileInsertionEvent.CONNECTOR_THROUGHPUT_MBPS_KEY, throughput);
       pipeTsFileInsertionEvent.getExtractorOnConnectorTimeout().apply(param);
     } else {
-      double throughput = splitSender.getStatistic().p2ThroughputMBPS();
+      double throughput = splitSender.getStatistic().p2ThroughputMbps();
       pipeTsFileInsertionEvent
           .getExtractorOnConnectorSuccess()
           .apply(

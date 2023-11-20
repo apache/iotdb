@@ -419,12 +419,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           currDevice = device;
           currMeasurement = measurement;
         } else if (!currDevice.equals(device)) {
-          validatingSchema.devicePaths.add(new PartialPath(currDevice));
-          validatingSchema.measurements.add(measurements.toArray(new String[0]));
-          validatingSchema.dataTypes.add(dataTypes.toArray(new TSDataType[0]));
-          validatingSchema.encodings.add(encodings.toArray(new TSEncoding[0]));
-          validatingSchema.compressionTypes.add(compressionTypes.toArray(new CompressionType[0]));
-          validatingSchema.isAlignedList.add(isAligned);
+          validatingSchema.getDevicePaths().add(new PartialPath(currDevice));
+          validatingSchema.getMeasurements().add(measurements.toArray(new String[0]));
+          validatingSchema.getDataTypes().add(dataTypes.toArray(new TSDataType[0]));
+          validatingSchema.getEncodings().add(encodings.toArray(new TSEncoding[0]));
+          validatingSchema.getCompressionTypes().add(compressionTypes.toArray(new CompressionType[0]));
+          validatingSchema.getIsAlignedList().add(isAligned);
           currDevice = device;
           currMeasurement = measurement;
           measurements.clear();
@@ -438,12 +438,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       }
     }
 
-    validatingSchema.devicePaths.add(new PartialPath(currDevice));
-    validatingSchema.measurements.add(measurements.toArray(new String[0]));
-    validatingSchema.dataTypes.add(dataTypes.toArray(new TSDataType[0]));
-    validatingSchema.encodings.add(encodings.toArray(new TSEncoding[0]));
-    validatingSchema.compressionTypes.add(compressionTypes.toArray(new CompressionType[0]));
-    validatingSchema.isAlignedList.add(isAligned);
+    validatingSchema.getDevicePaths().add(new PartialPath(currDevice));
+    validatingSchema.getMeasurements().add(measurements.toArray(new String[0]));
+    validatingSchema.getDataTypes().add(dataTypes.toArray(new TSDataType[0]));
+    validatingSchema.getEncodings().add(encodings.toArray(new TSEncoding[0]));
+    validatingSchema.getCompressionTypes().add(compressionTypes.toArray(new CompressionType[0]));
+    validatingSchema.getIsAlignedList().add(isAligned);
     return validatingSchema;
   }
 

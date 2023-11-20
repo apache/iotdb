@@ -69,7 +69,7 @@ public class TsFileUtils {
       throws IOException {
     if (uncompressedSize == 0 || type == CompressionType.UNCOMPRESSED) {
       return buffer;
-    } // FIXME if the buffer is not array-implemented.
+    }
     IUnCompressor unCompressor = IUnCompressor.getUnCompressor(type);
     ByteBuffer uncompressedBuffer = ByteBuffer.allocate(uncompressedSize);
     unCompressor.uncompress(

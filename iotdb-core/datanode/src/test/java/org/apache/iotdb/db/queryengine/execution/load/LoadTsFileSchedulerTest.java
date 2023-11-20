@@ -109,7 +109,7 @@ public class LoadTsFileSchedulerTest extends TestBase {
     System.out.printf("Split ends after %dms", timeConsumption);
   }
 
-  public TLoadResp handleTsFilePieceNode(TTsFilePieceReq req, TEndPoint tEndpoint) {
+  public TLoadResp handleTsFilePieceNode(TTsFilePieceReq req, TEndPoint tEndPoint) {
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
     LoadTsFilePieceNode pieceNode =
@@ -117,7 +117,7 @@ public class LoadTsFileSchedulerTest extends TestBase {
     Set<Integer> splitIds =
         phaseOneResults
             .computeIfAbsent(
-                tEndpoint,
+                tEndPoint,
                 e -> new ConcurrentSkipListMap<>(Comparator.comparingInt(ConsensusGroupId::getId)))
             .computeIfAbsent(groupId, g -> new ConcurrentSkipListMap<>())
             .computeIfAbsent(req.uuid, id -> new ConcurrentSkipListMap<>())
@@ -132,9 +132,9 @@ public class LoadTsFileSchedulerTest extends TestBase {
         .setStatus(new TSStatus().setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }
 
-  public TLoadResp handleTsLoadCommand(TLoadCommandReq req, TEndPoint tEndpoint) {
+  public TLoadResp handleTsLoadCommand(TLoadCommandReq req, TEndPoint tEndPoint) {
     phaseTwoResults
-        .computeIfAbsent(tEndpoint, e -> new ConcurrentSkipListMap<>())
+        .computeIfAbsent(tEndPoint, e -> new ConcurrentSkipListMap<>())
         .computeIfAbsent(req.uuid, id -> req.commandType);
 
     return new TLoadResp()
@@ -145,16 +145,16 @@ public class LoadTsFileSchedulerTest extends TestBase {
   public void printPhaseResult() {
     System.out.print("Phase one:\n");
     for (Entry<TEndPoint, Map<ConsensusGroupId, Map<String, Map<File, Set<Integer>>>>>
-        tEndPointMapEntry : phaseOneResults.entrySet()) {
-      TEndPoint endPoint = tEndPointMapEntry.getKey();
+        entry : phaseOneResults.entrySet()) {
+      TEndPoint endPoint = entry.getKey();
       for (Entry<ConsensusGroupId, Map<String, Map<File, Set<Integer>>>> consensusGroupIdMapEntry :
-          tEndPointMapEntry.getValue().entrySet()) {
+          entry.getValue().entrySet()) {
         ConsensusGroupId consensusGroupId = consensusGroupIdMapEntry.getKey();
         int chunkNum = 0;
         int fileNum = 0;
         int taskNum = 0;
         for (Entry<String, Map<File, Set<Integer>>> stringMapEntry :
-            consensusGroupIdMapEntry.getValue().entrySet()) {;
+            consensusGroupIdMapEntry.getValue().entrySet()) {
           taskNum += 1;
           for (Entry<File, Set<Integer>> fileListEntry : stringMapEntry.getValue().entrySet()) {
             Set<Integer> chunks = fileListEntry.getValue();
@@ -165,20 +165,13 @@ public class LoadTsFileSchedulerTest extends TestBase {
         System.out.printf(
             "%s - %s - %s tasks - %s files - %s chunks\n",
             endPoint, consensusGroupId, taskNum, fileNum, chunkNum);
-        //        if (consensusGroupId.getId() == 0) {
-        //          // d1, non-aligned series
-        //          assertEquals(expectedChunkNum() / 2, chunkNum);
-        //        } else {
-        //          // d2, aligned series
-        //          assertEquals(expectedChunkNum() / 2 / seriesNum, chunkNum);
-        //        }
       }
     }
 
     System.out.print("Phase two:\n");
-    for (Entry<TEndPoint, Map<String, Integer>> tEndPointMapEntry : phaseTwoResults.entrySet()) {
-      TEndPoint endPoint = tEndPointMapEntry.getKey();
-      for (Entry<String, Integer> stringMapEntry : tEndPointMapEntry.getValue().entrySet()) {
+    for (Entry<TEndPoint, Map<String, Integer>> entry : phaseTwoResults.entrySet()) {
+      TEndPoint endPoint = entry.getKey();
+      for (Entry<String, Integer> stringMapEntry : entry.getValue().entrySet()) {
         String uuid = stringMapEntry.getKey();
         int command = stringMapEntry.getValue();
         System.out.printf("%s - %s - %s\n", endPoint, uuid, LoadCommand.values()[command]);

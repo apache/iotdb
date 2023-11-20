@@ -62,11 +62,14 @@ public class LoadCommandNode extends PlanNode {
   }
 
   @Override
-  public void addChild(PlanNode child) {}
+  public void addChild(PlanNode child) {
+    // no children for this plan
+  }
 
+  @SuppressWarnings({"java:S2975", "java:S1182"})
   @Override
   public PlanNode clone() {
-    return null;
+    return new LoadCommandNode(getPlanNodeId(), loadCommand, uuid, consensusGroupId, isGeneratedByPipe);
   }
 
   @Override

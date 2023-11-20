@@ -101,6 +101,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 
 public class StorageEngine implements IService {
 
+  private static final String MSG_NO_SUCH_UUID = "No load TsFile uuid %s recorded for execute load command %s.";
   private static final Logger logger = LoggerFactory.getLogger(StorageEngine.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -807,7 +808,7 @@ public class StorageEngine implements IService {
             status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
             status.setMessage(
                 String.format(
-                    "No load TsFile uuid %s recorded for execute load command %s.",
+                    MSG_NO_SUCH_UUID,
                     loadCommandNode.getUuid(), loadCommandNode.getLoadCommand()));
           }
           break;
@@ -819,7 +820,7 @@ public class StorageEngine implements IService {
             status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
             status.setMessage(
                 String.format(
-                    "No load TsFile uuid %s recorded for execute load command %s.",
+                    MSG_NO_SUCH_UUID,
                     loadCommandNode.getUuid(), loadCommandNode.getLoadCommand()));
           }
           break;
@@ -851,7 +852,7 @@ public class StorageEngine implements IService {
             status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
             status.setMessage(
                 String.format(
-                    "No load TsFile uuid %s recorded for execute load command %s.",
+                    MSG_NO_SUCH_UUID,
                     uuid, loadCommand));
           }
           break;
@@ -862,7 +863,7 @@ public class StorageEngine implements IService {
             status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
             status.setMessage(
                 String.format(
-                    "No load TsFile uuid %s recorded for execute load command %s.",
+                    MSG_NO_SUCH_UUID,
                     uuid, loadCommand));
           }
           break;

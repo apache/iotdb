@@ -55,6 +55,7 @@ public class SchemaValidator {
     }
   }
 
+  @SuppressWarnings("java:S107")
   public static ISchemaTree validate(
       ISchemaFetcher schemaFetcher,
       List<PartialPath> devicePaths,
@@ -71,22 +72,66 @@ public class SchemaValidator {
   public static ISchemaTree validate(
       ISchemaFetcher schemaFetcher, ValidatingSchema validatingSchema, MPPQueryContext context) {
     return schemaFetcher.fetchSchemaListWithAutoCreate(
-        validatingSchema.devicePaths,
-        validatingSchema.measurements,
-        validatingSchema.dataTypes,
-        validatingSchema.encodings,
-        validatingSchema.compressionTypes,
-        validatingSchema.isAlignedList,
+        validatingSchema.getDevicePaths(),
+        validatingSchema.getMeasurements(),
+        validatingSchema.getDataTypes(),
+        validatingSchema.getEncodings(),
+        validatingSchema.getCompressionTypes(),
+        validatingSchema.getIsAlignedList(),
         context);
   }
 
   public static class ValidatingSchema {
 
-    public List<PartialPath> devicePaths = new ArrayList<>();
-    public List<String[]> measurements = new ArrayList<>();
-    public List<TSDataType[]> dataTypes = new ArrayList<>();
-    public List<TSEncoding[]> encodings = new ArrayList<>();
-    public List<CompressionType[]> compressionTypes = new ArrayList<>();
-    public List<Boolean> isAlignedList = new ArrayList<>();
+    private List<PartialPath> devicePaths = new ArrayList<>();
+    private List<String[]> measurements = new ArrayList<>();
+    private List<TSDataType[]> dataTypes = new ArrayList<>();
+    private List<TSEncoding[]> encodings = new ArrayList<>();
+    private List<CompressionType[]> compressionTypes = new ArrayList<>();
+    private List<Boolean> isAlignedList = new ArrayList<>();
+
+    public List<PartialPath> getDevicePaths() {
+      return devicePaths;
+    }
+
+    public List<String[]> getMeasurements() {
+      return measurements;
+    }
+
+    public void setMeasurements(List<String[]> measurements) {
+      this.measurements = measurements;
+    }
+
+    public List<TSDataType[]> getDataTypes() {
+      return dataTypes;
+    }
+
+    public void setDataTypes(
+        List<TSDataType[]> dataTypes) {
+      this.dataTypes = dataTypes;
+    }
+
+    public List<TSEncoding[]> getEncodings() {
+      return encodings;
+    }
+
+    public void setEncodings(
+        List<TSEncoding[]> encodings) {
+      this.encodings = encodings;
+    }
+
+    public List<CompressionType[]> getCompressionTypes() {
+      return compressionTypes;
+    }
+
+    public void setCompressionTypes(
+        List<CompressionType[]> compressionTypes) {
+      this.compressionTypes = compressionTypes;
+    }
+
+    public List<Boolean> getIsAlignedList() {
+      return isAlignedList;
+    }
+
   }
 }

@@ -60,6 +60,7 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
 import static org.junit.Assert.assertEquals;
 
+@SuppressWarnings("java:S2925")
 public class TsFileSplitSenderTest extends TestBase {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileSplitSenderTest.class);
@@ -128,7 +129,7 @@ public class TsFileSplitSenderTest extends TestBase {
     thread.interrupt();
 
     printPhaseResult();
-    long transmissionTime = splitSender.getStatistic().compressedSize.get() / nodeThroughput;
+    long transmissionTime = splitSender.getStatistic().getCompressedSize().get() / nodeThroughput;
     System.out.printf(
         "Split ends after %dms + %dms (Transmission) = %dms\n",
         timeConsumption, transmissionTime, timeConsumption + transmissionTime);
@@ -139,30 +140,30 @@ public class TsFileSplitSenderTest extends TestBase {
     System.out.printf("Memory usage %dMB\n", maxMemoryUsage.get() / MB);
   }
 
-  public TLoadResp handleTsFilePieceNode(TTsFilePieceReq req, TEndPoint tEndpoint)
+  public TLoadResp handleTsFilePieceNode(TTsFilePieceReq req, TEndPoint tEndPoint)
       throws TException, IOException {
-    long handleStart = System.nanoTime();
-    if ((tEndpoint.getPort() - 10000) % 3 == 0
+    final long handleStart = System.nanoTime();
+    if ((tEndPoint.getPort() - 10000) % 3 == 0
         && random.nextDouble() < packetLossRatio
         && req.relayTargets != null) {
       throw new TException("Packet lost");
     }
-    if ((tEndpoint.getPort() - 10000) % 3 == 1
+    if ((tEndPoint.getPort() - 10000) % 3 == 1
         && random.nextDouble() < packetLossRatio / 2
         && req.relayTargets != null) {
       throw new TException("Packet lost");
     }
 
-    if ((tEndpoint.getPort() - 10000) % 3 == 0 && req.relayTargets != null && stuckDurationMS > 0) {
+    if ((tEndPoint.getPort() - 10000) % 3 == 0 && req.relayTargets != null && stuckDurationMS > 0) {
       Pair<Long, Long> nextStuckTime =
           nextStuckTimeMap.computeIfAbsent(
-              tEndpoint,
+              tEndPoint,
               e ->
                   new Pair<>(
                       System.currentTimeMillis(), System.currentTimeMillis() + stuckDurationMS));
       long currTime = System.currentTimeMillis();
       if (currTime >= nextStuckTime.left && currTime < nextStuckTime.right) {
-        logger.debug("Node{} stalls", tEndpoint.getPort() - 10000);
+        logger.debug("Node{} stalls", tEndPoint.getPort() - 10000);
         try {
           Thread.sleep(nextStuckTime.right - currTime);
         } catch (InterruptedException e) {
@@ -170,7 +171,7 @@ public class TsFileSplitSenderTest extends TestBase {
         }
       } else if (currTime > nextStuckTime.right) {
         nextStuckTimeMap.compute(
-            tEndpoint,
+            tEndPoint,
             (endPoint, newInterval) -> {
               if (newInterval != null && currTime < newInterval.right) {
                 return newInterval;
@@ -185,8 +186,6 @@ public class TsFileSplitSenderTest extends TestBase {
     }
 
     long decompressStart = System.nanoTime();
-    ConsensusGroupId groupId =
-        ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
     ByteBuffer buf = req.body.slice();
     if (req.isSetCompressionType()) {
       CompressionType compressionType = CompressionType.deserialize(req.compressionType);
@@ -203,10 +202,13 @@ public class TsFileSplitSenderTest extends TestBase {
     long deserializeStart = System.nanoTime();
     LoadTsFilePieceNode pieceNode = (LoadTsFilePieceNode) PlanNodeType.deserialize(buf);
     deserializeTime.addAndGet(System.nanoTime() - deserializeStart);
+
+    ConsensusGroupId groupId =
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
     Set<Integer> splitIds =
         phaseOneResults
             .computeIfAbsent(
-                tEndpoint,
+                tEndPoint,
                 e -> new ConcurrentSkipListMap<>(Comparator.comparingInt(ConsensusGroupId::getId)))
             .computeIfAbsent(groupId, g -> new ConcurrentSkipListMap<>())
             .computeIfAbsent(req.uuid, id -> new ConcurrentSkipListMap<>())
@@ -217,14 +219,14 @@ public class TsFileSplitSenderTest extends TestBase {
             .collect(Collectors.toList()));
 
     if (dummyDelayMS > 0) {
-      if ((tEndpoint.getPort() - 10000) % 3 == 0 && req.relayTargets != null) {
+      if ((tEndPoint.getPort() - 10000) % 3 == 0 && req.relayTargets != null) {
         try {
           Thread.sleep(dummyDelayMS);
         } catch (InterruptedException e) {
           throw new RuntimeException(e);
         }
       }
-      if ((tEndpoint.getPort() - 10000) % 3 == 1 && req.relayTargets != null) {
+      if ((tEndPoint.getPort() - 10000) % 3 == 1 && req.relayTargets != null) {
         try {
           Thread.sleep(dummyDelayMS / 2);
         } catch (InterruptedException e) {
@@ -243,7 +245,7 @@ public class TsFileSplitSenderTest extends TestBase {
           .forEach(
               dataNodeLocation -> {
                 TEndPoint otherPoint = dataNodeLocation.getInternalEndPoint();
-                if (!otherPoint.equals(tEndpoint)) {
+                if (!otherPoint.equals(tEndPoint)) {
                   try {
                     handleTsFilePieceNode(req, otherPoint);
                   } catch (TException | IOException e) {
@@ -260,12 +262,12 @@ public class TsFileSplitSenderTest extends TestBase {
         .setStatus(new TSStatus().setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }
 
-  public TLoadResp handleTsLoadCommand(TLoadCommandReq req, TEndPoint tEndpoint) {
+  public TLoadResp handleTsLoadCommand(TLoadCommandReq req, TEndPoint tEndPoint) {
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
     phaseTwoResults
         .computeIfAbsent(
-            tEndpoint,
+            tEndPoint,
             e -> new ConcurrentSkipListMap<>(Comparator.comparingInt(ConsensusGroupId::getId)))
         .computeIfAbsent(groupId, g -> new ConcurrentSkipListMap<>())
         .computeIfAbsent(req.uuid, id -> req.commandType);
@@ -276,7 +278,7 @@ public class TsFileSplitSenderTest extends TestBase {
       TRegionReplicaSet regionReplicaSet = groupId2ReplicaSetMap.get(groupId);
       for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
         TEndPoint otherPoint = dataNodeLocation.getInternalEndPoint();
-        if (!otherPoint.equals(tEndpoint)) {
+        if (!otherPoint.equals(tEndPoint)) {
           handleTsLoadCommand(req, otherPoint);
         }
       }
@@ -290,10 +292,10 @@ public class TsFileSplitSenderTest extends TestBase {
   public void printPhaseResult() {
     System.out.print("Phase one:\n");
     for (Entry<TEndPoint, Map<ConsensusGroupId, Map<String, Map<File, Set<Integer>>>>>
-        tEndPointMapEntry : phaseOneResults.entrySet()) {
-      TEndPoint endPoint = tEndPointMapEntry.getKey();
+        endPointMapEntry : phaseOneResults.entrySet()) {
+      TEndPoint endPoint = endPointMapEntry.getKey();
       for (Entry<ConsensusGroupId, Map<String, Map<File, Set<Integer>>>> consensusGroupIdMapEntry :
-          tEndPointMapEntry.getValue().entrySet()) {
+          endPointMapEntry.getValue().entrySet()) {
         ConsensusGroupId consensusGroupId = consensusGroupIdMapEntry.getKey();
         for (Entry<String, Map<File, Set<Integer>>> stringMapEntry :
             consensusGroupIdMapEntry.getValue().entrySet()) {
@@ -317,11 +319,11 @@ public class TsFileSplitSenderTest extends TestBase {
     }
 
     System.out.print("Phase two:\n");
-    for (Entry<TEndPoint, Map<ConsensusGroupId, Map<String, Integer>>> tEndPointMapEntry :
+    for (Entry<TEndPoint, Map<ConsensusGroupId, Map<String, Integer>>> endPointMapEntryValue :
         phaseTwoResults.entrySet()) {
-      TEndPoint endPoint = tEndPointMapEntry.getKey();
+      TEndPoint endPoint = endPointMapEntryValue.getKey();
       for (Entry<ConsensusGroupId, Map<String, Integer>> consensusGroupIdMapEntry :
-          tEndPointMapEntry.getValue().entrySet()) {
+          endPointMapEntryValue.getValue().entrySet()) {
         ConsensusGroupId consensusGroupId = consensusGroupIdMapEntry.getKey();
         for (Entry<String, Integer> stringMapEntry :
             consensusGroupIdMapEntry.getValue().entrySet()) {
