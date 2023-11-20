@@ -23,11 +23,24 @@ import java.util.Objects;
 import java.util.Set;
 
 /* base class for In, NotIn */
-public abstract class ColumnSetFilter<T extends Comparable<T>> {
+public abstract class ColumnSetFilter<T> {
 
   protected final Set<T> candidates;
 
   protected ColumnSetFilter(Set<T> candidates) {
     this.candidates = Objects.requireNonNull(candidates, "candidates cannot be null");
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    ColumnSetFilter<?> that = (ColumnSetFilter<?>) o;
+    return candidates.equals(that.candidates);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(candidates);
   }
 }

@@ -68,6 +68,19 @@ public final class ValueFilterOperators {
     public String toString() {
       return toString;
     }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      ValueColumnCompareFilter<?> that = (ValueColumnCompareFilter<?>) o;
+      return measurement.equals(that.measurement);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(measurement);
+    }
   }
 
   public static final class ValueEq<T extends Comparable<T>> extends ValueColumnCompareFilter<T> {
@@ -302,6 +315,20 @@ public final class ValueFilterOperators {
     public String toString() {
       return toString;
     }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      if (!super.equals(o)) return false;
+      ValueColumnRangeFilter<?> that = (ValueColumnRangeFilter<?>) o;
+      return measurement.equals(that.measurement);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(super.hashCode(), measurement);
+    }
   }
 
   public static final class ValueBetweenAnd<T extends Comparable<T>>
@@ -377,7 +404,7 @@ public final class ValueFilterOperators {
   }
 
   // base class for ValueIn, ValueNotIn
-  abstract static class ValueColumnSetFilter<T extends Comparable<T>> extends ColumnSetFilter<T>
+  abstract static class ValueColumnSetFilter<T> extends ColumnSetFilter<T>
       implements IDisableStatisticsValueFilter {
 
     protected final String measurement;
@@ -399,9 +426,23 @@ public final class ValueFilterOperators {
     public String toString() {
       return toString;
     }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      if (!super.equals(o)) return false;
+      ValueColumnSetFilter<?> that = (ValueColumnSetFilter<?>) o;
+      return measurement.equals(that.measurement);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(super.hashCode(), measurement);
+    }
   }
 
-  public static final class ValueIn<T extends Comparable<T>> extends ValueColumnSetFilter<T> {
+  public static final class ValueIn<T> extends ValueColumnSetFilter<T> {
 
     public ValueIn(String measurement, Set<T> candidates) {
       super(measurement, candidates);
@@ -409,7 +450,7 @@ public final class ValueFilterOperators {
 
     @Override
     public boolean satisfy(long time, Object value) {
-      return candidates.contains((T) value);
+      return candidates.contains(value);
     }
 
     @Override
@@ -418,7 +459,7 @@ public final class ValueFilterOperators {
     }
   }
 
-  public static final class ValueNotIn<T extends Comparable<T>> extends ValueColumnSetFilter<T> {
+  public static final class ValueNotIn<T> extends ValueColumnSetFilter<T> {
 
     public ValueNotIn(String measurement, Set<T> candidates) {
       super(measurement, candidates);
@@ -426,7 +467,7 @@ public final class ValueFilterOperators {
 
     @Override
     public boolean satisfy(long time, Object value) {
-      return !candidates.contains((T) value);
+      return !candidates.contains(value);
     }
 
     @Override
@@ -457,6 +498,20 @@ public final class ValueFilterOperators {
     @Override
     public String toString() {
       return toString;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      if (!super.equals(o)) return false;
+      ValueColumnPatternMatchFilter that = (ValueColumnPatternMatchFilter) o;
+      return measurement.equals(that.measurement);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(super.hashCode(), measurement);
     }
   }
 

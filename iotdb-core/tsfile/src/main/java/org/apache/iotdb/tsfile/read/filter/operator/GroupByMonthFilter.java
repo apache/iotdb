@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Objects;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
@@ -179,5 +180,35 @@ public class GroupByMonthFilter extends GroupByFilter {
           calcPositiveIntervalByMonth(startTime, originalInterval, 1, timeZone, currPrecision)
               - startTime;
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    GroupByMonthFilter that = (GroupByMonthFilter) o;
+    return originalStartTime == that.originalStartTime
+        && originalEndTime == that.originalEndTime
+        && originalSlidingStep.equals(that.originalSlidingStep)
+        && originalInterval.equals(that.originalInterval)
+        && timeZone.equals(that.timeZone)
+        && currPrecision == that.currPrecision
+        && Arrays.equals(startTimes, that.startTimes);
+  }
+
+  @Override
+  public int hashCode() {
+    int result =
+        Objects.hash(
+            super.hashCode(),
+            originalSlidingStep,
+            originalInterval,
+            timeZone,
+            originalStartTime,
+            originalEndTime,
+            currPrecision);
+    result = 31 * result + Arrays.hashCode(startTimes);
+    return result;
   }
 }

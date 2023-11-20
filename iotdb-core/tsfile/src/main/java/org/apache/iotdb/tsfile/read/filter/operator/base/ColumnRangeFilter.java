@@ -31,4 +31,17 @@ public abstract class ColumnRangeFilter<T extends Comparable<T>> {
     this.min = Objects.requireNonNull(min, "min cannot be null");
     this.max = Objects.requireNonNull(max, "max cannot be null");
   }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    ColumnRangeFilter<?> that = (ColumnRangeFilter<?>) o;
+    return min.equals(that.min) && max.equals(that.max);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(min, max);
+  }
 }

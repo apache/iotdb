@@ -102,4 +102,17 @@ public class Not implements Filter {
   public Filter reverse() {
     return filter;
   }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    Not not = (Not) o;
+    return filter.equals(not.filter);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(filter);
+  }
 }

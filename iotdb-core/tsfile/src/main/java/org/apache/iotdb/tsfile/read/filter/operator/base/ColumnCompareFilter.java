@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.tsfile.read.filter.operator.base;
 
+import java.util.Objects;
+
 /* base class for Eq, NotEq, Lt, Gt, LtEq, GtEq */
 public abstract class ColumnCompareFilter<T extends Comparable<T>> {
 
@@ -28,5 +30,18 @@ public abstract class ColumnCompareFilter<T extends Comparable<T>> {
     // ValueEq and ValueNotEq allow constant to be null, TimeEq, TimeEq, Lt, Gt, LtEq, GtEq however
     // do not, so they guard against null in their own constructors.
     this.constant = constant;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    ColumnCompareFilter<?> that = (ColumnCompareFilter<?>) o;
+    return Objects.equals(constant, that.constant);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(constant);
   }
 }

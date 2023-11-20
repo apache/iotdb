@@ -30,4 +30,17 @@ public abstract class ColumnPatternMatchFilter {
   protected ColumnPatternMatchFilter(Pattern pattern) {
     this.pattern = Objects.requireNonNull(pattern, "pattern cannot be null");
   }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    ColumnPatternMatchFilter that = (ColumnPatternMatchFilter) o;
+    return pattern.equals(that.pattern);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(pattern);
+  }
 }

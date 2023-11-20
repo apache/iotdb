@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.ITimeFilter;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 public class GroupByFilter implements ITimeFilter {
 
@@ -102,5 +103,21 @@ public class GroupByFilter implements ITimeFilter {
   @Override
   public Filter reverse() {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    GroupByFilter that = (GroupByFilter) o;
+    return interval == that.interval
+        && slidingStep == that.slidingStep
+        && startTime == that.startTime
+        && endTime == that.endTime;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(interval, slidingStep, startTime, endTime);
   }
 }
