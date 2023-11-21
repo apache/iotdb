@@ -83,15 +83,13 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
     final Map<String, List<TimeseriesMetadata>> timeseriesMetadataMap = new HashMap<>();
 
     while (currentTimeseriesMetadataCount < MAX_TIMESERIES_METADATA_COUNT) {
-
-      /* 1. Check Buffer
-       *  TimeseriesMetataCount has reached the limit in the previous loop and
-       *  maybe there are still some data remained in the buffer.
-       */
+      // 1. Check Buffer
+      // currentTimeseriesMetadataCount has reached the limit in the previous
+      // loop and maybe there is still some data that remains in the buffer.
       if (currentBuffer != null && currentBuffer.hasRemaining()) {
         timeseriesMetadataMap
             .computeIfAbsent(currentDeviceId, k -> new ArrayList<>())
-            .addAll(deserializesTimeseriesMetadata());
+            .addAll(deserializeTimeseriesMetadata());
       }
 
       if (currentTimeseriesMetadataCount >= MAX_TIMESERIES_METADATA_COUNT
@@ -158,10 +156,10 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
 
     timeseriesMetadataMap
         .computeIfAbsent(currentDeviceId, k -> new ArrayList<>())
-        .addAll(deserializesTimeseriesMetadata());
+        .addAll(deserializeTimeseriesMetadata());
   }
 
-  private List<TimeseriesMetadata> deserializesTimeseriesMetadata() {
+  private List<TimeseriesMetadata> deserializeTimeseriesMetadata() {
     final List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
     while (currentBuffer.hasRemaining()
         && currentTimeseriesMetadataCount < MAX_TIMESERIES_METADATA_COUNT) {
