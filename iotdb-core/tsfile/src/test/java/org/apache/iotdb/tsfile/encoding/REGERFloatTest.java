@@ -171,7 +171,7 @@ public class REGERFloatTest {
             // encode the left bits of current Integer to 'buffer'
             if (leftBit > 0) {
 
-                buffer |= (getInt(values[valueIdx],index) << (32 - leftBit));
+                buffer |= (getInt(values[valueIdx], index) << (32 - leftBit));
                 leftSize -= leftBit;
                 leftBit = 0;
                 valueIdx++;
@@ -179,7 +179,7 @@ public class REGERFloatTest {
 
             while (leftSize >= width && valueIdx < 8 + offset) {
                 // encode one Integer to the 'buffer'
-                buffer |= (getInt(values[valueIdx],index) << (leftSize - width));
+                buffer |= (getInt(values[valueIdx], index) << (leftSize - width));
                 leftSize -= width;
                 valueIdx++;
             }
@@ -187,7 +187,7 @@ public class REGERFloatTest {
             if (leftSize > 0 && valueIdx < 8 + offset) {
                 // put the first 'leftSize' bits of the Integer into remaining space of the
                 // buffer
-                buffer |= (getInt(values[valueIdx],index) >>> (width - leftSize));
+                buffer |= (getInt(values[valueIdx], index) >>> (width - leftSize));
                 leftBit = width - leftSize;
             }
 
@@ -252,7 +252,7 @@ public class REGERFloatTest {
         int block_num = block_size / 8;
         int value_pos = 0;
 
-        for (int i = 0; i < block_num; i++) { // bitpacking
+        for (int i = 0; i < block_num; i++) {
             value_pos = unpack8Values(encoded, decode_pos, bit_width, value_pos, result_list);
             decode_pos += bit_width;
         }
@@ -350,19 +350,21 @@ public class REGERFloatTest {
         return low;
     }
 
-    public static long combine2Int(int int1, int int2){
-        return  ((long) int1 << 32) | (int2 & 0xFFFFFFFFL);
+    public static long combine2Int(int int1, int int2) {
+        return ((long) int1 << 32) | (int2 & 0xFFFFFFFFL);
     }
 
-    public static int getTime(long long1){
-        return  ((int) (long1 >> 32)) ;
+    public static int getTime(long long1) {
+        return ((int) (long1 >> 32));
     }
-    public static int getValue(long long1){
-        return  ((int) (long1)) ;
+
+    public static int getValue(long long1) {
+        return ((int) (long1));
     }
-    public static int getInt(long long1, int index){
-        if(index==0) return (int) (long1 >> 32);
-        else return (int) (long1);
+
+    public static int getInt(long long1, int index) {
+        if (index == 0) return getTime(long1);
+        else return getValue(long1);
     }
 
     public static int getCommon(int m, int n) {
@@ -375,7 +377,7 @@ public class REGERFloatTest {
         return n;
     }
 
-//    public static void splitTimeStamp3(
+    //    public static void splitTimeStamp3(
 //            ArrayList<ArrayList<Integer>> ts_block, ArrayList<Integer> result) {
 //        int td_common = 0;
 //        for (int i = 1; i < ts_block.size(); i++) {
@@ -412,9 +414,9 @@ public class REGERFloatTest {
         int td_common = 0;
 
         for (int i = 1; i < ts_block.size(); i++) {
-            int cur_value =  getTime(ts_block.get(i));
-            int pre_value = getTime(ts_block.get(i-1));
-            int time_diffi = cur_value  - pre_value;
+            int cur_value = getTime(ts_block.get(i));
+            int pre_value = getTime(ts_block.get(i - 1));
+            int time_diffi = cur_value - pre_value;
 
             if (td_common == 0) {
                 if (time_diffi != 0) {
@@ -433,10 +435,10 @@ public class REGERFloatTest {
             td_common = 1;
         }
 
-        int t0 =  getTime(ts_block.get(0));
+        int t0 = getTime(ts_block.get(0));
         for (int i = 0; i < ts_block.size(); i++) {
 //            ArrayList<Integer> tmp = new ArrayList<>();
-            int cur_value =getTime(ts_block.get(i));
+            int cur_value = getTime(ts_block.get(i));
             int interval_i = ((cur_value - t0) / td_common);
             ts_block.set(i, combine2Int(t0 + interval_i, getValue(ts_block.get(i))));
 //            tmp.add(t0 + interval_i);
@@ -453,7 +455,7 @@ public class REGERFloatTest {
         float theta0_t = theta[0];
         float theta1_t = theta[1];
         long tmp_i = ts_block[i];
-        long tmp_i_1 = ts_block[i-1];
+        long tmp_i_1 = ts_block[i - 1];
 
         int min_delta_time = getTime(tmp_i) - (int) (theta0_t + theta1_t * (float) getTime(tmp_i_1));
         int min_delta_time_i = min_delta_time;
@@ -461,7 +463,7 @@ public class REGERFloatTest {
         int j = 1;
         long tmp_j_1 = ts_block[0];
         long tmp_j;
-        while(j < block_size){
+        while (j < block_size) {
             tmp_j = ts_block[j];
             int epsilon_r_j =
                     getTime(tmp_j)
@@ -502,7 +504,7 @@ public class REGERFloatTest {
         int j = 1;
         long tmp_j_1 = ts_block[0];
         long tmp_j;
-        while(j < block_size){
+        while (j < block_size) {
             tmp_j = ts_block[j];
             int epsilon_r_j =
                     getValue(tmp_j)
@@ -555,7 +557,7 @@ public class REGERFloatTest {
             int value_delta_i;
             if (i != j) {
                 long tmp_i = ts_block[i];
-                long tmp_i_1 = ts_block[i-1];
+                long tmp_i_1 = ts_block[i - 1];
                 timestamp_delta_i =
                         getTime(tmp_i)
                                 - (int) (theta0_t + theta1_t * (float) getTime(tmp_i_1));
@@ -566,15 +568,15 @@ public class REGERFloatTest {
             } else {
                 long tmp_j = ts_block[j];
                 long tmp_0 = ts_block[0];
-                long tmp_j_1 = ts_block[j-1];
+                long tmp_j_1 = ts_block[j - 1];
                 timestamp_delta_i =
-                       getTime(tmp_j)
+                        getTime(tmp_j)
                                 - (int) (theta0_t + theta1_t * (float) getTime(tmp_0));
                 value_delta_i =
                         getValue(tmp_j)
                                 - (int) (theta0_v + theta1_v * (float) getValue(tmp_0));
 
-                long delta_i = combine2Int(timestamp_delta_i,value_delta_i);
+                long delta_i = combine2Int(timestamp_delta_i, value_delta_i);
                 ts_block_delta[pos_ts_block_delta] = delta_i;
                 pos_ts_block_delta++;
 
@@ -593,7 +595,7 @@ public class REGERFloatTest {
                 timestamp_delta_i = getTime(tmp_0) - (int) (theta0_t + theta1_t * (float) getTime(tmp_j_1));
                 value_delta_i = getValue(tmp_0) - (int) (theta0_v + theta1_v * (float) getValue(tmp_j_1));
             }
-            long delta_i = combine2Int(timestamp_delta_i,value_delta_i);
+            long delta_i = combine2Int(timestamp_delta_i, value_delta_i);
             ts_block_delta[pos_ts_block_delta] = delta_i;
             pos_ts_block_delta++;
 
@@ -663,13 +665,13 @@ public class REGERFloatTest {
         if (timestamp_delta_i < timestamp_delta_min) {
             length += getBitWith(timestamp_delta_min - timestamp_delta_i) * (block_size - 1);
             timestamp_delta_min = timestamp_delta_i;
-        }else{
+        } else {
             length += getBitWith(timestamp_delta_i - timestamp_delta_min);
         }
         if (value_delta_i < value_delta_min) {
             length += getBitWith(value_delta_min - value_delta_i) * (block_size - 1);
             value_delta_min = value_delta_i;
-        }else{
+        } else {
             length += getBitWith(value_delta_i - value_delta_min);
         }
 
@@ -679,14 +681,14 @@ public class REGERFloatTest {
         if (timestamp_delta_i < timestamp_delta_min) {
             length += getBitWith(timestamp_delta_min - timestamp_delta_i) * (block_size - 1);
             timestamp_delta_min = timestamp_delta_i;
-        }else{
+        } else {
             length += getBitWith(timestamp_delta_i - timestamp_delta_min);
         }
 
         if (value_delta_i < value_delta_min) {
             length += getBitWith(value_delta_min - value_delta_i) * (block_size - 1);
             value_delta_min = value_delta_i;
-        }else{
+        } else {
             length += getBitWith(value_delta_i - value_delta_min);
         }
 
@@ -718,11 +720,11 @@ public class REGERFloatTest {
             int timestamp_delta_i;
             int value_delta_i;
             long tmp_i = ts_block[i];
-            long tmp_i_1 = ts_block[i-1];
+            long tmp_i_1 = ts_block[i - 1];
 
             timestamp_delta_i = getTime(tmp_i) - (int) (theta0_t + theta1_t * (float) getTime(tmp_i_1));
             value_delta_i = getValue(tmp_i) - (int) (theta0_v + theta1_v * (float) getValue(tmp_i_1));
-            ts_block_delta[pos_ts_block_delta] = combine2Int(timestamp_delta_i,value_delta_i);
+            ts_block_delta[pos_ts_block_delta] = combine2Int(timestamp_delta_i, value_delta_i);
 //            ts_block_delta[pos_ts_block_delta][0] = timestamp_delta_i;
 //            ts_block_delta[pos_ts_block_delta][1] = value_delta_i;
             pos_ts_block_delta++;
@@ -738,11 +740,11 @@ public class REGERFloatTest {
         int timestamp_delta_i;
         int value_delta_i;
         long tmp_0 = ts_block[0];
-        long tmp_block_size_1 = ts_block[block_size-1];
+        long tmp_block_size_1 = ts_block[block_size - 1];
 
         timestamp_delta_i = getTime(tmp_0) - (int) (theta0_t + theta1_t * (float) getTime(tmp_block_size_1));
         value_delta_i = getValue(tmp_0) - (int) (theta0_v + theta1_v * (float) getValue(tmp_block_size_1));
-        ts_block_delta[pos_ts_block_delta] = combine2Int(timestamp_delta_i,value_delta_i);
+        ts_block_delta[pos_ts_block_delta] = combine2Int(timestamp_delta_i, value_delta_i);
         pos_ts_block_delta++;
 
         if (timestamp_delta_i < timestamp_delta_min) {
@@ -784,7 +786,7 @@ public class REGERFloatTest {
 
 
         timestamp_delta_i = getTime(tmp_1) - (int) (theta0_t + theta1_t * (float) getTime(tmp_0));
-        value_delta_i = getValue(tmp_1) - (int) (theta0_v + theta1_v * (float)  getValue(tmp_0));
+        value_delta_i = getValue(tmp_1) - (int) (theta0_v + theta1_v * (float) getValue(tmp_0));
 
         length -= getBitWith(timestamp_delta_i - timestamp_delta_min);
         length -= getBitWith(value_delta_i - value_delta_min);
@@ -794,14 +796,14 @@ public class REGERFloatTest {
         if (timestamp_delta_i < timestamp_delta_min) {
             length += getBitWith(timestamp_delta_min - timestamp_delta_i) * (block_size - 1);
             timestamp_delta_min = timestamp_delta_i;
-        }else{
+        } else {
             length += getBitWith(timestamp_delta_i - timestamp_delta_min);
         }
 
         if (value_delta_i < value_delta_min) {
             length += getBitWith(value_delta_min - value_delta_i) * (block_size - 1);
             value_delta_min = value_delta_i;
-        }else{
+        } else {
             length += getBitWith(value_delta_i - value_delta_min);
         }
 
@@ -837,17 +839,17 @@ public class REGERFloatTest {
             int value_delta_i;
             if (i != j) {
                 long tmp_i = ts_block[i];
-                long tmp_i_1 = ts_block[i-1];
-                timestamp_delta_i = getTime(tmp_i)- (int) (theta0_t + theta1_t * (float) getTime(tmp_i_1));
+                long tmp_i_1 = ts_block[i - 1];
+                timestamp_delta_i = getTime(tmp_i) - (int) (theta0_t + theta1_t * (float) getTime(tmp_i_1));
                 value_delta_i = getValue(tmp_i) - (int) (theta0_v + theta1_v * (float) getValue(tmp_i_1));
             } else {
                 long tmp_j = ts_block[j];
-                long tmp_block_size_1 = ts_block[block_size-1];
-                long tmp_j_1 = ts_block[j-1];
+                long tmp_block_size_1 = ts_block[block_size - 1];
+                long tmp_j_1 = ts_block[j - 1];
 
                 timestamp_delta_i = getTime(tmp_j) - (int) (theta0_t + theta1_t * (float) getTime(tmp_block_size_1));
                 value_delta_i = getValue(tmp_j) - (int) (theta0_v + theta1_v * (float) getValue(tmp_block_size_1));
-                ts_block_delta[pos_ts_block_delta]= combine2Int(timestamp_delta_i,value_delta_i);
+                ts_block_delta[pos_ts_block_delta] = combine2Int(timestamp_delta_i, value_delta_i);
                 pos_ts_block_delta++;
                 if (timestamp_delta_i < timestamp_delta_min) {
                     timestamp_delta_min = timestamp_delta_i;
@@ -860,7 +862,7 @@ public class REGERFloatTest {
                 value_delta_i = getValue(tmp_block_size_1) - (int) (theta0_v + theta1_v * (float) getValue(tmp_j_1));
 
             }
-            ts_block_delta[pos_ts_block_delta]= combine2Int(timestamp_delta_i,value_delta_i);
+            ts_block_delta[pos_ts_block_delta] = combine2Int(timestamp_delta_i, value_delta_i);
             pos_ts_block_delta++;
 
             if (timestamp_delta_i < timestamp_delta_min) {
@@ -900,51 +902,50 @@ public class REGERFloatTest {
         int value_delta_i;
 
         long tmp_j = ts_block[j];
-        long tmp_block_size_1 = ts_block[block_size-1];
-        long tmp_block_size_2 = ts_block[block_size-2];
-        long tmp_j_1 = ts_block[j-1];
+        long tmp_block_size_1 = ts_block[block_size - 1];
+        long tmp_block_size_2 = ts_block[block_size - 2];
+        long tmp_j_1 = ts_block[j - 1];
 
 
         timestamp_delta_i = getTime(tmp_j) - (int) (theta0_t + theta1_t * (float) getTime(tmp_j_1));
-        value_delta_i =  getValue(tmp_j) - (int) (theta0_v + theta1_v * (float) getValue(tmp_j_1));
+        value_delta_i = getValue(tmp_j) - (int) (theta0_v + theta1_v * (float) getValue(tmp_j_1));
 
         length -= getBitWith(timestamp_delta_i - timestamp_delta_min);
         length -= getBitWith(value_delta_i - value_delta_min);
 
-        timestamp_delta_i =getTime(tmp_block_size_1)  - (int) (theta0_t + theta1_t * (float) getTime(tmp_block_size_2) );
+        timestamp_delta_i = getTime(tmp_block_size_1) - (int) (theta0_t + theta1_t * (float) getTime(tmp_block_size_2));
         value_delta_i = getValue(tmp_block_size_1) - (int) (theta0_v + theta1_v * (float) getValue(tmp_block_size_2));
 
         length -= getBitWith(timestamp_delta_i - timestamp_delta_min);
         length -= getBitWith(value_delta_i - value_delta_min);
 
-        timestamp_delta_i =  getTime(tmp_j)  - (int) (theta0_t + theta1_t * (float) getTime(tmp_block_size_1) );
-        value_delta_i =  getValue(tmp_j) - (int) (theta0_v + theta1_v * (float) getValue(tmp_block_size_1));
+        timestamp_delta_i = getTime(tmp_j) - (int) (theta0_t + theta1_t * (float) getTime(tmp_block_size_1));
+        value_delta_i = getValue(tmp_j) - (int) (theta0_v + theta1_v * (float) getValue(tmp_block_size_1));
 
 
         if (timestamp_delta_i < timestamp_delta_min) {
             length += getBitWith(timestamp_delta_min - timestamp_delta_i) * (block_size - 1);
             timestamp_delta_min = timestamp_delta_i;
-        }else{
+        } else {
             length += getBitWith(timestamp_delta_i - timestamp_delta_min);
         }
 
         if (value_delta_i < value_delta_min) {
             length += getBitWith(value_delta_min - value_delta_i) * (block_size - 1);
             value_delta_min = value_delta_i;
-        }else{
+        } else {
             length += getBitWith(value_delta_i - value_delta_min);
         }
 
 
-
-        timestamp_delta_i = getTime(tmp_block_size_1)  - (int) (theta0_t + theta1_t * (float) getTime(tmp_j_1));
+        timestamp_delta_i = getTime(tmp_block_size_1) - (int) (theta0_t + theta1_t * (float) getTime(tmp_j_1));
         value_delta_i = getValue(tmp_block_size_1) - (int) (theta0_v + theta1_v * (float) getValue(tmp_j_1));
 
 
         if (timestamp_delta_i < timestamp_delta_min) {
             length += getBitWith(timestamp_delta_min - timestamp_delta_i) * (block_size - 1);
             timestamp_delta_min = timestamp_delta_i;
-        }else{
+        } else {
             length += getBitWith(timestamp_delta_i - timestamp_delta_min);
         }
 
@@ -952,7 +953,7 @@ public class REGERFloatTest {
         if (value_delta_i < value_delta_min) {
             length += getBitWith(value_delta_min - value_delta_i) * (block_size - 1);
             value_delta_min = value_delta_i;
-        }else{
+        } else {
             length += getBitWith(value_delta_i - value_delta_min);
         }
 
@@ -984,10 +985,10 @@ public class REGERFloatTest {
             int timestamp_delta_i;
             int value_delta_i;
             long tmp_i = ts_block[i];
-            long tmp_i_1 = ts_block[i-1];
+            long tmp_i_1 = ts_block[i - 1];
             timestamp_delta_i = getTime(tmp_i) - (int) (theta0_t + theta1_t * (float) getTime(tmp_i_1));
             value_delta_i = getValue(tmp_i) - (int) (theta0_v + theta1_v * (float) getValue(tmp_i_1));
-            ts_block_delta[pos_ts_block_delta] = combine2Int(timestamp_delta_i,value_delta_i);
+            ts_block_delta[pos_ts_block_delta] = combine2Int(timestamp_delta_i, value_delta_i);
 
             pos_ts_block_delta++;
             if (timestamp_delta_i < timestamp_delta_min) {
@@ -998,13 +999,13 @@ public class REGERFloatTest {
             }
 
         }
-        long tmp_block_size_1 = ts_block[block_size-1];
+        long tmp_block_size_1 = ts_block[block_size - 1];
         long tmp_0 = ts_block[0];
         int timestamp_delta_i;
         int value_delta_i;
         timestamp_delta_i = getTime(tmp_0) - (int) (theta0_t + theta1_t * (float) getTime(tmp_block_size_1));
         value_delta_i = getValue(tmp_0) - (int) (theta0_v + theta1_v * (float) getValue(tmp_block_size_1));
-        ts_block_delta[pos_ts_block_delta] = combine2Int(timestamp_delta_i,value_delta_i);
+        ts_block_delta[pos_ts_block_delta] = combine2Int(timestamp_delta_i, value_delta_i);
 
         pos_ts_block_delta++;
 
@@ -1038,32 +1039,32 @@ public class REGERFloatTest {
         int length = raw_length[0];
         int timestamp_delta_i;
         int value_delta_i;
-        long tmp_block_size_1 = ts_block[block_size-1];
-        long tmp_block_size_2 = ts_block[block_size-2];
+        long tmp_block_size_1 = ts_block[block_size - 1];
+        long tmp_block_size_2 = ts_block[block_size - 2];
         long tmp_0 = ts_block[0];
 
 
-        timestamp_delta_i =getTime(tmp_block_size_1) - (int) (theta0_t + theta1_t * (float) getTime(tmp_block_size_2));
-        value_delta_i = getValue(tmp_block_size_1) - (int) (theta0_v + theta1_v * (float) getValue(tmp_block_size_2) );
+        timestamp_delta_i = getTime(tmp_block_size_1) - (int) (theta0_t + theta1_t * (float) getTime(tmp_block_size_2));
+        value_delta_i = getValue(tmp_block_size_1) - (int) (theta0_v + theta1_v * (float) getValue(tmp_block_size_2));
 
         length -= getBitWith(timestamp_delta_i - timestamp_delta_min);
         length -= getBitWith(value_delta_i - value_delta_min);
 
         timestamp_delta_i = getTime(tmp_0) - (int) (theta0_t + theta1_t * (float) getTime(tmp_block_size_1));
-        value_delta_i = getValue(tmp_0)  - (int) (theta0_v + theta1_v * (float) getValue(tmp_block_size_1) );
+        value_delta_i = getValue(tmp_0) - (int) (theta0_v + theta1_v * (float) getValue(tmp_block_size_1));
 
 
         if (timestamp_delta_i < timestamp_delta_min) {
             length += getBitWith(timestamp_delta_min - timestamp_delta_i) * (block_size - 1);
             timestamp_delta_min = timestamp_delta_i;
-        }else{
+        } else {
             length += getBitWith(timestamp_delta_i - timestamp_delta_min);
         }
 
         if (value_delta_i < value_delta_min) {
             length += getBitWith(value_delta_min - value_delta_i) * (block_size - 1);
             value_delta_min = value_delta_i;
-        }else{
+        } else {
             length += getBitWith(value_delta_i - value_delta_min);
         }
 
@@ -1080,7 +1081,7 @@ public class REGERFloatTest {
 
     private static int[] adjustAlphaToJMinChange(
             long[] ts_block, int alpha, int j, float[] theta,
-            long tmp_alpha,long tmp_alpha_plus_1, long tmp_alpha_minus_1) {
+            long tmp_alpha, long tmp_alpha_plus_1, long tmp_alpha_minus_1) {
 
         int block_size = ts_block.length;
         assert alpha != block_size - 1;
@@ -1097,7 +1098,7 @@ public class REGERFloatTest {
         long[] ts_block_delta = new long[block_size - 1];
 
         long tmp_j = ts_block[j];
-        long tmp_j_minus_1 = ts_block[j-1];
+        long tmp_j_minus_1 = ts_block[j - 1];
 
         int length = 0;
         int pos_ts_block_delta = 0;
@@ -1117,11 +1118,11 @@ public class REGERFloatTest {
                 value_delta_i = getValue(tmp_alpha_plus_1) - (int) (theta0_v + theta1_v * (float) getValue(tmp_alpha_minus_1));
             } else {
                 long tmp_i = ts_block[i];
-                long tmp_i_1 = ts_block[i-1];
+                long tmp_i_1 = ts_block[i - 1];
                 timestamp_delta_i = getTime(tmp_i) - (int) (theta0_t + theta1_t * (float) getTime(tmp_i_1));
                 value_delta_i = getValue(tmp_i) - (int) (theta0_v + theta1_v * (float) getValue(tmp_i_1));
             }
-            ts_block_delta[pos_ts_block_delta] = combine2Int(timestamp_delta_i,value_delta_i);
+            ts_block_delta[pos_ts_block_delta] = combine2Int(timestamp_delta_i, value_delta_i);
             pos_ts_block_delta++;
             if (timestamp_delta_i < timestamp_delta_min) {
                 timestamp_delta_min = timestamp_delta_i;
@@ -1146,7 +1147,7 @@ public class REGERFloatTest {
 
     private static int[] adjustAlphaToJMinChangeNo(
             long[] ts_block, int[] raw_length, int alpha, int j, float[] theta,
-            long tmp_alpha,long tmp_alpha_plus_1, long tmp_alpha_minus_1) {
+            long tmp_alpha, long tmp_alpha_plus_1, long tmp_alpha_minus_1) {
 
         int block_size = ts_block.length;
         assert alpha != block_size - 1;
@@ -1165,7 +1166,7 @@ public class REGERFloatTest {
         int timestamp_delta_i;
         int value_delta_i;
         long tmp_j = ts_block[j];
-        long tmp_j_minus_1 = ts_block[j-1];
+        long tmp_j_minus_1 = ts_block[j - 1];
 
         timestamp_delta_i = getTime(tmp_alpha_plus_1) - (int) (theta0_t + theta1_t * (float) getTime(tmp_alpha));
         value_delta_i = getValue(tmp_alpha_plus_1) - (int) (theta0_v + theta1_v * (float) getValue(tmp_alpha));
@@ -1190,13 +1191,13 @@ public class REGERFloatTest {
         if (timestamp_delta_i < timestamp_delta_min) {
             length += getBitWith(timestamp_delta_min - timestamp_delta_i) * (block_size - 1);
             timestamp_delta_min = timestamp_delta_i;
-        }else{
+        } else {
             length += getBitWith(timestamp_delta_i - timestamp_delta_min);
         }
         if (value_delta_i < value_delta_min) {
             length += getBitWith(value_delta_min - value_delta_i) * (block_size - 1);
             value_delta_min = value_delta_i;
-        }else{
+        } else {
             length += getBitWith(value_delta_i - value_delta_min);
         }
 
@@ -1206,13 +1207,13 @@ public class REGERFloatTest {
         if (timestamp_delta_i < timestamp_delta_min) {
             length += getBitWith(timestamp_delta_min - timestamp_delta_i) * (block_size - 1);
             timestamp_delta_min = timestamp_delta_i;
-        }else{
+        } else {
             length += getBitWith(timestamp_delta_i - timestamp_delta_min);
         }
         if (value_delta_i < value_delta_min) {
             length += getBitWith(value_delta_min - value_delta_i) * (block_size - 1);
             value_delta_min = value_delta_i;
-        }else{
+        } else {
             length += getBitWith(value_delta_i - value_delta_min);
         }
 
@@ -1223,13 +1224,13 @@ public class REGERFloatTest {
         if (timestamp_delta_i < timestamp_delta_min) {
             length += getBitWith(timestamp_delta_min - timestamp_delta_i) * (block_size - 1);
             timestamp_delta_min = timestamp_delta_i;
-        }else{
+        } else {
             length += getBitWith(timestamp_delta_i - timestamp_delta_min);
         }
         if (value_delta_i < value_delta_min) {
             length += getBitWith(value_delta_min - value_delta_i) * (block_size - 1);
             value_delta_min = value_delta_i;
-        }else{
+        } else {
             length += getBitWith(value_delta_i - value_delta_min);
         }
 
@@ -1244,7 +1245,7 @@ public class REGERFloatTest {
 
     // move alpha to 0
     private static int[] adjustTo0MinChange(long[] ts_block, int alpha, float[] theta,
-                                            long tmp_alpha,long tmp_alpha_plus_1, long tmp_alpha_minus_1) {
+                                            long tmp_alpha, long tmp_alpha_plus_1, long tmp_alpha_minus_1) {
         int block_size = ts_block.length;
         assert alpha != block_size - 1;
         assert alpha != 0;
@@ -1269,15 +1270,15 @@ public class REGERFloatTest {
             } else if (i == alpha) {
                 long tmp_0 = ts_block[0];
                 timestamp_delta_i = getTime(tmp_0) - (int) (theta0_t + theta1_t * (float) getTime(tmp_alpha));
-                value_delta_i =  getValue(tmp_0) - (int) (theta0_v + theta1_v * (float) getValue(tmp_alpha));
+                value_delta_i = getValue(tmp_0) - (int) (theta0_v + theta1_v * (float) getValue(tmp_alpha));
             } else {
                 long tmp_i = ts_block[i];
-                long tmp_i_1 = ts_block[i-1];
+                long tmp_i_1 = ts_block[i - 1];
                 timestamp_delta_i = getTime(tmp_i) - (int) (theta0_t + theta1_t * (float) getTime(tmp_i_1));
                 value_delta_i = getValue(tmp_i) - (int) (theta0_v + theta1_v * (float) getValue(tmp_i_1));
             }
 
-            ts_block_delta[pos_ts_block_delta] = combine2Int(timestamp_delta_i,value_delta_i);
+            ts_block_delta[pos_ts_block_delta] = combine2Int(timestamp_delta_i, value_delta_i);
             pos_ts_block_delta++;
 
             if (timestamp_delta_i < timestamp_delta_min) {
@@ -1304,7 +1305,7 @@ public class REGERFloatTest {
 
     private static int[] adjustTo0MinChangeNo(
             long[] ts_block, int[] raw_length, int alpha, float[] theta,
-            long tmp_alpha,long tmp_alpha_plus_1, long tmp_alpha_minus_1) {
+            long tmp_alpha, long tmp_alpha_plus_1, long tmp_alpha_minus_1) {
         int block_size = ts_block.length;
         assert alpha != block_size - 1;
         assert alpha != 0;
@@ -1336,13 +1337,13 @@ public class REGERFloatTest {
         if (timestamp_delta_i < timestamp_delta_min) {
             length += getBitWith(timestamp_delta_min - timestamp_delta_i) * (block_size - 1);
             timestamp_delta_min = timestamp_delta_i;
-        }else{
+        } else {
             length += getBitWith(timestamp_delta_i - timestamp_delta_min);
         }
         if (value_delta_i < value_delta_min) {
             length += getBitWith(value_delta_min - value_delta_i) * (block_size - 1);
             value_delta_min = value_delta_i;
-        }else{
+        } else {
             length += getBitWith(value_delta_i - value_delta_min);
         }
 
@@ -1354,13 +1355,13 @@ public class REGERFloatTest {
         if (timestamp_delta_i < timestamp_delta_min) {
             length += getBitWith(timestamp_delta_min - timestamp_delta_i) * (block_size - 1);
             timestamp_delta_min = timestamp_delta_i;
-        }else{
+        } else {
             length += getBitWith(timestamp_delta_i - timestamp_delta_min);
         }
         if (value_delta_i < value_delta_min) {
             length += getBitWith(value_delta_min - value_delta_i) * (block_size - 1);
             value_delta_min = value_delta_i;
-        }else{
+        } else {
             length += getBitWith(value_delta_i - value_delta_min);
         }
 
@@ -1375,7 +1376,7 @@ public class REGERFloatTest {
     // move alpha to n
     private static int[] adjustTonMinChange(
             long[] ts_block, int alpha, float[] theta,
-            long tmp_alpha,long tmp_alpha_plus_1, long tmp_alpha_minus_1) {
+            long tmp_alpha, long tmp_alpha_plus_1, long tmp_alpha_minus_1) {
         int block_size = ts_block.length;
         assert alpha != block_size - 1;
         assert alpha != 0;
@@ -1401,14 +1402,14 @@ public class REGERFloatTest {
             } else if (i == alpha) {
                 long tmp_block_size_1 = ts_block[block_size - 1];
                 timestamp_delta_i = getTime(tmp_alpha) - (int) (theta0_t + theta1_t * (float) getTime(tmp_block_size_1));
-                value_delta_i =  getValue(tmp_alpha) - (int) (theta0_v + theta1_v * (float) getValue(tmp_block_size_1));
+                value_delta_i = getValue(tmp_alpha) - (int) (theta0_v + theta1_v * (float) getValue(tmp_block_size_1));
             } else {
                 long tmp_i = ts_block[i];
-                long tmp_i_1 = ts_block[i-1];
+                long tmp_i_1 = ts_block[i - 1];
                 timestamp_delta_i = getTime(tmp_i) - (int) (theta0_t + theta1_t * (float) getTime(tmp_i_1));
                 value_delta_i = getValue(tmp_i) - (int) (theta0_v + theta1_v * (float) getValue(tmp_i_1));
             }
-            ts_block_delta[pos_ts_block_delta] = combine2Int(timestamp_delta_i,value_delta_i);
+            ts_block_delta[pos_ts_block_delta] = combine2Int(timestamp_delta_i, value_delta_i);
             pos_ts_block_delta++;
             if (timestamp_delta_i < timestamp_delta_min) {
                 timestamp_delta_min = timestamp_delta_i;
@@ -1432,7 +1433,7 @@ public class REGERFloatTest {
 
     private static int[] adjustTonMinChangeNo(
             long[] ts_block, int[] raw_length, int alpha, float[] theta,
-            long tmp_alpha,long tmp_alpha_plus_1, long tmp_alpha_minus_1) {
+            long tmp_alpha, long tmp_alpha_plus_1, long tmp_alpha_minus_1) {
         int block_size = ts_block.length;
         assert alpha != block_size - 1;
         assert alpha != 0;
@@ -1464,31 +1465,31 @@ public class REGERFloatTest {
         if (timestamp_delta_i < timestamp_delta_min) {
             length += getBitWith(timestamp_delta_min - timestamp_delta_i) * (block_size - 1);
             timestamp_delta_min = timestamp_delta_i;
-        }else{
+        } else {
             length += getBitWith(timestamp_delta_i - timestamp_delta_min);
         }
         if (value_delta_i < value_delta_min) {
             length += getBitWith(value_delta_min - value_delta_i) * (block_size - 1);
             value_delta_min = value_delta_i;
-        }else{
+        } else {
             length += getBitWith(value_delta_i - value_delta_min);
         }
 
 
         long tmp_block_size_1 = ts_block[block_size - 1];
         timestamp_delta_i = getTime(tmp_alpha) - (int) (theta0_t + theta1_t * (float) getTime(tmp_block_size_1));
-        value_delta_i =  getValue(tmp_alpha) - (int) (theta0_v + theta1_v * (float) getValue(tmp_block_size_1));
+        value_delta_i = getValue(tmp_alpha) - (int) (theta0_v + theta1_v * (float) getValue(tmp_block_size_1));
 
         if (timestamp_delta_i < timestamp_delta_min) {
             length += getBitWith(timestamp_delta_min - timestamp_delta_i) * (block_size - 1);
             timestamp_delta_min = timestamp_delta_i;
-        }else{
+        } else {
             length += getBitWith(timestamp_delta_i - timestamp_delta_min);
         }
         if (value_delta_i < value_delta_min) {
             length += getBitWith(value_delta_min - value_delta_i) * (block_size - 1);
             value_delta_min = value_delta_i;
-        }else{
+        } else {
             length += getBitWith(value_delta_i - value_delta_min);
         }
 
@@ -1519,7 +1520,7 @@ public class REGERFloatTest {
         return min_i;
     }
 
-    public static void trainParameter( long[] ts_block,int block_size,float[] theta){
+    public static void trainParameter(long[] ts_block, int block_size, float[] theta) {
         long sum_X_r = 0;
         long sum_Y_r = 0;
         long sum_squ_X_r = 0;
@@ -1597,7 +1598,7 @@ public class REGERFloatTest {
         int j = 1;
         long tmp_j_1 = ts_block[0];
         long tmp_j;
-        while(j < block_size){
+        while (j < block_size) {
             tmp_j = ts_block[j];
 
             int epsilon_r_j =
@@ -1613,7 +1614,7 @@ public class REGERFloatTest {
             if (epsilon_v_j < value_delta_min) {
                 value_delta_min = epsilon_v_j;
             }
-            ts_block_delta[j] = combine2Int(epsilon_r_j,epsilon_v_j);
+            ts_block_delta[j] = combine2Int(epsilon_r_j, epsilon_v_j);
             tmp_j_1 = tmp_j;
             j++;
         }
@@ -1638,20 +1639,21 @@ public class REGERFloatTest {
 ////            ts_block_delta[j][1] = epsilon_v;
 //        }
 
+//        printTSBlock(ts_block_delta);
 
         int max_interval = Integer.MIN_VALUE;
         int max_value = Integer.MIN_VALUE;
         int max_interval_segment = Integer.MIN_VALUE;
         int max_value_segment = Integer.MIN_VALUE;
         int length = 0;
-        long delta_time = combine2Int(timestamp_delta_min,value_delta_min);
+        long delta_time = combine2Int(timestamp_delta_min, value_delta_min);
 //        for (int i = block_size - 1; i > 0; i--) {
         for (int i = 1; i < block_size; i++) {
             tmp_j = ts_block_delta[i];
             int epsilon_r = getTime(tmp_j) - timestamp_delta_min;
             int epsilon_v = getValue(tmp_j) - value_delta_min;
 
-            ts_block_delta[i] = combine2Int(epsilon_r,epsilon_v);
+            ts_block_delta[i] = combine2Int(epsilon_r, epsilon_v);
 
             if (epsilon_r > max_interval) {
                 max_interval = epsilon_r;
@@ -1666,9 +1668,9 @@ public class REGERFloatTest {
             if (epsilon_v > max_value_segment) {
                 max_value_segment = epsilon_v;
             }
-            if(i%segment_size==0){
-                length += getBitWith(max_interval_segment)*segment_size;
-                length += getBitWith(max_value_segment)*segment_size;
+            if (i % segment_size == 0) {
+                length += getBitWith(max_interval_segment) * segment_size;
+                length += getBitWith(max_value_segment) * segment_size;
                 max_interval_segment = Integer.MIN_VALUE;
                 max_value_segment = Integer.MIN_VALUE;
             }
@@ -1677,6 +1679,7 @@ public class REGERFloatTest {
         int max_bit_width_interval = getBitWith(max_interval);
         int max_bit_width_value = getBitWith(max_value);
 
+//System.out.println("--------------------------------------------------");
 
         raw_length[0] = length;
         raw_length[1] = max_bit_width_interval;
@@ -1735,7 +1738,7 @@ public class REGERFloatTest {
         int raw_abs_sum = raw_length[0];
         int[][] new_length_list = new int[block_size][3];
         int pos_new_length_list = 0;
-        int range = block_size/16;
+        int range = block_size / 16;
 
         ArrayList<Integer> j_star_list = new ArrayList<>(); // beta list of min b phi alpha to j
         int j_star = -1;
@@ -1855,18 +1858,18 @@ public class REGERFloatTest {
             }
 
             long tmp_alpha = ts_block[alpha];
-            long tmp_alpha_plus_1 = ts_block[alpha+1];
-            long tmp_alpha_minus_1 = ts_block[alpha-1];
+            long tmp_alpha_plus_1 = ts_block[alpha + 1];
+            long tmp_alpha_minus_1 = ts_block[alpha - 1];
 
-            int start_j = Math.max(alpha-range/2,1);
-            int end_j = Math.min(alpha+range/2,block_size-1);
+            int start_j = Math.max(alpha - range / 2, 1);
+            int end_j = Math.min(alpha + range / 2, block_size - 1);
             for (int j = start_j; j < end_j; j++) {
 //            for (int j = 1; j < block_size - 1; j++) {
                 if (alpha != j && (alpha + 1) != j) {
                     if (min_index.contains(j)) { //|| min_index.contains(alpha) || min_index.contains(alpha + 1)
-                        b = adjustAlphaToJMinChange(ts_block, alpha, j, theta,tmp_alpha,tmp_alpha_plus_1,tmp_alpha_minus_1);
+                        b = adjustAlphaToJMinChange(ts_block, alpha, j, theta, tmp_alpha, tmp_alpha_plus_1, tmp_alpha_minus_1);
                     } else {
-                        b = adjustAlphaToJMinChangeNo(ts_block, raw_length, alpha, j, theta,tmp_alpha,tmp_alpha_plus_1,tmp_alpha_minus_1);
+                        b = adjustAlphaToJMinChangeNo(ts_block, raw_length, alpha, j, theta, tmp_alpha, tmp_alpha_plus_1, tmp_alpha_minus_1);
                     }
                     if (b[0] < raw_abs_sum) {
                         raw_abs_sum = b[0];
@@ -1884,9 +1887,9 @@ public class REGERFloatTest {
             }
 
             if (min_index.contains(0)) {//|| min_index.contains(alpha) || min_index.contains(alpha + 1)
-                b = adjustTo0MinChange(ts_block, alpha, theta,tmp_alpha,tmp_alpha_plus_1,tmp_alpha_minus_1);
+                b = adjustTo0MinChange(ts_block, alpha, theta, tmp_alpha, tmp_alpha_plus_1, tmp_alpha_minus_1);
             } else {
-                b = adjustTo0MinChangeNo(ts_block, raw_length, alpha, theta,tmp_alpha,tmp_alpha_plus_1,tmp_alpha_minus_1);
+                b = adjustTo0MinChangeNo(ts_block, raw_length, alpha, theta, tmp_alpha, tmp_alpha_plus_1, tmp_alpha_minus_1);
             }
             if (b[0] < raw_abs_sum) {
                 raw_abs_sum = b[0];
@@ -1901,9 +1904,9 @@ public class REGERFloatTest {
                 pos_new_length_list++;
             }
             if (min_index.contains(block_size - 1)) {//|| min_index.contains(alpha) || min_index.contains(alpha + 1)
-                b = adjustTonMinChange(ts_block, alpha, theta,tmp_alpha,tmp_alpha_plus_1,tmp_alpha_minus_1);
+                b = adjustTonMinChange(ts_block, alpha, theta, tmp_alpha, tmp_alpha_plus_1, tmp_alpha_minus_1);
             } else {
-                b = adjustTonMinChangeNo(ts_block, raw_length, alpha, theta,tmp_alpha,tmp_alpha_plus_1,tmp_alpha_minus_1);
+                b = adjustTonMinChangeNo(ts_block, raw_length, alpha, theta, tmp_alpha, tmp_alpha_plus_1, tmp_alpha_minus_1);
             }
 
             if (b[0] < raw_abs_sum) {
@@ -1952,7 +1955,7 @@ public class REGERFloatTest {
         int j = 1;
         long tmp_j_1 = ts_block[0];
         long tmp_j;
-        while(j < block_size){
+        while (j < block_size) {
             tmp_j = ts_block[j];
             int epsilon_r_j =
                     getTime(tmp_j)
@@ -1990,10 +1993,10 @@ public class REGERFloatTest {
 
 
         int[] alpha_list = new int[2];
-        if(index==0){
+        if (index == 0) {
             alpha_list[0] = value_delta_min_index;
             alpha_list[1] = value_delta_max_index;
-        }else{
+        } else {
             alpha_list[0] = timestamp_delta_min_index;
             alpha_list[1] = timestamp_delta_max_index;
         }
@@ -2025,7 +2028,7 @@ public class REGERFloatTest {
         int j = 1;
         long tmp_j_1 = ts_block[0];
         long tmp_j;
-        while(j < block_size){
+        while (j < block_size) {
             tmp_j = ts_block[j];
             int epsilon_r_j =
                     getTime(tmp_j)
@@ -2280,7 +2283,7 @@ public class REGERFloatTest {
                     bit_width_value = cur_bit_width_value;
                 }
             }
-            bit_width_segments[segment_i] = combine2Int( bit_width_time, bit_width_value);
+            bit_width_segments[segment_i] = combine2Int(bit_width_time, bit_width_value);
         }
         return bit_width_segments;
     }
@@ -2311,7 +2314,7 @@ public class REGERFloatTest {
         for (int segment_i = 0; segment_i < segment_n; segment_i++) {
             long cur_data_i = bit_width_segments[segment_i];
             int bit_width_time = getTime(cur_data_i);
-            int bit_width_value =getValue(cur_data_i);
+            int bit_width_value = getValue(cur_data_i);
             result += (segment_size * bit_width_time / 8);
             result += (segment_size * bit_width_value / 8);
         }
@@ -2325,14 +2328,22 @@ public class REGERFloatTest {
         int segment_n = block_size / segment_size;
         long2Bytes(delta_segments[0], pos_encode, encoded_result);
         pos_encode += 8;
-        float2bytes(theta[0] + raw_length[3], pos_encode, encoded_result);
+        float2bytes(theta[0], pos_encode, encoded_result);
         pos_encode += 4;
         float2bytes(theta[1], pos_encode, encoded_result);
         pos_encode += 4;
-        float2bytes(theta[2] + raw_length[4], pos_encode, encoded_result);
+        float2bytes(theta[2], pos_encode, encoded_result);
         pos_encode += 4;
         float2bytes(theta[3], pos_encode, encoded_result);
         pos_encode += 4;
+
+        int2Bytes( raw_length[3], pos_encode, encoded_result);
+        pos_encode += 4;
+        int2Bytes(raw_length[4], pos_encode, encoded_result);
+        pos_encode += 4;
+
+
+//        System.out.println(Arrays.toString(theta));
 
 
 
@@ -2352,9 +2363,10 @@ public class REGERFloatTest {
 
         return pos_encode;
     }
-    private static void printTSBlock(long[] ts_block){
-        for(long ts : ts_block){
-            System.out.println("["+getTime(ts)+","+getValue(ts)+"]");
+
+    private static void printTSBlock(long[] ts_block) {
+        for (long ts : ts_block) {
+            System.out.println("[" + getTime(ts) + "," + getValue(ts) + "]");
         }
     }
 
@@ -2370,7 +2382,7 @@ public class REGERFloatTest {
 
 //        trainParameter(ts_block,block_size,theta);
 //        System.out.println(Arrays.toString(theta));
-        getEncodeBitsRegressionNoTrain(ts_block, block_size, raw_length, theta,segment_size);
+        getEncodeBitsRegressionNoTrain(ts_block, block_size, raw_length, theta, segment_size);
 //        System.out.println(Arrays.toString(raw_length));
         int[] alpha_list = getIStar(ts_block, min_index, block_size, 0, theta);
         int[] beta_list = new int[alpha_list.length];
@@ -2409,7 +2421,7 @@ public class REGERFloatTest {
 
 
             for (int pos_new_length_list_j = 0; pos_new_length_list_j < pos_new_length_list; pos_new_length_list_j++) {
-                if(new_length_list[pos_new_length_list_j][0]<min_length){
+                if (new_length_list[pos_new_length_list_j][0] < min_length) {
                     min_length = new_length_list[pos_new_length_list_j][0];
                     min_length_index = pos_new_length_list_j;
                 }
@@ -2420,10 +2432,10 @@ public class REGERFloatTest {
                 moveAlphaToBeta(new_ts_block, new_alpha_list[min_length_index], beta_list[min_length_index]);
                 int[] new_length = raw_length.clone();
                 getEncodeBitsRegressionNoTrain(new_ts_block, block_size, new_length, theta, segment_size);
-                if(new_length[0] < raw_length[0]){
+                if (new_length[0] < raw_length[0]) {
                     System.arraycopy(new_length, 0, raw_length, 0, 5);
                     ts_block = new_ts_block.clone();
-                }else{
+                } else {
                     break;
                 }
 //                  moveAlphaToBeta(ts_block, new_alpha_list[min_length_index], beta_list[min_length_index]);
@@ -2496,10 +2508,10 @@ public class REGERFloatTest {
     }
 
 
-    private static int REGERBlockEncoder(long[] data, int i, int block_size, int supply_length, int[] third_value, int segment_size, int encode_pos, byte[] cur_byte) {
+    private static int REGERBlockEncoder(long[] data, int i, int block_size, int supply_length, int[] third_value, int segment_size, int encode_pos, byte[] cur_byte, int[] block_sort) {
 
 
-        long min_time = (long) getTime(data[i * block_size]) <<32;
+        long min_time = (long) getTime(data[i * block_size]) << 32;
         long[] ts_block;
         long[] ts_block_value;
         long[] ts_block_partition;
@@ -2514,11 +2526,11 @@ public class REGERFloatTest {
 //            System.out.println((data[i * block_size+1]));
 //            System.out.println(getTime(data[i * block_size+1]));
             for (int j = 0; j < block_size; j++) {
-                long tmp_j = data[j + i * block_size] - min_time;
+                long tmp_j = data[j + i * block_size] ;//- min_time;
 //                System.out.println(getTime(data[j + i * block_size]));
 //                System.out.println(getTime(data[i * block_size]));
                 ts_block[j] = tmp_j;
-                ts_block_value[j] = combine2Int(getValue(tmp_j),getTime(tmp_j));
+                ts_block_value[j] = combine2Int(getValue(tmp_j), getTime(tmp_j));
 
 //                if(ts_block[j][1]<min_value){
 //                    min_value = ts_block[j][1];
@@ -2565,9 +2577,9 @@ public class REGERFloatTest {
 //            int min_value = Integer.MAX_VALUE;
 
             for (int j = 0; j < end; j++) {
-                long tmp_j = data[j + i * block_size] - min_time;
+                long tmp_j = data[j + i * block_size] ;//- min_time;
                 ts_block[j] = tmp_j;
-                ts_block_value[j] = combine2Int(getValue(tmp_j),getTime(tmp_j));
+                ts_block_value[j] = combine2Int(getValue(tmp_j), getTime(tmp_j));
 
 //                if(ts_block[j][1]<min_value){
 //                    min_value = ts_block[j][1];
@@ -2599,7 +2611,8 @@ public class REGERFloatTest {
             block_size = supply_length;
         }
 
-
+//        printTSBlock(ts_block);
+//        printTSBlock(ts_block_value);
 
         int[] reorder_length = new int[5];
         float[] theta_reorder = new float[4];
@@ -2608,14 +2621,13 @@ public class REGERFloatTest {
         int[] partition_length = new int[5]; // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
         float[] theta_partition = new float[4];
 
-        trainParameter(ts_block,block_size,theta_time);
-//printTSBlock(ts_block);
+        trainParameter(ts_block, block_size, theta_time);
 
-        long[] ts_block_delta_time =  getEncodeBitsRegressionNoTrain(ts_block, block_size, time_length, theta_time,segment_size);
+        long[] ts_block_delta_time = getEncodeBitsRegressionNoTrain(ts_block, block_size, time_length, theta_time, segment_size);
 
 
         int pos_ts_block_partition = 0;
-        if(third_value.length>0){
+        if (third_value.length > 0) {
             for (long datum : ts_block) {
                 if (getValue(datum) > third_value[third_value.length - 1]) {
                     ts_block_partition[pos_ts_block_partition] = datum;
@@ -2639,12 +2651,12 @@ public class REGERFloatTest {
         }
 
 
-        trainParameter(ts_block_partition,block_size,theta_partition);
-        long[] ts_block_delta_partition = getEncodeBitsRegressionNoTrain(ts_block_partition, block_size, partition_length, theta_partition,segment_size);
+        trainParameter(ts_block_partition, block_size, theta_partition);
+        long[] ts_block_delta_partition = getEncodeBitsRegressionNoTrain(ts_block_partition, block_size, partition_length, theta_partition, segment_size);
 
         Arrays.sort(ts_block_value);
-        trainParameter(ts_block_value,block_size,theta_reorder);
-        long[] ts_block_delta_reorder = getEncodeBitsRegressionNoTrain(ts_block_value, block_size, reorder_length, theta_reorder,segment_size);
+        trainParameter(ts_block_value, block_size, theta_reorder);
+        long[] ts_block_delta_reorder = getEncodeBitsRegressionNoTrain(ts_block_value, block_size, reorder_length, theta_reorder, segment_size);
 
 
 //       ReorderingTimeSeries(ts_block_value, reorder_length,  theta_reorder, segment_size);
@@ -2654,28 +2666,39 @@ public class REGERFloatTest {
 
 
         int choose = min3(time_length[0], partition_length[0], reorder_length[0]);
-        if(choose == 0){
+        if (choose == 0) {
 //            System.out.println("time");
 //            System.out.println(Arrays.toString(time_length));
-            ts_block_delta_time = ReorderingTimeSeries(ts_block, time_length,  theta_time, segment_size);
+//            intByte2Bytes(0, encode_pos, cur_byte);
+//            encode_pos ++;
+            block_sort[i] = 0;
+            ts_block_delta_time = ReorderingTimeSeries(ts_block, time_length, theta_time, segment_size);
             bit_width_segments = segmentBitPacking(ts_block_delta_time, block_size, segment_size);
+//            ts_block_delta_time[0] += min_time;
             encode_pos = encodeSegment2Bytes(ts_block_delta_time, bit_width_segments, time_length, segment_size, theta_time, encode_pos, cur_byte);
 //            System.out.println(Arrays.toString(time_length));
-        }
-        else if(choose==1){
+        } else if (choose == 1) {
 //            System.out.println("partition");
 //            System.out.println(Arrays.toString(partition_length));
-            ts_block_delta_partition = ReorderingTimeSeries(ts_block_partition, partition_length,  theta_partition, segment_size);
+//            intByte2Bytes(0, encode_pos, cur_byte);
+//            encode_pos ++;
+            block_sort[i] = 0;
+            ts_block_delta_partition = ReorderingTimeSeries(ts_block_partition, partition_length, theta_partition, segment_size);
             bit_width_segments = segmentBitPacking(ts_block_delta_partition, block_size, segment_size);
+//            ts_block_delta_partition[0] += min_time;
             encode_pos = encodeSegment2Bytes(ts_block_delta_partition, bit_width_segments, partition_length, segment_size, theta_partition, encode_pos, cur_byte);
 //            System.out.println(Arrays.toString(partition_length));
-        } else if (choose ==2) {
+        } else if (choose == 2) {
+
 //            System.out.println("value");
 //            System.out.println(Arrays.toString(reorder_length));
-            ts_block_delta_reorder = ReorderingTimeSeries(ts_block_value, reorder_length,  theta_reorder, segment_size);
+//            intByte2Bytes(1, encode_pos, cur_byte);
+//            encode_pos ++;
+            block_sort[i] = 1;
+            ts_block_delta_reorder = ReorderingTimeSeries(ts_block_value, reorder_length, theta_reorder, segment_size);
+
             bit_width_segments = segmentBitPacking(ts_block_delta_reorder, block_size, segment_size);
             encode_pos = encodeSegment2Bytes(ts_block_delta_reorder, bit_width_segments, reorder_length, segment_size, theta_reorder, encode_pos, cur_byte);
-//            System.out.println(Arrays.toString(reorder_length));
         }
 
 
@@ -2718,10 +2741,15 @@ public class REGERFloatTest {
         int2Bytes(segment_size, encode_pos, encoded_result);
         encode_pos += 4;
 
+        int[] block_sort = new int[block_num+1];
+        int encode_pos_block_sort = encode_pos;
+        int length_block_sort = (int) Math.ceil((double)(block_num+1)/(double) 8);
+        encode_pos += length_block_sort;
+
 //        for (int i = 44; i < 45; i++) {
         for (int i = 0; i < block_num; i++) {
 //            System.out.println(i);
-            encode_pos = REGERBlockEncoder(data, i, block_size, 0, third_value, segment_size, encode_pos, encoded_result);
+            encode_pos = REGERBlockEncoder(data, i, block_size, 0, third_value, segment_size, encode_pos, encoded_result, block_sort);
         }
 
         int remaining_length = length_all - block_num * block_size;
@@ -2738,20 +2766,41 @@ public class REGERFloatTest {
             } else {
                 supple_length = segment_size + 1 - remaining_length % segment_size;
             }
-            encode_pos = REGERBlockEncoder(data, block_num, block_size, supple_length + remaining_length, third_value, segment_size, encode_pos, encoded_result);
+            encode_pos = REGERBlockEncoder(data, block_num, block_size, supple_length + remaining_length, third_value, segment_size, encode_pos, encoded_result, block_sort);
 
         }
+        encodeSort(block_sort,encode_pos_block_sort,encoded_result);
+
         return encode_pos;
     }
 
+    private static void encodeSort(int[] block_sort,int encode_pos_block_sort, byte[] encoded_result) {
+        int length = block_sort.length;
+        int cur_num = 0;
+        for(int i=1;i<=length;i++){
+            cur_num <<=1;
+            cur_num += block_sort[i-1];
+            if(i%8==0){
+                intByte2Bytes(cur_num, encode_pos_block_sort, encoded_result);
+                encode_pos_block_sort ++;
+                cur_num = 0;
+            }
+        }
+        if(length%8!=0){
+            intByte2Bytes(cur_num, encode_pos_block_sort, encoded_result);
+        }
+    }
+
     public static int REGERBlockDecoder(byte[] encoded, int decode_pos, int[][] value_list, int block_size, int segment_size, int[] value_pos_arr) {
+
+
 
         int time0 = bytes2Integer(encoded, decode_pos, 4);
         decode_pos += 4;
         value_list[value_pos_arr[0]][0] = time0;
         int value0 = bytes2Integer(encoded, decode_pos, 4);
         decode_pos += 4;
-        value_list[value_pos_arr[0]][0] = value0;
+        value_list[value_pos_arr[0]][1] = value0;
 
         value_pos_arr[0]++;
 
@@ -2763,6 +2812,11 @@ public class REGERFloatTest {
         float theta_value0 = bytes2float(encoded, decode_pos);
         decode_pos += 4;
         float theta_value1 = bytes2float(encoded, decode_pos);
+        decode_pos += 4;
+
+        int min_time = bytes2Integer(encoded, decode_pos,4);
+        decode_pos += 4;
+        int min_value = bytes2Integer(encoded, decode_pos,4);
         decode_pos += 4;
 
         int bit_width_time_count = bytes2Integer(encoded, decode_pos, 2);
@@ -2803,6 +2857,7 @@ public class REGERFloatTest {
         int pre_time = time0;
         int pre_value = value0;
 
+
         for (int segment_i = 0; segment_i < segment_n; segment_i++) {
             int bit_width_time = bit_width_segments[segment_i][0];
             int bit_width_value = bit_width_segments[segment_i][1];
@@ -2810,28 +2865,114 @@ public class REGERFloatTest {
             int[] decode_value_result = new int[segment_size];
 
             decode_pos = decodeBitPacking(encoded, decode_pos, bit_width_time, segment_size, decode_time_result);
-            int pos_time = value_pos_arr[0];
-            for (int delta_time : decode_time_result) {
-                pre_time = (int) (theta_time0 + theta_time1 * (double) delta_time) + pre_time;
-                value_list[pos_time][0] = pre_time;
-                pos_time++;
-            }
-            int pos_value = value_pos_arr[0];
             decode_pos = decodeBitPacking(encoded, decode_pos, bit_width_value, segment_size, decode_value_result);
-            for (int delta_value : decode_value_result) {
-                pre_value = (int) (theta_value0 + theta_value1 * (double) delta_value) + pre_value;
-                value_list[pos_value][1] = pre_value;
-                pos_value++;
+            int pos_decode_time_result = 0;
+            int length_decode_time_result = decode_time_result.length;
+            for(;pos_decode_time_result<length_decode_time_result;pos_decode_time_result++){
+                pre_time = (int) (theta_time0 + theta_time1 * (float)pre_time ) + decode_time_result[pos_decode_time_result] + min_time;
+                pre_value = (int) (theta_value0 + theta_value1 * (float)pre_value ) +  decode_value_result[pos_decode_time_result] + min_value;
+                value_list[value_pos_arr[0]][0] = pre_time;
+                value_list[value_pos_arr[0]][1] = pre_value;
+                value_pos_arr[0] ++;
             }
-            value_pos_arr[0] = pos_value;
+        }
+
+        return decode_pos;
+    }
+
+    public static int REGERBlockDecoderValue(byte[] encoded, int decode_pos, int[][] value_list, int block_size, int segment_size, int[] value_pos_arr) {
+
+
+
+        int time0 = bytes2Integer(encoded, decode_pos, 4);
+        decode_pos += 4;
+        value_list[value_pos_arr[0]][1] = time0;
+        int value0 = bytes2Integer(encoded, decode_pos, 4);
+        decode_pos += 4;
+        value_list[value_pos_arr[0]][0] = value0;
+
+
+
+        value_pos_arr[0]++;
+
+        float theta_time0 = bytes2float(encoded, decode_pos);
+        decode_pos += 4;
+        float theta_time1 = bytes2float(encoded, decode_pos);
+        decode_pos += 4;
+
+        float theta_value0 = bytes2float(encoded, decode_pos);
+        decode_pos += 4;
+        float theta_value1 = bytes2float(encoded, decode_pos);
+        decode_pos += 4;
+
+        int min_time = bytes2Integer(encoded, decode_pos,4);
+        decode_pos += 4;
+        int min_value = bytes2Integer(encoded, decode_pos,4);
+        decode_pos += 4;
+
+        int bit_width_time_count = bytes2Integer(encoded, decode_pos, 2);
+        decode_pos += 2;
+        int bit_width_value_count = bytes2Integer(encoded, decode_pos, 2);
+        decode_pos += 2;
+
+        int count;
+        int num;
+        int segment_n = block_size / segment_size;
+        int[][] bit_width_segments = new int[segment_n][2];
+        int pos_bit_width_segments = 0;
+        for (int i = 0; i < bit_width_time_count; i++) {
+            count = byte2Integer(encoded, decode_pos);
+            decode_pos++;
+            num = byte2Integer(encoded, decode_pos);
+
+            decode_pos++;
+            for (int j = 0; j < count; j++) {
+                bit_width_segments[pos_bit_width_segments][0] = num;
+                pos_bit_width_segments++;
+            }
+
+        }
+
+        pos_bit_width_segments = 0;
+        for (int i = 0; i < bit_width_value_count; i++) {
+            count = byte2Integer(encoded, decode_pos);
+            decode_pos++;
+            num = byte2Integer(encoded, decode_pos);
+            decode_pos++;
+            for (int j = 0; j < count; j++) {
+                bit_width_segments[pos_bit_width_segments][1] = num;
+                pos_bit_width_segments++;
+            }
+        }
+
+        int pre_time = time0;
+        int pre_value = value0;
+
+
+        for (int segment_i = 0; segment_i < segment_n; segment_i++) {
+            int bit_width_time = bit_width_segments[segment_i][0];
+            int bit_width_value = bit_width_segments[segment_i][1];
+            int[] decode_time_result = new int[segment_size];
+            int[] decode_value_result = new int[segment_size];
+
+            decode_pos = decodeBitPacking(encoded, decode_pos, bit_width_time, segment_size, decode_time_result);
+            decode_pos = decodeBitPacking(encoded, decode_pos, bit_width_value, segment_size, decode_value_result);
+            int pos_decode_time_result = 0;
+            int length_decode_time_result = decode_time_result.length;
+            for(;pos_decode_time_result<length_decode_time_result;pos_decode_time_result++){
+                pre_time = (int) (theta_time0 + theta_time1 * (float)pre_time ) + decode_time_result[pos_decode_time_result] + min_time;
+                pre_value = (int) (theta_value0 + theta_value1 * (float)pre_value ) +  decode_value_result[pos_decode_time_result] + min_value;
+                value_list[value_pos_arr[0]][1] = pre_time;
+                value_list[value_pos_arr[0]][0] = pre_value;
+                value_pos_arr[0] ++;
+            }
         }
 
 
         return decode_pos;
     }
 
-
-    public static void REGERDecoder(byte[] encoded) {
+    public static int[][] REGERDecoder(byte[] encoded) {
 
         int decode_pos = 0;
         int length_all = bytes2Integer(encoded, decode_pos, 4);
@@ -2845,6 +2986,26 @@ public class REGERFloatTest {
         int block_num = length_all / block_size;
         int remain_length = length_all - block_num * block_size;
         int zero_number;
+
+        int length_block_sort = (int) Math.ceil((double)(block_num+1)/(double) 8);
+        int[] block_sort = new int[block_num+1];
+        for(int i=0;i<length_block_sort-1;i++){
+            int sort = byte2Integer(encoded, decode_pos);
+            decode_pos ++;
+            for(int j=0;j<8;j++){
+               block_sort[i*8+7-j] = sort & 1;
+               sort >>= 1;
+            }
+        }
+        int block_sort_end =(block_num +1)- (length_block_sort*8-8);
+        int sort = byte2Integer(encoded, decode_pos);
+        decode_pos ++;
+        for(int j=0;j<block_sort_end;j++){
+            block_sort[8*length_block_sort-8+block_sort_end-j-1] = sort & 1;
+            sort >>= 1;
+        }
+//        System.out.println(Arrays.toString(block_sort));
+
         if (remain_length % segment_size == 0) {
             zero_number = 1;
         } else if (remain_length % segment_size == 1) {
@@ -2858,8 +3019,14 @@ public class REGERFloatTest {
 
 //        for (int k = 0; k < 2; k++) {
         for (int k = 0; k < block_num; k++) {
+            int cur_block_sort = block_sort[k];
 //            System.out.println("k="+k);
-            decode_pos = REGERBlockDecoder(encoded, decode_pos, value_list, block_size, segment_size, value_pos_arr);
+            if(cur_block_sort==0)
+                decode_pos = REGERBlockDecoder(encoded, decode_pos, value_list, block_size, segment_size, value_pos_arr);
+            else if (cur_block_sort == 1){
+                decode_pos = REGERBlockDecoderValue(encoded, decode_pos, value_list, block_size, segment_size, value_pos_arr);
+            }
+//            System.out.println(Arrays.deepToString(value_list));
         }
 
         if (remain_length == 1) {
@@ -2873,8 +3040,14 @@ public class REGERFloatTest {
                 value_pos_arr[0]++;
             }
         } else {
-            REGERBlockDecoder(encoded, decode_pos, value_list, remain_length + zero_number, segment_size, value_pos_arr);
+            int cur_block_sort = block_sort[block_num];
+            if(cur_block_sort==0)
+                REGERBlockDecoder(encoded, decode_pos, value_list, remain_length + zero_number, segment_size, value_pos_arr);
+            else if (cur_block_sort == 1){
+                REGERBlockDecoderValue(encoded, decode_pos, value_list, remain_length + zero_number, segment_size, value_pos_arr);
+            }
         }
+        return value_list;
     }
 
     @Test
@@ -2933,7 +3106,7 @@ public class REGERFloatTest {
         for (String value : dataset_name) {
             input_path_list.add(input_parent_dir + value);
             dataset_k.add(1);
-            dataset_block_size.add(128);
+            dataset_block_size.add(1024);
         }
 
         output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
@@ -2961,7 +3134,7 @@ public class REGERFloatTest {
 //        dataset_block_size.add(256);
 
 
-    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 //        for (int file_i = 2; file_i < 3; file_i++) {
             String inputPath = input_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
@@ -3011,11 +3184,11 @@ public class REGERFloatTest {
 //                    long time_tmp = Integer.parseInt(loader.getValues()[0])-time0;
 //                    time_tmp <<=32;
 //                    time_tmp +=  Integer.parseInt(loader.getValues()[1]);
-                    int time_tmp = Integer.parseInt(loader.getValues()[0])-time0;
+                    int time_tmp = Integer.parseInt(loader.getValues()[0]) - time0;
 //                    System.out.println(time_tmp);
                     int value_tmp = Integer.parseInt(loader.getValues()[1]);
 
-                    data.add(combine2Int(time_tmp,value_tmp));
+                    data.add(combine2Int(time_tmp, value_tmp));
                 }
 //                System.out.println(getTime(data.get(1)));
 //                System.out.println((data.get(1)));
@@ -3029,7 +3202,7 @@ public class REGERFloatTest {
                 long[] data2_arr = new long[data.size()];
 //                int min_time = data.get(0).get(0);
                 for (int i = 0; i < data.size(); i++) {
-                    data2_arr[i] = data.get(i) ;
+                    data2_arr[i] = data.get(i);
                 }
 //                System.out.println(data2_arr[0][0]);
                 byte[] encoded_result = new byte[data2_arr.length * 8];
@@ -3186,9 +3359,9 @@ public class REGERFloatTest {
                 data.add(combine2Int(0, value0));
 
                 while (loader.readRecord()) {
-                    int time_tmp = Integer.parseInt(loader.getValues()[0])-time0;
+                    int time_tmp = Integer.parseInt(loader.getValues()[0]) - time0;
                     int value_tmp = Integer.parseInt(loader.getValues()[1]);
-                    data.add(combine2Int(time_tmp,value_tmp));
+                    data.add(combine2Int(time_tmp, value_tmp));
                 }
                 ArrayList<Integer> result2 = new ArrayList<>();
                 splitTimeStamp3(data, result2);
@@ -3196,7 +3369,7 @@ public class REGERFloatTest {
 
                 long[] data2_arr = new long[data.size()];
                 for (int i = 0; i < data.size(); i++) {
-                    data2_arr[i] = data.get(i) ;
+                    data2_arr[i] = data.get(i);
                 }
                 for (int block_size_exp = 13; block_size_exp >= 4; block_size_exp--) {
                     int block_size = (int) Math.pow(2, block_size_exp);
@@ -3370,9 +3543,9 @@ public class REGERFloatTest {
                 data.add(combine2Int(0, value0));
 
                 while (loader.readRecord()) {
-                    int time_tmp = Integer.parseInt(loader.getValues()[0])-time0;
+                    int time_tmp = Integer.parseInt(loader.getValues()[0]) - time0;
                     int value_tmp = Integer.parseInt(loader.getValues()[1]);
-                    data.add(combine2Int(time_tmp,value_tmp));
+                    data.add(combine2Int(time_tmp, value_tmp));
                 }
                 ArrayList<Integer> result2 = new ArrayList<>();
                 splitTimeStamp3(data, result2);
@@ -3380,7 +3553,7 @@ public class REGERFloatTest {
 
                 long[] data2_arr = new long[data.size()];
                 for (int i = 0; i < data.size(); i++) {
-                    data2_arr[i] = data.get(i) ;
+                    data2_arr[i] = data.get(i);
                 }
                 for (int segment_size_exp = 6; segment_size_exp > 2; segment_size_exp--) {
                     int segment_size = (int) Math.pow(2, segment_size_exp);
@@ -3429,4 +3602,135 @@ public class REGERFloatTest {
             writer.close();
         }
     }
+
+    @Test
+    public void REGERCorrect() throws IOException {
+
+        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/iotdb/iotdb-core/tsfile/src/test/resources/";
+
+        String input_parent_dir = parent_dir + "trans_data/";
+        ArrayList<String> input_path_list = new ArrayList<>();
+        ArrayList<String> dataset_name = new ArrayList<>();
+        ArrayList<Integer> dataset_block_size = new ArrayList<>();
+        ArrayList<int[]> dataset_third = new ArrayList<>();
+        dataset_name.add("CS-Sensors");
+        dataset_name.add("Metro-Traffic");
+        dataset_name.add("USGS-Earthquakes");
+        dataset_name.add("YZ-Electricity");
+        dataset_name.add("GW-Magnetic");
+        dataset_name.add("TY-Fuel");
+        dataset_name.add("Cyber-Vehicle");
+        dataset_name.add("Vehicle-Charge");
+        dataset_name.add("Nifty-Stocks");
+        dataset_name.add("TH-Climate");
+        dataset_name.add("TY-Transport");
+        dataset_name.add("EPM-Education");
+
+        int[] dataset_0 = {547, 2816};
+        int[] dataset_1 = {1719, 3731};
+        int[] dataset_2 = {-48, -11, 6, 25, 52};
+        int[] dataset_3 = {8681, 13584};
+        int[] dataset_4 = {79, 184, 274};
+        int[] dataset_5 = {17, 68};
+        int[] dataset_6 = {677};
+        int[] dataset_7 = {1047, 1725};
+        int[] dataset_8 = {227, 499, 614, 1013};
+        int[] dataset_9 = {474, 678};
+        int[] dataset_10 = {4, 30, 38, 49, 58};
+        int[] dataset_11 = {5182, 8206};
+
+        dataset_third.add(dataset_0);
+        dataset_third.add(dataset_1);
+        dataset_third.add(dataset_2);
+        dataset_third.add(dataset_3);
+        dataset_third.add(dataset_4);
+        dataset_third.add(dataset_5);
+        dataset_third.add(dataset_6);
+        dataset_third.add(dataset_7);
+        dataset_third.add(dataset_8);
+        dataset_third.add(dataset_9);
+        dataset_third.add(dataset_10);
+        dataset_third.add(dataset_11);
+
+        for (String value : dataset_name) {
+            input_path_list.add(input_parent_dir + value);
+            dataset_block_size.add(128);
+        }
+
+
+//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+        for (int file_i = 3; file_i < 4; file_i++) {
+            String inputPath = input_path_list.get(file_i);
+
+            File file = new File(inputPath);
+            File[] tempList = file.listFiles();
+
+
+            assert tempList != null;
+
+            for (File f : tempList) {
+//                f = tempList[2];
+
+                System.out.println(f);
+                InputStream inputStream = Files.newInputStream(f.toPath());
+                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
+//                ArrayList<ArrayList<Integer>> data = new ArrayList<>();
+                ArrayList<Long> data = new ArrayList<>();
+
+                // add a column to "data"
+                loader.readHeaders();
+                loader.readRecord();
+                int time0 = Integer.parseInt(loader.getValues()[0]);
+                int value0 = Integer.parseInt(loader.getValues()[1]);
+                data.add(combine2Int(0, value0));
+                while (loader.readRecord()) {
+                    int time_tmp = Integer.parseInt(loader.getValues()[0]) - time0;
+                    int value_tmp = Integer.parseInt(loader.getValues()[1]);
+
+                    data.add(combine2Int(time_tmp, value_tmp));
+                }
+
+                inputStream.close();
+                ArrayList<Integer> result2 = new ArrayList<>();
+                splitTimeStamp3(data, result2);
+
+                int num_of_points = data.size();
+                int[][] correctness_test_data = new int[num_of_points][2];
+
+                long[] data2_arr = new long[num_of_points];
+
+                for (int i = 0; i < num_of_points; i++) {
+                    data2_arr[i] = data.get(i);
+                    correctness_test_data[i][0] = getTime(data2_arr[i]);
+                    correctness_test_data[i][1] = getValue(data2_arr[i]);
+//                    System.out.println(getValue(data2_arr[i]));
+                }
+
+                byte[] encoded_result = new byte[data2_arr.length * 8];
+                double ratio = 0;
+                double compressed_size = 0;
+                int repeatTime2 = 1;
+                int length = 0;
+//                System.out.println(Arrays.deepToString(correctness_test_data));
+                for (int repeat = 0; repeat < repeatTime2; repeat++)
+                    length = ReorderingRegressionEncoder(data2_arr, dataset_block_size.get(file_i), dataset_third.get(file_i), 8, encoded_result);
+                compressed_size += length;
+                double ratioTmp = compressed_size / (double) (data.size() * Integer.BYTES * 2);
+                ratio += ratioTmp;
+                int[][] decode_result = new int[num_of_points][2];
+                for (int repeat = 0; repeat < repeatTime2; repeat++)
+                    decode_result = REGERDecoder(encoded_result);
+                Arrays.sort(decode_result, (a, b) -> {
+                    if (a[0] == b[0]) return Integer.compare(a[1], b[1]);
+                    return Integer.compare(a[0], b[0]);
+                });
+//                System.out.println(Arrays.deepToString(decode_result));
+                System.out.println(ratio);
+
+//                break;
+            }
+
+        }
+    }
+
 }

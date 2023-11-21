@@ -20,6 +20,7 @@ import static java.lang.Math.abs;
 
 public class RegerPDoubleTest {
 
+  static int[] precision = {0,5,8,11,15,18,21,25,28,31,35};
   public static int min3(int a, int b, int c) {
     if (a < b && a < c) {
       return 0;
@@ -541,22 +542,18 @@ public class RegerPDoubleTest {
     DecompositionSolver solver1 = new SingularValueDecomposition(matrix).getSolver();
     RealVector solution2 = solver1.solve(vector);
 
-//    // 输出系数
-//    System.out.println("自回归模型系数：");
-//    for (int i = 0; i < solution.getDimension(); i++) {
-//      System.out.println("AR(" + (i + 1) + "): " + solution.getEntry(i));
+    coefficient[0] = solution1.getEntry(p);
+    coefficient[1] = solution2.getEntry(p);
+
+    for (int i = 1; i <= p; i++) {
+      coefficient[2 * i] =  decimalFloat(solution1.getEntry(p-i),pre);
+      coefficient[2 * i + 1] = decimalFloat(solution2.getEntry(p-i),pre);
+    }
+//    for (int i = 0; i <= p; i++) {
+//      coefficient[2 * i] =  solution1.getEntry(p-i);
+//      coefficient[2 * i + 1] = solution2.getEntry(p-i);
 //    }
 
-//    int pre = 1;
-//    for (int i = 0; i <= p; i++) {
-//      coefficient[2 * i] =  decimalFloat(solution1.getEntry(p-i),pre);
-//      coefficient[2 * i + 1] = decimalFloat(solution2.getEntry(p-i),pre);
-//    }
-    for (int i = 0; i <= p; i++) {
-      coefficient[2 * i] =  solution1.getEntry(p-i);
-      coefficient[2 * i + 1] = solution2.getEntry(p-i);
-    }
-//    System.out.println(Arrays.toString(coefficient));
   }
 
   public static int[][] deltaTSBlock(int[][] ts_block,
@@ -1320,7 +1317,8 @@ public class RegerPDoubleTest {
       int p,
       double[] theta,
       int pos_encode,
-      byte[] encoded_result) {
+      byte[] encoded_result,
+      int pre) {
 
     int block_size = delta_segments.length;
     int segment_n = (block_size - p) / segment_size;
@@ -1328,11 +1326,14 @@ public class RegerPDoubleTest {
     pos_encode += 4;
     int2Bytes(delta_segments[0][1], pos_encode, encoded_result);
     pos_encode += 4;
-//    double2bytes(theta[0] + raw_length[3], pos_encode, encoded_result);
-//    pos_encode += 8;
-//
-//    double2bytes(theta[1] + raw_length[4], pos_encode, encoded_result);
-//    pos_encode += 8;
+    double2bytes(theta[0] + raw_length[3], pos_encode, encoded_result);
+    pos_encode += 8;
+
+    double2bytes(theta[1] + raw_length[4], pos_encode, encoded_result);
+    pos_encode += 8;
+    pos_encode +=Math.ceil((double)(12+precision[pre])/(double)(4));
+
+
 
 //    for (int i = 2; i < theta.length; i++) {
 //      double2bytes(theta[i], pos_encode, encoded_result);
@@ -1927,6 +1928,11 @@ public class RegerPDoubleTest {
     //        System.out.println(Arrays.deepToString(ts_block_delta));
     //        System.out.println(Arrays.deepToString(bit_width_segments));
 
+//    System.out.println(Arrays.toString(raw_length));
+//    System.out.println(Arrays.toString(theta));
+//    System.out.println(encode_pos);
+//    System.out.println(Arrays.deepToString(bit_width_segments));
+
     encode_pos =
         encodeSegment2Bytes(
             ts_block_delta,
@@ -1936,7 +1942,8 @@ public class RegerPDoubleTest {
             p,
             theta,
             encode_pos,
-            cur_byte);
+            cur_byte,
+                pre);
 
     //        System.out.println("encode_pos="+encode_pos);
     return encode_pos;
@@ -1970,142 +1977,9 @@ public class RegerPDoubleTest {
     intByte2Bytes(p, encode_pos, encoded_result);
     encode_pos += 1;
 
-    // ----------------------- compare data order by time, value and partition
-    // ---------------------------
-//    int length_time = 0;
-//    int length_value = 0;
-//    int length_partition = 0;
-//    int[][] data_value = data.clone();
-//    Arrays.sort(
-//        data_value,
-//        (a, b) -> {
-//          if (a[1] == b[1]) return Integer.compare(a[0], b[0]);
-//          return Integer.compare(a[1], b[1]);
-//        });
-//
-//    int[][] data_partition = new int[length_all][2];
-//    int pos_data_partition = 0;
-//
-//    for (int[] datum : data) {
-//      if (datum[1] > third_value[third_value.length - 1]) {
-//        data_partition[pos_data_partition][0] = datum[0];
-//        data_partition[pos_data_partition][1] = datum[1];
-//        pos_data_partition++;
-//      }
-//    }
-//    for (int third_i = third_value.length - 1; third_i > 0; third_i--) {
-//      for (int[] datum : data) {
-//        if (datum[1] <= third_value[third_i] && datum[1] > third_value[third_i - 1]) {
-//          data_partition[pos_data_partition][0] = datum[0];
-//          data_partition[pos_data_partition][1] = datum[1];
-//          pos_data_partition++;
-//        }
-//      }
-//    }
-//    for (int[] datum : data) {
-//      if (datum[1] <= third_value[0]) {
-//        data_partition[pos_data_partition][0] = datum[0];
-//        data_partition[pos_data_partition][1] = datum[1];
-//        pos_data_partition++;
-//      }
-//    }
-//    for (int i = 0; i < block_num; i++) {
-//      int[][] ts_block_time = new int[block_size][2];
-//      int[][] ts_block_value = new int[block_size][2];
-//      int[][] ts_block_partition = new int[block_size][2];
-//
-//      for (int j = 0; j < block_size; j++) {
-//        ts_block_time[j][0] = data[j + i * block_size][0];
-//        ts_block_time[j][1] = data[j + i * block_size][1];
-//        ts_block_value[j][0] = data_value[j + i * block_size][0];
-//        ts_block_value[j][1] = data_value[j + i * block_size][1];
-//        ts_block_partition[j][0] = data_partition[j + i * block_size][0];
-//        ts_block_partition[j][1] = data_partition[j + i * block_size][1];
-//      }
-//
-//      int[] raw_length = new int[5];
-//      double[] theta = new double[2 * p + 2];
-//      int[][] ts_block_delta =
-//          getEncodeBitsRegression(ts_block_time, block_size, raw_length, theta, segment_size, p);
-//      int[][] bit_width_segments = segmentBitPacking(ts_block_delta, block_size, segment_size);
-//      length_time +=
-//          numberOfEncodeSegment2Bytes(
-//              ts_block_delta, bit_width_segments, raw_length, segment_size, p, theta);
-//
-//      int[] raw_length_value = new int[5];
-//      double[] theta_value = new double[2 * p + 2];
-//      int[][] ts_block_delta_value =
-//          getEncodeBitsRegression(
-//              ts_block_value, block_size, raw_length_value, theta_value, segment_size, p);
-//      int[][] bit_width_segments_value =
-//          segmentBitPacking(ts_block_delta_value, block_size, segment_size);
-//      length_value +=
-//          numberOfEncodeSegment2Bytes(
-//              ts_block_delta_value,
-//              bit_width_segments_value,
-//              raw_length_value,
-//              segment_size,
-//              p,
-//              theta_value);
-//
-//      int[] raw_length_partition = new int[5];
-//      double[] theta_partition = new double[2 * p + 2];
-//      int[][] ts_block_delta_partition =
-//          getEncodeBitsRegression(
-//              ts_block_partition,
-//              block_size,
-//              raw_length_partition,
-//              theta_partition,
-//              segment_size,
-//              p);
-//      int[][] bit_width_segments_partition =
-//          segmentBitPacking(ts_block_delta_partition, block_size, segment_size);
-//      length_partition +=
-//          numberOfEncodeSegment2Bytes(
-//              ts_block_delta_partition,
-//              bit_width_segments_partition,
-//              raw_length_partition,
-//              segment_size,
-//              p,
-//              theta_partition);
-//    }
-//    //        int remaining_length = length_all - block_num * block_size;
-//
-//    if (length_partition < length_time
-//        && length_partition < length_value) { // partition performs better
-//      data = data_partition;
-//      //            for (int i = 0; i < 2; i++) {
-//      System.out.println("Partition");
-//      for (int i = 0; i < block_num; i++) {
-//        encode_pos =
-//            REGERBlockEncoderPartition(
-//                data, i, block_size, segment_size, k, p, encode_pos, encoded_result);
-//      }
-//    } else {
-//      if (length_value < length_time) { // order by value performs better
-//        System.out.println("Value");
-//        data = data_value;
-//        //                for (int i = 0; i < 2; i++) {
-//        for (int i = 0; i < block_num; i++) {
-//
-//          encode_pos =
-//              REGERBlockEncoder(
-//                  data,
-//                  1,
-//                  i,
-//                  block_size,
-//                  0,
-//                  third_value,
-//                  segment_size,
-//                  k,
-//                  p,
-//                  encode_pos,
-//                  encoded_result);
-//        }
-//      } else {
-//    System.out.println("Time");
-//    for (int i = 0; i < 1; i++) {
-        for (int i = 0; i < block_num; i++) {
+
+//    for (int i = 1; i < 2; i++) {
+    for (int i = 0; i < block_num; i++) {
       encode_pos =
           REGERBlockEncoder(
               data,
@@ -2120,8 +1994,7 @@ public class RegerPDoubleTest {
               encode_pos,
               encoded_result);
     }
-//      }
-//    }
+
 
     int remaining_length = length_all - block_num * block_size;
     if (remaining_length == 1) {
@@ -2472,7 +2345,7 @@ public class RegerPDoubleTest {
 //    int[] file_lists = {0,2,6,7}; //
 //    for (int file_i : file_lists) {
     for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
-      //        for (int file_i = 0; file_i < 1; file_i++) {
+//    for (int file_i = input_path_list.size()-1; file_i < input_path_list.size(); file_i++) {
 
       String inputPath = input_path_list.get(file_i);
       String Output = output_path_list.get(file_i);
@@ -2502,7 +2375,7 @@ public class RegerPDoubleTest {
 
       for (File f : tempList) {
         System.out.println(f);
-        //                for (int p = 8; p < 9; p++) {
+//        for (int pre = 1; pre < 3; pre++) {
         for (int pre = 1; pre < 10; pre++) {
           System.out.println("precision=" + pre);
 
@@ -2575,6 +2448,7 @@ public class RegerPDoubleTest {
           writer.writeRecord(record);
           System.out.println(ratio);
         }
+//        break;
       }
       writer.close();
     }
