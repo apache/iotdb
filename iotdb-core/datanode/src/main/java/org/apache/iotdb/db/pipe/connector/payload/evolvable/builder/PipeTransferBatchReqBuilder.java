@@ -111,16 +111,16 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
       return false;
     }
 
-    long requestCommitId = ((EnrichedEvent) event).getCommitId();
     final TPipeTransferReq req = buildTabletInsertionReq(event);
+    final long requestCommitId = ((EnrichedEvent) event).getCommitId();
 
     if (requestCommitIds.isEmpty()
         || !requestCommitIds.get(requestCommitIds.size() - 1).equals(requestCommitId)) {
       reqs.add(req);
-
-      ((EnrichedEvent) event).increaseReferenceCount(PipeTransferBatchReqBuilder.class.getName());
       events.add(event);
       requestCommitIds.add(requestCommitId);
+
+      ((EnrichedEvent) event).increaseReferenceCount(PipeTransferBatchReqBuilder.class.getName());
 
       if (firstEventProcessingTime == Long.MIN_VALUE) {
         firstEventProcessingTime = System.currentTimeMillis();
@@ -131,6 +131,16 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
 
     return bufferSize >= getMaxBatchSizeInBytes()
         || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs;
+  }
+
+  public void onSuccess() {
+    reqs.clear();
+    events.clear();
+    requestCommitIds.clear();
+
+    firstEventProcessingTime = Long.MIN_VALUE;
+
+    bufferSize = 0;
   }
 
   public List<TPipeTransferReq> getTPipeTransferReqs() {

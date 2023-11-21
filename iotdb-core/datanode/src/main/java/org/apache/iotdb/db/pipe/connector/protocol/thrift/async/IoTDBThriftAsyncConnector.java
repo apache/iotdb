@@ -89,7 +89,9 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
           11,
           Comparator.comparing(
               e ->
-                  e instanceof EnrichedEvent ? ((EnrichedEvent) e).getCommitId() : Long.MAX_VALUE));
+                  // Non-enriched events will be put at the front of the queue,
+                  // because they are more likely to be lost and need to be retried first.
+                  e instanceof EnrichedEvent ? ((EnrichedEvent) e).getCommitId() : 0));
 
   private IoTDBThriftAsyncPipeTransferBatchReqBuilder tabletBatchBuilder;
 
@@ -169,7 +171,8 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       return;
     }
 
-    long commitId = ((EnrichedEvent) tabletInsertionEvent).getCommitId();
+    final long commitId = ((EnrichedEvent) tabletInsertionEvent).getCommitId();
+
     if (isTabletBatchModeEnabled) {
       if (tabletBatchBuilder.onEvent(tabletInsertionEvent)) {
         final PipeTransferTabletBatchEventHandler pipeTransferTabletBatchEventHandler =

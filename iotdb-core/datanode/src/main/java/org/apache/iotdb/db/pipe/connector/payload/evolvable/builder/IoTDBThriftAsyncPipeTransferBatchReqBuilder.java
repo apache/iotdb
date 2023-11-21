@@ -31,17 +31,6 @@ public class IoTDBThriftAsyncPipeTransferBatchReqBuilder extends PipeTransferBat
     super(parameters);
   }
 
-  public void onSuccess() {
-    reqs.clear();
-
-    events.clear();
-    requestCommitIds.clear();
-
-    firstEventProcessingTime = Long.MIN_VALUE;
-
-    bufferSize = 0;
-  }
-
   public List<Event> deepcopyEvents() {
     return new ArrayList<>(events);
   }

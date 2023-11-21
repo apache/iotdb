@@ -29,9 +29,8 @@ public class IoTDBThriftSyncPipeTransferBatchReqBuilder extends PipeTransferBatc
     super(parameters);
   }
 
+  @Override
   public void onSuccess() {
-    reqs.clear();
-
     for (final Event event : events) {
       if (event instanceof EnrichedEvent) {
         ((EnrichedEvent) event)
@@ -39,11 +38,7 @@ public class IoTDBThriftSyncPipeTransferBatchReqBuilder extends PipeTransferBatc
                 IoTDBThriftSyncPipeTransferBatchReqBuilder.class.getName(), true);
       }
     }
-    events.clear();
-    requestCommitIds.clear();
 
-    firstEventProcessingTime = Long.MIN_VALUE;
-
-    bufferSize = 0;
+    super.onSuccess();
   }
 }
