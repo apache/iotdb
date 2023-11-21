@@ -222,7 +222,7 @@ public class IoTDBStatement implements Statement {
         try {
           return executeSQL(sql);
         } catch (TException e2) {
-          throw new SQLException(String.format("Fail to execute %s", sql), e);
+          throw new SQLException(String.format("Fail to execute %s", sql), e2);
         }
       } else {
         throw new SQLException(
