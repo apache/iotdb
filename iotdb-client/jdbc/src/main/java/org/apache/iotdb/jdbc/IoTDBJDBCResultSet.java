@@ -481,7 +481,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
         this.sgColumns = ((IoTDBJDBCResultSet) statement.getResultSet()).getSgColumns();
       }
     } catch (SQLException throwables) {
-      LOGGER.error(String.format("get meta data error:%s", throwables.getMessage()));
+      LOGGER.error("get meta data error: {}", throwables.getMessage());
     }
     return new IoTDBResultMetadata(
         nonAlign,
