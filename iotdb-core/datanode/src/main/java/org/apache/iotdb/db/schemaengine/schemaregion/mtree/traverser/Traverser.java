@@ -185,6 +185,7 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
   @Override
   protected Iterator<N> getChildrenIterator(N parent, Iterator<String> childrenName)
       throws Exception {
+
     return new IMNodeIterator<N>() {
       private N next = null;
       private boolean skipTemplateChildren = false;
@@ -231,7 +232,6 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
 
   @Override
   protected Iterator<N> getChildrenIterator(N parent) throws MetadataException {
-    IMNodeIterator<N> currentChildrenIterator;
     if (parent.isAboveDatabase()) {
       return new MNodeIterator<>(parent.getChildren().values().iterator());
     } else {

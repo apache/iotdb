@@ -72,6 +72,16 @@ public class AccumulatorFactory {
         return crateModeAccumulator(tsDataType);
       case COUNT_TIME:
         return new CountTimeAccumulator();
+      case STDDEV:
+      case STDDEV_SAMP:
+        return new VarianceAccumulator(tsDataType, VarianceAccumulator.VarianceType.STDDEV_SAMP);
+      case STDDEV_POP:
+        return new VarianceAccumulator(tsDataType, VarianceAccumulator.VarianceType.STDDEV_POP);
+      case VARIANCE:
+      case VAR_SAMP:
+        return new VarianceAccumulator(tsDataType, VarianceAccumulator.VarianceType.VAR_SAMP);
+      case VAR_POP:
+        return new VarianceAccumulator(tsDataType, VarianceAccumulator.VarianceType.VAR_POP);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }

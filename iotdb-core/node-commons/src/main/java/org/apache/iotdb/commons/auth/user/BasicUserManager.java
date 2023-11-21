@@ -20,6 +20,7 @@ package org.apache.iotdb.commons.auth.user;
 
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
+import org.apache.iotdb.commons.auth.entity.PriPrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.concurrent.HashLock;
@@ -176,19 +177,27 @@ public abstract class BasicUserManager implements IUserManager {
         throw new AuthException(
             TSStatusCode.USER_NOT_EXIST, String.format(NO_SUCH_USER_ERROR, username));
       }
-      if (path != null) {
-        if (preVersion) {
-          AuthUtils.validatePath(path);
-          if (user.getServiceReady()) {
-            try {
-              AuthUtils.validatePatternPath(path);
-            } catch (AuthException e) {
-              user.setServiceReady(false);
-            }
+      // Pre version's operation:
+      // all privileges are stored in path privileges.
+      // global privileges will come with root.**
+      // need to handle privileges ALL there.
+      if (preVersion) {
+        AuthUtils.validatePath(path);
+        if (privilegeId == PriPrivilegeType.ALL.ordinal()) {
+          for (PriPrivilegeType type : PriPrivilegeType.values()) {
+            user.addPathPrivilege(path, type.ordinal(), false);
           }
         } else {
-          AuthUtils.validatePatternPath(path);
+          user.addPathPrivilege(path, privilegeId, false);
         }
+        // mark that the user has pre Version's privilege.
+        if (user.getServiceReady()) {
+          user.setServiceReady(false);
+        }
+        return true;
+      }
+      if (path != null) {
+        AuthUtils.validatePatternPath(path);
         user.addPathPrivilege(path, privilegeId, grantOpt);
       } else {
         user.addSysPrivilege(privilegeId);
@@ -213,30 +222,24 @@ public abstract class BasicUserManager implements IUserManager {
             TSStatusCode.USER_NOT_EXIST, String.format(NO_SUCH_USER_ERROR, username));
       }
       if (preVersion) {
-        if (path != null) {
-          if (!AuthUtils.hasPrivilege(path, privilegeId, user.getPathPrivilegeList())) {
-            return false;
-          }
-          AuthUtils.validatePath(path);
-          AuthUtils.removePrivilegePre(path, privilegeId, user.getPathPrivilegeList());
-        } else {
-          if (!user.getSysPrivilege().contains(privilegeId)) {
-            return false;
-          }
-          user.getSysPrivilege().remove(privilegeId);
-        }
-      } else {
-        if (!user.hasPrivilegeToRevoke(path, privilegeId)) {
+        if (!AuthUtils.hasPrivilege(path, privilegeId, user.getPathPrivilegeList())) {
           return false;
         }
-        if (path != null) {
-          AuthUtils.validatePatternPath(path);
-          user.removePathPrivilege(path, privilegeId);
-        } else {
-          user.getSysPrivilege().remove(privilegeId);
-          user.getSysPriGrantOpt().remove(privilegeId);
-        }
+        AuthUtils.removePrivilegePre(path, privilegeId, user.getPathPrivilegeList());
+        return true;
       }
+
+      if (!user.hasPrivilegeToRevoke(path, privilegeId)) {
+        return false;
+      }
+      if (path != null) {
+        AuthUtils.validatePatternPath(path);
+        user.removePathPrivilege(path, privilegeId);
+      } else {
+        user.getSysPrivilege().remove(privilegeId);
+        user.getSysPriGrantOpt().remove(privilegeId);
+      }
+
       return true;
     } finally {
       lock.writeUnlock(username);
@@ -375,26 +378,7 @@ public abstract class BasicUserManager implements IUserManager {
   public void checkAndRefreshPathPri() {
     userMap.forEach(
         (rolename, user) -> {
-          if (!user.getServiceReady()) {
-            List<PathPrivilege> priCopy = new ArrayList<>();
-            for (PathPrivilege pathPri : user.getPathPrivilegeList()) {
-              try {
-                AuthUtils.validatePatternPath(pathPri.getPath());
-                priCopy.add(pathPri);
-              } catch (AuthException e) {
-                PartialPath path = pathPri.getPath();
-                try {
-                  for (Integer pri : pathPri.getPrivileges()) {
-                    AuthUtils.addPrivilege(AuthUtils.convertPatternPath(path), pri, priCopy, false);
-                  }
-                } catch (IllegalPathException illegalE) {
-                  //
-                }
-              }
-            }
-            user.setPrivilegeList(priCopy);
-          }
-          user.setServiceReady(true);
+          AuthUtils.checkAndRefreshPri(user);
         });
   }
 }

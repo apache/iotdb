@@ -136,7 +136,7 @@ public class LoadTsfileAnalyzer {
 
       if (tsFile.length() == 0) {
         if (LOGGER.isWarnEnabled()) {
-          LOGGER.warn(String.format("TsFile %s is empty.", tsFile.getPath()));
+          LOGGER.warn("TsFile {} is empty.", tsFile.getPath());
         }
         if (LOGGER.isInfoEnabled()) {
           LOGGER.info(
@@ -156,9 +156,7 @@ public class LoadTsfileAnalyzer {
       } catch (IllegalArgumentException e) {
         schemaAutoCreatorAndVerifier.clear();
         LOGGER.warn(
-            String.format(
-                "Parse file %s to resource error, this TsFile maybe empty.", tsFile.getPath()),
-            e);
+            "Parse file {} to resource error, this TsFile maybe empty.", tsFile.getPath(), e);
         throw new SemanticException(
             String.format("TsFile %s is empty or incomplete.", tsFile.getPath()));
       } catch (AuthException e) {
@@ -169,7 +167,7 @@ public class LoadTsfileAnalyzer {
         return analysis;
       } catch (Exception e) {
         schemaAutoCreatorAndVerifier.clear();
-        LOGGER.warn(String.format("Parse file %s to resource error.", tsFile.getPath()), e);
+        LOGGER.warn("Parse file {} to resource error.", tsFile.getPath(), e);
         throw new SemanticException(
             String.format(
                 "Parse file %s to resource error, because %s", tsFile.getPath(), e.getMessage()));
