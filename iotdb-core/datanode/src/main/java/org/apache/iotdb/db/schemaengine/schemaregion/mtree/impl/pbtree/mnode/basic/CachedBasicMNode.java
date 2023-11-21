@@ -169,6 +169,7 @@ public class CachedBasicMNode implements ICachedMNode {
   public void moveDataToNewMNode(ICachedMNode newMNode) {
     newMNode.setParent(parent);
     newMNode.setCacheEntry(getCacheEntry());
+    newMNode.setLock(getLock());
   }
 
   @Override
