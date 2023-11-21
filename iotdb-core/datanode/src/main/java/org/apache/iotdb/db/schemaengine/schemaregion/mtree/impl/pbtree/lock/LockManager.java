@@ -81,7 +81,6 @@ public class LockManager {
       lockEntry.pin();
     }
     lockOperation.accept(lockEntry.getLock());
-    lockEntry.unpin();
   }
 
   private void checkAndReleaseMNodeLock(
@@ -90,6 +89,7 @@ public class LockManager {
       LockEntry lockEntry = node.getLockEntry();
       StampedWriterPreferredLock lock = lockEntry.getLock();
       unLockOperation.accept(lock);
+      lockEntry.unpin();
       if (lock.isFree() && !lockEntry.isPinned()) {
         node.setLockEntry(null);
         lockPool.returnLock(lockEntry);
