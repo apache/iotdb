@@ -24,5 +24,7 @@ import java.util.Iterator;
 
 public interface IMNodeIterator<N extends IMNode<?>> extends Iterator<N> {
 
+  void skipTemplateChildren();
+
   void close();
 }

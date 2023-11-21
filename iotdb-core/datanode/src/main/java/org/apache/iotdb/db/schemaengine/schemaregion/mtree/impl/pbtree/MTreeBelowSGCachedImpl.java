@@ -818,19 +818,14 @@ public class MTreeBelowSGCachedImpl {
     try (MeasurementCollector<Void, ICachedMNode> collector =
         new MeasurementCollector<Void, ICachedMNode>(
             rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
-          private final Set<PartialPath> visitedTemplateDevice = new HashSet<>();
-
           protected Void collectMeasurement(IMeasurementMNode<ICachedMNode> node) {
             IDeviceMNode<ICachedMNode> deviceMNode =
                 getParentOfNextMatchedNode().getAsDeviceMNode();
             int templateId = deviceMNode.getSchemaTemplateIdWithState();
-            PartialPath devicePath = deviceMNode.getPartialPath();
             if (templateId >= 0) {
-              if (!visitedTemplateDevice.contains(devicePath)) {
-                schemaTree.appendTemplateDevice(
-                    deviceMNode.getPartialPath(), deviceMNode.isAligned(), templateId, null);
-                visitedTemplateDevice.add(devicePath);
-              }
+              schemaTree.appendTemplateDevice(
+                  deviceMNode.getPartialPath(), deviceMNode.isAligned(), templateId, null);
+              skipTemplateChildren(deviceMNode);
             } else {
               MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
               if (nodes[nodes.length - 1].equals(node.getAlias())) {
@@ -859,19 +854,14 @@ public class MTreeBelowSGCachedImpl {
     try (MeasurementCollector<Void, ICachedMNode> collector =
         new MeasurementCollector<Void, ICachedMNode>(
             rootNode, patternTree, store, SchemaConstant.ALL_MATCH_SCOPE) {
-          private final Set<PartialPath> visitedTemplateDevice = new HashSet<>();
-
           protected Void collectMeasurement(IMeasurementMNode<ICachedMNode> node) {
             IDeviceMNode<ICachedMNode> deviceMNode =
                 getParentOfNextMatchedNode().getAsDeviceMNode();
             int templateId = deviceMNode.getSchemaTemplateIdWithState();
-            PartialPath devicePath = deviceMNode.getPartialPath();
             if (templateId >= 0) {
-              if (!visitedTemplateDevice.contains(devicePath)) {
-                schemaTree.appendTemplateDevice(
-                    deviceMNode.getPartialPath(), deviceMNode.isAligned(), templateId, null);
-                visitedTemplateDevice.add(devicePath);
-              }
+              schemaTree.appendTemplateDevice(
+                  deviceMNode.getPartialPath(), deviceMNode.isAligned(), templateId, null);
+              skipTemplateChildren(deviceMNode);
             } else {
               MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
               path.setMeasurementAlias(node.getAlias());
