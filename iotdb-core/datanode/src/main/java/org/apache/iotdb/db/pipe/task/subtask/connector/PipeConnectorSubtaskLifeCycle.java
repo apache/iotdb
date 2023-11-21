@@ -66,17 +66,16 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
   /**
    * Deregister the subtask. If the subtask is the last one, close the subtask.
    *
+   * <p>Note that this method should be called after the subtask is stopped. Otherwise, the
+   * runningTaskCount might be inconsistent with the aliveTaskCount because of parallel connector
+   * scheduling.
+   *
    * @param pipeNameToDeregister pipe name
    * @return true if the subtask is out of life cycle, indicating that the subtask should never be
    *     used again
    * @throws IllegalStateException if aliveTaskCount <= 0
    */
   public synchronized boolean deregister(String pipeNameToDeregister) {
-    // The stop() here keeps runningTaskCount consistent, otherwise there might be runningTaskCount
-    // > aliveTaskCount.
-    // Remember not to stop twice.
-    stop();
-
     if (aliveTaskCount <= 0) {
       throw new IllegalStateException("aliveTaskCount <= 0");
     }
