@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.tsfile.read.common.block.column;
 
-import org.apache.iotdb.tsfile.enums.ColumnEncoding;
-
 import java.util.HashMap;
 import java.util.Map;
 

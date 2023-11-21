@@ -136,7 +136,6 @@ public class DProfileIT {
           "create function segment as 'org.apache.iotdb.library.dprofile.UDTFSegment'");
       statement.execute("create function skew as 'org.apache.iotdb.library.dprofile.UDAFSkew'");
       statement.execute("create function spread as 'org.apache.iotdb.library.dprofile.UDAFSpread'");
-      statement.execute("create function stddev as 'org.apache.iotdb.library.dprofile.UDAFStddev'");
       statement.execute("create function minmax as 'org.apache.iotdb.library.dprofile.UDTFMinMax'");
       statement.execute("create function zscore as 'org.apache.iotdb.library.dprofile.UDTFZScore'");
       statement.execute("create function spline as 'org.apache.iotdb.library.dprofile.UDTFSpline'");
@@ -358,32 +357,6 @@ public class DProfileIT {
   @Test
   public void testSpread2() {
     String sqlStr = "select spread(d2.s2) from root.vehicle";
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      ResultSet resultSet = statement.executeQuery(sqlStr);
-      resultSet.next();
-      Object result = resultSet.getObject(2);
-    } catch (SQLException throwable) {
-      fail(throwable.getMessage());
-    }
-  }
-
-  @Test
-  public void testSddev1() {
-    String sqlStr = "select stddev(d1.s2) from root.vehicle";
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      ResultSet resultSet = statement.executeQuery(sqlStr);
-      resultSet.next();
-      Object result = resultSet.getObject(2);
-    } catch (SQLException throwable) {
-      fail(throwable.getMessage());
-    }
-  }
-
-  @Test
-  public void testStddev2() {
-    String sqlStr = "select stddev(d2.s2) from root.vehicle";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);

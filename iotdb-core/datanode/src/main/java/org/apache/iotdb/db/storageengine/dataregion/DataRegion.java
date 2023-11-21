@@ -787,7 +787,7 @@ public class DataRegion implements IDataRegionForQuery {
           for (Map<String, List<ChunkMetadata>> metaMap : writer.getMetadatasForQuery().values()) {
             for (List<ChunkMetadata> metadatas : metaMap.values()) {
               for (ChunkMetadata chunkMetadata : metadatas) {
-                chunkMetadataSize += chunkMetadata.calculateRamSize();
+                chunkMetadataSize += chunkMetadata.getRetainedSizeInBytes();
               }
             }
           }
@@ -2014,6 +2014,8 @@ public class DataRegion implements IDataRegionForQuery {
               // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
               // change after compaction
               deletion.setFileOffset(Long.MAX_VALUE);
+              // 如果这个时候正在执行清理，就写入到一个 compact 的文件里面
+              // 这里一次删除会写入到两个文件里面
               // write deletion into compaction modification file
               tsFileResource.getCompactionModFile().write(deletion);
               // write deletion into modification file to enable read during compaction
@@ -2089,13 +2091,20 @@ public class DataRegion implements IDataRegionForQuery {
   // TODO please consider concurrency with read and insert method.
   private void closeUnsealedTsFileProcessorCallBack(TsFileProcessor tsFileProcessor)
       throws TsFileProcessorException {
-    boolean tsFileNotValid =
-        tsFileProcessor.isEmpty()
-            || !TsFileValidator.getInstance().validateTsFile(tsFileProcessor.getTsFileResource());
+    boolean isEmptyFile =
+        tsFileProcessor.isEmpty() || tsFileProcessor.getTsFileResource().isEmpty();
+    boolean isValidateTsFileFailed = false;
+    if (!isEmptyFile) {
+      isValidateTsFileFailed =
+          !TsFileValidator.getInstance().validateTsFile(tsFileProcessor.getTsFileResource());
+    }
     closeQueryLock.writeLock().lock();
     try {
       tsFileProcessor.close();
-      if (tsFileNotValid) {
+      if (isEmptyFile) {
+        tsFileProcessor.getTsFileResource().remove();
+        tsFileManager.remove(tsFileProcessor.getTsFileResource(), tsFileProcessor.isSequence());
+      } else if (isValidateTsFileFailed) {
         String tsFilePath = tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath();
         renameAndHandleError(tsFilePath, tsFilePath + BROKEN_SUFFIX);
         renameAndHandleError(
@@ -2116,7 +2125,7 @@ public class DataRegion implements IDataRegionForQuery {
     synchronized (closeStorageGroupCondition) {
       closeStorageGroupCondition.notifyAll();
     }
-    if (!tsFileNotValid) {
+    if (!isValidateTsFileFailed) {
       TsFileResource tsFileResource = tsFileProcessor.getTsFileResource();
       FileMetrics.getInstance()
           .addTsFile(
@@ -2140,24 +2149,32 @@ public class DataRegion implements IDataRegionForQuery {
       trySubmitCount += executeInsertionCompaction(timePartitions);
       summary.incrementSubmitTaskNum(CompactionTaskType.INSERTION, trySubmitCount);
     }
-    // the name of this variable is trySubmitCount, because the task submitted to the queue could be
-    // evicted due to the low priority of the task
-    try {
-      for (long timePartition : timePartitions) {
-        trySubmitCount +=
-            CompactionScheduler.scheduleCompaction(tsFileManager, timePartition, summary);
+    if (summary.getSubmitInsertionCrossSpaceCompactionTaskNum() == 0) {
+      // the name of this variable is trySubmitCount, because the task submitted to the queue could
+      // be
+      // evicted due to the low priority of the task
+      try {
+        for (long timePartition : timePartitions) {
+          trySubmitCount +=
+              CompactionScheduler.scheduleCompaction(tsFileManager, timePartition, summary);
+        }
+      } catch (Throwable e) {
+        logger.error("Meet error in compaction schedule.", e);
       }
-    } catch (Throwable e) {
-      logger.error("Meet error in compaction schedule.", e);
     }
-    logger.info(
-        "[CompactionScheduler][{}] selected sequence InnerSpaceCompactionTask num is {}, selected unsequence InnerSpaceCompactionTask num is {}, selected CrossSpaceCompactionTask num is {}, selected InsertionCrossSpaceCompactionTask num is {}",
-        dataRegionId,
-        summary.getSubmitSeqInnerSpaceCompactionTaskNum(),
-        summary.getSubmitUnseqInnerSpaceCompactionTaskNum(),
-        summary.getSubmitCrossSpaceCompactionTaskNum(),
-        summary.getSubmitInsertionCrossSpaceCompactionTaskNum());
-    CompactionMetrics.getInstance().updateCompactionTaskSelectionNum(summary);
+    if (summary.hasSubmitTask()) {
+      logger.info(
+          "[CompactionScheduler][{}] selected sequence InnerSpaceCompactionTask num is {},"
+              + " selected unsequence InnerSpaceCompactionTask num is {},"
+              + " selected CrossSpaceCompactionTask num is {},"
+              + " selected InsertionCrossSpaceCompactionTask num is {}",
+          dataRegionId,
+          summary.getSubmitSeqInnerSpaceCompactionTaskNum(),
+          summary.getSubmitUnseqInnerSpaceCompactionTaskNum(),
+          summary.getSubmitCrossSpaceCompactionTaskNum(),
+          summary.getSubmitInsertionCrossSpaceCompactionTaskNum());
+      CompactionMetrics.getInstance().updateCompactionTaskSelectionNum(summary);
+    }
     return trySubmitCount;
   }
 
@@ -2862,7 +2879,7 @@ public class DataRegion implements IDataRegionForQuery {
       } catch (WriteProcessException | BatchProcessException e) {
         insertMultiTabletsNode
             .getResults()
-            .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+            .put(i, new TSStatus(TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode()));
       }
     }
 
@@ -3046,7 +3063,10 @@ public class DataRegion implements IDataRegionForQuery {
 
   private void renameAndHandleError(String originFileName, String newFileName) {
     try {
-      Files.move(Paths.get(originFileName), Paths.get(newFileName));
+      File originFile = new File(originFileName);
+      if (originFile.exists()) {
+        Files.move(originFile.toPath(), Paths.get(newFileName));
+      }
     } catch (IOException e) {
       logger.error("Failed to rename {} to {},", originFileName, newFileName, e);
     }

@@ -62,9 +62,9 @@ import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReaderTimeseriesMetadataIterator;
@@ -133,7 +133,7 @@ public class LoadTsfileAnalyzer {
 
       if (tsFile.length() == 0) {
         if (LOGGER.isWarnEnabled()) {
-          LOGGER.warn(String.format("TsFile %s is empty.", tsFile.getPath()));
+          LOGGER.warn("TsFile {} is empty.", tsFile.getPath());
         }
         if (LOGGER.isInfoEnabled()) {
           LOGGER.info(
@@ -153,9 +153,7 @@ public class LoadTsfileAnalyzer {
       } catch (IllegalArgumentException e) {
         schemaAutoCreatorAndVerifier.clear();
         LOGGER.warn(
-            String.format(
-                "Parse file %s to resource error, this TsFile maybe empty.", tsFile.getPath()),
-            e);
+            "Parse file {} to resource error, this TsFile maybe empty.", tsFile.getPath(), e);
         throw new SemanticException(
             String.format("TsFile %s is empty or incomplete.", tsFile.getPath()));
       } catch (AuthException e) {
@@ -166,7 +164,7 @@ public class LoadTsfileAnalyzer {
         return analysis;
       } catch (Exception e) {
         schemaAutoCreatorAndVerifier.clear();
-        LOGGER.warn(String.format("Parse file %s to resource error.", tsFile.getPath()), e);
+        LOGGER.warn("Parse file {} to resource error.", tsFile.getPath(), e);
         throw new SemanticException(
             String.format(
                 "Parse file %s to resource error, because %s", tsFile.getPath(), e.getMessage()));
