@@ -166,7 +166,7 @@ public class SchemaUtils {
 
   public static void checkDataTypeWithEncoding(TSDataType dataType, TSEncoding encoding)
       throws MetadataException {
-    if (!schemaChecker.get(dataType).contains(encoding)) {
+    if (!schemaChecker.containsKey(dataType) || !schemaChecker.get(dataType).contains(encoding)) {
       throw new MetadataException(
           String.format("encoding %s does not support %s", encoding, dataType), true);
     }

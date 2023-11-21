@@ -466,6 +466,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     if (chunkData.isAligned()) {
       AlignedChunkData alignedChunkData = (AlignedChunkData) chunkData;
       for (ChunkHeader header : alignedChunkData.getChunkHeaderList()) {
+        if (header.getDataType().equals(TSDataType.VECTOR)) {
+          // time column of align series
+          continue;
+        }
         measurements.add(header.getMeasurementID());
         dataTypes.add(header.getDataType());
         encodings.add(header.getEncodingType());
