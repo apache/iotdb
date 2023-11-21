@@ -92,7 +92,7 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
         requestCommitIds,
         exception);
 
-    for (Event event : events) {
+    for (final Event event : events) {
       connector.addFailureEventToRetryQueue(event);
     }
   }

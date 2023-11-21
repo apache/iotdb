@@ -125,8 +125,9 @@ public class PipeTransferTsFileInsertionEventHandler
         event.decreaseReferenceCount(PipeTransferTsFileInsertionEventHandler.class.getName(), true);
 
         LOGGER.info(
-            "Successfully transferred file {}. Request commit id is {}.",
+            "Successfully transferred file {} (committer key={}, commit id={}).",
             tsFile,
+            event.getCommitterKey(),
             event.getCommitId());
 
         if (client != null) {
@@ -164,8 +165,9 @@ public class PipeTransferTsFileInsertionEventHandler
   @Override
   public void onError(Exception exception) {
     LOGGER.warn(
-        "Failed to transfer TsFileInsertionEvent {} (request commit id {}).",
+        "Failed to transfer TsFileInsertionEvent {} (committer key {}, commit id {}).",
         tsFile,
+        event.getCommitterKey(),
         event.getCommitId(),
         exception);
 

@@ -71,10 +71,11 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
       return;
     }
 
-    if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && event instanceof EnrichedEvent) {
-      ((EnrichedEvent) event)
-          .decreaseReferenceCount(PipeTransferTabletInsertionEventHandler.class.getName(), true);
+    if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (event instanceof EnrichedEvent) {
+        ((EnrichedEvent) event)
+            .decreaseReferenceCount(PipeTransferTabletInsertionEventHandler.class.getName(), true);
+      }
     } else {
       onError(new PipeException(response.getStatus().getMessage()));
     }
@@ -83,8 +84,9 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
   @Override
   public void onError(Exception exception) {
     LOGGER.warn(
-        "Failed to transfer TabletInsertionEvent {} (request commit id={}).",
+        "Failed to transfer TabletInsertionEvent {} (committer key={}, commit id={}).",
         event,
+        event instanceof EnrichedEvent ? ((EnrichedEvent) event).getCommitterKey() : null,
         event instanceof EnrichedEvent ? ((EnrichedEvent) event).getCommitId() : null,
         exception);
 

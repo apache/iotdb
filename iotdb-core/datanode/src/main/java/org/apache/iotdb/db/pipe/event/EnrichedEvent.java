@@ -207,6 +207,10 @@ public abstract class EnrichedEvent implements Event {
     this.commitId = commitId;
   }
 
+  public String getCommitterKey() {
+    return committerKey;
+  }
+
   public long getCommitId() {
     return commitId;
   }
