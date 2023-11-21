@@ -21,17 +21,32 @@ package org.apache.iotdb.db.pipe.commit;
 
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Comparator;
+import java.util.Objects;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
 /** Used to queue events for one pipe of one dataRegion to commit in order. */
 public class PipeEventCommitter {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeEventCommitter.class);
+
   private final AtomicLong commitIdGenerator = new AtomicLong(0);
   private final AtomicLong lastCommitId = new AtomicLong(0);
+
   private final PriorityBlockingQueue<EnrichedEvent> commitQueue =
       new PriorityBlockingQueue<>(
-          11, Comparator.comparing(e -> e != null ? e.getCommitId() : Long.MAX_VALUE));
+          11,
+          Comparator.comparing(
+              event ->
+                  Objects.requireNonNull(event, "committable event cannot be null").getCommitId()));
+
+  PipeEventCommitter() {
+    // Do nothing but make it package-private.
+  }
 
   public synchronized long generateCommitId() {
     return commitIdGenerator.incrementAndGet();
@@ -39,9 +54,20 @@ public class PipeEventCommitter {
 
   public synchronized void commit(EnrichedEvent event) {
     commitQueue.offer(event);
+
     while (!commitQueue.isEmpty()) {
       final EnrichedEvent e = commitQueue.peek();
-      if (lastCommitId.get() + 1 != e.getCommitId()) {
+
+      if (e.getCommitId() <= lastCommitId.get()) {
+        LOGGER.warn(
+            "commit id must be monotonically increasing, lastCommitId: {}, event: {}",
+            lastCommitId.get(),
+            e);
+        commitQueue.poll();
+        continue;
+      }
+
+      if (e.getCommitId() != lastCommitId.get() + 1) {
         break;
       }
 

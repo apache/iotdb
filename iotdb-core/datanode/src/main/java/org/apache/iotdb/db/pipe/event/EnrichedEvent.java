@@ -202,7 +202,8 @@ public abstract class EnrichedEvent implements Event {
 
   public abstract boolean isGeneratedByPipe();
 
-  public void setCommitId(long commitId) {
+  public void setCommitterKeyAndCommitId(String committerKey, long commitId) {
+    this.committerKey = committerKey;
     this.commitId = commitId;
   }
 
@@ -210,12 +211,8 @@ public abstract class EnrichedEvent implements Event {
     return commitId;
   }
 
-  public void setCommitterKey(String committerKey) {
-    this.committerKey = committerKey;
-  }
-
   public void onCommitted() {
-    if (this.shouldReportOnCommit) {
+    if (shouldReportOnCommit) {
       reportProgress();
     }
   }

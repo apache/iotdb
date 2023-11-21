@@ -34,82 +34,84 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class PipeEventCommitManager {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeEventCommitManager.class);
 
-  private final Set<String> committableConnectors;
+  private static final Set<String> COMMITTABLE_CONNECTORS =
+      Collections.unmodifiableSet(
+          new HashSet<>(
+              Arrays.asList(
+                  BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName(),
+                  BuiltinPipePlugin.IOTDB_THRIFT_SYNC_CONNECTOR.getPipePluginName(),
+                  BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName(),
+                  BuiltinPipePlugin.IOTDB_LEGACY_PIPE_CONNECTOR.getPipePluginName(),
+                  BuiltinPipePlugin.WRITE_BACK_CONNECTOR.getPipePluginName(),
+                  BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName(),
+                  BuiltinPipePlugin.IOTDB_THRIFT_SYNC_SINK.getPipePluginName(),
+                  BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_SINK.getPipePluginName(),
+                  BuiltinPipePlugin.IOTDB_LEGACY_PIPE_SINK.getPipePluginName(),
+                  BuiltinPipePlugin.WRITE_BACK_SINK.getPipePluginName())));
 
+  // key: pipeName_dataRegionId
   private final Map<String, PipeEventCommitter> eventCommitterMap = new ConcurrentHashMap<>();
 
   public void register(String pipeName, int dataRegionId, String pipePluginName) {
-    if (!committableConnectors.contains(pipePluginName) || pipeName == null) {
+    if (pipeName == null || !COMMITTABLE_CONNECTORS.contains(pipePluginName)) {
       return;
     }
 
-    final String key = generateKey(pipeName, dataRegionId);
-    if (eventCommitterMap.containsKey(key)) {
-      LOGGER.warn("Pipe with same name is already registered, overwriting: {}", key);
+    final String committerKey = generateCommitterKey(pipeName, dataRegionId);
+    if (eventCommitterMap.containsKey(committerKey)) {
+      LOGGER.warn("Pipe with same name is already registered, overwriting: {}", committerKey);
     }
-    eventCommitterMap.put(key, new PipeEventCommitter());
-    LOGGER.info("Pipe committer registered for pipe: {}", key);
+    eventCommitterMap.put(committerKey, new PipeEventCommitter());
+    LOGGER.info("Pipe committer registered for pipe: {}", committerKey);
   }
 
   public void deregister(String pipeName, int dataRegionId) {
-    eventCommitterMap.remove(generateKey(pipeName, dataRegionId));
-  }
-
-  private String generateKey(String pipeName, int dataRegionId) {
-    return String.format("%s_%s", pipeName, dataRegionId);
+    final String committerKey = generateCommitterKey(pipeName, dataRegionId);
+    eventCommitterMap.remove(committerKey);
+    LOGGER.info("Pipe committer deregistered for pipe: {}", committerKey);
   }
 
   /**
    * Assign a commit id and a key for commit. Make sure {@code EnrichedEvent.pipeName} is set before
    * calling this.
    */
-  public synchronized void enrichWithCommitIdAndCommitterKey(
-      EnrichedEvent event, int dataRegionId) {
+  public void enrichWithCommitIdAndCommitterKey(EnrichedEvent event, int dataRegionId) {
     if (event == null || event instanceof PipeHeartbeatEvent || event.getPipeName() == null) {
       return;
     }
 
-    final String key = generateKey(event.getPipeName(), dataRegionId);
-    if (!eventCommitterMap.containsKey(key)) {
+    final String committerKey = generateCommitterKey(event.getPipeName(), dataRegionId);
+    final PipeEventCommitter committer = eventCommitterMap.get(committerKey);
+    if (committer == null) {
       return;
     }
-
-    event.setCommitId(eventCommitterMap.get(key).generateCommitId());
-    event.setCommitterKey(key);
+    event.setCommitterKeyAndCommitId(committerKey, committer.generateCommitId());
   }
 
   public void commit(EnrichedEvent event, String committerKey) {
-    if (event == null || event instanceof PipeHeartbeatEvent) {
+    if (event == null
+        || event instanceof PipeHeartbeatEvent
+        || event.getCommitId() <= EnrichedEvent.NO_COMMIT_ID
+        || committerKey == null) {
       return;
     }
 
-    final long commitId = event.getCommitId();
-    if (committerKey == null
-        || !eventCommitterMap.containsKey(committerKey)
-        || commitId <= EnrichedEvent.NO_COMMIT_ID) {
+    final PipeEventCommitter committer = eventCommitterMap.get(committerKey);
+    if (committer == null) {
       return;
     }
+    committer.commit(event);
+  }
 
-    eventCommitterMap.get(committerKey).commit(event);
+  private static String generateCommitterKey(String pipeName, int dataRegionId) {
+    return String.format("%s_%s", pipeName, dataRegionId);
   }
 
   private PipeEventCommitManager() {
-    committableConnectors =
-        Collections.unmodifiableSet(
-            new HashSet<>(
-                Arrays.asList(
-                    BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName(),
-                    BuiltinPipePlugin.IOTDB_THRIFT_SYNC_CONNECTOR.getPipePluginName(),
-                    BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName(),
-                    BuiltinPipePlugin.IOTDB_LEGACY_PIPE_CONNECTOR.getPipePluginName(),
-                    BuiltinPipePlugin.WRITE_BACK_CONNECTOR.getPipePluginName(),
-                    BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName(),
-                    BuiltinPipePlugin.IOTDB_THRIFT_SYNC_SINK.getPipePluginName(),
-                    BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_SINK.getPipePluginName(),
-                    BuiltinPipePlugin.IOTDB_LEGACY_PIPE_SINK.getPipePluginName(),
-                    BuiltinPipePlugin.WRITE_BACK_SINK.getPipePluginName())));
+    // Do nothing but make it private.
   }
 
   private static class PipeEventCommitManagerHolder {
