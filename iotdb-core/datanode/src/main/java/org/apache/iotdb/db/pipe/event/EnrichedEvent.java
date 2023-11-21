@@ -46,9 +46,9 @@ public abstract class EnrichedEvent implements Event {
   protected final String pipeName;
   protected final PipeTaskMeta pipeTaskMeta;
 
+  private String committerKey;
   public static final long NO_COMMIT_ID = -1;
   private long commitId = NO_COMMIT_ID;
-  private String committerKey;
 
   private final String pattern;
 
@@ -106,7 +106,7 @@ public abstract class EnrichedEvent implements Event {
       if (referenceCount.get() == 1) {
         isSuccessful = internallyDecreaseResourceReferenceCount(holderMessage);
         if (shouldReport) {
-          this.shouldReportOnCommit = true;
+          shouldReportOnCommit = true;
         }
         PipeEventCommitManager.getInstance().commit(this, committerKey);
       }
