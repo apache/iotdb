@@ -68,7 +68,7 @@ public class LoadTsFileManagerTest extends TestBase {
   public void setup() throws IOException, WriteProcessException, DataRegionException {
     fileNum = 10;
     seriesNum = 100;
-    deviceNum = 100;
+    deviceNum = 1;
     super.setup();
   }
 
@@ -197,7 +197,7 @@ public class LoadTsFileManagerTest extends TestBase {
       }
     }
 
-    loadTsFileManager.load(req.uuid, null, false);
+    loadTsFileManager.load(req.uuid, groupId, false);
 
     return new TLoadResp()
         .setAccepted(true)

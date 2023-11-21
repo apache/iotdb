@@ -245,7 +245,10 @@ public class TestBase {
     WALRecoverManager.getInstance().setAllDataRegionScannedLatch(new ExceptionalCountDownLatch(0));
     DataRegion dataRegion =
         new DataRegion(
-            BASE_OUTPUT_PATH, d1GroupId.toString(), new DirectFlushPolicy(), "root.loadTest");
+            BASE_OUTPUT_PATH,
+            String.valueOf(d1GroupId.getId()),
+            new DirectFlushPolicy(),
+            "root.loadTest");
     for (int i = 0; i < deviceNum; i++) {
       partitionTable.put("d" + i, d1Replicas);
       dataRegionMap.put(d1GroupId.convertToTConsensusGroupId(), dataRegion);

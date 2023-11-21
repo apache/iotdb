@@ -484,14 +484,14 @@ public class ClusteringMeasurementSplitter implements PieceNodeSplitter {
         this.centroids = new double[clusterNum][];
       }
 
-      for (Entry<String, double[]> entry : tagVectorMap.entrySet()) {
-        vecLength = entry.getValue().length;
-      }
+      tagVectorMap.entrySet().stream().findFirst().ifPresent(e -> vecLength = e.getValue().length);
 
       randomCentroid(tagVectorMap);
 
       for (int i = 0;
-          i < maxIteration && System.currentTimeMillis() - splitStartTime <= splitTimeBudget;
+          // should at least perform one iteration
+          i < maxIteration
+              && (i == 0 || System.currentTimeMillis() - splitStartTime <= splitTimeBudget);
           i++) {
         if (!assignCentroid(tagVectorMap, distance)) {
           // centroid not updated, end
