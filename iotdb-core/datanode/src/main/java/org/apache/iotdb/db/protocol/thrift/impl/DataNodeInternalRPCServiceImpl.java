@@ -237,6 +237,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -400,7 +401,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     throw new UnsupportedOperationException();
   }
 
-  private ValidatingSchema extractValidatingSchema(LoadTsFilePieceNode pieceNode)
+  private ValidatingSchema extractValidatingSchema(Iterator<TsFileData> tsFileDataIterator)
       throws IllegalPathException {
     ValidatingSchema validatingSchema = new ValidatingSchema();
     String currDevice = null;
@@ -410,7 +411,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     List<TSEncoding> encodings = new ArrayList<>();
     List<CompressionType> compressionTypes = new ArrayList<>();
     boolean isAligned = false;
-    for (TsFileData data : pieceNode.getAllTsFileData()) {
+    int seriesCnt = 0;
+    int maxLoadingTimeseriesNumber =
+        IoTDBDescriptor.getInstance().getConfig().getMaxLoadingTimeseriesNumber();
+    while (tsFileDataIterator.hasNext() && seriesCnt < maxLoadingTimeseriesNumber) {
+      TsFileData data = tsFileDataIterator.next();
+
       if (!data.isModification()) {
         ChunkData chunkData = (ChunkData) data;
         String device = chunkData.getDevice();
@@ -427,6 +433,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               .getCompressionTypes()
               .add(compressionTypes.toArray(new CompressionType[0]));
           validatingSchema.getIsAlignedList().add(isAligned);
+
+          seriesCnt += measurements.size();
           currDevice = device;
           currMeasurement = measurement;
           measurements.clear();
@@ -484,7 +492,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
 
     try {
-      ValidatingSchema validatingSchema = extractValidatingSchema(pieceNode);
       SESSION_MANAGER.registerSession(session);
       SESSION_MANAGER.supplySession(
           session, req.getUsername(), ZoneId.systemDefault().getId(), ClientVersion.V_1_0);
@@ -496,11 +503,20 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               SESSION_MANAGER.getSessionInfo(session),
               DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT,
               DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT);
-      SchemaValidator.validate(schemaFetcher, validatingSchema, queryContext);
+
+      int totalSchemaCnt = 0;
+      long startTime = System.currentTimeMillis();
+      Iterator<TsFileData> iterator = pieceNode.getAllTsFileData().iterator();
+      while (iterator.hasNext()) {
+        ValidatingSchema validatingSchema = extractValidatingSchema(iterator);
+        SchemaValidator.validate(schemaFetcher, validatingSchema, queryContext);
+        totalSchemaCnt += validatingSchema.size();
+      }
       LOGGER.info(
-          "Registered {} series for a piece node of size {}",
-          validatingSchema.size(),
-          pieceNode.getDataSize());
+          "Registered {} series for a piece node of size {} using {}ms",
+          totalSchemaCnt,
+          pieceNode.getDataSize(),
+          System.currentTimeMillis() - startTime);
     } catch (IllegalPathException e) {
       throw new TException(e);
     }

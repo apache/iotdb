@@ -370,7 +370,7 @@ public class ClusteringMeasurementSplitter implements PieceNodeSplitter {
       if (data.isAligned()) {
         AlignedChunkData alignedChunkData = (AlignedChunkData) data;
         chunkHeader = alignedChunkData.getChunkHeaderList().get(0);
-        if (!alignedChunkData.getChunkList().isEmpty()) {
+        if (alignedChunkData.getChunkList() != null && !alignedChunkData.getChunkList().isEmpty()) {
           chunk = alignedChunkData.getChunkList().get(0);
           ByteBuffer buffer = chunk.getData();
           int sampleLength = Math.min(dataSampleLength, buffer.remaining());
