@@ -173,8 +173,6 @@ public class PipeTsFileResource implements AutoCloseable {
           hardlinkOrCopiedFile.getPath());
       return false;
     }
-    allocatedMemoryBlock.close();
-    allocatedMemoryBlock = null;
 
     long memoryRequiredInBytes = 0L;
     try (TsFileSequenceReader sequenceReader =
@@ -194,6 +192,9 @@ public class PipeTsFileResource implements AutoCloseable {
       measurementDataTypeMap = sequenceReader.getFullPathDataTypeMap();
       memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfStr2TSDataType(measurementDataTypeMap);
     }
+    // Release memory of TsFileSequenceReader.
+    allocatedMemoryBlock.close();
+    allocatedMemoryBlock = null;
 
     // Allocate again for the cached objects.
     allocatedMemoryBlock =
