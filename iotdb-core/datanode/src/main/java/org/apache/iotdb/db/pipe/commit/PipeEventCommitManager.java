@@ -78,7 +78,7 @@ public class PipeEventCommitManager {
    * Assign a commit id and a key for commit. Make sure {@code EnrichedEvent.pipeName} is set before
    * calling this.
    */
-  public void enrichWithCommitIdAndCommitterKey(EnrichedEvent event, int dataRegionId) {
+  public void enrichWithCommitterKeyAndCommitId(EnrichedEvent event, int dataRegionId) {
     if (event == null || event instanceof PipeHeartbeatEvent || event.getPipeName() == null) {
       return;
     }

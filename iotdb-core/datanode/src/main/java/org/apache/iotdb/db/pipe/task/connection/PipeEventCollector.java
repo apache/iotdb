@@ -51,7 +51,7 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
 
       // Assign a commit id for this event in order to report progress in order.
       PipeEventCommitManager.getInstance()
-          .enrichWithCommitIdAndCommitterKey((EnrichedEvent) event, dataRegionId);
+          .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, dataRegionId);
     }
     if (event instanceof PipeHeartbeatEvent) {
       ((PipeHeartbeatEvent) event).recordBufferQueueSize(bufferQueue);

@@ -53,13 +53,13 @@ public class PipeConnectorSubtaskManager {
       PipeConnectorSubtaskExecutor executor,
       PipeParameters pipeConnectorParameters,
       PipeTaskConnectorRuntimeEnvironment environment) {
-    // Convert the value of `CONNECTOR_KEY` or `SINK_KEY` to lowercase for matching in
-    // `CONNECTOR_CONSTRUCTORS`
     final String connectorKey =
         pipeConnectorParameters
             .getStringOrDefault(
                 Arrays.asList(PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
                 BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())
+            // Convert the value of `CONNECTOR_KEY` or `SINK_KEY` to lowercase
+            // for matching in `CONNECTOR_CONSTRUCTORS`
             .toLowerCase();
     PipeEventCommitManager.getInstance()
         .register(environment.getPipeName(), environment.getRegionId(), connectorKey);

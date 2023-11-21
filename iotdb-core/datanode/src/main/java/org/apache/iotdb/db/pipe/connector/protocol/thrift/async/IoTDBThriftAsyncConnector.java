@@ -479,8 +479,9 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
    */
   public synchronized void discardEventsOfPipe(String pipeNameToDrop) {
     retryEventQueue.removeIf(
-        o ->
-            o instanceof EnrichedEvent && ((EnrichedEvent) o).getPipeName().equals(pipeNameToDrop));
+        event ->
+            event instanceof EnrichedEvent
+                && pipeNameToDrop.equals(((EnrichedEvent) event).getPipeName()));
   }
 
   @Override

@@ -80,7 +80,9 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
     if (aliveTaskCount <= 0) {
       throw new IllegalStateException("aliveTaskCount <= 0");
     }
+
     subtask.discardEventsOfPipe(pipeNameToDeregister);
+
     if (aliveTaskCount == 1) {
       close();
       // This subtask is out of life cycle, should never be used again

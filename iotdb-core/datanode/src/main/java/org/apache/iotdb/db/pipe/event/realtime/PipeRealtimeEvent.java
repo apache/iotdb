@@ -61,7 +61,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
     // pipeTaskMeta is used to report the progress of the event, the PipeRealtimeEvent
     // is only used in the realtime event extractor, which does not need to report the progress
     // of the event, so the pipeTaskMeta is always null.
-    super(event.getPipeName(), pipeTaskMeta, pattern);
+    super(event != null ? event.getPipeName() : null, pipeTaskMeta, pattern);
 
     this.event = event;
     this.tsFileEpoch = tsFileEpoch;

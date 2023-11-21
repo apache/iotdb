@@ -338,8 +338,9 @@ public class PipeConnectorSubtask extends PipeSubtask {
    * its queued events in the output pipe connector.
    */
   public void discardEventsOfPipe(String pipeNameToDrop) {
-    if (outputPipeConnector instanceof IoTDBThriftAsyncConnector)
+    if (outputPipeConnector instanceof IoTDBThriftAsyncConnector) {
       ((IoTDBThriftAsyncConnector) outputPipeConnector).discardEventsOfPipe(pipeNameToDrop);
+    }
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////
