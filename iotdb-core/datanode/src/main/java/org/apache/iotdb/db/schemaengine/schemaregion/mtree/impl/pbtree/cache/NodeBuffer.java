@@ -67,6 +67,11 @@ public class NodeBuffer implements INodeBuffer {
     remove(node.getCacheEntry());
   }
 
+  @Override
+  public void addBackToBufferAfterFlushFailure(ICachedMNode subTreeRoot) {
+    put(subTreeRoot.getCacheEntry(), subTreeRoot);
+  }
+
   /**
    * look for the first none volatile ancestor of this node and add it to nodeBuffer. Through this
    * the volatile subtree the given node belong to will be record in nodeBuffer.
@@ -88,8 +93,7 @@ public class NodeBuffer implements INodeBuffer {
     }
   }
 
-  @Override
-  public void put(CacheEntry cacheEntry, ICachedMNode node) {
+  private void put(CacheEntry cacheEntry, ICachedMNode node) {
     maps[getLoc(cacheEntry)].put(cacheEntry, node);
     if (!currentIteratorMap.isEmpty()) {
       for (NodeBufferIterator nodeBufferIterator : currentIteratorMap.values()) {

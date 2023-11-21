@@ -345,7 +345,7 @@ public abstract class CacheManager implements ICacheManager {
 
   @Override
   public void updateCacheStatusAfterFlushFailure(ICachedMNode subtreeRoot) {
-    nodeBuffer.put(getCacheEntry(subtreeRoot), subtreeRoot);
+    nodeBuffer.addBackToBufferAfterFlushFailure(subtreeRoot);
   }
 
   /**

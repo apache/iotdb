@@ -34,7 +34,7 @@ public interface INodeBuffer {
 
   void addUpdatedNodeToBuffer(ICachedMNode node);
 
-  void put(CacheEntry cacheEntry, ICachedMNode node);
+  void addBackToBufferAfterFlushFailure(ICachedMNode subTreeRoot);
 
   void remove(CacheEntry cacheEntry);
 
