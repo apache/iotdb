@@ -2147,25 +2147,20 @@ public class DataRegion implements IDataRegionForQuery {
       trySubmitCount += executeInsertionCompaction(timePartitions);
       summary.incrementSubmitTaskNum(CompactionTaskType.INSERTION, trySubmitCount);
     }
-    if (summary.getSubmitInsertionCrossSpaceCompactionTaskNum() > 0) {
-      // the name of this variable is trySubmitCount, because the task submitted to the queue could
-      // be
-      // evicted due to the low priority of the task
-      try {
-        for (long timePartition : timePartitions) {
-          trySubmitCount +=
-              CompactionScheduler.scheduleCompaction(tsFileManager, timePartition, summary);
-        }
-      } catch (Throwable e) {
-        logger.error("Meet error in compaction schedule.", e);
+    // the name of this variable is trySubmitCount, because the task submitted to the queue could
+    // be
+    // evicted due to the low priority of the task
+    try {
+      for (long timePartition : timePartitions) {
+        trySubmitCount +=
+            CompactionScheduler.scheduleCompaction(tsFileManager, timePartition, summary);
       }
+    } catch (Throwable e) {
+      logger.error("Meet error in compaction schedule.", e);
     }
     if (summary.hasSubmitTask()) {
       logger.info(
-          "[CompactionScheduler][{}] selected sequence InnerSpaceCompactionTask num is {},"
-              + " selected unsequence InnerSpaceCompactionTask num is {},"
-              + " selected CrossSpaceCompactionTask num is {},"
-              + " selected InsertionCrossSpaceCompactionTask num is {}",
+          "[CompactionScheduler][{}] selected sequence InnerSpaceCompactionTask num is {}, selected unsequence InnerSpaceCompactionTask num is {}, selected CrossSpaceCompactionTask num is {}, selected InsertionCrossSpaceCompactionTask num is {}",
           dataRegionId,
           summary.getSubmitSeqInnerSpaceCompactionTaskNum(),
           summary.getSubmitUnseqInnerSpaceCompactionTaskNum(),
