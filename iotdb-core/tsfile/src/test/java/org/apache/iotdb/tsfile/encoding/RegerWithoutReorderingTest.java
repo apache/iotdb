@@ -10,6 +10,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Objects;
 
 public class RegerWithoutReorderingTest {
@@ -664,7 +665,10 @@ public class RegerWithoutReorderingTest {
     pos_encode += 4;
 
     pos_encode = encodeRLEBitWidth2Bytes(bit_width_segments, pos_encode, encoded_result);
-    //        System.out.println("encodeRLEBitWidth2Bytes pos_encode:"+pos_encode);
+//    System.out.println(Arrays.deepToString(bit_width_segments));
+//    System.out.println("theta:"+ Arrays.toString(theta));
+//    System.out.println(pos_encode);
+//    System.out.println("encodeRLEBitWidth2Bytes:"+ Arrays.deepToString(bit_width_segments));
     for (int segment_i = 0; segment_i < segment_n; segment_i++) {
       int bit_width_time = bit_width_segments[segment_i][0];
       int bit_width_value = bit_width_segments[segment_i][1];
@@ -732,8 +736,10 @@ public class RegerWithoutReorderingTest {
 
     ts_block_delta_time = getEncodeBitsRegression(ts_block, block_size, time_length, theta_time);
     bit_width_segments_time = segmentBitPacking(ts_block_delta_time, block_size, segment_size);
-    time_length[0] =
-        numberOfEncodeSegment2Bytes(ts_block_delta_time, bit_width_segments_time, segment_size);
+//    System.out.println(Arrays.toString(time_length));
+    //    System.out.println(Arrays.deepToString(ts_block));
+//    time_length[0] =
+//        numberOfEncodeSegment2Bytes(ts_block_delta_time, bit_width_segments_time, segment_size);
 
     encode_pos =
         encodeSegment2Bytes(
@@ -745,6 +751,7 @@ public class RegerWithoutReorderingTest {
             encode_pos,
             cur_byte);
 
+//    System.out.println(encode_pos);
     return encode_pos;
   }
 
@@ -767,7 +774,8 @@ public class RegerWithoutReorderingTest {
     int remaining_length = length_all - block_num * block_size;
 
     for (int i = 0; i < block_num; i++) {
-      encode_pos =
+//    for (int i = 44; i < 45; i++) {
+    encode_pos =
           REGERBlockEncoder(data, i, block_size, 0, segment_size, encode_pos, encoded_result);
       //            System.out.println(encode_pos);
     }
@@ -975,7 +983,7 @@ public class RegerWithoutReorderingTest {
 
     for (String value : dataset_name) {
       input_path_list.add(input_parent_dir + value);
-      dataset_block_size.add(1024);
+      dataset_block_size.add(512);
     }
 
     output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
@@ -1006,8 +1014,8 @@ public class RegerWithoutReorderingTest {
     output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv"); // 11
     //        dataset_block_size.add(256);
 
-    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
-      //        for (int file_i = 9; file_i < 10; file_i++) {
+//    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+              for (int file_i = 2; file_i < 3; file_i++) {
       String inputPath = input_path_list.get(file_i);
       String Output = output_path_list.get(file_i);
 
@@ -1030,6 +1038,7 @@ public class RegerWithoutReorderingTest {
       assert tempList != null;
 
       for (File f : tempList) {
+//        f = tempList[2];
         System.out.println(f);
         InputStream inputStream = Files.newInputStream(f.toPath());
         CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
@@ -1053,7 +1062,7 @@ public class RegerWithoutReorderingTest {
           data2_arr[i][0] = data.get(i).get(0) - min_time;
           data2_arr[i][1] = data.get(i).get(1);
         }
-        System.out.println(data2_arr[0][0]);
+//        System.out.println(data2_arr[0][0]);
         byte[] encoded_result = new byte[data2_arr.length * 8];
         long encodeTime = 0;
         long decodeTime = 0;
@@ -1088,7 +1097,7 @@ public class RegerWithoutReorderingTest {
         writer.writeRecord(record);
         System.out.println(ratio);
 
-        //                break;
+                        break;
       }
       writer.close();
     }
@@ -1150,7 +1159,9 @@ public class RegerWithoutReorderingTest {
     output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv"); // 11
     //        dataset_block_size.add(512);
 
-    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+    int[] file_lists = {0,2,11};
+    for (int file_i : file_lists) {
+//    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
       //        for (int file_i = 9; file_i < 10; file_i++) {
       String inputPath = input_path_list.get(file_i);
       String Output = output_path_list.get(file_i);
@@ -1198,7 +1209,7 @@ public class RegerWithoutReorderingTest {
           data2_arr[i][0] = data.get(i).get(0) - min_time;
           data2_arr[i][1] = data.get(i).get(1);
         }
-        System.out.println(data2_arr[0][0]);
+//        System.out.println(data2_arr[0][0]);
         //                for (int block_size_exp = 13; block_size_exp >= 12; block_size_exp--) {
         for (int block_size_exp = 13; block_size_exp >= 4; block_size_exp--) {
           int block_size = (int) Math.pow(2, block_size_exp);

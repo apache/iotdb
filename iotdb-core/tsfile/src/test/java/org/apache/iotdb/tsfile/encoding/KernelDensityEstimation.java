@@ -7,7 +7,7 @@ import java.util.Map;
 public class KernelDensityEstimation {
         public static void main(String[] args) {
                 // 第一个整数（正数）
-                int int1 = -12345;
+                int int1 = -1;
                 // 第二个整数（负数）
                 int int2 = -67890;
 

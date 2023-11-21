@@ -1368,10 +1368,10 @@ public class RegerPFloatTest {
     pos_encode += 4;
     int2Bytes(delta_segments[0][1], pos_encode, encoded_result);
     pos_encode += 4;
-    float2bytes(theta[0] + raw_length[3], pos_encode, encoded_result);
-    pos_encode += 4;
-    float2bytes(theta[1] + raw_length[4], pos_encode, encoded_result);
-    pos_encode += 4;
+//    float2bytes(theta[0] + raw_length[3], pos_encode, encoded_result);
+//    pos_encode += 4;
+//    float2bytes(theta[1] + raw_length[4], pos_encode, encoded_result);
+//    pos_encode += 4;
 
 //    for (int i = 2; i < theta.length; i++) {
 //      float2bytes(theta[i], pos_encode, encoded_result);
@@ -2523,9 +2523,9 @@ public class RegerPFloatTest {
     //        dataset_block_size.add(512);
 
     // 0 2 6 7
-    int[] file_lists = {0,2,6,7};
-    for (int file_i : file_lists) {
-//    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+//    int[] file_lists = {0,2,6,7};
+//    for (int file_i : file_lists) {
+    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 //              for (int file_i = 0; file_i < 1; file_i++) {
 //
       String inputPath = input_path_list.get(file_i);
@@ -2583,7 +2583,7 @@ public class RegerPFloatTest {
             data2_arr[i][0] = data.get(i).get(0) - min_time;
             data2_arr[i][1] = data.get(i).get(1);
           }
-          System.out.println(data2_arr[0][0]);
+//          System.out.println(data2_arr[0][0]);
           byte[] encoded_result = new byte[data2_arr.length * 8];
 
           long encodeTime = 0;
