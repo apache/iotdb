@@ -254,7 +254,7 @@ public class PartitionCache {
                           userName, PrivilegeType.MANAGE_DATABASE.ordinal()),
                       PrivilegeType.MANAGE_DATABASE);
               if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                throw new RuntimeException(
+                throw new IllegalStateException(
                     new IoTDBException(status.getMessage(), status.getCode()));
               }
             }
@@ -264,7 +264,8 @@ public class PartitionCache {
           TDatabaseSchema storageGroupSchema = new TDatabaseSchema();
           storageGroupSchema.setName(storageGroupName);
           TSStatus tsStatus = client.setDatabase(storageGroupSchema);
-          if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
+          if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
+              || TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()) {
             successFullyCreatedStorageGroup.add(storageGroupName);
           } else {
             // try to update cache by databases successfully created
@@ -273,7 +274,7 @@ public class PartitionCache {
                 "[{} Cache] failed to create database {}",
                 CacheMetrics.STORAGE_GROUP_CACHE_NAME,
                 storageGroupName);
-            throw new RuntimeException(new IoTDBException(tsStatus.message, tsStatus.code));
+            throw new IllegalStateException(new IoTDBException(tsStatus.message, tsStatus.code));
           }
         }
         // try to update database cache when all databases has already been created
