@@ -61,10 +61,12 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
     if (aliveTaskCount < 0) {
       throw new IllegalStateException("aliveTaskCount < 0");
     }
+
     if (aliveTaskCount == 0) {
       executor.register(subtask);
       runningTaskCount = 0;
     }
+
     aliveTaskCount++;
     LOGGER.info(
         "Register subtask {}. runningTaskCount: {}, aliveTaskCount: {}",
@@ -93,15 +95,15 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
     subtask.discardEventsOfPipe(pipeNameToDeregister);
 
     try {
-      if (aliveTaskCount == 1) {
-        close();
-        // This subtask is out of life cycle, should never be used again
-        return true;
+      if (aliveTaskCount > 1) {
+        return false;
       }
 
-      aliveTaskCount--;
-      return false;
+      close();
+      // This subtask is out of life cycle, should never be used again
+      return true;
     } finally {
+      aliveTaskCount--;
       LOGGER.info(
           "Deregister subtask {}. runningTaskCount: {}, aliveTaskCount: {}",
           subtask,
@@ -114,9 +116,11 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
     if (runningTaskCount < 0) {
       throw new IllegalStateException("runningTaskCount < 0");
     }
+
     if (runningTaskCount == 0) {
       executor.start(subtask.getTaskID());
     }
+
     runningTaskCount++;
     LOGGER.info(
         "Start subtask {}. runningTaskCount: {}, aliveTaskCount: {}",
@@ -129,9 +133,11 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
     if (runningTaskCount <= 0) {
       throw new IllegalStateException("runningTaskCount <= 0");
     }
+
     if (runningTaskCount == 1) {
       executor.stop(subtask.getTaskID());
     }
+
     runningTaskCount--;
     LOGGER.info(
         "Stop subtask {}. runningTaskCount: {}, aliveTaskCount: {}",
