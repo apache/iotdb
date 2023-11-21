@@ -42,16 +42,18 @@ public class PipeEventCommitManager {
 
     final String committerKey = generateCommitterKey(pipeName, dataRegionId);
     if (eventCommitterMap.containsKey(committerKey)) {
-      LOGGER.warn("Pipe with same name is already registered, overwriting: {}", committerKey);
+      LOGGER.warn(
+          "Pipe with same name is already registered on this data region, overwriting: {}",
+          committerKey);
     }
     eventCommitterMap.put(committerKey, new PipeEventCommitter());
-    LOGGER.info("Pipe committer registered for pipe: {}", committerKey);
+    LOGGER.info("Pipe committer registered for pipe on data region: {}", committerKey);
   }
 
   public void deregister(String pipeName, int dataRegionId) {
     final String committerKey = generateCommitterKey(pipeName, dataRegionId);
     eventCommitterMap.remove(committerKey);
-    LOGGER.info("Pipe committer deregistered for pipe: {}", committerKey);
+    LOGGER.info("Pipe committer deregistered for pipe on data region: {}", committerKey);
   }
 
   /**
