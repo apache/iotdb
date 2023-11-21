@@ -497,6 +497,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT,
               DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT);
       SchemaValidator.validate(schemaFetcher, validatingSchema, queryContext);
+      LOGGER.info(
+          "Registered {} series for a piece node of size {}",
+          validatingSchema.size(),
+          pieceNode.getDataSize());
     } catch (IllegalPathException e) {
       throw new TException(e);
     }

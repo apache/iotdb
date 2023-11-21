@@ -154,7 +154,7 @@ public class TsFileSplitSender {
   private boolean firstPhase(LoadTsFileNode node) throws IOException {
     long start = System.currentTimeMillis();
     TsFileDataManager tsFileDataManager =
-        new DeviceBatchTsFileDataManager(
+        new TsFileDataManager(
             this::dispatchOnePieceNode,
             node.getPlanNodeId(),
             node.lastResource().getTsFile(),

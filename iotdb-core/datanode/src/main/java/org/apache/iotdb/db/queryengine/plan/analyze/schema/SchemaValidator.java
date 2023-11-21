@@ -129,5 +129,13 @@ public class SchemaValidator {
     public List<Boolean> getIsAlignedList() {
       return isAlignedList;
     }
+
+    public int size() {
+      int cnt = 0;
+      for (String[] measurement : measurements) {
+        cnt += measurement.length;
+      }
+      return cnt;
+    }
   }
 }

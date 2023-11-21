@@ -267,7 +267,7 @@ public class MergedTsFileSplitter {
       offset2ChunkMetadata = new HashMap<>();
       getChunkMetadata(reader, offset2ChunkMetadata);
 
-      nextSplits = new LinkedBlockingDeque<>(64);
+      nextSplits = new LinkedBlockingDeque<>(256);
       if (asyncExecutor != null) {
         asyncTask =
             asyncExecutor.submit(
@@ -676,7 +676,15 @@ public class MergedTsFileSplitter {
         offset2Deletions
             .pollFirstEntry()
             .getValue()
-            .forEach(o -> nextSplits.add(new DeletionData(o)));
+            .forEach(
+                o -> {
+                  try {
+                    nextSplits.put(new DeletionData(o));
+                  } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(e);
+                  }
+                });
       }
     }
 

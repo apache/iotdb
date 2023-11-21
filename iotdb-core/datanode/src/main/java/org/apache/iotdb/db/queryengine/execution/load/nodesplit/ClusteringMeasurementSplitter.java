@@ -74,7 +74,7 @@ public class ClusteringMeasurementSplitter implements PieceNodeSplitter {
     if (pieceNode.isHasModification()) {
       // the order of modifications should be preserved, so with modifications clustering cannot be
       // used
-      return new OrderedMeasurementSplitter().split(pieceNode);
+      return new SingletonSplitter().split(pieceNode);
     }
 
     // split by measurement first
