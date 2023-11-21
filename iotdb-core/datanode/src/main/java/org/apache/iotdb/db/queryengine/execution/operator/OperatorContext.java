@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
@@ -28,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import io.airlift.units.Duration;
 
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Contains information about {@link Operator} execution.
@@ -36,12 +38,16 @@ import java.util.Objects;
  */
 public class OperatorContext {
 
+  private static Duration maxRunTime =
+      new Duration(
+          IoTDBDescriptor.getInstance().getConfig().getDriverTaskExecutionTimeSliceInMs(),
+          TimeUnit.MILLISECONDS);
+
   private final int operatorId;
   // It seems it's never used.
   private final PlanNodeId planNodeId;
   private final String operatorType;
   private DriverContext driverContext;
-  private Duration maxRunTime;
 
   private long totalExecutionTimeInNanos = 0L;
   private long nextCalledCount = 0L;
@@ -90,8 +96,8 @@ public class OperatorContext {
     return maxRunTime;
   }
 
-  public void setMaxRunTime(Duration maxRunTime) {
-    this.maxRunTime = maxRunTime;
+  public static void setMaxRunTime(Duration maxRunTime) {
+    OperatorContext.maxRunTime = maxRunTime;
   }
 
   public SessionInfo getSessionInfo() {
