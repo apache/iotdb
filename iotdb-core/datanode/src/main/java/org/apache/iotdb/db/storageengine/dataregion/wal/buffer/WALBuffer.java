@@ -646,6 +646,7 @@ public class WALBuffer extends AbstractWALBuffer {
         logger.error("Fail to close wal node-{}'s log writer.", identifier, e);
       }
     }
+    checkpointManager.close();
 
     if (workingBuffer != null) {
       MmapUtil.clean((MappedByteBuffer) workingBuffer);

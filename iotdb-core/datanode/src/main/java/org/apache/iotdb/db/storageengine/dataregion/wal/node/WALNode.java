@@ -919,7 +919,6 @@ public class WALNode implements IWALNode {
   @Override
   public void close() {
     buffer.close();
-    checkpointManager.close();
   }
 
   public String getIdentifier() {
