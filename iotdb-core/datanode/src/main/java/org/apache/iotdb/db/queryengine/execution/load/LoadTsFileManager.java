@@ -204,7 +204,11 @@ public class LoadTsFileManager {
   }
 
   private void forceCloseWriterManager(String uuid) {
-    uuid2WriterManager.get(uuid).close();
+    TsFileWriterManager tsFileWriterManager = uuid2WriterManager.get(uuid);
+    if (tsFileWriterManager == null) {
+      return;
+    }
+    tsFileWriterManager.close();
     uuid2WriterManager.remove(uuid);
     uuid2Future.remove(uuid);
 
