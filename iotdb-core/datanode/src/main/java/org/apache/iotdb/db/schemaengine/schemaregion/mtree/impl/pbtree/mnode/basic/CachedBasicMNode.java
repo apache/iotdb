@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.CacheEntry;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.StampedWriterPreferredLock;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockEntry;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.CachedMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.info.CacheMNodeInfo;
@@ -169,7 +169,7 @@ public class CachedBasicMNode implements ICachedMNode {
   public void moveDataToNewMNode(ICachedMNode newMNode) {
     newMNode.setParent(parent);
     newMNode.setCacheEntry(getCacheEntry());
-    newMNode.setLock(getLock());
+    newMNode.setLockEntry(getLockEntry());
   }
 
   @Override
@@ -236,13 +236,13 @@ public class CachedBasicMNode implements ICachedMNode {
   }
 
   @Override
-  public StampedWriterPreferredLock getLock() {
-    return cacheMNodeInfo.getLock();
+  public LockEntry getLockEntry() {
+    return cacheMNodeInfo.getLockEntry();
   }
 
   @Override
-  public void setLock(StampedWriterPreferredLock lock) {
-    cacheMNodeInfo.setLock(lock);
+  public void setLockEntry(LockEntry lockEntry) {
+    cacheMNodeInfo.setLock(lockEntry);
   }
 
   /**

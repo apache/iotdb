@@ -19,56 +19,80 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock;
 
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
 public class SimpleWriterPreferredLock {
+
+  private final Lock lock = new ReentrantLock();
+  private final Condition okToRead = lock.newCondition();
+  private final Condition okToWrite = lock.newCondition();
 
   private volatile int readCount = 0;
   private volatile int readWait = 0;
   private volatile int writeCount = 0;
   private volatile int writeWait = 0;
 
-  private final Object readLock = new Object();
-
-  private final Object writeLock = new Object();
-
-  public synchronized void readLock() {
-    readWait++;
-    while (writeCount > 0 || writeWait > 0) {
-      try {
-        readLock.wait();
-      } catch (InterruptedException e) {
-        throw new RuntimeException(e);
+  public void readLock() {
+    lock.lock();
+    try {
+      readWait++;
+      while (writeCount > 0 || writeWait > 0) {
+        try {
+          okToRead.wait();
+        } catch (InterruptedException e) {
+          throw new RuntimeException(e);
+        }
       }
-    }
-    readWait--;
-    readCount++;
-  }
-
-  public synchronized void readUnlock() {
-    readCount--;
-    if (readCount == 0 && writeWait > 0) {
-      writeLock.notify();
+      readWait--;
+      readCount++;
+    } finally {
+      lock.unlock();
     }
   }
 
-  public synchronized void writeLock() {
-    writeWait++;
-    while (readCount > 0) {
-      try {
-        writeLock.wait();
-      } catch (InterruptedException e) {
-        throw new RuntimeException(e);
+  public void readUnlock() {
+    lock.lock();
+    try {
+      readCount--;
+      if (readCount == 0 && writeWait > 0) {
+        okToWrite.signal();
       }
+    } finally {
+      lock.unlock();
     }
-    writeWait--;
-    writeCount++;
   }
 
-  public synchronized void writeUnlock() {
-    writeCount--;
-    if (writeWait > 0) {
-      writeLock.notify();
-    } else if (readWait > 0) {
-      readLock.notifyAll();
+  public void writeLock() {
+    lock.lock();
+    try {
+      writeWait++;
+      while (readCount > 0) {
+        try {
+          okToWrite.await();
+        } catch (InterruptedException e) {
+          throw new RuntimeException(e);
+        }
+      }
+      writeWait--;
+      writeCount++;
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  public void writeUnlock() {
+    lock.lock();
+    try {
+      writeCount--;
+      if (writeWait > 0) {
+        okToWrite.signal();
+      } else if (readWait > 0) {
+        okToRead.signalAll();
+      }
+    } finally {
+      lock.unlock();
     }
   }
 }

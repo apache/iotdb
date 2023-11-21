@@ -23,6 +23,8 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICa
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
 public class LockManager {
 
@@ -32,67 +34,67 @@ public class LockManager {
 
   public long stampedReadLock(ICachedMNode node) {
     readWriteLock.readLock();
-    return getMNodeLock(node).stampedReadLock();
+    AtomicLong stamp = new AtomicLong();
+    takeMNodeLock(node, lock -> stamp.set(lock.stampedReadLock()));
+    return stamp.get();
   }
 
   public void stampedReadUnlock(ICachedMNode node, long stamp) {
-    getMNodeLock(node).stampedReadUnlock(stamp);
-    checkAndReleaseMNodeLock(node);
+    checkAndReleaseMNodeLock(node, lock -> lock.stampedReadUnlock(stamp));
     readWriteLock.readUnlock();
   }
 
   public void threadReadLock(ICachedMNode node) {
     readWriteLock.readLock();
-    getMNodeLock(node).threadReadLock();
+    takeMNodeLock(node, StampedWriterPreferredLock::threadReadLock);
   }
 
   public void threadReadLock(ICachedMNode node, boolean prior) {
     readWriteLock.readLock();
-    getMNodeLock(node).threadReadLock(prior);
+    takeMNodeLock(node, lock -> lock.threadReadLock(prior));
   }
 
   public void threadReadUnlock(ICachedMNode node) {
-    node.getLock().threadReadUnlock();
-    checkAndReleaseMNodeLock(node);
+    checkAndReleaseMNodeLock(node, StampedWriterPreferredLock::threadReadUnlock);
     readWriteLock.readUnlock();
   }
 
   public void writeLock(ICachedMNode node) {
     readWriteLock.readLock();
-    getMNodeLock(node).writeLock();
+    takeMNodeLock(node, StampedWriterPreferredLock::writeLock);
   }
 
   public void writeUnlock(ICachedMNode node) {
-    node.getLock().writeUnlock();
-    checkAndReleaseMNodeLock(node);
+    checkAndReleaseMNodeLock(node, StampedWriterPreferredLock::writeUnlock);
     readWriteLock.readUnlock();
   }
 
-  private StampedWriterPreferredLock getMNodeLock(ICachedMNode node) {
-    StampedWriterPreferredLock lock = node.getLock();
-    if (lock == null) {
-      synchronized (this) {
-        lock = node.getLock();
-        if (lock == null) {
-          lock = lockPool.borrowLock();
-          node.setLock(lock);
-        }
+  private void takeMNodeLock(
+      ICachedMNode node, Consumer<StampedWriterPreferredLock> lockOperation) {
+    LockEntry lockEntry;
+    synchronized (this) {
+      lockEntry = node.getLockEntry();
+      if (lockEntry == null) {
+        lockEntry = lockPool.borrowLock();
+        node.setLockEntry(lockEntry);
       }
+      lockEntry.pin();
     }
-    return lock;
+    lockOperation.accept(lockEntry.getLock());
+    lockEntry.unpin();
   }
 
-  private void checkAndReleaseMNodeLock(ICachedMNode node) {
-    StampedWriterPreferredLock lock = node.getLock();
-    if (!lock.isFree()) {
-      return;
-    }
+  private void checkAndReleaseMNodeLock(
+      ICachedMNode node, Consumer<StampedWriterPreferredLock> unLockOperation) {
     synchronized (this) {
-      if (lock.isFree()) {
-        node.setLock(null);
+      LockEntry lockEntry = node.getLockEntry();
+      StampedWriterPreferredLock lock = lockEntry.getLock();
+      unLockOperation.accept(lock);
+      if (lock.isFree() && !lockEntry.isPinned()) {
+        node.setLockEntry(null);
+        lockPool.returnLock(lockEntry);
       }
     }
-    lockPool.returnLock(lock);
   }
 
   public void globalWriteLock() {
@@ -106,30 +108,30 @@ public class LockManager {
   private static class LockPool {
     private static final int LOCK_POOL_CAPACITY = 400;
 
-    private final List<StampedWriterPreferredLock> lockList = new LinkedList<>();
+    private final List<LockEntry> lockList = new LinkedList<>();
 
     private LockPool() {
       for (int i = 0; i < LOCK_POOL_CAPACITY; i++) {
-        lockList.add(new StampedWriterPreferredLock());
+        lockList.add(new LockEntry());
       }
     }
 
-    private StampedWriterPreferredLock borrowLock() {
+    private LockEntry borrowLock() {
       synchronized (lockList) {
         if (lockList.isEmpty()) {
-          return new StampedWriterPreferredLock();
+          return new LockEntry();
         } else {
           return lockList.remove(0);
         }
       }
     }
 
-    private void returnLock(StampedWriterPreferredLock lock) {
+    private void returnLock(LockEntry lockEntry) {
       synchronized (lockList) {
         if (lockList.size() == LOCK_POOL_CAPACITY) {
           return;
         }
-        lockList.add(0, lock);
+        lockList.add(0, lockEntry);
       }
     }
   }
