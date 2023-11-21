@@ -140,17 +140,11 @@ public class TemplatedAnalyze {
       return false;
     }
 
-    long startTime = System.currentTimeMillis();
     analyzeSelect(queryStatement, analysis, outputExpressions, template);
-    LOGGER.warn("--- [analyzeSelect] : {}ms", System.currentTimeMillis() - startTime);
 
     List<PartialPath> deviceList = analyzeFrom(queryStatement, schemaTree);
-    LOGGER.warn("--- [analyzeFrom] : {}ms", System.currentTimeMillis() - startTime);
-    startTime = System.currentTimeMillis();
 
     analyzeDeviceToWhere(analysis, queryStatement, schemaTree, deviceList);
-    LOGGER.warn("--- [analyzeDeviceToWhere] : {}ms", System.currentTimeMillis() - startTime);
-    startTime = System.currentTimeMillis();
 
     if (deviceList.isEmpty()) {
       analysis.setFinishQueryAfterAnalyze(true);
@@ -162,27 +156,16 @@ public class TemplatedAnalyze {
     analyzeDeviceToSourceTransform(analysis);
     analyzeDeviceToSource(analysis);
 
-    LOGGER.warn(
-        "--- [analyzeDeviceToSource + analyzeDeviceToSourceTransform] : {}ms",
-        System.currentTimeMillis() - startTime);
-    startTime = System.currentTimeMillis();
-
     analyzeDeviceViewOutput(analysis, queryStatement);
     analyzeDeviceViewInput(analysis);
-
-    LOGGER.warn("--- [analyzeDeviceView] : {}ms", System.currentTimeMillis() - startTime);
-    startTime = System.currentTimeMillis();
 
     analyzeFill(analysis, queryStatement);
 
     // generate result set header according to output expressions
     analyzeOutput(analysis, queryStatement, outputExpressions);
-    LOGGER.warn("--- [analyzeOutput] : {}ms", System.currentTimeMillis() - startTime);
-    startTime = System.currentTimeMillis();
 
     // fetch partition information
     analyzeDataPartition(analysis, schemaTree, partitionFetcher);
-    LOGGER.warn("--- [analyzeDataPartition] : {}ms", System.currentTimeMillis() - startTime);
     return true;
   }
 
