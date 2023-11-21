@@ -23,50 +23,49 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICa
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class LockManager {
 
   private final LockPool lockPool = new LockPool();
 
-  private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
+  private final SimpleWriterPreferredLock readWriteLock = new SimpleWriterPreferredLock();
 
   public long stampedReadLock(ICachedMNode node) {
-    readWriteLock.readLock().lock();
+    readWriteLock.readLock();
     return getMNodeLock(node).stampedReadLock();
   }
 
   public void stampedReadUnlock(ICachedMNode node, long stamp) {
     getMNodeLock(node).stampedReadUnlock(stamp);
     checkAndReleaseMNodeLock(node);
-    readWriteLock.readLock().unlock();
+    readWriteLock.readUnlock();
   }
 
   public void threadReadLock(ICachedMNode node) {
-    readWriteLock.readLock().lock();
+    readWriteLock.readLock();
     getMNodeLock(node).threadReadLock();
   }
 
   public void threadReadLock(ICachedMNode node, boolean prior) {
-    readWriteLock.readLock().lock();
+    readWriteLock.readLock();
     getMNodeLock(node).threadReadLock(prior);
   }
 
   public void threadReadUnlock(ICachedMNode node) {
     node.getLock().threadReadUnlock();
     checkAndReleaseMNodeLock(node);
-    readWriteLock.readLock().unlock();
+    readWriteLock.readUnlock();
   }
 
   public void writeLock(ICachedMNode node) {
-    readWriteLock.readLock().lock();
+    readWriteLock.readLock();
     getMNodeLock(node).writeLock();
   }
 
   public void writeUnlock(ICachedMNode node) {
     node.getLock().writeUnlock();
     checkAndReleaseMNodeLock(node);
-    readWriteLock.readLock().unlock();
+    readWriteLock.readUnlock();
   }
 
   private StampedWriterPreferredLock getMNodeLock(ICachedMNode node) {
@@ -97,11 +96,11 @@ public class LockManager {
   }
 
   public void globalWriteLock() {
-    readWriteLock.writeLock().lock();
+    readWriteLock.writeLock();
   }
 
   public void globalWriteUnlock() {
-    readWriteLock.writeLock().unlock();
+    readWriteLock.writeUnlock();
   }
 
   private static class LockPool {
