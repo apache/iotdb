@@ -445,6 +445,11 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
             "IoTDBThriftAsyncConnector does not support transfer generic event: {}.", event);
       }
 
+      if (event instanceof EnrichedEvent) {
+        ((EnrichedEvent) event)
+            .decreaseReferenceCount(IoTDBThriftAsyncConnector.class.getName(), true);
+      }
+
       retryEventQueue.poll();
     }
   }
