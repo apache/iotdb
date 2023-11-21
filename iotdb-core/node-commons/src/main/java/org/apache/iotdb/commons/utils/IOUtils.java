@@ -18,10 +18,8 @@
  */
 package org.apache.iotdb.commons.utils;
 
-import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PriPrivilegeType;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -198,6 +196,10 @@ public class IOUtils {
     }
   }
 
+  // Because pre version's privilege will stored by path + privilege
+  // This func will turn the privilege info into role's path privileges.
+  // for the global privilege, they were stored by root + privilege.
+
   public static void loadRolePrivilege(
       Role role, DataInputStream inputStream, String encoding, ThreadLocal<byte[]> strBufferLocal)
       throws IOException, IllegalPathException {
@@ -207,34 +209,18 @@ public class IOUtils {
     for (int i = 0; i < pathPriNum; i++) {
       String path = IOUtils.readString(inputStream, encoding, strBufferLocal);
       PartialPath ppath = new PartialPath(path);
-      if (role.getServiceReady()) {
-        try {
-          AuthUtils.validatePatternPath(ppath);
-        } catch (AuthException e) {
-          role.setServiceReady(false);
-        }
-      }
       PathPrivilege pathPriv = new PathPrivilege(ppath);
       int priNum = inputStream.readInt();
-      boolean isPathRelevant = false;
       for (int j = 0; j < priNum; j++) {
         PriPrivilegeType priType = PriPrivilegeType.values()[inputStream.readInt()];
         if (priType.isAccept()) {
-          for (PrivilegeType item : priType.getSubPri()) {
-            if (item.isPathRelevant()) {
-              pathPriv.grantPrivilege(item.ordinal(), false);
-              isPathRelevant = true;
-            } else {
-              role.getSysPrivilege().add(item.ordinal());
-            }
-          }
+          pathPriv.grantPrivilege(priType.ordinal(), false);
         }
       }
-      if (isPathRelevant) {
-        pathPrivilegeList.add(pathPriv);
-      }
+      pathPrivilegeList.add(pathPriv);
     }
     role.setPrivilegeList(pathPrivilegeList);
+    role.setServiceReady(false);
   }
 
   /**

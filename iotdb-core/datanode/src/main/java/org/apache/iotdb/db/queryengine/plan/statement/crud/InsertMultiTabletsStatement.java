@@ -88,6 +88,15 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
   }
 
   @Override
+  public void updateAfterSchemaValidation() {
+    for (InsertTabletStatement insertTabletStatement : insertTabletStatementList) {
+      if (!this.hasFailedMeasurements() && insertTabletStatement.hasFailedMeasurements()) {
+        this.failedMeasurementIndex2Info = insertTabletStatement.failedMeasurementIndex2Info;
+      }
+    }
+  }
+
+  @Override
   protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
     return false;
   }

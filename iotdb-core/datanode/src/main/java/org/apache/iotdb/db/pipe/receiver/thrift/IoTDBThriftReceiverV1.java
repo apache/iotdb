@@ -311,7 +311,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
       return PipeTransferFilePieceResp.toTPipeTransferResp(
           RpcUtils.SUCCESS_STATUS, writingFileWriter.length());
     } catch (Exception e) {
-      LOGGER.warn(String.format("Failed to write file piece from req %s.", req), e);
+      LOGGER.warn("Failed to write file piece from req {}.", req, e);
       final TSStatus status =
           RpcUtils.getStatus(
               TSStatusCode.PIPE_TRANSFER_FILE_ERROR,

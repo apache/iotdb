@@ -33,7 +33,6 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
@@ -177,6 +176,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ALLOWED_SCHEMA_PROPS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.DEADBAND;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.LOSS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.DEVICE;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.ENDTIME;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.PARTITION_FETCHER;
@@ -364,6 +364,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       } else {
         schemaTree = schemaFetcher.fetchSchema(concatPathRewriter.getPatternTree(), context);
       }
+      schemaTree.setAuthorityScope(queryStatement.getAuthorityScope());
 
       // make sure paths in logical view is fetched
       updateSchemaTreeByViews(analysis, schemaTree);
@@ -479,9 +480,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     boolean needToReFetch = false;
     boolean useLogicalView = false;
     try {
-      Pair<List<MeasurementPath>, Integer> tempPair =
-          originSchemaTree.searchMeasurementPaths(new PartialPath("root.**"));
-      for (MeasurementPath measurementPath : tempPair.left) {
+      for (MeasurementPath measurementPath :
+          originSchemaTree.searchMeasurementPaths(ALL_MATCH_PATTERN).left) {
         if (measurementPath.getMeasurementSchema().isLogicalView()) {
           useLogicalView = true;
           LogicalViewSchema logicalViewSchema =
@@ -2924,7 +2924,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       LogicalViewSchema logicalViewSchema;
       PartialPath sourcePathOfAliasSeries;
       for (MeasurementPath measurementPath :
-          schemaTree.searchMeasurementPaths(SchemaConstant.ALL_MATCH_PATTERN).left) {
+          schemaTree.searchMeasurementPaths(ALL_MATCH_PATTERN).left) {
         measurementSchema = measurementPath.getMeasurementSchema();
         if (measurementSchema.isLogicalView()) {
           logicalViewSchema = (LogicalViewSchema) measurementSchema;
