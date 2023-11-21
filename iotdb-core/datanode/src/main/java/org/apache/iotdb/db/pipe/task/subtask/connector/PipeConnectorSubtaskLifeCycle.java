@@ -23,7 +23,12 @@ import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.event.Event;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorSubtaskLifeCycle.class);
 
   private final PipeConnectorSubtaskExecutor executor;
   private final PipeConnectorSubtask subtask;
@@ -61,6 +66,11 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
       runningTaskCount = 0;
     }
     aliveTaskCount++;
+    LOGGER.info(
+        "Register subtask {}. runningTaskCount: {}, aliveTaskCount: {}",
+        subtask,
+        runningTaskCount,
+        aliveTaskCount);
   }
 
   /**
@@ -82,13 +92,22 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
 
     subtask.discardEventsOfPipe(pipeNameToDeregister);
 
-    if (aliveTaskCount == 1) {
-      close();
-      // This subtask is out of life cycle, should never be used again
-      return true;
+    try {
+      if (aliveTaskCount == 1) {
+        close();
+        // This subtask is out of life cycle, should never be used again
+        return true;
+      }
+
+      aliveTaskCount--;
+      return false;
+    } finally {
+      LOGGER.info(
+          "Deregister subtask {}. runningTaskCount: {}, aliveTaskCount: {}",
+          subtask,
+          runningTaskCount,
+          aliveTaskCount);
     }
-    aliveTaskCount--;
-    return false;
   }
 
   public synchronized void start() {
@@ -99,6 +118,11 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
       executor.start(subtask.getTaskID());
     }
     runningTaskCount++;
+    LOGGER.info(
+        "Start subtask {}. runningTaskCount: {}, aliveTaskCount: {}",
+        subtask,
+        runningTaskCount,
+        aliveTaskCount);
   }
 
   public synchronized void stop() {
@@ -109,6 +133,11 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
       executor.stop(subtask.getTaskID());
     }
     runningTaskCount--;
+    LOGGER.info(
+        "Stop subtask {}. runningTaskCount: {}, aliveTaskCount: {}",
+        subtask,
+        runningTaskCount,
+        aliveTaskCount);
   }
 
   @Override
