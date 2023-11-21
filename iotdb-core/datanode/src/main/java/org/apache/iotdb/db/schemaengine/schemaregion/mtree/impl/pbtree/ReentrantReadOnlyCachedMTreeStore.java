@@ -50,17 +50,17 @@ public class ReentrantReadOnlyCachedMTreeStore implements IMTreeStore<ICachedMNo
 
   @Override
   public boolean hasChild(ICachedMNode parent, String name) throws MetadataException {
-    return store.hasChild(parent, name, false);
+    return store.hasChild(parent, name, true);
   }
 
   @Override
   public ICachedMNode getChild(ICachedMNode parent, String name) throws MetadataException {
-    return store.getChild(parent, name, false);
+    return store.getChild(parent, name, true);
   }
 
   @Override
   public IMNodeIterator getChildrenIterator(ICachedMNode parent) throws MetadataException {
-    return store.getChildrenIterator(parent, false);
+    return store.getChildrenIterator(parent, true);
   }
 
   @Override
