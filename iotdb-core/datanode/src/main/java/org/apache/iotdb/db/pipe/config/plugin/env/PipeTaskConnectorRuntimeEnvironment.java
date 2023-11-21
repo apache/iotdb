@@ -17,29 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.payload.evolvable.builder;
+package org.apache.iotdb.db.pipe.config.plugin.env;
 
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
-import org.apache.iotdb.pipe.api.event.Event;
+public class PipeTaskConnectorRuntimeEnvironment extends PipeTaskRuntimeEnvironment {
 
-import java.util.ArrayList;
-import java.util.List;
+  private final int regionId;
 
-public class IoTDBThriftAsyncPipeTransferBatchReqBuilder extends PipeTransferBatchReqBuilder {
-
-  public IoTDBThriftAsyncPipeTransferBatchReqBuilder(PipeParameters parameters) {
-    super(parameters);
+  public PipeTaskConnectorRuntimeEnvironment(String pipeName, long creationTime, int regionId) {
+    super(pipeName, creationTime);
+    this.regionId = regionId;
   }
 
-  public List<Event> deepcopyEvents() {
-    return new ArrayList<>(events);
-  }
-
-  public List<Long> deepcopyRequestCommitIds() {
-    return new ArrayList<>(requestCommitIds);
-  }
-
-  public long getLastCommitId() {
-    return requestCommitIds.isEmpty() ? -1 : requestCommitIds.get(requestCommitIds.size() - 1);
+  public int getRegionId() {
+    return regionId;
   }
 }
