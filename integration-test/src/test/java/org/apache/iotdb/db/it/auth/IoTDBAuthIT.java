@@ -1090,7 +1090,7 @@ public class IoTDBAuthIT {
       sql = "GRANT %s on root.** to USER user2";
       adminStmt.execute(String.format(sql, item));
     }
-    Connection user1Con = EnvFactory.getEnv().getConnection();
+    Connection user1Con = EnvFactory.getEnv().getConnection("user1", "password");
     Statement user1Stmt = user1Con.createStatement();
     ResultSet resultSet;
     String ans = "";

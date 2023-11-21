@@ -20,8 +20,6 @@ package org.apache.iotdb.db.auth.user;
 
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PriPrivilegeType;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
-import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.auth.user.LocalFileUserAccessor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -37,7 +35,6 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
@@ -122,18 +119,20 @@ public class LocalFileUserAccessorTest {
 
   @Test
   public void testLoadOldVersion() throws IOException, IllegalPathException {
-    User user = new User();
-    user.setName("root");
-    user.setPassword("password1");
-    user.setRoleList(Collections.emptyList());
-
+    // In this test, we will store role with old func and role might have illegal path.
+    User role = new User();
+    role.setName("root");
     List<PathPrivilege> pathPriList = new ArrayList<>();
     PathPrivilege rootPathPriv = new PathPrivilege(new PartialPath("root.**"));
     PathPrivilege normalPathPriv = new PathPrivilege(new PartialPath("root.b.c.**"));
     PathPrivilege wroPathPriv = new PathPrivilege(new PartialPath("root.c.*.d"));
     PathPrivilege wroPathPriv2 = new PathPrivilege(new PartialPath("root.c.*.**"));
     for (PriPrivilegeType item : PriPrivilegeType.values()) {
-      if (item.isPreIsPathRelevant()) {
+      // ALL will never appear in file.
+      if (item.ordinal() == PriPrivilegeType.ALL.ordinal()) {
+        continue;
+      }
+      if (item.isPrePathRelevant()) {
         normalPathPriv.grantPrivilege(item.ordinal(), false);
         wroPathPriv.grantPrivilege(item.ordinal(), false);
         wroPathPriv2.grantPrivilege(item.ordinal(), false);
@@ -141,50 +140,25 @@ public class LocalFileUserAccessorTest {
       rootPathPriv.grantPrivilege(item.ordinal(), false);
     }
 
-    // In this case, we use four path to store some privileges.
-    // path1: root.** will store all privileges
-    // path2: root.b.c.** will store relevant privileges
-    // path3: root.c.*.d will store relevant privileges but the path will be transformed to
-    // root.c.**
-    // path4: root.c.*.** will store relevant privileges but the path will be transformed like path3
-
-    // 1. for path 1:
     pathPriList.add(rootPathPriv);
-    user.setPrivilegeList(pathPriList);
-    user.setSysPriGrantOpt(new HashSet<>());
-    user.setSysPrivilegeSet(new HashSet<>());
-    accessor.saveUserOldVersion(user);
-    Role newRole = accessor.loadUser("root");
-    assertEquals("root", newRole.getName());
-    assertTrue(newRole.getServiceReady());
-    assertEquals(1, newRole.getPathPrivilegeList().size());
-    assertEquals(
-        PrivilegeType.getPathPriCount(),
-        newRole.getPathPrivilegeList().get(0).getPrivileges().size());
-    assertEquals(PrivilegeType.getSysPriCount(), newRole.getSysPrivilege().size());
-    accessor.deleteUser("root");
-
-    // 2. for path2:
-    pathPriList.clear();
     pathPriList.add(normalPathPriv);
-    user.setPrivilegeList(pathPriList);
-    accessor.saveUserOldVersion(user);
-    newRole = accessor.loadUser("root");
-    assertTrue(newRole.getServiceReady());
-    assertEquals(3, newRole.getPathPrivilegeList().get(0).getPrivileges().size());
-    assertEquals(2, newRole.getSysPrivilege().size());
-    accessor.deleteUser("root");
-
-    // 3. for path3 and path4
-    pathPriList.clear();
-    pathPriList.add(wroPathPriv2);
     pathPriList.add(wroPathPriv);
-    user.setPrivilegeList(pathPriList);
-    accessor.saveUserOldVersion(user);
-    newRole = accessor.loadUser("root");
+    pathPriList.add(wroPathPriv2);
+    role.setPrivilegeList(pathPriList);
+    role.setSysPriGrantOpt(new HashSet<>());
+    role.setSysPrivilegeSet(new HashSet<>());
+    role.setRoleList(new ArrayList<>());
+    accessor.saveUserOldVersion(role);
+    User newRole = accessor.loadUser("root");
+    assertEquals("root", newRole.getName());
     assertFalse(newRole.getServiceReady());
-    assertEquals(3, newRole.getPathPrivilegeList().get(0).getPrivileges().size());
-    assertEquals(3, newRole.getPathPrivilegeList().get(1).getPrivileges().size());
-    assertEquals(2, newRole.getSysPrivilege().size());
+    assertEquals(4, newRole.getPathPrivilegeList().size());
+    for (PathPrivilege path : newRole.getPathPrivilegeList()) {
+      if (!path.getPath().equals(new PartialPath("root.**"))) {
+        assertEquals(17, path.getPrivileges().size());
+      } else {
+        assertEquals(33, path.getPrivileges().size());
+      }
+    }
   }
 }
