@@ -140,4 +140,36 @@ public class PipeMetaKeeper {
   public String toString() {
     return "PipeMetaKeeper{" + "pipeNameToPipeMetaMap=" + pipeNameToPipeMetaMap + '}';
   }
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  public long runningPipeCount() {
+    return pipeNameToPipeMetaMap.values().stream()
+        .filter(pipeMeta -> PipeStatus.RUNNING.equals(pipeMeta.getRuntimeMeta().getStatus().get()))
+        .count();
+  }
+
+  public long droppedPipeCount() {
+    return pipeNameToPipeMetaMap.values().stream()
+        .filter(pipeMeta -> PipeStatus.DROPPED.equals(pipeMeta.getRuntimeMeta().getStatus().get()))
+        .count();
+  }
+
+  public long userStoppedPipeCount() {
+    return pipeNameToPipeMetaMap.values().stream()
+        .filter(
+            pipeMeta ->
+                PipeStatus.DROPPED.equals(pipeMeta.getRuntimeMeta().getStatus().get())
+                    && !pipeMeta.getRuntimeMeta().getIsStoppedByRuntimeException())
+        .count();
+  }
+
+  public long exceptionStoppedPipeCount() {
+    return pipeNameToPipeMetaMap.values().stream()
+        .filter(
+            pipeMeta ->
+                PipeStatus.DROPPED.equals(pipeMeta.getRuntimeMeta().getStatus().get())
+                    && pipeMeta.getRuntimeMeta().getIsStoppedByRuntimeException())
+        .count();
+  }
 }

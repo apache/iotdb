@@ -131,6 +131,8 @@ public enum Metric {
   PIPE_LINKED_TSFILE_COUNT("pipe_linked_tsfile_count"),
   PIPE_ASYNC_CONNECTOR_RETRY_EVENT_QUEUE_SIZE("pipe_async_connector_retry_event_queue_size"),
   PIPE_EVENT_COMMIT_QUEUE_SIZE("pipe_event_commit_queue_size"),
+  PIPE_PROCEDURE("pipe_procedure"),
+  PIPE_TASK_STATUS("pipe_task_status"),
   ;
 
   final String value;
