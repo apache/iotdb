@@ -24,9 +24,9 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.Lock
 
 public class CacheMNodeInfo extends BasicMNodeInfo {
 
-  private CacheEntry cacheEntry;
+  private volatile CacheEntry cacheEntry;
 
-  private LockEntry lockEntry;
+  private volatile LockEntry lockEntry;
 
   public CacheMNodeInfo(String name) {
     super(name);
