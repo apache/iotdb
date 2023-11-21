@@ -24,7 +24,9 @@ public class CacheEntry {
 
   private volatile boolean isVolatile = false;
 
-  private final AtomicInteger semaphore = new AtomicInteger();
+  private final AtomicInteger pinSemaphore = new AtomicInteger(0);
+
+  private final AtomicInteger volatileDescendantSemaphore = new AtomicInteger(0);
 
   public boolean isVolatile() {
     return isVolatile;
@@ -35,14 +37,26 @@ public class CacheEntry {
   }
 
   public void pin() {
-    semaphore.getAndIncrement();
+    pinSemaphore.getAndIncrement();
   }
 
   public void unPin() {
-    semaphore.getAndDecrement();
+    pinSemaphore.getAndDecrement();
   }
 
   public boolean isPinned() {
-    return semaphore.get() > 0;
+    return pinSemaphore.get() > 0;
+  }
+
+  public void incVolatileDescendant() {
+    volatileDescendantSemaphore.getAndIncrement();
+  }
+
+  public void decVolatileDescendant() {
+    volatileDescendantSemaphore.getAndDecrement();
+  }
+
+  public boolean hasVolatileDescendant() {
+    return volatileDescendantSemaphore.get() > 0;
   }
 }

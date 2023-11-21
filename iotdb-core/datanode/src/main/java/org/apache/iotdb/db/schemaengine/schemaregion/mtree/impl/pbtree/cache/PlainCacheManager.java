@@ -48,11 +48,6 @@ public class PlainCacheManager extends CacheManager {
   }
 
   @Override
-  protected boolean isInNodeCache(CacheEntry cacheEntry) {
-    return nodeCache.containsKey(cacheEntry);
-  }
-
-  @Override
   protected void addToNodeCache(CacheEntry cacheEntry, ICachedMNode node) {
     nodeCache.put(cacheEntry, node);
   }

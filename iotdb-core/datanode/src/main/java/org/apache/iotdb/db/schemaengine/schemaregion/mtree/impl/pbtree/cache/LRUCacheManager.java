@@ -61,12 +61,6 @@ public class LRUCacheManager extends CacheManager {
   }
 
   @Override
-  protected boolean isInNodeCache(CacheEntry cacheEntry) {
-    LRUCacheEntry lruCacheEntry = getAsLRUCacheEntry(cacheEntry);
-    return getTargetCacheList(lruCacheEntry).isInCacheList(lruCacheEntry);
-  }
-
-  @Override
   protected void addToNodeCache(CacheEntry cacheEntry, ICachedMNode node) {
     LRUCacheEntry lruCacheEntry = getAsLRUCacheEntry(cacheEntry);
     getTargetCacheList(lruCacheEntry).addToCacheList(lruCacheEntry, node);
