@@ -184,6 +184,8 @@ public class VarianceAccumulator implements Accumulator {
           columnBuilder.writeDouble(m2 / (count - 1));
         }
         break;
+      default:
+        throw new EnumConstantNotPresentException(VarianceType.class, varianceType.name());
     }
   }
 
