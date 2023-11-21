@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
@@ -33,6 +34,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder.MAX_LINE_NUMBER;
@@ -49,7 +51,8 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
       AlignedPath seriesPath,
       Ordering scanOrder,
       SeriesScanOptions seriesScanOptions,
-      boolean queryAllSensors) {
+      boolean queryAllSensors,
+      List<TSDataType> dataTypes) {
     this.sourceId = sourceId;
     this.operatorContext = context;
     this.seriesScanUtil =
@@ -58,7 +61,8 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
             scanOrder,
             seriesScanOptions,
             context.getInstanceContext(),
-            queryAllSensors);
+            queryAllSensors,
+            dataTypes);
     // time + all value columns
     this.builder = new TsBlockBuilder(seriesScanUtil.getTsDataTypeList());
     this.valueColumnCount = seriesPath.getColumnNum();
