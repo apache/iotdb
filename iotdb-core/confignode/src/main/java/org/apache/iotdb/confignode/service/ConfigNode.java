@@ -268,7 +268,7 @@ public class ConfigNode implements ConfigNodeMBean {
     MetricService.getInstance().addMetricSet(ThreadPoolMetrics.getInstance());
     initCpuMetrics();
     initSystemMetrics();
-    MetricService.getInstance().addMetricSet(PipeMetrics.getInstance());
+    MetricService.getInstance().addMetricSet(new PipeMetrics(configManager.getPipeManager()));
   }
 
   private void initSystemMetrics() {

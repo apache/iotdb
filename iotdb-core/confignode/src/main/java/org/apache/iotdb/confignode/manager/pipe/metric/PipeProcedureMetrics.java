@@ -29,7 +29,7 @@ public class PipeProcedureMetrics implements IMetricSet {
         .forEach(
             op ->
                 timerMap.put(
-                    op.name(),
+                    op.getName(),
                     metricService.getOrCreateTimer(
                         Metric.PIPE_PROCEDURE.toString(),
                         MetricLevel.IMPORTANT,

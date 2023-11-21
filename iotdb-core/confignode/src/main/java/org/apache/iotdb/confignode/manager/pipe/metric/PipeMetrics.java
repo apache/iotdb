@@ -19,39 +19,29 @@
 
 package org.apache.iotdb.confignode.manager.pipe.metric;
 
+import org.apache.iotdb.confignode.manager.pipe.PipeManager;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 
 public class PipeMetrics implements IMetricSet {
+
+  private final PipeTaskInfoMetrics pipeTaskInfoMetrics;
+
+  public PipeMetrics(PipeManager pipeManager) {
+    this.pipeTaskInfoMetrics = new PipeTaskInfoMetrics(pipeManager);
+  }
 
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
     PipeProcedureMetrics.getInstance().bindTo(metricService);
+    pipeTaskInfoMetrics.bindTo(metricService);
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     PipeProcedureMetrics.getInstance().unbindFrom(metricService);
-  }
-
-  //////////////////////////// singleton ////////////////////////////
-
-  private static class PipeMetricsHolder {
-
-    private static final PipeMetrics INSTANCE = new PipeMetrics();
-
-    private PipeMetricsHolder() {
-      // empty constructor
-    }
-  }
-
-  public static PipeMetrics getInstance() {
-    return PipeMetrics.PipeMetricsHolder.INSTANCE;
-  }
-
-  private PipeMetrics() {
-    // empty constructor
+    pipeTaskInfoMetrics.unbindFrom(metricService);
   }
 }
