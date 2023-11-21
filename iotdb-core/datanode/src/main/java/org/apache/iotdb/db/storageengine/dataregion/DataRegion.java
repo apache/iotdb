@@ -2147,8 +2147,7 @@ public class DataRegion implements IDataRegionForQuery {
       trySubmitCount += executeInsertionCompaction(timePartitions);
       summary.incrementSubmitTaskNum(CompactionTaskType.INSERTION, trySubmitCount);
     }
-    // the name of this variable is trySubmitCount, because the task submitted to the queue could
-    // be
+    // the name of this variable is trySubmitCount, because the task submitted to the queue could be
     // evicted due to the low priority of the task
     try {
       for (long timePartition : timePartitions) {
