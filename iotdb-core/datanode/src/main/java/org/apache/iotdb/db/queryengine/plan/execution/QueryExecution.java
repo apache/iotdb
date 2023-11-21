@@ -220,7 +220,6 @@ public class QueryExecution implements IQueryExecution {
     // check timeout for query first
     checkTimeOutForQuery();
     doLogicalPlan();
-
     doDistributedPlan();
 
     // update timeout after finishing plan stage

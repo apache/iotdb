@@ -83,7 +83,12 @@ public class TemplatedAnalyze {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TemplatedAnalyze.class);
 
-  /** examine that if all devices are in same template */
+  private TemplatedAnalyze() {}
+
+  /**
+   * examine that if all devices are in same template, if true, use the TemplatedAnalyze,
+   * TemplatedLogicalPlan, TemplatedLogicalPlanBuilder to optimize it.
+   */
   public static boolean canBuildPlanUseTemplate(
       Analysis analysis,
       QueryStatement queryStatement,
@@ -209,7 +214,6 @@ public class TemplatedAnalyze {
               .collect(Collectors.toList()));
     }
 
-    // TODO need sort?  will sourceNodeList sorted lastly?
     return queryStatement.getResultDeviceOrder() == Ordering.ASC
         ? deviceSet.stream().sorted().collect(Collectors.toList())
         : deviceSet.stream().sorted(Comparator.reverseOrder()).collect(Collectors.toList());
