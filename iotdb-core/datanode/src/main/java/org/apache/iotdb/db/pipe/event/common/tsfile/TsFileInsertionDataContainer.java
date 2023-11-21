@@ -25,6 +25,7 @@ import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeighUtil;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -62,8 +63,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
   private final PipeTaskMeta pipeTaskMeta; // used to report progress
   private final EnrichedEvent sourceEvent; // used to report progress
 
-  private final boolean canBeConstructedFromCache;
-  private final PipeMemoryBlock allocatedMemoryBlockWhenNotConstructedFromCache;
+  private final PipeMemoryBlock allocatedMemoryBlock;
 
   private final TsFileSequenceReader tsFileSequenceReader;
   private final TsFileReader tsFileReader;
@@ -98,31 +98,34 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
     try {
       final PipeTsFileResourceManager tsFileResourceManager = PipeResourceManager.tsfile();
+      final Map<String, List<String>> deviceMeasurementsMap;
 
-      canBeConstructedFromCache = tsFileResourceManager.tryCacheObjects(tsFile);
-      if (canBeConstructedFromCache) {
-        allocatedMemoryBlockWhenNotConstructedFromCache = null;
+      // TsFileReader is not thread-safe, so we need to create it here and close it later.
+      long memoryRequiredInBytes =
+          PipeConfig.getInstance().getPipeMemoryAllocateForTsFileSequenceReaderInBytes();
+      tsFileSequenceReader = new TsFileSequenceReader(tsFile.getPath(), true, true);
+      tsFileReader = new TsFileReader(tsFileSequenceReader);
 
-        tsFileSequenceReader = tsFileResourceManager.getTsFileSequenceReaderFromCache(tsFile);
-        tsFileReader = tsFileResourceManager.getTsFileReaderFromCache(tsFile);
-
+      if (tsFileResourceManager.tryCacheObjects(tsFile)) {
+        // These read-only objects can be found in cache.
         deviceIsAlignedMap = tsFileResourceManager.getDeviceIsAlignedMapFromCache(tsFile);
         measurementDataTypeMap = tsFileResourceManager.getMeasurementDataTypeMapFromCache(tsFile);
+        deviceMeasurementsMap = tsFileResourceManager.getDeviceMeasurementsMapFromCache(tsFile);
       } else {
-        // We need to create it here and close it later.
-        allocatedMemoryBlockWhenNotConstructedFromCache =
-            PipeResourceManager.memory()
-                .forceAllocate(
-                    PipeConfig.getInstance().getPipeMemoryAllocateForTsFileSequenceReaderInBytes());
-
-        tsFileSequenceReader = new TsFileSequenceReader(tsFile.getPath(), true, true);
-        tsFileReader = new TsFileReader(tsFileSequenceReader);
-
+        // We need to create these objects here and remove them later.
         deviceIsAlignedMap = readDeviceIsAlignedMap();
+        memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfStr2Bool(deviceIsAlignedMap);
+
         measurementDataTypeMap = tsFileSequenceReader.getFullPathDataTypeMap();
+        memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfStr2TSDataType(measurementDataTypeMap);
+
+        deviceMeasurementsMap = tsFileSequenceReader.getDeviceMeasurementsMap();
+        memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfStr2StrList(deviceMeasurementsMap);
       }
+      allocatedMemoryBlock = PipeResourceManager.memory().forceAllocate(memoryRequiredInBytes);
+
       deviceMeasurementsMapIterator =
-          filterDeviceMeasurementsMapByPattern(tsFile).entrySet().iterator();
+          filterDeviceMeasurementsMapByPattern(deviceMeasurementsMap).entrySet().iterator();
 
       // No longer need this. Help GC.
       tsFileSequenceReader.clearCachedDeviceMetadata();
@@ -132,14 +135,8 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
     }
   }
 
-  private Map<String, List<String>> filterDeviceMeasurementsMapByPattern(File tsFile)
-      throws IOException {
-    Map<String, List<String>> originalDeviceMeasurementsMap =
-        PipeResourceManager.tsfile().getDeviceMeasurementsMapFromCache(tsFile);
-    if (originalDeviceMeasurementsMap == null) {
-      originalDeviceMeasurementsMap = tsFileSequenceReader.getDeviceMeasurementsMap();
-    }
-
+  private Map<String, List<String>> filterDeviceMeasurementsMapByPattern(
+      Map<String, List<String>> originalDeviceMeasurementsMap) {
     final Map<String, List<String>> filteredDeviceMeasurementsMap = new HashMap<>();
     for (Map.Entry<String, List<String>> entry : originalDeviceMeasurementsMap.entrySet()) {
       final String deviceId = entry.getKey();
@@ -249,11 +246,6 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
   @Override
   public void close() {
-    if (canBeConstructedFromCache) {
-      // Only need to close if the TsFileReader is created in this class.
-      return;
-    }
-
     try {
       if (tsFileReader != null) {
         tsFileReader.close();
@@ -270,8 +262,8 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
       LOGGER.warn("Failed to close TsFileSequenceReader", e);
     }
 
-    if (allocatedMemoryBlockWhenNotConstructedFromCache != null) {
-      allocatedMemoryBlockWhenNotConstructedFromCache.close();
+    if (allocatedMemoryBlock != null) {
+      allocatedMemoryBlock.close();
     }
   }
 }

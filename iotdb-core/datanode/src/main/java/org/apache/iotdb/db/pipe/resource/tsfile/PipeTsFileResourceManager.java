@@ -24,8 +24,6 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.TsFileReader;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -251,43 +249,6 @@ public class PipeTsFileResourceManager {
       final PipeTsFileResource resource =
           hardlinkOrCopiedFileToPipeTsFileResourceMap.get(hardlinkOrCopiedTsFile.getPath());
       return resource != null && resource.tryCacheObjects();
-    } finally {
-      lock.unlock();
-    }
-  }
-
-  /**
-   * get the cached {@link TsFileSequenceReader} of the tsfile.
-   *
-   * @param hardlinkOrCopiedTsFile the copied or hard-linked tsfile
-   * @return the {@link TsFileSequenceReader} of the file, or {@code null} if the {@link
-   *     TsFileSequenceReader} is not cached.
-   */
-  public TsFileSequenceReader getTsFileSequenceReaderFromCache(File hardlinkOrCopiedTsFile)
-      throws IOException {
-    lock.lock();
-    try {
-      final PipeTsFileResource resource =
-          hardlinkOrCopiedFileToPipeTsFileResourceMap.get(hardlinkOrCopiedTsFile.getPath());
-      return resource == null ? null : resource.tryGetTsFileSequenceReader();
-    } finally {
-      lock.unlock();
-    }
-  }
-
-  /**
-   * get the cached {@link TsFileReader} of the file.
-   *
-   * @param hardlinkOrCopiedTsFile the copied or hardlinked file
-   * @return the {@link TsFileReader} of the file, or {@code null} if the {@link TsFileReader} is
-   *     not cached.
-   */
-  public TsFileReader getTsFileReaderFromCache(File hardlinkOrCopiedTsFile) throws IOException {
-    lock.lock();
-    try {
-      final PipeTsFileResource resource =
-          hardlinkOrCopiedFileToPipeTsFileResourceMap.get(hardlinkOrCopiedTsFile.getPath());
-      return resource == null ? null : resource.tryGetTsFileReader();
     } finally {
       lock.unlock();
     }

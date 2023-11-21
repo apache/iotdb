@@ -22,16 +22,15 @@ package org.apache.iotdb.db.pipe.resource.tsfile;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeighUtil;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
-import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -41,7 +40,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class PipeTsFileResource implements Closeable {
+public class PipeTsFileResource implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileResource.class);
 
@@ -52,9 +51,8 @@ public class PipeTsFileResource implements Closeable {
   private final AtomicInteger referenceCount;
   private final AtomicLong lastUnpinToZeroTime;
 
+  private static final float MEMORY_SUFFICIENT_THRESHOLD = 0.5f;
   private PipeMemoryBlock allocatedMemoryBlock;
-  private TsFileSequenceReader sequenceReader = null;
-  private TsFileReader reader = null;
   private Map<String, List<String>> deviceMeasurementsMap = null;
   private Map<String, Boolean> deviceIsAlignedMap = null;
   private Map<String, TSDataType> measurementDataTypeMap = null;
@@ -94,7 +92,7 @@ public class PipeTsFileResource implements Closeable {
 
   public synchronized boolean closeIfOutOfTimeToLive() throws IOException {
     if (referenceCount.get() <= 0
-        && (sequenceReader == null // Not cached yet.
+        && (deviceMeasurementsMap == null // Not cached yet.
             || System.currentTimeMillis() - lastUnpinToZeroTime.get()
                 > TSFILE_MIN_TIME_TO_LIVE_IN_MS)) {
       close();
@@ -106,16 +104,6 @@ public class PipeTsFileResource implements Closeable {
 
   @Override
   public synchronized void close() throws IOException {
-    if (reader != null) {
-      reader.close();
-      reader = null;
-    }
-
-    if (sequenceReader != null) {
-      sequenceReader.close();
-      sequenceReader = null;
-    }
-
     if (deviceMeasurementsMap != null) {
       deviceMeasurementsMap = null;
     }
@@ -139,20 +127,6 @@ public class PipeTsFileResource implements Closeable {
   }
 
   //////////////////////////// Cache Getter ////////////////////////////
-
-  public synchronized TsFileSequenceReader tryGetTsFileSequenceReader() throws IOException {
-    if (sequenceReader == null && isTsFile) {
-      tryCacheObjects();
-    }
-    return sequenceReader;
-  }
-
-  public synchronized TsFileReader tryGetTsFileReader() throws IOException {
-    if (reader == null && isTsFile) {
-      tryCacheObjects();
-    }
-    return reader;
-  }
 
   public synchronized Map<String, List<String>> tryGetDeviceMeasurementsMap() throws IOException {
     if (deviceMeasurementsMap == null && isTsFile) {
@@ -180,35 +154,63 @@ public class PipeTsFileResource implements Closeable {
       return false;
     }
 
-    // Only allocate when pipe memory used is less than 50%, because
-    // memory for tsfileReader is hard to shrink and may eat up too much memory.
+    if (allocatedMemoryBlock != null) {
+      // This means objects are already cached.
+      return true;
+    }
+
+    // See if pipe memory is sufficient to be allocated for TsFileSequenceReader.
+    // Only allocate when pipe memory used is less than 50%, because memory here
+    // is hard to shrink and may consume too much memory.
     allocatedMemoryBlock =
         PipeResourceManager.memory()
             .forceAllocateIfSufficient(
                 PipeConfig.getInstance().getPipeMemoryAllocateForTsFileSequenceReaderInBytes(),
-                0.5f);
+                MEMORY_SUFFICIENT_THRESHOLD);
     if (allocatedMemoryBlock == null) {
+      LOGGER.info(
+          "PipeTsFileResource: Failed to create TsFileSequenceReader for tsfile {} in cache, because memory usage is high",
+          hardlinkOrCopiedFile.getPath());
+      return false;
+    }
+    allocatedMemoryBlock.close();
+    allocatedMemoryBlock = null;
+
+    long memoryRequiredInBytes = 0L;
+    try (TsFileSequenceReader sequenceReader =
+        new TsFileSequenceReader(hardlinkOrCopiedFile.getPath(), true, true)) {
+      deviceMeasurementsMap = sequenceReader.getDeviceMeasurementsMap();
+      memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfStr2StrList(deviceMeasurementsMap);
+
+      deviceIsAlignedMap = new HashMap<>();
+      final TsFileDeviceIterator deviceIsAlignedIterator =
+          sequenceReader.getAllDevicesIteratorWithIsAligned();
+      while (deviceIsAlignedIterator.hasNext()) {
+        final Pair<String, Boolean> deviceIsAlignedPair = deviceIsAlignedIterator.next();
+        deviceIsAlignedMap.put(deviceIsAlignedPair.getLeft(), deviceIsAlignedPair.getRight());
+      }
+      memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfStr2Bool(deviceIsAlignedMap);
+
+      measurementDataTypeMap = sequenceReader.getFullPathDataTypeMap();
+      memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfStr2TSDataType(measurementDataTypeMap);
+    }
+
+    // Allocate again for the cached objects.
+    allocatedMemoryBlock =
+        PipeResourceManager.memory()
+            .forceAllocateIfSufficient(memoryRequiredInBytes, MEMORY_SUFFICIENT_THRESHOLD);
+    if (allocatedMemoryBlock == null) {
+      LOGGER.info(
+          "PipeTsFileResource: Failed to cache objects for tsfile {} in cache, because memory usage is high",
+          hardlinkOrCopiedFile.getPath());
+      deviceIsAlignedMap = null;
+      deviceMeasurementsMap = null;
+      measurementDataTypeMap = null;
       return false;
     }
 
     LOGGER.info(
         "PipeTsFileResource: Cached objects for tsfile {}.", hardlinkOrCopiedFile.getPath());
-
-    sequenceReader = new TsFileSequenceReader(hardlinkOrCopiedFile.getPath(), true, true);
-    reader = new TsFileReader(sequenceReader);
-    deviceMeasurementsMap = sequenceReader.getDeviceMeasurementsMap();
-    deviceIsAlignedMap = new HashMap<>();
-    final TsFileDeviceIterator deviceIsAlignedIterator =
-        sequenceReader.getAllDevicesIteratorWithIsAligned();
-    while (deviceIsAlignedIterator.hasNext()) {
-      final Pair<String, Boolean> deviceIsAlignedPair = deviceIsAlignedIterator.next();
-      deviceIsAlignedMap.put(deviceIsAlignedPair.getLeft(), deviceIsAlignedPair.getRight());
-    }
-    measurementDataTypeMap = sequenceReader.getFullPathDataTypeMap();
-
-    // Clear cached device metadata to save memory.
-    sequenceReader.clearCachedDeviceMetadata();
-
     return true;
   }
 }
