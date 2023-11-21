@@ -193,7 +193,7 @@ public class TsFileGenerator implements AutoCloseable {
         generateTEXT(obj, row);
         break;
       default:
-        throw new UnsupportedOperationException("Unsupported data type: " + schema.getType());
+        LOGGER.error("Wrong data type {}.", schema.getType());
     }
   }
 
