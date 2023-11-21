@@ -213,7 +213,7 @@ public abstract class CacheManager implements ICacheManager {
           return;
         }
 
-        addToNodeCache(getCacheEntry(current), current);
+        addToNodeCache(cacheEntry, current);
       }
 
       current = current.getParent();

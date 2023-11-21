@@ -54,7 +54,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
+import java.util.function.Function;
 
 public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
@@ -320,16 +320,17 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
    * @param node the modified node
    */
   @Override
-  public void updateMNode(ICachedMNode node, Consumer<ICachedMNode> operation) {
+  public void updateMNode(ICachedMNode node, Function<ICachedMNode, ICachedMNode> operation) {
     updateMNode(node, operation, true);
   }
 
-  final void updateMNode(ICachedMNode node, Consumer<ICachedMNode> operation, boolean needLock) {
+  final void updateMNode(
+      ICachedMNode node, Function<ICachedMNode, ICachedMNode> operation, boolean needLock) {
     if (needLock && !node.isDatabase()) {
       lockManager.threadReadLock(node.getParent());
     }
     try {
-      operation.accept(node);
+      node = operation.apply(node);
       cacheManager.updateCacheStatusAfterUpdate(node);
     } finally {
       if (needLock && !node.isDatabase()) {
@@ -346,6 +347,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
         o -> {
           IDeviceMNode<ICachedMNode> result = MNodeUtils.setToEntity(node, nodeFactory);
           resultReference.getAndSet(result);
+          return result.getAsMNode();
         });
 
     IDeviceMNode<ICachedMNode> result = resultReference.get();
@@ -365,6 +367,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
         o -> {
           ICachedMNode result = MNodeUtils.setToInternal(entityMNode, nodeFactory);
           resultReference.getAndSet(result);
+          return result.getAsMNode();
         });
 
     ICachedMNode result = resultReference.get();
@@ -384,7 +387,12 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       return;
     }
 
-    updateMNode(measurementMNode.getAsMNode(), o -> o.getAsMeasurementMNode().setAlias(alias));
+    updateMNode(
+        measurementMNode.getAsMNode(),
+        o -> {
+          o.getAsMeasurementMNode().setAlias(alias);
+          return o;
+        });
 
     if (existingAlias != null && alias != null) {
       memManager.updatePinnedSize(alias.length() - existingAlias.length());
@@ -631,8 +639,8 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
         throws MetadataException, IOException {
       if (needLock) {
         readLockStamp = lockManager.stampedReadLock(parent);
+        isLocked = true;
       }
-      isLocked = true;
       try {
         this.parent = parent;
         ICachedMNodeContainer container = ICachedMNodeContainer.getCachedMNodeContainer(parent);
@@ -648,8 +656,8 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       } catch (Throwable e) {
         if (needLock) {
           lockManager.stampedReadUnlock(parent, readLockStamp);
+          isLocked = false;
         }
-        isLocked = false;
         throw e;
       }
     }
@@ -739,6 +747,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       } finally {
         if (isLocked) {
           lockManager.stampedReadUnlock(parent, readLockStamp);
+          isLocked = false;
         }
       }
     }

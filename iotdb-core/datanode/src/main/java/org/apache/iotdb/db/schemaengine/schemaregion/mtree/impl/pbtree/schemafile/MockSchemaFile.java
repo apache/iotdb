@@ -64,13 +64,14 @@ public class MockSchemaFile implements ISchemaFile {
   }
 
   @Override
-  public boolean updateDatabaseNode(IDatabaseMNode<ICachedMNode> sgNode) throws IOException {
+  public synchronized boolean updateDatabaseNode(IDatabaseMNode<ICachedMNode> sgNode)
+      throws IOException {
     this.storageGroupMNode = cloneMNode(sgNode.getAsMNode()).getAsDatabaseMNode();
     return true;
   }
 
   @Override
-  public ICachedMNode getChildNode(ICachedMNode parent, String childName) {
+  public synchronized ICachedMNode getChildNode(ICachedMNode parent, String childName) {
     Map<String, ICachedMNode> segment = getSegment(parent);
     ICachedMNode result = null;
     if (segment != null) {
@@ -88,7 +89,7 @@ public class MockSchemaFile implements ISchemaFile {
   }
 
   @Override
-  public Iterator<ICachedMNode> getChildren(ICachedMNode parent) {
+  public synchronized Iterator<ICachedMNode> getChildren(ICachedMNode parent) {
 
     Map<String, ICachedMNode> segment = getSegment(parent);
     if (segment == null) {
@@ -98,12 +99,12 @@ public class MockSchemaFile implements ISchemaFile {
   }
 
   @Override
-  public boolean createSnapshot(File snapshotDir) {
+  public synchronized boolean createSnapshot(File snapshotDir) {
     return false;
   }
 
   @Override
-  public void writeMNode(ICachedMNode parent) {
+  public synchronized void writeMNode(ICachedMNode parent) {
     ICachedMNodeContainer container = getCachedMNodeContainer(parent);
     long address = container.getSegmentAddress();
     if (container.isVolatile()) {
@@ -127,7 +128,7 @@ public class MockSchemaFile implements ISchemaFile {
   }
 
   @Override
-  public void delete(ICachedMNode targetNode) {
+  public synchronized void delete(ICachedMNode targetNode) {
     ICachedMNode removedNode = getSegment(targetNode.getParent()).remove(targetNode.getName());
     if (removedNode == null || removedNode.isMeasurement()) {
       return;
@@ -152,7 +153,7 @@ public class MockSchemaFile implements ISchemaFile {
   public void close() {}
 
   @Override
-  public void clear() {
+  public synchronized void clear() {
     mockFile.clear();
   }
 
