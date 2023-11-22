@@ -40,11 +40,11 @@ public abstract class ColumnPatternMatchFilter {
       return false;
     }
     ColumnPatternMatchFilter that = (ColumnPatternMatchFilter) o;
-    return pattern.equals(that.pattern);
+    return pattern.pattern().equals(that.pattern.pattern());
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(pattern);
+    return Objects.hash(pattern.pattern());
   }
 }

@@ -385,7 +385,7 @@ public final class TimeFilterOperators {
 
     @Override
     public boolean satisfyStartEndTime(long startTime, long endTime) {
-      return startTime < min && endTime > max;
+      return startTime < min || endTime > max;
     }
 
     @Override

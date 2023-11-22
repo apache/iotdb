@@ -70,6 +70,7 @@ import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.and;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.groupByTime;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.gt;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.gte;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.longValue;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.time;
 import static org.junit.Assert.assertEquals;
@@ -125,7 +126,7 @@ public class AnalyzeTest {
               + "where time >= 100 and s2 >= 10 and s2 != 6;";
       actualAnalysis = analyzeSQL(sql);
       expectedAnalysis = new Analysis();
-      expectedAnalysis.setGlobalTimePredicate(gt(time(), longValue(100)));
+      expectedAnalysis.setGlobalTimePredicate(gte(time(), longValue(100)));
       expectedAnalysis.setSelectExpressions(
           Sets.newHashSet(
               new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
@@ -196,7 +197,7 @@ public class AnalyzeTest {
 
       Analysis expectedAnalysis = new Analysis();
       expectedAnalysis.setGlobalTimePredicate(
-          and(gt(time(), longValue(100)), groupByTime(10, 10, 0, 1000)));
+          and(gt(time(), longValue(100)), groupByTime(0, 1000, 10, 10)));
       expectedAnalysis.setSelectExpressions(
           Sets.newHashSet(
               new AdditionExpression(
@@ -385,7 +386,7 @@ public class AnalyzeTest {
 
       Analysis expectedAnalysis = new Analysis();
       expectedAnalysis.setGlobalTimePredicate(
-          and(gt(time(), longValue(100)), groupByTime(10, 10, 0, 1000)));
+          and(gt(time(), longValue(100)), groupByTime(0, 1000, 10, 10)));
       expectedAnalysis.setSelectExpressions(
           Sets.newHashSet(
               new TimeSeriesOperand(
