@@ -38,14 +38,15 @@ public class SimpleWriterPreferredLock {
     lock.lock();
     try {
       readWait++;
-      while (writeCount > 0 || writeWait > 0) {
-        try {
-          okToRead.wait();
-        } catch (InterruptedException e) {
-          throw new RuntimeException(e);
+      try {
+        while (writeCount > 0 || writeWait > 0) {
+          okToRead.await();
         }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      } finally {
+        readWait--;
       }
-      readWait--;
       readCount++;
     } finally {
       lock.unlock();
@@ -68,14 +69,15 @@ public class SimpleWriterPreferredLock {
     lock.lock();
     try {
       writeWait++;
-      while (readCount > 0) {
-        try {
+      try {
+        while (readCount > 0) {
           okToWrite.await();
-        } catch (InterruptedException e) {
-          throw new RuntimeException(e);
         }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      } finally {
+        writeWait--;
       }
-      writeWait--;
       writeCount++;
     } finally {
       lock.unlock();
