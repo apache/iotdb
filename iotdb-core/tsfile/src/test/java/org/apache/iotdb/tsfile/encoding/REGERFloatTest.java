@@ -3020,13 +3020,12 @@ public class REGERFloatTest {
 //        for (int k = 0; k < 2; k++) {
         for (int k = 0; k < block_num; k++) {
             int cur_block_sort = block_sort[k];
-//            System.out.println("k="+k);
             if(cur_block_sort==0)
                 decode_pos = REGERBlockDecoder(encoded, decode_pos, value_list, block_size, segment_size, value_pos_arr);
             else if (cur_block_sort == 1){
                 decode_pos = REGERBlockDecoderValue(encoded, decode_pos, value_list, block_size, segment_size, value_pos_arr);
             }
-//            System.out.println(Arrays.deepToString(value_list));
+
         }
 
         if (remain_length == 1) {
