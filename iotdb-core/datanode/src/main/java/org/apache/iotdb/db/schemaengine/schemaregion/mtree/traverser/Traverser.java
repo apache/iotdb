@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.commons.schema.tree.AbstractTreeVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.IMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.iterator.MNodeIterator;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.ReentrantReadOnlyCachedMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MNodeUtils;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
@@ -233,6 +234,10 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
   @Override
   public void close() {
     super.close();
+    if (store instanceof ReentrantReadOnlyCachedMTreeStore) {
+      // TODO update here
+      ((ReentrantReadOnlyCachedMTreeStore) store).unlockRead();
+    }
   }
 
   public void setTemplateMap(Map<Integer, Template> templateMap, IMNodeFactory<N> nodeFactory) {

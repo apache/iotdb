@@ -387,51 +387,56 @@ public abstract class CacheManager implements ICacheManager {
    */
   @Override
   public synchronized boolean evict() {
-    ICachedMNode node = null;
-    CacheEntry cacheEntry = null;
-    List<ICachedMNode> evictedMNodes = new ArrayList<>();
-    boolean isSuccess = false;
-    while (!isSuccess) {
-      node = getPotentialNodeTobeEvicted();
-      if (node == null) {
-        break;
-      }
-      lockManager.threadReadLock(node.getParent(), true);
-      try {
-        cacheEntry = getCacheEntry(node);
-        // the operation that may change the cache status of a node should be synchronized
-        synchronized (cacheEntry) {
-          if (cacheEntry.isPinned()
-              || cacheEntry.isVolatile()
-              || cacheEntry.hasVolatileDescendant()) {
-            // since the node could be moved from cache to buffer after being taken from cache
-            // this check here is necessary to ensure that the node could truly be evicted
-            continue;
-          }
-
-          getBelongedContainer(node).evictMNode(node.getName());
-          if (node.isMeasurement()) {
-            String alias = node.getAsMeasurementMNode().getAlias();
-            if (alias != null) {
-              node.getParent().getAsDeviceMNode().deleteAliasChild(alias);
-            }
-          }
-          removeFromNodeCache(getCacheEntry(node));
-          node.setCacheEntry(null);
-          evictedMNodes.add(node);
-          isSuccess = true;
+    lockManager.globalReadLock();
+    try {
+      ICachedMNode node = null;
+      CacheEntry cacheEntry = null;
+      List<ICachedMNode> evictedMNodes = new ArrayList<>();
+      boolean isSuccess = false;
+      while (!isSuccess) {
+        node = getPotentialNodeTobeEvicted();
+        if (node == null) {
+          break;
         }
-      } finally {
-        lockManager.threadReadUnlock(node.getParent());
+        lockManager.threadReadLock(node.getParent(), true);
+        try {
+          cacheEntry = getCacheEntry(node);
+          // the operation that may change the cache status of a node should be synchronized
+          synchronized (cacheEntry) {
+            if (cacheEntry.isPinned()
+                || cacheEntry.isVolatile()
+                || cacheEntry.hasVolatileDescendant()) {
+              // since the node could be moved from cache to buffer after being taken from cache
+              // this check here is necessary to ensure that the node could truly be evicted
+              continue;
+            }
+
+            getBelongedContainer(node).evictMNode(node.getName());
+            if (node.isMeasurement()) {
+              String alias = node.getAsMeasurementMNode().getAlias();
+              if (alias != null) {
+                node.getParent().getAsDeviceMNode().deleteAliasChild(alias);
+              }
+            }
+            removeFromNodeCache(getCacheEntry(node));
+            node.setCacheEntry(null);
+            evictedMNodes.add(node);
+            isSuccess = true;
+          }
+        } finally {
+          lockManager.threadReadUnlock(node.getParent());
+        }
       }
-    }
 
-    if (node != null) {
-      collectEvictedMNodes(node, evictedMNodes);
-    }
+      if (node != null) {
+        collectEvictedMNodes(node, evictedMNodes);
+      }
 
-    memManager.releaseMemResource(evictedMNodes);
-    return !evictedMNodes.isEmpty();
+      memManager.releaseMemResource(evictedMNodes);
+      return !evictedMNodes.isEmpty();
+    } finally {
+      lockManager.globalReadUnlock();
+    }
   }
 
   private void collectEvictedMNodes(ICachedMNode node, List<ICachedMNode> evictedMNodes) {

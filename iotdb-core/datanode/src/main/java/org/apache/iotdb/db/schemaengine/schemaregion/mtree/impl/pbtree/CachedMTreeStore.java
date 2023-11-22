@@ -115,16 +115,20 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
   @Override
   public boolean hasChild(ICachedMNode parent, String name) throws MetadataException {
-    return hasChild(parent, name, true);
+    return hasChild(parent, name, true, true);
   }
 
-  protected final boolean hasChild(ICachedMNode parent, String name, boolean needLock)
+  protected final boolean hasChild(
+      ICachedMNode parent, String name, boolean needGlobalLock, boolean needNodeLock)
       throws MetadataException {
-    if (needLock) {
+    if (needGlobalLock) {
+      lockManager.globalReadLock();
+    }
+    if (needNodeLock) {
       lockManager.threadReadLock(parent);
     }
     try {
-      ICachedMNode child = getChild(parent, name, needLock);
+      ICachedMNode child = getChild(parent, name, false, false);
       if (child == null) {
         return false;
       } else {
@@ -132,8 +136,11 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
         return true;
       }
     } finally {
-      if (needLock) {
+      if (needNodeLock) {
         lockManager.threadReadUnlock(parent);
+      }
+      if (needGlobalLock) {
+        lockManager.globalReadUnlock();
       }
     }
   }
@@ -152,12 +159,16 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
    */
   @Override
   public ICachedMNode getChild(ICachedMNode parent, String name) throws MetadataException {
-    return getChild(parent, name, true);
+    return getChild(parent, name, true, true);
   }
 
-  protected final ICachedMNode getChild(ICachedMNode parent, String name, boolean needLock)
+  protected final ICachedMNode getChild(
+      ICachedMNode parent, String name, boolean needGlobalLock, boolean needNodeLock)
       throws MetadataException {
-    if (needLock) {
+    if (needGlobalLock) {
+      lockManager.globalReadLock();
+    }
+    if (needNodeLock) {
       lockManager.threadReadLock(parent);
     }
     try {
@@ -177,8 +188,11 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
       return node;
     } finally {
-      if (needLock) {
+      if (needNodeLock) {
         lockManager.threadReadUnlock(parent);
+      }
+      if (needGlobalLock) {
+        lockManager.globalReadUnlock();
       }
     }
   }
@@ -268,6 +282,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   // must pin parent first
   @Override
   public ICachedMNode addChild(ICachedMNode parent, String childName, ICachedMNode child) {
+    lockManager.globalReadLock();
     lockManager.threadReadLock(parent);
     try {
       child.setParent(parent);
@@ -276,6 +291,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       return parent.getChild(childName);
     } finally {
       lockManager.threadReadUnlock(parent);
+      lockManager.globalReadUnlock();
     }
   }
 
@@ -292,9 +308,9 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
    */
   @Override
   public void deleteChild(ICachedMNode parent, String childName) throws MetadataException {
-    lockManager.writeLock(parent);
+    lockManager.globalWriteLock();
     try {
-      ICachedMNode deletedMNode = getChild(parent, childName, false);
+      ICachedMNode deletedMNode = getChild(parent, childName, false, false);
       ICachedMNodeContainer container = ICachedMNodeContainer.getCachedMNodeContainer(parent);
       if (!container.isVolatile() && !container.hasChildInNewChildBuffer(childName)) {
         // the container has been persisted and this child is not a new child, which means the child
@@ -309,7 +325,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       parent.deleteChild(childName);
       cacheManager.remove(deletedMNode);
     } finally {
-      lockManager.writeUnlock(parent);
+      lockManager.globalWriteUnlock();
     }
   }
 
@@ -326,8 +342,11 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
   final void updateMNode(
       ICachedMNode node, Function<ICachedMNode, ICachedMNode> operation, boolean needLock) {
-    if (needLock && !node.isDatabase()) {
-      lockManager.threadReadLock(node.getParent());
+    if (needLock) {
+      lockManager.globalReadLock();
+      if (!node.isDatabase()) {
+        lockManager.threadReadLock(node.getParent());
+      }
     }
     try {
       node = operation.apply(node);
@@ -336,8 +355,11 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       }
       cacheManager.updateCacheStatusAfterUpdate(node);
     } finally {
-      if (needLock && !node.isDatabase()) {
-        lockManager.threadReadUnlock(node.getParent());
+      if (needLock) {
+        if (!node.isDatabase()) {
+          lockManager.threadReadUnlock(node.getParent());
+        }
+        lockManager.globalReadUnlock();
       }
     }
   }
@@ -421,14 +443,20 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   }
 
   final void pin(ICachedMNode node, boolean needLock) throws MetadataException {
-    if (needLock && !node.isDatabase()) {
+    if (needLock) {
+      lockManager.globalReadLock();
+    }
+    if (!node.isDatabase()) {
       lockManager.threadReadLock(node.getParent());
     }
     try {
       cacheManager.pinMNode(node);
     } finally {
-      if (needLock && !node.isDatabase()) {
+      if (!node.isDatabase()) {
         lockManager.threadReadUnlock(node.getParent());
+      }
+      if (needLock) {
+        lockManager.globalReadUnlock();
       }
     }
   }
@@ -447,7 +475,10 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   }
 
   final void unPin(ICachedMNode node, boolean needLock) {
-    if (needLock && !node.isDatabase()) {
+    if (needLock) {
+      lockManager.globalReadLock();
+    }
+    if (!node.isDatabase()) {
       lockManager.threadReadLock(node.getParent());
     }
     try {
@@ -455,8 +486,11 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
         ensureMemoryStatus();
       }
     } finally {
-      if (needLock && !node.isDatabase()) {
+      if (!node.isDatabase()) {
         lockManager.threadReadUnlock(node.getParent());
+      }
+      if (needLock) {
+        lockManager.globalReadUnlock();
       }
     }
   }
@@ -471,6 +505,14 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       unPin(node, needLock);
       node = node.getParent();
     }
+  }
+
+  final long stampedReadLock() {
+    return lockManager.globalStampedReadLock();
+  }
+
+  final void stampedReadUnlock(long stamp) {
+    lockManager.globalStampedReadUnlock(stamp);
   }
 
   @Override
@@ -566,6 +608,9 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
   /** Sync all volatile nodes to PBTree and execute memory release after flush. */
   public void flushVolatileNodes(boolean needLock) {
+    if (needLock) {
+      lockManager.globalReadLock();
+    }
     try {
       boolean hasVolatileNodes = flushVolatileDBNode();
 
@@ -602,6 +647,10 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       logger.error(
           "Error occurred during MTree flush, current SchemaRegionId is {}", schemaRegionId, e);
       e.printStackTrace();
+    } finally {
+      if (needLock) {
+        lockManager.globalReadUnlock();
+      }
     }
   }
 
@@ -641,6 +690,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     CachedMNodeIterator(ICachedMNode parent, boolean needLock)
         throws MetadataException, IOException {
       if (needLock) {
+        lockManager.globalReadLock();
         readLockStamp = lockManager.stampedReadLock(parent);
         isLocked = true;
       }
@@ -659,6 +709,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       } catch (Throwable e) {
         if (needLock) {
           lockManager.stampedReadUnlock(parent, readLockStamp);
+          lockManager.globalReadUnlock();
           isLocked = false;
         }
         throw e;
@@ -750,6 +801,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       } finally {
         if (isLocked) {
           lockManager.stampedReadUnlock(parent, readLockStamp);
+          lockManager.globalReadUnlock();
           isLocked = false;
         }
       }

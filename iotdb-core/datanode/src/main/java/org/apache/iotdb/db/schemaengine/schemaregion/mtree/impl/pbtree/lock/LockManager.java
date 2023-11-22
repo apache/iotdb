@@ -30,10 +30,9 @@ public class LockManager {
 
   private final LockPool lockPool = new LockPool();
 
-  private final SimpleWriterPreferredLock readWriteLock = new SimpleWriterPreferredLock();
+  private final StampedWriterPreferredLock readWriteLock = new StampedWriterPreferredLock();
 
   public long stampedReadLock(ICachedMNode node) {
-    readWriteLock.readLock();
     AtomicLong stamp = new AtomicLong();
     takeMNodeLock(node, lock -> stamp.set(lock.stampedReadLock()));
     return stamp.get();
@@ -41,32 +40,26 @@ public class LockManager {
 
   public void stampedReadUnlock(ICachedMNode node, long stamp) {
     checkAndReleaseMNodeLock(node, lock -> lock.stampedReadUnlock(stamp));
-    readWriteLock.readUnlock();
   }
 
   public void threadReadLock(ICachedMNode node) {
-    readWriteLock.readLock();
     takeMNodeLock(node, StampedWriterPreferredLock::threadReadLock);
   }
 
   public void threadReadLock(ICachedMNode node, boolean prior) {
-    readWriteLock.readLock();
     takeMNodeLock(node, lock -> lock.threadReadLock(prior));
   }
 
   public void threadReadUnlock(ICachedMNode node) {
     checkAndReleaseMNodeLock(node, StampedWriterPreferredLock::threadReadUnlock);
-    readWriteLock.readUnlock();
   }
 
   public void writeLock(ICachedMNode node) {
-    readWriteLock.readLock();
     takeMNodeLock(node, StampedWriterPreferredLock::writeLock);
   }
 
   public void writeUnlock(ICachedMNode node) {
     checkAndReleaseMNodeLock(node, StampedWriterPreferredLock::writeUnlock);
-    readWriteLock.readUnlock();
   }
 
   private void takeMNodeLock(
@@ -95,6 +88,22 @@ public class LockManager {
         lockPool.returnLock(lockEntry);
       }
     }
+  }
+
+  public long globalStampedReadLock() {
+    return readWriteLock.stampedReadLock();
+  }
+
+  public void globalStampedReadUnlock(long stamp) {
+    readWriteLock.stampedReadUnlock(stamp);
+  }
+
+  public void globalReadLock() {
+    readWriteLock.threadReadLock();
+  }
+
+  public void globalReadUnlock() {
+    readWriteLock.threadReadUnlock();
   }
 
   public void globalWriteLock() {
