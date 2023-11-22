@@ -243,7 +243,7 @@ public class PredicateUtils {
     return predicate;
   }
 
-  private static Expression reversePredicate(Expression predicate) {
+  public static Expression reversePredicate(Expression predicate) {
     return new ReversePredicateVisitor().process(predicate, null);
   }
 
