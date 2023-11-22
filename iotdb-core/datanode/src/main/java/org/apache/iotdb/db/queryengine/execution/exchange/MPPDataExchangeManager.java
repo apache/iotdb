@@ -323,9 +323,9 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       }
       Map<String, ISourceHandle> sourceHandleMap =
           sourceHandles.get(sourceHandle.getLocalFragmentInstanceId());
-      if (sourceHandleMap == null
-          || sourceHandleMap.remove(sourceHandle.getLocalPlanNodeId()) == null
-              && (LOGGER.isDebugEnabled())) {
+      if ((sourceHandleMap == null
+              || sourceHandleMap.remove(sourceHandle.getLocalPlanNodeId()) == null)
+          && LOGGER.isDebugEnabled()) {
         LOGGER.debug("[ScHListenerAlreadyReleased]");
       }
 
