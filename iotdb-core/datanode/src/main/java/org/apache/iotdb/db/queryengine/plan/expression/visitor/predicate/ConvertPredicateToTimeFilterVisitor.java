@@ -225,22 +225,17 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
     TimeDuration interval = groupByTimeExpression.getInterval();
     TimeDuration slidingStep = groupByTimeExpression.getSlidingStep();
 
-    if (slidingStep.compareTo(interval) <= 0) {
-      // slidingStep <= interval, full time range
-      return TimeFilter.between(startTime, endTime);
+    if (interval.containsMonth() || slidingStep.containsMonth()) {
+      return TimeFilter.groupByMonth(
+          startTime,
+          endTime,
+          interval,
+          slidingStep,
+          TimeZone.getTimeZone("+00:00"),
+          TimestampPrecisionUtils.currPrecision);
     } else {
-      if (interval.containsMonth() || slidingStep.containsMonth()) {
-        return TimeFilter.groupByMonth(
-            startTime,
-            endTime,
-            interval,
-            slidingStep,
-            TimeZone.getTimeZone("+00:00"),
-            TimestampPrecisionUtils.currPrecision);
-      } else {
-        return TimeFilter.groupBy(
-            startTime, endTime, interval.nonMonthDuration, slidingStep.nonMonthDuration);
-      }
+      return TimeFilter.groupBy(
+          startTime, endTime, interval.nonMonthDuration, slidingStep.nonMonthDuration);
     }
   }
 }
