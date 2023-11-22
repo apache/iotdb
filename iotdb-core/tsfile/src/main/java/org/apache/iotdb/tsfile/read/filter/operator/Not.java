@@ -106,8 +106,12 @@ public class Not implements Filter {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     Not not = (Not) o;
     return filter.equals(not.filter);
   }

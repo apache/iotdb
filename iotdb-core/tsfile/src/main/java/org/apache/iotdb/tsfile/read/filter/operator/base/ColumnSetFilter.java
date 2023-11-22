@@ -33,8 +33,12 @@ public abstract class ColumnSetFilter<T> {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     ColumnSetFilter<?> that = (ColumnSetFilter<?>) o;
     return candidates.equals(that.candidates);
   }

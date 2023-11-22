@@ -59,10 +59,8 @@ public class RegexUtils {
     return patternStrBuild.toString();
   }
 
-  /**
-   * This Method is for un-escaping strings except '\' before special string '%', '_', '\', because
-   * we need to use '\' to judge whether to replace this to regexp string
-   */
+  // This Method is for un-escaping strings except '\' before special string '%', '_', '\', because
+  // we need to use '\' to judge whether to replace this to regexp string
   private static String unescapeString(String value) {
     StringBuilder stringBuilder = new StringBuilder();
     int curIndex = 0;

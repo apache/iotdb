@@ -56,12 +56,28 @@ public final class TimeFilterOperators {
       super(Objects.requireNonNull(constant, "constant cannot be null"));
 
       String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
-      this.toString = name + "(Time, " + constant + ")";
+      this.toString = name + "(" + constant + ")";
     }
 
     @Override
     public String toString() {
       return toString;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      return super.equals(o);
+    }
+
+    @Override
+    public int hashCode() {
+      return super.hashCode();
     }
   }
 
@@ -287,12 +303,28 @@ public final class TimeFilterOperators {
       super(min, max);
 
       String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
-      this.toString = name + "(Time, " + min + ", " + max + ")";
+      this.toString = name + "(" + min + ", " + max + ")";
     }
 
     @Override
     public String toString() {
       return toString;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      return super.equals(o);
+    }
+
+    @Override
+    public int hashCode() {
+      return super.hashCode();
     }
   }
 
@@ -377,12 +409,28 @@ public final class TimeFilterOperators {
       super(candidates);
 
       String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
-      this.toString = name + "(Time, " + candidates + ")";
+      this.toString = name + "(" + candidates + ")";
     }
 
     @Override
     public String toString() {
       return toString;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      return super.equals(o);
+    }
+
+    @Override
+    public int hashCode() {
+      return super.hashCode();
     }
   }
 

@@ -107,8 +107,12 @@ public class GroupByFilter implements ITimeFilter {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     GroupByFilter that = (GroupByFilter) o;
     return interval == that.interval
         && slidingStep == that.slidingStep

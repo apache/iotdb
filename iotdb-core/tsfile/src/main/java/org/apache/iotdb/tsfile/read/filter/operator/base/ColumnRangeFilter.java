@@ -34,8 +34,12 @@ public abstract class ColumnRangeFilter<T extends Comparable<T>> {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     ColumnRangeFilter<?> that = (ColumnRangeFilter<?>) o;
     return min.equals(that.min) && max.equals(that.max);
   }

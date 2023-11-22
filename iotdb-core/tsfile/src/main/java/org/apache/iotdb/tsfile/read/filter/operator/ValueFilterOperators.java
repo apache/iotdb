@@ -45,6 +45,9 @@ public final class ValueFilterOperators {
     // forbidden construction
   }
 
+  private static final String MEASUREMENT_CANNOT_BE_NULL_MSG = "measurement cannot be null";
+  private static final String CONSTANT_CANNOT_BE_NULL_MSG = "constant cannot be null";
+
   // base class for ValueEq, ValueNotEq, ValueLt, ValueGt, ValueLtEq, ValueGtEq
   abstract static class ValueColumnCompareFilter<T extends Comparable<T>>
       extends ColumnCompareFilter<T> implements IValueFilter {
@@ -54,7 +57,7 @@ public final class ValueFilterOperators {
 
     protected ValueColumnCompareFilter(String measurement, T constant) {
       super(constant);
-      this.measurement = Objects.requireNonNull(measurement, "measurement cannot be null");
+      this.measurement = Objects.requireNonNull(measurement, MEASUREMENT_CANNOT_BE_NULL_MSG);
 
       String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
       this.toString = name + "(" + measurement + ", " + constant + ")";
@@ -71,8 +74,12 @@ public final class ValueFilterOperators {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
       ValueColumnCompareFilter<?> that = (ValueColumnCompareFilter<?>) o;
       return measurement.equals(that.measurement);
     }
@@ -86,6 +93,7 @@ public final class ValueFilterOperators {
   public static final class ValueEq<T extends Comparable<T>> extends ValueColumnCompareFilter<T> {
 
     // constant can be null
+    // TODO: consider support IS NULL
     public ValueEq(String measurement, T constant) {
       super(measurement, constant);
     }
@@ -123,6 +131,7 @@ public final class ValueFilterOperators {
       extends ValueColumnCompareFilter<T> {
 
     // constant can be null
+    // TODO: consider support IS NOT NULL
     public ValueNotEq(String measurement, T constant) {
       super(measurement, constant);
     }
@@ -160,7 +169,7 @@ public final class ValueFilterOperators {
 
     // constant cannot be null
     public ValueLt(String measurement, T constant) {
-      super(measurement, Objects.requireNonNull(constant, "constant cannot be null"));
+      super(measurement, Objects.requireNonNull(constant, CONSTANT_CANNOT_BE_NULL_MSG));
     }
 
     @Override
@@ -194,7 +203,7 @@ public final class ValueFilterOperators {
 
     // constant cannot be null
     public ValueLtEq(String measurement, T constant) {
-      super(measurement, Objects.requireNonNull(constant, "constant cannot be null"));
+      super(measurement, Objects.requireNonNull(constant, CONSTANT_CANNOT_BE_NULL_MSG));
     }
 
     @Override
@@ -228,7 +237,7 @@ public final class ValueFilterOperators {
 
     // constant cannot be null
     public ValueGt(String measurement, T constant) {
-      super(measurement, Objects.requireNonNull(constant, "constant cannot be null"));
+      super(measurement, Objects.requireNonNull(constant, CONSTANT_CANNOT_BE_NULL_MSG));
     }
 
     @Override
@@ -262,7 +271,7 @@ public final class ValueFilterOperators {
 
     // constant cannot be null
     public ValueGtEq(String measurement, T constant) {
-      super(measurement, Objects.requireNonNull(constant, "constant cannot be null"));
+      super(measurement, Objects.requireNonNull(constant, CONSTANT_CANNOT_BE_NULL_MSG));
     }
 
     @Override
@@ -301,7 +310,7 @@ public final class ValueFilterOperators {
 
     protected ValueColumnRangeFilter(String measurement, T min, T max) {
       super(min, max);
-      this.measurement = Objects.requireNonNull(measurement, "measurement cannot be null");
+      this.measurement = Objects.requireNonNull(measurement, MEASUREMENT_CANNOT_BE_NULL_MSG);
 
       String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
       this.toString = name + "(" + measurement + ", " + min + ", " + max + ")";
@@ -318,9 +327,15 @@ public final class ValueFilterOperators {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-      if (!super.equals(o)) return false;
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      if (!super.equals(o)) {
+        return false;
+      }
       ValueColumnRangeFilter<?> that = (ValueColumnRangeFilter<?>) o;
       return measurement.equals(that.measurement);
     }
@@ -412,7 +427,7 @@ public final class ValueFilterOperators {
 
     protected ValueColumnSetFilter(String measurement, Set<T> candidates) {
       super(candidates);
-      this.measurement = Objects.requireNonNull(measurement, "measurement cannot be null");
+      this.measurement = Objects.requireNonNull(measurement, MEASUREMENT_CANNOT_BE_NULL_MSG);
 
       String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
       this.toString = name + "(" + measurement + ", " + candidates + ")";
@@ -429,9 +444,15 @@ public final class ValueFilterOperators {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-      if (!super.equals(o)) return false;
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      if (!super.equals(o)) {
+        return false;
+      }
       ValueColumnSetFilter<?> that = (ValueColumnSetFilter<?>) o;
       return measurement.equals(that.measurement);
     }
@@ -485,7 +506,7 @@ public final class ValueFilterOperators {
 
     protected ValueColumnPatternMatchFilter(String measurement, Pattern pattern) {
       super(pattern);
-      this.measurement = Objects.requireNonNull(measurement, "measurement cannot be null");
+      this.measurement = Objects.requireNonNull(measurement, MEASUREMENT_CANNOT_BE_NULL_MSG);
 
       String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
       this.toString = name + "(" + measurement + ", " + pattern + ")";
@@ -502,9 +523,15 @@ public final class ValueFilterOperators {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-      if (!super.equals(o)) return false;
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      if (!super.equals(o)) {
+        return false;
+      }
       ValueColumnPatternMatchFilter that = (ValueColumnPatternMatchFilter) o;
       return measurement.equals(that.measurement);
     }

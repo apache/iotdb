@@ -21,5 +21,6 @@ package org.apache.iotdb.tsfile.read.filter.basic;
 
 public interface IStatefulFilter extends Filter {
 
+  @Override
   Filter copy();
 }
