@@ -110,10 +110,6 @@ public class WebSocketConnectorServer extends WebSocketServer {
               queue.notifyAll();
             }
             transfer(pair, router.get(connector));
-            connector.commit(
-                    pair.getLeft().getRight() instanceof EnrichedEvent
-                            ? (EnrichedEvent) pair.getLeft().getRight()
-                            : null);
           } catch (InterruptedException e) {
             String log =
                     String.format("The event can't be taken, because: %s", e.getMessage());
@@ -142,9 +138,12 @@ public class WebSocketConnectorServer extends WebSocketServer {
                           + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent.");
         }
         if (tabletBuffer == null) {
+          connector.commit(
+                  event instanceof EnrichedEvent
+                          ? (EnrichedEvent) event
+                          : null);
           return;
         }
-
         ByteBuffer payload = ByteBuffer.allocate(Long.BYTES + tabletBuffer.limit());
         payload.putLong(commitId);
         payload.put(tabletBuffer);
