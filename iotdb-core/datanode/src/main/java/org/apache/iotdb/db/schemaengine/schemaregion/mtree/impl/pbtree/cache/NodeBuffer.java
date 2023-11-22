@@ -63,8 +63,8 @@ public class NodeBuffer implements INodeBuffer {
      * The node may already exist in nodeBuffer before change it to volatile status, remove it and ensure
      * the volatile subtree it belongs to is in nodeBuffer
      */
-    addNodeToBuffer(node);
     remove(node.getCacheEntry());
+    addNodeToBuffer(node);
   }
 
   @Override

@@ -331,6 +331,9 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     }
     try {
       node = operation.apply(node);
+      if (node.isDatabase()) {
+        root = node;
+      }
       cacheManager.updateCacheStatusAfterUpdate(node);
     } finally {
       if (needLock && !node.isDatabase()) {

@@ -30,8 +30,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.Iterator;
+import java.util.List;
 
 public class PBTreeFlushExecutor {
 
@@ -64,8 +66,16 @@ public class PBTreeFlushExecutor {
     if (needLock) {
       lockManager.writeLock(subtreeRoot);
     }
+    Iterator<ICachedMNode> volatileSubtreeIterator;
+    List<ICachedMNode> collectedVolatileSubtrees;
     try {
       file.writeMNode(this.subtreeRoot);
+      collectedVolatileSubtrees = new ArrayList<>();
+      volatileSubtreeIterator =
+          cacheManager.updateCacheStatusAndRetrieveSubtreeAfterPersist(this.subtreeRoot);
+      while (volatileSubtreeIterator.hasNext()) {
+        collectedVolatileSubtrees.add(volatileSubtreeIterator.next());
+      }
     } catch (MetadataException | IOException e) {
       logger.warn(
           "Error occurred during MTree flush, current node is {}",
@@ -80,8 +90,7 @@ public class PBTreeFlushExecutor {
     }
 
     Deque<Iterator<ICachedMNode>> volatileSubtreeStack = new ArrayDeque<>();
-    volatileSubtreeStack.push(
-        cacheManager.updateCacheStatusAndRetrieveSubtreeAfterPersist(this.subtreeRoot));
+    volatileSubtreeStack.push(collectedVolatileSubtrees.iterator());
 
     Iterator<ICachedMNode> subtreeIterator;
     ICachedMNode subtreeRoot;
@@ -99,6 +108,12 @@ public class PBTreeFlushExecutor {
       }
       try {
         file.writeMNode(subtreeRoot);
+        collectedVolatileSubtrees = new ArrayList<>();
+        volatileSubtreeIterator =
+            cacheManager.updateCacheStatusAndRetrieveSubtreeAfterPersist(subtreeRoot);
+        while (volatileSubtreeIterator.hasNext()) {
+          collectedVolatileSubtrees.add(volatileSubtreeIterator.next());
+        }
       } catch (MetadataException | IOException e) {
         logger.warn(
             "Error occurred during MTree flush, current node is {}", subtreeRoot.getFullPath(), e);
@@ -110,8 +125,7 @@ public class PBTreeFlushExecutor {
         }
       }
 
-      volatileSubtreeStack.push(
-          cacheManager.updateCacheStatusAndRetrieveSubtreeAfterPersist(subtreeRoot));
+      volatileSubtreeStack.push(collectedVolatileSubtrees.iterator());
     }
   }
 
