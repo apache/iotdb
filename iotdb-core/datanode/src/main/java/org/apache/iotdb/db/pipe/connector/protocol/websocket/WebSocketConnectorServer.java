@@ -43,20 +43,77 @@ import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class WebSocketConnectorServer extends WebSocketServer {
-
   private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketConnectorServer.class);
-
   private final AtomicLong eventIdGenerator = new AtomicLong(0);
-  private final PriorityBlockingQueue<Pair<Long, Event>> eventsWaitingForTransfer =
-      new PriorityBlockingQueue<>(11, Comparator.comparing(o -> o.left));
-  private final ConcurrentMap<Long, Event> eventsWaitingForAck = new ConcurrentHashMap<>();
+  // Map<webSocketConnector, Queue<Pair<Pair<commitId, event>, retryTimes>>>
+  private final ConcurrentMap<
+          WebSocketConnector, PriorityBlockingQueue<Pair<Pair<Long, Event>, Integer>>>
+      eventsWaitingForTransfer = new ConcurrentHashMap<>();
+  // Map<webSocketConnector, Map<commitId, Pair<event, retryTimes>>>
+  private final ConcurrentMap<WebSocketConnector, ConcurrentMap<Long, Pair<Event, Integer>>>
+      eventsWaitingForAck = new ConcurrentHashMap<>();
+  private final ConcurrentMap<WebSocketConnector, WebSocket> router = new ConcurrentHashMap<>();
+  private final ConcurrentMap<String, WebSocketConnector> pipeNameToConnector =
+      new ConcurrentHashMap<>();
+  private final ConcurrentMap<WebSocket, String> webSocketToPipeName = new ConcurrentHashMap<>();
 
-  private final WebSocketConnector websocketConnector;
+  private static WebSocketConnectorServer instance;
 
-  public WebSocketConnectorServer(
-      InetSocketAddress address, WebSocketConnector websocketConnector) {
-    super(address);
-    this.websocketConnector = websocketConnector;
+  private WebSocketConnectorServer(int port) {
+    super(new InetSocketAddress(port));
+    new Thread(
+            () -> {
+              while (true) {
+                for (WebSocketConnector connector : eventsWaitingForTransfer.keySet()) {
+                  PriorityBlockingQueue<Pair<Pair<Long, Event>, Integer>> queue =
+                      eventsWaitingForTransfer.getOrDefault(connector, null);
+                  if (queue == null || queue.isEmpty()) {
+                    continue;
+                  }
+                  try {
+                    Pair<Pair<Long, Event>, Integer> pair = queue.take();
+                    synchronized (queue) {
+                      queue.notifyAll();
+                    }
+                    transfer(pair, router.get(connector));
+                    connector.commit(
+                        pair.getLeft().getRight() instanceof EnrichedEvent
+                            ? (EnrichedEvent) pair.getLeft().getRight()
+                            : null);
+                  } catch (InterruptedException e) {
+                    String log = String.format("The event can't be taken, because: %s", e.getMessage());
+                    LOGGER.warn(log);
+                    Thread.currentThread().interrupt();
+                    throw new PipeException(e.getMessage());
+                  }
+                }
+              }
+            })
+        .start();
+  }
+
+  public static WebSocketConnectorServer getInstance(int port) {
+    if (null == instance) {
+      synchronized (WebSocketConnectorServer.class) {
+        if (null == instance) {
+          instance = new WebSocketConnectorServer(port);
+        }
+      }
+    }
+    return instance;
+  }
+
+  public void register(WebSocketConnector connector) {
+    eventsWaitingForTransfer.putIfAbsent(
+        connector, new PriorityBlockingQueue<>(11, Comparator.comparing(o -> o.left.left)));
+    eventsWaitingForAck.putIfAbsent(connector, new ConcurrentHashMap<>());
+    pipeNameToConnector.put(connector.getPipeName(), connector);
+  }
+
+  public void unregister(WebSocketConnector connector) {
+    eventsWaitingForTransfer.remove(connector);
+    eventsWaitingForAck.remove(connector);
+    pipeNameToConnector.remove(connector.getPipeName());
   }
 
   @Override
@@ -81,21 +138,27 @@ public class WebSocketConnectorServer extends WebSocketServer {
 
   @Override
   public void onMessage(WebSocket webSocket, String s) {
-    if (s.startsWith("START")) {
+    if (s.startsWith("BIND")) {
       LOGGER.info(
-          "Received a start message from {}:{}",
+          "Received a bind message from {}:{}",
           webSocket.getRemoteSocketAddress().getHostName(),
           webSocket.getRemoteSocketAddress().getPort());
-      handleStart(webSocket);
+      handleBind(webSocket, s.replace("BIND:", ""));
     } else if (s.startsWith("ACK")) {
-      handleAck(webSocket, s);
+      LOGGER.info(
+          "Received a ack message from {}:{}",
+          webSocket.getRemoteSocketAddress().getHostName(),
+          webSocket.getRemoteSocketAddress().getPort());
+      long commitId = Long.parseLong(s.replace("ACK:", ""));
+      handleAck(webSocket, commitId);
     } else if (s.startsWith("ERROR")) {
       LOGGER.error(
           "Received an error message {} from {}:{}",
           s,
           webSocket.getRemoteSocketAddress().getHostName(),
           webSocket.getRemoteSocketAddress().getPort());
-      handleError(webSocket, s);
+      long commitId = Long.parseLong(s.replace("ERROR:", ""));
+      handleError(webSocket, commitId);
     }
   }
 
@@ -124,12 +187,12 @@ public class WebSocketConnectorServer extends WebSocketServer {
     LOGGER.info(log);
   }
 
-  public void addEvent(Event event) {
-    if (eventsWaitingForTransfer.size() >= 5) {
-      synchronized (eventsWaitingForTransfer) {
-        while (eventsWaitingForTransfer.size() >= 5) {
+  public void addEvent(Event event, WebSocketConnector connector) {
+    if (eventsWaitingForTransfer.get(connector).size() >= 5) {
+      synchronized (eventsWaitingForTransfer.get(connector)) {
+        while (eventsWaitingForTransfer.get(connector).size() >= 5) {
           try {
-            eventsWaitingForTransfer.wait();
+            eventsWaitingForTransfer.get(connector).wait();
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new PipeException(e.getMessage());
@@ -137,38 +200,18 @@ public class WebSocketConnectorServer extends WebSocketServer {
         }
       }
     }
-
-    eventsWaitingForTransfer.put(new Pair<>(eventIdGenerator.incrementAndGet(), event));
+    eventsWaitingForTransfer
+        .get(connector)
+        .put(new Pair<>(new Pair<>(eventIdGenerator.incrementAndGet(), event), 3));
+    eventsWaitingForTransfer.get(connector).notifyAll();
   }
 
-  private void handleStart(WebSocket webSocket) {
-    try {
-      while (true) {
-        Pair<Long, Event> eventPair = eventsWaitingForTransfer.take();
-        synchronized (eventsWaitingForTransfer) {
-          eventsWaitingForTransfer.notifyAll();
-        }
-        boolean transferred = transfer(eventPair, webSocket);
-        if (transferred) {
-          break;
-        } else {
-          websocketConnector.commit(
-              eventPair.getRight() instanceof EnrichedEvent
-                  ? (EnrichedEvent) eventPair.getRight()
-                  : null);
-        }
-      }
-    } catch (InterruptedException e) {
-      String log = String.format("The event can't be taken, because: %s", e.getMessage());
-      LOGGER.warn(log);
-      Thread.currentThread().interrupt();
-      throw new PipeException(e.getMessage());
-    }
-  }
-
-  private boolean transfer(Pair<Long, Event> eventPair, WebSocket webSocket) {
-    Long commitId = eventPair.getLeft();
-    Event event = eventPair.getRight();
+  private void transfer(Pair<Pair<Long, Event>, Integer> eventPair, WebSocket webSocket) {
+    Long commitId = eventPair.getLeft().getLeft();
+    Event event = eventPair.getLeft().getRight();
+    Integer retryTimes = eventPair.getRight();
+    String pipeName = webSocketToPipeName.get(webSocket);
+    WebSocketConnector connector = pipeNameToConnector.get(pipeName);
     try {
       ByteBuffer tabletBuffer = null;
       if (event instanceof PipeInsertNodeTabletInsertionEvent) {
@@ -181,43 +224,53 @@ public class WebSocketConnectorServer extends WebSocketServer {
                 + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent.");
       }
       if (tabletBuffer == null) {
-        return false;
+        return;
       }
 
       ByteBuffer payload = ByteBuffer.allocate(Long.BYTES + tabletBuffer.limit());
       payload.putLong(commitId);
       payload.put(tabletBuffer);
       payload.flip();
-
       this.broadcast(payload, Collections.singletonList(webSocket));
-      eventsWaitingForAck.put(eventPair.getLeft(), eventPair.getRight());
+      eventsWaitingForAck.get(connector).put(commitId, new Pair<>(event, retryTimes - 1));
     } catch (Exception e) {
-      eventsWaitingForTransfer.put(eventPair);
+      eventsWaitingForTransfer
+          .get(connector)
+          .put(new Pair<>(new Pair<>(commitId, event), retryTimes - 1));
       throw new PipeException(e.getMessage());
     }
-    return true;
   }
 
-  private void handleAck(WebSocket webSocket, String s) {
-    long commitId = Long.parseLong(s.replace("ACK:", ""));
-    Event event = eventsWaitingForAck.remove(commitId);
-    if (event != null) {
-      websocketConnector.commit(event instanceof EnrichedEvent ? (EnrichedEvent) event : null);
+  private void handleBind(WebSocket webSocket, String pipeName) {
+    if (router.containsKey(pipeNameToConnector.get(pipeName))) {
+      webSocket.close(4000, "Too many connections.");
     }
-    handleStart(webSocket);
+    router.put(pipeNameToConnector.get(pipeName), webSocket);
+    webSocketToPipeName.put(webSocket, pipeName);
   }
 
-  private void handleError(WebSocket webSocket, String s) {
-    long commitId = Long.parseLong(s.replace("ERROR:", ""));
+  private void handleAck(WebSocket webSocket, long commitId) {
+    String pipeName = webSocketToPipeName.get(webSocket);
+    WebSocketConnector connector = pipeNameToConnector.get(pipeName);
+    Event event = eventsWaitingForAck.get(connector).remove(commitId).getLeft();
+    if (event != null) {
+      connector.commit(event instanceof EnrichedEvent ? (EnrichedEvent) event : null);
+    }
+  }
+
+  private void handleError(WebSocket webSocket, long commitId) {
     String log =
         String.format(
             "The tablet of commitId: %d can't be parsed by client, it will be retried later.",
             commitId);
     LOGGER.warn(log);
-    Event event = eventsWaitingForAck.remove(commitId);
-    if (event != null) {
-      eventsWaitingForTransfer.put(new Pair<>(commitId, event));
+    String pipeName = webSocketToPipeName.get(webSocket);
+    WebSocketConnector connector = pipeNameToConnector.get(pipeName);
+    Pair<Event, Integer> pair = eventsWaitingForAck.get(connector).remove(commitId);
+    if (pair.getLeft() != null) {
+      eventsWaitingForTransfer
+          .get(connector)
+          .put(new Pair<>(new Pair<>(commitId, pair.getLeft()), pair.getRight()));
     }
-    handleStart(webSocket);
   }
 }

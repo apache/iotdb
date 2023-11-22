@@ -30,29 +30,24 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 
-import java.net.InetSocketAddress;
 import java.util.Arrays;
-import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class WebSocketConnector implements PipeConnector {
-
   private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketConnector.class);
-
-  private static final Map<Integer, Pair<AtomicInteger, WebSocketConnectorServer>>
-      PORT_TO_REFERENCE_COUNT_AND_SERVER_MAP = new ConcurrentHashMap<>();
-
   private Integer port;
   private WebSocketConnectorServer server;
+  private String pipeName;
+
+  public String getPipeName() {
+    return pipeName;
+  }
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -68,24 +63,13 @@ public class WebSocketConnector implements PipeConnector {
                 PipeConnectorConstant.CONNECTOR_WEBSOCKET_PORT_KEY,
                 PipeConnectorConstant.SINK_WEBSOCKET_PORT_KEY),
             PipeConnectorConstant.CONNECTOR_WEBSOCKET_PORT_DEFAULT_VALUE);
+    pipeName = configuration.getRuntimeEnvironment().getPipeName();
   }
 
   @Override
   public void handshake() throws Exception {
-    synchronized (PORT_TO_REFERENCE_COUNT_AND_SERVER_MAP) {
-      server =
-          PORT_TO_REFERENCE_COUNT_AND_SERVER_MAP
-              .computeIfAbsent(
-                  port,
-                  key -> {
-                    final WebSocketConnectorServer newServer =
-                        new WebSocketConnectorServer(new InetSocketAddress(port), this);
-                    newServer.start();
-                    return new Pair<>(new AtomicInteger(0), newServer);
-                  })
-              .getRight();
-      PORT_TO_REFERENCE_COUNT_AND_SERVER_MAP.get(port).getLeft().incrementAndGet();
-    }
+    server = WebSocketConnectorServer.getInstance(port);
+    server.register(this);
   }
 
   @Override
@@ -105,7 +89,7 @@ public class WebSocketConnector implements PipeConnector {
     ((EnrichedEvent) tabletInsertionEvent)
         .increaseReferenceCount(WebSocketConnector.class.getName());
 
-    server.addEvent(tabletInsertionEvent);
+    server.addEvent(tabletInsertionEvent, this);
   }
 
   @Override
@@ -121,7 +105,7 @@ public class WebSocketConnector implements PipeConnector {
       for (TabletInsertionEvent event : tsFileInsertionEvent.toTabletInsertionEvents()) {
         ((EnrichedEvent) event).increaseReferenceCount(WebSocketConnector.class.getName());
 
-        server.addEvent(event);
+        server.addEvent(event, this);
       }
     } finally {
       tsFileInsertionEvent.close();
@@ -136,22 +120,7 @@ public class WebSocketConnector implements PipeConnector {
     if (port == null) {
       return;
     }
-
-    synchronized (PORT_TO_REFERENCE_COUNT_AND_SERVER_MAP) {
-      final Pair<AtomicInteger, WebSocketConnectorServer> pair =
-          PORT_TO_REFERENCE_COUNT_AND_SERVER_MAP.get(port);
-      if (pair == null) {
-        return;
-      }
-
-      if (pair.getLeft().decrementAndGet() <= 0) {
-        try {
-          pair.getRight().stop();
-        } finally {
-          PORT_TO_REFERENCE_COUNT_AND_SERVER_MAP.remove(port);
-        }
-      }
-    }
+    server.unregister(this);
   }
 
   public synchronized void commit(@Nullable EnrichedEvent enrichedEvent) {
