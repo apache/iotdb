@@ -3817,22 +3817,6 @@ public class IoTDBConfig {
     this.ignoreStateMachine = ignoreStateMachine;
   }
 
-  public String getClusterSchemaLimitLevel() {
-    return clusterSchemaLimitLevel;
-  }
-
-  public void setClusterSchemaLimitLevel(String clusterSchemaLimitLevel) {
-    this.clusterSchemaLimitLevel = clusterSchemaLimitLevel;
-  }
-
-  public long getClusterSchemaLimitThreshold() {
-    return clusterSchemaLimitThreshold;
-  }
-
-  public void setClusterSchemaLimitThreshold(long clusterSchemaLimitThreshold) {
-    this.clusterSchemaLimitThreshold = clusterSchemaLimitThreshold;
-  }
-
   public String getObjectStorageBucket() {
     throw new UnsupportedOperationException("object storage is not supported yet");
   }

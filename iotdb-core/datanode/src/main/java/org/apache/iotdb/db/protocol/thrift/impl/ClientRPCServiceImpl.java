@@ -38,6 +38,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.audit.AuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -1947,6 +1948,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus insertTablet(TSInsertTabletReq req) {
+    if (true) {
+      return StatusUtils.OK;
+    }
     long t1 = System.nanoTime();
     OperationQuota quota = null;
     try {
