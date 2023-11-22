@@ -35,7 +35,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.ternary.TernaryExpression
 import org.apache.iotdb.db.queryengine.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.UnaryExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ConvertExpressionToTimeFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ReversePredicateVisitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -56,6 +55,7 @@ public class PredicateUtils {
    * @param canRewrite determined by the father of current expression
    * @param isFirstOr whether it is the first LogicOrExpression encountered
    * @return global time predicate
+   * @throws UnknownExpressionTypeException unknown expression type
    */
   public static Pair<Expression, Boolean> extractGlobalTimePredicate(
       Expression predicate, boolean canRewrite, boolean isFirstOr) {
@@ -129,6 +129,7 @@ public class PredicateUtils {
       return new Pair<>(null, true);
     } else if (predicate.getExpressionType().equals(ExpressionType.LIKE)
         || predicate.getExpressionType().equals(ExpressionType.REGEXP)) {
+      // time filter don't support LIKE and REGEXP
       return new Pair<>(null, true);
     } else if (predicate.getExpressionType().equals(ExpressionType.BETWEEN)) {
       Expression firstExpression = ((TernaryExpression) predicate).getFirstExpression();
@@ -137,21 +138,18 @@ public class PredicateUtils {
 
       boolean isTimeFilter = false;
       if (firstExpression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
-        isTimeFilter = checkBetweenExpressionIsTimeFilter(secondExpression, thirdExpression);
+        isTimeFilter = checkBetweenConstantSatisfy(secondExpression, thirdExpression);
       } else if (secondExpression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
-        isTimeFilter =
-            checkConstantSatisfy(firstExpression, thirdExpression)
-                && checkBetweenExpressionIsTimeFilter(predicate, firstExpression);
+        isTimeFilter = checkBetweenConstantSatisfy(firstExpression, thirdExpression);
       } else if (thirdExpression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
-        isTimeFilter =
-            checkConstantSatisfy(secondExpression, firstExpression)
-                && checkBetweenExpressionIsTimeFilter(predicate, firstExpression);
+        isTimeFilter = checkBetweenConstantSatisfy(secondExpression, firstExpression);
       }
       if (isTimeFilter) {
         return new Pair<>(predicate, false);
       }
       return new Pair<>(null, true);
     } else if (predicate.getExpressionType().equals(ExpressionType.IS_NULL)) {
+      // time filter don't support IS_NULL
       return new Pair<>(null, true);
     } else if (predicate.getExpressionType().equals(ExpressionType.IN)) {
       Expression timeExpression = ((InExpression) predicate).getExpression();
@@ -176,15 +174,7 @@ public class PredicateUtils {
         && ((ConstantOperand) valueExpression).getDataType() == TSDataType.INT64;
   }
 
-  private static boolean checkBetweenExpressionIsTimeFilter(
-      Expression firstExpression, Expression secondExpression) {
-    return firstExpression instanceof ConstantOperand
-        && secondExpression instanceof ConstantOperand
-        && ((ConstantOperand) firstExpression).getDataType() == TSDataType.INT64
-        && ((ConstantOperand) secondExpression).getDataType() == TSDataType.INT64;
-  }
-
-  public static boolean checkConstantSatisfy(
+  private static boolean checkBetweenConstantSatisfy(
       Expression firstExpression, Expression secondExpression) {
     return firstExpression.isConstantOperand()
         && secondExpression.isConstantOperand()
@@ -194,6 +184,12 @@ public class PredicateUtils {
             <= Long.parseLong(((ConstantOperand) secondExpression).getValueString()));
   }
 
+  /**
+   * Check if the given expression contains time filter.
+   *
+   * @param predicate given expression
+   * @return true if the given expression contains time filter
+   */
   public static boolean checkIfTimeFilterExist(Expression predicate) {
     if (predicate instanceof TernaryExpression) {
       return checkIfTimeFilterExist(((TernaryExpression) predicate).getFirstExpression())
@@ -228,6 +224,21 @@ public class PredicateUtils {
     }
   }
 
+  /**
+   * Recursively removes all use of the not() operator in a predicate by replacing all instances of
+   * not(x) with the inverse(x),
+   *
+   * <p>eg: not(and(eq(), not(eq(y))) -&gt; or(notEq(), eq(y))
+   *
+   * <p>The returned predicate should have the same meaning as the original, but without the use of
+   * the not() operator.
+   *
+   * <p>See also {@link PredicateUtils#reversePredicate(Expression)}, which is used to do the
+   * inversion.
+   *
+   * @param predicate the predicate to remove not() from
+   * @return the predicate with all not() operators removed
+   */
   public static Expression predicateRemoveNot(Expression predicate) {
     if (predicate.getExpressionType().equals(ExpressionType.LOGIC_AND)) {
       return ExpressionFactory.and(
@@ -243,10 +254,26 @@ public class PredicateUtils {
     return predicate;
   }
 
+  /**
+   * Converts a predicate to its logical inverse. The returned predicate should be equivalent to
+   * not(p), but without the use of a not() operator.
+   *
+   * <p>See also {@link PredicateUtils#predicateRemoveNot(Expression)}, which can remove the use of
+   * all not() operators without inverting the overall predicate.
+   *
+   * @param predicate given predicate
+   * @return the predicate after reversing
+   */
   public static Expression reversePredicate(Expression predicate) {
     return new ReversePredicateVisitor().process(predicate, null);
   }
 
+  /**
+   * Simplify the given predicate (Remove the TRUE expression).
+   *
+   * @param predicate given predicate
+   * @return the predicate after simplifying
+   */
   public static Expression simplifyPredicate(Expression predicate) {
     if (predicate.getExpressionType().equals(ExpressionType.LOGIC_AND)) {
       Expression left = simplifyPredicate(((BinaryExpression) predicate).getLeftExpression());
@@ -277,6 +304,17 @@ public class PredicateUtils {
     return predicate;
   }
 
+  /**
+   * Convert the given predicate to time filter.
+   *
+   * <p>Note: the supplied predicate must not contain any instances of the not() operator as this is
+   * not supported by this filter. The supplied predicate should first be run through {@link
+   * PredicateUtils#predicateRemoveNot(Expression)} to rewrite it in a form that doesn't make use of
+   * the not() operator.
+   *
+   * @param predicate given predicate
+   * @return the time filter converted from the given predicate
+   */
   public static Filter convertPredicateToTimeFilter(Expression predicate) {
     if (predicate == null) {
       return null;
@@ -284,6 +322,12 @@ public class PredicateUtils {
     return predicate.accept(new ConvertExpressionToTimeFilterVisitor(), null);
   }
 
+  /**
+   * Combine the given conjuncts into a single expression using "and".
+   *
+   * @param conjuncts given conjuncts
+   * @return the expression combined by the given conjuncts
+   */
   public static Expression combineConjuncts(List<Expression> conjuncts) {
     if (conjuncts.size() == 1) {
       return conjuncts.get(0);

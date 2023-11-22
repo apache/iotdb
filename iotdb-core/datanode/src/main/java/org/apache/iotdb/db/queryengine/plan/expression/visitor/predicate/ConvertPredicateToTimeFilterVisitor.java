@@ -42,7 +42,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.filter.factory.TimeFilter;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 import java.util.LinkedHashSet;
@@ -52,7 +51,7 @@ import java.util.TimeZone;
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.tsfile.read.filter.operator.Not.CONTAIN_NOT_ERR_MSG;
 
-public class ConvertExpressionToTimeFilterVisitor extends PredicateVisitor<Filter, Void> {
+public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter, Void> {
 
   @Override
   public Filter visitInExpression(InExpression inExpression, Void context) {
@@ -176,10 +175,6 @@ public class ConvertExpressionToTimeFilterVisitor extends PredicateVisitor<Filte
       return constructCompareFilter(expressionType, rightExpression, leftExpression);
     }
 
-    checkArgument(leftExpression.getExpressionType().equals(ExpressionType.TIMESTAMP));
-    checkArgument(rightExpression instanceof ConstantOperand);
-    checkArgument(((ConstantOperand) rightExpression).getDataType().equals(TSDataType.INT64));
-
     long value = Long.parseLong(((ConstantOperand) rightExpression).getValueString());
 
     switch (expressionType) {
@@ -208,44 +203,26 @@ public class ConvertExpressionToTimeFilterVisitor extends PredicateVisitor<Filte
     Expression thirdExpression = betweenExpression.getThirdExpression();
     boolean isNot = betweenExpression.isNotBetween();
 
-    checkArgument(firstExpression.getExpressionType().equals(ExpressionType.TIMESTAMP));
-    checkArgument(
-        (secondExpression instanceof ConstantOperand)
-            && ((ConstantOperand) secondExpression).getDataType().equals(TSDataType.INT64));
-    checkArgument(
-        (thirdExpression instanceof ConstantOperand)
-            && ((ConstantOperand) thirdExpression).getDataType().equals(TSDataType.INT64));
+    if (firstExpression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
+      // firstExpression is TIMESTAMP
+      long minValue = Long.parseLong(((ConstantOperand) secondExpression).getValueString());
+      long maxValue = Long.parseLong(((ConstantOperand) thirdExpression).getValueString());
 
-    long minValue = Long.parseLong(((ConstantOperand) secondExpression).getValueString());
-    long maxValue = Long.parseLong(((ConstantOperand) thirdExpression).getValueString());
-
-    return isNot
-        ? TimeFilter.notBetween(minValue, maxValue)
-        : TimeFilter.between(minValue, maxValue);
-  }
-
-  public static Pair<Filter, Boolean> getPairFromBetweenTimeSecond(
-      BetweenExpression predicate, Expression expression) {
-    if (predicate.isNotBetween()) {
-      return new Pair<>(
-          TimeFilter.gt(Long.parseLong(((ConstantOperand) expression).getValueString())), false);
-
-    } else {
-      return new Pair<>(
-          TimeFilter.ltEq(Long.parseLong(((ConstantOperand) expression).getValueString())), false);
+      if (minValue == maxValue) {
+        return isNot ? TimeFilter.notEq(minValue) : TimeFilter.eq(minValue);
+      }
+      return isNot
+          ? TimeFilter.notBetween(minValue, maxValue)
+          : TimeFilter.between(minValue, maxValue);
+    } else if (secondExpression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
+      // secondExpression is TIMESTAMP
+      long value = Long.parseLong(((ConstantOperand) firstExpression).getValueString());
+      return isNot ? TimeFilter.gt(value) : TimeFilter.ltEq(value);
     }
-  }
 
-  public static Pair<Filter, Boolean> getPairFromBetweenTimeThird(
-      BetweenExpression predicate, Expression expression) {
-    if (predicate.isNotBetween()) {
-      return new Pair<>(
-          TimeFilter.lt(Long.parseLong(((ConstantOperand) expression).getValueString())), false);
-
-    } else {
-      return new Pair<>(
-          TimeFilter.gtEq(Long.parseLong(((ConstantOperand) expression).getValueString())), false);
-    }
+    // thirdExpression is TIMESTAMP
+    long value = Long.parseLong(((ConstantOperand) firstExpression).getValueString());
+    return isNot ? TimeFilter.lt(value) : TimeFilter.gtEq(value);
   }
 
   @Override
