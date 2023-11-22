@@ -112,6 +112,7 @@ public abstract class PipeSubtaskExecutor {
     if (subtask != null) {
       try {
         subtask.close();
+        LOGGER.info("The subtask {} is closed successfully.", subTaskID);
       } catch (Exception e) {
         LOGGER.error("Failed to close the subtask {}.", subTaskID, e);
       }

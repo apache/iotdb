@@ -333,6 +333,16 @@ public class PipeConnectorSubtask extends PipeSubtask {
     }
   }
 
+  /**
+   * When a pipe is dropped, the connector maybe reused and will not be closed. So we just discard
+   * its queued events in the output pipe connector.
+   */
+  public void discardEventsOfPipe(String pipeNameToDrop) {
+    if (outputPipeConnector instanceof IoTDBThriftAsyncConnector) {
+      ((IoTDBThriftAsyncConnector) outputPipeConnector).discardEventsOfPipe(pipeNameToDrop);
+    }
+  }
+
   //////////////////////////// APIs provided for metric framework ////////////////////////////
 
   public String getAttributeSortedString() {

@@ -202,12 +202,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   private static final Logger logger = LoggerFactory.getLogger(AnalyzeVisitor.class);
 
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  private static final Expression DEVICE_EXPRESSION =
+  static final Expression DEVICE_EXPRESSION =
       TimeSeriesOperand.constructColumnHeaderExpression(DEVICE, TSDataType.TEXT);
 
-  private static final Expression END_TIME_EXPRESSION =
+  static final Expression END_TIME_EXPRESSION =
       TimeSeriesOperand.constructColumnHeaderExpression(ENDTIME, TSDataType.INT64);
 
   private final List<String> lastQueryColumnNames =
@@ -242,11 +242,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitQuery(QueryStatement queryStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
     analysis.setLastLevelUseWildcard(queryStatement.isLastLevelUseWildcard());
+
+    long startTime = System.currentTimeMillis();
     try {
       // check for semantic errors
       queryStatement.semanticCheck();
 
       ISchemaTree schemaTree = analyzeSchema(queryStatement, analysis, context);
+
+      logger.warn("--- [analyzeSchema] : {}ms", System.currentTimeMillis() - startTime);
+
       // If there is no leaf node in the schema tree, the query should be completed immediately
       if (schemaTree.isEmpty()) {
         return finishQuery(queryStatement, analysis);
@@ -261,6 +266,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       List<Pair<Expression, String>> outputExpressions;
       if (queryStatement.isAlignByDevice()) {
+        if (TemplatedAnalyze.canBuildPlanUseTemplate(
+            analysis, queryStatement, partitionFetcher, schemaTree)) {
+          return analysis;
+        }
+
         List<PartialPath> deviceList = analyzeFrom(queryStatement, schemaTree);
 
         if (canPushDownLimitOffsetInGroupByTimeForDevice(queryStatement)) {
@@ -269,7 +279,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         }
 
         analyzeDeviceToWhere(analysis, queryStatement, schemaTree, deviceList);
+
         outputExpressions = analyzeSelect(analysis, queryStatement, schemaTree, deviceList);
+
         if (deviceList.isEmpty()) {
           return finishQuery(queryStatement, analysis);
         }
@@ -373,6 +385,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       QueryPlanCostMetricSet.getInstance()
           .recordPlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
     }
+
     analysis.setSchemaTree(schemaTree);
     return schemaTree;
   }
@@ -591,7 +604,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Analysis analysis,
       QueryStatement queryStatement,
       ISchemaTree schemaTree,
-      List<PartialPath> deviceSet) {
+      List<PartialPath> deviceList) {
     List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
     Map<String, Set<Expression>> deviceToSelectExpressions = new HashMap<>();
     ColumnPaginationController paginationController =
@@ -605,7 +618,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       // use LinkedHashMap for order-preserving
       Map<Expression, Map<String, Expression>> measurementToDeviceSelectExpressions =
           new LinkedHashMap<>();
-      for (PartialPath device : deviceSet) {
+      for (PartialPath device : deviceList) {
         List<Expression> selectExpressionsOfOneDevice =
             concatDeviceAndBindSchemaForExpression(selectExpression, device, schemaTree);
         if (selectExpressionsOfOneDevice.isEmpty()) {
@@ -660,12 +673,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     // remove devices without measurements to compute
     Set<PartialPath> noMeasurementDevices = new HashSet<>();
-    for (PartialPath device : deviceSet) {
+    for (PartialPath device : deviceList) {
       if (!deviceToSelectExpressions.containsKey(device.getFullPath())) {
         noMeasurementDevices.add(device);
       }
     }
-    deviceSet.removeAll(noMeasurementDevices);
+    deviceList.removeAll(noMeasurementDevices);
 
     // when the select expression of any device is empty,
     // the where expression map also need remove this device
@@ -1224,7 +1237,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
     }
 
-    Map<String, List<String>> outputDeviceToQueriedDevicesMap = new LinkedHashMap<>();
+    Map<String, String> outputDeviceToQueriedDevicesMap = new LinkedHashMap<>();
     for (Map.Entry<String, Set<Expression>> entry : deviceToSourceExpressions.entrySet()) {
       String deviceName = entry.getKey();
       Set<Expression> sourceExpressionsUnderDevice = entry.getValue();
@@ -1236,7 +1249,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         throw new SemanticException(
             "Cross-device queries are not supported in ALIGN BY DEVICE queries.");
       }
-      outputDeviceToQueriedDevicesMap.put(deviceName, new ArrayList<>(queriedDevices));
+      outputDeviceToQueriedDevicesMap.put(deviceName, queriedDevices.iterator().next());
     }
 
     analysis.setDeviceToSourceExpressions(deviceToSourceExpressions);
@@ -1258,7 +1271,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
   }
 
-  private static final String WHERE_WRONG_TYPE_ERROR_MSG =
+  static final String WHERE_WRONG_TYPE_ERROR_MSG =
       "The output type of the expression in WHERE clause should be BOOLEAN, actual data type: %s.";
 
   private void analyzeDeviceToWhere(
@@ -1359,7 +1372,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         analyzeDeviceViewSpecialProcess(deviceViewOutputExpressions, queryStatement, analysis));
   }
 
-  private boolean analyzeDeviceViewSpecialProcess(
+  static boolean analyzeDeviceViewSpecialProcess(
       Set<Expression> deviceViewOutputExpressions,
       QueryStatement queryStatement,
       Analysis analysis) {
@@ -1431,7 +1444,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
   }
 
-  private void analyzeOutput(
+  static void analyzeOutput(
       Analysis analysis,
       QueryStatement queryStatement,
       List<Pair<Expression, String>> outputExpressions) {
@@ -1513,7 +1526,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     queryStatement.updateSortItems(orderByExpressions);
   }
 
-  private TSDataType analyzeExpressionType(Analysis analysis, Expression expression) {
+  static TSDataType analyzeExpressionType(Analysis analysis, Expression expression) {
     return analyzeExpression(analysis, expression);
   }
 
@@ -1775,7 +1788,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setGlobalTimeFilter(globalTimeFilter);
   }
 
-  private void analyzeFill(Analysis analysis, QueryStatement queryStatement) {
+  static void analyzeFill(Analysis analysis, QueryStatement queryStatement) {
     if (queryStatement.getFillComponent() == null) {
       return;
     }
@@ -1792,10 +1805,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Analysis analysis, QueryStatement queryStatement, ISchemaTree schemaTree) {
     Set<String> deviceSet = new HashSet<>();
     if (queryStatement.isAlignByDevice()) {
-      deviceSet =
-          analysis.getOutputDeviceToQueriedDevicesMap().values().stream()
-              .flatMap(List::stream)
-              .collect(Collectors.toSet());
+      deviceSet = new HashSet<>(analysis.getOutputDeviceToQueriedDevicesMap().values());
     } else {
       for (Expression expression : analysis.getSourceExpressions()) {
         deviceSet.add(ExpressionAnalyzer.getDeviceNameInSourceExpression(expression));
