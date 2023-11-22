@@ -9,9 +9,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Objects;
+import java.util.*;
 
 import static java.lang.Math.abs;
 
@@ -2988,7 +2986,11 @@ public class REGERTest {
     String output_parent_dir =
         "/Users/xiaojinzhao/Documents/GitHub/encoding-reorder/compression_ratio/reger";
 
+//    String parent_dir = "E:\\encoding-reorder-icde\\vldb\\iotdb_datasets_lists\\";
+//    String output_parent_dir = "E:\\encoding-reorder-icde\\compression_ratio\\block_size";
+
     String input_parent_dir = parent_dir + "trans_data/";
+    //String input_parent_dir = parent_dir;
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
     ArrayList<String> dataset_name = new ArrayList<>();
@@ -3007,6 +3009,8 @@ public class REGERTest {
     dataset_name.add("TH-Climate");
     dataset_name.add("TY-Transport");
     dataset_name.add("EPM-Education");
+    dataset_name.add("FANYP-Sensors");
+    dataset_name.add("TRAJET-Transport");
 
     int[] dataset_0 = {547, 2816};
     int[] dataset_1 = {1719, 3731};
@@ -3020,6 +3024,8 @@ public class REGERTest {
     int[] dataset_9 = {474, 678};
     int[] dataset_10 = {4, 30, 38, 49, 58};
     int[] dataset_11 = {5182, 8206};
+    int[] dataset_12 = {0};
+    int[] dataset_13 = {0};
 
     dataset_third.add(dataset_0);
     dataset_third.add(dataset_1);
@@ -3033,6 +3039,8 @@ public class REGERTest {
     dataset_third.add(dataset_9);
     dataset_third.add(dataset_10);
     dataset_third.add(dataset_11);
+    dataset_third.add(dataset_12);
+    dataset_third.add(dataset_13);
 
     for (String value : dataset_name) {
       input_path_list.add(input_parent_dir + value);
@@ -3063,6 +3071,8 @@ public class REGERTest {
     //        dataset_block_size.add(64);
     output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv"); // 11
     //        dataset_block_size.add(256);
+    output_path_list.add(output_parent_dir + "/FANYP-Sensors_ratio.csv"); // 12
+    output_path_list.add(output_parent_dir + "/TRAJET-Transport_ratio.csv"); // 13
 
     for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
       //        for (int file_i = 0; file_i < 1; file_i++) {
@@ -3118,7 +3128,7 @@ public class REGERTest {
         long decodeTime = 0;
         double ratio = 0;
         double compressed_size = 0;
-        int repeatTime2 = 100;
+        int repeatTime2 = 1;
         long s = System.nanoTime();
         int length = 0;
         for (int repeat = 0; repeat < repeatTime2; repeat++)
