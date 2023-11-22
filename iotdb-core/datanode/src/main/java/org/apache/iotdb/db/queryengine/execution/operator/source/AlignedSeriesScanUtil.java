@@ -60,7 +60,7 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
       Ordering scanOrder,
       SeriesScanOptions scanOptions,
       FragmentInstanceContext context) {
-    this(seriesPath, scanOrder, scanOptions, context, false);
+    this(seriesPath, scanOrder, scanOptions, context, false, null);
   }
 
   public AlignedSeriesScanUtil(
@@ -68,11 +68,16 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
       Ordering scanOrder,
       SeriesScanOptions scanOptions,
       FragmentInstanceContext context,
-      boolean queryAllSensors) {
+      boolean queryAllSensors,
+      List<TSDataType> givenDataTypes) {
     super(seriesPath, scanOrder, scanOptions, context);
     dataTypes =
-        ((AlignedPath) seriesPath)
-            .getSchemaList().stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
+        givenDataTypes != null
+            ? givenDataTypes
+            : ((AlignedPath) seriesPath)
+                .getSchemaList().stream()
+                    .map(IMeasurementSchema::getType)
+                    .collect(Collectors.toList());
     isAligned = true;
     this.queryAllSensors = queryAllSensors;
   }

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.common.schematree;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -98,4 +99,6 @@ public interface ISchemaTree {
    * @return whether there's view in this schema tree
    */
   boolean hasLogicalViewMeasurement();
+
+  void setAuthorityScope(PathPatternTree scope);
 }

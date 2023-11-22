@@ -76,7 +76,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanContext> {
@@ -148,9 +147,10 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
 
   @Override
   public List<PlanNode> visitDeviceView(DeviceViewNode node, DistributionPlanContext context) {
-    checkArgument(
-        node.getDevices().size() == node.getChildren().size(),
-        "size of devices and its children in DeviceViewNode should be same");
+    if (node.getDevices().size() != node.getChildren().size()) {
+      throw new IllegalArgumentException(
+          "size of devices and its children in DeviceViewNode should be same");
+    }
 
     // If the DeviceView is mixed with Function that need to merge data from different Data Region,
     // it should be processed by a special logic.
@@ -162,17 +162,21 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     Set<TRegionReplicaSet> relatedDataRegions = new HashSet<>();
 
     List<DeviceViewSplit> deviceViewSplits = new ArrayList<>();
+
     // Step 1: constructs DeviceViewSplit
-    Map<String, List<String>> outputDeviceToQueriedDevicesMap =
+    Map<String, String> outputDeviceToQueriedDevicesMap =
         analysis.getOutputDeviceToQueriedDevicesMap();
     for (int i = 0; i < node.getDevices().size(); i++) {
       String outputDevice = node.getDevices().get(i);
       PlanNode child = node.getChildren().get(i);
-      List<TRegionReplicaSet> regionReplicaSets = new ArrayList<>();
-      for (String queriedDevice : outputDeviceToQueriedDevicesMap.get(outputDevice)) {
-        regionReplicaSets.addAll(
-            analysis.getPartitionInfo(queriedDevice, analysis.getGlobalTimeFilter()));
-      }
+      List<TRegionReplicaSet> regionReplicaSets =
+          analysis.isAllDevicesInOneTemplate()
+              ? new ArrayList<>(
+                  analysis.getPartitionInfo(outputDevice, analysis.getGlobalTimeFilter()))
+              : new ArrayList<>(
+                  analysis.getPartitionInfo(
+                      outputDeviceToQueriedDevicesMap.get(outputDevice),
+                      analysis.getGlobalTimeFilter()));
       deviceViewSplits.add(new DeviceViewSplit(outputDevice, child, regionReplicaSets));
       relatedDataRegions.addAll(regionReplicaSets);
     }

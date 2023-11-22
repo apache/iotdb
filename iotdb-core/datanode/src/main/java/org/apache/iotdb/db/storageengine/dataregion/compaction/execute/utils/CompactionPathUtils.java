@@ -17,13 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.timer;
+package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils;
 
-import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
-import io.airlift.units.Duration;
+public class CompactionPathUtils {
 
-public interface ITimeSliceAllocator {
+  private CompactionPathUtils() {}
 
-  Duration getMaxRunTime(OperatorContext operatorContext);
+  public static PartialPath getPath(String device, String measurement) throws IllegalPathException {
+    PartialPath path;
+    if (device.contains(TsFileConstant.BACK_QUOTE_STRING)) {
+      path = DataNodeDevicePathCache.getInstance().getPartialPath(device);
+    } else {
+      path = new PartialPath(device.split("\\."));
+    }
+    return path.concatNode(measurement);
+  }
 }
