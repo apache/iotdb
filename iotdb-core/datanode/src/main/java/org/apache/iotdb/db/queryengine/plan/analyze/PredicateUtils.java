@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
@@ -36,10 +35,8 @@ import org.apache.iotdb.db.queryengine.plan.expression.ternary.TernaryExpression
 import org.apache.iotdb.db.queryengine.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.UnaryExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ConvertExpressionToFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ConvertExpressionToTimeFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ReversePredicateVisitor;
-import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.SchemaCompatibilityValidator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -285,14 +282,6 @@ public class PredicateUtils {
       return null;
     }
     return predicate.accept(new ConvertExpressionToTimeFilterVisitor(), null);
-  }
-
-  public static void validateSchemaCompatibility(Expression predicate, PartialPath path) {
-    SchemaCompatibilityValidator.validate(predicate, path);
-  }
-
-  public static Filter convertPredicateToFilter(Expression predicate, TypeProvider typeProvider) {
-    return predicate.accept(new ConvertExpressionToFilterVisitor(), typeProvider);
   }
 
   public static Expression combineConjuncts(List<Expression> conjuncts) {

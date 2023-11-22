@@ -336,7 +336,8 @@ public class FragmentInstanceContext extends QueryContext {
               // filtered according to timeIndex
               selectedDeviceIdSet.size() == 1 ? selectedDeviceIdSet.iterator().next() : null,
               this,
-              globalTimeFilter);
+              // time filter may be stateful, so we need to copy it
+              globalTimeFilter != null ? globalTimeFilter.copy() : null);
 
       // used files should be added before mergeLock is unlocked, or they may be deleted by
       // running merge

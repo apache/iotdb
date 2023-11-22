@@ -138,7 +138,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.window.WindowParameter
 import org.apache.iotdb.db.queryengine.execution.operator.window.WindowType;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer;
-import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -496,23 +495,20 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     return seriesAggregationScanOperator;
   }
 
+  // TODO: push down value filter
   private SeriesScanOptions.Builder getSeriesScanOptionsBuilder(
       SeriesSourceNode node, LocalExecutionPlanContext context) {
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
 
     Filter globalTimeFilter = context.getGlobalTimeFilter();
     if (globalTimeFilter != null) {
+      // time filter may be stateful, so we need to copy it
       scanOptionsBuilder.withGlobalTimeFilter(globalTimeFilter.copy());
+      scanOptionsBuilder.withPushDownFilter(globalTimeFilter.copy());
     }
 
-    Filter pushDownFilter = null;
     Expression pushDownPredicate = node.getPushDownPredicate();
-    if (pushDownPredicate != null) {
-      PredicateUtils.validateSchemaCompatibility(pushDownPredicate, node.getPartitionPath());
-      pushDownFilter =
-          PredicateUtils.convertPredicateToFilter(pushDownPredicate, context.getTypeProvider());
-    }
-    scanOptionsBuilder.withPushDownFilter(pushDownFilter);
+    checkArgument(pushDownPredicate == null, "push down predicate must be null currently");
 
     return scanOptionsBuilder;
   }
