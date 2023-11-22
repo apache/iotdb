@@ -71,6 +71,10 @@ import java.util.Map;
 public class Util2 {
   public static final Analysis ANALYSIS = constructAnalysis();
 
+  private static final String device1 = "root.sg.d1";
+  private static final String device2 = "root.sg.d2";
+  private static final String device3 = "root.sg.d3";
+
   public static Analysis constructAnalysis() {
     TRegionReplicaSet dataRegion1 =
         new TRegionReplicaSet(
@@ -90,23 +94,21 @@ public class Util2 {
     Map<TTimePartitionSlot, List<TRegionReplicaSet>> d2DataRegionMap = new HashMap<>();
     d2DataRegionMap.put(new TTimePartitionSlot(), d2DataRegions);
 
-    DataPartition dataPartition =
-        new DataPartition(
-            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
-            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
     Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
         dataPartitionMap = new HashMap<>();
     Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> sgPartitionMap =
         new HashMap<>();
-    String device1 = "root.sg.d1";
-    String device2 = "root.sg.d2";
-    String device3 = "root.sg.d3";
+
     SeriesPartitionExecutor executor =
         SeriesPartitionExecutor.getSeriesPartitionExecutor(
             IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
             IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
     sgPartitionMap.put(executor.getSeriesPartitionSlot(device1), d1DataRegionMap);
     sgPartitionMap.put(executor.getSeriesPartitionSlot(device2), d2DataRegionMap);
+    DataPartition dataPartition =
+        new DataPartition(
+            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
+            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
     dataPartitionMap.put("root.sg", sgPartitionMap);
     dataPartition.setDataPartitionMap(dataPartitionMap);
 

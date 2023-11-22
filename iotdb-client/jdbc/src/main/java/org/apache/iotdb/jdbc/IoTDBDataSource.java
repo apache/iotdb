@@ -30,7 +30,7 @@ import java.util.Properties;
 
 public class IoTDBDataSource implements DataSource {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBDataSource.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDataSource.class);
 
   private String url;
   private String user;
@@ -92,7 +92,7 @@ public class IoTDBDataSource implements DataSource {
     try {
       return new IoTDBConnection(url, properties);
     } catch (TTransportException e) {
-      logger.error(String.format("get connection error : %s", e.getMessage()));
+      LOGGER.error("get connection error:", e);
     }
     return null;
   }
@@ -105,7 +105,7 @@ public class IoTDBDataSource implements DataSource {
       newProp.setProperty(PWD_STR, password);
       return new IoTDBConnection(url, newProp);
     } catch (Exception e) {
-      logger.error(String.format("get connection error : %s", e.getMessage()));
+      LOGGER.error("get connection error:", e);
     }
     return null;
   }

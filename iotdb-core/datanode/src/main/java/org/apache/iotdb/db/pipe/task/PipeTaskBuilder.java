@@ -55,7 +55,8 @@ public class PipeTaskBuilder {
         new PipeTaskConnectorStage(
             pipeStaticMeta.getPipeName(),
             pipeStaticMeta.getCreationTime(),
-            pipeStaticMeta.getConnectorParameters());
+            pipeStaticMeta.getConnectorParameters(),
+            dataRegionId);
 
     // The processor connects the extractor and connector.
     final PipeTaskProcessorStage processorStage =
