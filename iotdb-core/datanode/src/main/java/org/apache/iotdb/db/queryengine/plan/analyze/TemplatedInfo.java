@@ -47,6 +47,8 @@ public class TemplatedInfo {
   private Filter timeFilter;
   private Ordering scanOrder;
   private boolean queryAllSensors;
+  private List<String> selectMeasurements;
+  private List<Integer> deviceToMeasurementIndexes;
   private long offsetValue;
   private long limitValue;
 
@@ -58,6 +60,8 @@ public class TemplatedInfo {
       Filter timeFilter,
       Ordering scanOrder,
       boolean queryAllSensors,
+      List<String> selectMeasurements,
+      List<Integer> deviceToMeasurementIndexes,
       long offsetValue,
       long limitValue) {
     this.measurementList = measurementList;
@@ -67,6 +71,8 @@ public class TemplatedInfo {
     this.timeFilter = timeFilter;
     this.scanOrder = scanOrder;
     this.queryAllSensors = queryAllSensors;
+    this.selectMeasurements = selectMeasurements;
+    this.deviceToMeasurementIndexes = deviceToMeasurementIndexes;
     this.offsetValue = offsetValue;
     this.limitValue = limitValue;
   }
@@ -127,6 +133,18 @@ public class TemplatedInfo {
     return this.queryAllSensors;
   }
 
+  public void setSelectMeasurements(List<String> selectMeasurements) {
+    this.selectMeasurements = selectMeasurements;
+  }
+
+  public List<String> getSelectMeasurements() {
+    return this.selectMeasurements;
+  }
+
+  public void setDeviceToMeasurementIndexes(List<Integer> deviceToMeasurementIndexes) {
+    this.deviceToMeasurementIndexes = deviceToMeasurementIndexes;
+  }
+
   public long getOffsetValue() {
     return this.offsetValue;
   }
@@ -137,6 +155,10 @@ public class TemplatedInfo {
 
   public long getLimitValue() {
     return this.limitValue;
+  }
+
+  public List<Integer> getDeviceToMeasurementIndexes() {
+    return this.deviceToMeasurementIndexes;
   }
 
   public void serialize(ByteBuffer byteBuffer) {
@@ -162,6 +184,17 @@ public class TemplatedInfo {
     }
     ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
     ReadWriteIOUtils.write(queryAllSensors, byteBuffer);
+
+    ReadWriteIOUtils.write(selectMeasurements.size(), byteBuffer);
+    for (String selectMeasurement : selectMeasurements) {
+      ReadWriteIOUtils.write(selectMeasurement, byteBuffer);
+    }
+
+    ReadWriteIOUtils.write(deviceToMeasurementIndexes.size(), byteBuffer);
+    for (int index : deviceToMeasurementIndexes) {
+      ReadWriteIOUtils.write(index, byteBuffer);
+    }
+
     ReadWriteIOUtils.write(offsetValue, byteBuffer);
     ReadWriteIOUtils.write(limitValue, byteBuffer);
   }
@@ -189,6 +222,17 @@ public class TemplatedInfo {
     }
     ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
     ReadWriteIOUtils.write(queryAllSensors, stream);
+
+    ReadWriteIOUtils.write(selectMeasurements.size(), stream);
+    for (String selectMeasurement : selectMeasurements) {
+      ReadWriteIOUtils.write(selectMeasurement, stream);
+    }
+
+    ReadWriteIOUtils.write(deviceToMeasurementIndexes.size(), stream);
+    for (int index : deviceToMeasurementIndexes) {
+      ReadWriteIOUtils.write(index, stream);
+    }
+
     ReadWriteIOUtils.write(offsetValue, stream);
     ReadWriteIOUtils.write(limitValue, stream);
   }
@@ -231,6 +275,18 @@ public class TemplatedInfo {
 
     boolean queryAllSensors = ReadWriteIOUtils.readBool(byteBuffer);
 
+    int listSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<String> selectMeasurements = new ArrayList<>(listSize);
+    while (listSize-- > 0) {
+      selectMeasurements.add(ReadWriteIOUtils.readString(byteBuffer));
+    }
+
+    listSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<Integer> deviceToMeasurementIndexes = new ArrayList<>(listSize);
+    while (listSize-- > 0) {
+      deviceToMeasurementIndexes.add(ReadWriteIOUtils.readInt(byteBuffer));
+    }
+
     long offsetValue = ReadWriteIOUtils.readLong(byteBuffer);
 
     long limitValue = ReadWriteIOUtils.readLong(byteBuffer);
@@ -243,6 +299,8 @@ public class TemplatedInfo {
         timeFilter,
         scanOrder,
         queryAllSensors,
+        selectMeasurements,
+        deviceToMeasurementIndexes,
         offsetValue,
         limitValue);
   }

@@ -242,16 +242,6 @@ public enum PlanNodeType {
     return deserialize(buffer, nodeType);
   }
 
-  public static PlanNode deserializeWithTemplate(ByteBuffer buffer, TypeProvider typeProvider) {
-    short nodeType = buffer.getShort();
-    switch (nodeType) {
-      case 33:
-        return AlignedSeriesScanNode.deserializeUseTemplate(buffer, typeProvider);
-      default:
-        return deserialize(buffer, nodeType);
-    }
-  }
-
   public static PlanNode deserialize(ByteBuffer buffer, short nodeType) {
     switch (nodeType) {
       case 0:
@@ -412,6 +402,18 @@ public enum PlanNodeType {
         return TopKNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
+    }
+  }
+
+  public static PlanNode deserializeWithTemplate(ByteBuffer buffer, TypeProvider typeProvider) {
+    short nodeType = buffer.getShort();
+    switch (nodeType) {
+      case 33:
+        return AlignedSeriesScanNode.deserializeUseTemplate(buffer, typeProvider);
+      case 65:
+        return SingleDeviceViewNode.deserializeUseTemplate(buffer, typeProvider);
+      default:
+        return deserialize(buffer, nodeType);
     }
   }
 }

@@ -297,7 +297,6 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
     for (String node : alignedPath.getNodes()) {
       ReadWriteIOUtils.write(node, stream);
     }
-    // ReadWriteIOUtils.write(getChildren().size(), stream);
   }
 
   public static AlignedSeriesScanNode deserializeUseTemplate(

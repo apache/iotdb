@@ -195,6 +195,10 @@ public class TemplatedLogicalPlan {
                   analysis.getGlobalTimeFilter(),
                   queryStatement.getResultTimeOrder(),
                   analysis.isLastLevelUseWildcard(),
+                  analysis.getDeviceViewOutputExpressions().stream()
+                      .map(Expression::getExpressionString)
+                      .collect(Collectors.toList()),
+                  analysis.getDeviceViewInputIndexesMap().values().iterator().next(),
                   0,
                   limitValue));
     }
