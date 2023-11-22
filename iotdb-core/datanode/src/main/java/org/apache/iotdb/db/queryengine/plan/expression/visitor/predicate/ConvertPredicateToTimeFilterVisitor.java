@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate;
 
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
+import org.apache.iotdb.db.queryengine.plan.expression.binary.CompareBinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.EqualToExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.GreaterEqualExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.GreaterThanExpression;
@@ -121,62 +122,53 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
 
   @Override
   public Filter visitEqualToExpression(EqualToExpression equalToExpression, Void context) {
-    return constructCompareFilter(
-        equalToExpression.getExpressionType(),
-        equalToExpression.getLeftExpression(),
-        equalToExpression.getRightExpression());
+    return visitCompareBinaryExpression(equalToExpression, context);
   }
 
   @Override
   public Filter visitNonEqualExpression(NonEqualExpression nonEqualExpression, Void context) {
-    return constructCompareFilter(
-        nonEqualExpression.getExpressionType(),
-        nonEqualExpression.getLeftExpression(),
-        nonEqualExpression.getRightExpression());
+    return visitCompareBinaryExpression(nonEqualExpression, context);
   }
 
   @Override
   public Filter visitGreaterThanExpression(
       GreaterThanExpression greaterThanExpression, Void context) {
-    return constructCompareFilter(
-        greaterThanExpression.getExpressionType(),
-        greaterThanExpression.getLeftExpression(),
-        greaterThanExpression.getRightExpression());
+    return visitCompareBinaryExpression(greaterThanExpression, context);
   }
 
   @Override
   public Filter visitGreaterEqualExpression(
       GreaterEqualExpression greaterEqualExpression, Void context) {
-    return constructCompareFilter(
-        greaterEqualExpression.getExpressionType(),
-        greaterEqualExpression.getLeftExpression(),
-        greaterEqualExpression.getRightExpression());
+    return visitCompareBinaryExpression(greaterEqualExpression, context);
   }
 
   @Override
   public Filter visitLessThanExpression(LessThanExpression lessThanExpression, Void context) {
-    return constructCompareFilter(
-        lessThanExpression.getExpressionType(),
-        lessThanExpression.getLeftExpression(),
-        lessThanExpression.getRightExpression());
+    return visitCompareBinaryExpression(lessThanExpression, context);
   }
 
   @Override
   public Filter visitLessEqualExpression(LessEqualExpression lessEqualExpression, Void context) {
-    return constructCompareFilter(
-        lessEqualExpression.getExpressionType(),
-        lessEqualExpression.getLeftExpression(),
-        lessEqualExpression.getRightExpression());
+    return visitCompareBinaryExpression(lessEqualExpression, context);
+  }
+
+  @Override
+  public Filter visitCompareBinaryExpression(
+      CompareBinaryExpression comparisonExpression, Void context) {
+    Expression leftExpression = comparisonExpression.getLeftExpression();
+    Expression rightExpression = comparisonExpression.getRightExpression();
+    ExpressionType expressionType = comparisonExpression.getExpressionType();
+
+    if (leftExpression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
+      return constructCompareFilter(expressionType, rightExpression);
+    } else {
+      return constructCompareFilter(expressionType, leftExpression);
+    }
   }
 
   private Filter constructCompareFilter(
-      ExpressionType expressionType, Expression leftExpression, Expression rightExpression) {
-    if (leftExpression.getExpressionType().equals(ExpressionType.CONSTANT)) {
-      return constructCompareFilter(expressionType, rightExpression, leftExpression);
-    }
-
-    long value = Long.parseLong(((ConstantOperand) rightExpression).getValueString());
-
+      ExpressionType expressionType, Expression constantExpression) {
+    long value = Long.parseLong(((ConstantOperand) constantExpression).getValueString());
     switch (expressionType) {
       case EQUAL_TO:
         return TimeFilter.eq(value);
