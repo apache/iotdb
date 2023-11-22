@@ -30,7 +30,6 @@ import org.apache.iotdb.tsfile.read.filter.operator.base.ColumnPatternMatchFilte
 import org.apache.iotdb.tsfile.read.filter.operator.base.ColumnRangeFilter;
 import org.apache.iotdb.tsfile.read.filter.operator.base.ColumnSetFilter;
 
-import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -53,23 +52,14 @@ public final class ValueFilterOperators {
       extends ColumnCompareFilter<T> implements IValueFilter {
 
     protected final String measurement;
-    private final String toString;
 
     protected ValueColumnCompareFilter(String measurement, T constant) {
       super(constant);
       this.measurement = Objects.requireNonNull(measurement, MEASUREMENT_CANNOT_BE_NULL_MSG);
-
-      String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
-      this.toString = name + "(" + measurement + ", " + constant + ")";
     }
 
     public String getMeasurement() {
       return measurement;
-    }
-
-    @Override
-    public String toString() {
-      return toString;
     }
 
     @Override
@@ -125,6 +115,11 @@ public final class ValueFilterOperators {
     public Filter reverse() {
       return new ValueNotEq<>(measurement, constant);
     }
+
+    @Override
+    public String toString() {
+      return measurement + " == " + constant;
+    }
   }
 
   public static final class ValueNotEq<T extends Comparable<T>>
@@ -163,6 +158,11 @@ public final class ValueFilterOperators {
     public Filter reverse() {
       return new ValueEq<>(measurement, constant);
     }
+
+    @Override
+    public String toString() {
+      return measurement + " != " + constant;
+    }
   }
 
   public static final class ValueLt<T extends Comparable<T>> extends ValueColumnCompareFilter<T> {
@@ -196,6 +196,11 @@ public final class ValueFilterOperators {
     @Override
     public Filter reverse() {
       return new ValueGtEq<>(measurement, constant);
+    }
+
+    @Override
+    public String toString() {
+      return measurement + " < " + constant;
     }
   }
 
@@ -231,6 +236,11 @@ public final class ValueFilterOperators {
     public Filter reverse() {
       return new ValueGt<>(measurement, constant);
     }
+
+    @Override
+    public String toString() {
+      return measurement + " <= " + constant;
+    }
   }
 
   public static final class ValueGt<T extends Comparable<T>> extends ValueColumnCompareFilter<T> {
@@ -264,6 +274,11 @@ public final class ValueFilterOperators {
     @Override
     public Filter reverse() {
       return new ValueLtEq<>(measurement, constant);
+    }
+
+    @Override
+    public String toString() {
+      return measurement + " > " + constant;
     }
   }
 
@@ -299,6 +314,11 @@ public final class ValueFilterOperators {
     public Filter reverse() {
       return new ValueLt<>(measurement, constant);
     }
+
+    @Override
+    public String toString() {
+      return measurement + " >= " + constant;
+    }
   }
 
   // base class for ValueBetweenAnd, ValueNotBetweenAnd
@@ -306,23 +326,14 @@ public final class ValueFilterOperators {
       implements IValueFilter {
 
     protected final String measurement;
-    private final String toString;
 
     protected ValueColumnRangeFilter(String measurement, T min, T max) {
       super(min, max);
       this.measurement = Objects.requireNonNull(measurement, MEASUREMENT_CANNOT_BE_NULL_MSG);
-
-      String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
-      this.toString = name + "(" + measurement + ", " + min + ", " + max + ")";
     }
 
     public String getMeasurement() {
       return measurement;
-    }
-
-    @Override
-    public String toString() {
-      return toString;
     }
 
     @Override
@@ -380,6 +391,11 @@ public final class ValueFilterOperators {
     public Filter reverse() {
       return new ValueNotBetweenAnd<>(measurement, min, max);
     }
+
+    @Override
+    public String toString() {
+      return measurement + " between " + min + " and " + max;
+    }
   }
 
   public static final class ValueNotBetweenAnd<T extends Comparable<T>>
@@ -416,6 +432,11 @@ public final class ValueFilterOperators {
     public Filter reverse() {
       return new ValueBetweenAnd<>(measurement, min, max);
     }
+
+    @Override
+    public String toString() {
+      return measurement + " not between " + min + " and " + max;
+    }
   }
 
   // base class for ValueIn, ValueNotIn
@@ -423,23 +444,14 @@ public final class ValueFilterOperators {
       implements IDisableStatisticsValueFilter {
 
     protected final String measurement;
-    private final String toString;
 
     protected ValueColumnSetFilter(String measurement, Set<T> candidates) {
       super(candidates);
       this.measurement = Objects.requireNonNull(measurement, MEASUREMENT_CANNOT_BE_NULL_MSG);
-
-      String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
-      this.toString = name + "(" + measurement + ", " + candidates + ")";
     }
 
     public String getMeasurement() {
       return measurement;
-    }
-
-    @Override
-    public String toString() {
-      return toString;
     }
 
     @Override
@@ -478,6 +490,11 @@ public final class ValueFilterOperators {
     public Filter reverse() {
       return new ValueNotIn<>(measurement, candidates);
     }
+
+    @Override
+    public String toString() {
+      return measurement + " in " + candidates;
+    }
   }
 
   public static final class ValueNotIn<T> extends ValueColumnSetFilter<T> {
@@ -495,6 +512,11 @@ public final class ValueFilterOperators {
     public Filter reverse() {
       return new ValueIn<>(measurement, candidates);
     }
+
+    @Override
+    public String toString() {
+      return measurement + " not in " + candidates;
+    }
   }
 
   // base class for ValueRegex, ValueNotRegex
@@ -502,23 +524,14 @@ public final class ValueFilterOperators {
       implements IDisableStatisticsValueFilter {
 
     protected final String measurement;
-    private final String toString;
 
     protected ValueColumnPatternMatchFilter(String measurement, Pattern pattern) {
       super(pattern);
       this.measurement = Objects.requireNonNull(measurement, MEASUREMENT_CANNOT_BE_NULL_MSG);
-
-      String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
-      this.toString = name + "(" + measurement + ", " + pattern + ")";
     }
 
     public String getMeasurement() {
       return measurement;
-    }
-
-    @Override
-    public String toString() {
-      return toString;
     }
 
     @Override
@@ -557,6 +570,11 @@ public final class ValueFilterOperators {
     public Filter reverse() {
       return new ValueNotRegexp(measurement, pattern);
     }
+
+    @Override
+    public String toString() {
+      return measurement + " match " + pattern;
+    }
   }
 
   public static final class ValueNotRegexp extends ValueColumnPatternMatchFilter {
@@ -573,6 +591,11 @@ public final class ValueFilterOperators {
     @Override
     public Filter reverse() {
       return new ValueRegexp(measurement, pattern);
+    }
+
+    @Override
+    public String toString() {
+      return measurement + " not match " + pattern;
     }
   }
 

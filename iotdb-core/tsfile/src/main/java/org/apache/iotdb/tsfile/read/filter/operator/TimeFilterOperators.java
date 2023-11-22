@@ -31,7 +31,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 
@@ -49,19 +48,9 @@ public final class TimeFilterOperators {
   abstract static class TimeColumnCompareFilter extends ColumnCompareFilter<Long>
       implements ITimeFilter {
 
-    private final String toString;
-
     // constant cannot be null
     protected TimeColumnCompareFilter(Long constant) {
       super(Objects.requireNonNull(constant, "constant cannot be null"));
-
-      String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
-      this.toString = name + "(" + constant + ")";
-    }
-
-    @Override
-    public String toString() {
-      return toString;
     }
 
     @Override
@@ -83,7 +72,6 @@ public final class TimeFilterOperators {
 
   public static final class TimeEq extends TimeColumnCompareFilter {
 
-    // constant can be null
     public TimeEq(Long constant) {
       super(constant);
     }
@@ -111,6 +99,11 @@ public final class TimeFilterOperators {
     @Override
     public Filter reverse() {
       return new TimeNotEq(constant);
+    }
+
+    @Override
+    public String toString() {
+      return "time == " + constant;
     }
   }
 
@@ -152,6 +145,11 @@ public final class TimeFilterOperators {
     public Filter reverse() {
       return new TimeEq(constant);
     }
+
+    @Override
+    public String toString() {
+      return "time != " + constant;
+    }
   }
 
   public static final class TimeLt extends TimeColumnCompareFilter {
@@ -189,6 +187,11 @@ public final class TimeFilterOperators {
     public Filter reverse() {
       return new TimeGtEq(constant);
     }
+
+    @Override
+    public String toString() {
+      return "time < " + constant;
+    }
   }
 
   public static final class TimeLtEq extends TimeColumnCompareFilter {
@@ -220,6 +223,11 @@ public final class TimeFilterOperators {
     @Override
     public Filter reverse() {
       return new TimeGt(constant);
+    }
+
+    @Override
+    public String toString() {
+      return "time <= " + constant;
     }
   }
 
@@ -258,6 +266,11 @@ public final class TimeFilterOperators {
     public Filter reverse() {
       return new TimeLtEq(constant);
     }
+
+    @Override
+    public String toString() {
+      return "time > " + constant;
+    }
   }
 
   public static final class TimeGtEq extends TimeColumnCompareFilter {
@@ -290,25 +303,19 @@ public final class TimeFilterOperators {
     public Filter reverse() {
       return new TimeLt(constant);
     }
+
+    @Override
+    public String toString() {
+      return "time >= " + constant;
+    }
   }
 
   // base class for TimeBetweenAnd, TimeNotBetweenAnd
   abstract static class TimeColumnRangeFilter extends ColumnRangeFilter<Long>
       implements ITimeFilter {
 
-    private final String toString;
-
-    // constant cannot be null
     protected TimeColumnRangeFilter(Long min, Long max) {
       super(min, max);
-
-      String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
-      this.toString = name + "(" + min + ", " + max + ")";
-    }
-
-    @Override
-    public String toString() {
-      return toString;
     }
 
     @Override
@@ -358,6 +365,11 @@ public final class TimeFilterOperators {
     public Filter reverse() {
       return new TimeNotBetweenAnd(min, max);
     }
+
+    @Override
+    public String toString() {
+      return "time between " + min + " and " + max;
+    }
   }
 
   public static final class TimeNotBetweenAnd extends TimeColumnRangeFilter {
@@ -397,24 +409,19 @@ public final class TimeFilterOperators {
     public Filter reverse() {
       return new TimeBetweenAnd(min, max);
     }
+
+    @Override
+    public String toString() {
+      return "time not between " + min + " and " + max;
+    }
   }
 
   // base class for TimeIn, TimeNotIn
   abstract static class TimeColumnSetFilter extends ColumnSetFilter<Long>
       implements IDisableStatisticsTimeFilter {
 
-    private final String toString;
-
     protected TimeColumnSetFilter(Set<Long> candidates) {
       super(candidates);
-
-      String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
-      this.toString = name + "(" + candidates + ")";
-    }
-
-    @Override
-    public String toString() {
-      return toString;
     }
 
     @Override
@@ -458,6 +465,11 @@ public final class TimeFilterOperators {
     public Filter reverse() {
       return new TimeNotIn(candidates);
     }
+
+    @Override
+    public String toString() {
+      return "time in " + candidates;
+    }
   }
 
   public static final class TimeNotIn extends TimeColumnSetFilter {
@@ -479,6 +491,11 @@ public final class TimeFilterOperators {
     @Override
     public Filter reverse() {
       return new TimeIn(candidates);
+    }
+
+    @Override
+    public String toString() {
+      return "time not in " + candidates;
     }
   }
 }

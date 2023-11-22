@@ -30,7 +30,6 @@ import java.util.Objects;
 public class Not implements Filter {
 
   private final Filter filter;
-  private final String toString;
 
   public static final String CONTAIN_NOT_ERR_MSG =
       "This predicate contains a not! "
@@ -38,7 +37,6 @@ public class Not implements Filter {
 
   public Not(Filter filter) {
     this.filter = Objects.requireNonNull(filter, "filter cannot be null");
-    this.toString = "not(" + filter + ")";
   }
 
   @Override
@@ -68,11 +66,6 @@ public class Not implements Filter {
 
   public Filter getFilter() {
     return this.filter;
-  }
-
-  @Override
-  public String toString() {
-    return toString;
   }
 
   @Override
@@ -119,5 +112,10 @@ public class Not implements Filter {
   @Override
   public int hashCode() {
     return Objects.hash(filter);
+  }
+
+  @Override
+  public String toString() {
+    return "not(" + filter + ")";
   }
 }

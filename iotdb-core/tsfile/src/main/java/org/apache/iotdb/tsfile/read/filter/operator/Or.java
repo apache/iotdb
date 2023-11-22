@@ -127,4 +127,9 @@ public class Or extends BinaryLogicalFilter implements Filter {
   public Filter reverse() {
     return new And(left.reverse(), right.reverse());
   }
+
+  @Override
+  public String toString() {
+    return "(" + left + " || " + right + ")";
+  }
 }

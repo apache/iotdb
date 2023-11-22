@@ -100,4 +100,9 @@ public class And extends BinaryLogicalFilter implements Filter {
   public Filter reverse() {
     return new Or(left.reverse(), right.reverse());
   }
+
+  @Override
+  public String toString() {
+    return "(" + left + " && " + right + ")";
+  }
 }

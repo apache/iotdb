@@ -21,7 +21,6 @@ package org.apache.iotdb.tsfile.read.filter.operator.base;
 
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-import java.util.Locale;
 import java.util.Objects;
 
 /* base class for And, Or */
@@ -30,14 +29,9 @@ public abstract class BinaryLogicalFilter {
   protected final Filter left;
   protected final Filter right;
 
-  private final String toString;
-
   protected BinaryLogicalFilter(Filter left, Filter right) {
     this.left = Objects.requireNonNull(left, "left cannot be null");
     this.right = Objects.requireNonNull(right, "right cannot be null");
-
-    String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
-    this.toString = name + "(" + left + ", " + right + ")";
   }
 
   public Filter getLeft() {
@@ -46,11 +40,6 @@ public abstract class BinaryLogicalFilter {
 
   public Filter getRight() {
     return right;
-  }
-
-  @Override
-  public String toString() {
-    return toString;
   }
 
   @Override
