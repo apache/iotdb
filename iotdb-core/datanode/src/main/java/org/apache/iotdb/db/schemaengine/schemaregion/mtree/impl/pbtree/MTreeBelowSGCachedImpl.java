@@ -620,41 +620,41 @@ public class MTreeBelowSGCachedImpl {
       throws MetadataException {
     ICachedMNode curNode = entityMNode.getAsMNode();
     if (!entityMNode.isUseTemplate()) {
-      boolean hasMeasurement = false;
-      boolean hasNonViewMeasurement = false;
-      ICachedMNode child;
-      IMNodeIterator<ICachedMNode> iterator = store.getChildrenIterator(curNode);
-      try {
-        while (iterator.hasNext()) {
-          child = iterator.next();
-          unPinMNode(child);
-          if (child.isMeasurement()) {
-            hasMeasurement = true;
-            if (!child.getAsMeasurementMNode().isLogicalView()) {
-              hasNonViewMeasurement = true;
-              break;
+      synchronized (this) {
+        boolean hasMeasurement = false;
+        boolean hasNonViewMeasurement = false;
+        ICachedMNode child;
+        IMNodeIterator<ICachedMNode> iterator = store.getChildrenIterator(curNode);
+        try {
+          while (iterator.hasNext()) {
+            child = iterator.next();
+            unPinMNode(child);
+            if (child.isMeasurement()) {
+              hasMeasurement = true;
+              if (!child.getAsMeasurementMNode().isLogicalView()) {
+                hasNonViewMeasurement = true;
+                break;
+              }
             }
           }
+        } finally {
+          iterator.close();
         }
-      } finally {
-        iterator.close();
-      }
 
-      if (!hasMeasurement) {
-        synchronized (this) {
+        if (!hasMeasurement) {
           curNode = store.setToInternal(entityMNode);
           if (curNode.isDatabase()) {
             replaceStorageGroupMNode(curNode.getAsDatabaseMNode());
           }
+        } else if (!hasNonViewMeasurement) {
+          // has some measurement but they are all logical view
+          store.updateMNode(
+              entityMNode.getAsMNode(),
+              o -> {
+                o.getAsDeviceMNode().setAligned(null);
+                return o;
+              });
         }
-      } else if (!hasNonViewMeasurement) {
-        // has some measurement but they are all logical view
-        store.updateMNode(
-            entityMNode.getAsMNode(),
-            o -> {
-              o.getAsDeviceMNode().setAligned(null);
-              return o;
-            });
       }
     }
 

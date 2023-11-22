@@ -187,10 +187,10 @@ public abstract class CacheManager implements ICacheManager {
         } else {
           cacheEntry.incVolatileDescendant();
         }
-      }
 
-      if (!isStatusChange || cacheEntry.isVolatile()) {
-        return;
+        if (!isStatusChange || cacheEntry.isVolatile()) {
+          return;
+        }
       }
 
       current = current.getParent();
@@ -361,8 +361,11 @@ public abstract class CacheManager implements ICacheManager {
                 "There should not exist descendant under this node %s", node.getFullPath()));
       }
       if (cacheEntry.isVolatile()) {
-        nodeBuffer.remove(getCacheEntry(node.getParent()));
+        nodeBuffer.remove(getCacheEntry(node));
         addAncestorsToCache(node);
+        if (!getCacheEntry(node.getParent()).hasVolatileDescendant()) {
+          nodeBuffer.remove(getCacheEntry(node.getParent()));
+        }
       } else {
         removeFromNodeCache(cacheEntry);
       }
