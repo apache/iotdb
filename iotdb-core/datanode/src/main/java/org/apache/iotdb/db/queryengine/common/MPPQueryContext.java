@@ -161,6 +161,7 @@ public class MPPQueryContext {
   }
 
   public Filter getGlobalTimeFilter() {
-    return globalTimeFilter;
+    // time filter may be stateful, so we need to copy it
+    return globalTimeFilter != null ? globalTimeFilter.copy() : null;
   }
 }

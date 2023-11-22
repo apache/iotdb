@@ -331,9 +331,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     scanOptionsBuilder.withPushDownLimit(node.getPushDownLimit());
     scanOptionsBuilder.withPushDownOffset(node.getPushDownOffset());
     scanOptionsBuilder.withAllSensors(
-            context.getTypeProvider().getAllSensors() != null
-                    ? context.getTypeProvider().getAllSensors()
-                    : new HashSet<>(seriesPath.getMeasurementList()));
+        context.getTypeProvider().getAllSensors() != null
+            ? context.getTypeProvider().getAllSensors()
+            : new HashSet<>(seriesPath.getMeasurementList()));
     OperatorContext operatorContext =
         context
             .getDriverContext()
@@ -347,7 +347,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.getPlanNodeId(),
             seriesPath,
             node.getScanOrder(),
-                scanOptionsBuilder.build(),
+            scanOptionsBuilder.build(),
             node.isQueryAllSensors(),
             context.getTypeProvider().getDataTypes());
 

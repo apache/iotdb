@@ -176,7 +176,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
               : new ArrayList<>(
                   analysis.getPartitionInfo(
                       outputDeviceToQueriedDevicesMap.get(outputDevice),
-                          context.getPartitionTimeFilter()));
+                      context.getPartitionTimeFilter()));
       deviceViewSplits.add(new DeviceViewSplit(outputDevice, child, regionReplicaSets));
       relatedDataRegions.addAll(regionReplicaSets);
     }
