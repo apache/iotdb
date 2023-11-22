@@ -184,7 +184,9 @@ public class SourceHandle implements ISourceHandle {
         return null;
       }
       long retainedSize = sequenceIdToDataBlockSize.remove(currSequenceId);
-      LOGGER.debug("[GetTsBlockFromBuffer] sequenceId:{}, size:{}", currSequenceId, retainedSize);
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("[GetTsBlockFromBuffer] sequenceId:{}, size:{}", currSequenceId, retainedSize);
+      }
       currSequenceId += 1;
       bufferRetainedSizeInBytes -= retainedSize;
       localMemoryManager
@@ -196,7 +198,9 @@ public class SourceHandle implements ISourceHandle {
               retainedSize);
 
       if (sequenceIdToTsBlock.isEmpty() && !isFinished()) {
-        LOGGER.debug("[WaitForMoreTsBlock]");
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug("[WaitForMoreTsBlock]");
+        }
         blocked = SettableFuture.create();
       }
       if (isFinished()) {
@@ -293,7 +297,9 @@ public class SourceHandle implements ISourceHandle {
   }
 
   public synchronized void setNoMoreTsBlocks(int lastSequenceId) {
-    LOGGER.debug("[ReceiveNoMoreTsBlockEvent]");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("[ReceiveNoMoreTsBlockEvent]");
+    }
     this.lastSequenceId = lastSequenceId;
     if (!blocked.isDone() && remoteTsBlockedConsumedUp()) {
       blocked.set(null);
@@ -305,11 +311,13 @@ public class SourceHandle implements ISourceHandle {
 
   public synchronized void updatePendingDataBlockInfo(
       int startSequenceId, List<Long> dataBlockSizes) {
-    LOGGER.debug(
-        "[ReceiveNewTsBlockNotification] [{}, {}), each size is: {}",
-        startSequenceId,
-        startSequenceId + dataBlockSizes.size(),
-        dataBlockSizes);
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "[ReceiveNewTsBlockNotification] [{}, {}), each size is: {}",
+          startSequenceId,
+          startSequenceId + dataBlockSizes.size(),
+          dataBlockSizes);
+    }
     for (int i = 0; i < dataBlockSizes.size(); i++) {
       sequenceIdToDataBlockSize.put(i + startSequenceId, dataBlockSizes.get(i));
     }
@@ -497,12 +505,14 @@ public class SourceHandle implements ISourceHandle {
     @SuppressWarnings("squid:S3776")
     public void run() {
       try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-        LOGGER.debug(
-            "[StartPullTsBlocksFromRemote] {}-{} [{}, {}) ",
-            remoteFragmentInstanceId,
-            indexOfUpstreamSinkHandle,
-            startSequenceId,
-            endSequenceId);
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
+              "[StartPullTsBlocksFromRemote] {}-{} [{}, {}) ",
+              remoteFragmentInstanceId,
+              indexOfUpstreamSinkHandle,
+              startSequenceId,
+              endSequenceId);
+        }
         TGetDataBlockRequest req =
             new TGetDataBlockRequest(
                 remoteFragmentInstanceId,
@@ -534,7 +544,9 @@ public class SourceHandle implements ISourceHandle {
             List<ByteBuffer> tsBlocks = new ArrayList<>(tsBlockNum);
             tsBlocks.addAll(resp.getTsBlocks());
 
-            LOGGER.debug("[EndPullTsBlocksFromRemote] Count:{}", tsBlockNum);
+            if (LOGGER.isDebugEnabled()) {
+              LOGGER.debug("[EndPullTsBlocksFromRemote] Count:{}", tsBlockNum);
+            }
             DATA_EXCHANGE_COUNT_METRIC_SET.recordDataBlockNum(
                 GET_DATA_BLOCK_NUM_CALLER, tsBlockNum);
             executorService.submit(
@@ -546,7 +558,9 @@ public class SourceHandle implements ISourceHandle {
               for (int i = startSequenceId; i < endSequenceId; i++) {
                 sequenceIdToTsBlock.put(i, tsBlocks.get(i - startSequenceId));
               }
-              LOGGER.debug("[PutTsBlocksIntoBuffer]");
+              if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("[PutTsBlocksIntoBuffer]");
+              }
               if (!blocked.isDone()) {
                 blocked.set(null);
               }
@@ -614,7 +628,9 @@ public class SourceHandle implements ISourceHandle {
     @Override
     public void run() {
       try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-        LOGGER.debug("[SendACKTsBlock] [{}, {}).", startSequenceId, endSequenceId);
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug("[SendACKTsBlock] [{}, {}).", startSequenceId, endSequenceId);
+        }
         int attempt = 0;
         TAcknowledgeDataBlockEvent acknowledgeDataBlockEvent =
             new TAcknowledgeDataBlockEvent(
@@ -665,10 +681,12 @@ public class SourceHandle implements ISourceHandle {
     @Override
     public void run() {
       try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-        LOGGER.debug(
-            "[SendCloseSinkChannelEvent] to [ShuffleSinkHandle: {}, index: {}]).",
-            remoteFragmentInstanceId,
-            indexOfUpstreamSinkHandle);
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
+              "[SendCloseSinkChannelEvent] to [ShuffleSinkHandle: {}, index: {}]).",
+              remoteFragmentInstanceId,
+              indexOfUpstreamSinkHandle);
+        }
         int attempt = 0;
         TCloseSinkChannelEvent closeSinkChannelEvent =
             new TCloseSinkChannelEvent(remoteFragmentInstanceId, indexOfUpstreamSinkHandle);

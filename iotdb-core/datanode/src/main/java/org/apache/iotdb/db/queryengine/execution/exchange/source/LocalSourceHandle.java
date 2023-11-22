@@ -113,10 +113,12 @@ public class LocalSourceHandle implements ISourceHandle {
         tsBlock = queue.remove();
       }
       if (tsBlock != null) {
-        LOGGER.debug(
-            "[GetTsBlockFromQueue] TsBlock:{} size:{}",
-            currSequenceId,
-            tsBlock.getRetainedSizeInBytes());
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
+              "[GetTsBlockFromQueue] TsBlock:{} size:{}",
+              currSequenceId,
+              tsBlock.getRetainedSizeInBytes());
+        }
         currSequenceId++;
       }
       checkAndInvokeOnFinished();
@@ -182,7 +184,9 @@ public class LocalSourceHandle implements ISourceHandle {
       return;
     }
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-      LOGGER.debug("[StartAbortLocalSourceHandle]");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("[StartAbortLocalSourceHandle]");
+      }
       synchronized (queue) {
         synchronized (this) {
           if (aborted || closed) {
@@ -193,7 +197,9 @@ public class LocalSourceHandle implements ISourceHandle {
           sourceHandleListener.onAborted(this);
         }
       }
-      LOGGER.debug("[EndAbortLocalSourceHandle]");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("[EndAbortLocalSourceHandle]");
+      }
     }
   }
 
@@ -203,7 +209,9 @@ public class LocalSourceHandle implements ISourceHandle {
       return;
     }
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-      LOGGER.debug("[StartAbortLocalSourceHandle]");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("[StartAbortLocalSourceHandle]");
+      }
       synchronized (queue) {
         synchronized (this) {
           if (aborted || closed) {
@@ -214,7 +222,9 @@ public class LocalSourceHandle implements ISourceHandle {
           sourceHandleListener.onAborted(this);
         }
       }
-      LOGGER.debug("[EndAbortLocalSourceHandle]");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("[EndAbortLocalSourceHandle]");
+      }
     }
   }
 
@@ -224,7 +234,9 @@ public class LocalSourceHandle implements ISourceHandle {
       return;
     }
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-      LOGGER.debug("[StartCloseLocalSourceHandle]");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("[StartCloseLocalSourceHandle]");
+      }
       synchronized (queue) {
         synchronized (this) {
           if (aborted || closed) {
@@ -235,7 +247,9 @@ public class LocalSourceHandle implements ISourceHandle {
           sourceHandleListener.onFinished(this);
         }
       }
-      LOGGER.debug("[EndCloseLocalSourceHandle]");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("[EndCloseLocalSourceHandle]");
+      }
     }
   }
 
