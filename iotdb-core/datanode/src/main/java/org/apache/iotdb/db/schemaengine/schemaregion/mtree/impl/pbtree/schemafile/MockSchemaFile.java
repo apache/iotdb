@@ -186,6 +186,7 @@ public class MockSchemaFile implements ISchemaFile {
                   measurementMNode.getAlias())
               .getAsMNode();
       result.getAsMeasurementMNode().setOffset(measurementMNode.getOffset());
+      result.getAsMeasurementMNode().setPreDeleted(measurementMNode.isPreDeleted());
       return result;
     } else if (node.isDatabase() && node.isDevice()) {
       ICachedMNode result =
