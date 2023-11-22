@@ -69,7 +69,7 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
     for (String value : values) {
       longValues.add(Long.parseLong(value));
     }
-    return inExpression.isNotIn() ? TimeFilter.in(longValues) : TimeFilter.notIn(longValues);
+    return inExpression.isNotIn() ? TimeFilter.notIn(longValues) : TimeFilter.in(longValues);
   }
 
   private Expression rewriteInExpressionToEqual(InExpression inExpression) {

@@ -35,6 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.ternary.TernaryExpression
 import org.apache.iotdb.db.queryengine.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.UnaryExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ConvertPredicateToTimeFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ReversePredicateVisitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -174,14 +175,13 @@ public class PredicateUtils {
         && ((ConstantOperand) valueExpression).getDataType() == TSDataType.INT64;
   }
 
-  private static boolean checkBetweenConstantSatisfy(
-      Expression firstExpression, Expression secondExpression) {
-    return firstExpression.isConstantOperand()
-        && secondExpression.isConstantOperand()
-        && ((ConstantOperand) firstExpression).getDataType() == TSDataType.INT64
-        && ((ConstantOperand) secondExpression).getDataType() == TSDataType.INT64
-        && (Long.parseLong(((ConstantOperand) firstExpression).getValueString())
-            <= Long.parseLong(((ConstantOperand) secondExpression).getValueString()));
+  private static boolean checkBetweenConstantSatisfy(Expression e1, Expression e2) {
+    return e1.isConstantOperand()
+        && e2.isConstantOperand()
+        && ((ConstantOperand) e1).getDataType() == TSDataType.INT64
+        && ((ConstantOperand) e2).getDataType() == TSDataType.INT64
+        && (Long.parseLong(((ConstantOperand) e1).getValueString())
+            <= Long.parseLong(((ConstantOperand) e2).getValueString()));
   }
 
   /**
@@ -319,7 +319,7 @@ public class PredicateUtils {
     if (predicate == null) {
       return null;
     }
-    return predicate.accept(new ConvertExpressionToTimeFilterVisitor(), null);
+    return predicate.accept(new ConvertPredicateToTimeFilterVisitor(), null);
   }
 
   /**
