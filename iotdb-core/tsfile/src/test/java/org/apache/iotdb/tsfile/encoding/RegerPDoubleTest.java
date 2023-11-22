@@ -542,17 +542,18 @@ public class RegerPDoubleTest {
     DecompositionSolver solver1 = new SingularValueDecomposition(matrix).getSolver();
     RealVector solution2 = solver1.solve(vector);
 
-    coefficient[0] = solution1.getEntry(p);
-    coefficient[1] = solution2.getEntry(p);
-
-    for (int i = 1; i <= p; i++) {
-      coefficient[2 * i] =  decimalFloat(solution1.getEntry(p-i),pre);
-      coefficient[2 * i + 1] = decimalFloat(solution2.getEntry(p-i),pre);
-    }
-//    for (int i = 0; i <= p; i++) {
-//      coefficient[2 * i] =  solution1.getEntry(p-i);
-//      coefficient[2 * i + 1] = solution2.getEntry(p-i);
+//    coefficient[0] = solution1.getEntry(p);
+//    coefficient[1] = solution2.getEntry(p);
+//
+//    for (int i = 1; i <= p; i++) {
+//      coefficient[2 * i] =  decimalFloat(solution1.getEntry(p-i),pre);
+//      coefficient[2 * i + 1] = decimalFloat(solution2.getEntry(p-i),pre);
 //    }
+
+    for (int i = 0; i <= p; i++) {
+      coefficient[2 * i] =  solution1.getEntry(p-i);
+      coefficient[2 * i + 1] = solution2.getEntry(p-i);
+    }
 
   }
 
@@ -1326,19 +1327,24 @@ public class RegerPDoubleTest {
     pos_encode += 4;
     int2Bytes(delta_segments[0][1], pos_encode, encoded_result);
     pos_encode += 4;
-    double2bytes(theta[0] + raw_length[3], pos_encode, encoded_result);
+    double2bytes(theta[0], pos_encode, encoded_result);
     pos_encode += 8;
 
-    double2bytes(theta[1] + raw_length[4], pos_encode, encoded_result);
+    double2bytes(theta[1], pos_encode, encoded_result);
     pos_encode += 8;
-    pos_encode +=Math.ceil((double)(12+precision[pre])/(double)(4));
+//    pos_encode +=Math.ceil((double)(12+precision[pre])/(double)(4));
 
 
 
-//    for (int i = 2; i < theta.length; i++) {
-//      double2bytes(theta[i], pos_encode, encoded_result);
-//      pos_encode += 8;
-//    }
+    for (int i = 2; i < theta.length; i++) {
+      double2bytes(theta[i], pos_encode, encoded_result);
+      pos_encode += 8;
+    }
+
+    int2Bytes( raw_length[3], pos_encode, encoded_result);
+    pos_encode += 4;
+    int2Bytes(raw_length[4], pos_encode, encoded_result);
+    pos_encode += 4;
     //        System.out.println(delta_segments[0][0]);
     //        System.out.println(delta_segments[0][1]);
     //        System.out.println(theta[0] + raw_length[3]);
@@ -2116,7 +2122,7 @@ public class RegerPDoubleTest {
 
     for (int i = 0; i < dataset_name.size(); i++) {
       input_path_list.add(input_parent_dir + dataset_name.get(i));
-      dataset_block_size.add(128);
+      dataset_block_size.add(1024);
     }
 
     output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0

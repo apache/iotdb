@@ -1368,15 +1368,21 @@ public class RegerPFloatTest {
     pos_encode += 4;
     int2Bytes(delta_segments[0][1], pos_encode, encoded_result);
     pos_encode += 4;
-//    float2bytes(theta[0] + raw_length[3], pos_encode, encoded_result);
-//    pos_encode += 4;
-//    float2bytes(theta[1] + raw_length[4], pos_encode, encoded_result);
-//    pos_encode += 4;
+    float2bytes(theta[0], pos_encode, encoded_result);
+    pos_encode += 4;
+    float2bytes(theta[1], pos_encode, encoded_result);
+    pos_encode += 4;
 
-//    for (int i = 2; i < theta.length; i++) {
-//      float2bytes(theta[i], pos_encode, encoded_result);
-//      pos_encode += 4;
-//    }
+    for (int i = 2; i < theta.length; i++) {
+      float2bytes(theta[i], pos_encode, encoded_result);
+      pos_encode += 4;
+    }
+
+    int2Bytes( raw_length[3], pos_encode, encoded_result);
+    pos_encode += 4;
+    int2Bytes(raw_length[4], pos_encode, encoded_result);
+    pos_encode += 4;
+
     //        System.out.println(delta_segments[0][0]);
     //        System.out.println(delta_segments[0][1]);
     //        System.out.println(theta[0] + raw_length[3]);
@@ -2493,7 +2499,7 @@ public class RegerPFloatTest {
 
     for (int i = 0; i < dataset_name.size(); i++) {
       input_path_list.add(input_parent_dir + dataset_name.get(i));
-      dataset_block_size.add(128);
+      dataset_block_size.add(1024);
     }
 
     output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
