@@ -67,9 +67,9 @@ public class WebSocketConnector implements PipeConnector {
     server = WebSocketConnectorServer.getInstance(port);
     if (server.getPort() != port) {
       throw new PipeException(
-              String.format(
-                      "The webSocketServer has been created by port %d. Please set the option cdc.port=%d.",
-                      server.getPort(), server.getPort()));
+          String.format(
+              "The webSocketServer has been created by port %d. Please set the option cdc.port=%d.",
+              server.getPort(), server.getPort()));
     }
     pipeName = configuration.getRuntimeEnvironment().getPipeName();
   }
