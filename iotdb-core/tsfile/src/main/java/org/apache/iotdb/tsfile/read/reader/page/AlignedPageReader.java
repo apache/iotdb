@@ -192,7 +192,7 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
 
     if (canGoFastWay()) {
       // all page data satisfy
-      if (filter.allSatisfy(getTimeStatistics())) {
+      if (filter == null || filter.allSatisfy(getTimeStatistics())) {
         // skip all the page
         if (paginationController.hasCurOffset(timeBatch.length)) {
           paginationController.consumeOffset(timeBatch.length);
