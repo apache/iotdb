@@ -123,6 +123,10 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
 
   @Override
   public PlanNode visitQuery(QueryStatement queryStatement, MPPQueryContext context) {
+    if (analysis.isAllDevicesInOneTemplate()) {
+      return new TemplatedLogicalPlan(analysis, queryStatement, context).visitQuery();
+    }
+
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
 
     if (queryStatement.isLastQuery()) {
@@ -249,7 +253,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                   sourceExpressions,
                   queryStatement.getResultTimeOrder(),
                   0,
-                  pushDownLimitToScanNode(queryStatement),
+                  pushDownLimitToScanNode(queryStatement, analysis),
                   analysis.isLastLevelUseWildcard())
               .planWhereAndSourceTransform(
                   whereExpression,
@@ -349,7 +353,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     return planBuilder.getRoot();
   }
 
-  private long pushDownLimitToScanNode(QueryStatement queryStatement) {
+  static long pushDownLimitToScanNode(QueryStatement queryStatement, Analysis analysis) {
     // `order by time|device LIMIT N align by device` and no value filter,
     // can push down limitValue to ScanNode
     if (queryStatement.isAlignByDevice()

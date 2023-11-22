@@ -57,7 +57,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       ProgressIndex progressIndex,
       boolean isAligned,
       boolean isGeneratedByPipe) {
-    this(walEntryHandler, progressIndex, isAligned, isGeneratedByPipe, null, null);
+    this(walEntryHandler, progressIndex, isAligned, isGeneratedByPipe, null, null, null);
   }
 
   private PipeInsertNodeTabletInsertionEvent(
@@ -65,9 +65,10 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       ProgressIndex progressIndex,
       boolean isAligned,
       boolean isGeneratedByPipe,
+      String pipeName,
       PipeTaskMeta pipeTaskMeta,
       String pattern) {
-    super(pipeTaskMeta, pattern);
+    super(pipeName, pipeTaskMeta, pattern);
     this.walEntryHandler = walEntryHandler;
     this.progressIndex = progressIndex;
     this.isAligned = isAligned;
@@ -129,9 +130,15 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   @Override
   public PipeInsertNodeTabletInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      PipeTaskMeta pipeTaskMeta, String pattern) {
+      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern) {
     return new PipeInsertNodeTabletInsertionEvent(
-        walEntryHandler, progressIndex, isAligned, isGeneratedByPipe, pipeTaskMeta, pattern);
+        walEntryHandler,
+        progressIndex,
+        isAligned,
+        isGeneratedByPipe,
+        pipeName,
+        pipeTaskMeta,
+        pattern);
   }
 
   @Override
@@ -188,7 +195,8 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   /////////////////////////// parsePattern ///////////////////////////
 
   public TabletInsertionEvent parseEventWithPattern() {
-    return new PipeRawTabletInsertionEvent(convertToTablet(), isAligned, pipeTaskMeta, this, true);
+    return new PipeRawTabletInsertionEvent(
+        convertToTablet(), isAligned, pipeName, pipeTaskMeta, this, true);
   }
 
   /////////////////////////// Object ///////////////////////////

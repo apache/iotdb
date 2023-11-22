@@ -58,19 +58,29 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   public PipeTsFileInsertionEvent(
       TsFileResource resource, boolean isLoaded, boolean isGeneratedByPipe) {
-    this(resource, isLoaded, isGeneratedByPipe, null, null, Long.MIN_VALUE, Long.MAX_VALUE, false);
+    this(
+        resource,
+        isLoaded,
+        isGeneratedByPipe,
+        null,
+        null,
+        null,
+        Long.MIN_VALUE,
+        Long.MAX_VALUE,
+        false);
   }
 
   public PipeTsFileInsertionEvent(
       TsFileResource resource,
       boolean isLoaded,
       boolean isGeneratedByPipe,
+      String pipeName,
       PipeTaskMeta pipeTaskMeta,
       String pattern,
       long startTime,
       long endTime,
       boolean needParseTime) {
-    super(pipeTaskMeta, pattern);
+    super(pipeName, pipeTaskMeta, pattern);
 
     this.startTime = startTime;
     this.endTime = endTime;
@@ -176,11 +186,12 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   @Override
   public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      PipeTaskMeta pipeTaskMeta, String pattern) {
+      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern) {
     return new PipeTsFileInsertionEvent(
         resource,
         isLoaded,
         isGeneratedByPipe,
+        pipeName,
         pipeTaskMeta,
         pattern,
         startTime,

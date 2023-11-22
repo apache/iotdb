@@ -44,7 +44,7 @@ import java.util.Random;
 import java.util.TreeSet;
 
 public class TsFileGenerator implements AutoCloseable {
-  private static final Logger logger = LoggerFactory.getLogger(TsFileGenerator.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileGenerator.class);
 
   private final File tsFile;
   private final TsFileWriter writer;
@@ -70,7 +70,7 @@ public class TsFileGenerator implements AutoCloseable {
 
   public void registerTimeseries(String path, List<MeasurementSchema> measurementSchemaList) {
     if (device2MeasurementSchema.containsKey(path)) {
-      logger.error("Register same device {}.", path);
+      LOGGER.error("Register same device {}.", path);
       return;
     }
     writer.registerTimeseries(new Path(path), measurementSchemaList);
@@ -81,7 +81,7 @@ public class TsFileGenerator implements AutoCloseable {
   public void registerAlignedTimeseries(String path, List<MeasurementSchema> measurementSchemaList)
       throws WriteProcessException {
     if (device2MeasurementSchema.containsKey(path)) {
-      logger.error("Register same device {}.", path);
+      LOGGER.error("Register same device {}.", path);
       return;
     }
     writer.registerAlignedTimeseries(new Path(path), measurementSchemaList);
@@ -127,7 +127,7 @@ public class TsFileGenerator implements AutoCloseable {
       tablet.reset();
     }
 
-    logger.info("Write {} points into device {}", number, device);
+    LOGGER.info("Write {} points into device {}", number, device);
   }
 
   public void generateData(
@@ -169,7 +169,7 @@ public class TsFileGenerator implements AutoCloseable {
       tablet.reset();
     }
 
-    logger.info(String.format("Write %d points into device %s", number, device));
+    LOGGER.info("Write {} points into device {}", number, device);
   }
 
   private void generateDataPoint(Object obj, int row, MeasurementSchema schema) {
@@ -193,7 +193,7 @@ public class TsFileGenerator implements AutoCloseable {
         generateTEXT(obj, row);
         break;
       default:
-        logger.error(String.format("Wrong data type %s.", schema.getType()));
+        LOGGER.error("Wrong data type {}.", schema.getType());
     }
   }
 
@@ -257,7 +257,7 @@ public class TsFileGenerator implements AutoCloseable {
         for (long j = startTime; j <= endTime; j++) {
           timeSet.remove(j);
         }
-        logger.info("Delete {} - {} timestamp of device {}", startTime, endTime, device);
+        LOGGER.info("Delete {} - {} timestamp of device {}", startTime, endTime, device);
       }
     }
   }
