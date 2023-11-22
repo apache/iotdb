@@ -56,34 +56,34 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
     super(testParams);
   }
 
-
   @Test
   public void testFetchNestedTemplateDevice() throws Exception {
     ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
     int templateId = 1;
     Template template =
-            new Template(
-                    "t1",
-                    Arrays.asList("s1", "s2"),
-                    Arrays.asList(TSDataType.DOUBLE, TSDataType.INT32),
-                    Arrays.asList(TSEncoding.RLE, TSEncoding.RLE),
-                    Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
+        new Template(
+            "t1",
+            Arrays.asList("s1", "s2"),
+            Arrays.asList(TSDataType.DOUBLE, TSDataType.INT32),
+            Arrays.asList(TSEncoding.RLE, TSEncoding.RLE),
+            Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
     template.setId(templateId);
     schemaRegion.activateSchemaTemplate(
-            SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
-                    new PartialPath("root.sg.d1"), 2, templateId),
-            template);
+        SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
+            new PartialPath("root.sg.d1"), 2, templateId),
+        template);
     schemaRegion.activateSchemaTemplate(
-            SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
-                    new PartialPath("root.sg.d1.GPS"), 3, templateId),
-            template);
-    ClusterSchemaTree schemaTree = schemaRegion.fetchSchema(ALL_MATCH_SCOPE, Collections.singletonMap(templateId, template), true);
-    Assert.assertEquals(2,schemaTree.getAllDevices().size());
-    for(DeviceSchemaInfo deviceSchemaInfo:schemaTree.getAllDevices()){
+        SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
+            new PartialPath("root.sg.d1.GPS"), 3, templateId),
+        template);
+    ClusterSchemaTree schemaTree =
+        schemaRegion.fetchSchema(
+            ALL_MATCH_SCOPE, Collections.singletonMap(templateId, template), true);
+    Assert.assertEquals(2, schemaTree.getAllDevices().size());
+    for (DeviceSchemaInfo deviceSchemaInfo : schemaTree.getAllDevices()) {
       Assert.assertEquals(templateId, deviceSchemaInfo.getTemplateId());
     }
   }
-
 
   /** Test {@link ISchemaRegion#activateSchemaTemplate}. */
   @Test

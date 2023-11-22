@@ -277,7 +277,7 @@ public class ClusterSchemaTree implements ISchemaTree {
     String[] nodes = devicePath.getNodes();
     SchemaNode cur = root;
     SchemaNode child;
-    for (int i = 1; i < nodes.length-1; i++) {
+    for (int i = 1; i < nodes.length - 1; i++) {
       child = cur.getChild(nodes[i]);
       if (child == null) {
         child = new SchemaInternalNode(nodes[i]);
@@ -287,15 +287,15 @@ public class ClusterSchemaTree implements ISchemaTree {
     }
     String deviceName = nodes[nodes.length - 1];
     child = cur.getChild(deviceName);
-    if(child==null){
+    if (child == null) {
       SchemaEntityNode entityNode = new SchemaEntityNode(deviceName);
       entityNode.setAligned(isAligned);
       entityNode.setTemplateId(templateId);
       cur.addChild(deviceName, entityNode);
-    }else if(child.isEntity()){
+    } else if (child.isEntity()) {
       child.getAsEntityNode().setTemplateId(templateId);
       child.getAsEntityNode().setAligned(isAligned);
-    }else {
+    } else {
       SchemaEntityNode entityNode = new SchemaEntityNode(deviceName);
       entityNode.setAligned(isAligned);
       entityNode.setTemplateId(templateId);
