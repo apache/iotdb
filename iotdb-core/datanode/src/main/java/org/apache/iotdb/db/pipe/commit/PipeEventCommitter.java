@@ -34,6 +34,9 @@ public class PipeEventCommitter {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeEventCommitter.class);
 
+  private final String pipeName;
+  private final int dataRegionId;
+
   private final AtomicLong commitIdGenerator = new AtomicLong(0);
   private final AtomicLong lastCommitId = new AtomicLong(0);
 
@@ -44,8 +47,10 @@ public class PipeEventCommitter {
               event ->
                   Objects.requireNonNull(event, "committable event cannot be null").getCommitId()));
 
-  PipeEventCommitter() {
-    // Do nothing but make it package-private.
+  PipeEventCommitter(String pipeName, int dataRegionId) {
+    // make it package-private
+    this.pipeName = pipeName;
+    this.dataRegionId = dataRegionId;
   }
 
   public synchronized long generateCommitId() {
@@ -75,5 +80,19 @@ public class PipeEventCommitter {
       lastCommitId.incrementAndGet();
       commitQueue.poll();
     }
+  }
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  public String getPipeName() {
+    return pipeName;
+  }
+
+  public int getDataRegionId() {
+    return dataRegionId;
+  }
+
+  public long commitQueueSize() {
+    return commitQueue.size();
   }
 }
