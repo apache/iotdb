@@ -730,6 +730,8 @@ public class RegerPFloatTest {
     int raw_value_delta_max_index = -1;
 
     int raw_abs_sum = raw_length[0];
+    int range = block_size / 16;
+
 
     ArrayList<Integer> j_star_list = new ArrayList<>(); // beta list of min b phi alpha to j
 //    ArrayList<Integer> max_index = new ArrayList<>();
@@ -739,43 +741,7 @@ public class RegerPFloatTest {
     if (alpha == -1) {
       return j_star;
     }
-//    int[] delta_index = new int[4];
-//    int[] delta = new int[4];
-//    deltaTSBlock(ts_block, delta_index,delta, theta, p);
-//
-//    timestamp_delta_min = delta[2];
-//    value_delta_min = delta[3];
 
-
-    for (int j = 1; j < p; j++) {
-      float epsilon_r = (float) ts_block[j][0] - theta[0];
-      float epsilon_v = (float) ts_block[j][1] - theta[1];
-      for (int pi = 1; pi <= j; pi++) {
-        epsilon_r -= theta[2 * pi] * (float) ts_block[j - pi][0];
-        epsilon_v -= theta[2 * pi + 1] * (float) ts_block[j - pi][1];
-      }
-
-      if (epsilon_r < timestamp_delta_min) {
-        timestamp_delta_min = (int) epsilon_r;
-      }
-      if (epsilon_v < value_delta_min) {
-        value_delta_min = (int) epsilon_v;
-      }
-    }
-
-    // regression residual
-//    for (int j = p; j < block_size; j++) {
-//      float epsilon_r = (float) ts_block[j][0] - theta[0];
-//      float epsilon_v = (float) ts_block[j][1] - theta[1];
-//      //            System.out.println("p="+p);
-//      for (int pi = 1; pi <= p; pi++) {
-//        epsilon_r -= (theta[2 * pi] * (float) ts_block[j - pi][0]);
-//        epsilon_v -= (theta[2 * pi + 1] * (float) ts_block[j - pi][1]);
-//      }
-//      if (j != alpha && ((int) epsilon_r == max_timestamp || (int) epsilon_v == max_value)) {
-//        max_index.add(j);
-//      }
-//    }
     int[] b;
     int[][] new_length_list = new int[block_size][3];
     int pos_new_length_list = 0;
@@ -800,8 +766,8 @@ public class RegerPFloatTest {
           pos_new_length_list++;
         }
       }
-      int end_j = Math.min(alpha+p, block_size);
-      for (j = alpha + 2; j < end_j; j++) {
+      int end_j = Math.min(alpha+range, block_size);
+      for (j = alpha + 2; j < alpha + p && j < end_j; j++) {
         b = adjustCase3(ts_block, alpha, j, theta, p);
         if (b[0] < raw_abs_sum) {
           raw_abs_sum = b[0];
@@ -816,7 +782,8 @@ public class RegerPFloatTest {
           pos_new_length_list++;
         }
       }
-      for (; j < block_size; j++) {
+      end_j = Math.min(alpha+range, block_size);
+      for (; j < end_j; j++) {
 
         b = adjustCase4(ts_block, alpha, j, theta, p);
         if (b[0] < raw_abs_sum) {
@@ -882,7 +849,8 @@ public class RegerPFloatTest {
           pos_new_length_list++;
         }
       }
-      for (j = alpha + 2; j < alpha + p && j < block_size; j++) {
+      int end_j = Math.min(alpha+range, block_size);
+      for (j = alpha + 2; j < alpha + p && j < end_j; j++) {
 
         b = adjustCase3(ts_block, alpha, j, theta, p);
         if (b[0] < raw_abs_sum) {
@@ -898,7 +866,8 @@ public class RegerPFloatTest {
           pos_new_length_list++;
         }
       }
-      for (; j < block_size; j++) {
+      end_j = Math.min(alpha+range, block_size);
+      for (; j < end_j; j++) {
 
         b = adjustCase4(ts_block, alpha, j, theta, p);
         if (b[0] < raw_abs_sum) {
@@ -930,8 +899,11 @@ public class RegerPFloatTest {
       }
     } // p < alpha <= n-p
     else {
+      int start_j = Math.max(alpha - range / 2, 1);
+      int end_j = Math.min(alpha + range / 2, block_size - 1);
 
-      int j = 0;
+      int j = start_j;
+
       for (; j < alpha - p; j++) {
 
         b = adjustCase1(ts_block, alpha, j, theta, p);
@@ -964,7 +936,9 @@ public class RegerPFloatTest {
           pos_new_length_list++;
         }
       }
-      for (j = alpha + 2; j < alpha + p && j < block_size; j++) {
+
+
+      for (j = alpha + 2; j < alpha + p && j < end_j; j++) {
 
         b = adjustCase3(ts_block, alpha, j, theta, p);
         if (b[0] < raw_abs_sum) {
@@ -980,7 +954,7 @@ public class RegerPFloatTest {
           pos_new_length_list++;
         }
       }
-      for (; j < block_size; j++) {
+      for (; j < end_j; j++) {
 
         b = adjustCase4(ts_block, alpha, j, theta, p);
         if (b[0] < raw_abs_sum) {

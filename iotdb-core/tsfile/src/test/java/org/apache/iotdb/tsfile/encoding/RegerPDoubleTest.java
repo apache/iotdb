@@ -742,6 +742,7 @@ public class RegerPDoubleTest {
     int[] b;
     int[][] new_length_list = new int[block_size][3];
     int pos_new_length_list = 0;
+    int range = block_size / 16;
 
     // alpha <= p
     if (alpha < p) {
@@ -763,7 +764,8 @@ public class RegerPDoubleTest {
           pos_new_length_list++;
         }
       }
-      for (j = alpha + 2; j < alpha + p && j < block_size; j++) {
+      int end_j = Math.min(alpha+range, block_size);
+      for (j = alpha + 2; j < alpha + p && j < end_j; j++) {
 
         b = adjustCase3(ts_block, alpha, j, theta, p);
         if (b[0] < raw_abs_sum) {
@@ -779,7 +781,7 @@ public class RegerPDoubleTest {
           pos_new_length_list++;
         }
       }
-      for (; j < block_size; j++) {
+      for (; j < end_j; j++) {
 
         b = adjustCase4(ts_block, alpha, j, theta, p);
         if (b[0] < raw_abs_sum) {
@@ -845,7 +847,8 @@ public class RegerPDoubleTest {
           pos_new_length_list++;
         }
       }
-      for (j = alpha + 2; j < alpha + p && j < block_size; j++) {
+      int end_j =  Math.min(alpha+range, block_size);
+      for (j = alpha + 2; j < alpha + p && j < end_j; j++) {
 
         b = adjustCase3(ts_block, alpha, j, theta, p);
         if (b[0] < raw_abs_sum) {
@@ -861,7 +864,7 @@ public class RegerPDoubleTest {
           pos_new_length_list++;
         }
       }
-      for (; j < block_size; j++) {
+      for (; j < end_j; j++) {
 
         b = adjustCase4(ts_block, alpha, j, theta, p);
         if (b[0] < raw_abs_sum) {
@@ -893,6 +896,8 @@ public class RegerPDoubleTest {
       }
     } // p < alpha <= n-p
     else {
+      int start_j = Math.max(alpha - range / 2, 1);
+      int end_j = Math.min(alpha + range / 2, block_size - 1);
 
       int j = 0;
       for (; j < alpha - p; j++) {
@@ -927,7 +932,7 @@ public class RegerPDoubleTest {
           pos_new_length_list++;
         }
       }
-      for (j = alpha + 2; j < alpha + p && j < block_size; j++) {
+      for (j = alpha + 2; j < alpha + p && j < end_j; j++) {
 
         b = adjustCase3(ts_block, alpha, j, theta, p);
         if (b[0] < raw_abs_sum) {
@@ -943,7 +948,7 @@ public class RegerPDoubleTest {
           pos_new_length_list++;
         }
       }
-      for (; j < block_size; j++) {
+      for (; j < end_j; j++) {
 
         b = adjustCase4(ts_block, alpha, j, theta, p);
         if (b[0] < raw_abs_sum) {
@@ -2262,7 +2267,7 @@ public class RegerPDoubleTest {
     }
   }
 
-  @Test
+
   public void REGERPDoubleVaryPrecision() throws IOException {
 
     String parent_dir =

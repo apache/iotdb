@@ -3090,8 +3090,8 @@ public class REGERFloatTest {
         int[] dataset_9 = {474, 678};
         int[] dataset_10 = {4, 30, 38, 49, 58};
         int[] dataset_11 = {5182, 8206};
-        int[] dataset_12 = {0};
-        int[] dataset_13 = {0};
+        int[] dataset_12 = {652477};
+        int[] dataset_13 = {581388};
 
         dataset_third.add(dataset_0);
         dataset_third.add(dataset_1);
@@ -3141,8 +3141,8 @@ public class REGERFloatTest {
         output_path_list.add(output_parent_dir + "/TRAJET-Transport_ratio.csv"); // 13
 
 
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
-//        for (int file_i = 2; file_i < 3; file_i++) {
+//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+        for (int file_i = 12; file_i < 14; file_i++) {
             String inputPath = input_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
 
@@ -3297,8 +3297,8 @@ public class REGERFloatTest {
         int[] dataset_9 = {474, 678};
         int[] dataset_10 = {4, 30, 38, 49, 58};
         int[] dataset_11 = {5182, 8206};
-        int[] dataset_12 = {0};
-        int[] dataset_13 = {0};
+        int[] dataset_12 = {652477};
+        int[] dataset_13 = {581388};
 
         dataset_third.add(dataset_0);
         dataset_third.add(dataset_1);
@@ -3337,7 +3337,7 @@ public class REGERFloatTest {
 //        int[] file_lists = {0,2,11};
 //        for (int file_i : file_lists) {
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
-            //        for (int file_i = 6; file_i < input_path_list.size(); file_i++) {
+//                    for (int file_i = 12; file_i < input_path_list.size(); file_i++) {
             String inputPath = input_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
 
@@ -3476,8 +3476,8 @@ public class REGERFloatTest {
         int[] dataset_9 = {474, 678};
         int[] dataset_10 = {4, 30, 38, 49, 58};
         int[] dataset_11 = {5182, 8206};
-        int[] dataset_12 = {0};
-        int[] dataset_13 = {0};
+        int[] dataset_12 = {652477};
+        int[] dataset_13 = {581388};
 
         dataset_third.add(dataset_0);
         dataset_third.add(dataset_1);
