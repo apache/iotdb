@@ -101,10 +101,12 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
                   req.sourceFragmentInstanceId.queryId,
                   req.sourceFragmentInstanceId.fragmentId,
                   req.sourceFragmentInstanceId.instanceId))) {
-        LOGGER.debug(
-            "[ProcessGetTsBlockRequest] sequence ID in [{}, {})",
-            req.getStartSequenceId(),
-            req.getEndSequenceId());
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
+              "[ProcessGetTsBlockRequest] sequence ID in [{}, {})",
+              req.getStartSequenceId(),
+              req.getEndSequenceId());
+        }
         TGetDataBlockResponse resp = new TGetDataBlockResponse(new ArrayList<>());
         ISinkHandle sinkHandle = shuffleSinkHandles.get(req.getSourceFragmentInstanceId());
         if (sinkHandle == null) {
@@ -142,16 +144,20 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
                   e.sourceFragmentInstanceId.queryId,
                   e.sourceFragmentInstanceId.fragmentId,
                   e.sourceFragmentInstanceId.instanceId))) {
-        LOGGER.debug(
-            "Received AcknowledgeDataBlockEvent for TsBlocks whose sequence ID are in [{}, {}) from {}.",
-            e.getStartSequenceId(),
-            e.getEndSequenceId(),
-            e.getSourceFragmentInstanceId());
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
+              "Received AcknowledgeDataBlockEvent for TsBlocks whose sequence ID are in [{}, {}) from {}.",
+              e.getStartSequenceId(),
+              e.getEndSequenceId(),
+              e.getSourceFragmentInstanceId());
+        }
         ISinkHandle sinkHandle = shuffleSinkHandles.get(e.getSourceFragmentInstanceId());
         if (sinkHandle == null) {
-          LOGGER.debug(
-              "received ACK event but target FragmentInstance[{}] is not found.",
-              e.getSourceFragmentInstanceId());
+          if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug(
+                "received ACK event but target FragmentInstance[{}] is not found.",
+                e.getSourceFragmentInstanceId());
+          }
           return;
         }
         // index of the channel must be a SinkChannel
@@ -177,15 +183,20 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
                   e.sourceFragmentInstanceId.queryId,
                   e.sourceFragmentInstanceId.fragmentId,
                   e.sourceFragmentInstanceId.instanceId))) {
-        LOGGER.debug(
-            "Closed source handle of ShuffleSinkHandle {}, channel index: {}.",
-            e.getSourceFragmentInstanceId(),
-            e.getIndex());
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
+              "Closed source handle of ShuffleSinkHandle {}, channel index: {}.",
+              e.getSourceFragmentInstanceId(),
+              e.getIndex());
+        }
+
         ISinkHandle sinkHandle = shuffleSinkHandles.get(e.getSourceFragmentInstanceId());
         if (sinkHandle == null) {
-          LOGGER.debug(
-              "received CloseSinkChannelEvent but target FragmentInstance[{}] is not found.",
-              e.getSourceFragmentInstanceId());
+          if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug(
+                "received CloseSinkChannelEvent but target FragmentInstance[{}] is not found.",
+                e.getSourceFragmentInstanceId());
+          }
           return;
         }
         sinkHandle.getChannel(e.getIndex()).close();
@@ -204,11 +215,13 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       long startTime = System.nanoTime();
       try (SetThreadName fragmentInstanceName =
           new SetThreadName(createFullIdFrom(e.targetFragmentInstanceId, e.targetPlanNodeId))) {
-        LOGGER.debug(
-            "New data block event received, for plan node {} of {} from {}.",
-            e.getTargetPlanNodeId(),
-            e.getTargetFragmentInstanceId(),
-            e.getSourceFragmentInstanceId());
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
+              "New data block event received, for plan node {} of {} from {}.",
+              e.getTargetPlanNodeId(),
+              e.getTargetFragmentInstanceId(),
+              e.getSourceFragmentInstanceId());
+        }
 
         Map<String, ISourceHandle> sourceHandleMap =
             sourceHandles.get(e.getTargetFragmentInstanceId());
@@ -222,9 +235,11 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           // may
           // have already been stopped. For example, in the read whit LimitOperator, the downstream
           // FragmentInstance may be finished, although the upstream is still working.
-          LOGGER.debug(
-              "received NewDataBlockEvent but the downstream FragmentInstance[{}] is not found",
-              e.getTargetFragmentInstanceId());
+          if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug(
+                "received NewDataBlockEvent but the downstream FragmentInstance[{}] is not found",
+                e.getTargetFragmentInstanceId());
+          }
           return;
         }
 
@@ -241,11 +256,13 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     public void onEndOfDataBlockEvent(TEndOfDataBlockEvent e) throws TException {
       try (SetThreadName fragmentInstanceName =
           new SetThreadName(createFullIdFrom(e.targetFragmentInstanceId, e.targetPlanNodeId))) {
-        LOGGER.debug(
-            "End of data block event received, for plan node {} of {} from {}.",
-            e.getTargetPlanNodeId(),
-            e.getTargetFragmentInstanceId(),
-            e.getSourceFragmentInstanceId());
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
+              "End of data block event received, for plan node {} of {} from {}.",
+              e.getTargetPlanNodeId(),
+              e.getTargetFragmentInstanceId(),
+              e.getSourceFragmentInstanceId());
+        }
 
         Map<String, ISourceHandle> sourceHandleMap =
             sourceHandles.get(e.getTargetFragmentInstanceId());
@@ -255,9 +272,11 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
                 : (SourceHandle) sourceHandleMap.get(e.getTargetPlanNodeId());
 
         if (sourceHandle == null || sourceHandle.isAborted() || sourceHandle.isFinished()) {
-          LOGGER.debug(
-              "received onEndOfDataBlockEvent but the downstream FragmentInstance[{}] is not found",
-              e.getTargetFragmentInstanceId());
+          if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug(
+                "received onEndOfDataBlockEvent but the downstream FragmentInstance[{}] is not found",
+                e.getTargetFragmentInstanceId());
+          }
           return;
         }
 
@@ -299,11 +318,14 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     @Override
     public void onFinished(ISourceHandle sourceHandle) {
-      LOGGER.debug("[ScHListenerOnFinish]");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("[ScHListenerOnFinish]");
+      }
       Map<String, ISourceHandle> sourceHandleMap =
           sourceHandles.get(sourceHandle.getLocalFragmentInstanceId());
-      if (sourceHandleMap == null
-          || sourceHandleMap.remove(sourceHandle.getLocalPlanNodeId()) == null) {
+      if ((sourceHandleMap == null
+              || sourceHandleMap.remove(sourceHandle.getLocalPlanNodeId()) == null)
+          && LOGGER.isDebugEnabled()) {
         LOGGER.debug("[ScHListenerAlreadyReleased]");
       }
 
@@ -314,7 +336,9 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     @Override
     public void onAborted(ISourceHandle sourceHandle) {
-      LOGGER.debug("[ScHListenerOnAbort]");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("[ScHListenerOnAbort]");
+      }
       onFinished(sourceHandle);
     }
 
@@ -342,12 +366,16 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     @Override
     public void onFinished(ISourceHandle sourceHandle) {
-      LOGGER.debug("[ScHListenerOnFinish]");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("[ScHListenerOnFinish]");
+      }
     }
 
     @Override
     public void onAborted(ISourceHandle sourceHandle) {
-      LOGGER.debug("[ScHListenerOnAbort]");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("[ScHListenerOnAbort]");
+      }
     }
 
     @Override
@@ -374,20 +402,26 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     @Override
     public void onFinish(ISink sink) {
-      LOGGER.debug("[ShuffleSinkHandleListenerOnFinish]");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("[ShuffleSinkHandleListenerOnFinish]");
+      }
       shuffleSinkHandles.remove(sink.getLocalFragmentInstanceId());
       context.finished();
     }
 
     @Override
     public void onEndOfBlocks(ISink sink) {
-      LOGGER.debug("[ShuffleSinkHandleListenerOnEndOfTsBlocks]");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("[ShuffleSinkHandleListenerOnEndOfTsBlocks]");
+      }
       context.transitionToFlushing();
     }
 
     @Override
     public Optional<Throwable> onAborted(ISink sink) {
-      LOGGER.debug("[ShuffleSinkHandleListenerOnAbort]");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("[ShuffleSinkHandleListenerOnAbort]");
+      }
       shuffleSinkHandles.remove(sink.getLocalFragmentInstanceId());
       return context.getFailureCause();
     }
@@ -426,18 +460,24 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     @Override
     public void onFinish(ISink sink) {
-      LOGGER.debug("[SkHListenerOnFinish]");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("[SkHListenerOnFinish]");
+      }
       decrementCnt();
     }
 
     @Override
     public void onEndOfBlocks(ISink sink) {
-      LOGGER.debug("[SkHListenerOnEndOfTsBlocks]");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("[SkHListenerOnEndOfTsBlocks]");
+      }
     }
 
     @Override
     public Optional<Throwable> onAborted(ISink sink) {
-      LOGGER.debug("[SkHListenerOnAbort]");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("[SkHListenerOnAbort]");
+      }
       decrementCnt();
       return context.getFailureCause();
     }
@@ -487,17 +527,23 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     @Override
     public void onFinish(ISink sink) {
-      LOGGER.debug("[SkHListenerOnFinish]");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("[SkHListenerOnFinish]");
+      }
     }
 
     @Override
     public void onEndOfBlocks(ISink sink) {
-      LOGGER.debug("[SkHListenerOnEndOfTsBlocks]");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("[SkHListenerOnEndOfTsBlocks]");
+      }
     }
 
     @Override
     public Optional<Throwable> onAborted(ISink sink) {
-      LOGGER.debug("[SkHListenerOnAbort]");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("[SkHListenerOnAbort]");
+      }
       return context.getFailureCause();
     }
 
@@ -590,10 +636,14 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     LocalSourceHandle localSourceHandle =
         sourceHandleMap == null ? null : (LocalSourceHandle) sourceHandleMap.get(remotePlanNodeId);
     if (localSourceHandle != null) {
-      LOGGER.debug("Get SharedTsBlockQueue from local source handle");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("Get SharedTsBlockQueue from local source handle");
+      }
       queue = localSourceHandle.getSharedTsBlockQueue();
     } else {
-      LOGGER.debug("Create SharedTsBlockQueue");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("Create SharedTsBlockQueue");
+      }
       queue =
           new SharedTsBlockQueue(
               localFragmentInstanceId, localPlanNodeId, localMemoryManager, executorService);
@@ -770,10 +820,14 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     SharedTsBlockQueue queue;
     ISinkHandle sinkHandle = shuffleSinkHandles.get(remoteFragmentInstanceId);
     if (sinkHandle != null) {
-      LOGGER.debug("Get SharedTsBlockQueue from local sink handle");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("Get SharedTsBlockQueue from local sink handle");
+      }
       queue = ((LocalSinkChannel) (sinkHandle.getChannel(index))).getSharedTsBlockQueue();
     } else {
-      LOGGER.debug("Create SharedTsBlockQueue");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("Create SharedTsBlockQueue");
+      }
       queue =
           new SharedTsBlockQueue(
               remoteFragmentInstanceId, remotePlanNodeId, localMemoryManager, executorService);
@@ -841,7 +895,9 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
    * <p>This method should be called when a fragment instance finished in an abnormal state.
    */
   public void forceDeregisterFragmentInstance(TFragmentInstanceId fragmentInstanceId) {
-    LOGGER.debug("[StartForceReleaseFIDataExchangeResource]");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("[StartForceReleaseFIDataExchangeResource]");
+    }
     ISink sinkHandle = shuffleSinkHandles.get(fragmentInstanceId);
     if (sinkHandle != null) {
       sinkHandle.abort();
@@ -850,12 +906,16 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     Map<String, ISourceHandle> planNodeIdToSourceHandle = sourceHandles.get(fragmentInstanceId);
     if (planNodeIdToSourceHandle != null) {
       for (Entry<String, ISourceHandle> entry : planNodeIdToSourceHandle.entrySet()) {
-        LOGGER.debug("[CloseSourceHandle] {}", entry.getKey());
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug("[CloseSourceHandle] {}", entry.getKey());
+        }
         entry.getValue().abort();
       }
       sourceHandles.remove(fragmentInstanceId);
     }
-    LOGGER.debug("[EndForceReleaseFIDataExchangeResource]");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("[EndForceReleaseFIDataExchangeResource]");
+    }
   }
 
   /**
