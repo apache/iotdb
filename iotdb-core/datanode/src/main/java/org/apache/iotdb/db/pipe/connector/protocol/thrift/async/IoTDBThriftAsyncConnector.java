@@ -507,8 +507,4 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
   public int getRetryEventQueueSize() {
     return retryEventQueue.size();
   }
-
-  public int getCommitQueueSize() {
-    return commitQueue.size();
-  }
 }

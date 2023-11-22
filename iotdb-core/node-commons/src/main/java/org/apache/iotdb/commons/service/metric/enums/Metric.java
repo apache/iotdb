@@ -130,7 +130,7 @@ public enum Metric {
   PIPE_PINNED_MEMTABLE_COUNT("pipe_pinned_memtable_count"),
   PIPE_LINKED_TSFILE_COUNT("pipe_linked_tsfile_count"),
   PIPE_ASYNC_CONNECTOR_RETRY_EVENT_QUEUE_SIZE("pipe_async_connector_retry_event_queue_size"),
-  PIPE_ASYNC_CONNECTOR_COMMIT_QUEUE_SIZE("pipe_async_connector_commit_queue_size");
+  ;
 
   final String value;
 

@@ -117,17 +117,6 @@ public class PipeConnectorMetrics implements IMetricSet {
         String.valueOf(connector.getConnectorIndex()),
         Tag.CREATION_TIME.toString(),
         String.valueOf(connector.getCreationTime()));
-    metricService.createAutoGauge(
-        Metric.PIPE_ASYNC_CONNECTOR_COMMIT_QUEUE_SIZE.toString(),
-        MetricLevel.IMPORTANT,
-        connector,
-        PipeConnectorSubtask::getAsyncConnectorCommitQueueSize,
-        Tag.NAME.toString(),
-        connector.getAttributeSortedString(),
-        Tag.INDEX.toString(),
-        String.valueOf(connector.getConnectorIndex()),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(connector.getCreationTime()));
   }
 
   private void createRate(String taskID) {
@@ -218,15 +207,6 @@ public class PipeConnectorMetrics implements IMetricSet {
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.PIPE_ASYNC_CONNECTOR_RETRY_EVENT_QUEUE_SIZE.toString(),
-        Tag.NAME.toString(),
-        connector.getAttributeSortedString(),
-        Tag.INDEX.toString(),
-        String.valueOf(connector.getConnectorIndex()),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(connector.getCreationTime()));
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.PIPE_ASYNC_CONNECTOR_COMMIT_QUEUE_SIZE.toString(),
         Tag.NAME.toString(),
         connector.getAttributeSortedString(),
         Tag.INDEX.toString(),

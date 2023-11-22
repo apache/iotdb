@@ -370,10 +370,4 @@ public class PipeConnectorSubtask extends PipeSubtask {
         ? ((IoTDBThriftAsyncConnector) outputPipeConnector).getRetryEventQueueSize()
         : 0;
   }
-
-  public Integer getAsyncConnectorCommitQueueSize() {
-    return outputPipeConnector instanceof IoTDBThriftAsyncConnector
-        ? ((IoTDBThriftAsyncConnector) outputPipeConnector).getCommitQueueSize()
-        : 0;
-  }
 }
