@@ -52,7 +52,7 @@ import java.util.Set;
 import java.util.function.Function;
 
 public class LoadSingleTsFileNode extends WritePlanNode {
-  private static final Logger logger = LoggerFactory.getLogger(LoadSingleTsFileNode.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(LoadSingleTsFileNode.class);
 
   private final File tsFile;
   private final TsFileResource resource;
@@ -219,7 +219,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
             new File(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX).toPath());
       }
     } catch (IOException e) {
-      logger.warn(String.format("Delete After Loading %s error.", tsFile), e);
+      LOGGER.warn("Delete After Loading {} error.", tsFile, e);
     }
   }
 

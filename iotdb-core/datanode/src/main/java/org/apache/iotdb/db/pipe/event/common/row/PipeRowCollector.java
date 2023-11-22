@@ -95,7 +95,13 @@ public class PipeRowCollector implements RowCollector {
   private void collectTabletInsertionEvent() {
     if (tablet != null) {
       tabletInsertionEventList.add(
-          new PipeRawTabletInsertionEvent(tablet, isAligned, pipeTaskMeta, sourceEvent, false));
+          new PipeRawTabletInsertionEvent(
+              tablet,
+              isAligned,
+              sourceEvent == null ? null : sourceEvent.getPipeName(),
+              pipeTaskMeta,
+              sourceEvent,
+              false));
     }
     this.tablet = null;
   }

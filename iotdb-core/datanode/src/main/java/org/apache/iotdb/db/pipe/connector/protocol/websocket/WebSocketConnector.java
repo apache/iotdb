@@ -39,15 +39,13 @@ import javax.annotation.Nullable;
 
 import java.net.InetSocketAddress;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.Map;
 import java.util.Optional;
-import java.util.PriorityQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class WebSocketConnector implements PipeConnector {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketConnector.class);
 
   private static final Map<Integer, Pair<AtomicInteger, WebSocketConnectorServer>>
@@ -55,11 +53,6 @@ public class WebSocketConnector implements PipeConnector {
 
   private Integer port;
   private WebSocketConnectorServer server;
-
-  public final AtomicLong commitIdGenerator = new AtomicLong(0);
-  private final AtomicLong lastCommitId = new AtomicLong(0);
-  private final PriorityQueue<Pair<Long, Runnable>> commitQueue =
-      new PriorityQueue<>(Comparator.comparing(o -> o.left));
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -108,10 +101,11 @@ public class WebSocketConnector implements PipeConnector {
           tabletInsertionEvent);
       return;
     }
-    long commitId = commitIdGenerator.incrementAndGet();
+
     ((EnrichedEvent) tabletInsertionEvent)
         .increaseReferenceCount(WebSocketConnector.class.getName());
-    server.addEvent(new Pair<>(commitId, tabletInsertionEvent));
+
+    server.addEvent(tabletInsertionEvent);
   }
 
   @Override
@@ -122,11 +116,12 @@ public class WebSocketConnector implements PipeConnector {
           tsFileInsertionEvent);
       return;
     }
+
     try {
       for (TabletInsertionEvent event : tsFileInsertionEvent.toTabletInsertionEvents()) {
-        long commitId = commitIdGenerator.incrementAndGet();
         ((EnrichedEvent) event).increaseReferenceCount(WebSocketConnector.class.getName());
-        server.addEvent(new Pair<>(commitId, event));
+
+        server.addEvent(event);
       }
     } finally {
       tsFileInsertionEvent.close();
@@ -159,36 +154,8 @@ public class WebSocketConnector implements PipeConnector {
     }
   }
 
-  public synchronized void commit(long requestCommitId, @Nullable EnrichedEvent enrichedEvent) {
-    commitQueue.offer(
-        new Pair<>(
-            requestCommitId,
-            () ->
-                Optional.ofNullable(enrichedEvent)
-                    .ifPresent(
-                        event ->
-                            event.decreaseReferenceCount(
-                                WebSocketConnector.class.getName(), true))));
-
-    while (!commitQueue.isEmpty()) {
-      final Pair<Long, Runnable> committer = commitQueue.peek();
-
-      // If the commit id is less than or equals to the last commit id, it means that
-      // the event has been committed before, and has been retried. So the event can
-      // be ignored.
-      if (committer.left <= lastCommitId.get()) {
-        commitQueue.poll();
-        continue;
-      }
-
-      if (committer.left != lastCommitId.get() + 1) {
-        break;
-      }
-
-      committer.right.run();
-      lastCommitId.incrementAndGet();
-
-      commitQueue.poll();
-    }
+  public synchronized void commit(@Nullable EnrichedEvent enrichedEvent) {
+    Optional.ofNullable(enrichedEvent)
+        .ifPresent(event -> event.decreaseReferenceCount(WebSocketConnector.class.getName(), true));
   }
 }

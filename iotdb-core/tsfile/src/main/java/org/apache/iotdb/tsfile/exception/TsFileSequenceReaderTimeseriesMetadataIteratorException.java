@@ -17,29 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.payload.evolvable.builder;
+package org.apache.iotdb.tsfile.exception;
 
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
-import org.apache.iotdb.pipe.api.event.Event;
+public class TsFileSequenceReaderTimeseriesMetadataIteratorException extends RuntimeException {
 
-import java.util.ArrayList;
-import java.util.List;
-
-public class IoTDBThriftAsyncPipeTransferBatchReqBuilder extends PipeTransferBatchReqBuilder {
-
-  public IoTDBThriftAsyncPipeTransferBatchReqBuilder(PipeParameters parameters) {
-    super(parameters);
-  }
-
-  public List<Event> deepcopyEvents() {
-    return new ArrayList<>(events);
-  }
-
-  public List<Long> deepcopyRequestCommitIds() {
-    return new ArrayList<>(requestCommitIds);
-  }
-
-  public long getLastCommitId() {
-    return requestCommitIds.isEmpty() ? -1 : requestCommitIds.get(requestCommitIds.size() - 1);
+  public TsFileSequenceReaderTimeseriesMetadataIteratorException(String message) {
+    super(message);
   }
 }

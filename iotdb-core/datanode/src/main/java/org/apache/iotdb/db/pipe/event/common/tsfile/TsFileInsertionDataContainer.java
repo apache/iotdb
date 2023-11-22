@@ -232,12 +232,22 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
             if (!hasNext()) {
               next =
                   new PipeRawTabletInsertionEvent(
-                      tablet, isAligned, pipeTaskMeta, sourceEvent, true);
+                      tablet,
+                      isAligned,
+                      sourceEvent != null ? sourceEvent.getPipeName() : null,
+                      pipeTaskMeta,
+                      sourceEvent,
+                      true);
               close();
             } else {
               next =
                   new PipeRawTabletInsertionEvent(
-                      tablet, isAligned, pipeTaskMeta, sourceEvent, false);
+                      tablet,
+                      isAligned,
+                      sourceEvent != null ? sourceEvent.getPipeName() : null,
+                      pipeTaskMeta,
+                      sourceEvent,
+                      false);
             }
             return next;
           }
