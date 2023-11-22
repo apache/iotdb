@@ -34,6 +34,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.iterat
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.iterator.MNodeIterator;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.iterator.MemoryTraverserIterator;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.snapshot.MemMTreeSnapshotUtil;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.flush.Monitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MNodeUtils;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -48,7 +49,7 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
 
   private final MemSchemaRegionStatistics regionStatistics;
   private final IMNodeFactory<IMemMNode> nodeFactory =
-      MNodeFactoryLoader.getInstance().getMemMNodeIMNodeFactory();;
+      MNodeFactoryLoader.getInstance().getMemMNodeIMNodeFactory();
 
   private IMemMNode root;
 
@@ -221,6 +222,12 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
         MemMTreeSnapshotUtil.loadSnapshot(
             snapshotDir, measurementProcess, deviceProcess, regionStatistics),
         regionStatistics);
+  }
+
+  @Override
+  public Monitor.RecordNode recordTraverserStatistics() {
+    // do nothing
+    return null;
   }
 
   private void requestMemory(int size) {

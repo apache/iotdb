@@ -31,6 +31,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.SynchronousQueue;
@@ -77,6 +78,25 @@ public class IoTDBThreadPoolFactory {
         new LinkedBlockingQueue<>(),
         new IoTThreadFactory(poolName),
         poolName);
+  }
+
+  /**
+   * see {@link Executors#newFixedThreadPool(int, java.util.concurrent.ThreadFactory)}.
+   *
+   * @param poolName - the name of thread pool
+   * @return fixed size thread pool
+   */
+  public static ExecutorService newFixedThreadPool(int nThreads, String poolName,  RejectedExecutionHandler handler) {
+    logger.info(NEW_FIXED_THREAD_POOL_LOGGER_FORMAT, poolName, nThreads);
+
+    return new WrappedThreadPoolExecutor(
+        nThreads,
+        nThreads,
+        0L,
+        TimeUnit.MILLISECONDS,
+        new LinkedBlockingQueue<>(),
+        new IoTThreadFactory(poolName),
+        poolName, handler);
   }
 
   public static ExecutorService newFixedThreadPoolWithDaemonThread(int nThreads, String poolName) {

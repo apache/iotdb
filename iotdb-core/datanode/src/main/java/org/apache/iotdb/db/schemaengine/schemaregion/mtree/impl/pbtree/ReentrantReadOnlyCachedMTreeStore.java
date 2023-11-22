@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.IMTreeStore;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.flush.Monitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
@@ -130,6 +131,11 @@ public class ReentrantReadOnlyCachedMTreeStore implements IMTreeStore<ICachedMNo
   @Override
   public boolean createSnapshot(File snapshotDir) {
     throw new UnsupportedOperationException("ReadOnlyReentrantMTreeStore");
+  }
+
+  @Override
+  public Monitor.RecordNode recordTraverserStatistics() {
+    return store.recordTraverserStatistics();
   }
 
   public void unlockRead() {

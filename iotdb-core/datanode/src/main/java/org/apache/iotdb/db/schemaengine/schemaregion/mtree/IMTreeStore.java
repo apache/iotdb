@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.flush.Monitor;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
 import java.io.File;
@@ -99,4 +100,6 @@ public interface IMTreeStore<N extends IMNode<N>> {
   void clear();
 
   boolean createSnapshot(File snapshotDir);
+
+  Monitor.RecordNode recordTraverserStatistics();
 }

@@ -32,6 +32,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -66,6 +67,22 @@ public class WrappedThreadPoolExecutor extends ThreadPoolExecutor
       IoTThreadFactory ioTThreadFactory,
       String mbeanName) {
     super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue, ioTThreadFactory);
+    this.mbeanName =
+        String.format(
+            "%s:%s=%s", IoTDBConstant.IOTDB_THREADPOOL_JMX_NAME, IoTDBConstant.JMX_TYPE, mbeanName);
+    JMXService.registerMBean(this, this.mbeanName);
+    ThreadPoolMetrics.getInstance().registerThreadPool(this, this.mbeanName);
+  }
+
+  public WrappedThreadPoolExecutor(
+          int corePoolSize,
+          int maximumPoolSize,
+          long keepAliveTime,
+          TimeUnit unit,
+          BlockingQueue<Runnable> workQueue,
+          IoTThreadFactory ioTThreadFactory,
+          String mbeanName, RejectedExecutionHandler handler) {
+    super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue, ioTThreadFactory,handler);
     this.mbeanName =
         String.format(
             "%s:%s=%s", IoTDBConstant.IOTDB_THREADPOOL_JMX_NAME, IoTDBConstant.JMX_TYPE, mbeanName);

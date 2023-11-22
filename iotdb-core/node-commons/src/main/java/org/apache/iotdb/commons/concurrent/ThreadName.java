@@ -66,9 +66,9 @@ public enum ThreadName {
   SCHEMA_REGION_RELEASE_PROCESSOR("SchemaRegion-Release-Task-Processor"),
   SCHEMA_REGION_RECOVER_TASK("SchemaRegion-recover-task"),
   SCHEMA_RELEASE_MONITOR("Schema-Release-Task-Monitor"),
-  SCHEMA_REGION_FLUSH_PROCESSOR("SchemaRegion-Flush-Task-Processor"),
-  SCHEMA_FLUSH_MONITOR("Schema-Flush-Task-Monitor"),
   SCHEMA_FORCE_MLOG("SchemaEngine-TimedForceMLog-Thread"),
+  PBTREE_FLUSH_MONITOR("PBTree-Flush-Monitor"),
+  PBTREE_FLUSH_PROCESSOR("PBTree-Flush-Processor"),
   // -------------------------- ClientService --------------------------
   CLIENT_RPC_SERVICE("ClientRPC-Service"),
   CLIENT_RPC_PROCESSOR("ClientRPC-Processor"),
@@ -222,9 +222,8 @@ public enum ThreadName {
               SCHEMA_REGION_RELEASE_PROCESSOR,
               SCHEMA_REGION_RECOVER_TASK,
               SCHEMA_RELEASE_MONITOR,
-              SCHEMA_REGION_FLUSH_PROCESSOR,
-              SCHEMA_FLUSH_MONITOR,
-              SCHEMA_FORCE_MLOG));
+              SCHEMA_FORCE_MLOG,
+                  PBTREE_FLUSH_MONITOR,PBTREE_FLUSH_PROCESSOR));
 
   private static final Set<ThreadName> clientServiceThreadNames =
       new HashSet<>(Arrays.asList(CLIENT_RPC_SERVICE, CLIENT_RPC_PROCESSOR));

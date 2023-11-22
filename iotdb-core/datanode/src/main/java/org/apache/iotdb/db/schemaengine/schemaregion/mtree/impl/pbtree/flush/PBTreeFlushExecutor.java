@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.flush;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.ICacheManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaFile;
@@ -48,22 +49,30 @@ public class PBTreeFlushExecutor {
     this.cacheManager = cacheManager;
     this.file = file;
   }
-
   public void flushVolatileNodes() throws MetadataException, IOException {
+    if(subtreeRoot.isDatabase()){
+        processFlushDatabase();
+    }else {
+        processFlushNonDatabase();
+    }
+  }
+
+
+  private void processFlushNonDatabase() throws IOException, MetadataException {
     try {
       file.writeMNode(this.subtreeRoot);
     } catch (MetadataException | IOException e) {
       logger.warn(
-          "Error occurred during MTree flush, current node is {}",
-          this.subtreeRoot.getFullPath(),
-          e);
+              "Error occurred during MTree flush, current node is {}",
+              this.subtreeRoot.getFullPath(),
+              e);
       cacheManager.updateCacheStatusAfterFlushFailure(this.subtreeRoot);
       throw e;
     }
 
     Deque<Iterator<ICachedMNode>> volatileSubtreeStack = new ArrayDeque<>();
     volatileSubtreeStack.push(
-        cacheManager.updateCacheStatusAndRetrieveSubtreeAfterPersist(this.subtreeRoot));
+            cacheManager.updateCacheStatusAndRetrieveSubtreeAfterPersist(this.subtreeRoot));
 
     Iterator<ICachedMNode> subtreeIterator;
     ICachedMNode subtreeRoot;
@@ -80,15 +89,32 @@ public class PBTreeFlushExecutor {
         file.writeMNode(subtreeRoot);
       } catch (MetadataException | IOException e) {
         logger.warn(
-            "Error occurred during MTree flush, current node is {}", subtreeRoot.getFullPath(), e);
+                "Error occurred during MTree flush, current node is {}", subtreeRoot.getFullPath(), e);
         processNotFlushedSubtrees(subtreeRoot, volatileSubtreeStack);
         throw e;
       }
 
       volatileSubtreeStack.push(
-          cacheManager.updateCacheStatusAndRetrieveSubtreeAfterPersist(subtreeRoot));
+              cacheManager.updateCacheStatusAndRetrieveSubtreeAfterPersist(subtreeRoot));
     }
   }
+
+  private void processFlushDatabase() throws IOException {
+    IDatabaseMNode<ICachedMNode> updatedStorageGroupMNode =subtreeRoot.getAsDatabaseMNode();
+    if (updatedStorageGroupMNode == null) {
+      return ;
+    }
+    try {
+      file.updateDatabaseNode(updatedStorageGroupMNode);
+    } catch (IOException e) {
+      logger.warn(
+              "IOException occurred during updating StorageGroupMNode {}",
+              updatedStorageGroupMNode.getFullPath(),
+              e);
+      throw e;
+    }
+  }
+
 
   private void processNotFlushedSubtrees(
       ICachedMNode currentNode, Deque<Iterator<ICachedMNode>> volatileSubtreeStack) {

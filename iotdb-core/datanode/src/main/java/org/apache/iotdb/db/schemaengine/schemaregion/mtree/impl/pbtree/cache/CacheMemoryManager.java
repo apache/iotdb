@@ -27,6 +27,8 @@ import org.apache.iotdb.db.schemaengine.metric.SchemaEngineCachedMetric;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaEngineStatistics;
 import org.apache.iotdb.db.schemaengine.rescon.ISchemaEngineStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.CachedMTreeStore;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.flush.Monitor;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.flush.Scheduler;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.IReleaseFlushStrategy;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.MemManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.ReleaseFlushStrategyNumBasedImpl;
@@ -36,9 +38,9 @@ import org.apache.iotdb.db.utils.concurrent.FiniteSemaphore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 
 /**
@@ -49,29 +51,26 @@ import java.util.concurrent.ExecutorService;
 public class CacheMemoryManager {
 
   private static final Logger logger = LoggerFactory.getLogger(CacheMemoryManager.class);
-
-  private final List<CachedMTreeStore> storeList = new CopyOnWriteArrayList<>();
+  private final Map<Integer, CachedMTreeStore> regionToStoreMap = new ConcurrentHashMap<>();
 
   private CachedSchemaEngineStatistics engineStatistics;
   private SchemaEngineCachedMetric engineMetric;
 
   private static final int CONCURRENT_NUM = 10;
 
-  private ExecutorService flushTaskProcessor;
-  private ExecutorService flushTaskMonitor;
   private ExecutorService releaseTaskProcessor;
   private ExecutorService releaseTaskMonitor;
 
-  private FiniteSemaphore flushSemaphore;
   private FiniteSemaphore releaseSemaphore;
-
-  private volatile boolean hasFlushTask;
 
   private volatile boolean hasReleaseTask;
 
   private IReleaseFlushStrategy releaseFlushStrategy;
 
   private static final int MAX_WAITING_TIME_WHEN_RELEASING = 3_000;
+
+  private final Monitor flushMonitor = new Monitor();
+
   private final Object blockObject = new Object();
 
   /**
@@ -82,16 +81,15 @@ public class CacheMemoryManager {
    */
   public ICacheManager createLRUCacheManager(CachedMTreeStore store, MemManager memManager) {
     ICacheManager cacheManager = new LRUCacheManager(memManager);
-    storeList.add(store);
+    regionToStoreMap.put(store.getRegionStatistics().getSchemaRegionId(), store);
     return cacheManager;
   }
 
   public void clearCachedMTreeStore(CachedMTreeStore store) {
-    storeList.remove(store);
+    regionToStoreMap.remove(store.getRegionStatistics().getSchemaRegionId());
   }
 
   public void init(ISchemaEngineStatistics engineStatistics) {
-    flushSemaphore = new FiniteSemaphore(2, 0);
     releaseSemaphore = new FiniteSemaphore(2, 0);
     this.engineStatistics = engineStatistics.getAsCachedSchemaEngineStatistics();
     if (IoTDBDescriptor.getInstance().getConfig().getCachedMNodeSizeInPBTreeMode() >= 0) {
@@ -99,11 +97,7 @@ public class CacheMemoryManager {
     } else {
       releaseFlushStrategy = new ReleaseFlushStrategySizeBasedImpl(this.engineStatistics);
     }
-    flushTaskMonitor =
-        IoTDBThreadPoolFactory.newSingleThreadExecutor(ThreadName.SCHEMA_FLUSH_MONITOR.getName());
-    flushTaskProcessor =
-        IoTDBThreadPoolFactory.newFixedThreadPool(
-            CONCURRENT_NUM, ThreadName.SCHEMA_REGION_FLUSH_PROCESSOR.getName());
+    flushMonitor.init(releaseFlushStrategy, new Scheduler(regionToStoreMap));
     releaseTaskMonitor =
         IoTDBThreadPoolFactory.newSingleThreadExecutor(ThreadName.SCHEMA_RELEASE_MONITOR.getName());
     releaseTaskProcessor =
@@ -126,26 +120,6 @@ public class CacheMemoryManager {
             }
           } catch (InterruptedException e) {
             logger.info("ReleaseTaskMonitor thread is interrupted.");
-            Thread.currentThread().interrupt();
-          }
-        });
-    flushTaskMonitor.submit(
-        () -> {
-          try {
-            while (!Thread.currentThread().isInterrupted()) {
-              flushSemaphore.acquire();
-              try {
-                if (isExceedFlushThreshold()) {
-                  hasFlushTask = true;
-                  tryFlushVolatileNodes();
-                }
-              } catch (Throwable throwable) {
-                hasFlushTask = false;
-                logger.error("Something wrong happened during MTree flush.", throwable);
-              }
-            }
-          } catch (InterruptedException e) {
-            logger.info("FlushTaskMonitor thread is interrupted.");
             Thread.currentThread().interrupt();
           }
         });
@@ -205,7 +179,7 @@ public class CacheMemoryManager {
   private void tryExecuteMemoryRelease() {
     long startTime = System.currentTimeMillis();
     CompletableFuture.allOf(
-            storeList.stream()
+            regionToStoreMap.values().stream()
                 .map(
                     store ->
                         CompletableFuture.runAsync(
@@ -247,39 +221,6 @@ public class CacheMemoryManager {
     }
   }
 
-  private void registerFlushTask() {
-    flushSemaphore.release();
-  }
-
-  /** Sync all volatile nodes to schemaFile and execute memory release after flush. */
-  private void tryFlushVolatileNodes() {
-    long startTime = System.currentTimeMillis();
-    CompletableFuture.allOf(
-            storeList.stream()
-                .map(
-                    store ->
-                        CompletableFuture.runAsync(
-                            () -> {
-                              store.getLock().writeLock();
-                              try {
-                                store.flushVolatileNodes();
-                                executeMemoryRelease(store);
-                              } finally {
-                                store.getLock().unlockWrite();
-                              }
-                            },
-                            flushTaskProcessor))
-                .toArray(CompletableFuture[]::new))
-        .join();
-    if (engineMetric != null) {
-      engineMetric.recordFlush(System.currentTimeMillis() - startTime);
-    }
-    synchronized (blockObject) {
-      hasFlushTask = false;
-      blockObject.notifyAll();
-    }
-  }
-
   public void clear() {
     if (releaseTaskMonitor != null) {
       releaseTaskMonitor.shutdownNow();
@@ -316,7 +257,7 @@ public class CacheMemoryManager {
       }
       flushTaskProcessor = null;
     }
-    storeList.clear();
+    regionToStoreMap.clear();
     releaseFlushStrategy = null;
     engineStatistics = null;
     releaseSemaphore = null;
@@ -329,7 +270,11 @@ public class CacheMemoryManager {
   }
 
   public int getFlushThreadNum() {
-    return ((WrappedThreadPoolExecutor) flushTaskProcessor).getActiveCount();
+    return flushMonitor.getFlushThreadNum();
+  }
+
+  public Monitor.RecordNode recordTraverserStatistics(int schemaRegionId) {
+    return flushMonitor.recordTraverserTime(schemaRegionId);
   }
 
   private CacheMemoryManager() {}
@@ -346,18 +291,6 @@ public class CacheMemoryManager {
 
   @TestOnly
   public void forceFlushAndRelease() {
-    releaseFlushStrategy =
-        new IReleaseFlushStrategy() {
-          @Override
-          public boolean isExceedReleaseThreshold() {
-            return true;
-          }
-
-          @Override
-          public boolean isExceedFlushThreshold() {
-            return true;
-          }
-        };
-    registerFlushTask();
+    flushMonitor.forceFlushAndRelease();
   }
 }
