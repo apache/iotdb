@@ -52,10 +52,10 @@ public abstract class AbstractSchemaRegionTest {
   @Parameterized.Parameters(name = "{0}")
   public static List<SchemaRegionTestParams> getTestModes() {
     return Arrays.asList(
-        new SchemaRegionTestParams("MemoryMode", "Memory", -1, true));
-//        new SchemaRegionTestParams("PBTree-FullMemory", "PBTree", 10000, true),
-//        new SchemaRegionTestParams("PBTree-PartialMemory", "PBTree", 3, true),
-//        new SchemaRegionTestParams("PBTree-NonMemory", "PBTree", 0, true));
+        new SchemaRegionTestParams("MemoryMode", "Memory", -1, true),
+        new SchemaRegionTestParams("PBTree-FullMemory", "PBTree", 10000, true),
+        new SchemaRegionTestParams("PBTree-PartialMemory", "PBTree", 3, true),
+        new SchemaRegionTestParams("PBTree-NonMemory", "PBTree", 0, true));
   }
 
   public AbstractSchemaRegionTest(SchemaRegionTestParams testParams) {
