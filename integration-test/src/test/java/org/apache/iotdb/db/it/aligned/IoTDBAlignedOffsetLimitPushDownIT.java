@@ -43,7 +43,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBAlignedLimitPushDownIT {
+public class IoTDBAlignedOffsetLimitPushDownIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -55,6 +55,10 @@ public class IoTDBAlignedLimitPushDownIT {
       statement.addBatch("insert into root.db.d1(time,s1,s2) aligned values(2,2,2)");
       statement.addBatch("insert into root.db.d1(time,s1,s2) aligned values(3,3,3)");
       statement.addBatch("insert into root.db.d1(time,s1,s2) aligned values(4,4,4)");
+      statement.addBatch("insert into root.db.d1(time,s1,s2) aligned values(5,5,null)");
+      statement.addBatch("insert into root.db.d1(time,s1,s2) aligned values(6,6,null)");
+      statement.addBatch("insert into root.db.d1(time,s1,s2) aligned values(7,7,7)");
+
       statement.addBatch("flush");
 
       statement.executeBatch();
@@ -70,7 +74,7 @@ public class IoTDBAlignedLimitPushDownIT {
   }
 
   @Test
-  public void selectWithLimitPushDownTest() {
+  public void selectWithLimitPushDownTest1() {
 
     String[] retArray = new String[] {"3,3.0", "4,4.0"};
 
@@ -81,6 +85,44 @@ public class IoTDBAlignedLimitPushDownIT {
 
       try (ResultSet resultSet =
           statement.executeQuery("select s1 from root.db.d1 where time >= 3 limit 2;")) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        Map<String, Integer> map = new HashMap<>();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          map.put(resultSetMetaData.getColumnName(i), i);
+        }
+        assertEquals(columnNames.length + 1, resultSetMetaData.getColumnCount());
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          builder.append(resultSet.getString(1));
+          for (String columnName : columnNames) {
+            int index = map.get(columnName);
+            builder.append(",").append(resultSet.getString(index));
+          }
+          assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
+
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void selectWithLimitPushDownTest2() {
+
+    String[] retArray = new String[] {"6,6.0,null", "7,7.0,7.0"};
+
+    String[] columnNames = {"root.db.d1.s1", "root.db.d1.s2"};
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select * from root.db.d1 where time >= 1 offset 5;")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Map<String, Integer> map = new HashMap<>();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {

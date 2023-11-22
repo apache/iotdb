@@ -400,6 +400,9 @@ public class ValuePageReader {
       case BOOLEAN:
         // skip useless data
         for (int i = 0; i < readStartIndex; i++) {
+          if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
+            continue;
+          }
           valueDecoder.readBoolean(valueBuffer);
         }
 
@@ -415,6 +418,9 @@ public class ValuePageReader {
       case INT32:
         // skip useless data
         for (int i = 0; i < readStartIndex; i++) {
+          if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
+            continue;
+          }
           valueDecoder.readInt(valueBuffer);
         }
 
@@ -430,6 +436,9 @@ public class ValuePageReader {
       case INT64:
         // skip useless data
         for (int i = 0; i < readStartIndex; i++) {
+          if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
+            continue;
+          }
           valueDecoder.readLong(valueBuffer);
         }
 
@@ -445,6 +454,9 @@ public class ValuePageReader {
       case FLOAT:
         // skip useless data
         for (int i = 0; i < readStartIndex; i++) {
+          if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
+            continue;
+          }
           valueDecoder.readFloat(valueBuffer);
         }
 
@@ -460,6 +472,9 @@ public class ValuePageReader {
       case DOUBLE:
         // skip useless data
         for (int i = 0; i < readStartIndex; i++) {
+          if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
+            continue;
+          }
           valueDecoder.readDouble(valueBuffer);
         }
 
@@ -475,6 +490,9 @@ public class ValuePageReader {
       case TEXT:
         // skip useless data
         for (int i = 0; i < readStartIndex; i++) {
+          if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
+            continue;
+          }
           valueDecoder.readBinary(valueBuffer);
         }
 
