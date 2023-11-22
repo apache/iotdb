@@ -61,38 +61,11 @@ public class WebSocketConnectorServer extends WebSocketServer {
 
   private WebSocketConnectorServer(int port) {
     super(new InetSocketAddress(port));
-    new Thread(
-            () -> {
-              while (true) {
-                for (WebSocketConnector connector : eventsWaitingForTransfer.keySet()) {
-                  PriorityBlockingQueue<Pair<Pair<Long, Event>, Integer>> queue =
-                      eventsWaitingForTransfer.getOrDefault(connector, null);
-                  if (queue == null || queue.isEmpty()) {
-                    continue;
-                  }
-                  try {
-                    Pair<Pair<Long, Event>, Integer> pair = queue.take();
-                    synchronized (queue) {
-                      queue.notifyAll();
-                    }
-                    transfer(pair, router.get(connector));
-                    connector.commit(
-                        pair.getLeft().getRight() instanceof EnrichedEvent
-                            ? (EnrichedEvent) pair.getLeft().getRight()
-                            : null);
-                  } catch (InterruptedException e) {
-                    String log = String.format("The event can't be taken, because: %s", e.getMessage());
-                    LOGGER.warn(log);
-                    Thread.currentThread().interrupt();
-                    throw new PipeException(e.getMessage());
-                  }
-                }
-              }
-            })
-        .start();
+    TransferThread transferThread = new TransferThread(this);
+    transferThread.start();
   }
 
-  public static WebSocketConnectorServer getInstance(int port) {
+  public static WebSocketConnectorServer getInstance(int port) throws InterruptedException {
     if (null == instance) {
       synchronized (WebSocketConnectorServer.class) {
         if (null == instance) {
@@ -105,7 +78,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
 
   public void register(WebSocketConnector connector) {
     eventsWaitingForTransfer.putIfAbsent(
-        connector, new PriorityBlockingQueue<>(11, Comparator.comparing(o -> o.left.left)));
+            connector, new PriorityBlockingQueue<>(11, Comparator.comparing(o -> o.left.left)));
     eventsWaitingForAck.putIfAbsent(connector, new ConcurrentHashMap<>());
     pipeNameToConnector.put(connector.getPipeName(), connector);
   }
@@ -114,6 +87,76 @@ public class WebSocketConnectorServer extends WebSocketServer {
     eventsWaitingForTransfer.remove(connector);
     eventsWaitingForAck.remove(connector);
     pipeNameToConnector.remove(connector.getPipeName());
+  }
+
+  private class TransferThread extends Thread {
+    WebSocketConnectorServer server;
+    public TransferThread(WebSocketConnectorServer server) {
+      this.server = server;
+    }
+    @Override
+    public void run() {
+      while (true) {
+        for (WebSocketConnector connector : eventsWaitingForTransfer.keySet()) {
+          PriorityBlockingQueue<Pair<Pair<Long, Event>, Integer>> queue =
+                  eventsWaitingForTransfer.getOrDefault(connector, null);
+          if (queue == null || queue.isEmpty()) {
+            continue;
+          }
+          try {
+            Pair<Pair<Long, Event>, Integer> pair = queue.take();
+            synchronized (queue) {
+              queue.notifyAll();
+            }
+            transfer(pair, router.get(connector));
+            connector.commit(
+                    pair.getLeft().getRight() instanceof EnrichedEvent
+                            ? (EnrichedEvent) pair.getLeft().getRight()
+                            : null);
+          } catch (InterruptedException e) {
+            String log =
+                    String.format("The event can't be taken, because: %s", e.getMessage());
+            LOGGER.warn(log);
+            Thread.currentThread().interrupt();
+            throw new PipeException(e.getMessage());
+          }
+        }
+      }
+    }
+    private void transfer(Pair<Pair<Long, Event>, Integer> eventPair, WebSocket webSocket) {
+      Long commitId = eventPair.getLeft().getLeft();
+      Event event = eventPair.getLeft().getRight();
+      Integer retryTimes = eventPair.getRight();
+      String pipeName = webSocketToPipeName.get(webSocket);
+      WebSocketConnector connector = pipeNameToConnector.get(pipeName);
+      try {
+        ByteBuffer tabletBuffer = null;
+        if (event instanceof PipeInsertNodeTabletInsertionEvent) {
+          tabletBuffer = ((PipeInsertNodeTabletInsertionEvent) event).convertToTablet().serialize();
+        } else if (event instanceof PipeRawTabletInsertionEvent) {
+          tabletBuffer = ((PipeRawTabletInsertionEvent) event).convertToTablet().serialize();
+        } else {
+          throw new NotImplementedException(
+                  "IoTDBCDCConnector only support "
+                          + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent.");
+        }
+        if (tabletBuffer == null) {
+          return;
+        }
+
+        ByteBuffer payload = ByteBuffer.allocate(Long.BYTES + tabletBuffer.limit());
+        payload.putLong(commitId);
+        payload.put(tabletBuffer);
+        payload.flip();
+        server.broadcast(payload, Collections.singletonList(webSocket));
+        eventsWaitingForAck.get(connector).put(commitId, new Pair<>(event, retryTimes - 1));
+      } catch (Exception e) {
+        eventsWaitingForTransfer
+                .get(connector)
+                .put(new Pair<>(new Pair<>(commitId, event), retryTimes - 1));
+        throw new PipeException(e.getMessage());
+      }
+    }
   }
 
   @Override
@@ -203,41 +246,8 @@ public class WebSocketConnectorServer extends WebSocketServer {
     eventsWaitingForTransfer
         .get(connector)
         .put(new Pair<>(new Pair<>(eventIdGenerator.incrementAndGet(), event), 3));
-    eventsWaitingForTransfer.get(connector).notifyAll();
-  }
-
-  private void transfer(Pair<Pair<Long, Event>, Integer> eventPair, WebSocket webSocket) {
-    Long commitId = eventPair.getLeft().getLeft();
-    Event event = eventPair.getLeft().getRight();
-    Integer retryTimes = eventPair.getRight();
-    String pipeName = webSocketToPipeName.get(webSocket);
-    WebSocketConnector connector = pipeNameToConnector.get(pipeName);
-    try {
-      ByteBuffer tabletBuffer = null;
-      if (event instanceof PipeInsertNodeTabletInsertionEvent) {
-        tabletBuffer = ((PipeInsertNodeTabletInsertionEvent) event).convertToTablet().serialize();
-      } else if (event instanceof PipeRawTabletInsertionEvent) {
-        tabletBuffer = ((PipeRawTabletInsertionEvent) event).convertToTablet().serialize();
-      } else {
-        throw new NotImplementedException(
-            "IoTDBCDCConnector only support "
-                + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent.");
-      }
-      if (tabletBuffer == null) {
-        return;
-      }
-
-      ByteBuffer payload = ByteBuffer.allocate(Long.BYTES + tabletBuffer.limit());
-      payload.putLong(commitId);
-      payload.put(tabletBuffer);
-      payload.flip();
-      this.broadcast(payload, Collections.singletonList(webSocket));
-      eventsWaitingForAck.get(connector).put(commitId, new Pair<>(event, retryTimes - 1));
-    } catch (Exception e) {
-      eventsWaitingForTransfer
-          .get(connector)
-          .put(new Pair<>(new Pair<>(commitId, event), retryTimes - 1));
-      throw new PipeException(e.getMessage());
+    synchronized (eventsWaitingForTransfer.get(connector)) {
+      eventsWaitingForTransfer.get(connector).notifyAll();
     }
   }
 

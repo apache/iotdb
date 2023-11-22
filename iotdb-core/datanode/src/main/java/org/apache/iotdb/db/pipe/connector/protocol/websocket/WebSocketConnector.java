@@ -30,6 +30,7 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,6 +64,13 @@ public class WebSocketConnector implements PipeConnector {
                 PipeConnectorConstant.CONNECTOR_WEBSOCKET_PORT_KEY,
                 PipeConnectorConstant.SINK_WEBSOCKET_PORT_KEY),
             PipeConnectorConstant.CONNECTOR_WEBSOCKET_PORT_DEFAULT_VALUE);
+    server = WebSocketConnectorServer.getInstance(port);
+    if (server.getPort() != port) {
+      throw new PipeException(
+              String.format(
+                      "The webSocketServer has been created by port %d. Please set the option cdc.port=%d.",
+                      server.getPort(), server.getPort()));
+    }
     pipeName = configuration.getRuntimeEnvironment().getPipeName();
   }
 
@@ -70,6 +78,7 @@ public class WebSocketConnector implements PipeConnector {
   public void handshake() throws Exception {
     server = WebSocketConnectorServer.getInstance(port);
     server.register(this);
+    server.start();
   }
 
   @Override
