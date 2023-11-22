@@ -37,6 +37,10 @@ public class EncodeTest {
     String output_parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-reorder/compression_ratio/sota_ratio";
     String input_parent_dir = parent_dir + "trans_data/";
 
+//    String parent_dir = "E:\\encoding-reorder-icde\\vldb\\iotdb_datasets_lists\\";
+//    String output_parent_dir = "E:\\encoding-reorder-icde\\compression_ratio\\sota_ratio";
+//    String input_parent_dir = parent_dir;
+
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
     ArrayList<String> dataset_name = new ArrayList<>();
@@ -54,6 +58,8 @@ public class EncodeTest {
     dataset_name.add("TH-Climate");
     dataset_name.add("TY-Transport");
     dataset_name.add("EPM-Education");
+    dataset_name.add("FANYP-Sensors");
+    dataset_name.add("TRAJET-Transport");
 
     for (int i = 0; i < dataset_name.size(); i++) {
       input_path_list.add(input_parent_dir + dataset_name.get(i));
@@ -82,6 +88,8 @@ public class EncodeTest {
 //        dataset_block_size.add(64);
     output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
 //        dataset_block_size.add(256);
+    output_path_list.add(output_parent_dir + "/FANYP-Sensors_ratio.csv"); // 12
+    output_path_list.add(output_parent_dir + "/TRAJET-Transport_ratio.csv"); // 13
 
     //        for(int file_i=3;file_i<4;file_i++){
     for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
