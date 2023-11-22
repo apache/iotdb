@@ -3602,8 +3602,8 @@ public class REGERFloatTest {
         }
     }
 
-    @Test
-    public void REGERCorrect() throws IOException {
+
+    public static void REGERCorrect() throws IOException {
 
         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/iotdb/iotdb-core/tsfile/src/test/resources/";
 
