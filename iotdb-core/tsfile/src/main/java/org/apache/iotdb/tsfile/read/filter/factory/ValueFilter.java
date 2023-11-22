@@ -42,7 +42,7 @@ public class ValueFilter {
     // forbidden construction
   }
 
-  private static final String FAKE_MEASUREMENT = "";
+  private static final String FAKE_MEASUREMENT = "value";
 
   public static <T extends Comparable<T>> ValueGt<T> gt(T value) {
     return new ValueGt<>(FAKE_MEASUREMENT, value);
