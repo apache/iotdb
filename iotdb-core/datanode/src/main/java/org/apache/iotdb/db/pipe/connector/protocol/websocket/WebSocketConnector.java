@@ -78,7 +78,9 @@ public class WebSocketConnector implements PipeConnector {
   public void handshake() throws Exception {
     server = WebSocketConnectorServer.getInstance(port);
     server.register(this);
-    server.start();
+    if (!server.hasStarted) {
+      server.start();
+    }
   }
 
   @Override

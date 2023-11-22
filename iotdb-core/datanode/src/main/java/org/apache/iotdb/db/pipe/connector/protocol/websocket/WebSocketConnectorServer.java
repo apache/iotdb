@@ -58,6 +58,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
   private final ConcurrentMap<WebSocket, String> webSocketToPipeName = new ConcurrentHashMap<>();
 
   private static WebSocketConnectorServer instance;
+  public boolean hasStarted = false;
 
   private WebSocketConnectorServer(int port) {
     super(new InetSocketAddress(port));
@@ -100,7 +101,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
         for (WebSocketConnector connector : eventsWaitingForTransfer.keySet()) {
           PriorityBlockingQueue<Pair<Pair<Long, Event>, Integer>> queue =
                   eventsWaitingForTransfer.getOrDefault(connector, null);
-          if (queue == null || queue.isEmpty()) {
+          if (queue == null || queue.isEmpty() || !router.containsKey(connector)) {
             continue;
           }
           try {
@@ -228,6 +229,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
             "The webSocket server %s:%d has been started!",
             this.getAddress().getHostName(), this.getPort());
     LOGGER.info(log);
+    hasStarted = true;
   }
 
   public void addEvent(Event event, WebSocketConnector connector) {
