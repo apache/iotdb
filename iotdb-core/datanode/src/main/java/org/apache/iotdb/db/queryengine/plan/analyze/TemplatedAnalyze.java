@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
@@ -93,7 +94,8 @@ public class TemplatedAnalyze {
       Analysis analysis,
       QueryStatement queryStatement,
       IPartitionFetcher partitionFetcher,
-      ISchemaTree schemaTree) {
+      ISchemaTree schemaTree,
+      MPPQueryContext context) {
     if (queryStatement.isAggregationQuery()
         || queryStatement.isGroupBy()
         || queryStatement.isGroupByTime()
@@ -170,7 +172,7 @@ public class TemplatedAnalyze {
     analyzeOutput(analysis, queryStatement, outputExpressions);
 
     // fetch partition information
-    analyzeDataPartition(analysis, schemaTree, partitionFetcher);
+    analyzeDataPartition(analysis, schemaTree, partitionFetcher, context.getGlobalTimeFilter());
     return true;
   }
 
@@ -262,7 +264,7 @@ public class TemplatedAnalyze {
     List<Expression> conJunctions =
         ExpressionAnalyzer.concatDeviceAndBindSchemaForPredicate(
             queryStatement.getWhereCondition().getPredicate(), devicePath, schemaTree, true);
-    return ExpressionUtils.constructQueryFilter(
+    return PredicateUtils.combineConjuncts(
         conJunctions.stream().distinct().collect(Collectors.toList()));
   }
 
@@ -355,13 +357,15 @@ public class TemplatedAnalyze {
   }
 
   private static void analyzeDataPartition(
-      Analysis analysis, ISchemaTree schemaTree, IPartitionFetcher partitionFetcher) {
+      Analysis analysis,
+      ISchemaTree schemaTree,
+      IPartitionFetcher partitionFetcher,
+      Filter globalTimeFilter) {
     // TemplatedDevice has no views, so there is no need to use outputDeviceToQueriedDevicesMap
     Set<String> deviceSet =
         analysis.getDeviceList().stream().map(PartialPath::getFullPath).collect(Collectors.toSet());
     DataPartition dataPartition =
-        fetchDataPartitionByDevices(
-            deviceSet, schemaTree, analysis.getGlobalTimeFilter(), partitionFetcher);
+        fetchDataPartitionByDevices(deviceSet, schemaTree, globalTimeFilter, partitionFetcher);
     analysis.setDataPartitionInfo(dataPartition);
   }
 

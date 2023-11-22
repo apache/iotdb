@@ -30,7 +30,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.time.ZoneId;
@@ -66,7 +65,6 @@ public class TemplatedLogicalPlanBuilder extends LogicalPlanBuilder {
   public TemplatedLogicalPlanBuilder planRawDataSource(
       PartialPath devicePath,
       Ordering scanOrder,
-      Filter timeFilter,
       long offset,
       long limit,
       boolean lastLevelUseWildcard) {
@@ -82,8 +80,6 @@ public class TemplatedLogicalPlanBuilder extends LogicalPlanBuilder {
               context.getQueryId().genPlanNodeId(),
               path,
               scanOrder,
-              timeFilter,
-              timeFilter,
               limit,
               offset,
               null,
@@ -98,8 +94,6 @@ public class TemplatedLogicalPlanBuilder extends LogicalPlanBuilder {
                 context.getQueryId().genPlanNodeId(),
                 measurementPath,
                 scanOrder,
-                timeFilter,
-                timeFilter,
                 limit,
                 offset,
                 null);

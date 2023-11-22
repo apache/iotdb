@@ -155,7 +155,6 @@ public class TemplatedLogicalPlan {
         planBuilder.planRawDataSource(
             devicePath,
             queryStatement.getResultTimeOrder(),
-            analysis.getGlobalTimeFilter(),
             0,
             pushDownLimitToScanNode(queryStatement, analysis),
             analysis.isLastLevelUseWildcard());
