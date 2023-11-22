@@ -2315,15 +2315,19 @@ public class REGERDoubleTest {
         int segment_n = block_size / segment_size;
         long2Bytes(delta_segments[0], pos_encode, encoded_result);
         pos_encode += 8;
-        double2bytes(theta[0] + raw_length[3], pos_encode, encoded_result);
+        double2bytes(theta[0], pos_encode, encoded_result);
         pos_encode += 8;
         double2bytes(theta[1], pos_encode, encoded_result);
         pos_encode += 8;
-        double2bytes(theta[2] + raw_length[4], pos_encode, encoded_result);
+        double2bytes(theta[2], pos_encode, encoded_result);
         pos_encode += 8;
         double2bytes(theta[3], pos_encode, encoded_result);
         pos_encode += 8;
 
+        int2Bytes( raw_length[3], pos_encode, encoded_result);
+        pos_encode += 4;
+        int2Bytes(raw_length[4], pos_encode, encoded_result);
+        pos_encode += 4;
 
         pos_encode = encodeRLEBitWidth2Bytes(bit_width_segments, pos_encode, encoded_result);
 //        printTSBlock(bit_width_segments);
@@ -2485,7 +2489,7 @@ public class REGERDoubleTest {
     }
 
 
-    private static int REGERBlockEncoder(long[] data, int i, int block_size, int supply_length, int[] third_value, int segment_size, int encode_pos, byte[] cur_byte) {
+    private static int REGERBlockEncoder(long[] data, int i, int block_size, int supply_length, int[] third_value, int segment_size, int encode_pos, byte[] cur_byte, int[] block_sort) {
 
 
         long min_time = (long) getTime(data[i * block_size]) <<32;
@@ -2503,7 +2507,7 @@ public class REGERDoubleTest {
 //            System.out.println((data[i * block_size+1]));
 //            System.out.println(getTime(data[i * block_size+1]));
             for (int j = 0; j < block_size; j++) {
-                long tmp_j = data[j + i * block_size] - min_time;
+                long tmp_j = data[j + i * block_size];// - min_time;
 //                System.out.println(getTime(data[j + i * block_size]));
 //                System.out.println(getTime(data[i * block_size]));
                 ts_block[j] = tmp_j;
@@ -2554,7 +2558,7 @@ public class REGERDoubleTest {
 //            int min_value = Integer.MAX_VALUE;
 
             for (int j = 0; j < end; j++) {
-                long tmp_j = data[j + i * block_size] - min_time;
+                long tmp_j = data[j + i * block_size];// - min_time;
                 ts_block[j] = tmp_j;
                 ts_block_value[j] = combine2Int(getValue(tmp_j),getTime(tmp_j));
 
@@ -2646,6 +2650,7 @@ public class REGERDoubleTest {
         if(choose == 0){
 //            System.out.println("time");
 //            System.out.println(Arrays.toString(time_length));
+            block_sort[i] = 0;
             ts_block_delta_time = ReorderingTimeSeries(ts_block, time_length,  theta_time, segment_size);
             bit_width_segments = segmentBitPacking(ts_block_delta_time, block_size, segment_size);
             encode_pos = encodeSegment2Bytes(ts_block_delta_time, bit_width_segments, time_length, segment_size, theta_time, encode_pos, cur_byte);
@@ -2654,6 +2659,7 @@ public class REGERDoubleTest {
         else if(choose==1){
 //            System.out.println("partition");
 //            System.out.println(Arrays.toString(partition_length));
+            block_sort[i] = 0;
             ts_block_delta_partition = ReorderingTimeSeries(ts_block_partition, partition_length,  theta_partition, segment_size);
             bit_width_segments = segmentBitPacking(ts_block_delta_partition, block_size, segment_size);
             encode_pos = encodeSegment2Bytes(ts_block_delta_partition, bit_width_segments, partition_length, segment_size, theta_partition, encode_pos, cur_byte);
@@ -2661,6 +2667,7 @@ public class REGERDoubleTest {
         } else if (choose ==2) {
 //            System.out.println("value");
 //            System.out.println(Arrays.toString(reorder_length));
+            block_sort[i] = 1;
             ts_block_delta_reorder = ReorderingTimeSeries(ts_block_value, reorder_length,  theta_reorder, segment_size);
             bit_width_segments = segmentBitPacking(ts_block_delta_reorder, block_size, segment_size);
             encode_pos = encodeSegment2Bytes(ts_block_delta_reorder, bit_width_segments, reorder_length, segment_size, theta_reorder, encode_pos, cur_byte);
@@ -2707,10 +2714,15 @@ public class REGERDoubleTest {
         int2Bytes(segment_size, encode_pos, encoded_result);
         encode_pos += 4;
 
+        int[] block_sort = new int[block_num+1];
+        int encode_pos_block_sort = encode_pos;
+        int length_block_sort = (int) Math.ceil((double)(block_num+1)/(double) 8);
+        encode_pos += length_block_sort;
+
 //        for (int i = 44; i < 45; i++) {
         for (int i = 0; i < block_num; i++) {
 //            System.out.println(i);
-            encode_pos = REGERBlockEncoder(data, i, block_size, 0, third_value, segment_size, encode_pos, encoded_result);
+            encode_pos = REGERBlockEncoder(data, i, block_size, 0, third_value, segment_size, encode_pos, encoded_result, block_sort);
         }
 
         int remaining_length = length_all - block_num * block_size;
@@ -2727,10 +2739,30 @@ public class REGERDoubleTest {
             } else {
                 supple_length = segment_size + 1 - remaining_length % segment_size;
             }
-            encode_pos = REGERBlockEncoder(data, block_num, block_size, supple_length + remaining_length, third_value, segment_size, encode_pos, encoded_result);
-
+            encode_pos = REGERBlockEncoder(data, block_num, block_size, supple_length + remaining_length, third_value, segment_size, encode_pos, encoded_result, block_sort);
         }
+
+        encodeSort(block_sort,encode_pos_block_sort,encoded_result);
+
+
         return encode_pos;
+    }
+
+    private static void encodeSort(int[] block_sort,int encode_pos_block_sort, byte[] encoded_result) {
+        int length = block_sort.length;
+        int cur_num = 0;
+        for(int i=1;i<=length;i++){
+            cur_num <<=1;
+            cur_num += block_sort[i-1];
+            if(i%8==0){
+                intByte2Bytes(cur_num, encode_pos_block_sort, encoded_result);
+                encode_pos_block_sort ++;
+                cur_num = 0;
+            }
+        }
+        if(length%8!=0){
+            intByte2Bytes(cur_num, encode_pos_block_sort, encoded_result);
+        }
     }
 
     public static int REGERBlockDecoder(byte[] encoded, int decode_pos, int[][] value_list, int block_size, int segment_size, int[] value_pos_arr) {
@@ -2740,7 +2772,7 @@ public class REGERDoubleTest {
         value_list[value_pos_arr[0]][0] = time0;
         int value0 = bytes2Integer(encoded, decode_pos, 4);
         decode_pos += 4;
-        value_list[value_pos_arr[0]][0] = value0;
+        value_list[value_pos_arr[0]][1] = value0;
 
         value_pos_arr[0]++;
 
@@ -2753,6 +2785,11 @@ public class REGERDoubleTest {
         decode_pos += 8;
         double theta_value1 = bytes2Double(encoded, decode_pos);
         decode_pos += 8;
+
+        int min_time = bytes2Integer(encoded, decode_pos,4);
+        decode_pos += 4;
+        int min_value = bytes2Integer(encoded, decode_pos,4);
+        decode_pos += 4;
 
         int bit_width_time_count = bytes2Integer(encoded, decode_pos, 2);
         decode_pos += 2;
@@ -2799,20 +2836,103 @@ public class REGERDoubleTest {
             int[] decode_value_result = new int[segment_size];
 
             decode_pos = decodeBitPacking(encoded, decode_pos, bit_width_time, segment_size, decode_time_result);
-            int pos_time = value_pos_arr[0];
-            for (int delta_time : decode_time_result) {
-                pre_time = (int) (theta_time0 + theta_time1 * (double) delta_time) + pre_time;
-                value_list[pos_time][0] = pre_time;
-                pos_time++;
-            }
-            int pos_value = value_pos_arr[0];
             decode_pos = decodeBitPacking(encoded, decode_pos, bit_width_value, segment_size, decode_value_result);
-            for (int delta_value : decode_value_result) {
-                pre_value = (int) (theta_value0 + theta_value1 * (double) delta_value) + pre_value;
-                value_list[pos_value][1] = pre_value;
-                pos_value++;
+            int pos_decode_time_result = 0;
+            int length_decode_time_result = decode_time_result.length;
+            for(;pos_decode_time_result<length_decode_time_result;pos_decode_time_result++){
+                pre_time = (int) (theta_time0 + theta_time1 * (float)pre_time ) + decode_time_result[pos_decode_time_result] + min_time;
+                pre_value = (int) (theta_value0 + theta_value1 * (float)pre_value ) +  decode_value_result[pos_decode_time_result] + min_value;
+                value_list[value_pos_arr[0]][0] = pre_time;
+                value_list[value_pos_arr[0]][1] = pre_value;
+                value_pos_arr[0] ++;
             }
-            value_pos_arr[0] = pos_value;
+        }
+
+
+        return decode_pos;
+    }
+
+    public static int REGERBlockDecoderValue(byte[] encoded, int decode_pos, int[][] value_list, int block_size, int segment_size, int[] value_pos_arr) {
+
+        int time0 = bytes2Integer(encoded, decode_pos, 4);
+        decode_pos += 4;
+        value_list[value_pos_arr[0]][1] = time0;
+        int value0 = bytes2Integer(encoded, decode_pos, 4);
+        decode_pos += 4;
+        value_list[value_pos_arr[0]][0] = value0;
+
+        value_pos_arr[0]++;
+
+        double theta_time0 = bytes2Double(encoded, decode_pos);
+        decode_pos += 8;
+        double theta_time1 = bytes2Double(encoded, decode_pos);
+        decode_pos += 8;
+
+        double theta_value0 = bytes2Double(encoded, decode_pos);
+        decode_pos += 8;
+        double theta_value1 = bytes2Double(encoded, decode_pos);
+        decode_pos += 8;
+
+        int min_time = bytes2Integer(encoded, decode_pos,4);
+        decode_pos += 4;
+        int min_value = bytes2Integer(encoded, decode_pos,4);
+        decode_pos += 4;
+
+        int bit_width_time_count = bytes2Integer(encoded, decode_pos, 2);
+        decode_pos += 2;
+        int bit_width_value_count = bytes2Integer(encoded, decode_pos, 2);
+        decode_pos += 2;
+
+        int count;
+        int num;
+        int segment_n = block_size / segment_size;
+        int[][] bit_width_segments = new int[segment_n][2];
+        int pos_bit_width_segments = 0;
+        for (int i = 0; i < bit_width_time_count; i++) {
+            count = byte2Integer(encoded, decode_pos);
+            decode_pos++;
+            num = byte2Integer(encoded, decode_pos);
+
+            decode_pos++;
+            for (int j = 0; j < count; j++) {
+                bit_width_segments[pos_bit_width_segments][0] = num;
+                pos_bit_width_segments++;
+            }
+
+        }
+
+        pos_bit_width_segments = 0;
+        for (int i = 0; i < bit_width_value_count; i++) {
+            count = byte2Integer(encoded, decode_pos);
+            decode_pos++;
+            num = byte2Integer(encoded, decode_pos);
+            decode_pos++;
+            for (int j = 0; j < count; j++) {
+                bit_width_segments[pos_bit_width_segments][1] = num;
+                pos_bit_width_segments++;
+            }
+        }
+
+        int pre_time = time0;
+        int pre_value = value0;
+
+        for (int segment_i = 0; segment_i < segment_n; segment_i++) {
+            int bit_width_time = bit_width_segments[segment_i][0];
+            int bit_width_value = bit_width_segments[segment_i][1];
+            int[] decode_time_result = new int[segment_size];
+            int[] decode_value_result = new int[segment_size];
+
+            decode_pos = decodeBitPacking(encoded, decode_pos, bit_width_time, segment_size, decode_time_result);
+            decode_pos = decodeBitPacking(encoded, decode_pos, bit_width_value, segment_size, decode_value_result);
+            int pos_decode_time_result = 0;
+            int length_decode_time_result = decode_time_result.length;
+            for(;pos_decode_time_result<length_decode_time_result;pos_decode_time_result++){
+                pre_time = (int) (theta_time0 + theta_time1 * (float)pre_time ) + decode_time_result[pos_decode_time_result] + min_time;
+                pre_value = (int) (theta_value0 + theta_value1 * (float)pre_value ) +  decode_value_result[pos_decode_time_result] + min_value;
+                value_list[value_pos_arr[0]][1] = pre_time;
+                value_list[value_pos_arr[0]][0] = pre_value;
+                value_pos_arr[0] ++;
+            }
         }
 
 
@@ -2834,6 +2954,25 @@ public class REGERDoubleTest {
         int block_num = length_all / block_size;
         int remain_length = length_all - block_num * block_size;
         int zero_number;
+
+        int length_block_sort = (int) Math.ceil((double)(block_num+1)/(double) 8);
+        int[] block_sort = new int[block_num+1];
+        for(int i=0;i<length_block_sort-1;i++){
+            int sort = byte2Integer(encoded, decode_pos);
+            decode_pos ++;
+            for(int j=0;j<8;j++){
+                block_sort[i*8+7-j] = sort & 1;
+                sort >>= 1;
+            }
+        }
+        int block_sort_end =(block_num +1)- (length_block_sort*8-8);
+        int sort = byte2Integer(encoded, decode_pos);
+        decode_pos ++;
+        for(int j=0;j<block_sort_end;j++){
+            block_sort[8*length_block_sort-8+block_sort_end-j-1] = sort & 1;
+            sort >>= 1;
+        }
+
         if (remain_length % segment_size == 0) {
             zero_number = 1;
         } else if (remain_length % segment_size == 1) {
@@ -2847,8 +2986,13 @@ public class REGERDoubleTest {
 
 //        for (int k = 0; k < 2; k++) {
         for (int k = 0; k < block_num; k++) {
-//            System.out.println("k="+k);
-            decode_pos = REGERBlockDecoder(encoded, decode_pos, value_list, block_size, segment_size, value_pos_arr);
+            int cur_block_sort = block_sort[k];
+            if(cur_block_sort==0)
+                decode_pos = REGERBlockDecoder(encoded, decode_pos, value_list, block_size, segment_size, value_pos_arr);
+            else if (cur_block_sort == 1){
+                decode_pos = REGERBlockDecoderValue(encoded, decode_pos, value_list, block_size, segment_size, value_pos_arr);
+            }
+
         }
 
         if (remain_length == 1) {
@@ -2862,7 +3006,12 @@ public class REGERDoubleTest {
                 value_pos_arr[0]++;
             }
         } else {
-            REGERBlockDecoder(encoded, decode_pos, value_list, remain_length + zero_number, segment_size, value_pos_arr);
+            int cur_block_sort = block_sort[block_num];
+            if(cur_block_sort==0)
+                REGERBlockDecoder(encoded, decode_pos, value_list, remain_length + zero_number, segment_size, value_pos_arr);
+            else if (cur_block_sort == 1){
+                REGERBlockDecoderValue(encoded, decode_pos, value_list, remain_length + zero_number, segment_size, value_pos_arr);
+            }
         }
     }
 
@@ -2928,7 +3077,7 @@ public class REGERDoubleTest {
         for (String value : dataset_name) {
             input_path_list.add(input_parent_dir + value);
             dataset_k.add(1);
-            dataset_block_size.add(128);
+            dataset_block_size.add(1024);
         }
 
         output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
