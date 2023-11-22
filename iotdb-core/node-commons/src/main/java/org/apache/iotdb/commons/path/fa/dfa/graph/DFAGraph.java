@@ -41,10 +41,9 @@ public class DFAGraph {
   private final List<IFAState> dfaStateList = new ArrayList<>();
 
   // [stateIndex][transitionIndex]
-  private Map<Integer, Map<Integer, IFAState>> dfaTransitionTable = new HashMap<>();
+  private final Map<Integer, Map<Integer, IFAState>> dfaTransitionTable = new HashMap<>();
 
-  public DFAGraph(NFAGraph nfaGraph, Collection<IFATransition> transitions, int patternNodesCount) {
-    //    dfaTransitionTable = new IFAState[patternNodesCount * 2][transitions.size()];
+  public DFAGraph(NFAGraph nfaGraph, Collection<IFATransition> transitions) {
     int closureSize = nfaGraph.getStateSize();
     // init start state
     int index = 0;
@@ -85,25 +84,12 @@ public class DFAGraph {
     }
   }
 
-  public DFAGraph(
-      PathPatternTree patternTree,
-      Map<String, IFATransition> transitionMap,
-      int patternNodesCount) {
-    //    dfaTransitionTable = new IFAState[patternNodesCount * 2][transitionMap.size()];
+  public DFAGraph(PathPatternTree patternTree, Map<String, IFATransition> transitionMap) {
     // init start state
     IFAState curState = new DFAState(0);
     dfaStateList.add(curState);
     init(patternTree.getRoot(), transitionMap, curState, new AtomicInteger(0));
   }
-
-  //  private void ensureCapacity() {
-  //    if (dfaStateList.size() > dfaTransitionTable.length) {
-  //      IFAState[][] tmp = new IFAState[dfaTransitionTable.length *
-  // 2][dfaTransitionTable[0].length];
-  //      System.arraycopy(dfaTransitionTable, 0, tmp, 0, dfaTransitionTable.length);
-  //      dfaTransitionTable = tmp;
-  //    }
-  //  }
 
   private void init(
       PathPatternNode<Void, PathPatternNode.VoidSerializer> node,
@@ -118,8 +104,6 @@ public class DFAGraph {
       newState = new DFAState(stateIndexGenerator.incrementAndGet());
       dfaStateList.add(newState);
       updateDfaTransitionTable(stateIndex, transitionIndex, newState);
-      //      ensureCapacity();
-      //      dfaTransitionTable[stateIndex][transitionIndex] = newState;
     }
     if (node.isPathPattern()) {
       newState.setFinal(true);

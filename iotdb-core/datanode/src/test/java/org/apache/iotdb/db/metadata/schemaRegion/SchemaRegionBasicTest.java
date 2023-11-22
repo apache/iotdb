@@ -40,6 +40,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.apache.commons.lang3.StringUtils;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -73,7 +74,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
   }
 
   @Test
-  //  @Ignore
+  @Ignore
   public void testFetchSchemaPerfomance() throws Exception {
     System.out.println(testParams.getTestModeName());
     int deviceNum = 1000;
