@@ -30,52 +30,57 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.Iterator;
+import java.util.List;
 
 public class PBTreeFlushExecutor {
 
   private static final Logger logger = LoggerFactory.getLogger(PBTreeFlushExecutor.class);
 
-  private final ICachedMNode subtreeRoot;
-
+  private final List<ICachedMNode> subtreeRoots;
   private final ICacheManager cacheManager;
-
   private final ISchemaFile file;
+  private final List<Exception> exceptions = new ArrayList<>();
 
   public PBTreeFlushExecutor(
-      ICachedMNode subtreeRoot, ICacheManager cacheManager, ISchemaFile file) {
-    this.subtreeRoot = subtreeRoot;
+      List<ICachedMNode> subtreeRoots, ICacheManager cacheManager, ISchemaFile file) {
+    this.subtreeRoots = subtreeRoots;
     this.cacheManager = cacheManager;
     this.file = file;
   }
-  public void flushVolatileNodes() throws MetadataException, IOException {
-    if(subtreeRoot.isDatabase()){
-        processFlushDatabase();
-    }else {
-        processFlushNonDatabase();
+
+  public void flushVolatileNodes() throws MetadataException {
+    for (ICachedMNode subtreeRoot : subtreeRoots) {
+      if (subtreeRoot.isDatabase()) {
+        processFlushDatabase(subtreeRoot);
+      } else {
+        processFlushNonDatabase(subtreeRoot);
+      }
+    }
+    if (!exceptions.isEmpty()) {
+      throw new MetadataException(
+          exceptions.stream().map(Exception::getMessage).reduce("", (a, b) -> a + ", " + b));
     }
   }
 
-
-  private void processFlushNonDatabase() throws IOException, MetadataException {
+  private void processFlushNonDatabase(ICachedMNode subtreeRoot) {
     try {
-      file.writeMNode(this.subtreeRoot);
+      file.writeMNode(subtreeRoot);
     } catch (MetadataException | IOException e) {
       logger.warn(
-              "Error occurred during MTree flush, current node is {}",
-              this.subtreeRoot.getFullPath(),
-              e);
-      cacheManager.updateCacheStatusAfterFlushFailure(this.subtreeRoot);
-      throw e;
+          "Error occurred during MTree flush, current node is {}", subtreeRoot.getFullPath(), e);
+      cacheManager.updateCacheStatusAfterFlushFailure(subtreeRoot);
+      exceptions.add(e);
+      return;
     }
 
     Deque<Iterator<ICachedMNode>> volatileSubtreeStack = new ArrayDeque<>();
     volatileSubtreeStack.push(
-            cacheManager.updateCacheStatusAndRetrieveSubtreeAfterPersist(this.subtreeRoot));
+        cacheManager.updateCacheStatusAndRetrieveSubtreeAfterPersist(subtreeRoot));
 
     Iterator<ICachedMNode> subtreeIterator;
-    ICachedMNode subtreeRoot;
     while (!volatileSubtreeStack.isEmpty()) {
       subtreeIterator = volatileSubtreeStack.peek();
       if (!subtreeIterator.hasNext()) {
@@ -89,32 +94,29 @@ public class PBTreeFlushExecutor {
         file.writeMNode(subtreeRoot);
       } catch (MetadataException | IOException e) {
         logger.warn(
-                "Error occurred during MTree flush, current node is {}", subtreeRoot.getFullPath(), e);
+            "Error occurred during MTree flush, current node is {}", subtreeRoot.getFullPath(), e);
         processNotFlushedSubtrees(subtreeRoot, volatileSubtreeStack);
-        throw e;
+        exceptions.add(e);
+        return;
       }
 
       volatileSubtreeStack.push(
-              cacheManager.updateCacheStatusAndRetrieveSubtreeAfterPersist(subtreeRoot));
+          cacheManager.updateCacheStatusAndRetrieveSubtreeAfterPersist(subtreeRoot));
     }
   }
 
-  private void processFlushDatabase() throws IOException {
-    IDatabaseMNode<ICachedMNode> updatedStorageGroupMNode =subtreeRoot.getAsDatabaseMNode();
-    if (updatedStorageGroupMNode == null) {
-      return ;
-    }
+  private void processFlushDatabase(ICachedMNode subtreeRoot) {
+    IDatabaseMNode<ICachedMNode> updatedStorageGroupMNode = subtreeRoot.getAsDatabaseMNode();
     try {
       file.updateDatabaseNode(updatedStorageGroupMNode);
     } catch (IOException e) {
       logger.warn(
-              "IOException occurred during updating StorageGroupMNode {}",
-              updatedStorageGroupMNode.getFullPath(),
-              e);
-      throw e;
+          "IOException occurred during updating StorageGroupMNode {}",
+          updatedStorageGroupMNode.getFullPath(),
+          e);
+      exceptions.add(e);
     }
   }
-
 
   private void processNotFlushedSubtrees(
       ICachedMNode currentNode, Deque<Iterator<ICachedMNode>> volatileSubtreeStack) {

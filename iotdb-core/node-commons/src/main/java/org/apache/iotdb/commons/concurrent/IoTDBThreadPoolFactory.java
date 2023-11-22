@@ -86,7 +86,8 @@ public class IoTDBThreadPoolFactory {
    * @param poolName - the name of thread pool
    * @return fixed size thread pool
    */
-  public static ExecutorService newFixedThreadPool(int nThreads, String poolName,  RejectedExecutionHandler handler) {
+  public static ExecutorService newFixedThreadPool(
+      int nThreads, String poolName, RejectedExecutionHandler handler) {
     logger.info(NEW_FIXED_THREAD_POOL_LOGGER_FORMAT, poolName, nThreads);
 
     return new WrappedThreadPoolExecutor(
@@ -96,7 +97,8 @@ public class IoTDBThreadPoolFactory {
         TimeUnit.MILLISECONDS,
         new LinkedBlockingQueue<>(),
         new IoTThreadFactory(poolName),
-        poolName, handler);
+        poolName,
+        handler);
   }
 
   public static ExecutorService newFixedThreadPoolWithDaemonThread(int nThreads, String poolName) {

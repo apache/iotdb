@@ -22,11 +22,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.flush;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.schemaengine.rescon.ISchemaEngineStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.IReleaseFlushStrategy;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.ReleaseFlushStrategyNumBasedImpl;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.ReleaseFlushStrategySizeBasedImpl;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
@@ -43,11 +39,13 @@ import java.util.stream.Collectors;
 public class Monitor {
   /** configuration */
   private double FORCE_FLUSH_THREASHODL = 0.5;
+
   private double FREE_FLUSH_THREASHODL = 0.3;
   private int MONITOR_INETRVAL_MILLISECONDS = 5000;
 
   /** data structure */
   private final Map<Integer, RecordList> regionToTraverserTime = new ConcurrentHashMap<>();
+
   private final ScheduledExecutorService executorService =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
           ThreadName.PBTREE_FLUSH_MONITOR.getName());
@@ -115,7 +113,7 @@ public class Monitor {
     return regionAndFreeTimeList.stream().map(Pair::getLeft).collect(Collectors.toList());
   }
 
-  public int getFlushThreadNum(){
+  public int getFlushThreadNum() {
     return scheduler.getFlushThreadNum();
   }
 
@@ -161,7 +159,7 @@ public class Monitor {
 
         @Override
         public RecordNode next() {
-          if(!hasNext()){
+          if (!hasNext()) {
             throw new NoSuchElementException();
           }
           cur = cur.next;

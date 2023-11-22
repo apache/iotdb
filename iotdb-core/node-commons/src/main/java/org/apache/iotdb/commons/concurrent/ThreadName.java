@@ -223,7 +223,8 @@ public enum ThreadName {
               SCHEMA_REGION_RECOVER_TASK,
               SCHEMA_RELEASE_MONITOR,
               SCHEMA_FORCE_MLOG,
-                  PBTREE_FLUSH_MONITOR,PBTREE_FLUSH_PROCESSOR));
+              PBTREE_FLUSH_MONITOR,
+              PBTREE_FLUSH_PROCESSOR));
 
   private static final Set<ThreadName> clientServiceThreadNames =
       new HashSet<>(Arrays.asList(CLIENT_RPC_SERVICE, CLIENT_RPC_PROCESSOR));

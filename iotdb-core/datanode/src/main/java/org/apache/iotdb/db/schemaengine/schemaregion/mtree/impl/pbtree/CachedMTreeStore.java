@@ -50,6 +50,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -66,6 +67,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   private final ICacheManager cacheManager;
   private ISchemaFile file;
   private ICachedMNode root;
+  // TODO: delete it
   private final Runnable flushCallback;
   private final IMNodeFactory<ICachedMNode> nodeFactory =
       MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
@@ -106,6 +108,14 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     root.setParent(cur);
     cur.addChild(root);
     return res;
+  }
+
+  public ICacheManager getCacheManager() {
+    return cacheManager;
+  }
+
+  public ISchemaFile getSchemaFile() {
+    return file;
   }
 
   @Override
@@ -573,22 +583,29 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   /** Sync all volatile nodes to PBTree and execute memory release after flush. */
   public void flushVolatileNodes() {
     try {
-      boolean hasVolatileNodes = flushVolatileDBNode();
+      PBTreeFlushExecutor flushExecutor;
+      IDatabaseMNode<ICachedMNode> updatedStorageGroupMNode =
+          cacheManager.collectUpdatedStorageGroupMNodes();
+      if (updatedStorageGroupMNode != null) {
+        flushExecutor =
+            new PBTreeFlushExecutor(
+                Collections.singletonList(updatedStorageGroupMNode.getAsMNode()),
+                cacheManager,
+                file);
+        flushExecutor.flushVolatileNodes();
+      }
 
       Iterator<ICachedMNode> volatileSubtrees = cacheManager.collectVolatileSubtrees();
       if (volatileSubtrees.hasNext()) {
-        hasVolatileNodes = true;
-
         long startTime = System.currentTimeMillis();
 
         ICachedMNode subtreeRoot;
-        PBTreeFlushExecutor flushExecutor;
         while (volatileSubtrees.hasNext()) {
           subtreeRoot = volatileSubtrees.next();
-          flushExecutor = new PBTreeFlushExecutor(subtreeRoot, cacheManager, file);
+          flushExecutor =
+              new PBTreeFlushExecutor(Collections.singletonList(subtreeRoot), cacheManager, file);
           flushExecutor.flushVolatileNodes();
         }
-
         long time = System.currentTimeMillis() - startTime;
         if (time > 10_000) {
           logger.info("It takes {}ms to flush MTree in SchemaRegion {}", time, schemaRegionId);
@@ -596,36 +613,9 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
           logger.debug("It takes {}ms to flush MTree in SchemaRegion {}", time, schemaRegionId);
         }
       }
-
-      if (hasVolatileNodes) {
-        flushCallback.run();
-      }
-    } catch (MetadataException | IOException e) {
-      logger.warn(
-          "Exception occurred during MTree flush, current SchemaRegionId is {}", schemaRegionId, e);
     } catch (Throwable e) {
       logger.error(
           "Error occurred during MTree flush, current SchemaRegionId is {}", schemaRegionId, e);
-      e.printStackTrace();
-    }
-  }
-
-  private boolean flushVolatileDBNode() throws IOException {
-    IDatabaseMNode<ICachedMNode> updatedStorageGroupMNode =
-        cacheManager.collectUpdatedStorageGroupMNodes();
-    if (updatedStorageGroupMNode == null) {
-      return false;
-    }
-
-    try {
-      file.updateDatabaseNode(updatedStorageGroupMNode);
-      return true;
-    } catch (IOException e) {
-      logger.warn(
-          "IOException occurred during updating StorageGroupMNode {}",
-          updatedStorageGroupMNode.getFullPath(),
-          e);
-      throw e;
     }
   }
 

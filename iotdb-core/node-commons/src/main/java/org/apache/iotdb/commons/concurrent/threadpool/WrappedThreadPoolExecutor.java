@@ -75,14 +75,15 @@ public class WrappedThreadPoolExecutor extends ThreadPoolExecutor
   }
 
   public WrappedThreadPoolExecutor(
-          int corePoolSize,
-          int maximumPoolSize,
-          long keepAliveTime,
-          TimeUnit unit,
-          BlockingQueue<Runnable> workQueue,
-          IoTThreadFactory ioTThreadFactory,
-          String mbeanName, RejectedExecutionHandler handler) {
-    super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue, ioTThreadFactory,handler);
+      int corePoolSize,
+      int maximumPoolSize,
+      long keepAliveTime,
+      TimeUnit unit,
+      BlockingQueue<Runnable> workQueue,
+      IoTThreadFactory ioTThreadFactory,
+      String mbeanName,
+      RejectedExecutionHandler handler) {
+    super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue, ioTThreadFactory, handler);
     this.mbeanName =
         String.format(
             "%s:%s=%s", IoTDBConstant.IOTDB_THREADPOOL_JMX_NAME, IoTDBConstant.JMX_TYPE, mbeanName);

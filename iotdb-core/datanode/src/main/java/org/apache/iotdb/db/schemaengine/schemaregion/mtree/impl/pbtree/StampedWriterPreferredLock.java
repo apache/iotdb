@@ -88,7 +88,7 @@ public class StampedWriterPreferredLock {
    * re-entry within the same thread. Return directly if no thread holds a write lock ; block and
    * wait if another thread holds a write lock.
    *
-   * @param prior If false, it will also block and * wait if the write lock waiting queue is not
+   * @param prior If false, it will also block and wait if the write lock waiting queue is not
    *     empty.
    */
   public void threadReadLock(boolean prior) {
