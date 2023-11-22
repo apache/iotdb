@@ -130,26 +130,26 @@ public class PipeTsFileResource implements AutoCloseable {
 
   public synchronized Map<String, List<String>> tryGetDeviceMeasurementsMap() throws IOException {
     if (deviceMeasurementsMap == null && isTsFile) {
-      tryCacheObjects();
+      cacheObjectsIfAbsent();
     }
     return deviceMeasurementsMap;
   }
 
   public synchronized Map<String, Boolean> tryGetDeviceIsAlignedMap() throws IOException {
     if (deviceIsAlignedMap == null && isTsFile) {
-      tryCacheObjects();
+      cacheObjectsIfAbsent();
     }
     return deviceIsAlignedMap;
   }
 
   public synchronized Map<String, TSDataType> tryGetMeasurementDataTypeMap() throws IOException {
     if (measurementDataTypeMap == null && isTsFile) {
-      tryCacheObjects();
+      cacheObjectsIfAbsent();
     }
     return measurementDataTypeMap;
   }
 
-  synchronized boolean tryCacheObjects() throws IOException {
+  synchronized boolean cacheObjectsIfAbsent() throws IOException {
     if (!isTsFile) {
       return false;
     }

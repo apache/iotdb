@@ -243,12 +243,18 @@ public class PipeTsFileResourceManager {
     }
   }
 
-  public boolean tryCacheObjects(File hardlinkOrCopiedTsFile) throws IOException {
+  /**
+   * Cache maps of the TsFile for further use.
+   *
+   * @return {@code true} if the maps are successfully put into cache or already cached. {@code
+   *     false} if they can not be cached.
+   */
+  public boolean cacheObjectsIfAbsent(File hardlinkOrCopiedTsFile) throws IOException {
     lock.lock();
     try {
       final PipeTsFileResource resource =
           hardlinkOrCopiedFileToPipeTsFileResourceMap.get(hardlinkOrCopiedTsFile.getPath());
-      return resource != null && resource.tryCacheObjects();
+      return resource != null && resource.cacheObjectsIfAbsent();
     } finally {
       lock.unlock();
     }
