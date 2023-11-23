@@ -569,7 +569,7 @@ service IDataNodeRPCService {
   /**
   * ConfigNode will ask DataNode for heartbeat in every few seconds.
   *
-  * @param ConfigNode will send the latest config_node_list and load balancing policies in THeartbeatReq
+  * @param ConfigNode will send the latest config_node_list and load balancing policies in TDataNodeHeartbeatReq
   **/
   TDataNodeHeartbeatResp getDataNodeHeartBeat(TDataNodeHeartbeatReq req)
 
