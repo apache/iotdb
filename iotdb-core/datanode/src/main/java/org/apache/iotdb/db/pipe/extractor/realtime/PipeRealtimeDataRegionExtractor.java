@@ -38,6 +38,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_KEY;
@@ -119,7 +120,9 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   @Override
   public void close() throws Exception {
-    PipeInsertionDataNodeListener.getInstance().stopListenAndAssign(dataRegionId, this);
+    if (Objects.nonNull(dataRegionId)) {
+      PipeInsertionDataNodeListener.getInstance().stopListenAndAssign(dataRegionId, this);
+    }
 
     synchronized (isClosed) {
       clearPendingQueue();

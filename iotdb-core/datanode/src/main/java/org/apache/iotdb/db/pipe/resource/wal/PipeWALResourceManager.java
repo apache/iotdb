@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.db.pipe.resource.wal;
 
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 
 import org.slf4j.Logger;
@@ -32,8 +30,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 public abstract class PipeWALResourceManager {
@@ -45,10 +41,6 @@ public abstract class PipeWALResourceManager {
   private static final int SEGMENT_LOCK_COUNT = 32;
   private final ReentrantLock[] memtableIdSegmentLocks;
 
-  private static final ScheduledExecutorService PIPE_WAL_RESOURCE_TTL_CHECKER =
-      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-          ThreadName.PIPE_WAL_RESOURCE_TTL_CHECKER.getName());
-
   protected PipeWALResourceManager() {
     // memtableIdToPipeWALResourceMap can be concurrently accessed by multiple threads
     memtableIdToPipeWALResourceMap = new ConcurrentHashMap<>();
@@ -58,38 +50,35 @@ public abstract class PipeWALResourceManager {
       memtableIdSegmentLocks[i] = new ReentrantLock();
     }
 
-    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-        PIPE_WAL_RESOURCE_TTL_CHECKER,
-        () -> {
-          final Iterator<Map.Entry<Long, PipeWALResource>> iterator =
-              memtableIdToPipeWALResourceMap.entrySet().iterator();
-          while (iterator.hasNext()) {
-            final Map.Entry<Long, PipeWALResource> entry = iterator.next();
-            final ReentrantLock lock =
-                memtableIdSegmentLocks[(int) (entry.getKey() % SEGMENT_LOCK_COUNT)];
-
-            lock.lock();
-            try {
-              if (entry.getValue().invalidateIfPossible()) {
-                iterator.remove();
-              } else {
-                LOGGER.info(
-                    "WAL (memtableId {}) is still referenced {} times",
-                    entry.getKey(),
-                    entry.getValue().getReferenceCount());
-              }
-            } finally {
-              lock.unlock();
-            }
-          }
-        },
-        PipeWALResource.MIN_TIME_TO_LIVE_IN_MS,
-        PipeWALResource.MIN_TIME_TO_LIVE_IN_MS,
-        TimeUnit.MILLISECONDS);
+    PipeAgent.runtime()
+        .registerPeriodicalJob(
+            "PipeWALResourceManager#ttlCheck()",
+            this::ttlCheck,
+            Math.max(PipeWALResource.WAL_MIN_TIME_TO_LIVE_IN_MS / 1000, 1));
   }
 
-  public int getApproximatePinnedWALCount() {
-    return memtableIdToPipeWALResourceMap.size();
+  private void ttlCheck() {
+    final Iterator<Map.Entry<Long, PipeWALResource>> iterator =
+        memtableIdToPipeWALResourceMap.entrySet().iterator();
+    while (iterator.hasNext()) {
+      final Map.Entry<Long, PipeWALResource> entry = iterator.next();
+      final ReentrantLock lock =
+          memtableIdSegmentLocks[(int) (entry.getKey() % SEGMENT_LOCK_COUNT)];
+
+      lock.lock();
+      try {
+        if (entry.getValue().invalidateIfPossible()) {
+          iterator.remove();
+        } else {
+          LOGGER.info(
+              "WAL (memtableId {}) is still referenced {} times",
+              entry.getKey(),
+              entry.getValue().getReferenceCount());
+        }
+      } finally {
+        lock.unlock();
+      }
+    }
   }
 
   public final void pin(final WALEntryHandler walEntryHandler) throws IOException {
