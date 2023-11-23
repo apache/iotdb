@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
+import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -69,9 +70,10 @@ public class TemplatedLogicalPlan {
         new TemplatedLogicalPlanBuilder(analysis, context, measurementList, schemaList);
 
     Map<String, PlanNode> deviceToSubPlanMap = new LinkedHashMap<>();
+    long limitValue = pushDownLimitToScanNode(queryStatement, analysis);
     for (PartialPath devicePath : analysis.getDeviceList()) {
       String deviceName = devicePath.getFullPath();
-      PlanNode rootNode = visitQueryBody(devicePath, analysis, queryStatement, context);
+      PlanNode rootNode = visitQueryBody(devicePath, analysis, queryStatement, context, limitValue);
 
       LogicalPlanBuilder subPlanBuilder =
           new TemplatedLogicalPlanBuilder(analysis, context, measurementList, schemaList)
@@ -120,7 +122,8 @@ public class TemplatedLogicalPlan {
       PartialPath devicePath,
       Analysis analysis,
       QueryStatement queryStatement,
-      MPPQueryContext context) {
+      MPPQueryContext context,
+      long limitValue) {
 
     List<String> mergedMeasurementList = measurementList;
     List<IMeasurementSchema> mergedSchemaList = schemaList;
@@ -156,7 +159,7 @@ public class TemplatedLogicalPlan {
             devicePath,
             queryStatement.getResultTimeOrder(),
             0,
-            pushDownLimitToScanNode(queryStatement, analysis),
+            limitValue,
             analysis.isLastLevelUseWildcard());
 
     if (whereExpression != null) {
@@ -177,16 +180,26 @@ public class TemplatedLogicalPlan {
               queryStatement.getResultTimeOrder());
     }
 
-    if (context.getTypeProvider().getMeasurementList() == null) {
-      context.getTypeProvider().setMeasurementList(mergedMeasurementList);
-      context.getTypeProvider().setSchemaList(mergedSchemaList);
+    if (context.getTypeProvider().getTemplatedInfo() == null) {
       context
           .getTypeProvider()
-          .setDataTypes(
-              mergedSchemaList.stream()
-                  .map(IMeasurementSchema::getType)
-                  .collect(Collectors.toList()));
-      context.getTypeProvider().setAllSensors(new HashSet<>(mergedMeasurementList));
+          .setTemplatedInfo(
+              new TemplatedInfo(
+                  mergedMeasurementList,
+                  mergedSchemaList,
+                  mergedSchemaList.stream()
+                      .map(IMeasurementSchema::getType)
+                      .collect(Collectors.toList()),
+                  new HashSet<>(mergedMeasurementList),
+                  analysis.getGlobalTimeFilter(),
+                  queryStatement.getResultTimeOrder(),
+                  analysis.isLastLevelUseWildcard(),
+                  analysis.getDeviceViewOutputExpressions().stream()
+                      .map(Expression::getExpressionString)
+                      .collect(Collectors.toList()),
+                  analysis.getDeviceViewInputIndexesMap().values().iterator().next(),
+                  0,
+                  limitValue));
     }
 
     return planBuilder.getRoot();

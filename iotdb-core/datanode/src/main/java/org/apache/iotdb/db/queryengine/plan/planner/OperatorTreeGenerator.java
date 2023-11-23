@@ -330,10 +330,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     SeriesScanOptions.Builder scanOptionsBuilder = getSeriesScanOptionsBuilder(node, context);
     scanOptionsBuilder.withPushDownLimit(node.getPushDownLimit());
     scanOptionsBuilder.withPushDownOffset(node.getPushDownOffset());
-    scanOptionsBuilder.withAllSensors(
-        context.getTypeProvider().getAllSensors() != null
-            ? context.getTypeProvider().getAllSensors()
-            : new HashSet<>(seriesPath.getMeasurementList()));
+    seriesScanOptionsBuilder.withAllSensors(
+            context.getTypeProvider().getTemplatedInfo() != null
+                    ? context.getTypeProvider().getTemplatedInfo().getAllSensors()
+                    : new HashSet<>(seriesPath.getMeasurementList()));
+
     OperatorContext operatorContext =
         context
             .getDriverContext()
@@ -349,7 +350,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.getScanOrder(),
             scanOptionsBuilder.build(),
             node.isQueryAllSensors(),
-            context.getTypeProvider().getDataTypes());
+            context.getTypeProvider().getTemplatedInfo() != null
+                ? context.getTypeProvider().getTemplatedInfo().getDataTypes()
+                : null);
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(seriesScanOperator);
     ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
@@ -1866,7 +1869,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     List<OutputColumn> outputColumns = generateOutputColumnsFromChildren(node);
     List<ColumnMerger> mergers = createColumnMergers(outputColumns, timeComparator);
     List<TSDataType> outputColumnTypes =
-        context.getTypeProvider().getMeasurementList() != null
+        context.getTypeProvider().getTemplatedInfo() != null
             ? getOutputColumnTypesOfTimeJoinNode(node)
             : getOutputColumnTypes(node, context.getTypeProvider());
 
@@ -2468,7 +2471,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   }
 
   private List<TSDataType> getInputColumnTypes(PlanNode node, TypeProvider typeProvider) {
-    if (typeProvider.getMeasurementList() == null) {
+    if (typeProvider.getTemplatedInfo() == null) {
       return node.getChildren().stream()
           .map(PlanNode::getOutputColumnNames)
           .flatMap(List::stream)
