@@ -54,7 +54,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
@@ -336,12 +336,12 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
    * @param node the modified node
    */
   @Override
-  public void updateMNode(ICachedMNode node, Function<ICachedMNode, ICachedMNode> operation) {
+  public void updateMNode(ICachedMNode node, UnaryOperator<ICachedMNode> operation) {
     updateMNode(node, operation, true);
   }
 
   final void updateMNode(
-      ICachedMNode node, Function<ICachedMNode, ICachedMNode> operation, boolean needLock) {
+      ICachedMNode node, UnaryOperator<ICachedMNode> operation, boolean needLock) {
     if (needLock) {
       lockManager.globalReadLock();
     }

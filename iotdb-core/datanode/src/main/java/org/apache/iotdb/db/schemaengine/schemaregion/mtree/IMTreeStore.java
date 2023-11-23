@@ -28,7 +28,7 @@ import org.apache.iotdb.db.schemaengine.template.Template;
 
 import java.io.File;
 import java.util.Map;
-import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 /**
  * This interface defines the basic access methods of an MTreeStore.
@@ -80,7 +80,7 @@ public interface IMTreeStore<N extends IMNode<N>> {
    * @param node node to be updated
    * @param operation operation
    */
-  void updateMNode(N node, Function<N, N> operation) throws MetadataException;
+  void updateMNode(N node, UnaryOperator<N> operation) throws MetadataException;
 
   IDeviceMNode<N> setToEntity(N node) throws MetadataException;
 
