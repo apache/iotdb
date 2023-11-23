@@ -127,8 +127,11 @@ public abstract class CacheManager implements ICacheManager {
     pinMNodeWithMemStatusUpdate(node);
     CacheEntry cacheEntry = getCacheEntry(node);
     cacheEntry.setVolatile(true);
-    getBelongedContainer(node).appendMNode(node);
+    // the ancestors must be processed first since the volatileDescendant judgement is of higher
+    // priority than
+    // children container judgement
     removeAncestorsFromCache(node);
+    getBelongedContainer(node).appendMNode(node);
     nodeBuffer.addNewNodeToBuffer(node);
   }
 
@@ -150,20 +153,22 @@ public abstract class CacheManager implements ICacheManager {
       return;
     }
 
-    getBelongedContainer(node).updateMNode(node.getName());
-    // update operation like node replace may reset the mapping between cacheEntry and node,
-    // thus it should be updated
-    updateCacheStatusAfterUpdate(cacheEntry, node);
     synchronized (cacheEntry) {
+      if (cacheEntry.isVolatile()) {
+        return;
+      }
       // the status change affects the subTre collect in nodeBuffer
       cacheEntry.setVolatile(true);
       if (!cacheEntry.hasVolatileDescendant()) {
         removeFromNodeCache(cacheEntry);
         removeAncestorsFromCache(node);
       }
+      getBelongedContainer(node).updateMNode(node.getName());
+      // update operation like node replace may reset the mapping between cacheEntry and node,
+      // thus it should be updated
+      updateCacheStatusAfterUpdate(cacheEntry, node);
+      nodeBuffer.addUpdatedNodeToBuffer(node);
     }
-
-    nodeBuffer.addUpdatedNodeToBuffer(node);
   }
 
   /**
@@ -325,19 +330,22 @@ public abstract class CacheManager implements ICacheManager {
           cacheEntry.setVolatile(false);
           container.moveMNodeToCache(node.getName());
 
-          if (node.isMeasurement() || !getCachedMNodeContainer(node).hasChildrenInBuffer()) {
-            // there's no direct volatile subtree under this node, thus there's no need to flush it
-            // add the node and its ancestors to cache
-            if (!cacheEntry.hasVolatileDescendant()) {
-              addToNodeCache(cacheEntry, node);
-              addAncestorsToCache(node);
-            }
-          } else {
+          if (cacheEntry.hasVolatileDescendant()
+              && getCachedMNodeContainer(node).hasChildrenInBuffer()) {
+            // these two factor judgement is not redundant because the #hasVolatileDescendant is on
+            // a higher priority
+            // than #container.hasChildren
+
             // nodes with volatile children should be treated as root of volatile subtree and return
             // for flush
             nextSubtree = node;
             return;
           }
+
+          // there's no direct volatile subtree under this node, thus there's no need to flush it
+          // add the node and its ancestors to cache
+          addToNodeCache(cacheEntry, node);
+          addAncestorsToCache(node);
         }
       }
     }
@@ -361,7 +369,6 @@ public abstract class CacheManager implements ICacheManager {
                 "There should not exist descendant under this node %s", node.getFullPath()));
       }
       if (cacheEntry.isVolatile()) {
-        nodeBuffer.remove(getCacheEntry(node));
         addAncestorsToCache(node);
         if (!getCacheEntry(node.getParent()).hasVolatileDescendant()) {
           nodeBuffer.remove(getCacheEntry(node.getParent()));
