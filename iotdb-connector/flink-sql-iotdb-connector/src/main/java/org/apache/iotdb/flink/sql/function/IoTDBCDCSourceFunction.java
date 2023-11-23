@@ -149,7 +149,7 @@ public class IoTDBCDCSourceFunction extends RichSourceFunction<RowData> {
           while (!socketClient.getReadyState().equals(ReadyState.OPEN)) {
             Thread.sleep(1000);
           }
-          socketClient.send(String.format("BIND:", pipeName));
+          socketClient.send(String.format("BIND:%s", pipeName));
         } else {
           Thread.sleep(1000);
         }
@@ -190,7 +190,7 @@ public class IoTDBCDCSourceFunction extends RichSourceFunction<RowData> {
     while (!client.getReadyState().equals(ReadyState.OPEN)) {
       Thread.sleep(1000);
     }
-    client.send(String.format("BIND:", pipeName));
+    client.send(String.format("BIND:%s", pipeName));
     return client;
   }
 
