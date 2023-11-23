@@ -35,7 +35,7 @@ import java.util.List;
  */
 public abstract class DirectoryStrategy {
 
-  protected static final Logger logger = LoggerFactory.getLogger(DirectoryStrategy.class);
+  protected static final Logger LOGGER = LoggerFactory.getLogger(DirectoryStrategy.class);
 
   /** All the folders of data files, should be init once the subclass is created. */
   List<String> folders = new ArrayList<>();
@@ -55,7 +55,7 @@ public abstract class DirectoryStrategy {
       }
     }
     if (!hasSpace) {
-      logger.error("Disk space is insufficient, change system mode to read-only");
+      LOGGER.error("Disk space is insufficient, change system mode to read-only");
       CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
       throw new DiskSpaceInsufficientException(folders);
     }

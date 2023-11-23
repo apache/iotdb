@@ -59,7 +59,7 @@ import java.util.Set;
 
 public class TsFileSplitTool {
 
-  private static final Logger logger = LoggerFactory.getLogger(TsFileSplitTool.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileSplitTool.class);
 
   private final String filename;
 
@@ -90,7 +90,7 @@ public class TsFileSplitTool {
   public static void main(String[] args) throws IOException {
     checkArgs(args);
     String fileName = args[0];
-    logger.info("Splitting TsFile {} ...", fileName);
+    LOGGER.info("Splitting TsFile {} ...", fileName);
     new TsFileSplitTool(fileName).run();
   }
 
