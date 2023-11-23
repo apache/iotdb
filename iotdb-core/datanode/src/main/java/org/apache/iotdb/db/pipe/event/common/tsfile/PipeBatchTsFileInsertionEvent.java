@@ -74,20 +74,33 @@ public class PipeBatchTsFileInsertionEvent extends EnrichedEvent
   public static final String CONNECTOR_TIMEOUT_MS = "connector.timeout_MS";
 
   public PipeBatchTsFileInsertionEvent(
-      List<TsFileResource> resources, boolean isLoaded, boolean isGeneratedByPipe) {
-    this(resources, isLoaded, isGeneratedByPipe, null, null, Long.MIN_VALUE, Long.MAX_VALUE, false);
+      List<TsFileResource> resources,
+      boolean isLoaded,
+      boolean isGeneratedByPipe,
+      String pipeName) {
+    this(
+        resources,
+        isLoaded,
+        isGeneratedByPipe,
+        pipeName,
+        null,
+        null,
+        Long.MIN_VALUE,
+        Long.MAX_VALUE,
+        false);
   }
 
   public PipeBatchTsFileInsertionEvent(
       List<TsFileResource> resources,
       boolean isLoaded,
       boolean isGeneratedByPipe,
+      String pipeName,
       PipeTaskMeta pipeTaskMeta,
       String pattern,
       long startTime,
       long endTime,
       boolean needParseTime) {
-    super(pipeTaskMeta, pattern);
+    super(pipeName, pipeTaskMeta, pattern);
 
     this.startTime = startTime;
     this.endTime = endTime;
@@ -199,11 +212,12 @@ public class PipeBatchTsFileInsertionEvent extends EnrichedEvent
 
   @Override
   public PipeBatchTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      PipeTaskMeta pipeTaskMeta, String pattern) {
+      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern) {
     return new PipeBatchTsFileInsertionEvent(
         resources,
         isLoaded,
         isGeneratedByPipe,
+        pipeName,
         pipeTaskMeta,
         pattern,
         startTime,
@@ -225,7 +239,7 @@ public class PipeBatchTsFileInsertionEvent extends EnrichedEvent
         waitForTsFileClose();
         dataContainer =
             new TsFileListInsertionDataContainer(
-                tsFiles, getPattern(), startTime, endTime, pipeTaskMeta, this);
+                tsFiles, getPattern(), pipeName, startTime, endTime, pipeTaskMeta, this);
       }
       return dataContainer.toTabletInsertionEvents();
     } catch (InterruptedException e) {
@@ -276,6 +290,7 @@ public class PipeBatchTsFileInsertionEvent extends EnrichedEvent
               resource,
               isLoaded,
               isGeneratedByPipe,
+              pipeName,
               pipeTaskMeta,
               getPattern(),
               startTime,

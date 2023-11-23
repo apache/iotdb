@@ -425,17 +425,15 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
         transfer(fileInsertionEvent);
       }
     } else {
-      final long requestCommitId = commitIdGenerator.incrementAndGet();
-      transfer(requestCommitId, pipeTsFileInsertionEvent);
+      transfer(pipeTsFileInsertionEvent);
     }
   }
 
-  private void transfer(
-      long requestCommitId, PipeBatchTsFileInsertionEvent pipeTsFileInsertionEvent)
-      throws IOException {
+  private void transfer(PipeBatchTsFileInsertionEvent pipeTsFileInsertionEvent) throws IOException {
     LoadTsFileNode loadTsFileNode =
         new LoadTsFileNode(
-            new PlanNodeId("Pipe-" + requestCommitId), pipeTsFileInsertionEvent.getResources());
+            new PlanNodeId("Pipe-" + pipeTsFileInsertionEvent.getCommitId()),
+            pipeTsFileInsertionEvent.getResources());
 
     IPartitionFetcher partitionFetcher =
         new ExternalPartitionFetcher(targetConfigNodes, thriftClientProperty, targetSeriesSlotNum);

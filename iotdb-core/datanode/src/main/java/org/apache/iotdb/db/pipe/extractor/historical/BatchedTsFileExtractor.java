@@ -43,11 +43,13 @@ public class BatchedTsFileExtractor extends PipeHistoricalDataRegionTsFileExtrac
   private int maxBatchSize;
   private long maxFileTotalSize;
   private ThroughputMonitor throughputMonitor;
+  private String pipeName;
 
-  public BatchedTsFileExtractor(int maxBatchSize, long maxFileTotalSize) {
+  public BatchedTsFileExtractor(int maxBatchSize, long maxFileTotalSize, String pipeName) {
     this.maxBatchSize = Math.max(1, maxBatchSize);
     this.maxFileTotalSize = maxFileTotalSize;
     this.throughputMonitor = new ThroughputMonitor();
+    this.pipeName = pipeName;
   }
 
   @Override
@@ -76,6 +78,7 @@ public class BatchedTsFileExtractor extends PipeHistoricalDataRegionTsFileExtrac
             tsFileResourceList,
             false,
             false,
+            pipeName,
             pipeTaskMeta,
             pattern,
             historicalDataExtractionStartTime,

@@ -55,6 +55,7 @@ public class TsFileListInsertionDataContainer implements AutoCloseable {
       LoggerFactory.getLogger(TsFileListInsertionDataContainer.class);
 
   private final String pattern; // used to filter data
+  private final String pipeName;
   private final IExpression timeFilterExpression; // used to filter data
 
   private final PipeTaskMeta pipeTaskMeta; // used to report progress
@@ -69,19 +70,22 @@ public class TsFileListInsertionDataContainer implements AutoCloseable {
   private final List<Map<String, TSDataType>> measurementDataTypeMaps;
 
   public TsFileListInsertionDataContainer(
-      List<File> tsFiles, String pattern, long startTime, long endTime) throws IOException {
-    this(tsFiles, pattern, startTime, endTime, null, null);
+      List<File> tsFiles, String pattern, String pipeName, long startTime, long endTime)
+      throws IOException {
+    this(tsFiles, pattern, pipeName, startTime, endTime, null, null);
   }
 
   public TsFileListInsertionDataContainer(
       List<File> tsFiles,
       String pattern,
+      String pipeName,
       long startTime,
       long endTime,
       PipeTaskMeta pipeTaskMeta,
       EnrichedEvent sourceEvent)
       throws IOException {
     this.pattern = pattern;
+    this.pipeName = pipeName;
     timeFilterExpression =
         (startTime == Long.MIN_VALUE && endTime == Long.MAX_VALUE)
             ? null
@@ -228,10 +232,14 @@ public class TsFileListInsertionDataContainer implements AutoCloseable {
 
       final TabletInsertionEvent next;
       if (!hasNext()) {
-        next = new PipeRawTabletInsertionEvent(tablet, isAligned, pipeTaskMeta, sourceEvent, true);
+        next =
+            new PipeRawTabletInsertionEvent(
+                tablet, isAligned, pipeName, pipeTaskMeta, sourceEvent, true);
         close();
       } else {
-        next = new PipeRawTabletInsertionEvent(tablet, isAligned, pipeTaskMeta, sourceEvent, false);
+        next =
+            new PipeRawTabletInsertionEvent(
+                tablet, isAligned, pipeName, pipeTaskMeta, sourceEvent, false);
       }
       return next;
     }

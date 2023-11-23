@@ -151,7 +151,8 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
                   EXTRACTOR_SPLIT_MAX_CONCURRENT_FILE_DEFAULT_VALUE),
               parameters.getLongOrDefault(
                   EXTRACTOR_SPLIT_MAX_FILE_BATCH_SIZE_KEY,
-                  EXTRACTOR_SPLIT_MAX_FILE_BATCH_SIZE_DEFAULT_VALUE));
+                  EXTRACTOR_SPLIT_MAX_FILE_BATCH_SIZE_DEFAULT_VALUE),
+              pipeName);
     } else {
       LOGGER.info("Use single extractor.");
       historicalExtractor = new PipeHistoricalDataRegionTsFileExtractor();
