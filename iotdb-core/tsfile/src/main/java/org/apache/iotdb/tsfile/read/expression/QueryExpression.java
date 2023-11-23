@@ -22,10 +22,11 @@ package org.apache.iotdb.tsfile.read.expression;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class QueryExpression {
+public class QueryExpression implements Serializable {
 
   private List<Path> selectedSeries;
   private List<TSDataType> dataTypes;
@@ -77,12 +78,14 @@ public class QueryExpression {
 
   @Override
   public String toString() {
-    return "\n\t[Selected Series]:"
-        + selectedSeries
-        + "\n\t[TSDataType]:"
-        + dataTypes
-        + "\n\t[expression]:"
-        + expression;
+    StringBuilder stringBuilder =
+        new StringBuilder("\n\t[Selected Series]:")
+            .append(selectedSeries)
+            .append("\n\t[TSDataType]:")
+            .append(dataTypes)
+            .append("\n\t[expression]:")
+            .append(expression);
+    return stringBuilder.toString();
   }
 
   public boolean hasQueryFilter() {

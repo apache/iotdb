@@ -22,10 +22,15 @@ package org.apache.iotdb.tsfile.read.expression.impl;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IBinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.Serializable;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public abstract class BinaryExpression implements IBinaryExpression {
+public abstract class BinaryExpression implements IBinaryExpression, Serializable {
+
+  private static final long serialVersionUID = -711801318534904452L;
 
   public static AndExpression and(IExpression left, IExpression right) {
     return new AndExpression(left, right);
@@ -35,57 +40,37 @@ public abstract class BinaryExpression implements IBinaryExpression {
     return new OrExpression(left, right);
   }
 
-  protected IExpression left;
-  protected IExpression right;
-
-  protected BinaryExpression(IExpression left, IExpression right) {
-    this.left = left;
-    this.right = right;
-  }
-
   @Override
-  public IExpression getLeft() {
-    return left;
-  }
+  public abstract IExpression clone();
 
-  @Override
-  public IExpression getRight() {
-    return right;
-  }
+  protected static class AndExpression extends BinaryExpression {
 
-  @Override
-  public void setLeft(IExpression leftExpression) {
-    this.left = leftExpression;
-  }
-
-  @Override
-  public void setRight(IExpression rightExpression) {
-    this.right = rightExpression;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-
-    AndExpression that = (AndExpression) o;
-    return Objects.equals(toString(), that.toString());
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(toString());
-  }
-
-  private static class AndExpression extends BinaryExpression {
+    private IExpression left;
+    private IExpression right;
 
     public AndExpression(IExpression left, IExpression right) {
-      super(left, right);
+      this.left = left;
+      this.right = right;
+    }
+
+    @Override
+    public IExpression getLeft() {
+      return left;
+    }
+
+    @Override
+    public IExpression getRight() {
+      return right;
+    }
+
+    @Override
+    public void setLeft(IExpression leftExpression) {
+      this.left = leftExpression;
+    }
+
+    @Override
+    public void setRight(IExpression rightExpression) {
+      this.right = rightExpression;
     }
 
     @Override
@@ -94,15 +79,70 @@ public abstract class BinaryExpression implements IBinaryExpression {
     }
 
     @Override
+    public IExpression clone() {
+      return new AndExpression(left.clone(), right.clone());
+    }
+
+    @Override
+    public void serialize(ByteBuffer byteBuffer) {
+      ReadWriteIOUtils.write((byte) getType().ordinal(), byteBuffer);
+      left.serialize(byteBuffer);
+      right.serialize(byteBuffer);
+    }
+
+    @Override
     public String toString() {
       return "[" + left + " && " + right + "]";
     }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+
+      AndExpression that = (AndExpression) o;
+      return Objects.equals(toString(), that.toString());
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(toString());
+    }
   }
 
-  private static class OrExpression extends BinaryExpression {
+  protected static class OrExpression extends BinaryExpression {
+
+    private IExpression left;
+    private IExpression right;
 
     public OrExpression(IExpression left, IExpression right) {
-      super(left, right);
+      this.left = left;
+      this.right = right;
+    }
+
+    @Override
+    public IExpression getLeft() {
+      return left;
+    }
+
+    @Override
+    public IExpression getRight() {
+      return right;
+    }
+
+    @Override
+    public void setLeft(IExpression leftExpression) {
+      this.left = leftExpression;
+    }
+
+    @Override
+    public void setRight(IExpression rightExpression) {
+      this.right = rightExpression;
     }
 
     @Override
@@ -111,8 +151,39 @@ public abstract class BinaryExpression implements IBinaryExpression {
     }
 
     @Override
+    public IExpression clone() {
+      return new OrExpression(left.clone(), right.clone());
+    }
+
+    @Override
+    public void serialize(ByteBuffer byteBuffer) {
+      ReadWriteIOUtils.write((byte) getType().ordinal(), byteBuffer);
+      left.serialize(byteBuffer);
+      right.serialize(byteBuffer);
+    }
+
+    @Override
     public String toString() {
       return "[" + left + " || " + right + "]";
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+
+      OrExpression that = (OrExpression) o;
+      return Objects.equals(toString(), that.toString());
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(toString());
     }
   }
 }

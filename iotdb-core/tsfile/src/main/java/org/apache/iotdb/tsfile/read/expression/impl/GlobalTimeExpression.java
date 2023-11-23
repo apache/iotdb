@@ -20,13 +20,19 @@
 package org.apache.iotdb.tsfile.read.expression.impl;
 
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.IUnaryExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.IOException;
+import java.io.Serializable;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class GlobalTimeExpression implements IUnaryExpression {
+public class GlobalTimeExpression implements IUnaryExpression, Serializable {
 
+  private static final long serialVersionUID = 1146132942359113670L;
   private Filter filter;
 
   public GlobalTimeExpression(Filter filter) {
@@ -46,6 +52,25 @@ public class GlobalTimeExpression implements IUnaryExpression {
   @Override
   public ExpressionType getType() {
     return ExpressionType.GLOBAL_TIME;
+  }
+
+  @Override
+  public IExpression clone() {
+    return new GlobalTimeExpression(filter.copy());
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {
+    try {
+      ReadWriteIOUtils.write((byte) getType().ordinal(), byteBuffer);
+      filter.serialize(byteBuffer);
+    } catch (IOException e) {
+      // ignored
+    }
+  }
+
+  public static GlobalTimeExpression deserialize(ByteBuffer byteBuffer) {
+    return new GlobalTimeExpression(Filter.deserialize(byteBuffer));
   }
 
   @Override
