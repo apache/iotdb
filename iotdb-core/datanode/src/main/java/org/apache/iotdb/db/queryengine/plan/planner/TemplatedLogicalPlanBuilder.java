@@ -77,6 +77,9 @@ public class TemplatedLogicalPlanBuilder extends LogicalPlanBuilder {
       path.setMeasurementList(measurementList);
       path.addSchemas(schemaList);
 
+      // if value filter push down is implemented,
+      // the serializeUseTemplate and deserializeUseTemplate method of AlignedSeriesScanNode also
+      // need adapt
       AlignedSeriesScanNode alignedSeriesScanNode =
           new AlignedSeriesScanNode(
               context.getQueryId().genPlanNodeId(),

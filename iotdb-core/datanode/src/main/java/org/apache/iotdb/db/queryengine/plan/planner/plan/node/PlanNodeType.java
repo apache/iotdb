@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 
+import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadCommandNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
@@ -240,6 +241,10 @@ public enum PlanNodeType {
 
   public static PlanNode deserialize(ByteBuffer buffer) {
     short nodeType = buffer.getShort();
+    return deserialize(buffer, nodeType);
+  }
+
+  public static PlanNode deserialize(ByteBuffer buffer, short nodeType) {
     switch (nodeType) {
       case 0:
         return AggregationNode.deserialize(buffer);
@@ -401,6 +406,18 @@ public enum PlanNodeType {
         return LoadCommandNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
+    }
+  }
+
+  public static PlanNode deserializeWithTemplate(ByteBuffer buffer, TypeProvider typeProvider) {
+    short nodeType = buffer.getShort();
+    switch (nodeType) {
+      case 33:
+        return AlignedSeriesScanNode.deserializeUseTemplate(buffer, typeProvider);
+      case 65:
+        return SingleDeviceViewNode.deserializeUseTemplate(buffer, typeProvider);
+      default:
+        return deserialize(buffer, nodeType);
     }
   }
 }
