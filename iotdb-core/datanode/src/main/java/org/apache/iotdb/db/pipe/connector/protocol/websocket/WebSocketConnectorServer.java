@@ -82,8 +82,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
     eventsWaitingForAck.putIfAbsent(connector.getPipeName(), new ConcurrentHashMap<>());
   }
 
-  public void unregister(WebSocketConnector connector) {
-  }
+  public void unregister(WebSocketConnector connector) {}
 
   @Override
   public void onOpen(WebSocket webSocket, ClientHandshake clientHandshake) {
