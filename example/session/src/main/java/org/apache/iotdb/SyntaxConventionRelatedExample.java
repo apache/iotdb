@@ -42,7 +42,8 @@ import java.util.List;
  */
 public class SyntaxConventionRelatedExample {
 
-  private static Logger logger = LoggerFactory.getLogger(SyntaxConventionRelatedExample.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(SyntaxConventionRelatedExample.class);
 
   private static Session session;
   private static final String LOCAL_HOST = "127.0.0.1";
@@ -121,10 +122,10 @@ public class SyntaxConventionRelatedExample {
     try (SessionDataSet dataSet1 =
         session.executeRawDataQuery(paths, startTime, endTime, timeOut)) {
 
-      logger.info("columnNames = {}", dataSet1.getColumnNames());
+      LOGGER.info("columnNames = {}", dataSet1.getColumnNames());
       dataSet1.setFetchSize(1024);
       while (dataSet1.hasNext()) {
-        logger.info("data = {}", dataSet1.next());
+        LOGGER.info("data = {}", dataSet1.next());
       }
     }
   }
