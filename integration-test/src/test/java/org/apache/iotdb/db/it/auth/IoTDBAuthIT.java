@@ -1168,4 +1168,26 @@ public class IoTDBAuthIT {
       Assert.assertTrue(standards.isEmpty());
     }
   }
+
+  @Test
+  public void insertWithTemplateTest() throws SQLException {
+    try (Connection adminCon = EnvFactory.getEnv().getConnection();
+        Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("CREATE USER tempuser 'temppw'");
+
+      try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw");
+          Statement userStmt = userCon.createStatement()) {
+
+        adminStmt.execute("CREATE DATABASE root.a");
+        adminStmt.execute("create schema template t1 aligned (s_name TEXT)");
+        adminStmt.execute("GRANT WRITE_DATA ON root.a.** TO USER tempuser");
+        adminStmt.execute("set schema template t1 to root.a");
+
+        // grant privilege to insert
+        Assert.assertThrows(
+            SQLException.class,
+            () -> userStmt.execute("INSERT INTO root.a.d1(timestamp, s_name) VALUES (1,'IoTDB')"));
+      }
+    }
+  }
 }
