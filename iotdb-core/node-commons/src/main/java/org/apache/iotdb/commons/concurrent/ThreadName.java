@@ -178,7 +178,7 @@ public enum ThreadName {
   UNKOWN("UNKNOWN");
 
   private final String name;
-  private static final Logger log = LoggerFactory.getLogger(ThreadName.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ThreadName.class);
   private static final Set<ThreadName> queryThreadNames =
       new HashSet<>(
           Arrays.asList(
@@ -450,7 +450,7 @@ public enum ThreadName {
         }
       }
     }
-    log.debug("Unknown thread name: {}", givenThreadName);
+    LOGGER.debug("Unknown thread name: {}", givenThreadName);
     return ThreadName.UNKOWN;
   }
 }
