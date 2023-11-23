@@ -240,7 +240,7 @@ struct TInvalidatePermissionCacheReq {
   2: required string roleName
 }
 
-struct THeartbeatReq {
+struct TDataNodeHeartbeatReq {
   1: required i64 heartbeatTimestamp
   2: required bool needJudgeLeader
   3: required bool needSamplingLoad
@@ -259,7 +259,7 @@ struct TDataNodeActivation {
   3: required i64 sensorNumRemain
 }
 
-struct THeartbeatResp {
+struct TDataNodeHeartbeatResp {
   1: required i64 heartbeatTimestamp
   2: required string status
   3: optional string statusReason
@@ -571,7 +571,7 @@ service IDataNodeRPCService {
   *
   * @param ConfigNode will send the latest config_node_list and load balancing policies in THeartbeatReq
   **/
-  THeartbeatResp getDataNodeHeartBeat(THeartbeatReq req)
+  TDataNodeHeartbeatResp getDataNodeHeartBeat(TDataNodeHeartbeatReq req)
 
   /**
   * ConfigNode will ask DataNode to update region cache
