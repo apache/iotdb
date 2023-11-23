@@ -85,7 +85,7 @@ public class TimeFilter {
 
   public static GroupByFilter groupBy(
       long startTime, long endTime, long interval, long slidingStep) {
-    return new GroupByFilter(interval, slidingStep, startTime, endTime);
+    return new GroupByFilter(startTime, endTime, interval, slidingStep);
   }
 
   public static GroupByMonthFilter groupByMonth(
@@ -96,6 +96,6 @@ public class TimeFilter {
       TimeZone timeZone,
       TimeUnit currPrecision) {
     return new GroupByMonthFilter(
-        interval, slidingStep, startTime, endTime, timeZone, currPrecision);
+        startTime, endTime, interval, slidingStep, timeZone, currPrecision);
   }
 }

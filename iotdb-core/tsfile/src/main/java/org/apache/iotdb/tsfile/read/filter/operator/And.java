@@ -22,15 +22,21 @@ package org.apache.iotdb.tsfile.read.filter.operator;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.basic.OperatorType;
 import org.apache.iotdb.tsfile.read.filter.operator.base.BinaryLogicalFilter;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class And extends BinaryLogicalFilter implements Filter {
+public class And extends BinaryLogicalFilter {
 
   public And(Filter left, Filter right) {
     super(left, right);
+  }
+
+  public And(ByteBuffer buffer) {
+    super(Filter.deserialize(buffer), Filter.deserialize(buffer));
   }
 
   @Override
@@ -99,6 +105,11 @@ public class And extends BinaryLogicalFilter implements Filter {
   @Override
   public Filter reverse() {
     return new Or(left.reverse(), right.reverse());
+  }
+
+  @Override
+  public OperatorType getOperatorType() {
+    return OperatorType.AND;
   }
 
   @Override

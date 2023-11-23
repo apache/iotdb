@@ -21,8 +21,13 @@ package org.apache.iotdb.tsfile.read.filter.operator;
 
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.IStatefulFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.OperatorType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TimeDuration;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Objects;
@@ -52,13 +57,15 @@ public class GroupByMonthFilter extends GroupByFilter implements IStatefulFilter
   private long[] startTimes;
 
   public GroupByMonthFilter(
-      TimeDuration interval,
-      TimeDuration slidingStep,
       long startTime,
       long endTime,
+      TimeDuration interval,
+      TimeDuration slidingStep,
       TimeZone timeZone,
       TimeUnit currPrecision) {
     super(startTime, endTime);
+    this.originalStartTime = startTime;
+    this.originalEndTime = endTime;
     this.originalInterval = interval;
     this.originalSlidingStep = slidingStep;
     if (!interval.containsMonth()) {
@@ -67,10 +74,18 @@ public class GroupByMonthFilter extends GroupByFilter implements IStatefulFilter
     if (!slidingStep.containsMonth()) {
       this.slidingStep = slidingStep.nonMonthDuration;
     }
-    this.originalStartTime = startTime;
-    this.originalEndTime = endTime;
     this.currPrecision = currPrecision;
     initMonthGroupByParameters(timeZone);
+  }
+
+  public GroupByMonthFilter(ByteBuffer buffer) {
+    this(
+        ReadWriteIOUtils.readLong(buffer),
+        ReadWriteIOUtils.readLong(buffer),
+        TimeDuration.deserialize(buffer),
+        TimeDuration.deserialize(buffer),
+        TimeZone.getTimeZone(ReadWriteIOUtils.readString(buffer)),
+        TimeUnit.values()[ReadWriteIOUtils.readInt(buffer)]);
   }
 
   @Override
@@ -185,6 +200,22 @@ public class GroupByMonthFilter extends GroupByFilter implements IStatefulFilter
   }
 
   @Override
+  public OperatorType getOperatorType() {
+    return OperatorType.GROUP_BY_MONTH;
+  }
+
+  @Override
+  public void serialize(DataOutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(getOperatorType().ordinal(), outputStream);
+    ReadWriteIOUtils.write(originalStartTime, outputStream);
+    ReadWriteIOUtils.write(originalEndTime, outputStream);
+    originalInterval.serialize(outputStream);
+    originalSlidingStep.serialize(outputStream);
+    ReadWriteIOUtils.write(timeZone.getID(), outputStream);
+    ReadWriteIOUtils.write(currPrecision.ordinal(), outputStream);
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;
@@ -223,10 +254,10 @@ public class GroupByMonthFilter extends GroupByFilter implements IStatefulFilter
   @Override
   public Filter copy() {
     return new GroupByMonthFilter(
-        originalInterval,
-        originalSlidingStep,
         originalStartTime,
         originalEndTime,
+        originalInterval,
+        originalSlidingStep,
         timeZone,
         currPrecision);
   }

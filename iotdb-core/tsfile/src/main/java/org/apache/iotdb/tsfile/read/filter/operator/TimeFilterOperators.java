@@ -23,10 +23,15 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.IDisableStatisticsTimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.ITimeFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.OperatorType;
 import org.apache.iotdb.tsfile.read.filter.operator.base.ColumnCompareFilter;
 import org.apache.iotdb.tsfile.read.filter.operator.base.ColumnRangeFilter;
 import org.apache.iotdb.tsfile.read.filter.operator.base.ColumnSetFilter;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -54,6 +59,12 @@ public final class TimeFilterOperators {
     }
 
     @Override
+    public void serialize(DataOutputStream outputStream) throws IOException {
+      ReadWriteIOUtils.write(getOperatorType().ordinal(), outputStream);
+      ReadWriteIOUtils.write(constant, outputStream);
+    }
+
+    @Override
     public boolean equals(Object o) {
       if (this == o) {
         return true;
@@ -74,6 +85,10 @@ public final class TimeFilterOperators {
 
     public TimeEq(Long constant) {
       super(constant);
+    }
+
+    public TimeEq(ByteBuffer buffer) {
+      super(ReadWriteIOUtils.readLong(buffer));
     }
 
     @Override
@@ -102,6 +117,11 @@ public final class TimeFilterOperators {
     }
 
     @Override
+    public OperatorType getOperatorType() {
+      return OperatorType.TIME_EQ;
+    }
+
+    @Override
     public String toString() {
       return "time == " + constant;
     }
@@ -111,6 +131,10 @@ public final class TimeFilterOperators {
 
     public TimeNotEq(Long constant) {
       super(constant);
+    }
+
+    public TimeNotEq(ByteBuffer buffer) {
+      super(ReadWriteIOUtils.readLong(buffer));
     }
 
     @Override
@@ -147,6 +171,11 @@ public final class TimeFilterOperators {
     }
 
     @Override
+    public OperatorType getOperatorType() {
+      return OperatorType.TIME_NEQ;
+    }
+
+    @Override
     public String toString() {
       return "time != " + constant;
     }
@@ -156,6 +185,10 @@ public final class TimeFilterOperators {
 
     public TimeLt(Long constant) {
       super(constant);
+    }
+
+    public TimeLt(ByteBuffer buffer) {
+      super(ReadWriteIOUtils.readLong(buffer));
     }
 
     @Override
@@ -189,6 +222,11 @@ public final class TimeFilterOperators {
     }
 
     @Override
+    public OperatorType getOperatorType() {
+      return OperatorType.TIME_LT;
+    }
+
+    @Override
     public String toString() {
       return "time < " + constant;
     }
@@ -198,6 +236,10 @@ public final class TimeFilterOperators {
 
     public TimeLtEq(Long constant) {
       super(constant);
+    }
+
+    public TimeLtEq(ByteBuffer buffer) {
+      super(ReadWriteIOUtils.readLong(buffer));
     }
 
     @Override
@@ -226,6 +268,11 @@ public final class TimeFilterOperators {
     }
 
     @Override
+    public OperatorType getOperatorType() {
+      return OperatorType.TIME_LTEQ;
+    }
+
+    @Override
     public String toString() {
       return "time <= " + constant;
     }
@@ -235,6 +282,10 @@ public final class TimeFilterOperators {
 
     public TimeGt(Long constant) {
       super(constant);
+    }
+
+    public TimeGt(ByteBuffer buffer) {
+      super(ReadWriteIOUtils.readLong(buffer));
     }
 
     @Override
@@ -268,6 +319,11 @@ public final class TimeFilterOperators {
     }
 
     @Override
+    public OperatorType getOperatorType() {
+      return OperatorType.TIME_GT;
+    }
+
+    @Override
     public String toString() {
       return "time > " + constant;
     }
@@ -277,6 +333,10 @@ public final class TimeFilterOperators {
 
     public TimeGtEq(Long constant) {
       super(constant);
+    }
+
+    public TimeGtEq(ByteBuffer buffer) {
+      super(ReadWriteIOUtils.readLong(buffer));
     }
 
     @Override
@@ -305,6 +365,11 @@ public final class TimeFilterOperators {
     }
 
     @Override
+    public OperatorType getOperatorType() {
+      return OperatorType.TIME_GTEQ;
+    }
+
+    @Override
     public String toString() {
       return "time >= " + constant;
     }
@@ -316,6 +381,13 @@ public final class TimeFilterOperators {
 
     protected TimeColumnRangeFilter(Long min, Long max) {
       super(min, max);
+    }
+
+    @Override
+    public void serialize(DataOutputStream outputStream) throws IOException {
+      ReadWriteIOUtils.write(getOperatorType().ordinal(), outputStream);
+      ReadWriteIOUtils.write(min, outputStream);
+      ReadWriteIOUtils.write(max, outputStream);
     }
 
     @Override
@@ -339,6 +411,10 @@ public final class TimeFilterOperators {
 
     public TimeBetweenAnd(Long min, Long max) {
       super(min, max);
+    }
+
+    public TimeBetweenAnd(ByteBuffer buffer) {
+      super(ReadWriteIOUtils.readLong(buffer), ReadWriteIOUtils.readLong(buffer));
     }
 
     @Override
@@ -367,6 +443,11 @@ public final class TimeFilterOperators {
     }
 
     @Override
+    public OperatorType getOperatorType() {
+      return OperatorType.TIME_BETWEEN_AND;
+    }
+
+    @Override
     public String toString() {
       return "time between " + min + " and " + max;
     }
@@ -376,6 +457,10 @@ public final class TimeFilterOperators {
 
     public TimeNotBetweenAnd(Long min, Long max) {
       super(min, max);
+    }
+
+    public TimeNotBetweenAnd(ByteBuffer buffer) {
+      super(ReadWriteIOUtils.readLong(buffer), ReadWriteIOUtils.readLong(buffer));
     }
 
     @Override
@@ -411,6 +496,11 @@ public final class TimeFilterOperators {
     }
 
     @Override
+    public OperatorType getOperatorType() {
+      return OperatorType.TIME_NOT_BETWEEN_AND;
+    }
+
+    @Override
     public String toString() {
       return "time not between " + min + " and " + max;
     }
@@ -422,6 +512,12 @@ public final class TimeFilterOperators {
 
     protected TimeColumnSetFilter(Set<Long> candidates) {
       super(candidates);
+    }
+
+    @Override
+    public void serialize(DataOutputStream outputStream) throws IOException {
+      ReadWriteIOUtils.write(getOperatorType().ordinal(), outputStream);
+      ReadWriteIOUtils.writeLongSet(candidates, outputStream);
     }
 
     @Override
@@ -447,6 +543,10 @@ public final class TimeFilterOperators {
       super(candidates);
     }
 
+    public TimeIn(ByteBuffer buffer) {
+      super(ReadWriteIOUtils.readLongSet(buffer));
+    }
+
     @Override
     public boolean satisfy(long time, Object value) {
       return candidates.contains(time);
@@ -467,6 +567,11 @@ public final class TimeFilterOperators {
     }
 
     @Override
+    public OperatorType getOperatorType() {
+      return OperatorType.TIME_IN;
+    }
+
+    @Override
     public String toString() {
       return "time in " + candidates;
     }
@@ -476,6 +581,10 @@ public final class TimeFilterOperators {
 
     public TimeNotIn(Set<Long> candidates) {
       super(candidates);
+    }
+
+    public TimeNotIn(ByteBuffer buffer) {
+      super(ReadWriteIOUtils.readLongSet(buffer));
     }
 
     @Override
@@ -491,6 +600,11 @@ public final class TimeFilterOperators {
     @Override
     public Filter reverse() {
       return new TimeIn(candidates);
+    }
+
+    @Override
+    public OperatorType getOperatorType() {
+      return OperatorType.TIME_NOT_IN;
     }
 
     @Override

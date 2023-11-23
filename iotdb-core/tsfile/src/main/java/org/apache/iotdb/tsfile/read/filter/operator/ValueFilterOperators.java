@@ -25,11 +25,17 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.IDisableStatisticsValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.IValueFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.OperatorType;
 import org.apache.iotdb.tsfile.read.filter.operator.base.ColumnCompareFilter;
 import org.apache.iotdb.tsfile.read.filter.operator.base.ColumnPatternMatchFilter;
 import org.apache.iotdb.tsfile.read.filter.operator.base.ColumnRangeFilter;
 import org.apache.iotdb.tsfile.read.filter.operator.base.ColumnSetFilter;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.utils.RegexUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -63,6 +69,13 @@ public final class ValueFilterOperators {
     }
 
     @Override
+    public void serialize(DataOutputStream outputStream) throws IOException {
+      ReadWriteIOUtils.write(getOperatorType().ordinal(), outputStream);
+      ReadWriteIOUtils.write(measurement, outputStream);
+      ReadWriteIOUtils.writeObject(constant, outputStream);
+    }
+
+    @Override
     public boolean equals(Object o) {
       if (this == o) {
         return true;
@@ -86,6 +99,10 @@ public final class ValueFilterOperators {
     // TODO: consider support IS NULL
     public ValueEq(String measurement, T constant) {
       super(measurement, constant);
+    }
+
+    public ValueEq(ByteBuffer buffer) {
+      this(ReadWriteIOUtils.readString(buffer), (T) ReadWriteIOUtils.readObject(buffer));
     }
 
     @Override
@@ -117,6 +134,11 @@ public final class ValueFilterOperators {
     }
 
     @Override
+    public OperatorType getOperatorType() {
+      return OperatorType.VALUE_EQ;
+    }
+
+    @Override
     public String toString() {
       return measurement + " == " + constant;
     }
@@ -129,6 +151,10 @@ public final class ValueFilterOperators {
     // TODO: consider support IS NOT NULL
     public ValueNotEq(String measurement, T constant) {
       super(measurement, constant);
+    }
+
+    public ValueNotEq(ByteBuffer buffer) {
+      this(ReadWriteIOUtils.readString(buffer), (T) ReadWriteIOUtils.readObject(buffer));
     }
 
     @Override
@@ -160,6 +186,11 @@ public final class ValueFilterOperators {
     }
 
     @Override
+    public OperatorType getOperatorType() {
+      return OperatorType.VALUE_NEQ;
+    }
+
+    @Override
     public String toString() {
       return measurement + " != " + constant;
     }
@@ -170,6 +201,10 @@ public final class ValueFilterOperators {
     // constant cannot be null
     public ValueLt(String measurement, T constant) {
       super(measurement, Objects.requireNonNull(constant, CONSTANT_CANNOT_BE_NULL_MSG));
+    }
+
+    public ValueLt(ByteBuffer buffer) {
+      this(ReadWriteIOUtils.readString(buffer), (T) ReadWriteIOUtils.readObject(buffer));
     }
 
     @Override
@@ -199,6 +234,11 @@ public final class ValueFilterOperators {
     }
 
     @Override
+    public OperatorType getOperatorType() {
+      return OperatorType.VALUE_LT;
+    }
+
+    @Override
     public String toString() {
       return measurement + " < " + constant;
     }
@@ -209,6 +249,10 @@ public final class ValueFilterOperators {
     // constant cannot be null
     public ValueLtEq(String measurement, T constant) {
       super(measurement, Objects.requireNonNull(constant, CONSTANT_CANNOT_BE_NULL_MSG));
+    }
+
+    public ValueLtEq(ByteBuffer buffer) {
+      this(ReadWriteIOUtils.readString(buffer), (T) ReadWriteIOUtils.readObject(buffer));
     }
 
     @Override
@@ -238,6 +282,11 @@ public final class ValueFilterOperators {
     }
 
     @Override
+    public OperatorType getOperatorType() {
+      return OperatorType.VALUE_LTEQ;
+    }
+
+    @Override
     public String toString() {
       return measurement + " <= " + constant;
     }
@@ -248,6 +297,10 @@ public final class ValueFilterOperators {
     // constant cannot be null
     public ValueGt(String measurement, T constant) {
       super(measurement, Objects.requireNonNull(constant, CONSTANT_CANNOT_BE_NULL_MSG));
+    }
+
+    public ValueGt(ByteBuffer buffer) {
+      this(ReadWriteIOUtils.readString(buffer), (T) ReadWriteIOUtils.readObject(buffer));
     }
 
     @Override
@@ -277,6 +330,11 @@ public final class ValueFilterOperators {
     }
 
     @Override
+    public OperatorType getOperatorType() {
+      return OperatorType.VALUE_GT;
+    }
+
+    @Override
     public String toString() {
       return measurement + " > " + constant;
     }
@@ -287,6 +345,10 @@ public final class ValueFilterOperators {
     // constant cannot be null
     public ValueGtEq(String measurement, T constant) {
       super(measurement, Objects.requireNonNull(constant, CONSTANT_CANNOT_BE_NULL_MSG));
+    }
+
+    public ValueGtEq(ByteBuffer buffer) {
+      this(ReadWriteIOUtils.readString(buffer), (T) ReadWriteIOUtils.readObject(buffer));
     }
 
     @Override
@@ -316,6 +378,11 @@ public final class ValueFilterOperators {
     }
 
     @Override
+    public OperatorType getOperatorType() {
+      return OperatorType.VALUE_GTEQ;
+    }
+
+    @Override
     public String toString() {
       return measurement + " >= " + constant;
     }
@@ -334,6 +401,14 @@ public final class ValueFilterOperators {
 
     public String getMeasurement() {
       return measurement;
+    }
+
+    @Override
+    public void serialize(DataOutputStream outputStream) throws IOException {
+      ReadWriteIOUtils.write(getOperatorType().ordinal(), outputStream);
+      ReadWriteIOUtils.write(measurement, outputStream);
+      ReadWriteIOUtils.writeObject(min, outputStream);
+      ReadWriteIOUtils.writeObject(max, outputStream);
     }
 
     @Override
@@ -362,6 +437,13 @@ public final class ValueFilterOperators {
 
     public ValueBetweenAnd(String measurement, T min, T max) {
       super(measurement, min, max);
+    }
+
+    public ValueBetweenAnd(ByteBuffer buffer) {
+      this(
+          ReadWriteIOUtils.readString(buffer),
+          (T) ReadWriteIOUtils.readObject(buffer),
+          (T) ReadWriteIOUtils.readObject(buffer));
     }
 
     @Override
@@ -393,6 +475,11 @@ public final class ValueFilterOperators {
     }
 
     @Override
+    public OperatorType getOperatorType() {
+      return OperatorType.VALUE_BETWEEN_AND;
+    }
+
+    @Override
     public String toString() {
       return measurement + " between " + min + " and " + max;
     }
@@ -403,6 +490,13 @@ public final class ValueFilterOperators {
 
     public ValueNotBetweenAnd(String measurement, T min, T max) {
       super(measurement, min, max);
+    }
+
+    public ValueNotBetweenAnd(ByteBuffer buffer) {
+      this(
+          ReadWriteIOUtils.readString(buffer),
+          (T) ReadWriteIOUtils.readObject(buffer),
+          (T) ReadWriteIOUtils.readObject(buffer));
     }
 
     @Override
@@ -434,6 +528,11 @@ public final class ValueFilterOperators {
     }
 
     @Override
+    public OperatorType getOperatorType() {
+      return OperatorType.VALUE_NOT_BETWEEN_AND;
+    }
+
+    @Override
     public String toString() {
       return measurement + " not between " + min + " and " + max;
     }
@@ -452,6 +551,13 @@ public final class ValueFilterOperators {
 
     public String getMeasurement() {
       return measurement;
+    }
+
+    @Override
+    public void serialize(DataOutputStream outputStream) throws IOException {
+      ReadWriteIOUtils.write(getOperatorType().ordinal(), outputStream);
+      ReadWriteIOUtils.write(measurement, outputStream);
+      ReadWriteIOUtils.writeObjectSet(candidates, outputStream);
     }
 
     @Override
@@ -481,6 +587,10 @@ public final class ValueFilterOperators {
       super(measurement, candidates);
     }
 
+    public ValueIn(ByteBuffer buffer) {
+      this(ReadWriteIOUtils.readString(buffer), ReadWriteIOUtils.readObjectSet(buffer));
+    }
+
     @Override
     public boolean satisfy(long time, Object value) {
       return candidates.contains(value);
@@ -489,6 +599,11 @@ public final class ValueFilterOperators {
     @Override
     public Filter reverse() {
       return new ValueNotIn<>(measurement, candidates);
+    }
+
+    @Override
+    public OperatorType getOperatorType() {
+      return OperatorType.VALUE_IN;
     }
 
     @Override
@@ -503,6 +618,10 @@ public final class ValueFilterOperators {
       super(measurement, candidates);
     }
 
+    public ValueNotIn(ByteBuffer buffer) {
+      this(ReadWriteIOUtils.readString(buffer), ReadWriteIOUtils.readObjectSet(buffer));
+    }
+
     @Override
     public boolean satisfy(long time, Object value) {
       return !candidates.contains(value);
@@ -511,6 +630,11 @@ public final class ValueFilterOperators {
     @Override
     public Filter reverse() {
       return new ValueIn<>(measurement, candidates);
+    }
+
+    @Override
+    public OperatorType getOperatorType() {
+      return OperatorType.VALUE_NOT_IN;
     }
 
     @Override
@@ -532,6 +656,13 @@ public final class ValueFilterOperators {
 
     public String getMeasurement() {
       return measurement;
+    }
+
+    @Override
+    public void serialize(DataOutputStream outputStream) throws IOException {
+      ReadWriteIOUtils.write(getOperatorType().ordinal(), outputStream);
+      ReadWriteIOUtils.write(measurement, outputStream);
+      ReadWriteIOUtils.write(pattern.pattern(), outputStream);
     }
 
     @Override
@@ -561,6 +692,12 @@ public final class ValueFilterOperators {
       super(measurement, pattern);
     }
 
+    public ValueRegexp(ByteBuffer buffer) {
+      this(
+          ReadWriteIOUtils.readString(buffer),
+          RegexUtils.compileRegex(ReadWriteIOUtils.readString(buffer)));
+    }
+
     @Override
     public boolean satisfy(long time, Object value) {
       return pattern.matcher(new MatcherInput(value.toString(), new AccessCount())).find();
@@ -569,6 +706,11 @@ public final class ValueFilterOperators {
     @Override
     public Filter reverse() {
       return new ValueNotRegexp(measurement, pattern);
+    }
+
+    @Override
+    public OperatorType getOperatorType() {
+      return OperatorType.VALUE_REGEXP;
     }
 
     @Override
@@ -583,6 +725,12 @@ public final class ValueFilterOperators {
       super(measurement, pattern);
     }
 
+    public ValueNotRegexp(ByteBuffer buffer) {
+      this(
+          ReadWriteIOUtils.readString(buffer),
+          RegexUtils.compileRegex(ReadWriteIOUtils.readString(buffer)));
+    }
+
     @Override
     public boolean satisfy(long time, Object value) {
       return !pattern.matcher(new MatcherInput(value.toString(), new AccessCount())).find();
@@ -591,6 +739,11 @@ public final class ValueFilterOperators {
     @Override
     public Filter reverse() {
       return new ValueRegexp(measurement, pattern);
+    }
+
+    @Override
+    public OperatorType getOperatorType() {
+      return OperatorType.VALUE_NOT_REGEXP;
     }
 
     @Override

@@ -22,28 +22,42 @@ package org.apache.iotdb.tsfile.read.filter.operator;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.ITimeFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.OperatorType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
 public class GroupByFilter implements ITimeFilter {
 
-  protected long interval;
-  protected long slidingStep;
+  // [startTime, endTime]
   protected long startTime;
   protected long endTime;
 
-  public GroupByFilter(long interval, long slidingStep, long startTime, long endTime) {
-    this.interval = interval;
-    this.slidingStep = slidingStep;
+  protected long interval;
+  protected long slidingStep;
+
+  public GroupByFilter(long startTime, long endTime, long interval, long slidingStep) {
     this.startTime = startTime;
     this.endTime = endTime;
+    this.interval = interval;
+    this.slidingStep = slidingStep;
   }
 
   protected GroupByFilter(long startTime, long endTime) {
     this.startTime = startTime;
     this.endTime = endTime;
+  }
+
+  public GroupByFilter(ByteBuffer buffer) {
+    this.startTime = ReadWriteIOUtils.readLong(buffer);
+    this.endTime = ReadWriteIOUtils.readLong(buffer);
+    this.interval = ReadWriteIOUtils.readLong(buffer);
+    this.slidingStep = ReadWriteIOUtils.readLong(buffer);
   }
 
   @Override
@@ -103,6 +117,20 @@ public class GroupByFilter implements ITimeFilter {
   @Override
   public Filter reverse() {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public OperatorType getOperatorType() {
+    return OperatorType.GROUP_BY_TIME;
+  }
+
+  @Override
+  public void serialize(DataOutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(getOperatorType().ordinal(), outputStream);
+    ReadWriteIOUtils.write(startTime, outputStream);
+    ReadWriteIOUtils.write(endTime, outputStream);
+    ReadWriteIOUtils.write(interval, outputStream);
+    ReadWriteIOUtils.write(slidingStep, outputStream);
   }
 
   @Override

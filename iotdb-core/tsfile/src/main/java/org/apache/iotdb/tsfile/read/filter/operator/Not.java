@@ -22,7 +22,12 @@ package org.apache.iotdb.tsfile.read.filter.operator;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.basic.OperatorType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -37,6 +42,10 @@ public class Not implements Filter {
 
   public Not(Filter filter) {
     this.filter = Objects.requireNonNull(filter, "filter cannot be null");
+  }
+
+  public Not(ByteBuffer buffer) {
+    this(Filter.deserialize(buffer));
   }
 
   @Override
@@ -95,6 +104,17 @@ public class Not implements Filter {
   @Override
   public Filter reverse() {
     return filter;
+  }
+
+  @Override
+  public OperatorType getOperatorType() {
+    return OperatorType.NOT;
+  }
+
+  @Override
+  public void serialize(DataOutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(getOperatorType().ordinal(), outputStream);
+    filter.serialize(outputStream);
   }
 
   @Override
