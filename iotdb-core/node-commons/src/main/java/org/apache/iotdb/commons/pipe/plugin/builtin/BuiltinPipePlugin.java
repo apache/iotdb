@@ -32,8 +32,7 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.IoTDBExtractor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.DoNothingProcessor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.DownSamplingProcessor;
 
-import com.sun.tools.javac.util.List;
-
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
@@ -96,7 +95,7 @@ public enum BuiltinPipePlugin {
   public static final Set<String> SHOW_PIPE_PLUGINS_BLACKLIST =
       Collections.unmodifiableSet(
           new HashSet<>(
-              List.of(
+              Arrays.asList(
                   // Extractors
                   IOTDB_EXTRACTOR.getPipePluginName().toUpperCase(),
                   // Connectors
