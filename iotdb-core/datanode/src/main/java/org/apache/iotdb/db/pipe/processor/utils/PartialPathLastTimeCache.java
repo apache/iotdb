@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.utils.MemUtils;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -85,7 +86,8 @@ public class PartialPathLastTimeCache implements AutoCloseable {
                     (partialPath, timeStamp) -> {
                       final long weightInLong =
                           (long)
-                              ((partialPath.getBytes().length + 8) * memoryUsageCheatFactor.get());
+                              ((MemUtils.getStringMem(partialPath) + Long.BYTES)
+                                  * memoryUsageCheatFactor.get());
                       if (weightInLong <= 0) {
                         return Integer.MAX_VALUE;
                       }
