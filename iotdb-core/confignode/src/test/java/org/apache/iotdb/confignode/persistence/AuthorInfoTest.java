@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
@@ -671,7 +672,6 @@ public class AuthorInfoTest {
     AuthorPlan authorPlan;
     TSStatus status;
     cleanUserAndRole();
-    // After authNonQuery, preVersion tag must be false;
 
     /*--TEST FOR USER CREATE 、UPDATE AND DROP -*/
     // this operation will success for pre version.
@@ -688,7 +688,6 @@ public class AuthorInfoTest {
               new ArrayList<>());
       status = authorInfo.authorNonQuery(authorPlan);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      Assert.assertFalse(BasicAuthorizer.getInstance().forUserPreVersion());
 
       // this operation will success for pre version. --length~(32,64)
       authorPlan =
@@ -703,7 +702,6 @@ public class AuthorInfoTest {
               new ArrayList<>());
       status = authorInfo.authorNonQuery(authorPlan);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      Assert.assertFalse(BasicAuthorizer.getInstance().forUserPreVersion());
 
       // this operation will fail for pre version. --length > 64
       authorPlan =
@@ -718,7 +716,6 @@ public class AuthorInfoTest {
               new ArrayList<>());
       status = authorInfo.authorNonQuery(authorPlan);
       Assert.assertEquals(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), status.getCode());
-      Assert.assertFalse(BasicAuthorizer.getInstance().forUserPreVersion());
 
       // this operation will fail for pre version. -- contain &%*@
       authorPlan =
@@ -733,7 +730,6 @@ public class AuthorInfoTest {
               new ArrayList<>());
       status = authorInfo.authorNonQuery(authorPlan);
       Assert.assertEquals(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), status.getCode());
-      Assert.assertFalse(BasicAuthorizer.getInstance().forUserPreVersion());
 
       // root, user1, user1234567user1234567user1234567user1234567
       Assert.assertEquals(
@@ -764,7 +760,6 @@ public class AuthorInfoTest {
               new ArrayList<>());
       status = authorInfo.authorNonQuery(authorPlan);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      Assert.assertFalse(BasicAuthorizer.getInstance().forUserPreVersion());
 
       Assert.assertEquals(
           2,
@@ -795,7 +790,6 @@ public class AuthorInfoTest {
               new ArrayList<>());
       status = authorInfo.authorNonQuery(authorPlan);
       Assert.assertEquals(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), status.getCode());
-      Assert.assertFalse(BasicAuthorizer.getInstance().forUserPreVersion());
 
       /*--TEST FOR ROLE CREATE AND DROP -*/
       authorPlan =
@@ -810,7 +804,6 @@ public class AuthorInfoTest {
               new ArrayList<>());
       status = authorInfo.authorNonQuery(authorPlan);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      Assert.assertFalse(BasicAuthorizer.getInstance().forRolePreVersion());
 
       // name longer than 32, It's ok.
       authorPlan =
@@ -825,7 +818,6 @@ public class AuthorInfoTest {
               new ArrayList<>());
       status = authorInfo.authorNonQuery(authorPlan);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      Assert.assertFalse(BasicAuthorizer.getInstance().forRolePreVersion());
 
       // contain wrong character, error.
       authorPlan =
@@ -840,7 +832,6 @@ public class AuthorInfoTest {
               new ArrayList<>());
       status = authorInfo.authorNonQuery(authorPlan);
       Assert.assertEquals(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), status.getCode());
-      Assert.assertFalse(BasicAuthorizer.getInstance().forRolePreVersion());
 
       authorPlan =
           new AuthorPlan(
@@ -854,7 +845,6 @@ public class AuthorInfoTest {
               new ArrayList<>());
       status = authorInfo.authorNonQuery(authorPlan);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      Assert.assertFalse(BasicAuthorizer.getInstance().forRolePreVersion());
 
       Assert.assertEquals(
           1,
@@ -887,14 +877,13 @@ public class AuthorInfoTest {
                 "",
                 Collections.singleton(item.ordinal()),
                 false,
-                new ArrayList<>());
+                Collections.singletonList(new PartialPath("root.**")));
         status = authorInfo.authorNonQuery(authorPlan);
         Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
         Assert.assertEquals(
             0, BasicAuthorizer.getInstance().getUser("user1").getPathPrivilegeList().size());
         Assert.assertEquals(
             0, BasicAuthorizer.getInstance().getUser("user1").getSysPrivilege().size());
-        Assert.assertFalse(BasicAuthorizer.getInstance().forUserPreVersion());
 
         // for role to grant
         authorPlan =
@@ -906,14 +895,13 @@ public class AuthorInfoTest {
                 "",
                 Collections.singleton(item.ordinal()),
                 false,
-                new ArrayList<>());
+                Collections.singletonList(new PartialPath("root.**")));
         status = authorInfo.authorNonQuery(authorPlan);
         Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
         Assert.assertEquals(
             0, BasicAuthorizer.getInstance().getRole("role1").getPathPrivilegeList().size());
         Assert.assertEquals(
             0, BasicAuthorizer.getInstance().getRole("role1").getSysPrivilege().size());
-        Assert.assertFalse(BasicAuthorizer.getInstance().forRolePreVersion());
 
         // for user to revoke
         authorPlan =
@@ -925,14 +913,13 @@ public class AuthorInfoTest {
                 "",
                 Collections.singleton(item.ordinal()),
                 false,
-                new ArrayList<>());
+                Collections.singletonList(new PartialPath("root.**")));
         status = authorInfo.authorNonQuery(authorPlan);
         Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
         Assert.assertEquals(
             0, BasicAuthorizer.getInstance().getUser("user1").getPathPrivilegeList().size());
         Assert.assertEquals(
             0, BasicAuthorizer.getInstance().getUser("user1").getSysPrivilege().size());
-        Assert.assertFalse(BasicAuthorizer.getInstance().forUserPreVersion());
 
         // for role to revoke
         authorPlan =
@@ -944,16 +931,19 @@ public class AuthorInfoTest {
                 "",
                 Collections.singleton(item.ordinal()),
                 false,
-                new ArrayList<>());
+                Collections.singletonList(new PartialPath("root.**")));
         status = authorInfo.authorNonQuery(authorPlan);
         Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
         Assert.assertEquals(
             0, BasicAuthorizer.getInstance().getRole("role1").getPathPrivilegeList().size());
         Assert.assertEquals(
             0, BasicAuthorizer.getInstance().getRole("role1").getSysPrivilege().size());
-        Assert.assertFalse(BasicAuthorizer.getInstance().forRolePreVersion());
+
       } else {
-        if (item.isPreIsPathRelevant()) {
+        if (item == PriPrivilegeType.ALL) {
+          continue;
+        }
+        if (item.isPrePathRelevant()) {
           authorPlan =
               new AuthorPlan(
                   ConfigPhysicalPlanType.GrantUserDep,
@@ -966,51 +956,28 @@ public class AuthorInfoTest {
                   Collections.singletonList(new PartialPath("root.t1.*.t2")));
           status = authorInfo.authorNonQuery(authorPlan);
           Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-          if (item.isPathRelevant()) {
-            Assert.assertEquals(
-                1,
-                BasicAuthorizer.getInstance()
-                    .getUser("user1")
-                    .getPathPrivileges(new PartialPath("root.t1.*.t2"))
-                    .size());
-            Assert.assertTrue(
-                BasicAuthorizer.getInstance()
-                    .getUser("user1")
-                    .getPathPrivileges(new PartialPath("root.t1.*.t2"))
-                    .containsAll(item.getSubPriOrd()));
-            Assert.assertFalse(BasicAuthorizer.getInstance().getUser("user1").getServiceReady());
-          } else {
-            Assert.assertTrue(
-                BasicAuthorizer.getInstance()
-                    .getUser("user1")
-                    .getSysPrivilege()
-                    .containsAll(item.getSubPriOrd()));
-          }
-          Assert.assertFalse(BasicAuthorizer.getInstance().forUserPreVersion());
+          Assert.assertEquals(
+              1,
+              BasicAuthorizer.getInstance()
+                  .getUser("user1")
+                  .getPathPrivileges(new PartialPath("root.t1.*.t2"))
+                  .size());
           authorInfo.checkUserPathPrivilege();
-          // path will turn to root.t1.**
-          authorPlan =
-              new AuthorPlan(
-                  ConfigPhysicalPlanType.RevokeUserDep,
-                  "user1",
-                  "",
-                  "",
-                  "",
-                  Collections.singleton(item.ordinal()),
-                  false,
-                  Collections.singletonList(new PartialPath("root.t1.**")));
-          status = authorInfo.authorNonQuery(authorPlan);
-          Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-          if (item.isPathRelevant()) {
-            Assert.assertEquals(
-                0,
-                BasicAuthorizer.getInstance()
-                    .getUser("user1")
-                    .getPathPrivileges(new PartialPath("root.t1.**"))
-                    .size());
-          } else {
-            Assert.assertEquals(
-                0, BasicAuthorizer.getInstance().getUser("user1").getSysPrivilege().size());
+          PartialPath path1 = AuthUtils.convertPatternPath(new PartialPath("root.t1.*.t2"));
+          for (PrivilegeType pri : item.getSubPri()) {
+            if (pri.isPathRelevant()) {
+              Assert.assertTrue(
+                  BasicAuthorizer.getInstance()
+                      .getUser("user1")
+                      .checkPathPrivilege(path1, pri.ordinal()));
+              BasicAuthorizer.getInstance()
+                  .getUser("user1")
+                  .removePathPrivilege(path1, pri.ordinal());
+            } else {
+              Assert.assertTrue(
+                  BasicAuthorizer.getInstance().getUser("user1").checkSysPrivilege(pri.ordinal()));
+              BasicAuthorizer.getInstance().getUser("user1").removeSysPrivilege(pri.ordinal());
+            }
           }
         } else {
           authorPlan =
@@ -1022,32 +989,33 @@ public class AuthorInfoTest {
                   "",
                   Collections.singleton(item.ordinal()),
                   false,
-                  Collections.emptyList());
+                  Collections.singletonList(new PartialPath("root.**")));
+
           status = authorInfo.authorNonQuery(authorPlan);
           Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+          authorInfo.checkUserPathPrivilege();
           Assert.assertTrue(
               BasicAuthorizer.getInstance()
                   .getUser("user1")
                   .getSysPrivilege()
                   .containsAll(item.getSubSysPriOrd()));
-          authorPlan =
-              new AuthorPlan(
-                  ConfigPhysicalPlanType.RevokeUserDep,
-                  "user1",
-                  "",
-                  "",
-                  "",
-                  Collections.singleton(item.ordinal()),
-                  false,
-                  Collections.emptyList());
-          status = authorInfo.authorNonQuery(authorPlan);
-          Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-          Assert.assertEquals(
-              0,
-              BasicAuthorizer.getInstance()
-                  .getUser("user1")
-                  .getPathPrivileges(new PartialPath("root.t1.**"))
-                  .size());
+
+          for (PrivilegeType pri : item.getSubPri()) {
+            authorPlan =
+                new AuthorPlan(
+                    ConfigPhysicalPlanType.RevokeUser,
+                    "user1",
+                    "",
+                    "",
+                    "",
+                    Collections.singleton(pri.ordinal()),
+                    false,
+                    Collections.emptyList());
+            status = authorInfo.authorNonQuery(authorPlan);
+            Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+            Assert.assertEquals(
+                0, BasicAuthorizer.getInstance().getUser("user1").getSysPrivilege().size());
+          }
         }
       }
     }

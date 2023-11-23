@@ -97,7 +97,7 @@ public class TriggerInformationUpdater {
                 triggerInformation.getTriggerName(), triggerInformation.getDataNodeLocation());
       }
     } catch (Exception e) {
-      LOGGER.warn(String.format("Meet error when updating trigger information: %s", e));
+      LOGGER.warn("Meet error when updating trigger information:", e);
     }
   }
 }

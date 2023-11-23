@@ -787,7 +787,7 @@ public class DataRegion implements IDataRegionForQuery {
           for (Map<String, List<ChunkMetadata>> metaMap : writer.getMetadatasForQuery().values()) {
             for (List<ChunkMetadata> metadatas : metaMap.values()) {
               for (ChunkMetadata chunkMetadata : metadatas) {
-                chunkMetadataSize += chunkMetadata.calculateRamSize();
+                chunkMetadataSize += chunkMetadata.getRetainedSizeInBytes();
               }
             }
           }
@@ -2014,6 +2014,8 @@ public class DataRegion implements IDataRegionForQuery {
               // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
               // change after compaction
               deletion.setFileOffset(Long.MAX_VALUE);
+              // 如果这个时候正在执行清理，就写入到一个 compact 的文件里面
+              // 这里一次删除会写入到两个文件里面
               // write deletion into compaction modification file
               tsFileResource.getCompactionModFile().write(deletion);
               // write deletion into modification file to enable read during compaction
@@ -2147,19 +2149,25 @@ public class DataRegion implements IDataRegionForQuery {
       trySubmitCount += executeInsertionCompaction(timePartitions);
       summary.incrementSubmitTaskNum(CompactionTaskType.INSERTION, trySubmitCount);
     }
-    // the name of this variable is trySubmitCount, because the task submitted to the queue could be
-    // evicted due to the low priority of the task
-    try {
-      for (long timePartition : timePartitions) {
-        trySubmitCount +=
-            CompactionScheduler.scheduleCompaction(tsFileManager, timePartition, summary);
+    if (summary.getSubmitInsertionCrossSpaceCompactionTaskNum() == 0) {
+      // the name of this variable is trySubmitCount, because the task submitted to the queue could
+      // be
+      // evicted due to the low priority of the task
+      try {
+        for (long timePartition : timePartitions) {
+          trySubmitCount +=
+              CompactionScheduler.scheduleCompaction(tsFileManager, timePartition, summary);
+        }
+      } catch (Throwable e) {
+        logger.error("Meet error in compaction schedule.", e);
       }
-    } catch (Throwable e) {
-      logger.error("Meet error in compaction schedule.", e);
     }
     if (summary.hasSubmitTask()) {
       logger.info(
-          "[CompactionScheduler][{}] selected sequence InnerSpaceCompactionTask num is {}, selected unsequence InnerSpaceCompactionTask num is {}, selected CrossSpaceCompactionTask num is {}, selected InsertionCrossSpaceCompactionTask num is {}",
+          "[CompactionScheduler][{}] selected sequence InnerSpaceCompactionTask num is {},"
+              + " selected unsequence InnerSpaceCompactionTask num is {},"
+              + " selected CrossSpaceCompactionTask num is {},"
+              + " selected InsertionCrossSpaceCompactionTask num is {}",
           dataRegionId,
           summary.getSubmitSeqInnerSpaceCompactionTaskNum(),
           summary.getSubmitUnseqInnerSpaceCompactionTaskNum(),

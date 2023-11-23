@@ -57,7 +57,7 @@ import java.util.function.Consumer;
 
 public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
-  private static final Logger logger = LoggerFactory.getLogger(CachedMTreeStore.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(CachedMTreeStore.class);
 
   private final int schemaRegionId;
 
@@ -487,7 +487,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
           file.clear();
           file.close();
         } catch (MetadataException | IOException e) {
-          logger.error(String.format("Error occurred during PBTree clear, %s", e.getMessage()));
+          LOGGER.error("Error occurred during PBTree clear, {}", e.getMessage());
         }
       }
       file = null;
@@ -584,9 +584,9 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
         long time = System.currentTimeMillis() - startTime;
         if (time > 10_000) {
-          logger.info("It takes {}ms to flush MTree in SchemaRegion {}", time, schemaRegionId);
+          LOGGER.info("It takes {}ms to flush MTree in SchemaRegion {}", time, schemaRegionId);
         } else {
-          logger.debug("It takes {}ms to flush MTree in SchemaRegion {}", time, schemaRegionId);
+          LOGGER.debug("It takes {}ms to flush MTree in SchemaRegion {}", time, schemaRegionId);
         }
       }
 
@@ -594,10 +594,10 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
         flushCallback.run();
       }
     } catch (MetadataException | IOException e) {
-      logger.warn(
+      LOGGER.warn(
           "Exception occurred during MTree flush, current SchemaRegionId is {}", schemaRegionId, e);
     } catch (Throwable e) {
-      logger.error(
+      LOGGER.error(
           "Error occurred during MTree flush, current SchemaRegionId is {}", schemaRegionId, e);
       e.printStackTrace();
     }
@@ -614,7 +614,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       file.updateDatabaseNode(updatedStorageGroupMNode);
       return true;
     } catch (IOException e) {
-      logger.warn(
+      LOGGER.warn(
           "IOException occurred during updating StorageGroupMNode {}",
           updatedStorageGroupMNode.getFullPath(),
           e);
@@ -669,7 +669,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
         try {
           readNext();
         } catch (MetadataException e) {
-          logger.error(String.format("Error occurred during readNext, %s", e.getMessage()));
+          LOGGER.error("Error occurred during readNext, {}", e.getMessage());
           return false;
         }
         return nextNode != null;
@@ -734,6 +734,11 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     private void startIteratingBuffer() {
       iterator = bufferIterator;
       isIteratingDisk = false;
+    }
+
+    @Override
+    public void skipTemplateChildren() {
+      // do nothing
     }
 
     @Override

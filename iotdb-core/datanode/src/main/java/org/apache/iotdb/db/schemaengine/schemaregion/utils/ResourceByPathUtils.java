@@ -34,17 +34,16 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGr
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
@@ -119,7 +118,6 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
   public AlignedTimeSeriesMetadata generateTimeSeriesMetadata(
       List<ReadOnlyMemChunk> readOnlyMemChunk, List<IChunkMetadata> chunkMetadataList) {
     TimeseriesMetadata timeTimeSeriesMetadata = new TimeseriesMetadata();
-    timeTimeSeriesMetadata.setOffsetOfChunkMetaDataList(-1);
     timeTimeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
     timeTimeSeriesMetadata.setMeasurementId("");
     timeTimeSeriesMetadata.setTsDataType(TSDataType.VECTOR);
@@ -131,7 +129,6 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     List<TimeseriesMetadata> valueTimeSeriesMetadataList = new ArrayList<>();
     for (IMeasurementSchema valueChunkMetadata : (partialPath.getSchemaList())) {
       TimeseriesMetadata valueMetadata = new TimeseriesMetadata();
-      valueMetadata.setOffsetOfChunkMetaDataList(-1);
       valueMetadata.setDataSizeOfChunkMetaDataList(-1);
       valueMetadata.setMeasurementId(valueChunkMetadata.getMeasurementId());
       valueMetadata.setTsDataType(valueChunkMetadata.getType());
@@ -265,9 +262,8 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
   @Override
   public List<IChunkMetadata> getVisibleMetadataListFromWriter(
       RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context) {
-    ModificationFile modificationFile = tsFileResource.getModFile();
     List<List<Modification>> modifications =
-        context.getPathModifications(modificationFile, partialPath);
+        context.getPathModifications(tsFileResource, partialPath);
 
     List<AlignedChunkMetadata> chunkMetadataList = new ArrayList<>();
     List<ChunkMetadata> timeChunkMetadataList =
@@ -326,7 +322,6 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
     TimeseriesMetadata timeSeriesMetadata = new TimeseriesMetadata();
     timeSeriesMetadata.setMeasurementId(partialPath.getMeasurementSchema().getMeasurementId());
     timeSeriesMetadata.setTsDataType(partialPath.getMeasurementSchema().getType());
-    timeSeriesMetadata.setOffsetOfChunkMetaDataList(-1);
     timeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
 
     Statistics<? extends Serializable> seriesStatistics =
@@ -415,8 +410,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
   @Override
   public List<IChunkMetadata> getVisibleMetadataListFromWriter(
       RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context) {
-    ModificationFile modificationFile = tsFileResource.getModFile();
-    List<Modification> modifications = context.getPathModifications(modificationFile, partialPath);
+    List<Modification> modifications = context.getPathModifications(tsFileResource, partialPath);
 
     List<IChunkMetadata> chunkMetadataList =
         new ArrayList<>(

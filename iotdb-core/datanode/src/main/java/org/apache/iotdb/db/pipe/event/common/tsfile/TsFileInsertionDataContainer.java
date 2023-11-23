@@ -28,7 +28,7 @@ import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
 import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -210,12 +210,22 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
             if (!hasNext()) {
               next =
                   new PipeRawTabletInsertionEvent(
-                      tablet, isAligned, pipeTaskMeta, sourceEvent, true);
+                      tablet,
+                      isAligned,
+                      sourceEvent != null ? sourceEvent.getPipeName() : null,
+                      pipeTaskMeta,
+                      sourceEvent,
+                      true);
               close();
             } else {
               next =
                   new PipeRawTabletInsertionEvent(
-                      tablet, isAligned, pipeTaskMeta, sourceEvent, false);
+                      tablet,
+                      isAligned,
+                      sourceEvent != null ? sourceEvent.getPipeName() : null,
+                      pipeTaskMeta,
+                      sourceEvent,
+                      false);
             }
             return next;
           }

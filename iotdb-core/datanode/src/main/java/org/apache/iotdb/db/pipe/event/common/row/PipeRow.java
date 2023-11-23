@@ -23,7 +23,7 @@ import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 import org.apache.iotdb.pipe.api.type.Type;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;

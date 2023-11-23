@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.series;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
@@ -27,9 +28,9 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -100,6 +101,7 @@ public class SeriesReaderTestUtil {
     unseqResources.clear();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
+    BloomFilterCache.getInstance().clear();
     EnvironmentUtils.cleanAllDir();
   }
 

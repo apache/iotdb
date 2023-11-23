@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata.template;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -28,12 +31,15 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateAlterInfo;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import java.util.Collections;
 import java.util.List;
+
+import static org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType.EXTEND_TEMPLATE;
 
 public class AlterSchemaTemplateStatement extends Statement implements IConfigStatement {
 
@@ -54,7 +60,7 @@ public class AlterSchemaTemplateStatement extends Statement implements IConfigSt
       List<CompressionType> compressors,
       TemplateAlterOperationType operationType) {
     this();
-    if (operationType.equals(TemplateAlterOperationType.EXTEND_TEMPLATE)) {
+    if (operationType.equals(EXTEND_TEMPLATE)) {
       this.templateAlterInfo =
           new TemplateExtendInfo(templateName, measurements, dataTypes, encodings, compressors);
     }
@@ -77,6 +83,21 @@ public class AlterSchemaTemplateStatement extends Statement implements IConfigSt
   @Override
   public List<PartialPath> getPaths() {
     return Collections.emptyList();
+  }
+
+  @Override
+  public TSStatus checkPermissionBeforeProcess(String userName) {
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+    if (operationType == EXTEND_TEMPLATE) {
+      return AuthorityChecker.getTSStatus(
+          AuthorityChecker.checkSystemPermission(userName, PrivilegeType.EXTEND_TEMPLATE.ordinal()),
+          PrivilegeType.EXTEND_TEMPLATE);
+    } else {
+      return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+          .setMessage("Only the admin user can perform this operation");
+    }
   }
 
   @Override

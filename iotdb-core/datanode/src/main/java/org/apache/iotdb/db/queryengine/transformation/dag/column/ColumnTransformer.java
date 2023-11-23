@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.column;
 
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.NullColumnTransformer;
-import org.apache.iotdb.tsfile.access.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 import org.apache.iotdb.tsfile.read.common.type.TypeEnum;
 
