@@ -297,8 +297,6 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
         planNodeId,
         alignedPath,
         typeProvider.getTemplatedInfo().getScanOrder(),
-        typeProvider.getTemplatedInfo().getTimeFilter(),
-        typeProvider.getTemplatedInfo().getTimeFilter(),
         typeProvider.getTemplatedInfo().getLimitValue(),
         typeProvider.getTemplatedInfo().getOffsetValue(),
         null,
