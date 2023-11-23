@@ -132,7 +132,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       if (child == null) {
         return false;
       } else {
-        unPin(child);
+        unPin(child, false);
         return true;
       }
     } finally {
@@ -344,9 +344,9 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       ICachedMNode node, Function<ICachedMNode, ICachedMNode> operation, boolean needLock) {
     if (needLock) {
       lockManager.globalReadLock();
-      if (!node.isDatabase()) {
-        lockManager.threadReadLock(node.getParent());
-      }
+    }
+    if (!node.isDatabase()) {
+      lockManager.threadReadLock(node.getParent(), true);
     }
     try {
       node = operation.apply(node);
@@ -355,10 +355,10 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       }
       cacheManager.updateCacheStatusAfterUpdate(node);
     } finally {
+      if (!node.isDatabase()) {
+        lockManager.threadReadUnlock(node.getParent());
+      }
       if (needLock) {
-        if (!node.isDatabase()) {
-          lockManager.threadReadUnlock(node.getParent());
-        }
         lockManager.globalReadUnlock();
       }
     }
@@ -479,7 +479,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       lockManager.globalReadLock();
     }
     if (!node.isDatabase()) {
-      lockManager.threadReadLock(node.getParent());
+      lockManager.threadReadLock(node.getParent(), true);
     }
     try {
       if (cacheManager.unPinMNode(node)) {
@@ -795,7 +795,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     public void close() {
       try {
         if (nextNode != null) {
-          unPin(nextNode);
+          unPin(nextNode, false);
           nextNode = null;
         }
       } finally {
