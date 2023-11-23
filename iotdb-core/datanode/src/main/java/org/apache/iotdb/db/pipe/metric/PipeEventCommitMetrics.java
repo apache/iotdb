@@ -38,7 +38,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class PipeEventCommitMetrics implements IMetricSet {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorMetrics.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeEventCommitMetrics.class);
 
   private volatile AbstractMetricService metricService;
 

@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.manager.pipe.metric;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
-import org.apache.iotdb.db.pipe.metric.PipeProcessorMetrics;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.type.Timer;
@@ -38,7 +37,7 @@ import java.util.Map;
 
 public class PipeProcedureMetrics implements IMetricSet {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeProcessorMetrics.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeProcedureMetrics.class);
 
   private final Map<String, Timer> timerMap = new HashMap<>();
 
