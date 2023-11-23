@@ -338,7 +338,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       try {
         userWaterMarkStatus.put(user, isUserUseWaterMark(user));
       } catch (AuthException e) {
-        LOGGER.error("No such user: {}", user, e);
+        LOGGER.error("No such user: {}", user);
       }
     }
     return userWaterMarkStatus;
