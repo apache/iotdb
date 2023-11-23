@@ -1630,7 +1630,11 @@ public class DataRegion implements IDataRegionForQuery {
       while (!closingSequenceTsFileProcessor.isEmpty()
           || !closingUnSequenceTsFileProcessor.isEmpty()) {
         synchronized (closeStorageGroupCondition) {
-          closeStorageGroupCondition.wait(60_000);
+          // double check to avoid unnecessary waiting
+          if (!closingSequenceTsFileProcessor.isEmpty()
+              || !closingUnSequenceTsFileProcessor.isEmpty()) {
+            closeStorageGroupCondition.wait(60_000);
+          }
         }
         if (System.currentTimeMillis() - startTime > 60_000) {
           logger.warn(
@@ -2116,12 +2120,13 @@ public class DataRegion implements IDataRegionForQuery {
       closeQueryLock.writeLock().unlock();
     }
     // closingSequenceTsFileProcessor is a thread safety class.
-    if (closingSequenceTsFileProcessor.contains(tsFileProcessor)) {
-      closingSequenceTsFileProcessor.remove(tsFileProcessor);
-    } else {
-      closingUnSequenceTsFileProcessor.remove(tsFileProcessor);
-    }
+
     synchronized (closeStorageGroupCondition) {
+      if (closingSequenceTsFileProcessor.contains(tsFileProcessor)) {
+        closingSequenceTsFileProcessor.remove(tsFileProcessor);
+      } else {
+        closingUnSequenceTsFileProcessor.remove(tsFileProcessor);
+      }
       closeStorageGroupCondition.notifyAll();
     }
     if (!isValidateTsFileFailed) {
