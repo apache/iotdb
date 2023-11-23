@@ -224,6 +224,24 @@ public class NodeInfo implements SnapshotProcessor {
     return result;
   }
 
+  /** Return the number of registered Nodes. */
+  public int getRegisteredNodeCount() {
+    int result;
+    dataNodeInfoReadWriteLock.readLock().lock();
+    try {
+      result = registeredDataNodes.size();
+    } finally {
+      dataNodeInfoReadWriteLock.readLock().unlock();
+    }
+    configNodeInfoReadWriteLock.readLock().lock();
+    try {
+      result += registeredConfigNodes.size();
+    } finally {
+      configNodeInfoReadWriteLock.readLock().unlock();
+    }
+    return result;
+  }
+
   /** Return the number of registered DataNodes. */
   public int getRegisteredDataNodeCount() {
     int result;
