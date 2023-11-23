@@ -346,8 +346,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     seriesScanOptionsBuilder.withOffset(node.getOffset());
     AlignedPath seriesPath = node.getAlignedPath();
     seriesScanOptionsBuilder.withAllSensors(
-        context.getTypeProvider().getAllSensors() != null
-            ? context.getTypeProvider().getAllSensors()
+        context.getTypeProvider().getTemplatedInfo() != null
+            ? context.getTypeProvider().getTemplatedInfo().getAllSensors()
             : new HashSet<>(seriesPath.getMeasurementList()));
 
     OperatorContext operatorContext =
@@ -365,7 +365,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.getScanOrder(),
             seriesScanOptionsBuilder.build(),
             node.isQueryAllSensors(),
-            context.getTypeProvider().getDataTypes());
+            context.getTypeProvider().getTemplatedInfo() != null
+                ? context.getTypeProvider().getTemplatedInfo().getDataTypes()
+                : null);
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(seriesScanOperator);
     ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
@@ -1880,7 +1882,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     List<OutputColumn> outputColumns = generateOutputColumnsFromChildren(node);
     List<ColumnMerger> mergers = createColumnMergers(outputColumns, timeComparator);
     List<TSDataType> outputColumnTypes =
-        context.getTypeProvider().getMeasurementList() != null
+        context.getTypeProvider().getTemplatedInfo() != null
             ? getOutputColumnTypesOfTimeJoinNode(node)
             : getOutputColumnTypes(node, context.getTypeProvider());
 
@@ -2487,7 +2489,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   }
 
   private List<TSDataType> getInputColumnTypes(PlanNode node, TypeProvider typeProvider) {
-    if (typeProvider.getMeasurementList() == null) {
+    if (typeProvider.getTemplatedInfo() == null) {
       return node.getChildren().stream()
           .map(PlanNode::getOutputColumnNames)
           .flatMap(List::stream)

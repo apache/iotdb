@@ -31,7 +31,7 @@ import java.util.List;
 /** The implementation of {@link ClusterTestStatement} in cluster test. */
 public class ClusterTestStatement implements Statement {
 
-  private static final int DEFAULT_QUERY_TIMEOUT = 60;
+  private static final int DEFAULT_QUERY_TIMEOUT = 120;
   private final Statement writeStatement;
   private final String writEndpoint;
   private final List<Statement> readStatements = new ArrayList<>();
@@ -44,19 +44,19 @@ public class ClusterTestStatement implements Statement {
   public ClusterTestStatement(NodeConnection writeConnection, List<NodeConnection> readConnections)
       throws SQLException {
     this.writeStatement = writeConnection.getUnderlyingConnecton().createStatement();
-    updateConfig(writeStatement);
+    updateConfig(writeStatement, 0);
     writEndpoint = writeConnection.toString();
     for (NodeConnection readConnection : readConnections) {
       Statement readStatement = readConnection.getUnderlyingConnecton().createStatement();
       this.readStatements.add(readStatement);
       this.readEndpoints.add(readConnection.toString());
-      updateConfig(readStatement);
+      updateConfig(readStatement, queryTimeout);
     }
   }
 
-  private void updateConfig(Statement statement) throws SQLException {
+  private void updateConfig(Statement statement, int timeout) throws SQLException {
     maxRows = Math.min(statement.getMaxRows(), maxRows);
-    statement.setQueryTimeout(queryTimeout);
+    statement.setQueryTimeout(timeout);
   }
 
   @Override
