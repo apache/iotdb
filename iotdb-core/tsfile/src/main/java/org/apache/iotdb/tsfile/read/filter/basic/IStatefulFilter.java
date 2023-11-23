@@ -19,6 +19,12 @@
 
 package org.apache.iotdb.tsfile.read.filter.basic;
 
+/**
+ * This interface is used to mark a filter as stateful.
+ *
+ * <p>A stateful filter must implement {@link #copy()} method to make sure that each filter has its
+ * own state.
+ */
 public interface IStatefulFilter extends Filter {
 
   @Override

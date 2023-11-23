@@ -21,6 +21,9 @@ package org.apache.iotdb.tsfile.read.filter.basic;
 
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.operator.And;
 import org.apache.iotdb.tsfile.read.filter.operator.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.operator.GroupByMonthFilter;
@@ -36,7 +39,20 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-/** Filter is a top level filter abstraction. */
+/**
+ * A Filter is an executable expression tree describing the criteria for which records to keep when
+ * loading data from a TsFile.
+ *
+ * <p>Currently, they are applied to all File/Chunk/Page when scanning to see if we can drop them
+ * entirely, and then they are applied during column assembly to drop individual records that are
+ * not wanted.
+ *
+ * <p>See {@link TimeFilterOperators}/{@link ValueFilterOperators} for the implementation of the
+ * operator tokens,
+ *
+ * <p>and {@link TimeFilter}/{@link ValueFilter}/{@link FilterFactory} for the dsl functions for
+ * constructing an expression tree.
+ */
 public interface Filter {
 
   /**
@@ -44,6 +60,7 @@ public interface Filter {
    *
    * @param time single point time
    * @param value single point value
+   * @return true if the single point is satisfied with the filter, false otherwise
    */
   boolean satisfy(long time, Object value);
 
@@ -51,6 +68,7 @@ public interface Filter {
    * To examine whether there are data points satisfied with the filter.
    *
    * @param statistics statistics with min time, max time, min value, max value.
+   * @return false if there are no data points satisfied with the filter
    */
   boolean satisfy(Statistics statistics);
 
@@ -58,32 +76,60 @@ public interface Filter {
    * To examine whether all data points are satisfied with the filter.
    *
    * @param statistics statistics with min time, max time, min value, max value.
+   * @return true if all data points are satisfied with the filter
    */
   boolean allSatisfy(Statistics statistics);
 
   /**
    * To examine whether the min time and max time are satisfied with the filter.
    *
+   * <p>Note: only implemented by {@link ITimeFilter}
+   *
    * @param startTime start time of a page, series or device
    * @param endTime end time of a page, series or device
+   * @return false if [startTime, endTime] is not satisfied with the filter
    */
   boolean satisfyStartEndTime(long startTime, long endTime);
 
   /**
    * To examine whether the partition [startTime, endTime] is subsets of filter.
    *
+   * <p>Note: only implemented by {@link ITimeFilter}
+   *
    * @param startTime start time of a partition
    * @param endTime end time of a partition
+   * @return true if the partition [startTime, endTime] is subsets of filter
    */
   boolean containStartEndTime(long startTime, long endTime);
 
+  /**
+   * Return the time ranges which satisfying the filter.
+   *
+   * <p>Note: only implemented by {@link ITimeFilter}
+   */
   List<TimeRange> getTimeRanges();
 
+  /**
+   * Reverse the filter.
+   *
+   * @return the logical inverse filter
+   */
   Filter reverse();
 
+  /**
+   * Copy the filter.
+   *
+   * <p>When the filter is <b>stateless</b>, we can return the filter itself.
+   *
+   * @return a copy of the filter
+   */
   default Filter copy() {
     return this;
   }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // serialize & deserialize related methods
+  /////////////////////////////////////////////////////////////////////////////////////////////////
 
   OperatorType getOperatorType();
 

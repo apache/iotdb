@@ -21,7 +21,6 @@ package org.apache.iotdb.tsfile.read.filter.basic;
 
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 
-import java.util.Collections;
 import java.util.List;
 
 public interface IValueFilter extends Filter {
@@ -36,6 +35,6 @@ public interface IValueFilter extends Filter {
 
   @Override
   default List<TimeRange> getTimeRanges() {
-    return Collections.emptyList();
+    throw new UnsupportedOperationException("Value filter does not support getTimeRanges()");
   }
 }
