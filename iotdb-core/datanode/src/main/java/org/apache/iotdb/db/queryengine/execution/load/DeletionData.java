@@ -64,11 +64,16 @@ public class DeletionData implements TsFileData {
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(isModification(), stream);
     deletion.serializeWithoutFileOffset(stream);
+    ReadWriteIOUtils.write(splitId, stream);
   }
 
   public static DeletionData deserialize(InputStream stream)
       throws IllegalPathException, IOException {
-    return new DeletionData(Deletion.deserializeWithoutFileOffset(new DataInputStream(stream)));
+    DataInputStream dataInputStream = new DataInputStream(stream);
+    DeletionData deletionData =
+        new DeletionData(Deletion.deserializeWithoutFileOffset(dataInputStream));
+    deletionData.setSplitId(dataInputStream.readInt());
+    return deletionData;
   }
 
   @Override
@@ -79,5 +84,14 @@ public class DeletionData implements TsFileData {
   @Override
   public void setSplitId(int sid) {
     this.splitId = sid;
+  }
+
+  @Override
+  public String toString() {
+    return "DeletionData{" + "deletion=" + deletion + ", splitId=" + splitId + '}';
+  }
+
+  public Deletion getDeletion() {
+    return deletion;
   }
 }

@@ -128,7 +128,6 @@ public class MergedTsFileSplitter {
       SplitTask task = taskPriorityQueue.poll();
       TsFileData tsFileData = task.removeNext();
       statistic.fetchDataTime += System.nanoTime() - startTime;
-      tsFileData.setSplitId(splitIdGenerator.incrementAndGet());
 
       startTime = System.nanoTime();
       consumer.apply(tsFileData);

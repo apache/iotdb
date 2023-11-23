@@ -365,9 +365,7 @@ public class TsFileSplitter {
           .getValue()
           .forEach(
               o -> {
-                DeletionData deletionData = new DeletionData(o);
-                deletionData.setSplitId(splitIdGenerator.incrementAndGet());
-                consumer.apply(deletionData);
+                consumer.apply(new DeletionData(o));
               });
     }
   }
@@ -383,7 +381,6 @@ public class TsFileSplitter {
       allChunkData.addAll(entry.getValue());
     }
     for (ChunkData chunkData : allChunkData) {
-      chunkData.setSplitId(splitIdGenerator.incrementAndGet());
       if (Boolean.FALSE.equals(consumer.apply(chunkData))) {
         throw new IllegalStateException(
             String.format(
@@ -395,7 +392,6 @@ public class TsFileSplitter {
   }
 
   private void consumeChunkData(String measurement, long offset, ChunkData chunkData) {
-    chunkData.setSplitId(splitIdGenerator.incrementAndGet());
     if (Boolean.FALSE.equals(consumer.apply(chunkData))) {
       throw new IllegalStateException(
           String.format(

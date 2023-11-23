@@ -33,6 +33,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -55,6 +56,7 @@ public class TsFileDataManager {
   protected final Map<TRegionReplicaSet, LoadTsFilePieceNode> replicaSet2Piece;
   protected final List<ChunkData> nonDirectionalChunkData;
   protected final String userName;
+  protected final AtomicInteger splitIdGenerator = new AtomicInteger();
 
   @FunctionalInterface
   public interface DispatchFunction {
@@ -87,6 +89,7 @@ public class TsFileDataManager {
   }
 
   protected boolean addOrSendChunkData(ChunkData chunkData) {
+    chunkData.setSplitId(splitIdGenerator.incrementAndGet());
     nonDirectionalChunkData.add(chunkData);
     dataSize += chunkData.getDataSize();
 
@@ -152,7 +155,11 @@ public class TsFileDataManager {
 
     for (Map.Entry<TRegionReplicaSet, LoadTsFilePieceNode> entry : replicaSet2Piece.entrySet()) {
       dataSize += deletionData.getDataSize();
-      entry.getValue().addTsFileData(deletionData);
+      // modification for each region should have a different id, otherwise, they will be skipped
+      // by the receiver
+      DeletionData copy = new DeletionData(((DeletionData) deletionData).getDeletion());
+      copy.setSplitId(splitIdGenerator.incrementAndGet());
+      entry.getValue().addTsFileData(copy);
     }
     return true;
   }
