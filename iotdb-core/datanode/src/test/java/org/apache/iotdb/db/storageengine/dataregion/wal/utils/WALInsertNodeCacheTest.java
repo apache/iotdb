@@ -161,8 +161,9 @@ public class WALInsertNodeCacheTest {
   @Test
   public void testBatchLoad() throws Exception {
     // Enable batch load
-    boolean oldIsBatchLoadEnabled = WALInsertNodeCache.getInstance(1).isBatchLoadEnabled();
-    WALInsertNodeCache.getInstance(1).setIsBatchLoadEnabled(true);
+    boolean oldIsBatchLoadEnabled = cache.isBatchLoadEnabled();
+    cache.setIsBatchLoadEnabled(true);
+    WALInsertNodeCache localC = cache;
     try {
       // write memTable1
       IMemTable memTable1 = new PrimitiveMemTable(databasePath, dataRegionId);
@@ -186,11 +187,11 @@ public class WALInsertNodeCacheTest {
       walNode.rollWALFile();
       Awaitility.await().until(() -> walNode.isAllWALEntriesConsumed() && position3.canRead());
       // check batch load memTable1
+      cache.clear();
       cache.addMemTable(memTable1.getMemTableId());
       assertEquals(node1, cache.getInsertNode(position1));
       assertTrue(cache.contains(position1));
-      assertEquals(
-          WALInsertNodeCache.getInstance(1).isBatchLoadEnabled(), cache.contains(position2));
+      assertTrue(cache.contains(position2));
       assertFalse(cache.contains(position3));
       // check batch load none
       cache.removeMemTable(memTable1.getMemTableId());
