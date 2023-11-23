@@ -64,14 +64,12 @@ public class RegexUtils {
   private static String unescapeString(String value) {
     StringBuilder stringBuilder = new StringBuilder();
     int curIndex = 0;
-    for (; curIndex < value.length(); curIndex++) {
+    while (curIndex < value.length()) {
       String ch = String.valueOf(value.charAt(curIndex));
-      if ("\\".equals(ch)) {
-        if (curIndex < value.length() - 1) {
-          String nextChar = String.valueOf(value.charAt(curIndex + 1));
-          if ("%".equals(nextChar) || "_".equals(nextChar) || "\\".equals(nextChar)) {
-            stringBuilder.append(ch);
-          }
+      if ("\\".equals(ch) && curIndex < value.length() - 1) {
+        String nextChar = String.valueOf(value.charAt(curIndex + 1));
+        if ("%".equals(nextChar) || "_".equals(nextChar) || "\\".equals(nextChar)) {
+          stringBuilder.append(ch);
           if ("\\".equals(nextChar)) {
             curIndex++;
           }
@@ -79,6 +77,7 @@ public class RegexUtils {
       } else {
         stringBuilder.append(ch);
       }
+      curIndex++;
     }
     return stringBuilder.toString();
   }

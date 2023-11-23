@@ -914,11 +914,13 @@ public class ReadWriteIOUtils {
     return set;
   }
 
-  /** write integer set with self define length. */
+  private static final String SET_NOT_NULL_MSG = "set must not be null!";
+
+  // write integer set with self define length
   public static void writeIntegerSet(Set<Integer> set, OutputStream outputStream)
       throws IOException {
     if (set == null) {
-      throw new IllegalArgumentException("set must not be null!");
+      throw new IllegalArgumentException(SET_NOT_NULL_MSG);
     }
     int size = set.size();
     write(size, outputStream);
@@ -927,7 +929,7 @@ public class ReadWriteIOUtils {
     }
   }
 
-  /** read long set with self define length. */
+  // read long set with self define length
   public static Set<Long> readLongSet(ByteBuffer buffer) {
     int size = readInt(buffer);
     if (size <= 0) {
@@ -940,10 +942,10 @@ public class ReadWriteIOUtils {
     return set;
   }
 
-  /** write long set with self define length. */
+  // write long set with self define length
   public static void writeLongSet(Set<Long> set, DataOutputStream outputStream) throws IOException {
     if (set == null) {
-      throw new IllegalArgumentException("set must not be null!");
+      throw new IllegalArgumentException(SET_NOT_NULL_MSG);
     }
     write(set.size(), outputStream);
     for (long e : set) {
@@ -951,7 +953,7 @@ public class ReadWriteIOUtils {
     }
   }
 
-  /** read object set with self define length. */
+  // read object set with self define length
   public static <T> Set<T> readObjectSet(ByteBuffer buffer) {
     int size = readInt(buffer);
     if (size <= 0) {
@@ -964,11 +966,11 @@ public class ReadWriteIOUtils {
     return set;
   }
 
-  /** write object set with self define length. */
+  // write object set with self define length
   public static <T> void writeObjectSet(Set<T> set, DataOutputStream outputStream)
       throws IOException {
     if (set == null) {
-      throw new IllegalArgumentException("set must not be null!");
+      throw new IllegalArgumentException(SET_NOT_NULL_MSG);
     }
     write(set.size(), outputStream);
     for (T e : set) {

@@ -27,7 +27,6 @@ import org.apache.iotdb.tsfile.read.filter.operator.base.BinaryLogicalFilter;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 public class Or extends BinaryLogicalFilter {
@@ -73,49 +72,26 @@ public class Or extends BinaryLogicalFilter {
     List<TimeRange> leftTimeRanges = left.getTimeRanges();
     List<TimeRange> rightTimeRanges = right.getTimeRanges();
 
-    int leftIndex = 0;
-    int rightIndex = 0;
-    int leftSize = leftTimeRanges.size();
-    int rightSize = rightTimeRanges.size();
-    TimeRange range;
-    if (leftTimeRanges.isEmpty() && rightTimeRanges.isEmpty()) {
-      return Collections.emptyList();
-    } else if (leftTimeRanges.isEmpty()) {
+    // Check for empty lists
+    if (leftTimeRanges.isEmpty()) {
       return rightTimeRanges;
     } else if (rightTimeRanges.isEmpty()) {
       return leftTimeRanges;
-    } else {
-      TimeRange leftRange = leftTimeRanges.get(leftIndex);
-      TimeRange rightRange = rightTimeRanges.get(rightIndex);
-      if (leftRange.getMin() <= rightRange.getMin()) {
-        range = leftRange;
-        leftIndex++;
-      } else {
-        range = rightRange;
-        rightIndex++;
-      }
     }
 
-    while (leftIndex < leftSize || rightIndex < rightSize) {
-      TimeRange chosenRange;
-      if (leftIndex < leftSize && rightIndex < rightSize) {
-        TimeRange leftRange = leftTimeRanges.get(leftIndex);
-        TimeRange rightRange = rightTimeRanges.get(rightIndex);
-        if (leftRange.getMin() <= rightRange.getMin()) {
-          chosenRange = leftRange;
-          leftIndex++;
-        } else {
-          chosenRange = rightRange;
-          rightIndex++;
-        }
-      } else if (leftIndex < leftSize) {
-        chosenRange = leftTimeRanges.get(leftIndex);
-        leftIndex++;
-      } else {
-        chosenRange = rightTimeRanges.get(rightIndex);
-        rightIndex++;
-      }
+    Index leftIndex = new Index();
+    Index rightIndex = new Index();
 
+    // Initialize the current range
+    TimeRange range = chooseNextRange(leftTimeRanges, rightTimeRanges, leftIndex, rightIndex);
+
+    // Merge overlapping ranges
+    while (leftIndex.getCurrent() < leftTimeRanges.size()
+        || rightIndex.getCurrent() < rightTimeRanges.size()) {
+      TimeRange chosenRange =
+          chooseNextRange(leftTimeRanges, rightTimeRanges, leftIndex, rightIndex);
+
+      // Merge or add the non-overlapping range
       if (chosenRange.getMin() > range.getMax()) {
         result.add(range);
         range = chosenRange;
@@ -124,9 +100,54 @@ public class Or extends BinaryLogicalFilter {
       }
     }
 
+    // Add the last range
     result.add(range);
 
     return result;
+  }
+
+  private TimeRange chooseNextRange(
+      List<TimeRange> leftTimeRanges,
+      List<TimeRange> rightTimeRanges,
+      Index leftIndex,
+      Index rightIndex) {
+    int leftCurrentIndex = leftIndex.getCurrent();
+    int rightCurrentIndex = rightIndex.getCurrent();
+    if (leftCurrentIndex < leftTimeRanges.size() && rightCurrentIndex < rightTimeRanges.size()) {
+      TimeRange leftRange = leftTimeRanges.get(leftCurrentIndex);
+      TimeRange rightRange = rightTimeRanges.get(rightCurrentIndex);
+
+      // Choose the range with the smaller minimum start time
+      if (leftRange.getMin() <= rightRange.getMin()) {
+        leftIndex.increment();
+        return leftRange;
+      } else {
+        rightIndex.increment();
+        return rightRange;
+      }
+    } else if (leftCurrentIndex < leftTimeRanges.size()) {
+      leftIndex.increment();
+      return leftTimeRanges.get(leftCurrentIndex);
+    } else {
+      rightIndex.increment();
+      return rightTimeRanges.get(rightCurrentIndex);
+    }
+  }
+
+  private static class Index {
+    private int current;
+
+    public Index() {
+      this.current = 0;
+    }
+
+    public void increment() {
+      this.current++;
+    }
+
+    public int getCurrent() {
+      return this.current;
+    }
   }
 
   @Override
