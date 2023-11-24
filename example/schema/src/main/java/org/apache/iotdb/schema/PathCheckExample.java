@@ -50,10 +50,10 @@ import java.util.concurrent.Future;
  * For example: ./export-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -td . -q "show timeseries"
  */
 public class PathCheckExample {
-  private static final List<String> inputList = new ArrayList<>();
+  private static final List<String> INPUT_LIST = new ArrayList<>();
   private static final String DIR = "/Users/root/iotdb/tools";
 
-  private static final Logger logger = LoggerFactory.getLogger(PathCheckExample.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PathCheckExample.class);
 
   // concurrent thread of path check
   private static final int CONCURRENCY = 5;
@@ -64,14 +64,14 @@ public class PathCheckExample {
   }
 
   private static void batchCheck() {
-    inputList.add("root.test.d1.s1");
-    inputList.add("root.b+.d1.s2");
-    inputList.add("root.test.1.s3");
-    inputList.add("root.test.d-j.s4");
-    inputList.add("root.test.'8`7'.s5");
-    inputList.add("root.test.`1`.s6");
-    inputList.add("root.test.\"d+b\".s7");
-    for (String path : inputList) {
+    INPUT_LIST.add("root.test.d1.s1");
+    INPUT_LIST.add("root.b+.d1.s2");
+    INPUT_LIST.add("root.test.1.s3");
+    INPUT_LIST.add("root.test.d-j.s4");
+    INPUT_LIST.add("root.test.'8`7'.s5");
+    INPUT_LIST.add("root.test.`1`.s6");
+    INPUT_LIST.add("root.test.\"d+b\".s7");
+    for (String path : INPUT_LIST) {
       checkPath(path);
     }
   }
@@ -81,7 +81,7 @@ public class PathCheckExample {
     try {
       PathNodesGenerator.checkPath(path);
     } catch (PathParseException e) {
-      logger.error("{} is not a legal path.", path);
+      LOGGER.error("{} is not a legal path.", path);
     }
   }
 
@@ -105,7 +105,7 @@ public class PathCheckExample {
         future.get();
       }
     } catch (InterruptedException | ExecutionException e) {
-      logger.error("Error when checking paths.");
+      LOGGER.error("Error when checking paths.");
       Thread.currentThread().interrupt();
     }
     executorService.shutdown();
@@ -129,7 +129,7 @@ public class PathCheckExample {
           checkPath(path);
         }
       } catch (IOException e) {
-        logger.error("Error reading file: {}", file.getName());
+        LOGGER.error("Error reading file: {}", file.getName());
         throw new RuntimeException(e);
       }
       return null;

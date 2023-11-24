@@ -350,6 +350,10 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
   }
 
+  public void clearCachedDeviceMetadata() {
+    cachedDeviceMetadata.clear();
+  }
+
   private Map<String, TimeseriesMetadata> readDeviceMetadataFromDisk(String device)
       throws IOException {
     readFileMetadata();

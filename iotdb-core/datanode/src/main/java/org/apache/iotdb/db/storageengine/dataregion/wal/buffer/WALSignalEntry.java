@@ -30,15 +30,12 @@ public class WALSignalEntry extends WALEntry {
   public WALSignalEntry(WALEntryType signalType, boolean wait) {
     super(signalType, Long.MIN_VALUE, null, wait);
     switch (signalType) {
-      case INSERT_TABLET_PLAN:
-      case INSERT_TABLET_NODE:
-      case INSERT_ROW_PLAN:
-      case INSERT_ROW_NODE:
-      case DELETE_PLAN:
-      case MEMORY_TABLE_SNAPSHOT:
-        throw new RuntimeException("Cannot use wal info type as wal signal type");
-      default:
+      case CLOSE_SIGNAL:
+      case ROLL_WAL_LOG_WRITER_SIGNAL:
+      case WAL_FILE_INFO_END_MARKER:
         break;
+      default:
+        throw new RuntimeException("Cannot use wal info type as wal signal type");
     }
   }
 

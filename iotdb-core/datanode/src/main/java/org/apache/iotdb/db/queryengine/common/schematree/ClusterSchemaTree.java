@@ -280,20 +280,29 @@ public class ClusterSchemaTree implements ISchemaTree {
     String[] nodes = devicePath.getNodes();
     SchemaNode cur = root;
     SchemaNode child;
-    for (int i = 1; i < nodes.length; i++) {
+    for (int i = 1; i < nodes.length - 1; i++) {
       child = cur.getChild(nodes[i]);
       if (child == null) {
-        if (i == nodes.length - 1) {
-          SchemaEntityNode entityNode = new SchemaEntityNode(nodes[i]);
-          entityNode.setAligned(isAligned);
-          entityNode.setTemplateId(templateId);
-          child = entityNode;
-        } else {
-          child = new SchemaInternalNode(nodes[i]);
-        }
+        child = new SchemaInternalNode(nodes[i]);
         cur.addChild(nodes[i], child);
       }
       cur = child;
+    }
+    String deviceName = nodes[nodes.length - 1];
+    child = cur.getChild(deviceName);
+    if (child == null) {
+      SchemaEntityNode entityNode = new SchemaEntityNode(deviceName);
+      entityNode.setAligned(isAligned);
+      entityNode.setTemplateId(templateId);
+      cur.addChild(deviceName, entityNode);
+    } else if (child.isEntity()) {
+      child.getAsEntityNode().setTemplateId(templateId);
+      child.getAsEntityNode().setAligned(isAligned);
+    } else {
+      SchemaEntityNode entityNode = new SchemaEntityNode(deviceName);
+      entityNode.setAligned(isAligned);
+      entityNode.setTemplateId(templateId);
+      cur.replaceChild(deviceName, entityNode);
     }
     templateMap.putIfAbsent(templateId, template);
   }

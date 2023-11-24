@@ -102,7 +102,8 @@ public class CheckpointManagerTest {
                 new MemTableInfo(
                     new PrimitiveMemTable(database, dataRegionId), tsFilePath, versionId);
             versionId2memTableId.put(versionId, memTableInfo.getMemTableId());
-            checkpointManager.makeCreateMemTableCP(memTableInfo);
+            checkpointManager.makeCreateMemTableCPInMemory(memTableInfo);
+            checkpointManager.makeCreateMemTableCPOnDisk(memTableInfo.getMemTableId());
             if (versionId < memTablesNum / 2) {
               checkpointManager.makeFlushMemTableCP(versionId2memTableId.get(versionId));
             } else {
@@ -143,7 +144,8 @@ public class CheckpointManagerTest {
           new Checkpoint(
               CheckpointType.CREATE_MEMORY_TABLE, Collections.singletonList(memTableInfo));
       size += checkpoint.serializedSize();
-      checkpointManager.makeCreateMemTableCP(memTableInfo);
+      checkpointManager.makeCreateMemTableCPInMemory(memTableInfo);
+      checkpointManager.makeCreateMemTableCPOnDisk(memTableInfo.getMemTableId());
       if (versionId < 5) {
         checkpoint =
             new Checkpoint(
@@ -154,6 +156,7 @@ public class CheckpointManagerTest {
         expectedMemTableId2Info.put(memTableInfo.getMemTableId(), memTableInfo);
       }
     }
+    checkpointManager.fsyncCheckpointFile();
     // check first valid version id
     assertEquals(5, checkpointManager.getFirstValidWALVersionId());
     // check checkpoint files
