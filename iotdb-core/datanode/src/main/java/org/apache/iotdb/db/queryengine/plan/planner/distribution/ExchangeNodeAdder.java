@@ -381,9 +381,6 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     TopKNode rootNode = (TopKNode) node;
     Map<TRegionReplicaSet, TopKNode> regionTopKNodeMap = new HashMap<>();
     for (PlanNode child : visitedChildren) {
-      if (child instanceof SingleDeviceViewNode) {
-        ((SingleDeviceViewNode) child).setCacheOutputColumnNames(true);
-      }
       TRegionReplicaSet region = context.getNodeDistribution(child.getPlanNodeId()).region;
       regionTopKNodeMap
           .computeIfAbsent(

@@ -141,16 +141,16 @@ public class FileLoaderUtils {
         timeSeriesMetadata =
             TimeSeriesMetadataCache.getInstance()
                 .get(
+                    resource.getTsFilePath(),
                     new TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey(
-                        resource.getTsFilePath(),
+                        resource.getTsFileID(),
                         seriesPath.getDevice(),
                         seriesPath.getMeasurement()),
                     allSensors,
                     resource.getTimeIndexType() != 1,
                     context.isDebug());
         if (timeSeriesMetadata != null) {
-          List<Modification> pathModifications =
-              context.getPathModifications(resource.getModFile(), seriesPath);
+          List<Modification> pathModifications = context.getPathModifications(resource, seriesPath);
           timeSeriesMetadata.setModified(!pathModifications.isEmpty());
           timeSeriesMetadata.setChunkMetadataLoader(
               new DiskChunkMetadataLoader(resource, context, filter, pathModifications));
@@ -279,7 +279,8 @@ public class FileLoaderUtils {
     // we should not ignore the non-exist of device in TsFileMetadata
     TimeseriesMetadata timeColumn =
         cache.get(
-            new TimeSeriesMetadataCacheKey(filePath, deviceId, ""),
+            filePath,
+            new TimeSeriesMetadataCacheKey(resource.getTsFileID(), deviceId, ""),
             allSensors,
             resource.getTimeIndexType() != 1,
             isDebug);
@@ -299,7 +300,9 @@ public class FileLoaderUtils {
         for (String valueMeasurement : valueMeasurementList) {
           TimeseriesMetadata valueColumn =
               cache.get(
-                  new TimeSeriesMetadataCacheKey(filePath, deviceId, valueMeasurement),
+                  filePath,
+                  new TimeSeriesMetadataCacheKey(
+                      resource.getTsFileID(), deviceId, valueMeasurement),
                   allSensors,
                   resource.getTimeIndexType() != 1,
                   isDebug);
@@ -334,8 +337,7 @@ public class FileLoaderUtils {
     for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
       if (valueTimeSeriesMetadataList.get(i) != null) {
         List<Modification> pathModifications =
-            context.getPathModifications(
-                resource.getModFile(), alignedPath.getPathWithMeasurement(i));
+            context.getPathModifications(resource, alignedPath.getPathWithMeasurement(i));
         valueTimeSeriesMetadataList.get(i).setModified(!pathModifications.isEmpty());
         res.add(pathModifications);
         modified = (modified || !pathModifications.isEmpty());

@@ -24,10 +24,8 @@ import org.apache.iotdb.isession.pool.SessionDataSetWrapper;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.pool.SessionPool;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,7 +36,7 @@ import java.util.concurrent.Executors;
 
 @SuppressWarnings({"squid:S106", "squid:S1144"})
 public class SessionPoolExample {
-  private static final Logger logger = LoggerFactory.getLogger(SessionPoolExample.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SessionPoolExample.class);
 
   private static SessionPool sessionPool;
   private static ExecutorService service;
@@ -51,7 +49,7 @@ public class SessionPoolExample {
             .port(6667)
             .user("root")
             .password("root")
-            .maxSize(20)
+            .maxSize(3)
             .build();
   }
 
@@ -72,20 +70,20 @@ public class SessionPoolExample {
   public static void main(String[] args)
       throws StatementExecutionException, IoTDBConnectionException, InterruptedException {
     // Choose the SessionPool you going to use
-    constructCustomSessionPool();
+    constructRedirectSessionPool();
 
-    service = Executors.newFixedThreadPool(20);
+    service = Executors.newFixedThreadPool(10);
     insertRecord();
-    Thread.sleep(2000);
     queryByRowRecord();
-    Thread.sleep(5000);
+    Thread.sleep(1000);
+    queryByIterator();
     sessionPool.close();
     service.shutdown();
   }
 
   // more insert example, see SessionExample.java
   private static void insertRecord() throws StatementExecutionException, IoTDBConnectionException {
-    String deviceId = "root.sg.d1";
+    String deviceId = "root.sg1.d1";
     List<String> measurements = new ArrayList<>();
     List<TSDataType> types = new ArrayList<>();
     measurements.add("s1");
@@ -94,35 +92,61 @@ public class SessionPoolExample {
     types.add(TSDataType.INT64);
     types.add(TSDataType.INT64);
     types.add(TSDataType.INT64);
-    List<Object> values = new ArrayList<>();
-    values.add(1L);
-    values.add(2L);
-    values.add(3L);
-    for (int i = 0; i < 10; i++) {
-      long time = i;
+
+    for (long time = 0; time < 10; time++) {
+      List<Object> values = new ArrayList<>();
+      values.add(1L);
+      values.add(2L);
+      values.add(3L);
+      sessionPool.insertRecord(deviceId, time, measurements, types, values);
+    }
+  }
+
+  private static void queryByRowRecord() {
+    for (int i = 0; i < 1; i++) {
       service.submit(
           () -> {
-            while (true) {
-              try {
-                sessionPool.insertRecord(deviceId, time, measurements, types, values);
-                break;
-              } catch (IoTDBConnectionException | StatementExecutionException ignored) {
-
+            SessionDataSetWrapper wrapper = null;
+            try {
+              wrapper = sessionPool.executeQueryStatement("select * from root.sg1.d1");
+              System.out.println(wrapper.getColumnNames());
+              System.out.println(wrapper.getColumnTypes());
+              while (wrapper.hasNext()) {
+                System.out.println(wrapper.next());
               }
+            } catch (IoTDBConnectionException | StatementExecutionException e) {
+              LOGGER.error("Query by row record error", e);
+            } finally {
+              // remember to close data set finally!
+              sessionPool.closeResultSet(wrapper);
             }
           });
     }
   }
 
-  private static void queryByRowRecord() {
-    for (int i = 1; i < 4; i++) {
-      int finalI = i;
+  private static void queryByIterator() {
+    for (int i = 0; i < 1; i++) {
       service.submit(
           () -> {
+            SessionDataSetWrapper wrapper = null;
             try {
-              sessionPool.createTimeseries("root.sg.d1.s" + finalI, TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY);
+              wrapper = sessionPool.executeQueryStatement("select * from root.sg1.d1");
+              // get DataIterator like JDBC
+              DataIterator dataIterator = wrapper.iterator();
+              System.out.println(wrapper.getColumnNames());
+              System.out.println(wrapper.getColumnTypes());
+              while (dataIterator.next()) {
+                StringBuilder builder = new StringBuilder();
+                for (String columnName : wrapper.getColumnNames()) {
+                  builder.append(dataIterator.getString(columnName) + " ");
+                }
+                System.out.println(builder);
+              }
             } catch (IoTDBConnectionException | StatementExecutionException e) {
-              logger.error("   ", e);
+              LOGGER.error("Query by Iterator error", e);
+            } finally {
+              // remember to close data set finally!
+              sessionPool.closeResultSet(wrapper);
             }
           });
     }

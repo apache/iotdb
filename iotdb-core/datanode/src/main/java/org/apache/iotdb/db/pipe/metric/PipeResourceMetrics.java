@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.metric;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
@@ -31,21 +32,29 @@ import org.apache.iotdb.metrics.utils.MetricType;
 
 public class PipeResourceMetrics implements IMetricSet {
 
+  private static final String PIPE_USED_MEMORY = "PipeUsedMemory";
+
+  private static final String PIPE_TOTAL_MEMORY = "PipeTotalMemory";
+
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
     // pipe memory related
     metricService.createAutoGauge(
-        Metric.PIPE_MEM_COST.toString(),
+        Metric.PIPE_MEM.toString(),
         MetricLevel.IMPORTANT,
         PipeResourceManager.memory(),
-        PipeMemoryManager::getUsedMemorySizeInBytes);
+        PipeMemoryManager::getUsedMemorySizeInBytes,
+        Tag.NAME.toString(),
+        PIPE_USED_MEMORY);
     metricService.createAutoGauge(
-        Metric.PIPE_MEM_USAGE.toString(),
+        Metric.PIPE_MEM.toString(),
         MetricLevel.IMPORTANT,
         PipeResourceManager.memory(),
-        PipeMemoryManager::getMemoryUsage);
+        PipeMemoryManager::getTotalMemorySizeInBytes,
+        Tag.NAME.toString(),
+        PIPE_TOTAL_MEMORY);
     // resource reference count
     metricService.createAutoGauge(
         Metric.PIPE_PINNED_MEMTABLE_COUNT.toString(),
@@ -62,8 +71,10 @@ public class PipeResourceMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     // pipe memory related
-    metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_MEM_COST.toString());
-    metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_MEM_USAGE.toString());
+    metricService.remove(
+        MetricType.AUTO_GAUGE, Metric.PIPE_MEM.toString(), Tag.NAME.toString(), PIPE_USED_MEMORY);
+    metricService.remove(
+        MetricType.AUTO_GAUGE, Metric.PIPE_MEM.toString(), Tag.NAME.toString(), PIPE_TOTAL_MEMORY);
     // resource reference count
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_PINNED_MEMTABLE_COUNT.toString());
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_LINKED_TSFILE_COUNT.toString());

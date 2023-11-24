@@ -131,9 +131,8 @@ public enum ThreadName {
   PIPE_RUNTIME_META_SYNCER("Pipe-Runtime-Meta-Syncer"),
   PIPE_RUNTIME_HEARTBEAT("Pipe-Runtime-Heartbeat"),
   PIPE_RUNTIME_PROCEDURE_SUBMITTER("Pipe-Runtime-Procedure-Submitter"),
-  PIPE_RUNTIME_CRON_EVENT_INJECTOR("Pipe-Runtime-Cron-Event-Injector"),
+  PIPE_RUNTIME_PERIODICAL_JOB_EXECUTOR("Pipe-Runtime-Periodical-Job-Executor"),
   PIPE_ASYNC_CONNECTOR_CLIENT_POOL("Pipe-Async-Connector-Client-Pool"),
-  PIPE_WAL_RESOURCE_TTL_CHECKER("Pipe-WAL-Resource-TTL-Checker"),
   PIPE_RECEIVER_AIR_GAP_AGENT("Pipe-Receiver-Air-Gap-Agent"),
   WINDOW_EVALUATION_SERVICE("WindowEvaluationTaskPoolManager"),
   STATEFUL_TRIGGER_INFORMATION_UPDATER("Stateful-Trigger-Information-Updater"),
@@ -178,7 +177,7 @@ public enum ThreadName {
   UNKOWN("UNKNOWN");
 
   private final String name;
-  private static final Logger log = LoggerFactory.getLogger(ThreadName.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ThreadName.class);
   private static final Set<ThreadName> queryThreadNames =
       new HashSet<>(
           Arrays.asList(
@@ -267,9 +266,8 @@ public enum ThreadName {
               PIPE_RUNTIME_META_SYNCER,
               PIPE_RUNTIME_HEARTBEAT,
               PIPE_RUNTIME_PROCEDURE_SUBMITTER,
-              PIPE_RUNTIME_CRON_EVENT_INJECTOR,
+              PIPE_RUNTIME_PERIODICAL_JOB_EXECUTOR,
               PIPE_ASYNC_CONNECTOR_CLIENT_POOL,
-              PIPE_WAL_RESOURCE_TTL_CHECKER,
               PIPE_RECEIVER_AIR_GAP_AGENT,
               WINDOW_EVALUATION_SERVICE,
               STATEFUL_TRIGGER_INFORMATION_UPDATER));
@@ -450,7 +448,7 @@ public enum ThreadName {
         }
       }
     }
-    log.debug("Unknown thread name: {}", givenThreadName);
+    LOGGER.debug("Unknown thread name: {}", givenThreadName);
     return ThreadName.UNKOWN;
   }
 }

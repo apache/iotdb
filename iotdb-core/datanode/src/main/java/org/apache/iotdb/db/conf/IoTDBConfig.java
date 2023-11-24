@@ -44,7 +44,7 @@ import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.apache.iotdb.tsfile.utils.FSUtils;
@@ -799,9 +799,6 @@ public class IoTDBConfig {
 
   private float udfCollectorMemoryBudgetInMB = (float) (1.0 / 3 * udfMemoryBudgetInMB);
 
-  // time in nanosecond precision when starting up
-  private long startUpNanosecond = System.nanoTime();
-
   /** Unit: byte */
   private int thriftMaxFrameSize = 536870912;
 
@@ -993,7 +990,7 @@ public class IoTDBConfig {
   private String readConsistencyLevel = "strong";
 
   /** Maximum execution time of a DriverTask */
-  private int driverTaskExecutionTimeSliceInMs = 100;
+  private int driverTaskExecutionTimeSliceInMs = 200;
 
   /** Maximum size of wal buffer used in IoTConsensus. Unit: byte */
   private long throttleThreshold = 50 * 1024 * 1024 * 1024L;
@@ -1402,7 +1399,7 @@ public class IoTDBConfig {
     return systemDir;
   }
 
-  void setSystemDir(String systemDir) {
+  public void setSystemDir(String systemDir) {
     this.systemDir = systemDir;
   }
 
@@ -1426,7 +1423,7 @@ public class IoTDBConfig {
     return queryDir;
   }
 
-  void setQueryDir(String queryDir) {
+  public void setQueryDir(String queryDir) {
     this.queryDir = queryDir;
   }
 
@@ -2510,10 +2507,6 @@ public class IoTDBConfig {
 
   public void setPrimitiveArraySize(int primitiveArraySize) {
     this.primitiveArraySize = primitiveArraySize;
-  }
-
-  public long getStartUpNanosecond() {
-    return startUpNanosecond;
   }
 
   public int getThriftMaxFrameSize() {

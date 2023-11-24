@@ -30,8 +30,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
@@ -79,18 +79,18 @@ public class SessionExample {
     // set session fetchSize
     session.setFetchSize(10000);
 
-//    try {
-//      session.createDatabase("root.sg1");
-//    } catch (StatementExecutionException e) {
-//      if (e.getStatusCode() != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
-//        throw e;
-//      }
-//    }
-//
-//    //     createTemplate();
-//    createTimeseries();
-//    createMultiTimeseries();
-//    insertRecord();
+    try {
+      session.createDatabase("root.sg1");
+    } catch (StatementExecutionException e) {
+      if (e.getStatusCode() != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
+        throw e;
+      }
+    }
+
+    //     createTemplate();
+    createTimeseries();
+    createMultiTimeseries();
+    insertRecord();
     insertTablet();
     //    insertTabletWithNullValues();
     //    insertTablets();
@@ -99,28 +99,28 @@ public class SessionExample {
     //    selectInto();
     //    createAndDropContinuousQueries();
     //    nonQuery();
-//    query();
-//    //    queryWithTimeout();
-//    rawDataQuery();
-//    lastDataQuery();
-//    aggregationQuery();
-//    groupByQuery();
-//    //    queryByIterator();
-//    //    deleteData();
-//    //    deleteTimeseries();
-//    //    setTimeout();
-//
-//    sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
-//    sessionEnableRedirect.setEnableQueryRedirection(true);
-//    sessionEnableRedirect.open(false);
-//
-//    // set session fetchSize
-//    sessionEnableRedirect.setFetchSize(10000);
-//
-//    fastLastDataQueryForOneDevice();
-//    insertRecord4Redirect();
-//    query4Redirect();
-//    sessionEnableRedirect.close();
+    query();
+    //    queryWithTimeout();
+    rawDataQuery();
+    lastDataQuery();
+    aggregationQuery();
+    groupByQuery();
+    //    queryByIterator();
+    //    deleteData();
+    //    deleteTimeseries();
+    //    setTimeout();
+
+    sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
+    sessionEnableRedirect.setEnableQueryRedirection(true);
+    sessionEnableRedirect.open(false);
+
+    // set session fetchSize
+    sessionEnableRedirect.setFetchSize(10000);
+
+    fastLastDataQueryForOneDevice();
+    insertRecord4Redirect();
+    query4Redirect();
+    sessionEnableRedirect.close();
     session.close();
   }
 

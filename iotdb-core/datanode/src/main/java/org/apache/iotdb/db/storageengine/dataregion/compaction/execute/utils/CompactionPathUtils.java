@@ -17,12 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.buffer;
+package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils;
 
-import org.junit.Test;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
-public class TimeSeriesMetadataCacheTest {
+public class CompactionPathUtils {
 
-  @Test
-  public void testTimeSeriesMetadataCache() {}
+  private CompactionPathUtils() {}
+
+  public static PartialPath getPath(String device, String measurement) throws IllegalPathException {
+    PartialPath path;
+    if (device.contains(TsFileConstant.BACK_QUOTE_STRING)) {
+      path = DataNodeDevicePathCache.getInstance().getPartialPath(device);
+    } else {
+      path = new PartialPath(device.split("\\."));
+    }
+    return path.concatNode(measurement);
+  }
 }

@@ -42,9 +42,11 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.time.ZoneId;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.stream.Collectors;
@@ -70,6 +72,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private static final Map<Integer, Long> DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP = new HashMap<>();
   private static final long PIPE_MIN_FLUSH_INTERVAL_IN_MS = 2000;
 
+  private String pipeName;
   private PipeTaskMeta pipeTaskMeta;
   private ProgressIndex startIndex;
 
@@ -98,6 +101,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     final PipeTaskExtractorRuntimeEnvironment environment =
         (PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment();
 
+    pipeName = environment.getPipeName();
     pipeTaskMeta = environment.getPipeTaskMeta();
     startIndex = environment.getPipeTaskMeta().getProgressIndex();
 
@@ -235,6 +239,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     }
 
     dataRegion.writeLock("Pipe: start to extract historical TsFile");
+    final long startHistoricalExtractionTime = System.currentTimeMillis();
     try {
       synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {
         final long lastFlushedByPipeTime =
@@ -248,7 +253,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       final TsFileManager tsFileManager = dataRegion.getTsFileManager();
       tsFileManager.readLock();
       try {
-        pendingQueue = new ArrayDeque<>(tsFileManager.size(true) + tsFileManager.size(false));
+        final List<TsFileResource> resourceList =
+            new ArrayList<>(tsFileManager.size(true) + tsFileManager.size(false));
 
         final Collection<TsFileResource> sequenceTsFileResources =
             tsFileManager.getTsFileList(true).stream()
@@ -261,7 +267,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                             && isTsFileResourceOverlappedWithTimeRange(resource)
                             && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
                 .collect(Collectors.toList());
-        pendingQueue.addAll(sequenceTsFileResources);
+        resourceList.addAll(sequenceTsFileResources);
 
         final Collection<TsFileResource> unsequenceTsFileResources =
             tsFileManager.getTsFileList(false).stream()
@@ -274,9 +280,9 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                             && isTsFileResourceOverlappedWithTimeRange(resource)
                             && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
                 .collect(Collectors.toList());
-        pendingQueue.addAll(unsequenceTsFileResources);
+        resourceList.addAll(unsequenceTsFileResources);
 
-        pendingQueue.forEach(
+        resourceList.forEach(
             resource -> {
               // Pin the resource, in case the file is removed by compaction or anything.
               // Will unpin it after the PipeTsFileInsertionEvent is created and pinned.
@@ -287,12 +293,17 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
               }
             });
 
+        resourceList.sort(
+            (o1, o2) -> o1.getMaxProgressIndex().topologicalCompareTo(o2.getMaxProgressIndex()));
+        pendingQueue = new ArrayDeque<>(resourceList);
+
         LOGGER.info(
             "Pipe: start to extract historical TsFile, data region {}, "
-                + "sequence file count {}, unsequence file count {}",
+                + "sequence file count {}, unsequence file count {}, historical extraction time {} ms",
             dataRegionId,
             sequenceTsFileResources.size(),
-            unsequenceTsFileResources.size());
+            unsequenceTsFileResources.size(),
+            System.currentTimeMillis() - startHistoricalExtractionTime);
       } finally {
         tsFileManager.readUnlock();
       }
@@ -342,6 +353,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             resource,
             false,
             false,
+            pipeName,
             pipeTaskMeta,
             pattern,
             historicalDataExtractionStartTime,

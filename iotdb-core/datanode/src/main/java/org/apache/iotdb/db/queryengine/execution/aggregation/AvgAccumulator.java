@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
-import org.apache.iotdb.tsfile.access.Column;
-import org.apache.iotdb.tsfile.access.ColumnBuilder;
-import org.apache.iotdb.tsfile.enums.TSDataType;
-import org.apache.iotdb.tsfile.exception.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.IntegerStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.utils.BitMap;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -73,6 +73,19 @@ public class AvgAccumulator implements Accumulator {
     initResult = true;
     countValue += partialResult[0].getLong(0);
     sumValue += partialResult[1].getDouble(0);
+    if (countValue == 0) {
+      initResult = false;
+    }
+  }
+
+  @Override
+  public void removeIntermediate(Column[] input) {
+    checkArgument(input.length == 2, "partialResult of Avg should be 2");
+    if (input[0].isNull(0)) {
+      return;
+    }
+    countValue -= input[0].getLong(0);
+    sumValue -= input[1].getDouble(0);
     if (countValue == 0) {
       initResult = false;
     }

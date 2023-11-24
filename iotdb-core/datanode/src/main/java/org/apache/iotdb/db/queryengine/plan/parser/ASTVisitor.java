@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.cq.TimeoutPolicy;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterFactory;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -198,8 +199,8 @@ import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.trigger.api.enums.TriggerType;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.TimeDuration;
@@ -971,7 +972,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     if (ctx.BOUNDARY() != null) {
-      statement.setBoundaryTime(parseTimeValue(ctx.boundaryTime, DateTimeUtils.currentTime()));
+      statement.setBoundaryTime(
+          parseTimeValue(ctx.boundaryTime, CommonDateTimeUtils.currentTime()));
     }
 
     if (ctx.RANGE() != null) {
@@ -1511,7 +1513,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
    */
   private void parseTimeRangeForGroupByTime(
       IoTDBSqlParser.TimeRangeContext timeRange, GroupByTimeComponent groupByClauseComponent) {
-    long currentTime = DateTimeUtils.currentTime();
+    long currentTime = CommonDateTimeUtils.currentTime();
     long startTime = parseTimeValue(timeRange.timeValue(0), currentTime);
     long endTime = parseTimeValue(timeRange.timeValue(1), currentTime);
     groupByClauseComponent.setStartTime(startTime);
@@ -1665,12 +1667,21 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       fillComponent.setFillPolicy(FillPolicy.LINEAR);
     } else if (ctx.PREVIOUS() != null) {
       fillComponent.setFillPolicy(FillPolicy.PREVIOUS);
+
     } else if (ctx.constant() != null) {
       fillComponent.setFillPolicy(FillPolicy.VALUE);
       Literal fillValue = parseLiteral(ctx.constant());
       fillComponent.setFillValue(fillValue);
     } else {
       throw new SemanticException("Unknown FILL type.");
+    }
+    if (ctx.interval != null) {
+      if (fillComponent.getFillPolicy() != FillPolicy.PREVIOUS) {
+        throw new SemanticException(
+            "Only FILL(PREVIOUS) support specifying the time duration threshold.");
+      }
+      fillComponent.setTimeDurationThreshold(
+          DateTimeUtils.constructTimeDuration(ctx.interval.getText()));
     }
     return fillComponent;
   }
@@ -1799,10 +1810,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
             throw new SemanticException("need timestamps when insert multi rows");
           }
           valueList.add(insertMultiValues.get(i).timeValue().getText());
-          timestamp = DateTimeUtils.currentTime();
+          timestamp = CommonDateTimeUtils.currentTime();
         } else {
           timestamp =
-              parseTimeValue(insertMultiValues.get(i).timeValue(), DateTimeUtils.currentTime());
+              parseTimeValue(
+                  insertMultiValues.get(i).timeValue(), CommonDateTimeUtils.currentTime());
           TimestampPrecisionUtils.checkTimestampPrecision(timestamp);
         }
       } else {
@@ -2027,7 +2039,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       throw new SemanticException("input timestamp cannot be empty");
     }
     if (timestampStr.equalsIgnoreCase(SqlConstant.NOW_FUNC)) {
-      return DateTimeUtils.currentTime();
+      return CommonDateTimeUtils.currentTime();
     }
     try {
       return DateTimeUtils.convertDatetimeStrToLong(timestampStr, zoneId);
@@ -2863,6 +2875,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       case SqlConstant.SUM:
       case SqlConstant.TIME_DURATION:
       case SqlConstant.MODE:
+      case SqlConstant.STDDEV:
+      case SqlConstant.STDDEV_POP:
+      case SqlConstant.STDDEV_SAMP:
+      case SqlConstant.VARIANCE:
+      case SqlConstant.VAR_POP:
+      case SqlConstant.VAR_SAMP:
         checkFunctionExpressionInputSize(
             functionExpression.getExpressionString(),
             functionExpression.getExpressions().size(),
@@ -3650,7 +3668,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       getRegionIdStatement.setDevice(ctx.device.getText());
     }
     if (ctx.time != null) {
-      long timestamp = parseTimeValue(ctx.time, DateTimeUtils.currentTime());
+      long timestamp = parseTimeValue(ctx.time, CommonDateTimeUtils.currentTime());
       getRegionIdStatement.setTimeStamp(timestamp);
     }
     return getRegionIdStatement;
@@ -3674,11 +3692,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       getTimeSlotListStatement.setRegionId(Integer.parseInt(ctx.regionId.getText()));
     }
     if (ctx.startTime != null) {
-      long timestamp = parseTimeValue(ctx.startTime, DateTimeUtils.currentTime());
+      long timestamp = parseTimeValue(ctx.startTime, CommonDateTimeUtils.currentTime());
       getTimeSlotListStatement.setStartTime(timestamp);
     }
     if (ctx.endTime != null) {
-      long timestamp = parseTimeValue(ctx.endTime, DateTimeUtils.currentTime());
+      long timestamp = parseTimeValue(ctx.endTime, CommonDateTimeUtils.currentTime());
       getTimeSlotListStatement.setEndTime(timestamp);
     }
     return getTimeSlotListStatement;

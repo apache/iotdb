@@ -17,13 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.timer;
+package org.apache.iotdb.tsfile.exception.write;
 
-import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+public class UnSupportedDataTypeException extends RuntimeException {
 
-import io.airlift.units.Duration;
+  public UnSupportedDataTypeException(String message) {
+    super("Unsupported dataType: " + message);
+  }
 
-public interface ITimeSliceAllocator {
-
-  Duration getMaxRunTime(OperatorContext operatorContext);
+  public UnSupportedDataTypeException(String message, Throwable e) {
+    super(message + e.getMessage());
+  }
 }

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.parameter;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.Literal;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -34,21 +35,26 @@ public class FillDescriptor {
   private final FillPolicy fillPolicy;
 
   // filled value when fillPolicy is VALUE
-  private Literal fillValue;
+  private final Literal fillValue;
 
-  public FillDescriptor(FillPolicy fillPolicy) {
-    this.fillPolicy = fillPolicy;
-  }
+  // if
+  private final TimeDuration timeDurationThreshold;
 
-  public FillDescriptor(FillPolicy fillPolicy, Literal fillValue) {
+  public FillDescriptor(
+      FillPolicy fillPolicy, Literal fillValue, TimeDuration timeDurationThreshold) {
     this.fillPolicy = fillPolicy;
     this.fillValue = fillValue;
+    this.timeDurationThreshold = timeDurationThreshold;
   }
 
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(fillPolicy.ordinal(), byteBuffer);
     if (fillPolicy == FillPolicy.VALUE) {
       fillValue.serialize(byteBuffer);
+    }
+    ReadWriteIOUtils.write(timeDurationThreshold != null, byteBuffer);
+    if (timeDurationThreshold != null) {
+      timeDurationThreshold.serialize(byteBuffer);
     }
   }
 
@@ -57,16 +63,24 @@ public class FillDescriptor {
     if (fillPolicy == FillPolicy.VALUE) {
       fillValue.serialize(stream);
     }
+    ReadWriteIOUtils.write(timeDurationThreshold != null, stream);
+    if (timeDurationThreshold != null) {
+      timeDurationThreshold.serialize(stream);
+    }
   }
 
   public static FillDescriptor deserialize(ByteBuffer byteBuffer) {
     FillPolicy fillPolicy = FillPolicy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    Literal fillValue = null;
     if (fillPolicy == FillPolicy.VALUE) {
-      Literal fillValue = Literal.deserialize(byteBuffer);
-      return new FillDescriptor(fillPolicy, fillValue);
-    } else {
-      return new FillDescriptor(fillPolicy);
+      fillValue = Literal.deserialize(byteBuffer);
     }
+    boolean hasTimeDurationThreshold = ReadWriteIOUtils.readBool(byteBuffer);
+    TimeDuration timeDurationThreshold = null;
+    if (hasTimeDurationThreshold) {
+      timeDurationThreshold = TimeDuration.deserialize(byteBuffer);
+    }
+    return new FillDescriptor(fillPolicy, fillValue, timeDurationThreshold);
   }
 
   public FillPolicy getFillPolicy() {
@@ -75,6 +89,10 @@ public class FillDescriptor {
 
   public Literal getFillValue() {
     return fillValue;
+  }
+
+  public TimeDuration getTimeDurationThreshold() {
+    return timeDurationThreshold;
   }
 
   @Override

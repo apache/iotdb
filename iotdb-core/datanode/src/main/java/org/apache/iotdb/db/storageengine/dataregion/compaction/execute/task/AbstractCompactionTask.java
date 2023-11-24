@@ -44,7 +44,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * AbstractCompactionTask is the base class for all compaction task, it carries out the execution of
@@ -103,7 +105,7 @@ public abstract class AbstractCompactionTask {
     this.compactionTaskPriorityType = compactionTaskPriorityType;
   }
 
-  protected abstract List<TsFileResource> getAllSourceTsFiles();
+  public abstract List<TsFileResource> getAllSourceTsFiles();
 
   /**
    * This method will try to set the files to COMPACTION_CANDIDATE. If failed, it should roll back
@@ -372,21 +374,56 @@ public abstract class AbstractCompactionTask {
     return CompactionUtils.isDiskHasSpace();
   }
 
-  protected void validateTsFileResource(
-      List<TsFileResource> targetTsFileList, boolean needValidateOverlap) {
+  protected void validateCompactionResult(
+      List<TsFileResource> sourceSeqFiles,
+      List<TsFileResource> sourceUnseqFiles,
+      List<TsFileResource> targetFiles)
+      throws CompactionValidationFailedException {
+    // skip TsFileResource which is marked as DELETED status
+    List<TsFileResource> validTargetFiles =
+        targetFiles.stream().filter(resource -> !resource.isDeleted()).collect(Collectors.toList());
+    CompactionTaskType taskType = getCompactionTaskType();
+    boolean needToValidateTsFileCorrectness = taskType != CompactionTaskType.INSERTION;
+    boolean needToValidatePartitionSeqSpaceOverlap =
+        getCompactionTaskType() != CompactionTaskType.INNER_UNSEQ;
+
     TsFileValidator validator = TsFileValidator.getInstance();
-    if (!validator.validateTsFiles(targetTsFileList)) {
-      LOGGER.error("Failed to pass compaction validation, target files is {}", targetTsFileList);
+    if (needToValidatePartitionSeqSpaceOverlap) {
+      List<TsFileResource> timePartitionSeqFiles =
+          new ArrayList<>(tsFileManager.getOrCreateSequenceListByTimePartition(timePartition));
+      timePartitionSeqFiles.removeAll(sourceSeqFiles);
+      timePartitionSeqFiles.addAll(validTargetFiles);
+      timePartitionSeqFiles.sort(
+          (f1, f2) -> {
+            int timeDiff =
+                Long.compareUnsigned(
+                    Long.parseLong(f1.getTsFile().getName().split("-")[0]),
+                    Long.parseLong(f2.getTsFile().getName().split("-")[0]));
+            return timeDiff == 0
+                ? Long.compareUnsigned(
+                    Long.parseLong(f1.getTsFile().getName().split("-")[1]),
+                    Long.parseLong(f2.getTsFile().getName().split("-")[1]))
+                : timeDiff;
+          });
+      if (!validator.validateTsFilesIsHasNoOverlap(timePartitionSeqFiles)) {
+        LOGGER.error(
+            "Failed to pass compaction validation, source seq files: {}, source unseq files: {}, target files: {}",
+            sourceSeqFiles,
+            sourceUnseqFiles,
+            targetFiles);
+        throw new CompactionValidationFailedException(
+            "Failed to pass compaction validation, sequence files has overlap, time partition id is "
+                + timePartition);
+      }
+    }
+    if (needToValidateTsFileCorrectness && !validator.validateTsFiles(validTargetFiles)) {
+      LOGGER.error(
+          "Failed to pass compaction validation, source seq files: {}, source unseq files: {}, target files: {}",
+          sourceSeqFiles,
+          sourceUnseqFiles,
+          targetFiles);
       throw new CompactionValidationFailedException(
           "Failed to pass compaction validation, .resources file or tsfile data is wrong");
-    }
-    if (needValidateOverlap
-        && !validator.validateTsFilesIsHasNoOverlap(
-            tsFileManager.getOrCreateSequenceListByTimePartition(timePartition).getArrayList())) {
-      LOGGER.error("Failed to pass compaction validation, target files is {}", targetTsFileList);
-      throw new CompactionValidationFailedException(
-          "Failed to pass compaction validation, sequence files has overlap, time partition id is "
-              + timePartition);
     }
   }
 

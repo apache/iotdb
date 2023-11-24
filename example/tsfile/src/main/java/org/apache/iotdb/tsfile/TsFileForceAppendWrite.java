@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.tsfile;
 
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -39,7 +39,7 @@ import java.nio.file.Files;
 
 public class TsFileForceAppendWrite {
 
-  private static final Logger logger = LoggerFactory.getLogger(TsFileForceAppendWrite.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileForceAppendWrite.class);
 
   public static void main(String[] args) throws IOException {
     String path = "test.tsfile";
@@ -77,7 +77,7 @@ public class TsFileForceAppendWrite {
         tsFileWriter.write(tsRecord);
       }
     } catch (Exception e) {
-      logger.error("meet error in TsFileWrite ", e);
+      LOGGER.error("meet error in TsFileWrite ", e);
     }
 
     // open the closed file with ForceAppendTsFileWriter
@@ -86,7 +86,7 @@ public class TsFileForceAppendWrite {
       fwriter.doTruncate();
       write(fwriter);
     } catch (Exception e) {
-      logger.error("ForceAppendTsFileWriter truncate or write error ", e);
+      LOGGER.error("ForceAppendTsFileWriter truncate or write error ", e);
     }
   }
 
@@ -118,7 +118,7 @@ public class TsFileForceAppendWrite {
         tsFileWriter1.write(tsRecord);
       }
     } catch (Exception e) {
-      logger.error("meet error in TsFileWrite ", e);
+      LOGGER.error("meet error in TsFileWrite ", e);
     }
   }
 }

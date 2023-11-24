@@ -128,7 +128,11 @@ public class TestPlanBuilder {
 
   public TestPlanBuilder fill(String id, FillPolicy fillPolicy) {
     this.root =
-        new FillNode(new PlanNodeId(id), getRoot(), new FillDescriptor(fillPolicy), Ordering.ASC);
+        new FillNode(
+            new PlanNodeId(id),
+            getRoot(),
+            new FillDescriptor(fillPolicy, null, null),
+            Ordering.ASC);
     return this;
   }
 
@@ -137,7 +141,7 @@ public class TestPlanBuilder {
         new FillNode(
             new PlanNodeId(id),
             getRoot(),
-            new FillDescriptor(FillPolicy.VALUE, new LongLiteral(intValue)),
+            new FillDescriptor(FillPolicy.VALUE, new LongLiteral(intValue), null),
             Ordering.ASC);
     return this;
   }

@@ -49,7 +49,7 @@ import static org.apache.iotdb.tsfile.Constant.SENSOR_3;
  */
 public class TsFileRead {
 
-  private static Logger logger = LoggerFactory.getLogger(TsFileRead.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileRead.class);
 
   private static void queryAndPrint(
       ArrayList<Path> paths, TsFileReader readTsFile, IExpression statement) throws IOException {
@@ -57,9 +57,9 @@ public class TsFileRead {
     QueryDataSet queryDataSet = readTsFile.query(queryExpression);
     while (queryDataSet.hasNext()) {
       String next = queryDataSet.next().toString();
-      logger.info(next);
+      LOGGER.info(next);
     }
-    logger.info("----------------");
+    LOGGER.info("----------------");
   }
 
   public static void main(String[] args) throws IOException {

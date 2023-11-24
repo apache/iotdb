@@ -25,7 +25,7 @@ import org.apache.iotdb.isession.pool.SessionDataSetWrapper;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.pool.SessionPool;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -49,7 +49,7 @@ import java.util.concurrent.Future;
  */
 public class DataMigrationExample {
 
-  private static Logger logger = LoggerFactory.getLogger(DataMigrationExample.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(DataMigrationExample.class);
 
   // used to read data from the source IoTDB
   private static SessionPool readerPool;
@@ -79,9 +79,9 @@ public class DataMigrationExample {
     int total;
     if (deviceIter.next()) {
       total = deviceIter.getInt(1);
-      logger.info("Total devices: {}", total);
+      LOGGER.info("Total devices: {}", total);
     } else {
-      logger.error("Can not get devices schema");
+      LOGGER.error("Can not get devices schema");
       System.exit(1);
     }
     readerPool.closeResultSet(deviceDataSet);
@@ -168,7 +168,7 @@ public class DataMigrationExample {
                     schemaList.get(j).getMeasurementId(), row, dataIter.getString(j + 2));
                 break;
               default:
-                logger.info("Migration of this type of data is not supported");
+                LOGGER.info("Migration of this type of data is not supported");
             }
           }
           if (tablet.rowSize == tablet.getMaxRowNumber()) {
@@ -182,7 +182,7 @@ public class DataMigrationExample {
         }
 
       } catch (Exception e) {
-        logger.error("Loading the {}-th device: {} failed {}", i, device, e.getMessage());
+        LOGGER.error("Loading the {}-th device: {} failed {}", i, device, e.getMessage());
         return null;
       } finally {
         if (dataSet != null) {
@@ -190,10 +190,10 @@ public class DataMigrationExample {
         }
         long endTime = System.currentTimeMillis();
         long totalTime = endTime - startTime;
-        logger.info("migrate device ：{}  using {}  ms", device, totalTime);
+        LOGGER.info("migrate device ：{}  using {}  ms", device, totalTime);
       }
 
-      logger.info("Loading the {}-th device: {}  success", i, device);
+      LOGGER.info("Loading the {}-th device: {}  success", i, device);
       return null;
     }
   }

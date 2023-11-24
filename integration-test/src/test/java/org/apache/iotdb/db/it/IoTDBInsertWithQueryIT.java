@@ -37,6 +37,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
@@ -159,6 +160,8 @@ public class IoTDBInsertWithQueryIT {
 
     // select
     selectAndCount(2001);
+
+    negativeTimestampAggregationTest();
   }
 
   @Test
@@ -479,5 +482,25 @@ public class IoTDBInsertWithQueryIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  private void negativeTimestampAggregationTest() {
+    String[] expectedHeader = new String[] {"count(root.fans.d0.s0)"};
+    String[] retArray = new String[] {"2001,"};
+    resultSetEqualTest("SELECT count(s0) FROM root.fans.d0;", expectedHeader, retArray);
+
+    expectedHeader = new String[] {"count(root.fans.d0.s0)"};
+    retArray = new String[] {"1999,"};
+    resultSetEqualTest(
+        "SELECT count(s0) FROM root.fans.d0 WHERE time<-1;", expectedHeader, retArray);
+
+    expectedHeader = new String[] {"min_time(root.fans.d0.s0)"};
+    retArray = new String[] {"-2000,"};
+    resultSetEqualTest("SELECT min_time(s0) FROM root.fans.d0;", expectedHeader, retArray);
+
+    expectedHeader = new String[] {"max_time(root.fans.d0.s0)"};
+    retArray = new String[] {"-2,"};
+    resultSetEqualTest(
+        "SELECT max_time(s0) FROM root.fans.d0 WHERE time<-1;", expectedHeader, retArray);
   }
 }

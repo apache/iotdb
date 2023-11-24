@@ -65,8 +65,8 @@ public class PipeMetaDeSerTest {
     PipeStaticMeta pipeStaticMeta1 = PipeStaticMeta.deserialize(staticByteBuffer);
     Assert.assertEquals(pipeStaticMeta, pipeStaticMeta1);
 
-    HybridProgressIndex hybridProgressIndex = new HybridProgressIndex();
-    hybridProgressIndex.updateToMinimumIsAfterProgressIndex(new SimpleProgressIndex(1, 2));
+    HybridProgressIndex hybridProgressIndex =
+        new HybridProgressIndex(new SimpleProgressIndex(1, 2));
     hybridProgressIndex.updateToMinimumIsAfterProgressIndex(new SimpleProgressIndex(2, 4));
     hybridProgressIndex.updateToMinimumIsAfterProgressIndex(new IoTProgressIndex(3, 6L));
 

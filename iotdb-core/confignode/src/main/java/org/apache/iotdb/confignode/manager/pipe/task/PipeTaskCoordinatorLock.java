@@ -100,4 +100,8 @@ public class PipeTaskCoordinatorLock {
           Thread.currentThread().getName());
     }
   }
+
+  boolean isLocked() {
+    return !deque.isEmpty();
+  }
 }

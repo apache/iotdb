@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.exception.write.UnknownColumnTypeException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
@@ -93,19 +93,19 @@ public abstract class Statistics<T extends Serializable> {
   public static int getSizeByType(TSDataType type) {
     switch (type) {
       case INT32:
-        return IntegerStatistics.INTEGER_STATISTICS_FIXED_RAM_SIZE;
+        return IntegerStatistics.INSTANCE_SIZE;
       case INT64:
-        return LongStatistics.LONG_STATISTICS_FIXED_RAM_SIZE;
+        return LongStatistics.INSTANCE_SIZE;
       case TEXT:
-        return BinaryStatistics.BINARY_STATISTICS_FIXED_RAM_SIZE;
+        return BinaryStatistics.INSTANCE_SIZE;
       case BOOLEAN:
-        return BooleanStatistics.BOOLEAN_STATISTICS_FIXED_RAM_SIZE;
+        return BooleanStatistics.INSTANCE_SIZE;
       case DOUBLE:
-        return DoubleStatistics.DOUBLE_STATISTICS_FIXED_RAM_SIZE;
+        return DoubleStatistics.INSTANCE_SIZE;
       case FLOAT:
-        return FloatStatistics.FLOAT_STATISTICS_FIXED_RAM_SIZE;
+        return FloatStatistics.INSTANCE_SIZE;
       case VECTOR:
-        return TimeStatistics.TIME_STATISTICS_FIXED_RAM_SIZE;
+        return TimeStatistics.INSTANCE_SIZE;
       default:
         throw new UnknownColumnTypeException(type.toString());
     }
@@ -120,6 +120,8 @@ public abstract class Statistics<T extends Serializable> {
   }
 
   public abstract int getStatsSize();
+
+  public abstract long getRetainedSizeInBytes();
 
   public int serialize(OutputStream outputStream) throws IOException {
     int byteLen = 0;
@@ -389,8 +391,6 @@ public abstract class Statistics<T extends Serializable> {
   public void setCount(int count) {
     this.count = count;
   }
-
-  public abstract long calculateRamSize();
 
   public boolean containedByTimeFilter(Filter timeFilter) {
     return timeFilter == null || timeFilter.containStartEndTime(getStartTime(), getEndTime());
