@@ -47,7 +47,7 @@ public class PipeMetrics implements IMetricSet {
     PipeHeartbeatEventMetrics.getInstance().unbindFrom(metricService);
     PipeWALInsertNodeCacheMetrics.getInstance().unbindFrom(metricService);
     PipeResourceMetrics.getInstance().unbindFrom(metricService);
-    PipeEventCommitMetrics.getInstance().bindTo(metricService);
+    PipeEventCommitMetrics.getInstance().unbindFrom(metricService);
   }
 
   //////////////////////////// singleton ////////////////////////////
