@@ -144,6 +144,10 @@ public abstract class CacheManager implements ICacheManager {
   @Override
   public void updateCacheStatusAfterUpdate(ICachedMNode node) {
     CacheEntry cacheEntry = getCacheEntry(node);
+    // update operation like node replace may reset the mapping between cacheEntry and node,
+    // thus it should be updated
+    updateCacheStatusAfterUpdate(cacheEntry, node);
+
     if (cacheEntry.isVolatile()) {
       return;
     }
@@ -164,9 +168,6 @@ public abstract class CacheManager implements ICacheManager {
         removeAncestorsFromCache(node);
       }
       getBelongedContainer(node).updateMNode(node.getName());
-      // update operation like node replace may reset the mapping between cacheEntry and node,
-      // thus it should be updated
-      updateCacheStatusAfterUpdate(cacheEntry, node);
       nodeBuffer.addUpdatedNodeToBuffer(node);
     }
   }

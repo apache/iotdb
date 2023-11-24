@@ -480,7 +480,8 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     if (needLock) {
       lockManager.globalReadLock();
     }
-    if (!node.isDatabase()) {
+    if (!node.isDatabase() && node.getParent() != null) {
+      // ignore node represented by template
       lockManager.threadReadLock(node.getParent(), true);
     }
     try {
@@ -488,7 +489,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
         ensureMemoryStatus();
       }
     } finally {
-      if (!node.isDatabase()) {
+      if (!node.isDatabase() && node.getParent() != null) {
         lockManager.threadReadUnlock(node.getParent());
       }
       if (needLock) {

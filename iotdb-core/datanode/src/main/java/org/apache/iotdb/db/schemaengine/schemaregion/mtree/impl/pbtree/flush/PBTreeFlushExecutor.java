@@ -120,10 +120,13 @@ public class PBTreeFlushExecutor {
       ICachedMNode currentNode, Deque<Iterator<ICachedMNode>> volatileSubtreeStack) {
     cacheManager.updateCacheStatusAfterFlushFailure(currentNode);
     Iterator<ICachedMNode> subtreeIterator;
+    ICachedMNode node;
     while (!volatileSubtreeStack.isEmpty()) {
       subtreeIterator = volatileSubtreeStack.pop();
       while (subtreeIterator.hasNext()) {
-        cacheManager.updateCacheStatusAfterFlushFailure(subtreeIterator.next());
+        node = subtreeIterator.next();
+        cacheManager.updateCacheStatusAfterFlushFailure(node);
+        lockManager.writeUnlock(node);
       }
     }
   }

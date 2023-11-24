@@ -198,6 +198,10 @@ public class MockSchemaFile implements ISchemaFile {
     } else if (node.isDevice()) {
       ICachedMNode result = nodeFactory.createDeviceMNode(null, node.getName()).getAsMNode();
       result.getAsDeviceMNode().setAligned(node.getAsDeviceMNode().isAlignedNullable());
+      result
+          .getAsDeviceMNode()
+          .setSchemaTemplateId(node.getAsDeviceMNode().getSchemaTemplateIdWithState());
+      result.getAsDeviceMNode().setUseTemplate(node.getAsDeviceMNode().isUseTemplate());
       cloneInternalMNodeData(node, result);
       return result;
     } else if (node.isDatabase()) {
