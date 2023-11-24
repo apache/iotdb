@@ -269,6 +269,10 @@ public abstract class CacheManager implements ICacheManager {
         if (nodeBufferIterator.hasNext()) {
           node = nodeBufferIterator.next();
 
+          // prevent this node being added to nodeBuffer during flush
+          // unlock in PBTreeFlushExecutor
+          lockManager.writeLock(node);
+
           // if there's flush failure, such node and ancestors will be removed from cache again by
           // #updateCacheStatusAfterFlushFailure
           nodeBuffer.remove(getCacheEntry(node));
@@ -321,31 +325,46 @@ public abstract class CacheManager implements ICacheManager {
       while (bufferedNodeIterator.hasNext()) {
         node = bufferedNodeIterator.next();
 
-        // update cache status after persist
-        // when process one node, all of its buffered child should be moved to cache
-        // except those with volatile children
-        cacheEntry = getCacheEntry(node);
+        // prevent this node being added buffer during the following check and potential flush
+        // unlock in PBTreeFlushExecutor
+        lockManager.writeLock(node);
 
-        synchronized (cacheEntry) {
-          cacheEntry.setVolatile(false);
-          container.moveMNodeToCache(node.getName());
+        boolean unlockImmediately = true;
 
-          if (cacheEntry.hasVolatileDescendant()
-              && getCachedMNodeContainer(node).hasChildrenInBuffer()) {
-            // these two factor judgement is not redundant because the #hasVolatileDescendant is on
-            // a higher priority
-            // than #container.hasChildren
+        try {
+          // update cache status after persist
+          // when process one node, all of its buffered child should be moved to cache
+          // except those with volatile children
+          cacheEntry = getCacheEntry(node);
 
-            // nodes with volatile children should be treated as root of volatile subtree and return
-            // for flush
-            nextSubtree = node;
-            return;
+          synchronized (cacheEntry) {
+            cacheEntry.setVolatile(false);
+            container.moveMNodeToCache(node.getName());
+
+            if (cacheEntry.hasVolatileDescendant()
+                && getCachedMNodeContainer(node).hasChildrenInBuffer()) {
+              // these two factor judgement is not redundant because the #hasVolatileDescendant is
+              // on
+              // a higher priority
+              // than #container.hasChildren
+
+              // nodes with volatile children should be treated as root of volatile subtree and
+              // return
+              // for flush
+              nextSubtree = node;
+              unlockImmediately = false;
+              return;
+            }
+
+            // there's no direct volatile subtree under this node, thus there's no need to flush it
+            // add the node and its ancestors to cache
+            addToNodeCache(cacheEntry, node);
+            addAncestorsToCache(node);
           }
-
-          // there's no direct volatile subtree under this node, thus there's no need to flush it
-          // add the node and its ancestors to cache
-          addToNodeCache(cacheEntry, node);
-          addAncestorsToCache(node);
+        } finally {
+          if (unlockImmediately) {
+            lockManager.writeUnlock(node);
+          }
         }
       }
     }

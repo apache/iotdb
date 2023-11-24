@@ -41,8 +41,6 @@ public class PBTreeFlushExecutor {
 
   private final ICachedMNode subtreeRoot;
 
-  private final boolean needLock;
-
   private final ICacheManager cacheManager;
 
   private final ISchemaFile file;
@@ -56,16 +54,12 @@ public class PBTreeFlushExecutor {
       ISchemaFile file,
       LockManager lockManager) {
     this.subtreeRoot = subtreeRoot;
-    this.needLock = needLock;
     this.cacheManager = cacheManager;
     this.file = file;
     this.lockManager = lockManager;
   }
 
   public void flushVolatileNodes() throws MetadataException, IOException {
-    if (needLock) {
-      lockManager.writeLock(subtreeRoot);
-    }
     Iterator<ICachedMNode> volatileSubtreeIterator;
     List<ICachedMNode> collectedVolatileSubtrees;
     try {
@@ -84,9 +78,7 @@ public class PBTreeFlushExecutor {
       cacheManager.updateCacheStatusAfterFlushFailure(this.subtreeRoot);
       throw e;
     } finally {
-      if (needLock) {
-        lockManager.writeUnlock(subtreeRoot);
-      }
+      lockManager.writeUnlock(subtreeRoot);
     }
 
     Deque<Iterator<ICachedMNode>> volatileSubtreeStack = new ArrayDeque<>();
@@ -103,9 +95,6 @@ public class PBTreeFlushExecutor {
 
       subtreeRoot = subtreeIterator.next();
 
-      if (needLock) {
-        lockManager.writeLock(subtreeRoot);
-      }
       try {
         file.writeMNode(subtreeRoot);
         collectedVolatileSubtrees = new ArrayList<>();
@@ -120,9 +109,7 @@ public class PBTreeFlushExecutor {
         processNotFlushedSubtrees(subtreeRoot, volatileSubtreeStack);
         throw e;
       } finally {
-        if (needLock) {
-          lockManager.writeUnlock(subtreeRoot);
-        }
+        lockManager.writeUnlock(subtreeRoot);
       }
 
       volatileSubtreeStack.push(collectedVolatileSubtrees.iterator());
