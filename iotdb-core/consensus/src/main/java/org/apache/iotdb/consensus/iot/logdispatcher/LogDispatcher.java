@@ -150,7 +150,7 @@ public class LogDispatcher {
   }
 
   public synchronized OptionalLong getMinSyncIndex() {
-    return threads.stream().mapToLong(LogDispatcherThread::getCurrentSyncIndex).min();
+    return threads.stream().mapToLong(LogDispatcherThread::getLastFlushedSyncIndex).min();
   }
 
   public void offer(IndexedConsensusRequest request) {
@@ -231,6 +231,10 @@ public class LogDispatcher {
 
     public long getCurrentSyncIndex() {
       return controller.getCurrentIndex();
+    }
+
+    public long getLastFlushedSyncIndex() {
+      return controller.getLastFlushedIndex();
     }
 
     public Peer getPeer() {
