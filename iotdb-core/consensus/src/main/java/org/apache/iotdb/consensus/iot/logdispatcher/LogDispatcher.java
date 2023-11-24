@@ -150,6 +150,10 @@ public class LogDispatcher {
   }
 
   public synchronized OptionalLong getMinSyncIndex() {
+    return threads.stream().mapToLong(LogDispatcherThread::getCurrentSyncIndex).min();
+  }
+
+  public synchronized OptionalLong getMinFlushedIndex() {
     return threads.stream().mapToLong(LogDispatcherThread::getLastFlushedSyncIndex).min();
   }
 
@@ -348,7 +352,7 @@ public class LogDispatcher {
       // update safely deleted search index to delete outdated info,
       // indicating that insert nodes whose search index are before this value can be deleted
       // safely
-      long currentSafelyDeletedSearchIndex = impl.getCurrentSafelyDeletedSearchIndex();
+      long currentSafelyDeletedSearchIndex = impl.getMinFlushedIndex();
       reader.setSafelyDeletedSearchIndex(currentSafelyDeletedSearchIndex);
       // notify
       if (impl.unblockWrite()) {

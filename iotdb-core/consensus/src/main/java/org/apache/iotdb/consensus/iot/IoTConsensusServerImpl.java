@@ -180,9 +180,7 @@ public class IoTConsensusServerImpl {
           getStateMachineLockTime - consensusWriteStartTime);
       if (needBlockWrite()) {
         logger.info(
-            "[Throttle Down] index:{}, safeIndex:{}",
-            getSearchIndex(),
-            getCurrentSafelyDeletedSearchIndex());
+            "[Throttle Down] index:{}, safeIndex:{}", getSearchIndex(), getMinFlushedIndex());
         try {
           boolean timeout =
               !stateMachineCondition.await(
@@ -211,7 +209,7 @@ public class IoTConsensusServerImpl {
         logger.info(
             "DataRegion[{}]: index after build: safeIndex:{}, searchIndex: {}",
             thisNode.getGroupId(),
-            getCurrentSafelyDeletedSearchIndex(),
+            getMinFlushedIndex(),
             indexedConsensusRequest.getSearchIndex());
       }
       IConsensusRequest planNode = stateMachine.deserializeRequest(indexedConsensusRequest);
@@ -558,7 +556,7 @@ public class IoTConsensusServerImpl {
    * @throws ConsensusGroupModifyPeerException
    */
   public void buildSyncLogChannel(Peer targetPeer) throws ConsensusGroupModifyPeerException {
-    buildSyncLogChannel(targetPeer, getCurrentSafelyDeletedSearchIndex());
+    buildSyncLogChannel(targetPeer, getMinSyncIndex());
   }
 
   public void buildSyncLogChannel(Peer targetPeer, long initialSyncIndex)
@@ -672,8 +670,12 @@ public class IoTConsensusServerImpl {
    * In the case of multiple copies, the minimum synchronization index is selected. In the case of
    * single copies, the current index is selected
    */
-  public long getCurrentSafelyDeletedSearchIndex() {
+  public long getMinSyncIndex() {
     return logDispatcher.getMinSyncIndex().orElseGet(searchIndex::get);
+  }
+
+  public long getMinFlushedIndex() {
+    return logDispatcher.getMinFlushedIndex().orElseGet(searchIndex::get);
   }
 
   public String getStorageDir() {
@@ -693,8 +695,8 @@ public class IoTConsensusServerImpl {
   }
 
   public long getSyncLag() {
-    long safeIndex = getCurrentSafelyDeletedSearchIndex();
-    return getSearchIndex() - safeIndex;
+    long minSyncIndex = getMinSyncIndex();
+    return getSearchIndex() - minSyncIndex;
   }
 
   public IoTConsensusConfig getConfig() {
@@ -799,7 +801,7 @@ public class IoTConsensusServerImpl {
     if (configuration.size() == 1) {
       consensusReqReader.setSafelyDeletedSearchIndex(Long.MAX_VALUE);
     } else {
-      consensusReqReader.setSafelyDeletedSearchIndex(getCurrentSafelyDeletedSearchIndex());
+      consensusReqReader.setSafelyDeletedSearchIndex(getMinFlushedIndex());
     }
   }
 
