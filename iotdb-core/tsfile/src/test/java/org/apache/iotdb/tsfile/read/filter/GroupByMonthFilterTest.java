@@ -194,37 +194,37 @@ public class GroupByMonthFilterTest {
     Statistics statistics = new LongStatistics();
     statistics.setStartTime(0);
     statistics.setEndTime(MS_TO_DAY);
-    assertTrue(filter.satisfy(statistics));
+    assertFalse(filter.canSkip(statistics));
 
     // 1970-01-01 20:00:00 - 1970-01-02 08:00:00
     statistics.setStartTime(MS_TO_DAY / 2);
     statistics.setEndTime(MS_TO_DAY);
-    assertTrue(filter.satisfy(statistics));
+    assertFalse(filter.canSkip(statistics));
 
     // 1970-01-01 20:00:00 - 1970-01-03 08:00:00
     statistics.setStartTime(MS_TO_DAY / 2);
     statistics.setEndTime(MS_TO_DAY * 2);
-    assertTrue(filter.satisfy(statistics));
+    assertFalse(filter.canSkip(statistics));
 
     // 1970-01-02 08:00:00 - 1970-01-03 08:00:00
     statistics.setStartTime(MS_TO_DAY);
     statistics.setEndTime(MS_TO_DAY * 2);
-    assertFalse(filter.satisfy(statistics));
+    assertTrue(filter.canSkip(statistics));
 
     // 1970-02-28 08:00:00 - 1970-03-01 07:59:59
     statistics.setStartTime(5011200000L);
     statistics.setEndTime(5097599000L);
-    assertFalse(filter.satisfy(statistics));
+    assertTrue(filter.canSkip(statistics));
 
     // 1970-03-01 09:00:00 - 1970-03-01 10:00:00
     statistics.setStartTime(5101200000L);
     statistics.setEndTime(5104800000L);
-    assertTrue(filter.satisfy(statistics));
+    assertFalse(filter.canSkip(statistics));
 
     // 1970-05-01 07:00:00 - 1970-05-01 08:00:00
     statistics.setStartTime(10364400000L);
     statistics.setEndTime(10368000000L);
-    assertTrue(filter.satisfy(statistics));
+    assertFalse(filter.canSkip(statistics));
 
     // 1970-01-02 07:59:59
     assertTrue(filter.satisfy(86399000L, null));

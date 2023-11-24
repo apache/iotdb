@@ -304,7 +304,7 @@ public class SeriesScanUtil {
           skipCurrentChunk();
           paginationController.consumeOffset(rowCount);
         }
-      } else if (!queryFilter.satisfy(statistics)) {
+      } else if (queryFilter.canSkip(statistics)) {
         skipCurrentChunk();
       }
     }
@@ -1059,7 +1059,7 @@ public class SeriesScanUtil {
           skipCurrentFile();
           paginationController.consumeOffset(rowCount);
         }
-      } else if (!queryFilter.satisfy(statistics)) {
+      } else if (queryFilter.canSkip(statistics)) {
         skipCurrentFile();
       }
     }

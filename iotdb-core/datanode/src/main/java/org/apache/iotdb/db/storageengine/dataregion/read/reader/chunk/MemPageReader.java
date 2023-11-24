@@ -95,18 +95,18 @@ public class MemPageReader implements IPageReader {
     return batchData.flip();
   }
 
-  private boolean pageSatisfy() {
+  private boolean pageCanSkip() {
     Statistics<? extends Serializable> statistics = getStatistics();
     if (valueFilter == null || valueFilter.allSatisfy(statistics)) {
       long rowCount = statistics.getCount();
       if (paginationController.hasCurOffset(rowCount)) {
         paginationController.consumeOffset(rowCount);
-        return false;
-      } else {
         return true;
+      } else {
+        return false;
       }
     } else {
-      return valueFilter.satisfy(statistics);
+      return valueFilter.canSkip(statistics);
     }
   }
 
@@ -116,7 +116,7 @@ public class MemPageReader implements IPageReader {
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(dataType));
     TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
     ColumnBuilder valueBuilder = builder.getColumnBuilder(0);
-    if (pageSatisfy()) {
+    if (!pageCanSkip()) {
       switch (dataType) {
         case BOOLEAN:
           doWithBoolean(builder, timeBuilder, valueBuilder);

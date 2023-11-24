@@ -126,39 +126,45 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
     return pageData.flip();
   }
 
-  private boolean pageSatisfy() {
-    Statistics statistics = getStatistics();
-    if (filter == null || filter.allSatisfy(statistics)) {
-      // For aligned series, When we only query some measurements under an aligned device, if any
-      // values of these queried measurements has the same value count as the time column, the
-      // timestamp will be selected.
-      // NOTE: if we change the query semantic in the future for aligned series, we need to remove
-      // this check here.
-      long rowCount = getTimeStatistics().getCount();
-      boolean canUse = queryAllSensors || getValueStatisticsList().isEmpty();
-      if (!canUse) {
-        for (Statistics vStatistics : getValueStatisticsList()) {
-          if (vStatistics != null && !vStatistics.hasNullValue(rowCount)) {
-            canUse = true;
-            break;
-          }
-        }
-      }
-      if (!canUse) {
-        return true;
-      }
-      // When the number of points in all value pages is the same as that in the time page, it means
-      // that there is no null value, and all timestamps will be selected.
-      if (paginationController.hasCurOffset(rowCount)) {
-        paginationController.consumeOffset(rowCount);
-        return false;
-      } else {
-        return true;
-      }
-    } else {
-      // TODO accept valueStatisticsList to filter
-      return filter.satisfy(statistics);
+  private boolean pageCanSkip() {
+    Statistics<? extends Serializable> statistics = getStatistics();
+    if (filter != null && !filter.allSatisfy(statistics)) {
+      return filter.canSkip(statistics);
     }
+
+    if (!canSkipOffsetByStatistics()) {
+      return false;
+    }
+
+    long rowCount = getTimeStatistics().getCount();
+    if (paginationController.hasCurOffset(rowCount)) {
+      paginationController.consumeOffset(rowCount);
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  private boolean canSkipOffsetByStatistics() {
+    if (queryAllSensors || getValueStatisticsList().isEmpty()) {
+      return true;
+    }
+
+    // For aligned series, When we only query some measurements under an aligned device, if any
+    // values of these queried measurements has the same value count as the time column, the
+    // timestamp will be selected.
+    // NOTE: if we change the query semantic in the future for aligned series, we need to remove
+    // this check here.
+    long rowCount = getTimeStatistics().getCount();
+    for (Statistics<? extends Serializable> vStatistics : getValueStatisticsList()) {
+      if (vStatistics != null && vStatistics.hasNullValue(rowCount)) {
+        return false;
+      }
+    }
+
+    // When the number of points in all value pages is the same as that in the time page, it means
+    // that there is no null value, and all timestamps will be selected.
+    return true;
   }
 
   public IPointReader getLazyPointReader() throws IOException {
@@ -184,7 +190,7 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
 
   @Override
   public TsBlock getAllSatisfiedData() throws IOException {
-    if (!pageSatisfy()) {
+    if (pageCanSkip()) {
       return builder.build();
     }
 
@@ -374,25 +380,25 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
   }
 
   @Override
-  public Statistics getStatistics() {
+  public Statistics<? extends Serializable> getStatistics() {
     return valuePageReaderList.size() == 1 && valuePageReaderList.get(0) != null
         ? valuePageReaderList.get(0).getStatistics()
         : timePageReader.getStatistics();
   }
 
   @Override
-  public Statistics getStatistics(int index) {
+  public Statistics<? extends Serializable> getStatistics(int index) {
     ValuePageReader valuePageReader = valuePageReaderList.get(index);
     return valuePageReader == null ? null : valuePageReader.getStatistics();
   }
 
   @Override
-  public Statistics getTimeStatistics() {
+  public Statistics<? extends Serializable> getTimeStatistics() {
     return timePageReader.getStatistics();
   }
 
-  private List<Statistics<Serializable>> getValueStatisticsList() {
-    List<Statistics<Serializable>> valueStatisticsList = new ArrayList<>();
+  private List<Statistics<? extends Serializable>> getValueStatisticsList() {
+    List<Statistics<? extends Serializable>> valueStatisticsList = new ArrayList<>();
     for (ValuePageReader v : valuePageReaderList) {
       valueStatisticsList.add(v == null ? null : v.getStatistics());
     }

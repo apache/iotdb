@@ -165,7 +165,7 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
       Statistics statistics = firstTimeSeriesMetadata.getStatistics();
       if (queryFilter == null || queryFilter.allSatisfy(statistics)) {
         skipOffsetByTimeSeriesMetadata();
-      } else if (!queryFilter.satisfy(statistics)) {
+      } else if (queryFilter.canSkip(statistics)) {
         skipCurrentFile();
       }
     }
@@ -213,7 +213,7 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
       Statistics statistics = firstChunkMetadata.getStatistics();
       if (queryFilter == null || queryFilter.allSatisfy(statistics)) {
         skipOffsetByChunkMetadata();
-      } else if (!queryFilter.satisfy(statistics)) {
+      } else if (queryFilter.canSkip(statistics)) {
         skipCurrentChunk();
       }
     }

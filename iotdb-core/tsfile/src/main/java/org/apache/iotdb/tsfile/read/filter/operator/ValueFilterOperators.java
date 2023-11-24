@@ -35,6 +35,7 @@ import org.apache.iotdb.tsfile.utils.RegexUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 import java.util.Set;
@@ -101,6 +102,7 @@ public final class ValueFilterOperators {
       super(measurement, constant);
     }
 
+    @SuppressWarnings("unchecked")
     public ValueEq(ByteBuffer buffer) {
       this(ReadWriteIOUtils.readString(buffer), (T) ReadWriteIOUtils.readObject(buffer));
     }
@@ -111,16 +113,20 @@ public final class ValueFilterOperators {
     }
 
     @Override
-    public boolean satisfy(Statistics statistics) {
+    @SuppressWarnings("unchecked")
+    public boolean canSkip(Statistics<? extends Serializable> statistics) {
       if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
-        return true;
+        return false;
       }
-      return constant.compareTo((T) statistics.getMinValue()) >= 0
-          && constant.compareTo((T) statistics.getMaxValue()) <= 0;
+
+      // drop if value < min || value > max
+      return constant.compareTo((T) statistics.getMinValue()) < 0
+          || constant.compareTo((T) statistics.getMaxValue()) > 0;
     }
 
     @Override
-    public boolean allSatisfy(Statistics statistics) {
+    @SuppressWarnings("unchecked")
+    public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
       if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
         return false;
       }
@@ -153,6 +159,7 @@ public final class ValueFilterOperators {
       super(measurement, constant);
     }
 
+    @SuppressWarnings("unchecked")
     public ValueNotEq(ByteBuffer buffer) {
       this(ReadWriteIOUtils.readString(buffer), (T) ReadWriteIOUtils.readObject(buffer));
     }
@@ -163,16 +170,20 @@ public final class ValueFilterOperators {
     }
 
     @Override
-    public boolean satisfy(Statistics statistics) {
+    @SuppressWarnings("unchecked")
+    public boolean canSkip(Statistics<? extends Serializable> statistics) {
       if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
-        return true;
+        return false;
       }
-      return !(constant.compareTo((T) statistics.getMinValue()) == 0
-          && constant.compareTo((T) statistics.getMaxValue()) == 0);
+
+      // drop if this is a column where min = max = value
+      return constant.compareTo((T) statistics.getMinValue()) == 0
+          && constant.compareTo((T) statistics.getMaxValue()) == 0;
     }
 
     @Override
-    public boolean allSatisfy(Statistics statistics) {
+    @SuppressWarnings("unchecked")
+    public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
       if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
         return false;
       }
@@ -203,25 +214,31 @@ public final class ValueFilterOperators {
       super(measurement, Objects.requireNonNull(constant, CONSTANT_CANNOT_BE_NULL_MSG));
     }
 
+    @SuppressWarnings("unchecked")
     public ValueLt(ByteBuffer buffer) {
       this(ReadWriteIOUtils.readString(buffer), (T) ReadWriteIOUtils.readObject(buffer));
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public boolean satisfy(long time, Object value) {
       return constant.compareTo((T) value) > 0;
     }
 
     @Override
-    public boolean satisfy(Statistics statistics) {
+    @SuppressWarnings("unchecked")
+    public boolean canSkip(Statistics<? extends Serializable> statistics) {
       if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
-        return true;
+        return false;
       }
-      return constant.compareTo((T) statistics.getMinValue()) > 0;
+
+      // drop if value <= min
+      return constant.compareTo((T) statistics.getMinValue()) <= 0;
     }
 
     @Override
-    public boolean allSatisfy(Statistics statistics) {
+    @SuppressWarnings("unchecked")
+    public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
       if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
         return false;
       }
@@ -251,25 +268,31 @@ public final class ValueFilterOperators {
       super(measurement, Objects.requireNonNull(constant, CONSTANT_CANNOT_BE_NULL_MSG));
     }
 
+    @SuppressWarnings("unchecked")
     public ValueLtEq(ByteBuffer buffer) {
       this(ReadWriteIOUtils.readString(buffer), (T) ReadWriteIOUtils.readObject(buffer));
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public boolean satisfy(long time, Object value) {
       return constant.compareTo((T) value) >= 0;
     }
 
     @Override
-    public boolean satisfy(Statistics statistics) {
+    @SuppressWarnings("unchecked")
+    public boolean canSkip(Statistics<? extends Serializable> statistics) {
       if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
-        return true;
+        return false;
       }
-      return constant.compareTo((T) statistics.getMinValue()) >= 0;
+
+      // drop if value < min
+      return constant.compareTo((T) statistics.getMinValue()) < 0;
     }
 
     @Override
-    public boolean allSatisfy(Statistics statistics) {
+    @SuppressWarnings("unchecked")
+    public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
       if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
         return false;
       }
@@ -299,25 +322,31 @@ public final class ValueFilterOperators {
       super(measurement, Objects.requireNonNull(constant, CONSTANT_CANNOT_BE_NULL_MSG));
     }
 
+    @SuppressWarnings("unchecked")
     public ValueGt(ByteBuffer buffer) {
       this(ReadWriteIOUtils.readString(buffer), (T) ReadWriteIOUtils.readObject(buffer));
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public boolean satisfy(long time, Object value) {
       return constant.compareTo((T) value) < 0;
     }
 
     @Override
-    public boolean satisfy(Statistics statistics) {
+    @SuppressWarnings("unchecked")
+    public boolean canSkip(Statistics<? extends Serializable> statistics) {
       if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
-        return true;
+        return false;
       }
-      return constant.compareTo((T) statistics.getMaxValue()) < 0;
+
+      // drop if value >= max
+      return constant.compareTo((T) statistics.getMaxValue()) >= 0;
     }
 
     @Override
-    public boolean allSatisfy(Statistics statistics) {
+    @SuppressWarnings("unchecked")
+    public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
       if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
         return false;
       }
@@ -347,25 +376,31 @@ public final class ValueFilterOperators {
       super(measurement, Objects.requireNonNull(constant, CONSTANT_CANNOT_BE_NULL_MSG));
     }
 
+    @SuppressWarnings("unchecked")
     public ValueGtEq(ByteBuffer buffer) {
       this(ReadWriteIOUtils.readString(buffer), (T) ReadWriteIOUtils.readObject(buffer));
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public boolean satisfy(long time, Object value) {
       return constant.compareTo((T) value) <= 0;
     }
 
     @Override
-    public boolean satisfy(Statistics statistics) {
+    @SuppressWarnings("unchecked")
+    public boolean canSkip(Statistics<? extends Serializable> statistics) {
       if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
-        return true;
+        return false;
       }
-      return constant.compareTo((T) statistics.getMaxValue()) <= 0;
+
+      // drop if value > max
+      return constant.compareTo((T) statistics.getMaxValue()) > 0;
     }
 
     @Override
-    public boolean allSatisfy(Statistics statistics) {
+    @SuppressWarnings("unchecked")
+    public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
       if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
         return false;
       }
@@ -439,6 +474,7 @@ public final class ValueFilterOperators {
       super(measurement, min, max);
     }
 
+    @SuppressWarnings("unchecked")
     public ValueBetweenAnd(ByteBuffer buffer) {
       this(
           ReadWriteIOUtils.readString(buffer),
@@ -447,26 +483,29 @@ public final class ValueFilterOperators {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public boolean satisfy(long time, Object value) {
       return min.compareTo((T) value) <= 0 && max.compareTo((T) value) >= 0;
     }
 
     @Override
-    public boolean satisfy(Statistics statistics) {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
-        return true;
-      }
-      return (((T) statistics.getMaxValue()).compareTo(min) >= 0
-          && ((T) statistics.getMinValue()).compareTo(max) <= 0);
-    }
-
-    @Override
-    public boolean allSatisfy(Statistics statistics) {
+    @SuppressWarnings("unchecked")
+    public boolean canSkip(Statistics<? extends Serializable> statistics) {
       if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
         return false;
       }
-      return (((T) statistics.getMinValue()).compareTo(min) >= 0
-          && ((T) statistics.getMaxValue()).compareTo(max) <= 0);
+      return ((T) statistics.getMaxValue()).compareTo(min) >= 0
+          && ((T) statistics.getMinValue()).compareTo(max) <= 0;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
+      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
+        return false;
+      }
+      return ((T) statistics.getMinValue()).compareTo(min) >= 0
+          && ((T) statistics.getMaxValue()).compareTo(max) <= 0;
     }
 
     @Override
@@ -492,6 +531,7 @@ public final class ValueFilterOperators {
       super(measurement, min, max);
     }
 
+    @SuppressWarnings("unchecked")
     public ValueNotBetweenAnd(ByteBuffer buffer) {
       this(
           ReadWriteIOUtils.readString(buffer),
@@ -500,26 +540,30 @@ public final class ValueFilterOperators {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public boolean satisfy(long time, Object value) {
       return min.compareTo((T) value) > 0 || max.compareTo((T) value) < 0;
     }
 
     @Override
-    public boolean satisfy(Statistics statistics) {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
-        return true;
-      }
-      return (((T) statistics.getMinValue()).compareTo(min) < 0
-          || ((T) statistics.getMaxValue()).compareTo(max) > 0);
-    }
-
-    @Override
-    public boolean allSatisfy(Statistics statistics) {
+    @SuppressWarnings("unchecked")
+    public boolean canSkip(Statistics<? extends Serializable> statistics) {
       if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
         return false;
       }
-      return (((T) statistics.getMinValue()).compareTo(max) > 0
-          || ((T) statistics.getMaxValue()).compareTo(min) < 0);
+
+      return ((T) statistics.getMinValue()).compareTo(min) >= 0
+          && ((T) statistics.getMaxValue()).compareTo(max) <= 0;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
+      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
+        return false;
+      }
+      return ((T) statistics.getMinValue()).compareTo(max) > 0
+          || ((T) statistics.getMaxValue()).compareTo(min) < 0;
     }
 
     @Override

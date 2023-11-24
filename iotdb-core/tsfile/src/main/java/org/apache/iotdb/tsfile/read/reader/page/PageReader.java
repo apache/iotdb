@@ -116,7 +116,7 @@ public class PageReader implements IPageReader {
   @Override
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
     BatchData pageData = BatchDataFactory.createBatchData(dataType, ascending, false);
-    if (filter == null || filter.satisfy(getStatistics())) {
+    if (filter == null || !filter.canSkip(getStatistics())) {
       while (timeDecoder.hasNext(timeBuffer)) {
         long timestamp = timeDecoder.readLong(timeBuffer);
         switch (dataType) {
@@ -164,18 +164,18 @@ public class PageReader implements IPageReader {
     return pageData.flip();
   }
 
-  private boolean pageSatisfy() {
+  private boolean pageCanSkip() {
     Statistics statistics = getStatistics();
     if (filter == null || filter.allSatisfy(statistics)) {
       long rowCount = statistics.getCount();
       if (paginationController.hasCurOffset(rowCount)) {
         paginationController.consumeOffset(rowCount);
-        return false;
-      } else {
         return true;
+      } else {
+        return false;
       }
     } else {
-      return filter.satisfy(statistics);
+      return filter.canSkip(statistics);
     }
   }
 
@@ -184,7 +184,7 @@ public class PageReader implements IPageReader {
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(dataType));
     TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
     ColumnBuilder valueBuilder = builder.getColumnBuilder(0);
-    if (pageSatisfy()) {
+    if (!pageCanSkip()) {
       switch (dataType) {
         case BOOLEAN:
           while (timeDecoder.hasNext(timeBuffer)) {

@@ -36,6 +36,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.List;
 
@@ -70,7 +71,7 @@ public interface Filter {
    * @param statistics statistics with min time, max time, min value, max value.
    * @return false if there are no data points satisfied with the filter
    */
-  boolean satisfy(Statistics statistics);
+  boolean canSkip(Statistics<? extends Serializable> statistics);
 
   /**
    * To examine whether all data points are satisfied with the filter.
@@ -78,7 +79,7 @@ public interface Filter {
    * @param statistics statistics with min time, max time, min value, max value.
    * @return true if all data points are satisfied with the filter
    */
-  boolean allSatisfy(Statistics statistics);
+  boolean allSatisfy(Statistics<? extends Serializable> statistics);
 
   /**
    * To examine whether the min time and max time are satisfied with the filter.

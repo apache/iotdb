@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -54,23 +55,23 @@ public class Not implements Filter {
   }
 
   @Override
-  public boolean satisfy(Statistics statistics) {
-    throw new UnsupportedOperationException(CONTAIN_NOT_ERR_MSG + this);
+  public boolean canSkip(Statistics<? extends Serializable> statistics) {
+    throw new IllegalArgumentException(CONTAIN_NOT_ERR_MSG + this);
   }
 
   @Override
-  public boolean allSatisfy(Statistics statistics) {
-    throw new UnsupportedOperationException(CONTAIN_NOT_ERR_MSG + this);
+  public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
+    throw new IllegalArgumentException(CONTAIN_NOT_ERR_MSG + this);
   }
 
   @Override
   public boolean satisfyStartEndTime(long startTime, long endTime) {
-    throw new UnsupportedOperationException(CONTAIN_NOT_ERR_MSG + this);
+    throw new IllegalArgumentException(CONTAIN_NOT_ERR_MSG + this);
   }
 
   @Override
   public boolean containStartEndTime(long startTime, long endTime) {
-    throw new UnsupportedOperationException(CONTAIN_NOT_ERR_MSG + this);
+    throw new IllegalArgumentException(CONTAIN_NOT_ERR_MSG + this);
   }
 
   public Filter getFilter() {

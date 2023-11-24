@@ -47,8 +47,7 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
   private final AlignedChunkMetadata chunkMetadata;
 
   // only used for limit and offset push down optimizer, if we select all columns from aligned
-  // device, we
-  // can use statistics to skip.
+  // device, we can use statistics to skip.
   // it's only exact while using limit & offset push down
   private final boolean queryAllSensors;
 
@@ -106,44 +105,51 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
     }
   }
 
-  private boolean pageSatisfy() {
+  private boolean pageCanSkip() {
     Statistics<? extends Serializable> statistics = getStatistics();
-    if (valueFilter == null || valueFilter.allSatisfy(statistics)) {
-      // For aligned series, When we only query some measurements under an aligned device, if any
-      // values of these queried measurements has the same value count as the time column, the
-      // timestamp will be selected.
-      // NOTE: if we change the query semantic in the future for aligned series, we need to remove
-      // this check here.
-      long rowCount = getTimeStatistics().getCount();
-      boolean canUse = queryAllSensors || getValueStatisticsList().isEmpty();
-      if (!canUse) {
-        for (Statistics<? extends Serializable> vStatistics : getValueStatisticsList()) {
-          if (vStatistics != null && !vStatistics.hasNullValue(rowCount)) {
-            canUse = true;
-            break;
-          }
-        }
-      }
-      if (!canUse) {
-        return true;
-      }
-      // When the number of points in all value pages is the same as that in the time page, it means
-      // that there is no null value, and all timestamps will be selected.
-      if (paginationController.hasCurOffset(rowCount)) {
-        paginationController.consumeOffset(rowCount);
-        return false;
-      } else {
-        return true;
-      }
-    } else {
-      return valueFilter.satisfy(statistics);
+    if (valueFilter != null && !valueFilter.allSatisfy(statistics)) {
+      return valueFilter.canSkip(statistics);
     }
+
+    if (!canSkipOffsetByStatistics()) {
+      return false;
+    }
+
+    long rowCount = getTimeStatistics().getCount();
+    if (paginationController.hasCurOffset(rowCount)) {
+      paginationController.consumeOffset(rowCount);
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  private boolean canSkipOffsetByStatistics() {
+    if (queryAllSensors || getValueStatisticsList().isEmpty()) {
+      return true;
+    }
+
+    // For aligned series, When we only query some measurements under an aligned device, if any
+    // values of these queried measurements has the same value count as the time column, the
+    // timestamp will be selected.
+    // NOTE: if we change the query semantic in the future for aligned series, we need to remove
+    // this check here.
+    long rowCount = getTimeStatistics().getCount();
+    for (Statistics<? extends Serializable> vStatistics : getValueStatisticsList()) {
+      if (vStatistics != null && vStatistics.hasNullValue(rowCount)) {
+        return false;
+      }
+    }
+
+    // When the number of points in all value pages is the same as that in the time page, it means
+    // that there is no null value, and all timestamps will be selected.
+    return true;
   }
 
   @Override
   public TsBlock getAllSatisfiedData() {
     builder.reset();
-    if (!pageSatisfy()) {
+    if (pageCanSkip()) {
       return builder.build();
     }
 

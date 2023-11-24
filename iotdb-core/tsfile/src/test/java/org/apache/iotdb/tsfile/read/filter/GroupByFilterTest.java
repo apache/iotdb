@@ -44,47 +44,47 @@ public class GroupByFilterTest {
     Statistics statistics = new LongStatistics();
     statistics.setStartTime(0);
     statistics.setEndTime(7);
-    assertFalse(groupByFilter.satisfy(statistics));
+    assertTrue(groupByFilter.canSkip(statistics));
 
     statistics.setStartTime(8 + 30 * 24 + 3 + 6 + 1);
     statistics.setEndTime(8 + 30 * 24 + 3 + 6 + 2);
-    assertFalse(groupByFilter.satisfy(statistics));
+    assertTrue(groupByFilter.canSkip(statistics));
 
     statistics.setStartTime(0);
     statistics.setEndTime(9);
-    assertTrue(groupByFilter.satisfy(statistics));
+    assertFalse(groupByFilter.canSkip(statistics));
 
     statistics.setStartTime(32);
     statistics.setEndTime(34);
-    assertTrue(groupByFilter.satisfy(statistics));
+    assertFalse(groupByFilter.canSkip(statistics));
 
     statistics.setStartTime(32);
     statistics.setEndTime(36);
-    assertTrue(groupByFilter.satisfy(statistics));
+    assertFalse(groupByFilter.canSkip(statistics));
 
     statistics.setStartTime(36);
     statistics.setEndTime(37);
-    assertFalse(groupByFilter.satisfy(statistics));
+    assertTrue(groupByFilter.canSkip(statistics));
 
     statistics.setStartTime(36);
     statistics.setEndTime(55);
-    assertFalse(groupByFilter.satisfy(statistics));
+    assertTrue(groupByFilter.canSkip(statistics));
 
     statistics.setStartTime(35);
     statistics.setEndTime(56);
-    assertTrue(groupByFilter.satisfy(statistics));
+    assertFalse(groupByFilter.canSkip(statistics));
 
     statistics.setStartTime(35);
     statistics.setEndTime(58);
-    assertTrue(groupByFilter.satisfy(statistics));
+    assertFalse(groupByFilter.canSkip(statistics));
 
     statistics.setStartTime(8 + 30 * 24 + 3 + 1);
     statistics.setEndTime(8 + 30 * 24 + 5);
-    assertFalse(groupByFilter.satisfy(statistics));
+    assertTrue(groupByFilter.canSkip(statistics));
 
     statistics.setStartTime(8 + 30 * 24 + 3 + 1);
     statistics.setEndTime(8 + 30 * 24 + 8);
-    assertFalse(groupByFilter.satisfy(statistics));
+    assertTrue(groupByFilter.canSkip(statistics));
   }
 
   @Test

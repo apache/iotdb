@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.OperatorType;
 import org.apache.iotdb.tsfile.read.filter.operator.base.BinaryLogicalFilter;
 
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -45,12 +46,14 @@ public class And extends BinaryLogicalFilter {
   }
 
   @Override
-  public boolean satisfy(Statistics statistics) {
-    return left.satisfy(statistics) && right.satisfy(statistics);
+  public boolean canSkip(Statistics<? extends Serializable> statistics) {
+    // we can drop a chunk of records if we know that either the left or the right predicate agrees
+    // that no matter what we don't need this chunk.
+    return left.canSkip(statistics) || right.canSkip(statistics);
   }
 
   @Override
-  public boolean allSatisfy(Statistics statistics) {
+  public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
     return left.allSatisfy(statistics) && right.allSatisfy(statistics);
   }
 
