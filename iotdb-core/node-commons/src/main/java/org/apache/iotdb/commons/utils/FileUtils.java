@@ -36,7 +36,7 @@ import java.util.Arrays;
 import java.util.Objects;
 
 public class FileUtils {
-  private static final Logger logger = LoggerFactory.getLogger(FileUtils.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(FileUtils.class);
 
   private static final int BUFFER_SIZE = 1024;
 
@@ -47,7 +47,7 @@ public class FileUtils {
       Files.deleteIfExists(file.toPath());
       return true;
     } catch (IOException e) {
-      logger.error(e.getMessage(), e);
+      LOGGER.error(e.getMessage(), e);
       return false;
     }
   }
@@ -61,9 +61,9 @@ public class FileUtils {
     try {
       Files.delete(folder.toPath());
     } catch (NoSuchFileException | DirectoryNotEmptyException e) {
-      logger.warn("{}: {}", e.getMessage(), Arrays.toString(folder.list()), e);
+      LOGGER.warn("{}: {}", e.getMessage(), Arrays.toString(folder.list()), e);
     } catch (Exception e) {
-      logger.warn("{}: {}", e.getMessage(), folder.getName(), e);
+      LOGGER.warn("{}: {}", e.getMessage(), folder.getName(), e);
     }
   }
 
@@ -73,27 +73,27 @@ public class FileUtils {
     if (parentFolder.isDirectory()
         && Objects.requireNonNull(parentFolder.listFiles()).length == 0) {
       if (!parentFolder.delete()) {
-        logger.warn("Delete folder failed: {}", parentFolder.getAbsolutePath());
+        LOGGER.warn("Delete folder failed: {}", parentFolder.getAbsolutePath());
       }
     }
   }
 
   public static boolean copyDir(File sourceDir, File targetDir) throws IOException {
     if (!sourceDir.exists() || !sourceDir.isDirectory()) {
-      logger.error(
+      LOGGER.error(
           "Failed to copy folder, because source folder [{}] doesn't exist.",
           sourceDir.getAbsolutePath());
       return false;
     }
     if (!targetDir.exists()) {
       if (!targetDir.mkdirs()) {
-        logger.error(
+        LOGGER.error(
             "Failed to copy folder, because failed to create target folder[{}].",
             targetDir.getAbsolutePath());
         return false;
       }
     } else if (!targetDir.isDirectory()) {
-      logger.error(
+      LOGGER.error(
           "Failed to copy folder, because target folder [{}] already exist.",
           targetDir.getAbsolutePath());
       return false;
