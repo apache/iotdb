@@ -38,7 +38,6 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
-import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Collections;
 import java.util.HashMap;
@@ -50,7 +49,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
-public class IoTDBPipeDataSyncIT {
+public class IoTDBPipeThriftSourceIT {
 
   private BaseEnv senderEnv;
   private BaseEnv receiverEnv;
@@ -75,7 +74,7 @@ public class IoTDBPipeDataSyncIT {
   }
 
   @Test
-  public void testEnv() throws Exception {
+  public void testThriftConnector() throws Exception {
     DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     String receiverIp = receiverDataNode.getIp();
@@ -107,34 +106,65 @@ public class IoTDBPipeDataSyncIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.vehicle.d0(time, s1) values (0, 1)");
-      } catch (SQLException e) {
-        e.printStackTrace();
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv, "insert into root.vehicle.d0(time, s1) values (0, 1)")) {
         return;
       }
 
-      try (Connection connection = receiverEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        await()
-            .atMost(600, TimeUnit.SECONDS)
-            .untilAsserted(
-                () -> {
-                  try {
-                    TestUtils.assertResultSetEqual(
-                        statement.executeQuery("select * from root.**"),
-                        "Time,root.vehicle.d0.s1,",
-                        Collections.singleton("0,1.0,"));
-                  } catch (Exception e) {
-                    // Handle the exception generated during "executeQuery"
-                    Assert.fail();
-                  }
-                });
-      } catch (Exception e) {
-        e.printStackTrace();
-        fail(e.getMessage());
+      TestUtils.assertDataOnEnv(
+          receiverEnv,
+          "select * from root.**",
+          "Time,root.vehicle.d0.s1,",
+          Collections.singleton("0,1.0,"));
+    }
+  }
+
+  @Test
+  public void testLegacyConnector() throws Exception {
+    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    String receiverIp = receiverDataNode.getIp();
+    int receiverPort = receiverDataNode.getPort();
+
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      Map<String, String> extractorAttributes = new HashMap<>();
+      Map<String, String> processorAttributes = new HashMap<>();
+      Map<String, String> connectorAttributes = new HashMap<>();
+
+      extractorAttributes.put("source.realtime.mode", "log");
+
+      connectorAttributes.put("sink", "iotdb-legacy-pipe-sink");
+      connectorAttributes.put("sink.batch.enable", "false");
+      connectorAttributes.put("sink.ip", receiverIp);
+      connectorAttributes.put("sink.port", Integer.toString(receiverPort));
+
+      // This version does not matter since it's no longer checked by the legacy receiver
+      connectorAttributes.put("sink.version", "1.3");
+
+      TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("testPipe", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
+
+      // Do not fail if the failure has nothing to do with pipe
+      // Because the failures will randomly generate due to resource limitation
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv, "insert into root.vehicle.d0(time, s1) values (0, 1)")) {
+        return;
       }
+
+      TestUtils.assertDataOnEnv(
+          receiverEnv,
+          "select * from root.**",
+          "Time,root.vehicle.d0.s1,",
+          Collections.singleton("0,1.0,"));
     }
   }
 
@@ -166,21 +196,18 @@ public class IoTDBPipeDataSyncIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
-      try (Connection connection = receiverEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        statement.execute("create aligned timeseries root.sg.d1(s0 float, s1 float)");
-      } catch (SQLException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          receiverEnv, "create aligned timeseries root.sg.d1(s0 float, s1 float)")) {
+        return;
       }
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        statement.execute("create aligned timeseries root.sg.d1(s0 float, s1 float)");
-        statement.execute("insert into root.sg.d1(time, s0, s1) values (3, null, 25.34)");
-      } catch (SQLException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv, "create aligned timeseries root.sg.d1(s0 float, s1 float)")) {
+        return;
+      }
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv, "insert into root.sg.d1(time, s0, s1) values (3, null, 25.34)")) {
+        return;
       }
 
       try (Connection connection = receiverEnv.getConnection();

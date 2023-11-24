@@ -44,10 +44,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
-
-import static org.awaitility.Awaitility.await;
-import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
@@ -120,30 +116,8 @@ public class IoTDBPipeConnectorParallelIT {
       expectedResSet.add("1,2.0,");
       expectedResSet.add("2,3.0,");
       expectedResSet.add("3,4.0,");
-      assertDataOnReceiver(receiverEnv, expectedResSet);
-      assertDataOnReceiver(receiverEnv, expectedResSet);
-    }
-  }
-
-  private void assertDataOnReceiver(BaseEnv receiverEnv, Set<String> expectedResSet) {
-    try (Connection connection = receiverEnv.getConnection();
-        Statement statement = connection.createStatement()) {
-      await()
-          .atMost(600, TimeUnit.SECONDS)
-          .untilAsserted(
-              () -> {
-                try {
-                  TestUtils.assertResultSetEqual(
-                      statement.executeQuery("select * from root.**"),
-                      "Time,root.sg1.d1.s1,",
-                      expectedResSet);
-                } catch (Exception e) {
-                  Assert.fail();
-                }
-              });
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
+      TestUtils.assertDataOnEnv(
+          receiverEnv, "select * from root.**", "Time,root.sg1.d1.s1,", expectedResSet);
     }
   }
 }
