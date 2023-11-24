@@ -159,7 +159,7 @@ public class PipeMetaKeeper {
     return pipeNameToPipeMetaMap.values().stream()
         .filter(
             pipeMeta ->
-                PipeStatus.DROPPED.equals(pipeMeta.getRuntimeMeta().getStatus().get())
+                PipeStatus.STOPPED.equals(pipeMeta.getRuntimeMeta().getStatus().get())
                     && !pipeMeta.getRuntimeMeta().getIsStoppedByRuntimeException())
         .count();
   }
@@ -168,7 +168,7 @@ public class PipeMetaKeeper {
     return pipeNameToPipeMetaMap.values().stream()
         .filter(
             pipeMeta ->
-                PipeStatus.DROPPED.equals(pipeMeta.getRuntimeMeta().getStatus().get())
+                PipeStatus.STOPPED.equals(pipeMeta.getRuntimeMeta().getStatus().get())
                     && pipeMeta.getRuntimeMeta().getIsStoppedByRuntimeException())
         .count();
   }
