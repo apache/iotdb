@@ -26,6 +26,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.Arrays;
@@ -145,7 +146,11 @@ public class PipeRow implements Row {
 
   @Override
   public void setNull(int columnIndex) {
-    bitMaps[columnIndex].mark(rowIndex);
+    bitMaps[columnIndex] =
+        new BitMap(
+            bitMaps[columnIndex].getSize(),
+            BytesUtils.deepCopy(bitMaps[columnIndex].getByteArray()));
+    bitMaps[columnIndex].mark(columnIndex);
   }
 
   @Override
