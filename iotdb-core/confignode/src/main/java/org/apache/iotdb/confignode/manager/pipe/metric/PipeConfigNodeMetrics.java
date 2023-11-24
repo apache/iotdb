@@ -23,11 +23,11 @@ import org.apache.iotdb.confignode.manager.pipe.PipeManager;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 
-public class PipeMetrics implements IMetricSet {
+public class PipeConfigNodeMetrics implements IMetricSet {
 
   private final PipeTaskInfoMetrics pipeTaskInfoMetrics;
 
-  public PipeMetrics(PipeManager pipeManager) {
+  public PipeConfigNodeMetrics(PipeManager pipeManager) {
     this.pipeTaskInfoMetrics = new PipeTaskInfoMetrics(pipeManager);
   }
 

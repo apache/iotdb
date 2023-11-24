@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.metric;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 
-public class PipeMetrics implements IMetricSet {
+public class PipeDataNodeMetrics implements IMetricSet {
 
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
@@ -54,18 +54,18 @@ public class PipeMetrics implements IMetricSet {
 
   private static class PipeMetricsHolder {
 
-    private static final PipeMetrics INSTANCE = new PipeMetrics();
+    private static final PipeDataNodeMetrics INSTANCE = new PipeDataNodeMetrics();
 
     private PipeMetricsHolder() {
       // empty constructor
     }
   }
 
-  public static PipeMetrics getInstance() {
-    return PipeMetrics.PipeMetricsHolder.INSTANCE;
+  public static PipeDataNodeMetrics getInstance() {
+    return PipeDataNodeMetrics.PipeMetricsHolder.INSTANCE;
   }
 
-  private PipeMetrics() {
+  private PipeDataNodeMetrics() {
     // empty constructor
   }
 }
