@@ -807,7 +807,7 @@ struct TLicenseContentResp {
 }
 
 enum TActivationControl {
-  ACTIVE_NODE_NOT_EXIST
+  ALL_LICENSE_FILE_DELETED
 }
 
 
