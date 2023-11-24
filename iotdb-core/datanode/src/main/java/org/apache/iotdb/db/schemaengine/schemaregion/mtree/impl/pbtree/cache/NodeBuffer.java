@@ -31,7 +31,7 @@ public class NodeBuffer implements INodeBuffer {
 
   private static final int MAP_NUM = 17;
 
-  private IDatabaseMNode<ICachedMNode> updatedStorageGroupMNode;
+  private IDatabaseMNode<ICachedMNode> updatedDatabaseMNode;
   private final Map<CacheEntry, ICachedMNode>[] maps = new Map[MAP_NUM];
 
   private final Map<Integer, NodeBufferIterator> currentIteratorMap = new ConcurrentHashMap<>();
@@ -43,13 +43,20 @@ public class NodeBuffer implements INodeBuffer {
   }
 
   @Override
-  public IDatabaseMNode<ICachedMNode> getUpdatedStorageGroupMNode() {
-    return updatedStorageGroupMNode;
+  public IDatabaseMNode<ICachedMNode> getUpdatedDatabaseMNode() {
+    return updatedDatabaseMNode;
   }
 
   @Override
-  public void setUpdatedStorageGroupMNode(IDatabaseMNode<ICachedMNode> updatedStorageGroupMNode) {
-    this.updatedStorageGroupMNode = updatedStorageGroupMNode;
+  public void updateDatabaseNodeAfterStatusUpdate(
+      IDatabaseMNode<ICachedMNode> updatedDatabaseMNode) {
+    this.updatedDatabaseMNode = updatedDatabaseMNode;
+    put(updatedDatabaseMNode.getAsMNode().getCacheEntry(), updatedDatabaseMNode.getAsMNode());
+  }
+
+  @Override
+  public void removeUpdatedDatabaseNode() {
+    this.updatedDatabaseMNode = null;
   }
 
   @Override
@@ -109,7 +116,7 @@ public class NodeBuffer implements INodeBuffer {
 
   @Override
   public long getBufferNodeNum() {
-    long res = updatedStorageGroupMNode == null ? 0 : 1;
+    long res = updatedDatabaseMNode == null ? 0 : 1;
     for (int i = 0; i < MAP_NUM; i++) {
       res += maps[i].size();
     }

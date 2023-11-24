@@ -148,12 +148,12 @@ public abstract class CacheManager implements ICacheManager {
     // thus it should be updated
     updateCacheStatusAfterUpdate(cacheEntry, node);
 
-    if (cacheEntry.isVolatile()) {
+    if (node.isDatabase()) {
+      nodeBuffer.updateDatabaseNodeAfterStatusUpdate(node.getAsDatabaseMNode());
       return;
     }
 
-    if (node.isDatabase()) {
-      nodeBuffer.setUpdatedStorageGroupMNode(node.getAsDatabaseMNode());
+    if (cacheEntry.isVolatile()) {
       return;
     }
 
@@ -234,8 +234,8 @@ public abstract class CacheManager implements ICacheManager {
    */
   @Override
   public IDatabaseMNode<ICachedMNode> collectUpdatedStorageGroupMNodes() {
-    IDatabaseMNode<ICachedMNode> storageGroupMNode = nodeBuffer.getUpdatedStorageGroupMNode();
-    nodeBuffer.setUpdatedStorageGroupMNode(null);
+    IDatabaseMNode<ICachedMNode> storageGroupMNode = nodeBuffer.getUpdatedDatabaseMNode();
+    nodeBuffer.removeUpdatedDatabaseNode();
     return storageGroupMNode;
   }
 
@@ -565,7 +565,7 @@ public abstract class CacheManager implements ICacheManager {
   public void clear(ICachedMNode root) {
     clearMNodeInMemory(root);
     clearNodeCache();
-    nodeBuffer.setUpdatedStorageGroupMNode(null);
+    nodeBuffer.removeUpdatedDatabaseNode();
     nodeBuffer.clear();
   }
 

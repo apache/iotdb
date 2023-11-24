@@ -26,9 +26,11 @@ import java.util.Iterator;
 
 public interface INodeBuffer {
 
-  IDatabaseMNode<ICachedMNode> getUpdatedStorageGroupMNode();
+  IDatabaseMNode<ICachedMNode> getUpdatedDatabaseMNode();
 
-  void setUpdatedStorageGroupMNode(IDatabaseMNode<ICachedMNode> updatedStorageGroupMNode);
+  void updateDatabaseNodeAfterStatusUpdate(IDatabaseMNode<ICachedMNode> updatedDatabaseMNode);
+
+  void removeUpdatedDatabaseNode();
 
   void addNewNodeToBuffer(ICachedMNode node);
 

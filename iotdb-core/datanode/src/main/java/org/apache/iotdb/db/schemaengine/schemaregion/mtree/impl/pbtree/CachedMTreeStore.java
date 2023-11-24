@@ -54,7 +54,6 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.UnaryOperator;
 
 public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
@@ -368,34 +367,38 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
   @Override
   public IDeviceMNode<ICachedMNode> setToEntity(ICachedMNode node) {
-    AtomicReference<IDeviceMNode<ICachedMNode>> resultReference = new AtomicReference<>(null);
-    updateMNode(
-        node,
-        o -> {
-          // This process may result in a new node instance hold the lock.
-          // The write lock operation here ensures that the old instance and the new one won't hold
-          // the same lock.
-          lockManager.writeLock(node);
-          IDeviceMNode<ICachedMNode> result = null;
-          try {
-            result = MNodeUtils.setToEntity(node, nodeFactory);
-            resultReference.getAndSet(result);
-            return result.getAsMNode();
-          } finally {
-            // If the lock is not unlocked or returned by the up-to-date instance, it may be
-            // returned to lock pool
-            // but hold by the up-to-date instance, and it is possible that the lock pool will
-            // allocate the lock to a new
-            // node instance. Such circumstance is terrible.
-            if (result == null) {
-              lockManager.writeUnlock(node);
-            } else {
-              lockManager.writeUnlock(result.getAsMNode());
-            }
-          }
-        });
+    lockManager.globalReadLock();
+    if (!node.isDatabase()) {
+      lockManager.threadReadLock(node.getParent(), true);
+    }
+    // This process may result in a new node instance hold the lock.
+    // The write lock operation here ensures that the old instance and the new one won't hold
+    // the same lock.
+    lockManager.writeLock(node);
+    IDeviceMNode<ICachedMNode> result = null;
+    try {
+      result = MNodeUtils.setToEntity(node, nodeFactory);
+      if (node.isDatabase()) {
+        root = result.getAsMNode();
+      }
+      cacheManager.updateCacheStatusAfterUpdate(result.getAsMNode());
+    } finally {
+      // If the lock is not unlocked or returned by the up-to-date instance, it may be
+      // returned to lock pool
+      // but hold by the up-to-date instance, and it is possible that the lock pool will
+      // allocate the lock to a new
+      // node instance. Such circumstance is terrible.
+      if (result == null) {
+        lockManager.writeUnlock(node);
+      } else {
+        lockManager.writeUnlock(result.getAsMNode());
+      }
+      if (!node.isDatabase()) {
+        lockManager.threadReadUnlock(node.getParent());
+      }
+      lockManager.globalReadUnlock();
+    }
 
-    IDeviceMNode<ICachedMNode> result = resultReference.get();
     if (result != node) {
       regionStatistics.addDevice();
       memManager.updatePinnedSize(result.estimateSize() - node.estimateSize());
@@ -406,26 +409,38 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
   @Override
   public ICachedMNode setToInternal(IDeviceMNode<ICachedMNode> entityMNode) {
-    AtomicReference<ICachedMNode> resultReference = new AtomicReference<>(null);
-    updateMNode(
-        entityMNode.getAsMNode(),
-        o -> {
-          lockManager.writeLock(entityMNode.getAsMNode());
-          ICachedMNode result = null;
-          try {
-            result = MNodeUtils.setToInternal(entityMNode, nodeFactory);
-            resultReference.getAndSet(result);
-            return result.getAsMNode();
-          } finally {
-            if (result == null) {
-              lockManager.writeUnlock(entityMNode.getAsMNode());
-            } else {
-              lockManager.writeUnlock(result);
-            }
-          }
-        });
+    lockManager.globalReadLock();
+    if (!entityMNode.isDatabase()) {
+      lockManager.threadReadLock(entityMNode.getParent(), true);
+    }
+    // This process may result in a new node instance hold the lock.
+    // The write lock operation here ensures that the old instance and the new one won't hold
+    // the same lock.
+    lockManager.writeLock(entityMNode.getAsMNode());
+    ICachedMNode result = null;
+    try {
+      result = MNodeUtils.setToInternal(entityMNode, nodeFactory);
+      if (entityMNode.isDatabase()) {
+        root = result;
+      }
+      cacheManager.updateCacheStatusAfterUpdate(result);
+    } finally {
+      // If the lock is not unlocked or returned by the up-to-date instance, it may be
+      // returned to lock pool
+      // but hold by the up-to-date instance, and it is possible that the lock pool will
+      // allocate the lock to a new
+      // node instance. Such circumstance is terrible.
+      if (result == null) {
+        lockManager.writeUnlock(entityMNode.getAsMNode());
+      } else {
+        lockManager.writeUnlock(result);
+      }
+      if (!entityMNode.isDatabase()) {
+        lockManager.threadReadUnlock(entityMNode.getParent());
+      }
+      lockManager.globalReadUnlock();
+    }
 
-    ICachedMNode result = resultReference.get();
     if (result != entityMNode) {
       regionStatistics.deleteDevice();
       memManager.updatePinnedSize(result.estimateSize() - entityMNode.estimateSize());
