@@ -556,7 +556,7 @@ public class IoTConsensusServerImpl {
    * @throws ConsensusGroupModifyPeerException
    */
   public void buildSyncLogChannel(Peer targetPeer) throws ConsensusGroupModifyPeerException {
-    buildSyncLogChannel(targetPeer, getMinSyncIndex());
+    buildSyncLogChannel(targetPeer, getCurrentSafelyDeletedSearchIndex());
   }
 
   public void buildSyncLogChannel(Peer targetPeer, long initialSyncIndex)
@@ -670,7 +670,7 @@ public class IoTConsensusServerImpl {
    * In the case of multiple copies, the minimum synchronization index is selected. In the case of
    * single copies, the current index is selected
    */
-  public long getMinSyncIndex() {
+  public long getCurrentSafelyDeletedSearchIndex() {
     return logDispatcher.getMinSyncIndex().orElseGet(searchIndex::get);
   }
 
@@ -695,7 +695,7 @@ public class IoTConsensusServerImpl {
   }
 
   public long getSyncLag() {
-    long minSyncIndex = getMinSyncIndex();
+    long minSyncIndex = getCurrentSafelyDeletedSearchIndex();
     return getSearchIndex() - minSyncIndex;
   }
 

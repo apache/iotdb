@@ -182,7 +182,7 @@ public class ReplicateTest {
 
     for (int i = 0; i < 3; i++) {
       long start = System.currentTimeMillis();
-      while (servers.get(i).getImpl(gid).getMinSyncIndex() < CHECK_POINT_GAP) {
+      while (servers.get(i).getImpl(gid).getCurrentSafelyDeletedSearchIndex() < CHECK_POINT_GAP) {
         long current = System.currentTimeMillis();
         if ((current - start) > 60 * 1000) {
           Assert.fail("Unable to replicate entries");
@@ -191,9 +191,12 @@ public class ReplicateTest {
       }
     }
 
-    Assert.assertEquals(CHECK_POINT_GAP, servers.get(0).getImpl(gid).getMinSyncIndex());
-    Assert.assertEquals(CHECK_POINT_GAP, servers.get(1).getImpl(gid).getMinSyncIndex());
-    Assert.assertEquals(CHECK_POINT_GAP, servers.get(2).getImpl(gid).getMinSyncIndex());
+    Assert.assertEquals(
+        CHECK_POINT_GAP, servers.get(0).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
+    Assert.assertEquals(
+        CHECK_POINT_GAP, servers.get(1).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
+    Assert.assertEquals(
+        CHECK_POINT_GAP, servers.get(2).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
     Assert.assertEquals(CHECK_POINT_GAP * 3, stateMachines.get(0).getRequestSet().size());
     Assert.assertEquals(CHECK_POINT_GAP * 3, stateMachines.get(1).getRequestSet().size());
     Assert.assertEquals(CHECK_POINT_GAP * 3, stateMachines.get(2).getRequestSet().size());
@@ -214,7 +217,7 @@ public class ReplicateTest {
 
       for (int i = 0; i < 3; i++) {
         long start = System.currentTimeMillis();
-        while (servers.get(i).getImpl(gid).getMinSyncIndex() < CHECK_POINT_GAP) {
+        while (servers.get(i).getImpl(gid).getCurrentSafelyDeletedSearchIndex() < CHECK_POINT_GAP) {
           long current = System.currentTimeMillis();
           if ((current - start) > 60 * 1000) {
             Assert.fail("Unable to recover entries");
@@ -223,9 +226,12 @@ public class ReplicateTest {
         }
       }
 
-      Assert.assertEquals(CHECK_POINT_GAP, servers.get(0).getImpl(gid).getMinSyncIndex());
-      Assert.assertEquals(CHECK_POINT_GAP, servers.get(1).getImpl(gid).getMinSyncIndex());
-      Assert.assertEquals(CHECK_POINT_GAP, servers.get(2).getImpl(gid).getMinSyncIndex());
+      Assert.assertEquals(
+          CHECK_POINT_GAP, servers.get(0).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
+      Assert.assertEquals(
+          CHECK_POINT_GAP, servers.get(1).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
+      Assert.assertEquals(
+          CHECK_POINT_GAP, servers.get(2).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
 
     } catch (IOException e) {
       if (e.getCause() instanceof StartupException) {
@@ -259,8 +265,8 @@ public class ReplicateTest {
       Assert.assertEquals(i + 1, servers.get(1).getImpl(gid).getSearchIndex());
     }
 
-    Assert.assertEquals(0, servers.get(0).getImpl(gid).getMinSyncIndex());
-    Assert.assertEquals(0, servers.get(1).getImpl(gid).getMinSyncIndex());
+    Assert.assertEquals(0, servers.get(0).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
+    Assert.assertEquals(0, servers.get(1).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
 
     try {
       stopServer();
@@ -280,10 +286,10 @@ public class ReplicateTest {
         long start = System.currentTimeMillis();
         // should be [CHECK_POINT_GAP, CHECK_POINT_GAP * 2 - 1] after
         // replicating all entries
-        while (servers.get(i).getImpl(gid).getMinSyncIndex() < CHECK_POINT_GAP) {
+        while (servers.get(i).getImpl(gid).getCurrentSafelyDeletedSearchIndex() < CHECK_POINT_GAP) {
           long current = System.currentTimeMillis();
           if ((current - start) > 60 * 1000) {
-            logger.error("{}", servers.get(i).getImpl(gid).getMinSyncIndex());
+            logger.error("{}", servers.get(i).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
             Assert.fail("Unable to replicate entries");
           }
           Thread.sleep(100);
