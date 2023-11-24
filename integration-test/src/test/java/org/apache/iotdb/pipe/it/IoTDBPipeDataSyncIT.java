@@ -188,16 +188,11 @@ public class IoTDBPipeDataSyncIT {
         await()
             .atMost(600, TimeUnit.SECONDS)
             .untilAsserted(
-                () -> {
-                  try {
+                () ->
                     TestUtils.assertResultSetEqual(
                         statement.executeQuery("select * from root.**"),
                         "Time,root.sg.d1.s0,root.sg.d1.s1,",
-                        Collections.singleton("3,null,25.34,"));
-                  } catch (Exception e) {
-                    Assert.fail();
-                  }
-                });
+                        Collections.singleton("3,null,25.34,")));
       } catch (Exception e) {
         e.printStackTrace();
         fail(e.getMessage());

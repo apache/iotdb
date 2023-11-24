@@ -20,7 +20,6 @@
 package org.apache.iotdb.pipe.it;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.RegionRoleType;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
@@ -47,7 +46,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -238,23 +236,13 @@ public class IoTDBPipeClusterIT {
       for (int i = 0; i < 3; ++i) {
         if (senderEnv.getDataNodeWrapper(i).getPort() == leaderPort.get()) {
           leaderIndex = i;
-          try {
-            senderEnv.shutdownDataNode(i);
-          } catch (Exception e) {
-            e.printStackTrace();
-            return;
-          }
+          senderEnv.shutdownDataNode(i);
           try {
             TimeUnit.SECONDS.sleep(1);
           } catch (InterruptedException ignored) {
           }
-          try {
-            senderEnv.startDataNode(i);
-            ((AbstractEnv) senderEnv).testWorkingNoUnknown();
-          } catch (Exception e) {
-            e.printStackTrace();
-            return;
-          }
+          senderEnv.startDataNode(i);
+          ((AbstractEnv) senderEnv).testWorkingNoUnknown();
         }
       }
       if (leaderIndex == -1) { // ensure the leader is stopped
@@ -279,13 +267,8 @@ public class IoTDBPipeClusterIT {
           Collections.singleton("2,"));
     }
 
-    try {
-      TestUtils.restartCluster(senderEnv);
-      TestUtils.restartCluster(receiverEnv);
-    } catch (Exception e) {
-      e.printStackTrace();
-      return;
-    }
+    TestUtils.restartCluster(senderEnv);
+    TestUtils.restartCluster(receiverEnv);
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -365,12 +348,7 @@ public class IoTDBPipeClusterIT {
         return;
       }
 
-      try {
-        senderEnv.registerNewDataNode(true);
-      } catch (Exception e) {
-        e.printStackTrace();
-        return;
-      }
+      senderEnv.registerNewDataNode(true);
       DataNodeWrapper newDataNode =
           senderEnv.getDataNodeWrapper(senderEnv.getDataNodeWrapperList().size() - 1);
       if (!TestUtils.tryExecuteNonQueryOnSpecifiedDataNodeWithRetry(
@@ -388,13 +366,8 @@ public class IoTDBPipeClusterIT {
           Collections.singleton("2,"));
     }
 
-    try {
-      TestUtils.restartCluster(senderEnv);
-      TestUtils.restartCluster(receiverEnv);
-    } catch (Exception e) {
-      e.printStackTrace();
-      return;
-    }
+    TestUtils.restartCluster(senderEnv);
+    TestUtils.restartCluster(receiverEnv);
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -465,9 +438,8 @@ public class IoTDBPipeClusterIT {
                             .setExtractorAttributes(extractorAttributes)
                             .setProcessorAttributes(processorAttributes));
                   } catch (TException e) {
-                    // Not sure if the "createPipe" has succeeded
                     e.printStackTrace();
-                    return;
+                    fail(e.getMessage());
                   }
                   try {
                     Thread.sleep(100);
@@ -476,12 +448,7 @@ public class IoTDBPipeClusterIT {
                 }
               });
       t.start();
-      try {
-        senderEnv.registerNewDataNode(true);
-      } catch (Exception e) {
-        e.printStackTrace();
-        return;
-      }
+      senderEnv.registerNewDataNode(true);
       t.join();
     }
 
@@ -537,12 +504,7 @@ public class IoTDBPipeClusterIT {
                 }
               });
       t.start();
-      try {
-        senderEnv.registerNewDataNode(true);
-      } catch (Exception e) {
-        e.printStackTrace();
-        return;
-      }
+      senderEnv.registerNewDataNode(true);
       t.join();
 
       TestUtils.assertDataOnEnv(
@@ -551,12 +513,8 @@ public class IoTDBPipeClusterIT {
           "count(root.db.d1.s1),",
           Collections.singleton(succeedNum.get() + ","));
 
-      try {
-        senderEnv.shutdownDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
-        senderEnv.getDataNodeWrapperList().remove(senderEnv.getDataNodeWrapperList().size() - 1);
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
+      senderEnv.shutdownDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
+      senderEnv.getDataNodeWrapperList().remove(senderEnv.getDataNodeWrapperList().size() - 1);
     }
   }
 
@@ -596,12 +554,7 @@ public class IoTDBPipeClusterIT {
         }
       }
 
-      try {
-        senderEnv.registerNewDataNode(true);
-      } catch (Exception e) {
-        e.printStackTrace();
-        return;
-      }
+      senderEnv.registerNewDataNode(true);
 
       TestUtils.assertDataOnEnv(
           receiverEnv,
@@ -609,12 +562,8 @@ public class IoTDBPipeClusterIT {
           "count(root.db.d1.s1),",
           Collections.singleton(succeedNum + ","));
 
-      try {
-        senderEnv.shutdownDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
-        senderEnv.getDataNodeWrapperList().remove(senderEnv.getDataNodeWrapperList().size() - 1);
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
+      senderEnv.shutdownDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
+      senderEnv.getDataNodeWrapperList().remove(senderEnv.getDataNodeWrapperList().size() - 1);
     }
   }
 
@@ -660,16 +609,11 @@ public class IoTDBPipeClusterIT {
         }
       }
 
-      try {
-        senderEnv.registerNewDataNode(false);
-        senderEnv.startDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
-        senderEnv.shutdownDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
-        senderEnv.getDataNodeWrapperList().remove(senderEnv.getDataNodeWrapperList().size() - 1);
-        ((AbstractEnv) senderEnv).testWorkingNoUnknown();
-      } catch (Exception e) {
-        e.printStackTrace();
-        return;
-      }
+      senderEnv.registerNewDataNode(false);
+      senderEnv.startDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
+      senderEnv.shutdownDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
+      senderEnv.getDataNodeWrapperList().remove(senderEnv.getDataNodeWrapperList().size() - 1);
+      ((AbstractEnv) senderEnv).testWorkingNoUnknown();
 
       TestUtils.assertDataOnEnv(
           receiverEnv,
@@ -723,12 +667,7 @@ public class IoTDBPipeClusterIT {
       return;
     }
 
-    try {
-      TestUtils.restartCluster(senderEnv);
-    } catch (Exception e) {
-      e.printStackTrace();
-      return;
-    }
+    TestUtils.restartCluster(senderEnv);
 
     TestUtils.assertDataOnEnv(
         receiverEnv,
@@ -769,12 +708,7 @@ public class IoTDBPipeClusterIT {
                   if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
                     successCount.updateAndGet(v -> v + 1);
                   }
-                } catch (InterruptedException e) {
-                  Thread.currentThread().interrupt();
-                } catch (TException | ClientManagerException | IOException e) {
-                  e.printStackTrace();
                 } catch (Exception e) {
-                  // Fail iff pipe exception occurs
                   e.printStackTrace();
                   fail(e.getMessage());
                 }
@@ -799,12 +733,7 @@ public class IoTDBPipeClusterIT {
                   if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
                     successCount.updateAndGet(v -> v + 1);
                   }
-                } catch (InterruptedException e) {
-                  Thread.currentThread().interrupt();
-                } catch (TException | ClientManagerException | IOException e) {
-                  e.printStackTrace();
                 } catch (Exception e) {
-                  // Fail iff pipe exception occurs
                   e.printStackTrace();
                   fail(e.getMessage());
                 }
@@ -869,12 +798,7 @@ public class IoTDBPipeClusterIT {
                               .setProcessorAttributes(processorAttributes));
                   Assert.assertEquals(
                       TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-                } catch (InterruptedException e) {
-                  Thread.currentThread().interrupt();
-                } catch (TException | ClientManagerException | IOException e) {
-                  e.printStackTrace();
                 } catch (Exception e) {
-                  // Fail iff pipe exception occurs
                   e.printStackTrace();
                   fail(e.getMessage());
                 }

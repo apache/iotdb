@@ -447,13 +447,8 @@ public class IoTDBPipeLifeCycleIT {
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
     }
 
-    try {
-      TestUtils.restartCluster(senderEnv);
-      TestUtils.restartCluster(receiverEnv);
-    } catch (Exception e) {
-      e.printStackTrace();
-      return;
-    }
+    TestUtils.restartCluster(senderEnv);
+    TestUtils.restartCluster(receiverEnv);
 
     try (SyncConfigNodeIServiceClient ignored =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -516,12 +511,7 @@ public class IoTDBPipeLifeCycleIT {
               });
       t.start();
 
-      try {
-        TestUtils.restartCluster(receiverEnv);
-      } catch (Exception e) {
-        e.printStackTrace();
-        return;
-      }
+      TestUtils.restartCluster(receiverEnv);
       t.join();
 
       TestUtils.assertDataOnEnv(
@@ -690,13 +680,8 @@ public class IoTDBPipeLifeCycleIT {
     TestUtils.assertDataOnEnv(
         receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
 
-    try {
-      TestUtils.restartCluster(senderEnv);
-      TestUtils.restartCluster(receiverEnv);
-    } catch (Exception e) {
-      e.printStackTrace();
-      return;
-    }
+    TestUtils.restartCluster(senderEnv);
+    TestUtils.restartCluster(receiverEnv);
 
     for (int i = 400; i < 500; ++i) {
       if (!TestUtils.tryExecuteNonQueryWithRetry(
