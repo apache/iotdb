@@ -19,14 +19,13 @@
 
 package org.apache.iotdb.consensus.exception;
 
-/** RaftServer is redoing RaftLog. Unable to serve linearizable read requests. */
-public class RatisUnderRecoveryException extends ConsensusException {
+/** RaftServer is unable to serve linearizable read requests. */
+public class RatisReadUnavailableException extends ConsensusException {
 
-  public RatisUnderRecoveryException(Throwable cause) {
+  public RatisReadUnavailableException(Throwable cause) {
     super(
-        "Raft Server is redoing Raft Log and cannot serve read requests now. "
-            + "Please try read later: "
-            + cause,
+        "Raft Server cannot serve read requests now (leader is unknown or under recovery). "
+            + "Please try read later: ",
         cause);
   }
 }
