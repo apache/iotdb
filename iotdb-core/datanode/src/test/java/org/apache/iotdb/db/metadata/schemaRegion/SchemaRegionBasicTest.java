@@ -40,6 +40,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.apache.commons.lang3.StringUtils;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -70,6 +71,44 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
 
   public SchemaRegionBasicTest(SchemaRegionTestParams testParams) {
     super(testParams);
+  }
+
+  @Test
+  @Ignore
+  public void testFetchSchemaPerfomance() throws Exception {
+    System.out.println(testParams.getTestModeName());
+    int deviceNum = 1000;
+    int measurementNum = 40;
+    ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
+    for (int i = 0; i < deviceNum; i++) {
+      for (int j = 0; j < measurementNum; j++) {
+        schemaRegion.createTimeseries(
+            SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
+                new PartialPath("root.sg.d" + i + ".s" + j),
+                TSDataType.BOOLEAN,
+                TSEncoding.PLAIN,
+                CompressionType.SNAPPY,
+                null,
+                null,
+                null,
+                null),
+            -1);
+      }
+    }
+    PathPatternTree patternTree = new PathPatternTree();
+    for (int i = 0; i < deviceNum; i++) {
+      for (int j = 0; j < measurementNum; j++) {
+        patternTree.appendFullPath(new PartialPath("root.sg.d" + i + ".s" + j));
+      }
+    }
+    patternTree.constructTree();
+    schemaRegion.fetchSchema(patternTree, Collections.EMPTY_MAP, false);
+    long startTime;
+    startTime = System.currentTimeMillis();
+    for (int i = 0; i < 10; i++) {
+      schemaRegion.fetchSchema(patternTree, Collections.EMPTY_MAP, false);
+    }
+    System.out.println("cost time: " + (System.currentTimeMillis() - startTime));
   }
 
   @Test

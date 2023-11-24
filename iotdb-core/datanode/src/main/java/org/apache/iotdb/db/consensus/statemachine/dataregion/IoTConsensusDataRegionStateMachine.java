@@ -42,7 +42,8 @@ import java.util.List;
 
 public class IoTConsensusDataRegionStateMachine extends DataRegionStateMachine {
 
-  public Logger logger = LoggerFactory.getLogger(IoTConsensusDataRegionStateMachine.class);
+  public static final Logger LOGGER =
+      LoggerFactory.getLogger(IoTConsensusDataRegionStateMachine.class);
 
   public IoTConsensusDataRegionStateMachine(DataRegion region) {
     super(region);
@@ -62,7 +63,7 @@ public class IoTConsensusDataRegionStateMachine extends DataRegionStateMachine {
         return write((PlanNode) request);
       }
     } catch (IllegalArgumentException e) {
-      logger.error(e.getMessage(), e);
+      LOGGER.error(e.getMessage(), e);
       return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
   }
@@ -111,7 +112,7 @@ public class IoTConsensusDataRegionStateMachine extends DataRegionStateMachine {
     } else if (request instanceof PlanNode) {
       node = (PlanNode) request;
     } else {
-      logger.error("Unexpected IConsensusRequest : {}", request);
+      LOGGER.error("Unexpected IConsensusRequest : {}", request);
       throw new IllegalArgumentException("Unexpected IConsensusRequest!");
     }
     return node;

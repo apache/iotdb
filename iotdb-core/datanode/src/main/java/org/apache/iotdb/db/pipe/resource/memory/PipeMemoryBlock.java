@@ -165,7 +165,7 @@ public class PipeMemoryBlock implements AutoCloseable {
         if (lock.tryLock(50, TimeUnit.MICROSECONDS)) {
           try {
             pipeMemoryManager.release(this);
-            return;
+            break;
           } finally {
             lock.unlock();
           }

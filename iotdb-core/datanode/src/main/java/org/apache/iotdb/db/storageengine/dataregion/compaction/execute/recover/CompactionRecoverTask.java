@@ -45,7 +45,8 @@ import java.util.List;
 
 /** CompactionRecoverTask executes the recover process for all compaction tasks. */
 public class CompactionRecoverTask {
-  private final Logger logger = LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private final File compactionLogFile;
   private final boolean isInnerSpace;
   private final String fullStorageGroupName;
@@ -66,11 +67,11 @@ public class CompactionRecoverTask {
   @SuppressWarnings({"squid:S3776", "squid:S6541"})
   public void doCompaction() {
     boolean recoverSuccess = true;
-    logger.info(
+    LOGGER.info(
         "{} [Compaction][Recover] compaction log is {}", fullStorageGroupName, compactionLogFile);
     try {
       if (compactionLogFile.exists()) {
-        logger.info(
+        LOGGER.info(
             "{} [Compaction][Recover] compaction log file {} exists, start to recover it",
             fullStorageGroupName,
             compactionLogFile);
@@ -83,7 +84,7 @@ public class CompactionRecoverTask {
 
         // compaction log file is incomplete
         if (targetFileIdentifiers.isEmpty() || sourceFileIdentifiers.isEmpty()) {
-          logger.info(
+          LOGGER.info(
               "{} [Compaction][Recover] incomplete log file, abort recover", fullStorageGroupName);
           return;
         }
@@ -109,23 +110,23 @@ public class CompactionRecoverTask {
         }
       }
     } catch (IOException e) {
-      logger.error("Recover compaction error", e);
+      LOGGER.error("Recover compaction error", e);
     } finally {
       if (!recoverSuccess) {
-        logger.error(
+        LOGGER.error(
             "{} [Compaction][Recover] Failed to recover compaction, set allowCompaction to false",
             fullStorageGroupName);
         tsFileManager.setAllowCompaction(false);
       } else {
         if (compactionLogFile.exists()) {
           try {
-            logger.info(
+            LOGGER.info(
                 "{} [Compaction][Recover] Recover compaction successfully, delete log file {}",
                 fullStorageGroupName,
                 compactionLogFile);
             FileUtils.delete(compactionLogFile);
           } catch (IOException e) {
-            logger.error(
+            LOGGER.error(
                 "{} [Compaction][Recover] Exception occurs while deleting log file {}, "
                     + "set allowCompaction to false",
                 fullStorageGroupName,
@@ -144,7 +145,7 @@ public class CompactionRecoverTask {
    */
   private boolean handleWithAllSourceFilesExist(
       List<TsFileIdentifier> targetFileIdentifiers, List<TsFileIdentifier> sourceFileIdentifiers) {
-    logger.info(
+    LOGGER.info(
         "{} [Compaction][Recover] all source files exists, delete all target files.",
         fullStorageGroupName);
 
@@ -172,7 +173,7 @@ public class CompactionRecoverTask {
       if (targetResource != null && !targetResource.remove()) {
         // failed to remove tmp target tsfile
         // system should not carry out the subsequent compaction in case of data redundant
-        logger.error(
+        LOGGER.error(
             "{} [Compaction][Recover] failed to remove target file {}",
             fullStorageGroupName,
             targetResource);
@@ -188,7 +189,7 @@ public class CompactionRecoverTask {
     try {
       CompactionUtils.deleteCompactionModsFile(sourceTsFileResourceList, Collections.emptyList());
     } catch (IOException e) {
-      logger.error(
+      LOGGER.error(
           "{} [Compaction][Recover] Exception occurs while deleting compaction mods file, "
               + "set allowCompaction to false",
           fullStorageGroupName,
@@ -262,7 +263,7 @@ public class CompactionRecoverTask {
       File targetFile = getFileFromDataDirs(targetFileIdentifier.getFilePath());
       if (targetFile == null
           || !TsFileUtils.isTsFileComplete(new TsFileResource(targetFile).getTsFile())) {
-        logger.error(
+        LOGGER.error(
             "{} [Compaction][ExceptionHandler] target file {} is not complete, "
                 + "and some source files is lost, do nothing. "
                 + "Set allowCompaction to false",
@@ -322,7 +323,7 @@ public class CompactionRecoverTask {
     try {
       Files.delete(file.toPath());
     } catch (IOException e) {
-      logger.error(
+      LOGGER.error(
           "{} [Compaction][Recover] failed to remove file {}, exception: {}",
           fullStorageGroupName,
           file,

@@ -38,7 +38,7 @@ import java.util.List;
 
 public class TsFileHelper {
 
-  private static final Logger logger = LoggerFactory.getLogger(TsFileHelper.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileHelper.class);
 
   public static boolean deleteTsFile(String filePath) {
     File file = new File(filePath);
@@ -121,7 +121,7 @@ public class TsFileHelper {
       }
 
     } catch (Throwable e) {
-      logger.error("Write tsfile error", e);
+      LOGGER.error("Write tsfile error", e);
       System.out.println(e.getMessage());
     }
   }
@@ -134,7 +134,7 @@ public class TsFileHelper {
     }
     writeTsFile(filePath);
     try (TsFileSequenceReader reader = new TsFileSequenceReader(filePath)) {
-      logger.info("Get file meta data: {}", reader.readFileMetadata());
+      LOGGER.info("Get file meta data: {}", reader.readFileMetadata());
     }
   }
 }

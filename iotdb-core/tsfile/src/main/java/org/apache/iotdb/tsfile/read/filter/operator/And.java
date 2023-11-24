@@ -21,23 +21,27 @@ package org.apache.iotdb.tsfile.read.filter.operator;
 
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.filter.basic.BinaryFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
+import org.apache.iotdb.tsfile.read.filter.basic.OperatorType;
+import org.apache.iotdb.tsfile.read.filter.operator.base.BinaryLogicalFilter;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Both the left and right operators of AndExpression must satisfy the condition. */
-public class AndFilter extends BinaryFilter {
+public class And extends BinaryLogicalFilter {
 
-  private static final long serialVersionUID = -8212850098906044102L;
-
-  public AndFilter() {}
-
-  public AndFilter(Filter left, Filter right) {
+  public And(Filter left, Filter right) {
     super(left, right);
+  }
+
+  public And(ByteBuffer buffer) {
+    super(Filter.deserialize(buffer), Filter.deserialize(buffer));
+  }
+
+  @Override
+  public boolean satisfy(long time, Object value) {
+    return left.satisfy(time, value) && right.satisfy(time, value);
   }
 
   @Override
@@ -51,11 +55,6 @@ public class AndFilter extends BinaryFilter {
   }
 
   @Override
-  public boolean satisfy(long time, Object value) {
-    return left.satisfy(time, value) && right.satisfy(time, value);
-  }
-
-  @Override
   public boolean satisfyStartEndTime(long startTime, long endTime) {
     return left.satisfyStartEndTime(startTime, endTime)
         && right.satisfyStartEndTime(startTime, endTime);
@@ -65,21 +64,6 @@ public class AndFilter extends BinaryFilter {
   public boolean containStartEndTime(long startTime, long endTime) {
     return left.containStartEndTime(startTime, endTime)
         && right.containStartEndTime(startTime, endTime);
-  }
-
-  @Override
-  public String toString() {
-    return "(" + left + " && " + right + ")";
-  }
-
-  @Override
-  public Filter copy() {
-    return new AndFilter(left.copy(), right.copy());
-  }
-
-  @Override
-  public FilterSerializeId getSerializeId() {
-    return FilterSerializeId.AND;
   }
 
   @Override
@@ -120,6 +104,16 @@ public class AndFilter extends BinaryFilter {
 
   @Override
   public Filter reverse() {
-    return FilterFactory.or(left.reverse(), right.reverse());
+    return new Or(left.reverse(), right.reverse());
+  }
+
+  @Override
+  public OperatorType getOperatorType() {
+    return OperatorType.AND;
+  }
+
+  @Override
+  public String toString() {
+    return "(" + left + " && " + right + ")";
   }
 }
