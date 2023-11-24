@@ -44,7 +44,7 @@ import java.util.Map;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
-public class IoTDBPipeThriftSourceIT {
+public class IoTDBPipeThriftSinkIT {
 
   private BaseEnv senderEnv;
   private BaseEnv receiverEnv;
