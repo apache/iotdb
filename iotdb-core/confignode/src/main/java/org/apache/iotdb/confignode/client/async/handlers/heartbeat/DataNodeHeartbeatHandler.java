@@ -27,7 +27,7 @@ import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.manager.pipe.runtime.PipeRuntimeCoordinator;
-import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
+import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -35,7 +35,7 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import java.util.Map;
 import java.util.function.Consumer;
 
-public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatResp> {
+public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHeartbeatResp> {
 
   private final int nodeId;
 
@@ -71,7 +71,7 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
   }
 
   @Override
-  public void onComplete(THeartbeatResp heartbeatResp) {
+  public void onComplete(TDataNodeHeartbeatResp heartbeatResp) {
     long receiveTime = System.currentTimeMillis();
 
     // Update NodeCache
