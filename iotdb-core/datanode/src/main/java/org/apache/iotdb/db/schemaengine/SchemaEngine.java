@@ -43,8 +43,8 @@ import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionParams;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionLoader;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionParams;
-import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
-import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
+import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -377,7 +377,7 @@ public class SchemaEngine {
    * @param req heartbeat request
    * @param resp heartbeat response
    */
-  public void updateAndFillSchemaCountMap(THeartbeatReq req, THeartbeatResp resp) {
+  public void updateAndFillSchemaCountMap(TDataNodeHeartbeatReq req, TDataNodeHeartbeatResp resp) {
     // update DataNodeSchemaQuotaManager
     schemaQuotaManager.updateRemain(
         req.getTimeSeriesQuotaRemain(),

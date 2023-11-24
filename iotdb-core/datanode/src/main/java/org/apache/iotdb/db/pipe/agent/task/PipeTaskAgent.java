@@ -38,7 +38,7 @@ import org.apache.iotdb.db.pipe.task.PipeTask;
 import org.apache.iotdb.db.pipe.task.PipeTaskBuilder;
 import org.apache.iotdb.db.pipe.task.PipeTaskManager;
 import org.apache.iotdb.db.utils.DateTimeUtils;
-import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
+import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
@@ -856,7 +856,7 @@ public class PipeTaskAgent {
 
   ///////////////////////// Heartbeat /////////////////////////
 
-  public synchronized void collectPipeMetaList(THeartbeatResp resp) throws TException {
+  public synchronized void collectPipeMetaList(TDataNodeHeartbeatResp resp) throws TException {
     // Try the lock instead of directly acquire it to prevent the block of the cluster heartbeat
     // 10s is the half of the HEARTBEAT_TIMEOUT_TIME defined in class BaseNodeCache in ConfigNode
     if (!tryReadLockWithTimeOut(10)) {
@@ -869,7 +869,7 @@ public class PipeTaskAgent {
     }
   }
 
-  private void collectPipeMetaListInternal(THeartbeatResp resp) throws TException {
+  private void collectPipeMetaListInternal(TDataNodeHeartbeatResp resp) throws TException {
     // Do nothing if data node is removing or removed, or request does not need pipe meta list
     if (PipeAgent.runtime().isShutdown()) {
       return;
