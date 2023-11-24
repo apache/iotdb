@@ -66,6 +66,8 @@ public class LoadCache {
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private static final long HEARTBEAT_INTERVAL = CONF.getHeartbeatIntervalInMs();
 
+  private final IManager configManager;
+
   // Map<NodeId, INodeCache>
   private final Map<Integer, BaseNodeCache> nodeCacheMap;
   // Map<RegionGroupId, RegionGroupCache>
@@ -73,7 +75,8 @@ public class LoadCache {
   // Map<RegionGroupId, RegionRouteCache>
   private final Map<TConsensusGroupId, RegionRouteCache> regionRouteCacheMap;
 
-  public LoadCache() {
+  public LoadCache(IManager configManager) {
+    this.configManager = configManager;
     this.nodeCacheMap = new ConcurrentHashMap<>();
     this.regionGroupCacheMap = new ConcurrentHashMap<>();
     this.regionRouteCacheMap = new ConcurrentHashMap<>();

@@ -410,6 +410,7 @@ struct TConfigNodeRegisterResp {
 struct TConfigNodeHeartbeatReq {
     1: required i64 timestamp
     2: optional common.TLicense licence
+    3: optional string activationControl
 }
 
 struct TConfigNodeHeartbeatResp {
