@@ -86,7 +86,7 @@ public class LoadManager {
     this.partitionBalancer = new PartitionBalancer(configManager);
     this.routeBalancer = new RouteBalancer(configManager);
 
-    this.loadCache = new LoadCache(configManager);
+    this.loadCache = new LoadCache();
     this.heartbeatService = new HeartbeatService(configManager, loadCache);
     this.statisticsService =
         new StatisticsService(configManager, routeBalancer, loadCache, loadPublisher);
