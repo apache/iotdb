@@ -52,17 +52,17 @@ public class PipeDataNodeMetrics implements IMetricSet {
 
   //////////////////////////// singleton ////////////////////////////
 
-  private static class PipeMetricsHolder {
+  private static class PipeDataNodeMetricsHolder {
 
     private static final PipeDataNodeMetrics INSTANCE = new PipeDataNodeMetrics();
 
-    private PipeMetricsHolder() {
+    private PipeDataNodeMetricsHolder() {
       // empty constructor
     }
   }
 
   public static PipeDataNodeMetrics getInstance() {
-    return PipeDataNodeMetrics.PipeMetricsHolder.INSTANCE;
+    return PipeDataNodeMetricsHolder.INSTANCE;
   }
 
   private PipeDataNodeMetrics() {
