@@ -685,17 +685,20 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     Iterator<ICachedMNode> bufferIterator;
     boolean isIteratingDisk;
     ICachedMNode nextNode;
+
+    boolean needLock;
     boolean isLocked;
 
     long readLockStamp;
 
     CachedMNodeIterator(ICachedMNode parent, boolean needLock)
         throws MetadataException, IOException {
+      this.needLock = needLock;
       if (needLock) {
         lockManager.globalReadLock();
-        readLockStamp = lockManager.stampedReadLock(parent);
-        isLocked = true;
       }
+      readLockStamp = lockManager.stampedReadLock(parent);
+      isLocked = true;
       try {
         this.parent = parent;
         ICachedMNodeContainer container = ICachedMNodeContainer.getCachedMNodeContainer(parent);
@@ -709,11 +712,11 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
         }
 
       } catch (Throwable e) {
+        lockManager.stampedReadUnlock(parent, readLockStamp);
         if (needLock) {
-          lockManager.stampedReadUnlock(parent, readLockStamp);
           lockManager.globalReadUnlock();
-          isLocked = false;
         }
+        isLocked = false;
         throw e;
       }
     }
@@ -803,7 +806,9 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       } finally {
         if (isLocked) {
           lockManager.stampedReadUnlock(parent, readLockStamp);
-          lockManager.globalReadUnlock();
+          if (needLock) {
+            lockManager.globalReadUnlock();
+          }
           isLocked = false;
         }
       }
