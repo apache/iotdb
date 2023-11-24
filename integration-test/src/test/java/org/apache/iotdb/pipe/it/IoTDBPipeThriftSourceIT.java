@@ -37,15 +37,10 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.sql.Connection;
-import java.sql.Statement;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
-
-import static org.awaitility.Awaitility.await;
-import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
@@ -196,39 +191,20 @@ public class IoTDBPipeThriftSourceIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          receiverEnv, "create aligned timeseries root.sg.d1(s0 float, s1 float)")) {
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          receiverEnv,
+          Arrays.asList(
+              "create aligned timeseries root.sg.d1(s0 float, s1 float)",
+              "create aligned timeseries root.sg.d1(s0 float, s1 float)",
+              "insert into root.sg.d1(time, s0, s1) values (3, null, 25.34)"))) {
         return;
       }
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "create aligned timeseries root.sg.d1(s0 float, s1 float)")) {
-        return;
-      }
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "insert into root.sg.d1(time, s0, s1) values (3, null, 25.34)")) {
-        return;
-      }
-
-      try (Connection connection = receiverEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        await()
-            .atMost(600, TimeUnit.SECONDS)
-            .untilAsserted(
-                () -> {
-                  try {
-                    TestUtils.assertResultSetEqual(
-                        statement.executeQuery("select * from root.**"),
-                        "Time,root.sg.d1.s0,root.sg.d1.s1,",
-                        Collections.singleton("3,null,25.34,"));
-                  } catch (Exception e) {
-                    Assert.fail();
-                  }
-                });
-      } catch (Exception e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      TestUtils.assertDataOnEnv(
+          receiverEnv,
+          "select * from root.**",
+          "Time,root.sg.d1.s0,root.sg.d1.s1,",
+          Collections.singleton("3,null,25.34,"));
     }
   }
 }

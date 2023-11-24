@@ -39,6 +39,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -413,11 +414,8 @@ public class IoTDBPipeProtocolIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (2, 2)")) {
-        return;
-      }
-      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv, Arrays.asList("insert into root.db.d1(time, s1) values (2, 2)", "flush"))) {
         return;
       }
 

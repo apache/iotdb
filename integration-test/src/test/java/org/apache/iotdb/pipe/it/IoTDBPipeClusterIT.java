@@ -49,6 +49,7 @@ import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -120,18 +121,14 @@ public class IoTDBPipeClusterIT {
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (2010-01-01T10:00:00+08:00, 1)")) {
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList(
+              "insert into root.db.d1(time, s1) values (2010-01-01T10:00:00+08:00, 1)",
+              "insert into root.db.d1(time, s1) values (2010-01-02T10:00:00+08:00, 2)",
+              "flush"))) {
         return;
       }
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (2010-01-02T10:00:00+08:00, 2)")) {
-        return;
-      }
-      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
-        return;
-      }
-
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
       Map<String, String> connectorAttributes = new HashMap<>();
@@ -169,11 +166,9 @@ public class IoTDBPipeClusterIT {
           "count(root.db.d1.s1),",
           Collections.singleton("1,"));
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (now(), 3)")) {
-        return;
-      }
-      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList("insert into root.db.d1(time, s1) values (now(), 3)", "flush"))) {
         return;
       }
 
@@ -215,11 +210,8 @@ public class IoTDBPipeClusterIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)")) {
-        return;
-      }
-      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv, Arrays.asList("insert into root.db.d1(time, s1) values (1, 1)", "flush"))) {
         return;
       }
 
@@ -261,14 +253,10 @@ public class IoTDBPipeClusterIT {
         fail();
       }
 
-      if (!TestUtils.tryExecuteNonQueryOnSpecifiedDataNodeWithRetry(
+      if (!TestUtils.tryExecuteNonQueriesOnSpecifiedDataNodeWithRetry(
           senderEnv,
           senderEnv.getDataNodeWrapper(leaderIndex),
-          "insert into root.db.d1(time, s1) values (2, 2)")) {
-        return;
-      }
-      if (!TestUtils.tryExecuteNonQueryOnSpecifiedDataNodeWithRetry(
-          senderEnv, senderEnv.getDataNodeWrapper(leaderIndex), "flush")) {
+          Arrays.asList("insert into root.db.d1(time, s1) values (2, 2)", "flush"))) {
         return;
       }
 
@@ -311,11 +299,8 @@ public class IoTDBPipeClusterIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p2").getCode());
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "insert into root.db.d2(time, s1) values (1, 1)")) {
-        return;
-      }
-      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv, Arrays.asList("insert into root.db.d2(time, s1) values (1, 1)", "flush"))) {
         return;
       }
 
@@ -357,11 +342,8 @@ public class IoTDBPipeClusterIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)")) {
-        return;
-      }
-      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv, Arrays.asList("insert into root.db.d1(time, s1) values (1, 1)", "flush"))) {
         return;
       }
 
@@ -373,12 +355,10 @@ public class IoTDBPipeClusterIT {
       }
       DataNodeWrapper newDataNode =
           senderEnv.getDataNodeWrapper(senderEnv.getDataNodeWrapperList().size() - 1);
-      if (!TestUtils.tryExecuteNonQueryOnSpecifiedDataNodeWithRetry(
-          senderEnv, newDataNode, "insert into root.db.d1(time, s1) values (2, 2)")) {
-        return;
-      }
-      if (!TestUtils.tryExecuteNonQueryOnSpecifiedDataNodeWithRetry(
-          senderEnv, newDataNode, "flush")) {
+      if (!TestUtils.tryExecuteNonQueriesOnSpecifiedDataNodeWithRetry(
+          senderEnv,
+          newDataNode,
+          Arrays.asList("insert into root.db.d1(time, s1) values (2, 2)", "flush"))) {
         return;
       }
       TestUtils.assertDataOnEnv(
@@ -420,11 +400,8 @@ public class IoTDBPipeClusterIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p2").getCode());
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "insert into root.db.d2(time, s1) values (1, 1)")) {
-        return;
-      }
-      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv, Arrays.asList("insert into root.db.d2(time, s1) values (1, 1)", "flush"))) {
         return;
       }
 
