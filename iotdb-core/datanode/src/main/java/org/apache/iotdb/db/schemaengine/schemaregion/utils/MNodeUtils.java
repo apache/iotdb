@@ -49,15 +49,14 @@ public class MNodeUtils {
                 .createDatabaseDeviceMNode(
                     node.getParent(), node.getName(), node.getAsDatabaseMNode().getDataTTL())
                 .getAsDeviceMNode();
-        node.moveDataToNewMNode(entityMNode.getAsMNode());
       } else {
         // basic node
         entityMNode = nodeFactory.createDeviceMNode(node.getParent(), node.getName());
-        if (node.getParent() != null) {
-          node.getParent().replaceChild(node.getName(), entityMNode.getAsMNode());
-        } else {
-          node.moveDataToNewMNode(entityMNode.getAsMNode());
-        }
+      }
+      if (node.getParent() != null) {
+        node.getParent().replaceChild(node.getName(), entityMNode.getAsMNode());
+      } else {
+        node.moveDataToNewMNode(entityMNode.getAsMNode());
       }
     }
     return entityMNode;
@@ -86,6 +85,8 @@ public class MNodeUtils {
 
     if (parent != null) {
       parent.replaceChild(entityMNode.getName(), node);
+    } else {
+      entityMNode.moveDataToNewMNode(node);
     }
     return node;
   }

@@ -372,9 +372,27 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     updateMNode(
         node,
         o -> {
-          IDeviceMNode<ICachedMNode> result = MNodeUtils.setToEntity(node, nodeFactory);
-          resultReference.getAndSet(result);
-          return result.getAsMNode();
+          // This process may result in a new node instance hold the lock.
+          // The write lock operation here ensures that the old instance and the new one won't hold
+          // the same lock.
+          lockManager.writeLock(node);
+          IDeviceMNode<ICachedMNode> result = null;
+          try {
+            result = MNodeUtils.setToEntity(node, nodeFactory);
+            resultReference.getAndSet(result);
+            return result.getAsMNode();
+          } finally {
+            // If the lock is not unlocked or returned by the up-to-date instance, it may be
+            // returned to lock pool
+            // but hold by the up-to-date instance, and it is possible that the lock pool will
+            // allocate the lock to a new
+            // node instance. Such circumstance is terrible.
+            if (result == null) {
+              lockManager.writeUnlock(node);
+            } else {
+              lockManager.writeUnlock(result.getAsMNode());
+            }
+          }
         });
 
     IDeviceMNode<ICachedMNode> result = resultReference.get();
@@ -392,9 +410,19 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     updateMNode(
         entityMNode.getAsMNode(),
         o -> {
-          ICachedMNode result = MNodeUtils.setToInternal(entityMNode, nodeFactory);
-          resultReference.getAndSet(result);
-          return result.getAsMNode();
+          lockManager.writeLock(entityMNode.getAsMNode());
+          ICachedMNode result = null;
+          try {
+            result = MNodeUtils.setToInternal(entityMNode, nodeFactory);
+            resultReference.getAndSet(result);
+            return result.getAsMNode();
+          } finally {
+            if (result == null) {
+              lockManager.writeUnlock(entityMNode.getAsMNode());
+            } else {
+              lockManager.writeUnlock(result);
+            }
+          }
         });
 
     ICachedMNode result = resultReference.get();
