@@ -125,10 +125,16 @@ public enum Metric {
   PIPE_CONNECTOR_HEARTBEAT_TRANSFER("pipe_connector_heartbeat_transfer"),
   PIPE_HEARTBEAT_EVENT("pipe_heartbeat_event"),
   PIPE_WAL_INSERT_NODE_CACHE_HIT_RATE("pipe_wal_insert_node_cache_hit_rate"),
+  PIPE_WAL_INSERT_NODE_CACHE_HIT_COUNT("pipe_wal_insert_node_cache_hit_count"),
+  PIPE_WAL_INSERT_NODE_CACHE_REQUEST_COUNT("pipe_wal_insert_node_cache_request_count"),
   PIPE_EXTRACTOR_TSFILE_EPOCH_STATE("pipe_extractor_tsfile_epoch_state"),
   PIPE_MEM("pipe_mem"),
   PIPE_PINNED_MEMTABLE_COUNT("pipe_pinned_memtable_count"),
   PIPE_LINKED_TSFILE_COUNT("pipe_linked_tsfile_count"),
+  PIPE_ASYNC_CONNECTOR_RETRY_EVENT_QUEUE_SIZE("pipe_async_connector_retry_event_queue_size"),
+  PIPE_EVENT_COMMIT_QUEUE_SIZE("pipe_event_commit_queue_size"),
+  PIPE_PROCEDURE("pipe_procedure"),
+  PIPE_TASK_STATUS("pipe_task_status"),
   ;
 
   final String value;
