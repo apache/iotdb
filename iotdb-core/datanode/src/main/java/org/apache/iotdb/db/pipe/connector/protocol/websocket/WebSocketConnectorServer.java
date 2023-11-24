@@ -33,9 +33,6 @@ import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.util.function.Tuple2;
-import reactor.util.function.Tuple3;
-import reactor.util.function.Tuples;
 
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -49,12 +46,10 @@ public class WebSocketConnectorServer extends WebSocketServer {
   private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketConnectorServer.class);
   private final AtomicLong eventIdGenerator = new AtomicLong(0);
   // Map<pipeName, Queue<Tuple<eventId, connector, event>>>
-  private final ConcurrentHashMap<
-          String, PriorityBlockingQueue<Tuple3<Long, WebSocketConnector, Event>>>
+  private final ConcurrentHashMap<String, PriorityBlockingQueue<EventQueueElement>>
       eventsWaitingForTransfer = new ConcurrentHashMap<>();
   // Map<pipeName, Map<eventId, Tuple<connector, event>>>
-  private final ConcurrentHashMap<
-          String, ConcurrentHashMap<Long, Tuple2<WebSocketConnector, Event>>>
+  private final ConcurrentHashMap<String, ConcurrentHashMap<Long, EventMapElement>>
       eventsWaitingForAck = new ConcurrentHashMap<>();
   private final BidiMap<String, WebSocket> router =
       new DualTreeBidiMap<String, WebSocket>(null, Comparator.comparing(Object::hashCode)) {};
@@ -78,7 +73,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
   public void register(WebSocketConnector connector) {
     eventsWaitingForTransfer.putIfAbsent(
         connector.getPipeName(),
-        new PriorityBlockingQueue<>(11, Comparator.comparing(Tuple2::getT1)));
+        new PriorityBlockingQueue<>(11, Comparator.comparing(o -> o.eventId)));
     eventsWaitingForAck.putIfAbsent(connector.getPipeName(), new ConcurrentHashMap<>());
   }
 
@@ -156,7 +151,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
   }
 
   public void addEvent(Event event, WebSocketConnector connector) {
-    PriorityBlockingQueue<Tuple3<Long, WebSocketConnector, Event>> queue =
+    PriorityBlockingQueue<EventQueueElement> queue =
         eventsWaitingForTransfer.get(connector.getPipeName());
     if (queue.size() >= 5) {
       synchronized (queue) {
@@ -170,7 +165,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
         }
       }
     }
-    queue.put(Tuples.of(eventIdGenerator.incrementAndGet(), connector, event));
+    queue.put(new EventQueueElement(eventIdGenerator.incrementAndGet(), connector, event));
   }
 
   private void handleBind(WebSocket webSocket, String pipeName) {
@@ -182,10 +177,9 @@ public class WebSocketConnectorServer extends WebSocketServer {
 
   private void handleAck(WebSocket webSocket, long eventId) {
     String pipeName = router.getKey(webSocket);
-    Tuple2<WebSocketConnector, Event> tuple = eventsWaitingForAck.get(pipeName).remove(eventId);
-    tuple
-        .getT1()
-        .commit(tuple.getT2() instanceof EnrichedEvent ? (EnrichedEvent) tuple.getT2() : null);
+    EventMapElement mapElement = eventsWaitingForAck.get(pipeName).remove(eventId);
+    mapElement.connector.commit(
+        mapElement.event instanceof EnrichedEvent ? (EnrichedEvent) mapElement.event : null);
   }
 
   private void handleError(WebSocket webSocket, long eventId) {
@@ -195,8 +189,10 @@ public class WebSocketConnectorServer extends WebSocketServer {
             eventId);
     LOGGER.warn(log);
     String pipeName = router.getKey(webSocket);
-    Tuple2<WebSocketConnector, Event> tuple = eventsWaitingForAck.get(pipeName).remove(eventId);
-    eventsWaitingForTransfer.get(pipeName).put(Tuples.of(eventId, tuple.getT1(), tuple.getT2()));
+    EventMapElement mapElement = eventsWaitingForAck.get(pipeName).remove(eventId);
+    eventsWaitingForTransfer
+        .get(pipeName)
+        .put(new EventQueueElement(eventId, mapElement.connector, mapElement.event));
   }
 
   private class TransferThread extends Thread {
@@ -210,17 +206,17 @@ public class WebSocketConnectorServer extends WebSocketServer {
     public void run() {
       while (true) {
         for (String pipeName : eventsWaitingForTransfer.keySet()) {
-          PriorityBlockingQueue<Tuple3<Long, WebSocketConnector, Event>> queue =
+          PriorityBlockingQueue<EventQueueElement> queue =
               eventsWaitingForTransfer.getOrDefault(pipeName, null);
           if (queue == null || queue.isEmpty() || !router.containsKey(pipeName)) {
             continue;
           }
           try {
-            Tuple3<Long, WebSocketConnector, Event> tuple = queue.take();
+            EventQueueElement queueElement = queue.take();
             synchronized (queue) {
               queue.notifyAll();
             }
-            transfer(pipeName, tuple);
+            transfer(pipeName, queueElement);
           } catch (InterruptedException e) {
             String log = String.format("The event can't be taken, because: %s", e.getMessage());
             LOGGER.warn(log);
@@ -231,10 +227,10 @@ public class WebSocketConnectorServer extends WebSocketServer {
       }
     }
 
-    private void transfer(String pipeName, Tuple3<Long, WebSocketConnector, Event> tuple) {
-      Long eventId = tuple.getT1();
-      Event event = tuple.getT3();
-      WebSocketConnector connector = tuple.getT2();
+    private void transfer(String pipeName, EventQueueElement element) {
+      Long eventId = element.eventId;
+      Event event = element.event;
+      WebSocketConnector connector = element.connector;
       try {
         ByteBuffer tabletBuffer = null;
         if (event instanceof PipeInsertNodeTabletInsertionEvent) {
@@ -255,11 +251,35 @@ public class WebSocketConnectorServer extends WebSocketServer {
         payload.put(tabletBuffer);
         payload.flip();
         server.broadcast(payload, Collections.singletonList(router.get(pipeName)));
-        eventsWaitingForAck.get(pipeName).put(eventId, Tuples.of(connector, event));
+        eventsWaitingForAck.get(pipeName).put(eventId, new EventMapElement(connector, event));
       } catch (Exception e) {
-        eventsWaitingForTransfer.get(pipeName).put(Tuples.of(eventId, connector, event));
+        eventsWaitingForTransfer
+            .get(pipeName)
+            .put(new EventQueueElement(eventId, connector, event));
         throw new PipeException(e.getMessage());
       }
+    }
+  }
+
+  private class EventQueueElement {
+    Long eventId;
+    WebSocketConnector connector;
+    Event event;
+
+    public EventQueueElement(Long eventId, WebSocketConnector connector, Event event) {
+      this.eventId = eventId;
+      this.connector = connector;
+      this.event = event;
+    }
+  }
+
+  private class EventMapElement {
+    WebSocketConnector connector;
+    Event event;
+
+    public EventMapElement(WebSocketConnector connector, Event event) {
+      this.connector = connector;
+      this.event = event;
     }
   }
 }
