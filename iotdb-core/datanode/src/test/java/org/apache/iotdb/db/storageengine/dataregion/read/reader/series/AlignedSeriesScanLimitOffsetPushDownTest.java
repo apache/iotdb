@@ -453,8 +453,8 @@ public class AlignedSeriesScanLimitOffsetPushDownTest {
 
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
     scanOptionsBuilder.withAllSensors(new HashSet<>(scanPath.getMeasurementList()));
-    scanOptionsBuilder.withLimit(limit);
-    scanOptionsBuilder.withOffset(offset);
+    scanOptionsBuilder.withPushDownLimit(limit);
+    scanOptionsBuilder.withPushDownOffset(offset);
     AlignedSeriesScanUtil seriesScanUtil =
         new AlignedSeriesScanUtil(
             scanPath,

@@ -17,23 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.read.filter.factory;
+package org.apache.iotdb.tsfile.read.filter.basic;
 
-public enum FilterSerializeId {
-  AND,
-  EQ,
-  GROUP_BY,
-  GROUP_BY_MONTH,
-  GT,
-  GTEQ,
-  LT,
-  LTEQ,
-  NEQ,
-  NOT,
-  OR,
-  IN,
-  REGEXP,
-  LIKE,
-  BETWEEN,
-  TIME_GTEQ_AND_LT
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+
+public interface ITimeFilter extends Filter {
+
+  default boolean satisfy(Statistics statistics) {
+    return satisfyStartEndTime(statistics.getStartTime(), statistics.getEndTime());
+  }
+
+  default boolean allSatisfy(Statistics statistics) {
+    return containStartEndTime(statistics.getStartTime(), statistics.getEndTime());
+  }
 }
