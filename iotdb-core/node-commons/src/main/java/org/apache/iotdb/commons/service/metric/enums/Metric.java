@@ -33,6 +33,7 @@ public enum Metric {
   REGION_NUM("region_num"),
   REGION_NUM_IN_DATA_NODE("region_num_in_data_node"),
   REGION_GROUP_LEADER_NUM_IN_DATA_NODE("region_group_leader_num_in_data_node"),
+  SCATTER_WIDTH_NUM_IN_DATA_NODE("scatter_width_num_in_data_node"),
   SERIES_SLOT_NUM_IN_DATABASE("series_slot_num_in_database"),
   TIME_SLOT_NUM_IN_DATABASE("time_slot_num_in_database"),
   REGION_GROUP_NUM_IN_DATABASE("region_group_num_in_database"),

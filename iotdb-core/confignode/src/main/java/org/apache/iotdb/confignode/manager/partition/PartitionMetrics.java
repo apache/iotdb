@@ -136,6 +136,26 @@ public class PartitionMetrics implements IMetricSet {
         dataNodeName,
         Tag.TYPE.toString(),
         TConsensusGroupType.DataRegion.toString());
+
+    // Count the number of scatter width in the specified DataNode
+    metricService.createAutoGauge(
+        Metric.SCATTER_WIDTH_NUM_IN_DATA_NODE.toString(),
+        MetricLevel.CORE,
+        partitionManager,
+        obj -> obj.countDataNodeScatterWidth(dataNodeId, TConsensusGroupType.SchemaRegion),
+        Tag.NAME.toString(),
+        dataNodeName,
+        Tag.TYPE.toString(),
+        TConsensusGroupType.SchemaRegion.toString());
+    metricService.createAutoGauge(
+        Metric.SCATTER_WIDTH_NUM_IN_DATA_NODE.toString(),
+        MetricLevel.CORE,
+        partitionManager,
+        obj -> obj.countDataNodeScatterWidth(dataNodeId, TConsensusGroupType.DataRegion),
+        Tag.NAME.toString(),
+        dataNodeName,
+        Tag.TYPE.toString(),
+        TConsensusGroupType.DataRegion.toString());
   }
 
   public static void unbindDataNodePartitionMetricsWhenUpdate(
@@ -167,6 +187,22 @@ public class PartitionMetrics implements IMetricSet {
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.REGION_GROUP_LEADER_NUM_IN_DATA_NODE.toString(),
+        Tag.NAME.toString(),
+        dataNodeName,
+        Tag.TYPE.toString(),
+        TConsensusGroupType.DataRegion.toString());
+
+    // Remove the number of scatter width in the specified DataNode
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SCATTER_WIDTH_NUM_IN_DATA_NODE.toString(),
+        Tag.NAME.toString(),
+        dataNodeName,
+        Tag.TYPE.toString(),
+        TConsensusGroupType.SchemaRegion.toString());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SCATTER_WIDTH_NUM_IN_DATA_NODE.toString(),
         Tag.NAME.toString(),
         dataNodeName,
         Tag.TYPE.toString(),

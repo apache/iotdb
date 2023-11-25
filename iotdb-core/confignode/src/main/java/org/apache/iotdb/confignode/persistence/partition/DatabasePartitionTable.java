@@ -44,6 +44,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -188,6 +189,34 @@ public class DatabasePartitionTable {
               }
             });
     return result.get();
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * <p>Count the scatter width of the specified DataNode
+   *
+   * @param dataNodeId The specified DataNode
+   * @param type SchemaRegion or DataRegion
+   * @param scatterSet The DataNodes in the cluster which have at least one identical schema/data
+   *     replica as the specified DataNode will be set true in the scatterSet.
+   */
+  public void countDataNodeScatterWidth(
+      int dataNodeId, TConsensusGroupType type, BitSet scatterSet) {
+    regionGroupMap
+        .values()
+        .forEach(
+            regionGroup -> {
+              if (type.equals(regionGroup.getId().getType())) {
+                Set<Integer> dataNodeIds =
+                    regionGroup.getReplicaSet().getDataNodeLocations().stream()
+                        .map(TDataNodeLocation::getDataNodeId)
+                        .collect(Collectors.toSet());
+                if (dataNodeIds.contains(dataNodeId)) {
+                  dataNodeIds.forEach(scatterSet::set);
+                }
+              }
+            });
   }
 
   /**
