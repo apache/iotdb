@@ -80,15 +80,6 @@ public abstract class PageManager implements IPageManager {
 
   private final FileChannel channel;
 
-  // ALL are thread-locals, TODO remove after fixed
-  // protected final Map<Integer, ISchemaPage> dirtyPages;
-  // optimize retrieval of the smallest applicable DIRTY segmented page
-  // tiered by: MIN_SEG_SIZE, PAGE/16, PAGE/8, PAGE/4, PAGE/2, PAGE_SIZE
-  // protected final LinkedList<Integer>[] tieredDirtyPageIndex = new
-  // LinkedList[SchemaFileConfig.SEG_SIZE_LST.length];
-  // shift to ThreadLocal if concurrent write expected
-  // protected int[] treeTrace;
-
   // handle timeout interruption during reading
   private File pmtFile;
   private FileChannel readChannel;
@@ -166,14 +157,16 @@ public abstract class PageManager implements IPageManager {
   public void writeMNode(ICachedMNode node) throws MetadataException, IOException {
     SchemaPageContext cxt = new SchemaPageContext();
     entrantLock(node, cxt);
-
-    writeNewChildren(node, cxt);
-    writeUpdatedChildren(node, cxt);
-    flushDirtyPages(cxt);
-
-    releaseLocks(cxt);
+    try {
+      writeNewChildren(node, cxt);
+      writeUpdatedChildren(node, cxt);
+      flushDirtyPages(cxt);
+    } finally {
+      releaseLocks(cxt);
+    }
   }
 
+  /** Context only tracks write locks, and so it shall be released. */
   protected void releaseLocks(SchemaPageContext cxt) {
     for (int i : cxt.lockTraces) {
       pageLocks.getLock(i).writeLock().unlock();
@@ -859,7 +852,7 @@ public abstract class PageManager implements IPageManager {
    * Concurrent read/write lock within one SchemaFile/PageManager. Designed for concurrency of
    * #pageInstCache previously, which is now synchronized.
    */
-  private class PageLocks {
+  protected class PageLocks {
     // TODO pooling for better performance, i.e., remove/reuse locks rarely accessed
     private final ConcurrentHashMap<Integer, ReentrantReadWriteLock> locks;
 
@@ -867,7 +860,7 @@ public abstract class PageManager implements IPageManager {
       locks = new ConcurrentHashMap<>();
     }
 
-    private ReentrantReadWriteLock getLock(int page) {
+    protected ReentrantReadWriteLock getLock(int page) {
       return locks.computeIfAbsent(page, k -> new ReentrantReadWriteLock());
     }
   }

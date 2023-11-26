@@ -302,61 +302,66 @@ public class BTreePageManager extends PageManager {
   public void delete(ICachedMNode node) throws IOException, MetadataException {
     SchemaPageContext cxt = new SchemaPageContext();
     entrantLock(node, cxt);
-    // remove corresponding record
-    long recSegAddr = getNodeAddress(node.getParent());
-    recSegAddr = getTargetSegmentAddress(recSegAddr, node.getName(), cxt);
-    ISchemaPage tarPage = getPageInstance(getPageIndex(recSegAddr), cxt);
-    markDirty(tarPage, cxt);
-    tarPage.getAsSegmentedPage().removeRecord(getSegIndex(recSegAddr), node.getName());
+    try {
+      // remove corresponding record
+      long recSegAddr = getNodeAddress(node.getParent());
+      recSegAddr = getTargetSegmentAddress(recSegAddr, node.getName(), cxt);
+      ISchemaPage tarPage = getPageInstance(getPageIndex(recSegAddr), cxt);
+      markDirty(tarPage, cxt);
+      tarPage.getAsSegmentedPage().removeRecord(getSegIndex(recSegAddr), node.getName());
 
-    // remove segments belongs to node
-    if (!node.isMeasurement() && getNodeAddress(node) > 0) {
-      // node with maliciously modified address may result in orphan pages
-      long delSegAddr = getNodeAddress(node);
-      tarPage = getPageInstance(getPageIndex(delSegAddr), cxt);
+      // remove segments belongs to node
+      if (!node.isMeasurement() && getNodeAddress(node) > 0) {
+        // node with maliciously modified address may result in orphan pages
+        long delSegAddr = getNodeAddress(node);
+        tarPage = getPageInstance(getPageIndex(delSegAddr), cxt);
 
-      if (tarPage.getAsSegmentedPage() != null) {
-        // TODO: may produce fractured page
-        markDirty(tarPage, cxt);
-        tarPage.getAsSegmentedPage().deleteSegment(getSegIndex(delSegAddr));
-        if (tarPage.getAsSegmentedPage().validSegments() == 0) {
-          tarPage.getAsSegmentedPage().purgeSegments();
-        }
-      }
-
-      if (tarPage.getAsInternalPage() != null) {
-        // If the deleted one points to an Internal (root of BTree), there are two BTrees to handle:
-        //  one mapping node names to record buffers, and another mapping aliases to names. </br>
-        // All of those are turned into SegmentedPage.
-        Deque<Integer> cascadePages = new ArrayDeque<>(tarPage.getAsInternalPage().getAllRecords());
-        cascadePages.add(tarPage.getPageIndex());
-
-        if (tarPage.getSubIndex() >= 0) {
-          cascadePages.add(tarPage.getSubIndex());
-        }
-
-        while (!cascadePages.isEmpty()) {
-          tarPage = getPageInstance(cascadePages.poll(), cxt);
-          if (tarPage.getAsSegmentedPage() != null) {
+        if (tarPage.getAsSegmentedPage() != null) {
+          // TODO: may produce fractured page
+          markDirty(tarPage, cxt);
+          tarPage.getAsSegmentedPage().deleteSegment(getSegIndex(delSegAddr));
+          if (tarPage.getAsSegmentedPage().validSegments() == 0) {
             tarPage.getAsSegmentedPage().purgeSegments();
-            markDirty(tarPage, cxt);
-            addPageToCache(tarPage.getPageIndex(), tarPage);
-            continue;
+          }
+        }
+
+        if (tarPage.getAsInternalPage() != null) {
+          // If the deleted one points to an Internal (root of BTree), there are two BTrees to
+          // handle:
+          //  one mapping node names to record buffers, and another mapping aliases to names. </br>
+          // All of those are turned into SegmentedPage.
+          Deque<Integer> cascadePages =
+              new ArrayDeque<>(tarPage.getAsInternalPage().getAllRecords());
+          cascadePages.add(tarPage.getPageIndex());
+
+          if (tarPage.getSubIndex() >= 0) {
+            cascadePages.add(tarPage.getSubIndex());
           }
 
-          if (tarPage.getAsInternalPage() != null) {
-            cascadePages.addAll(tarPage.getAsInternalPage().getAllRecords());
-          }
+          while (!cascadePages.isEmpty()) {
+            tarPage = getPageInstance(cascadePages.poll(), cxt);
+            if (tarPage.getAsSegmentedPage() != null) {
+              tarPage.getAsSegmentedPage().purgeSegments();
+              markDirty(tarPage, cxt);
+              addPageToCache(tarPage.getPageIndex(), tarPage);
+              continue;
+            }
 
-          tarPage =
-              ISchemaPage.initSegmentedPage(
-                  ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH), tarPage.getPageIndex());
-          replacePageInCache(tarPage, cxt);
+            if (tarPage.getAsInternalPage() != null) {
+              cascadePages.addAll(tarPage.getAsInternalPage().getAllRecords());
+            }
+
+            tarPage =
+                ISchemaPage.initSegmentedPage(
+                    ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH), tarPage.getPageIndex());
+            replacePageInCache(tarPage, cxt);
+          }
         }
       }
+      flushDirtyPages(cxt);
+    } finally {
+      releaseLocks(cxt);
     }
-    flushDirtyPages(cxt);
-    releaseLocks(cxt);
   }
 
   @Override
@@ -371,26 +376,33 @@ public class BTreePageManager extends PageManager {
               "Node [%s] has no valid segment address in pbtree file.", parent.getFullPath()));
     }
 
-    long actualSegAddr = getTargetSegmentAddress(getNodeAddress(parent), childName, cxt);
-    ICachedMNode child =
-        getPageInstance(getPageIndex(actualSegAddr), null)
-            .getAsSegmentedPage()
-            .read(getSegIndex(actualSegAddr), childName);
-
-    if (child == null && parent.isDevice()) {
-      // try read alias directly first
-      child =
-          getPageInstance(getPageIndex(actualSegAddr), cxt)
+    // a single read lock is sufficient
+    int initIndex = getPageIndex(getNodeAddress(parent));
+    pageLocks.getLock(initIndex).readLock().lock();
+    try {
+      long actualSegAddr = getTargetSegmentAddress(getNodeAddress(parent), childName, cxt);
+      ICachedMNode child =
+          getPageInstance(getPageIndex(actualSegAddr), null)
               .getAsSegmentedPage()
-              .readByAlias(getSegIndex(actualSegAddr), childName);
-      if (child != null) {
-        return child;
-      }
+              .read(getSegIndex(actualSegAddr), childName);
 
-      // try read with sub-index
-      return getChildWithAlias(parent, childName);
+      if (child == null && parent.isDevice()) {
+        // try read alias directly first
+        child =
+            getPageInstance(getPageIndex(actualSegAddr), cxt)
+                .getAsSegmentedPage()
+                .readByAlias(getSegIndex(actualSegAddr), childName);
+        if (child != null) {
+          return child;
+        }
+
+        // try read with sub-index
+        return getChildWithAlias(parent, childName);
+      }
+      return child;
+    } finally {
+      pageLocks.getLock(initIndex).readLock().unlock();
     }
-    return child;
   }
 
   private ICachedMNode getChildWithAlias(ICachedMNode par, String alias)
@@ -418,6 +430,8 @@ public class BTreePageManager extends PageManager {
   public Iterator<ICachedMNode> getChildren(ICachedMNode parent)
       throws MetadataException, IOException {
     int pageIdx = getPageIndex(getNodeAddress(parent));
+
+    pageLocks.getLock(pageIdx).readLock().lock();
     short segId = getSegIndex(getNodeAddress(parent));
     ISchemaPage page = getPageInstance(pageIdx, null);
 
@@ -427,6 +441,9 @@ public class BTreePageManager extends PageManager {
 
     long actualSegAddr = page.getAsSegmentedPage().getNextSegAddress(segId);
     Queue<ICachedMNode> initChildren = page.getAsSegmentedPage().getChildren(segId);
+
+    // safety of iterator should be guaranteed by upper layer
+    pageLocks.getLock(pageIdx).readLock().unlock();
     return new Iterator<ICachedMNode>() {
       long nextSeg = actualSegAddr;
       Queue<ICachedMNode> children = initChildren;
