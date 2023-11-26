@@ -58,4 +58,16 @@ public interface IPageManager {
   int getLastPageIndex();
 
   void inspect(PrintWriter pw) throws IOException, MetadataException;
+
+  void writeLockSegment(ICachedMNode node) throws IOException, MetadataException;
+
+  /**
+   * If node's segment is transplanted, correspondent record on its parent's segment shall be modified, so it's
+   * necessary to lock both the node passing in and its parent.
+   * However, the locks are not necessarily exclusive on both nodes at begin, todo improvement later.
+   * @param node
+   */
+  void entrantLock(ICachedMNode node) throws IOException, MetadataException;
+
+  void releaseEntrantLock(ICachedMNode node) throws IOException, MetadataException;
 }

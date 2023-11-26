@@ -49,10 +49,10 @@ public class BTreePageManager extends PageManager {
 
   @Override
   protected void multiPageInsertOverflowOperation(
-      ISchemaPage curPage, String key, ByteBuffer childBuffer)
+      ISchemaPage curPage, String key, ByteBuffer childBuffer, SchemaPageUpdateContext cxt)
       throws MetadataException, IOException {
     // cur is a leaf, split and set next ptr as link between
-    ISegmentedPage newPage = getMinApplSegmentedPageInMem(SchemaFileConfig.SEG_MAX_SIZ);
+    ISegmentedPage newPage = getMinApplSegmentedPageInMem(SchemaFileConfig.SEG_MAX_SIZ, cxt);
     newPage.allocNewSegment(SchemaFileConfig.SEG_MAX_SIZ);
     String sk =
         curPage
@@ -61,16 +61,16 @@ public class BTreePageManager extends PageManager {
     curPage
         .getAsSegmentedPage()
         .setNextSegAddress((short) 0, getGlobalIndex(newPage.getPageIndex(), (short) 0));
-    markDirty(curPage);
-    insertIndexEntryEntrance(curPage, newPage, sk);
+    markDirty(curPage, cxt);
+    insertIndexEntryEntrance(curPage, newPage, sk, cxt);
   }
 
   @Override
   protected void multiPageUpdateOverflowOperation(
-      ISchemaPage curPage, String key, ByteBuffer childBuffer)
+      ISchemaPage curPage, String key, ByteBuffer childBuffer, SchemaPageUpdateContext cxt)
       throws MetadataException, IOException {
     // split and update higer nodes
-    ISegmentedPage splPage = getMinApplSegmentedPageInMem(SchemaFileConfig.SEG_MAX_SIZ);
+    ISegmentedPage splPage = getMinApplSegmentedPageInMem(SchemaFileConfig.SEG_MAX_SIZ, cxt);
     splPage.allocNewSegment(SchemaFileConfig.SEG_MAX_SIZ);
     String sk = curPage.getAsSegmentedPage().splitWrappedSegment(null, null, splPage, false);
     curPage
@@ -85,7 +85,7 @@ public class BTreePageManager extends PageManager {
     }
 
     // insert index entry upward
-    insertIndexEntryEntrance(curPage, splPage, sk);
+    insertIndexEntryEntrance(curPage, splPage, sk, cxt);
   }
 
   /**
@@ -96,8 +96,8 @@ public class BTreePageManager extends PageManager {
    * @throws IOException
    */
   @Override
-  protected void buildSubIndex(ICachedMNode parNode) throws MetadataException, IOException {
-    ISchemaPage cursorPage = getPageInstance(getPageIndex(getNodeAddress(parNode)));
+  protected void buildSubIndex(ICachedMNode parNode, SchemaPageUpdateContext cxt) throws MetadataException, IOException {
+    ISchemaPage cursorPage = getPageInstance(getPageIndex(getNodeAddress(parNode)), cxt);
 
     if (cursorPage.getAsInternalPage() == null) {
       throw new MetadataException("Subordinate index shall not build upon single page segment.");
@@ -106,12 +106,12 @@ public class BTreePageManager extends PageManager {
     ISchemaPage tPage = cursorPage; // reserve the top page to modify subIndex
     ISchemaPage subIndexPage =
         ISchemaPage.initAliasIndexPage(ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH), -1);
-    registerAsNewPage(subIndexPage);
+    registerAsNewPage(subIndexPage, cxt);
 
     // transfer cursorPage to leaf page
     while (cursorPage.getAsInternalPage() != null) {
       cursorPage =
-          getPageInstance(getPageIndex(cursorPage.getAsInternalPage().getNextSegAddress()));
+          getPageInstance(getPageIndex(cursorPage.getAsInternalPage().getNextSegAddress()), cxt);
     }
 
     long nextAddr = cursorPage.getAsSegmentedPage().getNextSegAddress((short) 0);
@@ -120,7 +120,7 @@ public class BTreePageManager extends PageManager {
     // TODO: inefficient to build B+Tree up-to-bottom, improve further
     while (!children.isEmpty() || nextAddr != -1L) {
       if (children.isEmpty()) {
-        cursorPage = getPageInstance(getPageIndex(nextAddr));
+        cursorPage = getPageInstance(getPageIndex(nextAddr), cxt);
         nextAddr = cursorPage.getAsSegmentedPage().getNextSegAddress((short) 0);
         children = cursorPage.getAsSegmentedPage().getChildren((short) 0);
       }
@@ -130,7 +130,7 @@ public class BTreePageManager extends PageManager {
           && child.getAsMeasurementMNode().getAlias() != null) {
         subIndexPage =
             insertAliasIndexEntry(
-                subIndexPage, child.getAsMeasurementMNode().getAlias(), child.getName());
+                subIndexPage, child.getAsMeasurementMNode().getAlias(), child.getName(), cxt);
       }
     }
 
@@ -138,30 +138,30 @@ public class BTreePageManager extends PageManager {
   }
 
   @Override
-  protected void insertSubIndexEntry(int base, String key, String rec)
+  protected void insertSubIndexEntry(int base, String key, String rec, SchemaPageUpdateContext cxt)
       throws MetadataException, IOException {
-    insertAliasIndexEntry(getPageInstance(base), key, rec);
+    insertAliasIndexEntry(getPageInstance(base, cxt), key, rec, cxt);
   }
 
   @Override
-  protected void removeSubIndexEntry(int base, String oldAlias)
+  protected void removeSubIndexEntry(int base, String oldAlias, SchemaPageUpdateContext cxt)
       throws MetadataException, IOException {
-    ISchemaPage tarPage = getTargetLeafPage(getPageInstance(base), oldAlias);
+    ISchemaPage tarPage = getTargetLeafPage(getPageInstance(base, cxt), oldAlias, cxt);
     tarPage.getAsAliasIndexPage().removeRecord(oldAlias);
   }
 
   @Override
-  protected String searchSubIndexAlias(int base, String alias)
+  protected String searchSubIndexAlias(int base, String alias, SchemaPageUpdateContext cxt)
       throws MetadataException, IOException {
-    return getTargetLeafPage(getPageInstance(base), alias)
+    return getTargetLeafPage(getPageInstance(base, cxt), alias, cxt)
         .getAsAliasIndexPage()
         .getRecordByAlias(alias);
   }
 
   /** @return top page to insert index */
-  private ISchemaPage insertAliasIndexEntry(ISchemaPage topPage, String alias, String name)
+  private ISchemaPage insertAliasIndexEntry(ISchemaPage topPage, String alias, String name, SchemaPageUpdateContext cxt)
       throws MetadataException, IOException {
-    ISchemaPage tarPage = getTargetLeafPage(topPage, alias);
+    ISchemaPage tarPage = getTargetLeafPage(topPage, alias, cxt);
     if (tarPage.getAsAliasIndexPage() == null) {
       throw new MetadataException("File may be corrupted that subordinate index has broken.");
     }
@@ -174,16 +174,16 @@ public class BTreePageManager extends PageManager {
               .getAsAliasIndexPage()
               .splitByKey(alias, name, spltBuf, SchemaFileConfig.INCLINED_SPLIT);
       ISchemaPage splPage = ISchemaPage.loadSchemaPage(spltBuf);
-      registerAsNewPage(splPage);
+      registerAsNewPage(splPage, cxt);
 
-      if (treeTrace[0] < 1) {
+      if (cxt.treeTrace[0] < 1) {
         // From single sub-index page to tree structure
         ByteBuffer trsBuf = ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH);
         tarPage.getAsAliasIndexPage().extendsTo(trsBuf);
         ISchemaPage trsPage = ISchemaPage.loadSchemaPage(trsBuf);
 
         // Notice that index of tarPage belongs to repPage then
-        registerAsNewPage(trsPage);
+        registerAsNewPage(trsPage, cxt);
 
         // tarPage abolished since then
         ISchemaPage repPage =
@@ -200,11 +200,11 @@ public class BTreePageManager extends PageManager {
             .getAsInternalPage()
             .setNextSegAddress(getGlobalIndex(trsPage.getPageIndex(), (short) 0));
 
-        replacePageInCache(repPage);
+        replacePageInCache(repPage, cxt);
         return repPage;
       } else {
-        insertIndexEntryRecursiveUpwards(treeTrace[0], sk, splPage.getPageIndex());
-        return getPageInstance(treeTrace[1]);
+        insertIndexEntryRecursiveUpwards(cxt.treeTrace[0], sk, splPage.getPageIndex(), cxt);
+        return getPageInstance(cxt.treeTrace[1], cxt);
       }
     }
     return topPage;
@@ -217,10 +217,10 @@ public class BTreePageManager extends PageManager {
    * @param splPage new page for original page to split.
    * @param sk least key of splPage.
    */
-  private void insertIndexEntryEntrance(ISchemaPage curPage, ISchemaPage splPage, String sk)
+  private void insertIndexEntryEntrance(ISchemaPage curPage, ISchemaPage splPage, String sk, SchemaPageUpdateContext cxt)
       throws MetadataException, IOException {
-    if (treeTrace[0] < 1) {
-      ISegmentedPage trsPage = getMinApplSegmentedPageInMem(SchemaFileConfig.SEG_MAX_SIZ);
+    if (cxt.treeTrace[0] < 1) {
+      ISegmentedPage trsPage = getMinApplSegmentedPageInMem(SchemaFileConfig.SEG_MAX_SIZ, cxt);
       trsPage.transplantSegment(
           curPage.getAsSegmentedPage(), (short) 0, SchemaFileConfig.SEG_MAX_SIZ);
       ISchemaPage repPage =
@@ -236,9 +236,9 @@ public class BTreePageManager extends PageManager {
       repPage
           .getAsInternalPage()
           .setNextSegAddress(getGlobalIndex(trsPage.getPageIndex(), (short) 0));
-      replacePageInCache(repPage);
+      replacePageInCache(repPage, cxt);
     } else {
-      insertIndexEntryRecursiveUpwards(treeTrace[0], sk, splPage.getPageIndex());
+      insertIndexEntryRecursiveUpwards(cxt.treeTrace[0], sk, splPage.getPageIndex(), cxt);
     }
   }
 
@@ -249,9 +249,9 @@ public class BTreePageManager extends PageManager {
    * @param key key of the entry
    * @param ptr pointer of the entry
    */
-  private void insertIndexEntryRecursiveUpwards(int treeTraceIndex, String key, int ptr)
+  private void insertIndexEntryRecursiveUpwards(int treeTraceIndex, String key, int ptr, SchemaPageUpdateContext cxt)
       throws MetadataException, IOException {
-    ISchemaPage idxPage = getPageInstance(treeTrace[treeTraceIndex]);
+    ISchemaPage idxPage = getPageInstance(cxt.treeTrace[treeTraceIndex], cxt);
     if (idxPage.getAsInternalPage().insertRecord(key, ptr) < 0) {
       // handle when insert an index entry occurring an overflow
       if (treeTraceIndex > 1) {
@@ -262,8 +262,8 @@ public class BTreePageManager extends PageManager {
                 .getAsInternalPage()
                 .splitByKey(key, ptr, dstBuffer, SchemaFileConfig.INCLINED_SPLIT);
         ISchemaPage dstPage = ISchemaPage.loadSchemaPage(dstBuffer);
-        registerAsNewPage(dstPage);
-        insertIndexEntryRecursiveUpwards(treeTraceIndex - 1, splitKey, dstPage.getPageIndex());
+        registerAsNewPage(dstPage, cxt);
+        insertIndexEntryRecursiveUpwards(treeTraceIndex - 1, splitKey, dstPage.getPageIndex(), cxt);
       } else {
         // treeTraceIndex==1, idxPage is the root of B+Tree, to split for new root internal
         ByteBuffer splBuffer = ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH);
@@ -277,8 +277,8 @@ public class BTreePageManager extends PageManager {
         idxPage.getAsInternalPage().extendsTo(trsBuffer);
         ISchemaPage splPage = ISchemaPage.loadSchemaPage(splBuffer);
         ISchemaPage trsPage = ISchemaPage.loadSchemaPage(trsBuffer);
-        registerAsNewPage(splPage);
-        registerAsNewPage(trsPage);
+        registerAsNewPage(splPage, cxt);
+        registerAsNewPage(trsPage, cxt);
 
         idxPage.getAsInternalPage().resetBuffer(trsPage.getPageIndex());
         if (idxPage.getAsInternalPage().insertRecord(splitKey, splPage.getPageIndex()) < 0) {
@@ -289,28 +289,30 @@ public class BTreePageManager extends PageManager {
             .setNextSegAddress(trsPage.getAsInternalPage().getNextSegAddress());
       }
     }
-    markDirty(idxPage);
+    markDirty(idxPage, cxt);
     addPageToCache(idxPage.getPageIndex(), idxPage);
   }
 
   @Override
   public void delete(ICachedMNode node) throws IOException, MetadataException {
+    SchemaPageUpdateContext cxt = new SchemaPageUpdateContext();
+
     // remove corresponding record
     long recSegAddr = getNodeAddress(node.getParent());
-    recSegAddr = getTargetSegmentAddress(recSegAddr, node.getName());
-    ISchemaPage tarPage = getPageInstance(getPageIndex(recSegAddr));
-    markDirty(tarPage);
+    recSegAddr = getTargetSegmentAddress(recSegAddr, node.getName(), cxt);
+    ISchemaPage tarPage = getPageInstance(getPageIndex(recSegAddr), cxt);
+    markDirty(tarPage, cxt);
     tarPage.getAsSegmentedPage().removeRecord(getSegIndex(recSegAddr), node.getName());
 
     // remove segments belongs to node
     if (!node.isMeasurement() && getNodeAddress(node) > 0) {
       // node with maliciously modified address may result in orphan pages
       long delSegAddr = getNodeAddress(node);
-      tarPage = getPageInstance(getPageIndex(delSegAddr));
+      tarPage = getPageInstance(getPageIndex(delSegAddr), cxt);
 
       if (tarPage.getAsSegmentedPage() != null) {
         // TODO: may produce fractured page
-        markDirty(tarPage);
+        markDirty(tarPage, cxt);
         tarPage.getAsSegmentedPage().deleteSegment(getSegIndex(delSegAddr));
         if (tarPage.getAsSegmentedPage().validSegments() == 0) {
           tarPage.getAsSegmentedPage().purgeSegments();
@@ -329,14 +331,14 @@ public class BTreePageManager extends PageManager {
         }
 
         while (!cascadePages.isEmpty()) {
-          if (dirtyPages.size() > SchemaFileConfig.PAGE_CACHE_SIZE) {
+          if (cxt.dirtyPages.size() > SchemaFileConfig.PAGE_CACHE_SIZE) {
             flushDirtyPages();
           }
 
-          tarPage = getPageInstance(cascadePages.poll());
+          tarPage = getPageInstance(cascadePages.poll(), cxt);
           if (tarPage.getAsSegmentedPage() != null) {
             tarPage.getAsSegmentedPage().purgeSegments();
-            markDirty(tarPage);
+            markDirty(tarPage, cxt);
             addPageToCache(tarPage.getPageIndex(), tarPage);
             continue;
           }
@@ -348,32 +350,35 @@ public class BTreePageManager extends PageManager {
           tarPage =
               ISchemaPage.initSegmentedPage(
                   ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH), tarPage.getPageIndex());
-          replacePageInCache(tarPage);
+          replacePageInCache(tarPage, cxt);
         }
       }
     }
-    flushDirtyPages();
+    flushDirtyPages(cxt);
   }
 
   @Override
   public ICachedMNode getChildNode(ICachedMNode parent, String childName)
       throws MetadataException, IOException {
+    // TODO unnecessary context var
+    SchemaPageUpdateContext cxt = new SchemaPageUpdateContext();
+
     if (getNodeAddress(parent) < 0) {
       throw new MetadataException(
           String.format(
               "Node [%s] has no valid segment address in pbtree file.", parent.getFullPath()));
     }
 
-    long actualSegAddr = getTargetSegmentAddress(getNodeAddress(parent), childName);
+    long actualSegAddr = getTargetSegmentAddress(getNodeAddress(parent), childName, cxt);
     ICachedMNode child =
-        getPageInstance(getPageIndex(actualSegAddr))
+        getPageInstance(getPageIndex(actualSegAddr), null)
             .getAsSegmentedPage()
             .read(getSegIndex(actualSegAddr), childName);
 
     if (child == null && parent.isDevice()) {
       // try read alias directly first
       child =
-          getPageInstance(getPageIndex(actualSegAddr))
+          getPageInstance(getPageIndex(actualSegAddr), cxt)
               .getAsSegmentedPage()
               .readByAlias(getSegIndex(actualSegAddr), childName);
       if (child != null) {
@@ -388,20 +393,23 @@ public class BTreePageManager extends PageManager {
 
   private ICachedMNode getChildWithAlias(ICachedMNode par, String alias)
       throws IOException, MetadataException {
+    // TODO unnecessary context var
+    SchemaPageUpdateContext cxt = new SchemaPageUpdateContext();
+
     long srtAddr = getNodeAddress(par);
-    ISchemaPage page = getPageInstance(getPageIndex(srtAddr));
+    ISchemaPage page = getPageInstance(getPageIndex(srtAddr), null);
 
     if (page.getAsInternalPage() == null || page.getSubIndex() < 0) {
       return null;
     }
 
-    String name = searchSubIndexAlias(page.getSubIndex(), alias);
+    String name = searchSubIndexAlias(page.getSubIndex(), alias, cxt);
 
     if (name == null) {
       return null;
     }
 
-    return getTargetLeafPage(page, name).getAsSegmentedPage().read((short) 0, name);
+    return getTargetLeafPage(page, name, cxt).getAsSegmentedPage().read((short) 0, name);
   }
 
   @Override
@@ -409,10 +417,10 @@ public class BTreePageManager extends PageManager {
       throws MetadataException, IOException {
     int pageIdx = getPageIndex(getNodeAddress(parent));
     short segId = getSegIndex(getNodeAddress(parent));
-    ISchemaPage page = getPageInstance(pageIdx);
+    ISchemaPage page = getPageInstance(pageIdx, null);
 
     while (page.getAsSegmentedPage() == null) {
-      page = getPageInstance(getPageIndex(page.getAsInternalPage().getNextSegAddress()));
+      page = getPageInstance(getPageIndex(page.getAsInternalPage().getNextSegAddress()), null);
     }
 
     long actualSegAddr = page.getAsSegmentedPage().getNextSegAddress(segId);
@@ -433,7 +441,7 @@ public class BTreePageManager extends PageManager {
         try {
           ISchemaPage nPage;
           while (children.isEmpty() && nextSeg >= 0) {
-            nPage = getPageInstance(getPageIndex(nextSeg));
+            nPage = getPageInstance(getPageIndex(nextSeg), null);
             children = nPage.getAsSegmentedPage().getChildren(getSegIndex(nextSeg));
             nextSeg = nPage.getAsSegmentedPage().getNextSegAddress(getSegIndex(nextSeg));
           }
@@ -453,9 +461,9 @@ public class BTreePageManager extends PageManager {
   }
 
   /** Seek non-InternalPage by name, syntax sugar of {@linkplain #getTargetSegmentAddress}. */
-  private ISchemaPage getTargetLeafPage(ISchemaPage topPage, String recKey)
+  private ISchemaPage getTargetLeafPage(ISchemaPage topPage, String recKey, SchemaPageUpdateContext cxt)
       throws IOException, MetadataException {
-    treeTrace[0] = 0;
+    cxt.treeTrace[0] = 0;
     if (topPage.getAsInternalPage() == null) {
       return topPage;
     }
@@ -464,10 +472,10 @@ public class BTreePageManager extends PageManager {
     int i = 0; // mark the trace of b+ tree node
     while (curPage.getAsInternalPage() != null) {
       i++;
-      treeTrace[i] = curPage.getPageIndex();
-      curPage = getPageInstance(curPage.getAsInternalPage().getRecordByKey(recKey));
+      cxt.treeTrace[i] = curPage.getPageIndex();
+      curPage = getPageInstance(curPage.getAsInternalPage().getRecordByKey(recKey), cxt);
     }
-    treeTrace[0] = i; // bound in no.0 elem, points the parent the return
+    cxt.treeTrace[0] = i; // bound in no.0 elem, points the parent the return
 
     return curPage;
   }
@@ -480,10 +488,10 @@ public class BTreePageManager extends PageManager {
    * @return address of the target segment.
    */
   @Override
-  protected long getTargetSegmentAddress(long curSegAddr, String recKey)
+  protected long getTargetSegmentAddress(long curSegAddr, String recKey, SchemaPageUpdateContext cxt)
       throws IOException, MetadataException {
-    treeTrace[0] = 0;
-    ISchemaPage curPage = getPageInstance(getPageIndex(curSegAddr));
+    cxt.treeTrace[0] = 0;
+    ISchemaPage curPage = getPageInstance(getPageIndex(curSegAddr), cxt);
     if (curPage.getAsSegmentedPage() != null) {
       return curSegAddr;
     }
@@ -491,10 +499,10 @@ public class BTreePageManager extends PageManager {
     int i = 0; // mark the trace of b+ tree node
     while (curPage.getAsInternalPage() != null) {
       i++;
-      treeTrace[i] = curPage.getPageIndex();
-      curPage = getPageInstance(curPage.getAsInternalPage().getRecordByKey(recKey));
+      cxt.treeTrace[i] = curPage.getPageIndex();
+      curPage = getPageInstance(curPage.getAsInternalPage().getRecordByKey(recKey), cxt);
     }
-    treeTrace[0] = i; // bound in no.0 elem, points the parent the return
+    cxt.treeTrace[0] = i; // bound in no.0 elem, points the parent the return
 
     return getGlobalIndex(curPage.getPageIndex(), (short) 0);
   }

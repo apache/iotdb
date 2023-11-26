@@ -216,7 +216,9 @@ public class SchemaFile implements ISchemaFile {
       // should clear this file
       clear();
     } else {
+      pageManager.entrantLock(node);
       pageManager.delete(node);
+      pageManager.releaseEntrantLock(node);
     }
   }
 
@@ -227,6 +229,7 @@ public class SchemaFile implements ISchemaFile {
     if (node.isDatabase()) {
       isEntity = node.isDevice();
       setNodeAddress(node, lastSGAddr);
+      pageManager.writeLockSegment(node);
     } else {
       if (curSegAddr < 0L) {
         if (node.isDevice() && node.getAsDeviceMNode().isUseTemplate()) {
@@ -242,12 +245,17 @@ public class SchemaFile implements ISchemaFile {
                 "Cannot flush any node with negative address [%s] except for DatabaseNode.",
                 node.getFullPath()));
       }
+
+      // entrance lock node and its parent
+      pageManager.entrantLock(node);
     }
 
     pageManager.writeNewChildren(node);
     pageManager.writeUpdatedChildren(node);
     pageManager.flushDirtyPages();
     updateHeaderBuffer();
+
+    pageManager.releaseEntrantLock(node);
   }
 
   @Override
@@ -414,7 +422,7 @@ public class SchemaFile implements ISchemaFile {
     return (short) (globalIndex & SchemaFileConfig.SEG_INDEX_MASK);
   }
 
-  /** TODO: shall merge with {@linkplain PageManager#reEstimateSegSize} */
+  /** TODO: shall merge with PageManager#reEstimateSegSize */
   static short reEstimateSegSize(int oldSize) {
     for (short size : SchemaFileConfig.SEG_SIZE_LST) {
       if (oldSize < size) {
