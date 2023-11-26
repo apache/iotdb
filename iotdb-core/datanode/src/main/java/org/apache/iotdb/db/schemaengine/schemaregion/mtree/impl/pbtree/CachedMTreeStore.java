@@ -488,6 +488,10 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   }
 
   final void pin(ICachedMNode node, boolean needLock) throws MetadataException {
+    if (node.getParent() == null) {
+      // ignore node represented by template
+      return;
+    }
     if (needLock) {
       lockManager.globalReadLock();
     }
@@ -520,11 +524,14 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   }
 
   final void unPin(ICachedMNode node, boolean needLock) {
+    if (node.getParent() == null) {
+      // ignore node represented by template
+      return;
+    }
     if (needLock) {
       lockManager.globalReadLock();
     }
-    if (!node.isDatabase() && node.getParent() != null) {
-      // ignore node represented by template
+    if (!node.isDatabase()) {
       lockManager.threadReadLock(node.getParent(), true);
     }
     try {
@@ -532,7 +539,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
         ensureMemoryStatus();
       }
     } finally {
-      if (!node.isDatabase() && node.getParent() != null) {
+      if (!node.isDatabase()) {
         lockManager.threadReadUnlock(node.getParent());
       }
       if (needLock) {

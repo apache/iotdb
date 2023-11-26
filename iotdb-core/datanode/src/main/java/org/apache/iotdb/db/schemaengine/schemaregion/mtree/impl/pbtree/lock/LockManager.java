@@ -66,10 +66,24 @@ public class LockManager {
       ICachedMNode node, Consumer<StampedWriterPreferredLock> lockOperation) {
     LockEntry lockEntry;
     synchronized (this) {
-      lockEntry = node.getLockEntry();
-      if (lockEntry == null) {
-        lockEntry = lockPool.borrowLock();
-        node.setLockEntry(lockEntry);
+      // process node.replace cases
+      // make sure different instance mapped to the same logical node share the same lock
+      ICachedMNode actualNode = node.getParent().getChild(node.getName());
+      if (node == actualNode) {
+        lockEntry = node.getLockEntry();
+        if (lockEntry == null) {
+          lockEntry = lockPool.borrowLock();
+          node.setLockEntry(lockEntry);
+        }
+      } else {
+        lockEntry = actualNode.getLockEntry();
+        if (lockEntry == null) {
+          lockEntry = lockPool.borrowLock();
+          actualNode.setLockEntry(lockEntry);
+          node.setLockEntry(lockEntry);
+        } else {
+          node.setLockEntry(lockEntry);
+        }
       }
       lockEntry.pin();
     }
@@ -84,6 +98,12 @@ public class LockManager {
       unLockOperation.accept(lock);
       lockEntry.unpin();
       if (lock.isFree() && !lockEntry.isPinned()) {
+        ICachedMNode actualNode = node.getParent().getChild(node.getName());
+        if (actualNode != null && actualNode != node) {
+          // actualNode may already be evicted after flush, in which case this method is just
+          // intended to return the lock
+          actualNode.setLockEntry(null);
+        }
         node.setLockEntry(null);
         lockPool.returnLock(lockEntry);
       }
