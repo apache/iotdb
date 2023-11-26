@@ -130,16 +130,6 @@ public abstract class SchemaPage implements ISchemaPage {
   }
 
   @Override
-  public void markDirty() {
-    dirtyFlag = true;
-  }
-
-  @Override
-  public boolean isDirty() {
-    return dirtyFlag;
-  }
-
-  @Override
   @TestOnly
   public WrappedSegment getSegmentOnTest(short idx) throws SegmentNotFoundException {
     return null;

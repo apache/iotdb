@@ -54,6 +54,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
@@ -72,6 +74,7 @@ public abstract class PageManager implements IPageManager {
   protected final Map<Integer, ISchemaPage> pageInstCache;
 
   protected final PageLocks pageLocks;
+  protected final Lock evictLock;
 
   protected final AtomicInteger lastPageIndex;
 
@@ -81,7 +84,8 @@ public abstract class PageManager implements IPageManager {
   // protected final Map<Integer, ISchemaPage> dirtyPages;
   // optimize retrieval of the smallest applicable DIRTY segmented page
   // tiered by: MIN_SEG_SIZE, PAGE/16, PAGE/8, PAGE/4, PAGE/2, PAGE_SIZE
-  // protected final LinkedList<Integer>[] tieredDirtyPageIndex = new LinkedList[SchemaFileConfig.SEG_SIZE_LST.length];
+  // protected final LinkedList<Integer>[] tieredDirtyPageIndex = new
+  // LinkedList[SchemaFileConfig.SEG_SIZE_LST.length];
   // shift to ThreadLocal if concurrent write expected
   // protected int[] treeTrace;
 
@@ -101,6 +105,7 @@ public abstract class PageManager implements IPageManager {
         Collections.synchronizedMap(new LinkedHashMap<>(SchemaFileConfig.PAGE_CACHE_SIZE, 1, true));
 
     this.pageLocks = new PageLocks();
+    this.evictLock = new ReentrantLock();
     this.lastPageIndex =
         lastPageIndex >= 0 ? new AtomicInteger(lastPageIndex) : new AtomicInteger(0);
     this.channel = channel;
@@ -157,9 +162,49 @@ public abstract class PageManager implements IPageManager {
     return 0L;
   }
 
-  // region Framework Methods
   @Override
-  public void writeNewChildren(ICachedMNode node) throws MetadataException, IOException {
+  public void writeMNode(ICachedMNode node) throws MetadataException, IOException {
+    SchemaPageContext cxt = new SchemaPageContext();
+    entrantLock(node, cxt);
+
+    writeNewChildren(node, cxt);
+    writeUpdatedChildren(node, cxt);
+    flushDirtyPages(cxt);
+
+    releaseLocks(cxt);
+  }
+
+  protected void releaseLocks(SchemaPageContext cxt) {
+    for (int i : cxt.lockTraces) {
+      pageLocks.getLock(i).writeLock().unlock();
+    }
+  }
+
+  protected void entrantLock(ICachedMNode node, SchemaPageContext cxt) {
+    int initPageIndex = getPageIndex(getNodeAddress(node));
+
+    if (node.isDatabase()) {
+      pageLocks.getLock(initPageIndex).writeLock().lock();
+      cxt.lockTraces.add(initPageIndex);
+    } else {
+      int parIndex = getPageIndex(getNodeAddress(node.getParent()));
+
+      int minPageIndex = Math.min(initPageIndex, parIndex);
+      int maxPageIndex = Math.max(initPageIndex, parIndex);
+
+      pageLocks.getLock(minPageIndex).writeLock().lock();
+      cxt.lockTraces.add(minPageIndex);
+
+      if (minPageIndex != maxPageIndex) {
+        pageLocks.getLock(maxPageIndex).writeLock().lock();
+        cxt.lockTraces.add(maxPageIndex);
+      }
+    }
+  }
+
+  // region Framework Methods
+  private void writeNewChildren(ICachedMNode node, SchemaPageContext cxt)
+      throws MetadataException, IOException {
     int subIndex;
     long curSegAddr = getNodeAddress(node);
     long actualAddress; // actual segment to write record
@@ -167,7 +212,6 @@ public abstract class PageManager implements IPageManager {
     ISchemaPage curPage;
     ByteBuffer childBuffer;
     String alias;
-    SchemaPageUpdateContext cxt = new SchemaPageUpdateContext();
     // TODO: reserve order of insert in container may be better
     for (Map.Entry<String, ICachedMNode> entry :
         ICachedMNodeContainer.getCachedMNodeContainer(node).getNewChildBuffer().entrySet().stream()
@@ -247,19 +291,20 @@ public abstract class PageManager implements IPageManager {
               newPage.transplantSegment(curPage.getAsSegmentedPage(), actSegId, newSegSize);
           newPage.write(SchemaFile.getSegIndex(curSegAddr), entry.getKey(), childBuffer);
           curPage.getAsSegmentedPage().deleteSegment(actSegId);
+
+          // entrant lock guarantees thread-safe
           SchemaFile.setNodeAddress(node, curSegAddr);
           updateParentalRecord(node.getParent(), node.getName(), curSegAddr, cxt);
+
           markDirty(curPage, cxt);
           addPageToCache(curPage.getPageIndex(), curPage);
         }
       }
     }
-    // TODO context could be saved by ThreadID, and flush under orchestration
-    flushDirtyPages(cxt);
   }
 
-  @Override
-  public void writeUpdatedChildren(ICachedMNode node) throws MetadataException, IOException {
+  private void writeUpdatedChildren(ICachedMNode node, SchemaPageContext cxt)
+      throws MetadataException, IOException {
     boolean removeOldSubEntry = false, insertNewSubEntry = false;
     int subIndex;
     long curSegAddr = getNodeAddress(node);
@@ -268,7 +313,6 @@ public abstract class PageManager implements IPageManager {
     ICachedMNode child, oldChild;
     ISchemaPage curPage;
     ByteBuffer childBuffer;
-    SchemaPageUpdateContext cxt = new SchemaPageUpdateContext();
     for (Map.Entry<String, ICachedMNode> entry :
         ICachedMNodeContainer.getCachedMNodeContainer(node).getUpdatedChildBuffer().entrySet()) {
       child = entry.getValue();
@@ -369,15 +413,13 @@ public abstract class PageManager implements IPageManager {
         }
       }
     }
-    // TODO context could be saved by ThreadID, and flush under orchestration
-    flushDirtyPages(cxt);
   }
 
   // endregion
 
   // region Abstract and Overridable Methods
-  protected abstract long getTargetSegmentAddress(long curAddr, String recKey, SchemaPageUpdateContext cxt)
-      throws IOException, MetadataException;
+  protected abstract long getTargetSegmentAddress(
+      long curAddr, String recKey, SchemaPageContext cxt) throws IOException, MetadataException;
 
   /**
    * Deal with split, transplant and index update about the overflow occurred by insert.
@@ -387,7 +429,7 @@ public abstract class PageManager implements IPageManager {
    * @param childBuffer content of the key
    */
   protected abstract void multiPageInsertOverflowOperation(
-      ISchemaPage curPage, String key, ByteBuffer childBuffer, SchemaPageUpdateContext cxt)
+      ISchemaPage curPage, String key, ByteBuffer childBuffer, SchemaPageContext cxt)
       throws MetadataException, IOException;
 
   /**
@@ -396,7 +438,7 @@ public abstract class PageManager implements IPageManager {
    * @return the top internal page
    */
   protected abstract void multiPageUpdateOverflowOperation(
-      ISchemaPage curPage, String key, ByteBuffer childBuffer, SchemaPageUpdateContext cxt)
+      ISchemaPage curPage, String key, ByteBuffer childBuffer, SchemaPageContext cxt)
       throws MetadataException, IOException;
 
   /**
@@ -404,7 +446,8 @@ public abstract class PageManager implements IPageManager {
    *
    * @param parNode node needs to build subordinate index.
    */
-  protected abstract void buildSubIndex(ICachedMNode parNode, SchemaPageUpdateContext cxt) throws MetadataException, IOException;
+  protected abstract void buildSubIndex(ICachedMNode parNode, SchemaPageContext cxt)
+      throws MetadataException, IOException;
 
   /**
    * Insert an entry of subordinate index of the target node.
@@ -413,13 +456,14 @@ public abstract class PageManager implements IPageManager {
    * @param key key of the sub-index entry.
    * @param rec value of the sub-index entry.
    */
-  protected abstract void insertSubIndexEntry(int base, String key, String rec, SchemaPageUpdateContext cxt)
+  protected abstract void insertSubIndexEntry(
+      int base, String key, String rec, SchemaPageContext cxt)
       throws MetadataException, IOException;
 
-  protected abstract void removeSubIndexEntry(int base, String oldAlias, SchemaPageUpdateContext cxt)
+  protected abstract void removeSubIndexEntry(int base, String oldAlias, SchemaPageContext cxt)
       throws MetadataException, IOException;
 
-  protected abstract String searchSubIndexAlias(int base, String alias, SchemaPageUpdateContext cxt)
+  protected abstract String searchSubIndexAlias(int base, String alias, SchemaPageContext cxt)
       throws MetadataException, IOException;
 
   // endregion
@@ -432,10 +476,10 @@ public abstract class PageManager implements IPageManager {
 
   @FunctionalInterface
   interface FlushPageStrategy {
-    void apply(SchemaPageUpdateContext cxt) throws IOException;
+    void apply(SchemaPageContext cxt) throws IOException;
   }
 
-  private void flushDirtyPagesWithLogging(SchemaPageUpdateContext cxt) throws IOException {
+  private void flushDirtyPagesWithLogging(SchemaPageContext cxt) throws IOException {
     if (logCounter.get() > SchemaFileConfig.SCHEMA_FILE_LOG_SIZE) {
       logWriter = logWriter.renew();
       logCounter.set(0);
@@ -454,21 +498,14 @@ public abstract class PageManager implements IPageManager {
     logWriter.commit();
   }
 
-  private void flushDirtyPagesWithoutLogging(SchemaPageUpdateContext cxt) throws IOException {
+  private void flushDirtyPagesWithoutLogging(SchemaPageContext cxt) throws IOException {
     for (ISchemaPage page : cxt.dirtyPages.values()) {
       page.syncPageBuffer();
       page.flushPageToChannel(channel);
     }
   }
 
-
-  @Override
-  public synchronized void flushDirtyPages() throws IOException {
-    // FIXME associate flush with context
-
-  }
-
-  public synchronized void flushDirtyPages(SchemaPageUpdateContext cxt) throws IOException {
+  public synchronized void flushDirtyPages(SchemaPageContext cxt) throws IOException {
     if (cxt.dirtyPages.size() == 0) {
       return;
     }
@@ -506,43 +543,8 @@ public abstract class PageManager implements IPageManager {
 
   // region Page Access Management
 
-
-  // region Page Lock Management
-  @Override
-  public void writeLockSegment(ICachedMNode node) {
-    // pageLocks.getLock(getPageIndex(getNodeAddress(node))).writeLock().lock();
-  }
-
-  @Override
-  public void entrantLock(ICachedMNode node) {
-    // int pageIndex, parentPageIndex;
-    // pageIndex = getPageIndex(getNodeAddress(node));
-    // parentPageIndex = getPageIndex(getNodeAddress(node.getParent()));
-    //
-    // int minPageIndex = Math.min(pageIndex, parentPageIndex);
-    // int maxPageIndex = Math.max(pageIndex, parentPageIndex);
-    //
-    // pageLocks.getLock(minPageIndex).writeLock().lock();
-    //
-    // if (minPageIndex != maxPageIndex) {
-    //   pageLocks.getLock(maxPageIndex).writeLock().lock();
-    // }
-  }
-
-  @Override
-  public void releaseEntrantLock(ICachedMNode node) throws IOException, MetadataException {
-    // pageLocks.getLock(getPageIndex(getNodeAddress(node))).writeLock().unlock();
-    //
-    // if (!node.isDatabase()
-    //     && getPageIndex(getNodeAddress(node)) != getPageIndex(getNodeAddress(node.getParent()))) {
-    //   pageLocks.getLock(getPageIndex(getNodeAddress(node.getParent()))).writeLock().unlock();
-    // }
-  }
-
-  // endregion
-
-
-  public synchronized ISchemaPage getPageInstance(int pageIdx, SchemaPageUpdateContext cxt) throws IOException, MetadataException {
+  public ISchemaPage getPageInstance(int pageIdx, SchemaPageContext cxt)
+      throws IOException, MetadataException {
     if (pageIdx > lastPageIndex.get()) {
       throw new MetadataException(String.format("Page index %d out of range.", pageIdx));
     }
@@ -551,8 +553,10 @@ public abstract class PageManager implements IPageManager {
       return cxt.dirtyPages.get(pageIdx);
     }
 
-    if (pageInstCache.containsKey(pageIdx)) {
-      return pageInstCache.get(pageIdx);
+    synchronized (pageInstCache) {
+      if (pageInstCache.containsKey(pageIdx)) {
+        return pageInstCache.get(pageIdx);
+      }
     }
 
     ByteBuffer newBuf = ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH);
@@ -560,12 +564,14 @@ public abstract class PageManager implements IPageManager {
     return addPageToCache(pageIdx, ISchemaPage.loadSchemaPage(newBuf));
   }
 
-  private long preAllocateSegment(short size, SchemaPageUpdateContext cxt) throws IOException, MetadataException {
+  private long preAllocateSegment(short size, SchemaPageContext cxt)
+      throws IOException, MetadataException {
     ISegmentedPage page = getMinApplSegmentedPageInMem(size, cxt);
     return SchemaFile.getGlobalIndex(page.getPageIndex(), page.allocNewSegment(size));
   }
 
-  protected ISchemaPage replacePageInCache(ISchemaPage page, SchemaPageUpdateContext cxt) {
+  protected ISchemaPage replacePageInCache(ISchemaPage page, SchemaPageContext cxt) {
+    // no need to lock since the original should already be in lock trace
     markDirty(page, cxt);
     return addPageToCache(page.getPageIndex(), page);
   }
@@ -576,8 +582,8 @@ public abstract class PageManager implements IPageManager {
    *
    * @param size size of the expected segment
    */
-  protected ISegmentedPage getMinApplSegmentedPageInMem(short size, SchemaPageUpdateContext cxt) {
-    ISchemaPage targetPage = null;
+  protected ISegmentedPage getMinApplSegmentedPageInMem(short size, SchemaPageContext cxt) {
+    ISchemaPage targetPage;
     int tierLoopCnt = 0;
     for (int i = 0; i < cxt.tieredDirtyPageIndex.length && cxt.dirtyPages.size() > 0; i++) {
       tierLoopCnt = cxt.tieredDirtyPageIndex[i].size();
@@ -594,6 +600,7 @@ public abstract class PageManager implements IPageManager {
 
         // suitable page for requested size
         if (targetPage.getAsSegmentedPage().isCapableForSegSize(size)) {
+          // place targetPage on suitable new tier
           sortSegmentedIntoIndex(targetPage, size, cxt);
           return targetPage.getAsSegmentedPage();
         }
@@ -608,8 +615,16 @@ public abstract class PageManager implements IPageManager {
     // TODO refactor design related to pageInstCache to index its pages in further development
     for (Map.Entry<Integer, ISchemaPage> entry : pageInstCache.entrySet()) {
       if (entry.getValue().getAsSegmentedPage() != null
-          && entry.getValue().getAsSegmentedPage().isCapableForSegSize(size)) {
+          && entry.getValue().getAsSegmentedPage().isCapableForSegSize(size)
+          && pageLocks.getLock(entry.getKey()).writeLock().tryLock()) {
+        // in case the page modified before lock and after check
+        if (!entry.getValue().getAsSegmentedPage().isCapableForSegSize(size)) {
+          pageLocks.getLock(entry.getKey()).writeLock().unlock();
+          continue;
+        }
+
         markDirty(entry.getValue(), cxt);
+        cxt.lockTraces.add(entry.getKey());
         return pageInstCache.get(entry.getKey()).getAsSegmentedPage();
       }
     }
@@ -627,7 +642,7 @@ public abstract class PageManager implements IPageManager {
    * @param newSegSize to re-integrate after a retrieval, the expected overhead shall be considered.
    *     -1 for common dirty mark.
    */
-  protected void sortSegmentedIntoIndex(ISchemaPage page, short newSegSize, SchemaPageUpdateContext cxt) {
+  protected void sortSegmentedIntoIndex(ISchemaPage page, short newSegSize, SchemaPageContext cxt) {
     // actual space occupied by a segment includes both its own length and the length of its offset.
     // so available length for a segment is the spareSize minus the offset length
     short availableSize =
@@ -653,23 +668,25 @@ public abstract class PageManager implements IPageManager {
     }
   }
 
-  protected ISchemaPage allocateNewSegmentedPage(SchemaPageUpdateContext cxt) {
-    lastPageIndex.incrementAndGet();
+  protected ISchemaPage allocateNewSegmentedPage(SchemaPageContext cxt) {
     ISchemaPage newPage =
         ISchemaPage.initSegmentedPage(
-            ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH), lastPageIndex.get());
+            ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH), lastPageIndex.incrementAndGet());
+    pageLocks.getLock(newPage.getPageIndex()).writeLock().lock();
+    cxt.lockTraces.add(newPage.getPageIndex());
     markDirty(newPage, cxt);
     return addPageToCache(newPage.getPageIndex(), newPage);
   }
 
-  protected ISchemaPage registerAsNewPage(ISchemaPage page, SchemaPageUpdateContext cxt) {
+  protected ISchemaPage registerAsNewPage(ISchemaPage page, SchemaPageContext cxt) {
     page.setPageIndex(lastPageIndex.incrementAndGet());
+    pageLocks.getLock(page.getPageIndex()).writeLock().lock();
+    cxt.lockTraces.add(page.getPageIndex());
     markDirty(page, cxt);
     return addPageToCache(page.getPageIndex(), page);
   }
 
-  protected void markDirty(ISchemaPage page, SchemaPageUpdateContext cxt) {
-    page.markDirty();
+  protected void markDirty(ISchemaPage page, SchemaPageContext cxt) {
     cxt.dirtyPages.put(page.getPageIndex(), page);
 
     if (page.getAsSegmentedPage() != null) {
@@ -677,23 +694,30 @@ public abstract class PageManager implements IPageManager {
     }
   }
 
-  protected synchronized ISchemaPage addPageToCache(int pageIndex, ISchemaPage page) {
+  /** pageInstCache is synchronized, only control concurrency of eviction */
+  protected ISchemaPage addPageToCache(int pageIndex, ISchemaPage page) {
     pageInstCache.put(pageIndex, page);
     // only one thread evicts and flushes pages
-    if (pageInstCache.size() > SchemaFileConfig.PAGE_CACHE_SIZE) {
-      int removeCnt =
-          (int) (0.2 * pageInstCache.size()) > 0 ? (int) (0.2 * pageInstCache.size()) : 1;
-      List<Integer> rmvIds = new ArrayList<>(pageInstCache.keySet()).subList(0, removeCnt);
+    if (evictLock.tryLock()) {
+      try {
+        if (pageInstCache.size() > SchemaFileConfig.PAGE_CACHE_SIZE) {
+          int removeCnt =
+              (int) (0.2 * pageInstCache.size()) > 0 ? (int) (0.2 * pageInstCache.size()) : 1;
+          List<Integer> rmvIds = new ArrayList<>(pageInstCache.keySet()).subList(0, removeCnt);
 
-      // dirty pages only flushed from dirtyPages
-      for (Integer id : rmvIds) {
-        pageInstCache.remove(id);
+          // dirty pages only flushed from dirtyPages
+          for (Integer id : rmvIds) {
+            pageInstCache.remove(id);
+          }
+        }
+      } finally {
+        evictLock.unlock();
       }
     }
     return page;
   }
 
-  private int loadFromFile(ByteBuffer dst, int pageIndex) throws IOException {
+  private synchronized int loadFromFile(ByteBuffer dst, int pageIndex) throws IOException {
     dst.clear();
     if (!readChannel.isOpen()) {
       readChannel = FileChannel.open(pmtFile.toPath(), StandardOpenOption.READ);
@@ -701,7 +725,8 @@ public abstract class PageManager implements IPageManager {
     return readChannel.read(dst, getPageAddress(pageIndex));
   }
 
-  private void updateParentalRecord(ICachedMNode parent, String key, long newSegAddr, SchemaPageUpdateContext cxt)
+  private void updateParentalRecord(
+      ICachedMNode parent, String key, long newSegAddr, SchemaPageContext cxt)
       throws IOException, MetadataException {
     if (parent == null || parent.getChild(key).isDatabase()) {
       throw new MetadataException("Root page shall not be migrated.");
@@ -717,7 +742,8 @@ public abstract class PageManager implements IPageManager {
 
   // region Inner Utilities
 
-  private int subIndexRootPage(long addr, SchemaPageUpdateContext cxt) throws IOException, MetadataException {
+  private int subIndexRootPage(long addr, SchemaPageContext cxt)
+      throws IOException, MetadataException {
     return getPageInstance(SchemaFile.getPageIndex(addr), cxt).getSubIndex();
   }
 
@@ -819,7 +845,7 @@ public abstract class PageManager implements IPageManager {
   @TestOnly
   public long getTargetSegmentAddressOnTest(long curSegAddr, String recKey)
       throws IOException, MetadataException {
-    return getTargetSegmentAddress(curSegAddr, recKey, new SchemaPageUpdateContext());
+    return getTargetSegmentAddress(curSegAddr, recKey, new SchemaPageContext());
   }
 
   @TestOnly
@@ -830,8 +856,8 @@ public abstract class PageManager implements IPageManager {
   // endregion
 
   /**
-   * Concurrent read/write lock within one SchemaFile/PageManager.
-   * Designed for concurrency of #pageInstCache previously, which is now synchronized.
+   * Concurrent read/write lock within one SchemaFile/PageManager. Designed for concurrency of
+   * #pageInstCache previously, which is now synchronized.
    */
   private class PageLocks {
     // TODO pooling for better performance, i.e., remove/reuse locks rarely accessed
@@ -847,21 +873,23 @@ public abstract class PageManager implements IPageManager {
   }
 
   /** Thread local variables about write/update process. */
-  public static class SchemaPageUpdateContext {
+  public static class SchemaPageContext {
     final Map<Integer, ISchemaPage> dirtyPages;
     // optimize retrieval of the smallest applicable DIRTY segmented page
     // tiered by: MIN_SEG_SIZE, PAGE/16, PAGE/8, PAGE/4, PAGE/2, PAGE_SIZE
     final LinkedList<Integer>[] tieredDirtyPageIndex;
     // shift to ThreadLocal if concurrent write expected
     final int[] treeTrace;
+    final List<Integer> lockTraces;
 
-    public SchemaPageUpdateContext() {
+    public SchemaPageContext() {
       dirtyPages = new HashMap<>();
       tieredDirtyPageIndex = new LinkedList[SchemaFileConfig.SEG_SIZE_LST.length];
       for (int i = 0; i < tieredDirtyPageIndex.length; i++) {
         tieredDirtyPageIndex[i] = new LinkedList<>();
       }
       treeTrace = new int[16];
+      lockTraces = new ArrayList<>();
     }
   }
 }

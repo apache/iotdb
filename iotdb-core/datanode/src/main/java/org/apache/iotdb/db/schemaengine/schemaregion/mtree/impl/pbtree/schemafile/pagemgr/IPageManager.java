@@ -38,9 +38,10 @@ import java.util.Iterator;
  */
 public interface IPageManager {
 
-  void writeNewChildren(ICachedMNode parNode) throws MetadataException, IOException;
-
-  void writeUpdatedChildren(ICachedMNode parNode) throws MetadataException, IOException;
+  /**
+   * All change will be an internal process, lock and dirty pages are now in the scope of context.
+   */
+  void writeMNode(ICachedMNode node) throws MetadataException, IOException;
 
   void delete(ICachedMNode node) throws IOException, MetadataException;
 
@@ -51,23 +52,9 @@ public interface IPageManager {
 
   void clear() throws IOException, MetadataException;
 
-  void flushDirtyPages() throws IOException;
-
   void close() throws IOException;
 
   int getLastPageIndex();
 
   void inspect(PrintWriter pw) throws IOException, MetadataException;
-
-  void writeLockSegment(ICachedMNode node) throws IOException, MetadataException;
-
-  /**
-   * If node's segment is transplanted, correspondent record on its parent's segment shall be modified, so it's
-   * necessary to lock both the node passing in and its parent.
-   * However, the locks are not necessarily exclusive on both nodes at begin, todo improvement later.
-   * @param node
-   */
-  void entrantLock(ICachedMNode node) throws IOException, MetadataException;
-
-  void releaseEntrantLock(ICachedMNode node) throws IOException, MetadataException;
 }

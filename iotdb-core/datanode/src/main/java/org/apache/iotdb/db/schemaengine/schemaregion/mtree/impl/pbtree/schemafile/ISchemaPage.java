@@ -133,10 +133,6 @@ public interface ISchemaPage {
 
   ByteBuffer getEntireSegmentSlice() throws MetadataException;
 
-  void markDirty();
-
-  boolean isDirty();
-
   @TestOnly
   WrappedSegment getSegmentOnTest(short idx) throws SegmentNotFoundException;
 

@@ -216,9 +216,7 @@ public class SchemaFile implements ISchemaFile {
       // should clear this file
       clear();
     } else {
-      pageManager.entrantLock(node);
       pageManager.delete(node);
-      pageManager.releaseEntrantLock(node);
     }
   }
 
@@ -229,7 +227,6 @@ public class SchemaFile implements ISchemaFile {
     if (node.isDatabase()) {
       isEntity = node.isDevice();
       setNodeAddress(node, lastSGAddr);
-      pageManager.writeLockSegment(node);
     } else {
       if (curSegAddr < 0L) {
         if (node.isDevice() && node.getAsDeviceMNode().isUseTemplate()) {
@@ -245,17 +242,9 @@ public class SchemaFile implements ISchemaFile {
                 "Cannot flush any node with negative address [%s] except for DatabaseNode.",
                 node.getFullPath()));
       }
-
-      // entrance lock node and its parent
-      pageManager.entrantLock(node);
     }
-
-    pageManager.writeNewChildren(node);
-    pageManager.writeUpdatedChildren(node);
-    pageManager.flushDirtyPages();
+    pageManager.writeMNode(node);
     updateHeaderBuffer();
-
-    pageManager.releaseEntrantLock(node);
   }
 
   @Override
@@ -278,7 +267,6 @@ public class SchemaFile implements ISchemaFile {
   @Override
   public void close() throws IOException {
     updateHeaderBuffer();
-    pageManager.flushDirtyPages();
     pageManager.close();
     forceChannel();
     channel.close();
@@ -287,7 +275,6 @@ public class SchemaFile implements ISchemaFile {
   @Override
   public void sync() throws IOException {
     updateHeaderBuffer();
-    pageManager.flushDirtyPages();
     forceChannel();
   }
 
