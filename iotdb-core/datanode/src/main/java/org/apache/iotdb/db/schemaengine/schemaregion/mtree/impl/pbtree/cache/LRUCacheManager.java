@@ -85,6 +85,11 @@ public class LRUCacheManager extends CacheManager {
   }
 
   @Override
+  protected ICachedMNode getCachedEntryBelongedNode(CacheEntry cacheEntry) {
+    return getAsLRUCacheEntry(cacheEntry).getNode();
+  }
+
+  @Override
   protected void clearNodeCache() {
     for (LRUCacheList lruCacheList : lruCacheLists) {
       lruCacheList.clear();

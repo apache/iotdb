@@ -153,10 +153,6 @@ public abstract class CacheManager implements ICacheManager {
       return;
     }
 
-    if (cacheEntry.isVolatile()) {
-      return;
-    }
-
     synchronized (cacheEntry) {
       if (cacheEntry.isVolatile()) {
         return;
@@ -438,6 +434,10 @@ public abstract class CacheManager implements ICacheManager {
               continue;
             }
 
+            // the node may be replaced due to the MTree logic
+            // we need to retake the node again
+            node = getCachedEntryBelongedNode(cacheEntry);
+
             getBelongedContainer(node).evictMNode(node.getName());
             if (node.isMeasurement()) {
               String alias = node.getAsMeasurementMNode().getAlias();
@@ -610,6 +610,8 @@ public abstract class CacheManager implements ICacheManager {
   protected abstract void removeFromNodeCache(CacheEntry cacheEntry);
 
   protected abstract ICachedMNode getPotentialNodeTobeEvicted();
+
+  protected abstract ICachedMNode getCachedEntryBelongedNode(CacheEntry cacheEntry);
 
   protected abstract void clearNodeCache();
 }

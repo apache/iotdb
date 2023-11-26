@@ -68,6 +68,11 @@ public class PlainCacheManager extends CacheManager {
   }
 
   @Override
+  protected ICachedMNode getCachedEntryBelongedNode(CacheEntry cacheEntry) {
+    return nodeCache.get(cacheEntry);
+  }
+
+  @Override
   protected void clearNodeCache() {
     nodeCache.clear();
   }
