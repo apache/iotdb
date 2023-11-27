@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaMeasurementN
 import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaNode;
 import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeDeviceUsingTemplateVisitor;
 import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeDeviceVisitor;
+import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeMeasurementVisitor;
 import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeVisitorFactory;
 import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeVisitorWithLimitOffsetWrapper;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
@@ -107,8 +108,23 @@ public class ClusterSchemaTree implements ISchemaTree {
   }
 
   @Override
-  public Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(PartialPath pathPattern) {
+  public Pair<List<MeasurementPath>, Integer>  searchMeasurementPaths(PartialPath pathPattern) {
     return searchMeasurementPaths(pathPattern, 0, 0, false);
+  }
+
+  @Override
+  public Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(
+      PartialPath pathPattern, boolean ignoreAuthority) {
+    if (!ignoreAuthority) {
+      return searchMeasurementPaths(pathPattern, 0, 0, false);
+    } else {
+      try (SchemaTreeMeasurementVisitor visitor =
+          SchemaTreeVisitorFactory.createSchemaTreeMeasurementVisitor(root, pathPattern, null)) {
+        visitor.setTemplateMap(templateMap);
+        List<MeasurementPath> result = visitor.getAllResult();
+        return new Pair<>(result, result.size());
+      }
+    }
   }
 
   public List<DeviceSchemaInfo> getAllDevices() {
@@ -232,13 +248,13 @@ public class ClusterSchemaTree implements ISchemaTree {
     List<LogicalViewSchema> logicalViewSchemaList = schemaComputation.getLogicalViewSchemaList();
     for (Integer index : indexOfTargetLogicalView) {
       LogicalViewSchema logicalViewSchema = logicalViewSchemaList.get(index);
-      PartialPath fullPath = logicalViewSchema.getSourcePathIfWritable();
-      Pair<List<MeasurementPath>, Integer> searchResult = this.searchMeasurementPaths(fullPath);
-      List<MeasurementPath> measurementPathList = searchResult.left;
+      PartialPath sourceFullPath = logicalViewSchema.getSourcePathIfWritable();
+      List<MeasurementPath> measurementPathList =
+          this.searchMeasurementPaths(sourceFullPath, true).left;
       if (measurementPathList.isEmpty()) {
         throw new SemanticException(
             new PathNotExistException(
-                fullPath.getFullPath(),
+                sourceFullPath.getFullPath(),
                 schemaComputation
                     .getDevicePath()
                     .concatNode(logicalViewSchema.getMeasurementId())
@@ -247,7 +263,7 @@ public class ClusterSchemaTree implements ISchemaTree {
         throw new SemanticException(
             String.format(
                 "The source paths [%s] of view [%s] are multiple.",
-                fullPath.getFullPath(),
+                sourceFullPath.getFullPath(),
                 schemaComputation
                     .getDevicePath()
                     .concatNode(logicalViewSchema.getMeasurementId())));

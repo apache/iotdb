@@ -41,6 +41,8 @@ public interface ISchemaTree {
 
   Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(PartialPath pathPattern);
 
+  Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(PartialPath pathPattern, boolean ignoreAuthority);
+
   /**
    * Get all device matching the path pattern.
    *
@@ -100,5 +102,9 @@ public interface ISchemaTree {
    */
   boolean hasLogicalViewMeasurement();
 
+  /**
+   * Set the authority scope of this schema tree. After the authority scope is set, only the tree nodes in the scope can be accessed if not specify to ignore.
+   * @param scope the authority scope
+   */
   void setAuthorityScope(PathPatternTree scope);
 }

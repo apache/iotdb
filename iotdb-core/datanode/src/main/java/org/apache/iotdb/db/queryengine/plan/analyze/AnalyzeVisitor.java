@@ -491,6 +491,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     try {
       for (MeasurementPath measurementPath :
           originSchemaTree.searchMeasurementPaths(ALL_MATCH_PATTERN).left) {
+        // all logical view measurement paths should be included in the authority scope
         if (measurementPath.getMeasurementSchema().isLogicalView()) {
           useLogicalView = true;
           LogicalViewSchema logicalViewSchema =
@@ -2925,6 +2926,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     deleteDataStatement.getPathList().forEach(patternTree::appendPathPattern);
 
     ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, context);
+    // There is no need to set authority scope for schema tree because if invalid delete statements have been filtered out.
     Set<String> deduplicatedDevicePaths = new HashSet<>();
 
     if (schemaTree.hasLogicalViewMeasurement()) {
@@ -2935,7 +2937,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       LogicalViewSchema logicalViewSchema;
       PartialPath sourcePathOfAliasSeries;
       for (MeasurementPath measurementPath :
-          schemaTree.searchMeasurementPaths(ALL_MATCH_PATTERN).left) {
+          schemaTree.searchMeasurementPaths(ALL_MATCH_PATTERN, true).left) {
         measurementSchema = measurementPath.getMeasurementSchema();
         if (measurementSchema.isLogicalView()) {
           logicalViewSchema = (LogicalViewSchema) measurementSchema;
@@ -3257,7 +3259,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     // search each path, make sure they all exist.
     int numOfExistPaths = 0;
     for (PartialPath path : pathList) {
-      Pair<List<MeasurementPath>, Integer> pathPair = schemaTree.searchMeasurementPaths(path);
+      Pair<List<MeasurementPath>, Integer> pathPair = schemaTree.searchMeasurementPaths(path, true);
       numOfExistPaths += !pathPair.left.isEmpty() ? 1 : 0;
     }
     return new Pair<>(schemaTree, numOfExistPaths);
@@ -3274,7 +3276,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     List<PartialPath> result = new ArrayList<>();
     for (PartialPath path : pathList) {
       Pair<List<MeasurementPath>, Integer> measurementPathList =
-          schemaTree.searchMeasurementPaths(path);
+          schemaTree.searchMeasurementPaths(path, true);
       if (measurementPathList.left.isEmpty()) {
         return new Pair<>(result, path);
       }
