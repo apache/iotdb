@@ -452,6 +452,7 @@ public class IoTDBPipeExtractorIT {
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1) values (2, 11)",
+              "insert into root.db.d2 (time, at1) values (2, 21)",
               "insert into root.db.d3 (time, at1) values (2, 31)",
               "insert into root.db.d4 (time, at1) values (2, 41)"))) {
         return;
