@@ -34,7 +34,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * or compared to {@link ProgressIndex}es other than {@link SchemaProgressIndex} or {@link
  * MinimumProgressIndex}.
  */
-public class SchemaProgressIndex implements ProgressIndex {
+public class SchemaProgressIndex extends ProgressIndex {
 
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
@@ -119,7 +119,7 @@ public class SchemaProgressIndex implements ProgressIndex {
     if (!(obj instanceof SchemaProgressIndex)) {
       return false;
     }
-    return this.equals((SchemaProgressIndex) obj);
+    return this.equals(obj);
   }
 
   @Override
@@ -144,6 +144,11 @@ public class SchemaProgressIndex implements ProgressIndex {
 
   public ProgressIndexType getType() {
     return ProgressIndexType.RECOVER_PROGRESS_INDEX;
+  }
+
+  @Override
+  public TotalOrderSumTuple getTotalOrderSumTuple() {
+    return null;
   }
 
   public static SchemaProgressIndex deserializeFrom(ByteBuffer byteBuffer) {
