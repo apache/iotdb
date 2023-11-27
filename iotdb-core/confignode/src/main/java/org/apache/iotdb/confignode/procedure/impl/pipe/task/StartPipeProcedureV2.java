@@ -103,6 +103,7 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
           "Failed to start pipe {}, details: {}, metadata will be synchronized later.",
           pipeName,
           exceptionMessage);
+      return;
     }
 
     // Clear exceptions and set isStoppedByRuntimeException to false if the pipe is
