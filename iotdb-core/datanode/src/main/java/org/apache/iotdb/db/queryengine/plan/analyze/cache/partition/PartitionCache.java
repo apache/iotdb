@@ -187,7 +187,6 @@ public class PartitionCache {
    *
    * @param result the result of get database cache
    * @param devicePaths the devices that need to hit
-   * @return
    */
   private void fetchStorageGroupAndUpdateCache(
       StorageGroupCacheResult<?> result, List<String> devicePaths)
