@@ -359,7 +359,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
                     .forEach(
                         pipeMeta -> {
                           final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMap =
-                              pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
+                              pipeMeta.getRuntimeMeta().getDataRegionId2TaskMetaMap();
 
                           if (consensusGroupIdToTaskMetaMap.containsKey(dataRegionGroupId)) {
                             // If the data region leader is -1, it means the data region is
@@ -443,7 +443,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
     final AtomicBoolean hasException = new AtomicBoolean(false);
     runtimeMeta
-        .getConsensusGroupId2TaskMetaMap()
+        .getDataRegionId2TaskMetaMap()
         .values()
         .forEach(
             pipeTaskMeta -> {
@@ -505,7 +505,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
 
     runtimeMeta
-        .getConsensusGroupId2TaskMetaMap()
+        .getDataRegionId2TaskMetaMap()
         .values()
         .forEach(
             pipeTaskMeta -> {

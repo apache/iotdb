@@ -100,26 +100,30 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             createPipeRequest.getProcessorAttributes(),
             createPipeRequest.getConnectorAttributes());
 
-    final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMap = new HashMap<>();
+    final Map<TConsensusGroupId, PipeTaskMeta> dataRegionIdToTaskMetaMap = new HashMap<>();
+    final Map<TConsensusGroupId, PipeTaskMeta> schemaRegionIdToTaskMetaMap = new HashMap<>();
+
     env.getConfigManager()
         .getLoadManager()
         .getRegionLeaderMap()
         .forEach(
             (regionGroupId, regionLeaderNodeId) -> {
-              if (regionGroupId.getType().equals(TConsensusGroupType.DataRegion)) {
-                final String databaseName =
-                    env.getConfigManager()
-                        .getPartitionManager()
-                        .getRegionStorageGroup(regionGroupId);
-                if (databaseName != null && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)) {
-                  // Pipe only collect user's data, filter metric database here.
-                  consensusGroupIdToTaskMetaMap.put(
+              final String databaseName =
+                  env.getConfigManager().getPartitionManager().getRegionStorageGroup(regionGroupId);
+              if (databaseName != null && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)) {
+                TConsensusGroupType type = regionGroupId.getType();
+                if (type.equals(TConsensusGroupType.DataRegion)) {
+                  dataRegionIdToTaskMetaMap.put(
+                      regionGroupId,
+                      new PipeTaskMeta(MinimumProgressIndex.INSTANCE, regionLeaderNodeId));
+                } else if (type.equals(TConsensusGroupType.SchemaRegion)) {
+                  schemaRegionIdToTaskMetaMap.put(
                       regionGroupId,
                       new PipeTaskMeta(MinimumProgressIndex.INSTANCE, regionLeaderNodeId));
                 }
               }
             });
-    pipeRuntimeMeta = new PipeRuntimeMeta(consensusGroupIdToTaskMetaMap);
+    pipeRuntimeMeta = new PipeRuntimeMeta(dataRegionIdToTaskMetaMap, schemaRegionIdToTaskMetaMap);
   }
 
   @Override

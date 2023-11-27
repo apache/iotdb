@@ -282,9 +282,9 @@ public class PipeTaskAgent {
       @NotNull PipeRuntimeMeta runtimeMetaOnDataNode) {
     // 1. Handle data region group leader changed first
     final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMapFromConfigNode =
-        runtimeMetaFromConfigNode.getConsensusGroupId2TaskMetaMap();
+        runtimeMetaFromConfigNode.getDataRegionId2TaskMetaMap();
     final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMapOnDataNode =
-        runtimeMetaOnDataNode.getConsensusGroupId2TaskMetaMap();
+        runtimeMetaOnDataNode.getDataRegionId2TaskMetaMap();
 
     // 1.1 Iterate over all consensus group ids in config node's pipe runtime meta, decide if we
     // need to drop and create a new task for each consensus group id
@@ -422,7 +422,7 @@ public class PipeTaskAgent {
               final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
 
               runtimeMeta
-                  .getConsensusGroupId2TaskMetaMap()
+                  .getDataRegionId2TaskMetaMap()
                   .values()
                   .forEach(
                       pipeTaskMeta -> {
@@ -447,7 +447,7 @@ public class PipeTaskAgent {
               final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
 
               runtimeMeta
-                  .getConsensusGroupId2TaskMetaMap()
+                  .getDataRegionId2TaskMetaMap()
                   .values()
                   .forEach(
                       pipeTaskMeta -> {
@@ -482,7 +482,7 @@ public class PipeTaskAgent {
 
               if (runtimeMeta.getStatus().get() == PipeStatus.RUNNING) {
                 runtimeMeta
-                    .getConsensusGroupId2TaskMetaMap()
+                    .getDataRegionId2TaskMetaMap()
                     .values()
                     .forEach(
                         pipeTaskMeta -> {
@@ -736,7 +736,7 @@ public class PipeTaskAgent {
     // Clear exception messages if started successfully
     existedPipeMeta
         .getRuntimeMeta()
-        .getConsensusGroupId2TaskMetaMap()
+        .getDataRegionId2TaskMetaMap()
         .values()
         .forEach(PipeTaskMeta::clearExceptionMessages);
   }
@@ -831,7 +831,7 @@ public class PipeTaskAgent {
     pipeMetaKeeper
         .getPipeMeta(pipeStaticMeta.getPipeName())
         .getRuntimeMeta()
-        .getConsensusGroupId2TaskMetaMap()
+        .getDataRegionId2TaskMetaMap()
         .put(consensusGroupId, pipeTaskMeta);
   }
 
@@ -839,7 +839,7 @@ public class PipeTaskAgent {
     pipeMetaKeeper
         .getPipeMeta(pipeStaticMeta.getPipeName())
         .getRuntimeMeta()
-        .getConsensusGroupId2TaskMetaMap()
+        .getDataRegionId2TaskMetaMap()
         .remove(dataRegionGroupId);
     final PipeTask pipeTask = pipeTaskManager.removePipeTask(pipeStaticMeta, dataRegionGroupId);
     if (pipeTask != null) {
