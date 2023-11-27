@@ -21,14 +21,7 @@ package org.apache.iotdb.db.pipe.config.plugin.env;
 
 public class PipeTaskProcessorRuntimeEnvironment extends PipeTaskRuntimeEnvironment {
 
-  private final int regionId;
-
   public PipeTaskProcessorRuntimeEnvironment(String pipeName, long creationTime, int regionId) {
-    super(pipeName, creationTime);
-    this.regionId = regionId;
-  }
-
-  public int getRegionId() {
-    return regionId;
+    super(pipeName, creationTime, regionId);
   }
 }
