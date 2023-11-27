@@ -200,7 +200,6 @@ public class PipeRuntimeMeta {
     ReadWriteIOUtils.write(isStoppedByRuntimeException.get(), outputStream);
   }
 
-  @Nonnull
   public static PipeRuntimeMeta deserialize(InputStream inputStream) throws IOException {
     final PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta();
 
@@ -237,7 +236,6 @@ public class PipeRuntimeMeta {
     return pipeRuntimeMeta;
   }
 
-  @Nonnull
   public static PipeRuntimeMeta deserialize(ByteBuffer byteBuffer) {
     final PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta();
 
@@ -276,7 +274,7 @@ public class PipeRuntimeMeta {
 
   /////////////////////////////// Compatibility ///////////////////////////////
 
-  // DO NOT CALL IT, unless from the former versions
+  // DO NOT CALL it directly, unless from the previous versions
   public void setDataNodeId2PipeRuntimeExceptionMap(
       Map<Integer, PipeRuntimeException> dataNodeId2PipeRuntimeExceptionMap) {
     this.dataNodeId2PipeRuntimeExceptionMap = dataNodeId2PipeRuntimeExceptionMap;

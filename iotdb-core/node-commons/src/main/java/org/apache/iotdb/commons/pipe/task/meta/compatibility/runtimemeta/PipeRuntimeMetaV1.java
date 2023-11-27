@@ -94,7 +94,6 @@ public class PipeRuntimeMetaV1 implements FormerPipeRuntimeMeta {
     }
   }
 
-  @Nonnull
   public static PipeRuntimeMetaV1 deserialize(InputStream inputStream, PipeStatus status)
       throws IOException {
     final PipeRuntimeMetaV1 pipeRuntimeMeta = new PipeRuntimeMetaV1();
@@ -112,7 +111,6 @@ public class PipeRuntimeMetaV1 implements FormerPipeRuntimeMeta {
     return pipeRuntimeMeta;
   }
 
-  @Nonnull
   public static PipeRuntimeMetaV1 deserialize(ByteBuffer byteBuffer, PipeStatus status) {
     final PipeRuntimeMetaV1 pipeRuntimeMeta = new PipeRuntimeMetaV1();
 

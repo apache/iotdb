@@ -163,7 +163,6 @@ public class PipeRuntimeMetaV2 implements FormerPipeRuntimeMeta {
     ReadWriteIOUtils.write(isStoppedByRuntimeException.get(), outputStream);
   }
 
-  @Nonnull
   public static PipeRuntimeMetaV2 deserialize(InputStream inputStream) throws IOException {
     final PipeRuntimeMetaV2 pipeRuntimeMeta = new PipeRuntimeMetaV2();
 
@@ -190,7 +189,6 @@ public class PipeRuntimeMetaV2 implements FormerPipeRuntimeMeta {
     return pipeRuntimeMeta;
   }
 
-  @Nonnull
   public static PipeRuntimeMetaV2 deserialize(ByteBuffer byteBuffer) {
     final PipeRuntimeMetaV2 pipeRuntimeMeta = new PipeRuntimeMetaV2();
 
