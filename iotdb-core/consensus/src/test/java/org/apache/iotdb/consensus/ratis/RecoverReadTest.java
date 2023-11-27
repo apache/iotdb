@@ -103,7 +103,11 @@ public class RecoverReadTest {
                             .setFirstElectionTimeoutMax(TimeDuration.valueOf(2, TimeUnit.SECONDS))
                             .setRequestTimeout(TimeDuration.valueOf(20, TimeUnit.SECONDS))
                             .build())
-                    .setImpl(RatisConfig.Impl.newBuilder().setRetryTimesMax(1).build())
+                    .setImpl(
+                        RatisConfig.Impl.newBuilder()
+                            .setRetryTimesMax(1)
+                            .setRetryWaitMillis(500)
+                            .build())
                     .build())
             .create();
     miniCluster.start();
