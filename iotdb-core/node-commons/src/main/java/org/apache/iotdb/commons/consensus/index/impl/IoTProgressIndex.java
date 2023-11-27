@@ -145,7 +145,7 @@ public class IoTProgressIndex extends ProgressIndex {
     if (!(obj instanceof IoTProgressIndex)) {
       return false;
     }
-    return this.equals((IoTProgressIndex) obj);
+    return this.equals(obj);
   }
 
   @Override

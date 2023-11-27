@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.consensus.request.write.pipe.task;
 
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.task.meta.compatibility.PipeRuntimeMetaVersion;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
@@ -62,7 +63,7 @@ public class CreatePipePlanV2 extends ConfigPhysicalPlan {
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     pipeStaticMeta = PipeStaticMeta.deserialize(buffer);
-    pipeRuntimeMeta = PipeRuntimeMeta.deserialize(buffer);
+    pipeRuntimeMeta = PipeRuntimeMetaVersion.deserializeRuntimeMeta(buffer);
   }
 
   @Override

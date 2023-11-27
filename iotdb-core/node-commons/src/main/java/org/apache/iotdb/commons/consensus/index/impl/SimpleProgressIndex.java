@@ -130,7 +130,7 @@ public class SimpleProgressIndex extends ProgressIndex {
     if (!(obj instanceof SimpleProgressIndex)) {
       return false;
     }
-    return this.equals((SimpleProgressIndex) obj);
+    return this.equals(obj);
   }
 
   @Override

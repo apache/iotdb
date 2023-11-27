@@ -17,19 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.task.meta;
+package org.apache.iotdb.commons.pipe.task.meta.compatibility.runtimemeta;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.commons.consensus.index.ProgressIndex;
-import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
-import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
-import org.apache.iotdb.commons.consensus.index.impl.SchemaProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeExceptionType;
+import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.task.meta.compatibility.PipeRuntimeMetaVersion;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -48,31 +48,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class PipeRuntimeMeta {
+@Deprecated
+public class PipeRuntimeMetaV2 implements FormerPipeRuntimeMeta {
 
   /////////////////////////////// Fields ///////////////////////////////
 
   private final AtomicReference<PipeStatus> status = new AtomicReference<>(PipeStatus.STOPPED);
 
-  // All the progressIndexes of the pipe.
-  /**
-   * {@link SchemaProgressIndex} for schema transmission on ConfigNode, always {@link
-   * MinimumProgressIndex} if the pipe has no relation to schema synchronization.
-   */
-  private final AtomicReference<ProgressIndex> configProgressIndex =
-      new AtomicReference<>(MinimumProgressIndex.INSTANCE);
-
-  /**
-   * Used to store progress for schema transmission on DataRegion, usually updated since the data
-   * synchronization is basic function of pipe.
-   */
-  private Map<TConsensusGroupId, PipeTaskMeta> dataRegionId2TaskMetaMap;
-
-  /**
-   * Used to store {@link SchemaProgressIndex} for schema transmission on SchemaRegion, always
-   * {@link MinimumProgressIndex} if the pipe has no relation to schema synchronization.
-   */
-  private final Map<TConsensusGroupId, PipeTaskMeta> schemaRegionId2TaskMetaMap;
+  private final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupId2TaskMetaMap;
 
   /**
    * Stores the newest exceptions encountered group by dataNodes.
@@ -85,7 +68,7 @@ public class PipeRuntimeMeta {
    * <p>2. {@link PipeRuntimeConnectorCriticalException}, to record the exception reported by other
    * pipes sharing the same connector, and will stop the pipe likewise.
    */
-  private Map<Integer, PipeRuntimeException> dataNodeId2PipeRuntimeExceptionMap =
+  private final Map<Integer, PipeRuntimeException> dataNodeId2PipeRuntimeExceptionMap =
       new ConcurrentHashMap<>();
 
   private final AtomicLong exceptionsClearTime = new AtomicLong(Long.MIN_VALUE);
@@ -94,59 +77,49 @@ public class PipeRuntimeMeta {
 
   /////////////////////////////// Initializer ///////////////////////////////
 
-  public PipeRuntimeMeta() {
-    dataRegionId2TaskMetaMap = new ConcurrentHashMap<>();
-    schemaRegionId2TaskMetaMap = new ConcurrentHashMap<>();
+  public PipeRuntimeMetaV2() {
+    consensusGroupId2TaskMetaMap = new ConcurrentHashMap<>();
   }
 
-  public PipeRuntimeMeta(
-      Map<TConsensusGroupId, PipeTaskMeta> dataRegionId2TaskMetaMap,
-      Map<TConsensusGroupId, PipeTaskMeta> schemaRegionId2TaskMetaMap) {
-    this.dataRegionId2TaskMetaMap = new ConcurrentHashMap<>(dataRegionId2TaskMetaMap);
-    this.schemaRegionId2TaskMetaMap = new ConcurrentHashMap<>(schemaRegionId2TaskMetaMap);
+  public PipeRuntimeMetaV2(Map<TConsensusGroupId, PipeTaskMeta> consensusGroupId2TaskMetaMap) {
+    this.consensusGroupId2TaskMetaMap = consensusGroupId2TaskMetaMap;
   }
 
   /////////////////////////////// Normal getter & setter ///////////////////////////////
 
+  @TestOnly
   public AtomicReference<PipeStatus> getStatus() {
     return status;
   }
 
-  public ProgressIndex getConfigProgressIndex() {
-    return configProgressIndex.get();
+  @TestOnly
+  public Map<TConsensusGroupId, PipeTaskMeta> getConsensusGroupId2TaskMetaMap() {
+    return consensusGroupId2TaskMetaMap;
   }
 
-  public ProgressIndex updateConfigProgressIndex(ProgressIndex updateIndex) {
-    return configProgressIndex.updateAndGet(
-        index -> index.updateToMinimumIsAfterProgressIndex(updateIndex));
-  }
-
-  public Map<TConsensusGroupId, PipeTaskMeta> getDataRegionId2TaskMetaMap() {
-    return dataRegionId2TaskMetaMap;
-  }
-
-  public Map<TConsensusGroupId, PipeTaskMeta> getSchemaRegionId2TaskMetaMap() {
-    return schemaRegionId2TaskMetaMap;
-  }
-
+  @TestOnly
   public Map<Integer, PipeRuntimeException> getDataNodeId2PipeRuntimeExceptionMap() {
     return dataNodeId2PipeRuntimeExceptionMap;
   }
 
+  @TestOnly
   public long getExceptionsClearTime() {
     return exceptionsClearTime.get();
   }
 
+  @TestOnly
   public void setExceptionsClearTime(long exceptionsClearTime) {
     if (exceptionsClearTime > this.getExceptionsClearTime()) {
       this.exceptionsClearTime.set(exceptionsClearTime);
     }
   }
 
+  @TestOnly
   public boolean getIsStoppedByRuntimeException() {
     return isStoppedByRuntimeException.get();
   }
 
+  @TestOnly
   public void setIsStoppedByRuntimeException(boolean isStoppedByRuntimeException) {
     this.isStoppedByRuntimeException.set(isStoppedByRuntimeException);
   }
@@ -160,28 +133,18 @@ public class PipeRuntimeMeta {
     return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
   }
 
+  @Override
   public void serialize(OutputStream outputStream) throws IOException {
-    PipeRuntimeMetaVersion.VERSION_3.serialize(outputStream);
+    PipeRuntimeMetaVersion.VERSION_2.serialize(outputStream);
 
     ReadWriteIOUtils.write(status.get().getType(), outputStream);
 
-    configProgressIndex.get().serialize(outputStream);
-
     // Avoid concurrent modification
-    final Map<TConsensusGroupId, PipeTaskMeta> dataRegionId2TaskMetaMapView =
-        new HashMap<>(dataRegionId2TaskMetaMap);
-    ReadWriteIOUtils.write(dataRegionId2TaskMetaMapView.size(), outputStream);
+    final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupId2TaskMetaMapView =
+        new HashMap<>(consensusGroupId2TaskMetaMap);
+    ReadWriteIOUtils.write(consensusGroupId2TaskMetaMapView.size(), outputStream);
     for (Map.Entry<TConsensusGroupId, PipeTaskMeta> entry :
-        dataRegionId2TaskMetaMapView.entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey().getId(), outputStream);
-      entry.getValue().serialize(outputStream);
-    }
-
-    final Map<TConsensusGroupId, PipeTaskMeta> schemaRegionId2TaskMetaMapView =
-        new HashMap<>(schemaRegionId2TaskMetaMap);
-    ReadWriteIOUtils.write(schemaRegionId2TaskMetaMapView.size(), outputStream);
-    for (Map.Entry<TConsensusGroupId, PipeTaskMeta> entry :
-        schemaRegionId2TaskMetaMapView.entrySet()) {
+        consensusGroupId2TaskMetaMapView.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey().getId(), outputStream);
       entry.getValue().serialize(outputStream);
     }
@@ -201,26 +164,16 @@ public class PipeRuntimeMeta {
   }
 
   @Nonnull
-  public static PipeRuntimeMeta deserialize(InputStream inputStream) throws IOException {
-    final PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta();
+  public static PipeRuntimeMetaV2 deserialize(InputStream inputStream) throws IOException {
+    final PipeRuntimeMetaV2 pipeRuntimeMeta = new PipeRuntimeMetaV2();
 
     pipeRuntimeMeta.status.set(PipeStatus.getPipeStatus(ReadWriteIOUtils.readByte(inputStream)));
 
-    pipeRuntimeMeta.configProgressIndex.set(ProgressIndexType.deserializeFrom(inputStream));
-
     int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; ++i) {
-      pipeRuntimeMeta.dataRegionId2TaskMetaMap.put(
+      pipeRuntimeMeta.consensusGroupId2TaskMetaMap.put(
           new TConsensusGroupId(
               TConsensusGroupType.DataRegion, ReadWriteIOUtils.readInt(inputStream)),
-          PipeTaskMeta.deserialize(PipeRuntimeMetaVersion.VERSION_2, inputStream));
-    }
-
-    size = ReadWriteIOUtils.readInt(inputStream);
-    for (int i = 0; i < size; ++i) {
-      pipeRuntimeMeta.schemaRegionId2TaskMetaMap.put(
-          new TConsensusGroupId(
-              TConsensusGroupType.SchemaRegion, ReadWriteIOUtils.readInt(inputStream)),
           PipeTaskMeta.deserialize(PipeRuntimeMetaVersion.VERSION_2, inputStream));
     }
 
@@ -238,26 +191,16 @@ public class PipeRuntimeMeta {
   }
 
   @Nonnull
-  public static PipeRuntimeMeta deserialize(ByteBuffer byteBuffer) {
-    final PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta();
+  public static PipeRuntimeMetaV2 deserialize(ByteBuffer byteBuffer) {
+    final PipeRuntimeMetaV2 pipeRuntimeMeta = new PipeRuntimeMetaV2();
 
     pipeRuntimeMeta.status.set(PipeStatus.getPipeStatus(ReadWriteIOUtils.readByte(byteBuffer)));
 
-    pipeRuntimeMeta.configProgressIndex.set(ProgressIndexType.deserializeFrom(byteBuffer));
-
     int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
-      pipeRuntimeMeta.dataRegionId2TaskMetaMap.put(
+      pipeRuntimeMeta.consensusGroupId2TaskMetaMap.put(
           new TConsensusGroupId(
               TConsensusGroupType.DataRegion, ReadWriteIOUtils.readInt(byteBuffer)),
-          PipeTaskMeta.deserialize(PipeRuntimeMetaVersion.VERSION_2, byteBuffer));
-    }
-
-    size = ReadWriteIOUtils.readInt(byteBuffer);
-    for (int i = 0; i < size; ++i) {
-      pipeRuntimeMeta.schemaRegionId2TaskMetaMap.put(
-          new TConsensusGroupId(
-              TConsensusGroupType.SchemaRegion, ReadWriteIOUtils.readInt(byteBuffer)),
           PipeTaskMeta.deserialize(PipeRuntimeMetaVersion.VERSION_2, byteBuffer));
     }
 
@@ -276,15 +219,15 @@ public class PipeRuntimeMeta {
 
   /////////////////////////////// Compatibility ///////////////////////////////
 
-  // DO NOT CALL IT, unless from the former versions
-  public void setDataNodeId2PipeRuntimeExceptionMap(
-      Map<Integer, PipeRuntimeException> dataNodeId2PipeRuntimeExceptionMap) {
-    this.dataNodeId2PipeRuntimeExceptionMap = dataNodeId2PipeRuntimeExceptionMap;
-  }
-
-  public void setDataRegionId2TaskMetaMap(
-      Map<TConsensusGroupId, PipeTaskMeta> dataRegionId2TaskMetaMap) {
-    this.dataRegionId2TaskMetaMap = dataRegionId2TaskMetaMap;
+  @Override
+  public PipeRuntimeMeta toCurrentPipeRuntimeMetaVersion() {
+    PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta();
+    pipeRuntimeMeta.getStatus().set(status.get());
+    pipeRuntimeMeta.setDataNodeId2PipeRuntimeExceptionMap(dataNodeId2PipeRuntimeExceptionMap);
+    pipeRuntimeMeta.setDataRegionId2TaskMetaMap(consensusGroupId2TaskMetaMap);
+    pipeRuntimeMeta.setIsStoppedByRuntimeException(isStoppedByRuntimeException.get());
+    pipeRuntimeMeta.setExceptionsClearTime(exceptionsClearTime.get());
+    return pipeRuntimeMeta;
   }
 
   /////////////////////////////// Object ///////////////////////////////
@@ -297,10 +240,9 @@ public class PipeRuntimeMeta {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    PipeRuntimeMeta that = (PipeRuntimeMeta) o;
+    PipeRuntimeMetaV2 that = (PipeRuntimeMetaV2) o;
     return Objects.equals(status.get().getType(), that.status.get().getType())
-        && dataRegionId2TaskMetaMap.equals(that.dataRegionId2TaskMetaMap)
-        && schemaRegionId2TaskMetaMap.equals(that.schemaRegionId2TaskMetaMap)
+        && consensusGroupId2TaskMetaMap.equals(that.consensusGroupId2TaskMetaMap)
         && dataNodeId2PipeRuntimeExceptionMap.equals(that.dataNodeId2PipeRuntimeExceptionMap)
         && exceptionsClearTime.get() == that.exceptionsClearTime.get()
         && isStoppedByRuntimeException.get() == that.isStoppedByRuntimeException.get();
@@ -310,8 +252,7 @@ public class PipeRuntimeMeta {
   public int hashCode() {
     return Objects.hash(
         status,
-        dataRegionId2TaskMetaMap,
-        schemaRegionId2TaskMetaMap,
+        consensusGroupId2TaskMetaMap,
         dataNodeId2PipeRuntimeExceptionMap,
         exceptionsClearTime.get(),
         isStoppedByRuntimeException.get());
@@ -322,10 +263,9 @@ public class PipeRuntimeMeta {
     return "PipeRuntimeMeta{"
         + "status="
         + status
-        + ", dataRegionId2TaskMetaMap="
-        + dataRegionId2TaskMetaMap
-        + ", schemaRegionId2TaskMetaMap="
-        + schemaRegionId2TaskMetaMap
+        + ", consensusGroupId2TaskMetaMap="
+        + consensusGroupId2TaskMetaMap
+        + ", dataNodeId2PipeMetaExceptionMap="
         + dataNodeId2PipeRuntimeExceptionMap
         + ", exceptionsClearTime="
         + exceptionsClearTime.get()

@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import javax.annotation.Nonnull;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -73,7 +75,7 @@ public class SchemaProgressIndex extends ProgressIndex {
   }
 
   @Override
-  public boolean isAfter(ProgressIndex progressIndex) {
+  public boolean isAfter(@Nonnull ProgressIndex progressIndex) {
     lock.readLock().lock();
     try {
       if (progressIndex instanceof MinimumProgressIndex) {
@@ -143,7 +145,7 @@ public class SchemaProgressIndex extends ProgressIndex {
   }
 
   public ProgressIndexType getType() {
-    return ProgressIndexType.RECOVER_PROGRESS_INDEX;
+    return ProgressIndexType.SCHEMA_PROGRESS_INDEX;
   }
 
   @Override

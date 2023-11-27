@@ -156,7 +156,7 @@ public class HybridProgressIndex extends ProgressIndex {
     if (!(obj instanceof HybridProgressIndex)) {
       return false;
     }
-    return this.equals((HybridProgressIndex) obj);
+    return this.equals(obj);
   }
 
   @Override

@@ -26,12 +26,12 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeExceptionType;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
+import org.apache.iotdb.commons.pipe.task.meta.compatibility.PipeRuntimeMetaVersion;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.DataOutputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Map;
@@ -95,18 +95,7 @@ public class PipeTaskMeta {
     exceptionMessages.clear();
   }
 
-  public synchronized void serialize(DataOutputStream outputStream) throws IOException {
-    progressIndex.get().serialize(outputStream);
-
-    ReadWriteIOUtils.write(leaderDataNodeId.get(), outputStream);
-
-    ReadWriteIOUtils.write(exceptionMessages.size(), outputStream);
-    for (final PipeRuntimeException pipeRuntimeException : exceptionMessages.values()) {
-      pipeRuntimeException.serialize(outputStream);
-    }
-  }
-
-  public synchronized void serialize(FileOutputStream outputStream) throws IOException {
+  public synchronized void serialize(OutputStream outputStream) throws IOException {
     progressIndex.get().serialize(outputStream);
 
     ReadWriteIOUtils.write(leaderDataNodeId.get(), outputStream);
