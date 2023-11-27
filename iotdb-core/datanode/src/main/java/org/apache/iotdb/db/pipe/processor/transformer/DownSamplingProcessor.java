@@ -140,7 +140,7 @@ public class DownSamplingProcessor implements PipeProcessor {
                       partialPathLastTimeCache.setPartialPathLastTime(
                           timeSeriesSuffix, row.getTime());
                     } else {
-                      row.setNull(index);
+                      // row.setNull(index);
                     }
                   } else {
                     hasNonNull = true;
