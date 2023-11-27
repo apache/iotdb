@@ -31,7 +31,6 @@ import com.github.benmanes.caffeine.cache.Weigher;
 import com.google.common.util.concurrent.AtomicDouble;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.util.annotation.NonNull;
 
 /**
  * Map-like component to look up for the last chosen time of a timeSeries. It has max size and
@@ -99,11 +98,11 @@ public class PartialPathLastTimeCache implements AutoCloseable {
 
   /////////////////////////// Getter & Setter ///////////////////////////
 
-  public Long getPartialPathLastTime(@NonNull String partialPath) {
+  public Long getPartialPathLastTime(String partialPath) {
     return partialPath2TimeCache.getIfPresent(partialPath);
   }
 
-  public void setPartialPathLastTime(@NonNull String partialPath, long timeStamp) {
+  public void setPartialPathLastTime(String partialPath, long timeStamp) {
     partialPath2TimeCache.put(partialPath, timeStamp);
   }
 
