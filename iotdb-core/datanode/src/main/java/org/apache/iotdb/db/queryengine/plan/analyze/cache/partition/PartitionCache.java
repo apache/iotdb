@@ -187,13 +187,15 @@ public class PartitionCache {
    *
    * @param result the result of get database cache
    * @param devicePaths the devices that need to hit
+   *
+   * @return
    */
-  private void fetchStorageGroupAndUpdateCache(
+  private Set<String> fetchStorageGroupAndUpdateCache(
       StorageGroupCacheResult<?> result, List<String> devicePaths)
       throws ClientManagerException, TException {
+    storageGroupCacheLock.writeLock().lock();
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      storageGroupCacheLock.writeLock().lock();
       result.reset();
       getStorageGroupMap(result, devicePaths, true);
       if (!result.isSuccess()) {
@@ -204,6 +206,7 @@ public class PartitionCache {
           Set<String> storageGroupNames = storageGroupSchemaResp.getDatabaseSchemaMap().keySet();
           // update all database into cache
           updateStorageCache(storageGroupNames);
+          return storageGroupNames;
         }
       }
     } finally {
