@@ -60,7 +60,7 @@ public class SchemaFetchScanOperatorTest {
 
     SchemaFetchScanOperator schemaFetchScanOperator =
         new SchemaFetchScanOperator(
-            null, null, patternTree, Collections.emptyMap(), schemaRegion, false);
+            null, null, patternTree, Collections.emptyMap(), schemaRegion, false, true);
 
     Assert.assertTrue(schemaFetchScanOperator.hasNext());
 

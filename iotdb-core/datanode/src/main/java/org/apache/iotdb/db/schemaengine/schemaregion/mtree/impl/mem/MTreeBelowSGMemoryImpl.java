@@ -698,7 +698,10 @@ public class MTreeBelowSGMemoryImpl {
 
   // region Interfaces and Implementation for metadata info Query
   public ClusterSchemaTree fetchSchema(
-      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
+      PartialPath pathPattern,
+      Map<Integer, Template> templateMap,
+      boolean withTags,
+      boolean withTemplate)
       throws MetadataException {
     ClusterSchemaTree schemaTree = new ClusterSchemaTree();
     try (MeasurementCollector<Void, IMemMNode> collector =
@@ -707,7 +710,7 @@ public class MTreeBelowSGMemoryImpl {
           protected Void collectMeasurement(IMeasurementMNode<IMemMNode> node) {
             IDeviceMNode<IMemMNode> deviceMNode = getParentOfNextMatchedNode().getAsDeviceMNode();
             int templateId = deviceMNode.getSchemaTemplateIdWithState();
-            if (templateId >= 0) {
+            if (withTemplate && templateId >= 0) {
               schemaTree.appendTemplateDevice(
                   deviceMNode.getPartialPath(), deviceMNode.isAligned(), templateId, null);
               skipTemplateChildren(deviceMNode);
@@ -733,7 +736,10 @@ public class MTreeBelowSGMemoryImpl {
   }
 
   public ClusterSchemaTree fetchSchemaWithoutWildcard(
-      PathPatternTree patternTree, Map<Integer, Template> templateMap, boolean withTags)
+      PathPatternTree patternTree,
+      Map<Integer, Template> templateMap,
+      boolean withTags,
+      boolean withTemplate)
       throws MetadataException {
     ClusterSchemaTree schemaTree = new ClusterSchemaTree();
     try (MeasurementCollector<Void, IMemMNode> collector =
@@ -742,7 +748,7 @@ public class MTreeBelowSGMemoryImpl {
           protected Void collectMeasurement(IMeasurementMNode<IMemMNode> node) {
             IDeviceMNode<IMemMNode> deviceMNode = getParentOfNextMatchedNode().getAsDeviceMNode();
             int templateId = deviceMNode.getSchemaTemplateIdWithState();
-            if (templateId >= 0) {
+            if (withTemplate && templateId >= 0) {
               schemaTree.appendTemplateDevice(
                   deviceMNode.getPartialPath(), deviceMNode.isAligned(), templateId, null);
               skipTemplateChildren(deviceMNode);
