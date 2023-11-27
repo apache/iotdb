@@ -114,7 +114,7 @@ public class PipeTableResp implements DataSet {
             .append(e.getMessage())
             .append("\n");
       }
-      for (PipeTaskMeta pipeTaskMeta : runtimeMeta.getConsensusGroupId2TaskMetaMap().values()) {
+      for (PipeTaskMeta pipeTaskMeta : runtimeMeta.getDataRegionId2TaskMetaMap().values()) {
         for (PipeRuntimeException e : pipeTaskMeta.getExceptionMessages()) {
           exceptionMessageBuilder
               .append(DateTimeUtils.convertLongToDate(e.getTimeStamp(), "ms"))

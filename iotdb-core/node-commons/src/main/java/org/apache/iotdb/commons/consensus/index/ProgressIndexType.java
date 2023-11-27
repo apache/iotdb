@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.index.impl.HybridProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.SchemaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -37,6 +38,7 @@ public enum ProgressIndexType {
   SIMPLE_PROGRESS_INDEX((short) 3),
   RECOVER_PROGRESS_INDEX((short) 4),
   HYBRID_PROGRESS_INDEX((short) 5),
+  SCHEMA_PROGRESS_INDEX((short) 6),
   ;
 
   private final short type;
@@ -70,6 +72,8 @@ public enum ProgressIndexType {
         return RecoverProgressIndex.deserializeFrom(byteBuffer);
       case 5:
         return HybridProgressIndex.deserializeFrom(byteBuffer);
+      case 6:
+        return SchemaProgressIndex.deserializeFrom(byteBuffer);
       default:
         throw new UnsupportedOperationException(
             String.format("Unsupported progress index type %s.", indexType));
