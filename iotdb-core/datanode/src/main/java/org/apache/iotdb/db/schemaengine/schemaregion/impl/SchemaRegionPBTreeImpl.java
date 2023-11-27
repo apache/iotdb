@@ -58,7 +58,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.logfile.SchemaLogWriter;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.visitor.SchemaRegionPlanDeserializer;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.visitor.SchemaRegionPlanSerializer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.MTreeBelowSGCachedImpl;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.CacheMemoryManager;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.ReleaseFlushMonitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowDevicesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowNodesPlan;
@@ -580,7 +580,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException {
     while (!regionStatistics.isAllowToCreateNewSeries()) {
-      CacheMemoryManager.getInstance().waitIfReleasing();
+      ReleaseFlushMonitor.getInstance().waitIfReleasing();
     }
 
     PartialPath path = plan.getPath();
@@ -666,7 +666,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   public void createAlignedTimeSeries(ICreateAlignedTimeSeriesPlan plan) throws MetadataException {
     int seriesCount = plan.getMeasurements().size();
     while (!regionStatistics.isAllowToCreateNewSeries()) {
-      CacheMemoryManager.getInstance().waitIfReleasing();
+      ReleaseFlushMonitor.getInstance().waitIfReleasing();
     }
 
     try {
@@ -841,7 +841,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   @Override
   public void createLogicalView(ICreateLogicalViewPlan plan) throws MetadataException {
     while (!regionStatistics.isAllowToCreateNewSeries()) {
-      CacheMemoryManager.getInstance().waitIfReleasing();
+      ReleaseFlushMonitor.getInstance().waitIfReleasing();
     }
     try {
       List<PartialPath> pathList = plan.getViewPathList();
@@ -1229,7 +1229,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   public void activateSchemaTemplate(IActivateTemplateInClusterPlan plan, Template template)
       throws MetadataException {
     while (!regionStatistics.isAllowToCreateNewSeries()) {
-      CacheMemoryManager.getInstance().waitIfReleasing();
+      ReleaseFlushMonitor.getInstance().waitIfReleasing();
     }
     try {
       ICachedMNode deviceNode = getDeviceNodeWithAutoCreate(plan.getActivatePath());

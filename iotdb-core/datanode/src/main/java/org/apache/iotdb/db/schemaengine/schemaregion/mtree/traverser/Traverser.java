@@ -32,7 +32,7 @@ import org.apache.iotdb.commons.schema.tree.AbstractTreeVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.IMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.iterator.MNodeIterator;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.ReentrantReadOnlyCachedMTreeStore;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.flush.Monitor;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.ReleaseFlushMonitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MNodeUtils;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
@@ -76,7 +76,7 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
   protected boolean isPrefixMatch = false;
   private IDeviceMNode<N> skipTemplateDevice;
 
-  private Monitor.RecordNode timeRecorder;
+  private ReleaseFlushMonitor.RecordNode timeRecorder;
 
   protected Traverser() {}
 

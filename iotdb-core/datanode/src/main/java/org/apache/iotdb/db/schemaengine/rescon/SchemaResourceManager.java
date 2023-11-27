@@ -21,7 +21,7 @@ package org.apache.iotdb.db.schemaengine.rescon;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.schemaengine.SchemaEngineMode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.CacheMemoryManager;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.ReleaseFlushMonitor;
 
 public class SchemaResourceManager {
 
@@ -46,10 +46,10 @@ public class SchemaResourceManager {
   }
 
   private static void initSchemaFileModeResource(ISchemaEngineStatistics engineStatistics) {
-    CacheMemoryManager.getInstance().init(engineStatistics);
+    ReleaseFlushMonitor.getInstance().init(engineStatistics);
   }
 
   private static void clearSchemaFileModeResource() {
-    CacheMemoryManager.getInstance().clear();
+    ReleaseFlushMonitor.getInstance().clear();
   }
 }

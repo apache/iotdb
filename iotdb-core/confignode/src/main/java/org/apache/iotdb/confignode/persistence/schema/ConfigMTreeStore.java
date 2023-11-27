@@ -31,7 +31,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.IMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.iterator.AbstractTraverserIterator;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.iterator.MNodeIterator;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.iterator.MemoryTraverserIterator;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.flush.Monitor;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.ReleaseFlushMonitor;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
 import java.io.File;
@@ -146,7 +146,7 @@ public class ConfigMTreeStore implements IMTreeStore<IConfigMNode> {
   }
 
   @Override
-  public Monitor.RecordNode recordTraverserStatistics() {
+  public ReleaseFlushMonitor.RecordNode recordTraverserStatistics() {
     // do nothing
     return null;
   }

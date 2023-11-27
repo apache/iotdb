@@ -19,47 +19,53 @@
 
 package org.apache.iotdb.db.metadata.mtree.schemafile;
 
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.flush.Monitor;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.ReleaseFlushMonitor;
 
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.List;
 
 public class MonitorTest {
+  ReleaseFlushMonitor releaseFlushMonitor;
+
+  @Before
+  public void setUp() {
+    releaseFlushMonitor = ReleaseFlushMonitor.getInstance();
+  }
+
+  @After
+  public void tearDown() {
+    releaseFlushMonitor.clear();
+  }
+
   @Test
   public void testGetRegionsToFlush() {
-    Monitor monitor = new Monitor();
     // free = 500
     setRecord(
-        monitor,
-        1,
-        Arrays.asList(0L, 2L, 3L, 3000L, 4000L),
-        Arrays.asList(100L, 2500L, 200L, 5000L, 6000L));
+        1, Arrays.asList(0L, 2L, 3L, 3000L, 4000L), Arrays.asList(100L, 2500L, 200L, 5000L, 6000L));
     // free = 2000
     setRecord(
-        monitor,
-        2,
-        Arrays.asList(0L, 2L, 3L, 3000L, 4000L),
-        Arrays.asList(100L, 1000L, 200L, 5500L, 6000L));
+        2, Arrays.asList(0L, 2L, 3L, 3000L, 4000L), Arrays.asList(100L, 1000L, 200L, 5500L, 6000L));
     // free =700
-    setRecord(monitor, 3, Arrays.asList(700L, 800L), Arrays.asList(900L, 6000L));
+    setRecord(3, Arrays.asList(700L, 800L), Arrays.asList(900L, 6000L));
     // free =1700
-    setRecord(monitor, 4, Arrays.asList(700L, 800L, 2500L), Arrays.asList(1000L, 1500L, 5000L));
+    setRecord(4, Arrays.asList(700L, 800L, 2500L), Arrays.asList(1000L, 1500L, 5000L));
     // free =2100
-    setRecord(monitor, 5, Arrays.asList(0L, 2000L), Arrays.asList(1000L, 3900L));
-    List<Integer> regions = monitor.getRegionsToFlush(5000);
+    setRecord(5, Arrays.asList(0L, 2000L), Arrays.asList(1000L, 3900L));
+    List<Integer> regions = releaseFlushMonitor.getRegionsToFlush(5000);
     Assert.assertEquals(3, regions.size());
     Assert.assertEquals(5, regions.get(0).intValue());
     Assert.assertEquals(2, regions.get(1).intValue());
     Assert.assertEquals(4, regions.get(2).intValue());
   }
 
-  private void setRecord(
-      Monitor monitor, int regionId, List<Long> startTimes, List<Long> eneTimes) {
+  private void setRecord(int regionId, List<Long> startTimes, List<Long> eneTimes) {
     for (int i = 0; i < startTimes.size(); i++) {
-      Monitor.RecordNode node = monitor.recordTraverserTime(regionId);
+      ReleaseFlushMonitor.RecordNode node = releaseFlushMonitor.recordTraverserTime(regionId);
       node.setStartTime(startTimes.get(i));
       node.setEndTime(eneTimes.get(i));
     }

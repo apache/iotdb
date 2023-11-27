@@ -27,25 +27,16 @@ public class ReleaseFlushStrategySizeBasedImpl implements IReleaseFlushStrategy 
   private final CachedSchemaEngineStatistics engineStatistics;
 
   private final long releaseThreshold;
-  private final long flushThreshold;
-
-  public static final double RELEASE_THRESHOLD_RATIO = 0.6;
-  public static final double FLUSH_THRESHOLD_RATION = 0.75;
+  public static final double RELEASE_THRESHOLD_RATIO = 0.70;
 
   public ReleaseFlushStrategySizeBasedImpl(CachedSchemaEngineStatistics engineStatistics) {
     this.engineStatistics = engineStatistics;
     long capacity = IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForSchemaRegion();
     this.releaseThreshold = (long) (capacity * RELEASE_THRESHOLD_RATIO);
-    this.flushThreshold = (long) (capacity * FLUSH_THRESHOLD_RATION);
   }
 
   @Override
   public boolean isExceedReleaseThreshold() {
     return engineStatistics.getMemoryUsage() > releaseThreshold;
-  }
-
-  @Override
-  public boolean isExceedFlushThreshold() {
-    return engineStatistics.getMemoryUsage() > flushThreshold;
   }
 }

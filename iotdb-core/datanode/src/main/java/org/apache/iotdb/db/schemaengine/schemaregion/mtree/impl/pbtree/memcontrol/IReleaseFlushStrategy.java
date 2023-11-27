@@ -22,7 +22,4 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontr
 public interface IReleaseFlushStrategy {
   /** Check if exceed release threshold */
   boolean isExceedReleaseThreshold();
-
-  /** Check if exceed flush threshold */
-  boolean isExceedFlushThreshold();
 }

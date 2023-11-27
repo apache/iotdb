@@ -31,9 +31,8 @@ import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.IMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.estimator.MNodeSizeEstimator;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.iterator.AbstractTraverserIterator;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.CacheMemoryManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.ICacheManager;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.flush.Monitor;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.ReleaseFlushMonitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.flush.PBTreeFlushExecutor;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.MemManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
@@ -73,7 +72,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
   private final CachedSchemaRegionStatistics regionStatistics;
   private final StampedWriterPreferredLock lock = new StampedWriterPreferredLock();
-  private final CacheMemoryManager cacheMemoryManager = CacheMemoryManager.getInstance();
+  private final ReleaseFlushMonitor releaseFlushMonitor = ReleaseFlushMonitor.getInstance();
 
   public CachedMTreeStore(
       PartialPath storageGroup,
@@ -87,7 +86,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     this.regionStatistics = regionStatistics;
     this.memManager = new MemManager(regionStatistics);
     this.flushCallback = flushCallback;
-    this.cacheManager = cacheMemoryManager.createLRUCacheManager(this, memManager);
+    this.cacheManager = releaseFlushMonitor.createLRUCacheManager(this, memManager);
     cacheManager.initRootStatus(root);
     regionStatistics.setCacheManager(cacheManager);
     ensureMemoryStatus();
@@ -490,7 +489,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   public void clear() {
     lock.writeLock();
     try {
-      cacheMemoryManager.clearCachedMTreeStore(this);
+      releaseFlushMonitor.clearCachedMTreeStore(this);
       regionStatistics.setCacheManager(null);
       cacheManager.clear(root);
       root = null;
@@ -532,8 +531,8 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   }
 
   @Override
-  public Monitor.RecordNode recordTraverserStatistics() {
-    return cacheMemoryManager.recordTraverserStatistics(schemaRegionId);
+  public ReleaseFlushMonitor.RecordNode recordTraverserStatistics() {
+    return releaseFlushMonitor.recordTraverserTime(schemaRegionId);
   }
 
   private CachedMTreeStore(
@@ -549,14 +548,14 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     this.regionStatistics = regionStatistics;
     this.memManager = new MemManager(regionStatistics);
     this.flushCallback = flushCallback;
-    this.cacheManager = cacheMemoryManager.createLRUCacheManager(this, memManager);
+    this.cacheManager = releaseFlushMonitor.createLRUCacheManager(this, memManager);
     cacheManager.initRootStatus(root);
     regionStatistics.setCacheManager(cacheManager);
     ensureMemoryStatus();
   }
 
   private void ensureMemoryStatus() {
-    cacheMemoryManager.ensureMemoryStatus();
+    releaseFlushMonitor.ensureMemoryStatus();
   }
 
   public StampedWriterPreferredLock getLock() {

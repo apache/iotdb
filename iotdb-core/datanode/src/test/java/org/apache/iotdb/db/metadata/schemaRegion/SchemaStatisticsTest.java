@@ -28,7 +28,7 @@ import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaEngineStatistics;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.rescon.ISchemaEngineStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.CacheMemoryManager;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.ReleaseFlushMonitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.SchemaRegionWritePlanFactory;
@@ -92,7 +92,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
         Assert.assertEquals(
             size1 + nodeFactory.createDeviceMNode(sg1.getAsMNode(), "n").estimateSize(),
             schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage());
-        CacheMemoryManager.getInstance().forceFlushAndRelease();
+        ReleaseFlushMonitor.getInstance().forceFlushAndRelease();
         Thread.sleep(1000);
         Assert.assertEquals(
             size1, schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage());
@@ -268,7 +268,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
         Assert.assertTrue(
             d0ExistSize == schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage()
                 || d1ExistSize == schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage());
-        CacheMemoryManager.getInstance().forceFlushAndRelease();
+        ReleaseFlushMonitor.getInstance().forceFlushAndRelease();
         // wait release and flush task
         Thread.sleep(1000);
         Assert.assertEquals(
@@ -454,7 +454,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
         if (0 != cachedRegionStatistics1.getUnpinnedMNodeNum()) {
           // "d0" may remain in PartialMemory mode
           Assert.assertEquals("PBTree-PartialMemory", testParams.getTestModeName());
-          CacheMemoryManager.getInstance().forceFlushAndRelease();
+          ReleaseFlushMonitor.getInstance().forceFlushAndRelease();
           Thread.sleep(1000);
           Assert.assertEquals(0, cachedRegionStatistics1.getUnpinnedMNodeNum());
         }

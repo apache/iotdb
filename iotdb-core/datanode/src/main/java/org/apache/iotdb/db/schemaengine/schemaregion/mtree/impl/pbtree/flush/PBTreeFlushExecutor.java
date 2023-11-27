@@ -39,20 +39,28 @@ public class PBTreeFlushExecutor {
 
   private static final Logger logger = LoggerFactory.getLogger(PBTreeFlushExecutor.class);
 
-  private final List<ICachedMNode> subtreeRoots;
+  private final Iterator<ICachedMNode> subtreeRoots;
   private final ICacheManager cacheManager;
   private final ISchemaFile file;
   private final List<Exception> exceptions = new ArrayList<>();
 
   public PBTreeFlushExecutor(
       List<ICachedMNode> subtreeRoots, ICacheManager cacheManager, ISchemaFile file) {
+    this.subtreeRoots = subtreeRoots.iterator();
+    this.cacheManager = cacheManager;
+    this.file = file;
+  }
+
+  public PBTreeFlushExecutor(
+      Iterator<ICachedMNode> subtreeRoots, ICacheManager cacheManager, ISchemaFile file) {
     this.subtreeRoots = subtreeRoots;
     this.cacheManager = cacheManager;
     this.file = file;
   }
 
   public void flushVolatileNodes() throws MetadataException {
-    for (ICachedMNode subtreeRoot : subtreeRoots) {
+    while (subtreeRoots.hasNext()) {
+      ICachedMNode subtreeRoot = subtreeRoots.next();
       if (subtreeRoot.isDatabase()) {
         processFlushDatabase(subtreeRoot);
       } else {

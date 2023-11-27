@@ -65,8 +65,8 @@ public enum ThreadName {
   // -------------------------- SchemaEngine --------------------------
   SCHEMA_REGION_RELEASE_PROCESSOR("SchemaRegion-Release-Task-Processor"),
   SCHEMA_REGION_RECOVER_TASK("SchemaRegion-recover-task"),
-  SCHEMA_RELEASE_MONITOR("Schema-Release-Task-Monitor"),
   SCHEMA_FORCE_MLOG("SchemaEngine-TimedForceMLog-Thread"),
+  PBTREE_RELEASE_MONITOR("PBTree-Release-Task-Monitor"),
   PBTREE_FLUSH_MONITOR("PBTree-Flush-Monitor"),
   PBTREE_FLUSH_PROCESSOR("PBTree-Flush-Processor"),
   // -------------------------- ClientService --------------------------
@@ -221,7 +221,7 @@ public enum ThreadName {
           Arrays.asList(
               SCHEMA_REGION_RELEASE_PROCESSOR,
               SCHEMA_REGION_RECOVER_TASK,
-              SCHEMA_RELEASE_MONITOR,
+              PBTREE_RELEASE_MONITOR,
               SCHEMA_FORCE_MLOG,
               PBTREE_FLUSH_MONITOR,
               PBTREE_FLUSH_PROCESSOR));
