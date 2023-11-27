@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.pipe.task.meta;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SchemaProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
@@ -282,6 +283,8 @@ public class PipeRuntimeMeta {
 
     pipeRuntimeMeta.status.set(PipeStatus.getPipeStatus(ReadWriteIOUtils.readByte(inputStream)));
 
+    pipeRuntimeMeta.configProgressIndex.set(ProgressIndexType.deserializeFrom(inputStream));
+
     int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; ++i) {
       pipeRuntimeMeta.dataRegionId2TaskMetaMap.put(
@@ -375,6 +378,8 @@ public class PipeRuntimeMeta {
     final PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta();
 
     pipeRuntimeMeta.status.set(PipeStatus.getPipeStatus(ReadWriteIOUtils.readByte(byteBuffer)));
+
+    pipeRuntimeMeta.configProgressIndex.set(ProgressIndexType.deserializeFrom(byteBuffer));
 
     int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
