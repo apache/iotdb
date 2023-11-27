@@ -98,6 +98,8 @@ public enum BuiltinPipePlugin {
               Arrays.asList(
                   // Extractors
                   IOTDB_EXTRACTOR.getPipePluginName().toUpperCase(),
+                  // Processors
+                  DOWN_SAMPLING_PROCESSOR.getPipePluginName().toUpperCase(),
                   // Connectors
                   DO_NOTHING_CONNECTOR.getPipePluginName().toUpperCase(),
                   IOTDB_THRIFT_CONNECTOR.getPipePluginName().toUpperCase(),
