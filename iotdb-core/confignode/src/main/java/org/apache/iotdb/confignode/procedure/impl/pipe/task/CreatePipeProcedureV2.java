@@ -146,18 +146,17 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
-      throws PipeException, IOException {
+  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
     final String pipeName = createPipeRequest.getPipeName();
     LOGGER.info("CreatePipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 
     String exceptionMessage =
         parsePushPipeMetaExceptionForPipe(pipeName, pushSinglePipeMetaToDataNodes(pipeName, env));
     if (!exceptionMessage.isEmpty()) {
-      throw new PipeException(
-          String.format(
-              "Failed to create pipe %s, details: %s",
-              createPipeRequest.getPipeName(), exceptionMessage));
+      LOGGER.warn(
+          "Failed to create pipe {}, details: {}, metadata will be synchronized later.",
+          createPipeRequest.getPipeName(),
+          exceptionMessage);
     }
   }
 
@@ -209,10 +208,10 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         parsePushPipeMetaExceptionForPipe(
             createPipeRequest.getPipeName(), pushPipeMetaToDataNodes(env));
     if (!exceptionMessage.isEmpty()) {
-      throw new PipeException(
-          String.format(
-              "Failed to rollback create pipe %s, details: %s",
-              createPipeRequest.getPipeName(), exceptionMessage));
+      LOGGER.warn(
+          "Failed to rollback create pipe {}, details: {}, metadata will be synchronized later.",
+          createPipeRequest.getPipeName(),
+          exceptionMessage);
     }
   }
 
