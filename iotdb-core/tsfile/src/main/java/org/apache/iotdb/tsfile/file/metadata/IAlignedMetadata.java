@@ -17,28 +17,27 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.read.filter.basic;
+package org.apache.iotdb.tsfile.file.metadata;
 
-import org.apache.iotdb.tsfile.file.metadata.IAlignedMetadata;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.file.metadata.statistics.TimeStatistics;
 
 import java.io.Serializable;
 
-public interface ITimeFilter extends Filter {
+public interface IAlignedMetadata {
 
-  default boolean canSkip(Statistics<? extends Serializable> statistics) {
-    return !satisfyStartEndTime(statistics.getStartTime(), statistics.getEndTime());
+  TimeStatistics getTimeStatistics();
+
+  Statistics<Serializable> getMeasurementStatistics(String measurement);
+
+  /** @return whether there are any nulls. */
+  default boolean hasNullValue(String measurement) {
+    return getMeasurementStatistics(measurement).hasNullValue(getRowCount());
   }
 
-  default boolean canSkip(IAlignedMetadata alignedMetadata) {
-    return canSkip(alignedMetadata.getTimeStatistics());
+  default long getRowCount() {
+    return getTimeStatistics().getCount();
   }
 
-  default boolean allSatisfy(Statistics<? extends Serializable> statistics) {
-    return containStartEndTime(statistics.getStartTime(), statistics.getEndTime());
-  }
-
-  default boolean allSatisfy(IAlignedMetadata alignedMetadata) {
-    return allSatisfy(alignedMetadata.getTimeStatistics());
-  }
+  boolean isAllNulls(String measurement);
 }

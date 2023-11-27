@@ -29,6 +29,7 @@ import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class Or extends BinaryLogicalFilter {
 
@@ -50,6 +51,12 @@ public class Or extends BinaryLogicalFilter {
     // we can only drop a chunk of records if we know that both the left and right predicates agree
     // that no matter what we don't need this chunk.
     return left.canSkip(statistics) && right.canSkip(statistics);
+  }
+
+  @Override
+  public boolean canSkip(
+      Map<String, Statistics<? extends Serializable>> measurementToStatisticsMap) {
+    return left.canSkip(measurementToStatisticsMap) && right.canSkip(measurementToStatisticsMap);
   }
 
   @Override

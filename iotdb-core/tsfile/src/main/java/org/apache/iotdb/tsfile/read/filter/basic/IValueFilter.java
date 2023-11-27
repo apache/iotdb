@@ -19,11 +19,22 @@
 
 package org.apache.iotdb.tsfile.read.filter.basic;
 
+import org.apache.iotdb.tsfile.file.metadata.IAlignedMetadata;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 import java.util.List;
 
 public interface IValueFilter extends Filter {
+
+  String getMeasurement();
+
+  default boolean canSkip(IAlignedMetadata alignedMetadata) {
+    return canSkip(alignedMetadata.getMeasurementStatistics(getMeasurement()));
+  }
+
+  default boolean allSatisfy(IAlignedMetadata alignedMetadata) {
+    return allSatisfy(alignedMetadata.getMeasurementStatistics(getMeasurement()));
+  }
 
   default boolean satisfyStartEndTime(long startTime, long endTime) {
     return true;

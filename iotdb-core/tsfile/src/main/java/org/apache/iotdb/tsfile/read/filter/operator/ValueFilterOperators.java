@@ -20,6 +20,7 @@
 package org.apache.iotdb.tsfile.read.filter.operator;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.IAlignedMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -54,6 +55,9 @@ public final class ValueFilterOperators {
   private static final String MEASUREMENT_CANNOT_BE_NULL_MSG = "measurement cannot be null";
   private static final String CONSTANT_CANNOT_BE_NULL_MSG = "constant cannot be null";
 
+  private static final boolean BLOCK_MIGHT_MATCH = false;
+  private static final boolean BLOCK_CANNOT_MATCH = true;
+
   // base class for ValueEq, ValueNotEq, ValueLt, ValueGt, ValueLtEq, ValueGtEq
   abstract static class ValueColumnCompareFilter<T extends Comparable<T>>
       extends ColumnCompareFilter<T> implements IValueFilter {
@@ -65,6 +69,7 @@ public final class ValueFilterOperators {
       this.measurement = Objects.requireNonNull(measurement, MEASUREMENT_CANNOT_BE_NULL_MSG);
     }
 
+    @Override
     public String getMeasurement() {
       return measurement;
     }
@@ -97,7 +102,6 @@ public final class ValueFilterOperators {
   public static final class ValueEq<T extends Comparable<T>> extends ValueColumnCompareFilter<T> {
 
     // constant can be null
-    // TODO: consider support IS NULL
     public ValueEq(String measurement, T constant) {
       super(measurement, constant);
     }
@@ -109,14 +113,44 @@ public final class ValueFilterOperators {
 
     @Override
     public boolean satisfy(long time, Object value) {
-      return constant.equals(value);
+      return Objects.equals(value, constant);
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public boolean canSkip(Statistics<? extends Serializable> statistics) {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
-        return false;
+      if (statisticsNotAvailable(statistics)) {
+        return BLOCK_MIGHT_MATCH;
+      }
+
+      // drop if value < min || value > max
+      return constant.compareTo((T) statistics.getMinValue()) < 0
+          || constant.compareTo((T) statistics.getMaxValue()) > 0;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public boolean canSkip(IAlignedMetadata alignedMetadata) {
+      Statistics<? extends Serializable> statistics =
+          alignedMetadata.getMeasurementStatistics(measurement);
+
+      if (statistics == null) {
+        // the measurement isn't in this block so all values are null.
+        if (constant != null) {
+          // non-null is never null
+          return BLOCK_CANNOT_MATCH;
+        }
+        return BLOCK_MIGHT_MATCH;
+      }
+
+      if (statisticsNotAvailable(statistics)) {
+        return BLOCK_MIGHT_MATCH;
+      }
+
+      if (constant == null) {
+        // we are looking for records where v eq(null)
+        // so drop if there are no nulls in this chunk
+        return !alignedMetadata.hasNullValue(measurement);
       }
 
       // drop if value < min || value > max
@@ -127,9 +161,10 @@ public final class ValueFilterOperators {
     @Override
     @SuppressWarnings("unchecked")
     public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
-        return false;
+      if (statisticsNotAvailable(statistics)) {
+        return BLOCK_MIGHT_MATCH;
       }
+
       return constant.compareTo((T) statistics.getMinValue()) == 0
           && constant.compareTo((T) statistics.getMaxValue()) == 0;
     }
@@ -154,7 +189,6 @@ public final class ValueFilterOperators {
       extends ValueColumnCompareFilter<T> {
 
     // constant can be null
-    // TODO: consider support IS NOT NULL
     public ValueNotEq(String measurement, T constant) {
       super(measurement, constant);
     }
@@ -166,14 +200,43 @@ public final class ValueFilterOperators {
 
     @Override
     public boolean satisfy(long time, Object value) {
-      return !constant.equals(value);
+      return !Objects.equals(value, constant);
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public boolean canSkip(Statistics<? extends Serializable> statistics) {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
-        return false;
+      if (statisticsNotAvailable(statistics)) {
+        return BLOCK_MIGHT_MATCH;
+      }
+
+      // drop if this is a column where min = max = value
+      return constant.compareTo((T) statistics.getMinValue()) == 0
+          && constant.compareTo((T) statistics.getMaxValue()) == 0;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public boolean canSkip(IAlignedMetadata alignedMetadata) {
+      Statistics<? extends Serializable> statistics =
+          alignedMetadata.getMeasurementStatistics(measurement);
+
+      if (statistics == null) {
+        if (constant == null) {
+          // null is always equal to null
+          return BLOCK_CANNOT_MATCH;
+        }
+        return BLOCK_MIGHT_MATCH;
+      }
+
+      if (statisticsNotAvailable(statistics)) {
+        return BLOCK_MIGHT_MATCH;
+      }
+
+      if (constant == null) {
+        // we are looking for records where v notEq(null)
+        // so, if this is a column of all nulls, we can drop it
+        return alignedMetadata.isAllNulls(measurement);
       }
 
       // drop if this is a column where min = max = value
@@ -184,9 +247,10 @@ public final class ValueFilterOperators {
     @Override
     @SuppressWarnings("unchecked")
     public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
-        return false;
+      if (statisticsNotAvailable(statistics)) {
+        return BLOCK_MIGHT_MATCH;
       }
+
       return constant.compareTo((T) statistics.getMinValue()) < 0
           || constant.compareTo((T) statistics.getMaxValue()) > 0;
     }
@@ -228,8 +292,8 @@ public final class ValueFilterOperators {
     @Override
     @SuppressWarnings("unchecked")
     public boolean canSkip(Statistics<? extends Serializable> statistics) {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
-        return false;
+      if (statisticsNotAvailable(statistics)) {
+        return BLOCK_MIGHT_MATCH;
       }
 
       // drop if value <= min
@@ -239,9 +303,10 @@ public final class ValueFilterOperators {
     @Override
     @SuppressWarnings("unchecked")
     public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
-        return false;
+      if (statisticsNotAvailable(statistics)) {
+        return BLOCK_MIGHT_MATCH;
       }
+
       return constant.compareTo((T) statistics.getMaxValue()) > 0;
     }
 
@@ -282,8 +347,8 @@ public final class ValueFilterOperators {
     @Override
     @SuppressWarnings("unchecked")
     public boolean canSkip(Statistics<? extends Serializable> statistics) {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
-        return false;
+      if (statisticsNotAvailable(statistics)) {
+        return BLOCK_MIGHT_MATCH;
       }
 
       // drop if value < min
@@ -293,9 +358,10 @@ public final class ValueFilterOperators {
     @Override
     @SuppressWarnings("unchecked")
     public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
-        return false;
+      if (statisticsNotAvailable(statistics)) {
+        return BLOCK_MIGHT_MATCH;
       }
+
       return constant.compareTo((T) statistics.getMaxValue()) >= 0;
     }
 
@@ -336,8 +402,8 @@ public final class ValueFilterOperators {
     @Override
     @SuppressWarnings("unchecked")
     public boolean canSkip(Statistics<? extends Serializable> statistics) {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
-        return false;
+      if (statisticsNotAvailable(statistics)) {
+        return BLOCK_MIGHT_MATCH;
       }
 
       // drop if value >= max
@@ -347,9 +413,10 @@ public final class ValueFilterOperators {
     @Override
     @SuppressWarnings("unchecked")
     public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
-        return false;
+      if (statisticsNotAvailable(statistics)) {
+        return BLOCK_MIGHT_MATCH;
       }
+
       return constant.compareTo((T) statistics.getMinValue()) < 0;
     }
 
@@ -390,8 +457,8 @@ public final class ValueFilterOperators {
     @Override
     @SuppressWarnings("unchecked")
     public boolean canSkip(Statistics<? extends Serializable> statistics) {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
-        return false;
+      if (statisticsNotAvailable(statistics)) {
+        return BLOCK_MIGHT_MATCH;
       }
 
       // drop if value > max
@@ -401,9 +468,10 @@ public final class ValueFilterOperators {
     @Override
     @SuppressWarnings("unchecked")
     public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
-        return false;
+      if (statisticsNotAvailable(statistics)) {
+        return BLOCK_MIGHT_MATCH;
       }
+
       return constant.compareTo((T) statistics.getMinValue()) <= 0;
     }
 
@@ -434,6 +502,7 @@ public final class ValueFilterOperators {
       this.measurement = Objects.requireNonNull(measurement, MEASUREMENT_CANNOT_BE_NULL_MSG);
     }
 
+    @Override
     public String getMeasurement() {
       return measurement;
     }
@@ -491,9 +560,10 @@ public final class ValueFilterOperators {
     @Override
     @SuppressWarnings("unchecked")
     public boolean canSkip(Statistics<? extends Serializable> statistics) {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
-        return false;
+      if (statisticsNotAvailable(statistics)) {
+        return BLOCK_MIGHT_MATCH;
       }
+
       return ((T) statistics.getMaxValue()).compareTo(min) >= 0
           && ((T) statistics.getMinValue()).compareTo(max) <= 0;
     }
@@ -501,9 +571,10 @@ public final class ValueFilterOperators {
     @Override
     @SuppressWarnings("unchecked")
     public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
-        return false;
+      if (statisticsNotAvailable(statistics)) {
+        return BLOCK_MIGHT_MATCH;
       }
+
       return ((T) statistics.getMinValue()).compareTo(min) >= 0
           && ((T) statistics.getMaxValue()).compareTo(max) <= 0;
     }
@@ -548,8 +619,8 @@ public final class ValueFilterOperators {
     @Override
     @SuppressWarnings("unchecked")
     public boolean canSkip(Statistics<? extends Serializable> statistics) {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
-        return false;
+      if (statisticsNotAvailable(statistics)) {
+        return BLOCK_MIGHT_MATCH;
       }
 
       return ((T) statistics.getMinValue()).compareTo(min) >= 0
@@ -559,9 +630,10 @@ public final class ValueFilterOperators {
     @Override
     @SuppressWarnings("unchecked")
     public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
-        return false;
+      if (statisticsNotAvailable(statistics)) {
+        return BLOCK_MIGHT_MATCH;
       }
+
       return ((T) statistics.getMinValue()).compareTo(max) > 0
           || ((T) statistics.getMaxValue()).compareTo(min) < 0;
     }
@@ -582,6 +654,14 @@ public final class ValueFilterOperators {
     }
   }
 
+  // we have no statistics available, we cannot drop any blocks
+  private static boolean statisticsNotAvailable(Statistics<?> statistics) {
+    return statistics == null
+        || statistics.getType() == TSDataType.TEXT
+        || statistics.getType() == TSDataType.BOOLEAN
+        || statistics.isEmpty();
+  }
+
   // base class for ValueIn, ValueNotIn
   abstract static class ValueColumnSetFilter<T> extends ColumnSetFilter<T>
       implements IDisableStatisticsValueFilter {
@@ -593,6 +673,7 @@ public final class ValueFilterOperators {
       this.measurement = Objects.requireNonNull(measurement, MEASUREMENT_CANNOT_BE_NULL_MSG);
     }
 
+    @Override
     public String getMeasurement() {
       return measurement;
     }
@@ -698,6 +779,7 @@ public final class ValueFilterOperators {
       this.measurement = Objects.requireNonNull(measurement, MEASUREMENT_CANNOT_BE_NULL_MSG);
     }
 
+    @Override
     public String getMeasurement() {
       return measurement;
     }

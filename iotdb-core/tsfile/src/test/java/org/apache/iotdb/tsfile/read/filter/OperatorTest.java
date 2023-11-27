@@ -30,7 +30,6 @@ import org.junit.Test;
 
 public class OperatorTest {
 
-  private static final long EFFICIENCY_TEST_COUNT = 10000000;
   private static final long TESTED_TIMESTAMP = 1513585371L;
 
   @Test
@@ -46,6 +45,10 @@ public class OperatorTest {
     Filter filter3 = ValueFilter.eq(true);
     Assert.assertTrue(filter3.satisfy(100, true));
     Assert.assertFalse(filter3.satisfy(100, false));
+
+    Filter isNullFilter = ValueFilter.eq(null);
+    Assert.assertTrue(isNullFilter.satisfy(100, null));
+    Assert.assertFalse(isNullFilter.satisfy(100, 1));
   }
 
   @Test
@@ -128,6 +131,10 @@ public class OperatorTest {
     Filter valueNotEq = ValueFilter.notEq(50);
     Assert.assertFalse(valueNotEq.satisfy(100, 50));
     Assert.assertTrue(valueNotEq.satisfy(100, 51));
+
+    Filter isNotNullFilter = ValueFilter.notEq(null);
+    Assert.assertFalse(isNotNullFilter.satisfy(100, null));
+    Assert.assertTrue(isNotNullFilter.satisfy(100, 1));
   }
 
   @Test
@@ -154,28 +161,8 @@ public class OperatorTest {
     try {
       andFilter.satisfy(101L, 50);
       Assert.fail();
-    } catch (ClassCastException e) {
+    } catch (ClassCastException ignored) {
 
     }
-  }
-
-  @Test
-  public void efficiencyTest() {
-    Filter andFilter = FilterFactory.and(TimeFilter.gt(100L), ValueFilter.lt(50.9));
-    Filter orFilter = FilterFactory.or(andFilter, TimeFilter.eq(1000L));
-
-    long startTime = System.currentTimeMillis();
-    for (long i = 0; i < EFFICIENCY_TEST_COUNT; i++) {
-      orFilter.satisfy(i, i + 0.1);
-    }
-    long endTime = System.currentTimeMillis();
-    System.out.println(
-        "EfficiencyTest for Filter: \n\tFilter Expression = "
-            + orFilter
-            + "\n\tCOUNT = "
-            + EFFICIENCY_TEST_COUNT
-            + "\n\tTotal Time = "
-            + (endTime - startTime)
-            + "ms.");
   }
 }

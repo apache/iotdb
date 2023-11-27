@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.read.filter.basic;
 
+import org.apache.iotdb.tsfile.file.metadata.IAlignedMetadata;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
@@ -73,6 +74,8 @@ public interface Filter {
    */
   boolean canSkip(Statistics<? extends Serializable> statistics);
 
+  boolean canSkip(IAlignedMetadata alignedMetadata);
+
   /**
    * To examine whether all data points are satisfied with the filter.
    *
@@ -80,6 +83,8 @@ public interface Filter {
    * @return true if all data points are satisfied with the filter
    */
   boolean allSatisfy(Statistics<? extends Serializable> statistics);
+
+  boolean allSatisfy(IAlignedMetadata alignedMetadata);
 
   /**
    * To examine whether the min time and max time are satisfied with the filter.

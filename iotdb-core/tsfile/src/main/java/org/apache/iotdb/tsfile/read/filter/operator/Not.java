@@ -31,6 +31,7 @@ import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public class Not implements Filter {
@@ -56,6 +57,12 @@ public class Not implements Filter {
 
   @Override
   public boolean canSkip(Statistics<? extends Serializable> statistics) {
+    throw new IllegalArgumentException(CONTAIN_NOT_ERR_MSG + this);
+  }
+
+  @Override
+  public boolean canSkip(
+      Map<String, Statistics<? extends Serializable>> measurementToStatisticsMap) {
     throw new IllegalArgumentException(CONTAIN_NOT_ERR_MSG + this);
   }
 
