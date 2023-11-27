@@ -730,7 +730,7 @@ public class RegerPFloatTest {
     int raw_value_delta_max_index = -1;
 
     int raw_abs_sum = raw_length[0];
-    int range = block_size / 16;
+    int range = block_size / 32;
 
 
     ArrayList<Integer> j_star_list = new ArrayList<>(); // beta list of min b phi alpha to j
@@ -2444,6 +2444,9 @@ public class RegerPFloatTest {
     dataset_name.add("TH-Climate");
     dataset_name.add("TY-Transport");
     dataset_name.add("EPM-Education");
+    dataset_name.add("FANYP-Sensors");
+    dataset_name.add("TRAJET-Transport");
+
 
     int[] dataset_0 = {547, 2816};
     int[] dataset_1 = {1719, 3731};
@@ -2457,6 +2460,8 @@ public class RegerPFloatTest {
     int[] dataset_9 = {474, 678};
     int[] dataset_10 = {4, 30, 38, 49, 58};
     int[] dataset_11 = {5182, 8206};
+    int[] dataset_12 = {652477};
+    int[] dataset_13 = {581388};
 
     dataset_third.add(dataset_0);
     dataset_third.add(dataset_1);
@@ -2470,6 +2475,8 @@ public class RegerPFloatTest {
     dataset_third.add(dataset_9);
     dataset_third.add(dataset_10);
     dataset_third.add(dataset_11);
+    dataset_third.add(dataset_12);
+    dataset_third.add(dataset_13);
 
     for (int i = 0; i < dataset_name.size(); i++) {
       input_path_list.add(input_parent_dir + dataset_name.get(i));
@@ -2501,12 +2508,15 @@ public class RegerPFloatTest {
     //        dataset_block_size.add(512);
     output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv"); // 11
     //        dataset_block_size.add(512);
+    output_path_list.add(output_parent_dir + "/FANYP-Sensors_ratio.csv"); // 12
+    output_path_list.add(output_parent_dir + "/TRAJET-Transport_ratio.csv"); // 13
+
 
     // 0 2 6 7
-//    int[] file_lists = {0,2,6,7};
-//    for (int file_i : file_lists) {
-    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
-//              for (int file_i = 0; file_i < 1; file_i++) {
+    int[] file_lists = {13};
+    for (int file_i : file_lists) {
+//    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+//              for (int file_i = 12; file_i < 14; file_i++) {
 //
       String inputPath = input_path_list.get(file_i);
       String Output = output_path_list.get(file_i);
@@ -2534,7 +2544,10 @@ public class RegerPFloatTest {
 
       assert tempList != null;
 
+      int count_csv = 0;
       for (File f : tempList) {
+        System.out.println(count_csv);
+        count_csv ++;
         System.out.println(f);
 //                        for (int p = 1; p < 2; p++) {
         for (int p = 1; p < 10; p++) {

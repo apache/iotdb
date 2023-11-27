@@ -742,7 +742,7 @@ public class RegerPDoubleTest {
     int[] b;
     int[][] new_length_list = new int[block_size][3];
     int pos_new_length_list = 0;
-    int range = block_size / 16;
+    int range = block_size / 32;
 
     // alpha <= p
     if (alpha < p) {
@@ -899,7 +899,7 @@ public class RegerPDoubleTest {
       int start_j = Math.max(alpha - range / 2, 1);
       int end_j = Math.min(alpha + range / 2, block_size - 1);
 
-      int j = 0;
+      int j = start_j;
       for (; j < alpha - p; j++) {
 
         b = adjustCase1(ts_block, alpha, j, theta, p);
@@ -2098,6 +2098,9 @@ public class RegerPDoubleTest {
     dataset_name.add("TH-Climate");
     dataset_name.add("TY-Transport");
     dataset_name.add("EPM-Education");
+    dataset_name.add("FANYP-Sensors");
+    dataset_name.add("TRAJET-Transport");
+
 
     int[] dataset_0 = {547, 2816};
     int[] dataset_1 = {1719, 3731};
@@ -2111,6 +2114,8 @@ public class RegerPDoubleTest {
     int[] dataset_9 = {474, 678};
     int[] dataset_10 = {4, 30, 38, 49, 58};
     int[] dataset_11 = {5182, 8206};
+    int[] dataset_12 = {652477};
+    int[] dataset_13 = {581388};
 
     dataset_third.add(dataset_0);
     dataset_third.add(dataset_1);
@@ -2124,6 +2129,8 @@ public class RegerPDoubleTest {
     dataset_third.add(dataset_9);
     dataset_third.add(dataset_10);
     dataset_third.add(dataset_11);
+    dataset_third.add(dataset_12);
+    dataset_third.add(dataset_13);
 
     for (int i = 0; i < dataset_name.size(); i++) {
       input_path_list.add(input_parent_dir + dataset_name.get(i));
@@ -2154,12 +2161,15 @@ public class RegerPDoubleTest {
     output_path_list.add(output_parent_dir + "/TY-Transport_ratio.csv"); // 10
     //        dataset_block_size.add(512);
     output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv"); // 11
+    output_path_list.add(output_parent_dir + "/FANYP-Sensors_ratio.csv"); // 12
+    output_path_list.add(output_parent_dir + "/TRAJET-Transport_ratio.csv"); // 13
+
     //        dataset_block_size.add(512);
 
 //    int[] file_lists = {0,2,6,7}; //
 //    for (int file_i : file_lists) {
-    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
-      //        for (int file_i = 0; file_i < 1; file_i++) {
+//    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+              for (int file_i = 13; file_i < 14; file_i++) {
 
       String inputPath = input_path_list.get(file_i);
       String Output = output_path_list.get(file_i);
@@ -2187,7 +2197,10 @@ public class RegerPDoubleTest {
 
       assert tempList != null;
 
+      int count_csv =0;
       for (File f : tempList) {
+        System.out.println(count_csv);
+        count_csv ++;
         System.out.println(f);
         //                for (int p = 8; p < 9; p++) {
         for (int p = 1; p < 10; p++) {

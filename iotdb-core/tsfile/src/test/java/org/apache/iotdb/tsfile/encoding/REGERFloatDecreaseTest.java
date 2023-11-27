@@ -15,7 +15,7 @@ import java.util.Objects;
 
 import static java.lang.Math.abs;
 
-public class REGERFloatTest {
+public class REGERFloatDecreaseTest {
     public static int getBitWith(int num) {
         if (num == 0) return 1;
         else return 32 - Integer.numberOfLeadingZeros(num);
@@ -3140,7 +3140,7 @@ public class REGERFloatTest {
         output_path_list.add(output_parent_dir + "/FANYP-Sensors_ratio.csv"); // 12
         output_path_list.add(output_parent_dir + "/TRAJET-Transport_ratio.csv"); // 13
 
-        int[] file_lists = {5,6,8,10};
+        int[] file_lists = {0};
         for (int file_i : file_lists) {
 //        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 //        for (int file_i = 12; file_i < 14; file_i++) {
@@ -3244,8 +3244,8 @@ public class REGERFloatTest {
         }
     }
 
-    @Test
-    public void REGERVaryBlockSize() throws IOException {
+//    @Test
+    public static void REGERVaryBlockSize() throws IOException {
         //        String parent_dir = "C:/Users/xiaoj/Desktop/test";
         String parent_dir =
                 "/Users/xiaojinzhao/Documents/GitHub/iotdb/iotdb-core/tsfile/src/test/resources/";
@@ -3424,8 +3424,8 @@ public class REGERFloatTest {
         }
     }
 
-    @Test
-    public void REGERVaryPackSize() throws IOException {
+//    @Test
+    public static void REGERVaryPackSize() throws IOException {
         //        String parent_dir = "C:/Users/xiaoj/Desktop/test";
         String parent_dir =
                 "/Users/xiaojinzhao/Documents/GitHub/iotdb/iotdb-core/tsfile/src/test/resources/";

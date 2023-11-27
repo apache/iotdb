@@ -3106,10 +3106,10 @@ public class REGERDoubleTest {
         output_path_list.add(output_parent_dir + "/FANYP-Sensors_ratio.csv"); // 12
         output_path_list.add(output_parent_dir + "/TRAJET-Transport_ratio.csv"); // 13
 
-//        int[] file_lists = {5,6,8,10};
-//        for (int file_i : file_lists) {
+        int[] file_lists = {5,6,8,10};
+        for (int file_i : file_lists) {
 //        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
-        for (int file_i = 12; file_i < 14; file_i++) {
+//        for (int file_i = 12; file_i < 14; file_i++) {
             String inputPath = input_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
 
@@ -3138,7 +3138,7 @@ public class REGERDoubleTest {
                 System.out.println(f);
                 InputStream inputStream = Files.newInputStream(f.toPath());
                 CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
-//                ArrayList<ArrayList<Integer>> data = new ArrayList<>();
+
                 ArrayList<Long> data = new ArrayList<>();
 
                 // add a column to "data"
@@ -3147,39 +3147,24 @@ public class REGERDoubleTest {
                 int time0 = Integer.parseInt(loader.getValues()[0]);
                 int value0 = Integer.parseInt(loader.getValues()[1]);
                 data.add(combine2Int(0, value0));
-//                loader.readRecord();
-//                int time1 = Integer.parseInt(loader.getValues()[0]);
-//                int value1 = Integer.parseInt(loader.getValues()[1]);
-//                System.out.println(time0);
-//                System.out.println(time1);
-//                System.out.println(value1);
-//                data.add(combine2Int(time1-time0, value1));
 
                 while (loader.readRecord()) {
-//                    long time_tmp = Integer.parseInt(loader.getValues()[0])-time0;
-//                    time_tmp <<=32;
-//                    time_tmp +=  Integer.parseInt(loader.getValues()[1]);
-                    int time_tmp = Integer.parseInt(loader.getValues()[0])-time0;
-//                    System.out.println(time_tmp);
-                    int value_tmp = Integer.parseInt(loader.getValues()[1]);
 
+                    int time_tmp = Integer.parseInt(loader.getValues()[0])-time0;
+                    int value_tmp = Integer.parseInt(loader.getValues()[1]);
                     data.add(combine2Int(time_tmp,value_tmp));
                 }
-//                System.out.println(getTime(data.get(1)));
-//                System.out.println((data.get(1)));
 
-//                System.out.println(data);
                 inputStream.close();
                 ArrayList<Integer> result2 = new ArrayList<>();
                 splitTimeStamp3(data, result2);
-//                System.out.println(data);
 
                 long[] data2_arr = new long[data.size()];
-//                int min_time = data.get(0).get(0);
+
                 for (int i = 0; i < data.size(); i++) {
                     data2_arr[i] = data.get(i) ;
                 }
-//                System.out.println(data2_arr[0][0]);
+
                 byte[] encoded_result = new byte[data2_arr.length * 8];
                 long encodeTime = 0;
                 long decodeTime = 0;
@@ -3315,10 +3300,10 @@ public class REGERDoubleTest {
         output_path_list.add(output_parent_dir + "/FANYP-Sensors_ratio.csv"); // 12
         output_path_list.add(output_parent_dir + "/TRAJET-Transport_ratio.csv"); // 13
 
-//        int[] file_lists = {5,6,8,10};
-//        for (int file_i : file_lists) {
+        int[] file_lists = {5,6,8,10};
+        for (int file_i : file_lists) {
 //        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
-        for (int file_i = 12; file_i < 14; file_i++) {
+//        for (int file_i = 12; file_i < 14; file_i++) {
             String inputPath = input_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
 
@@ -3393,7 +3378,7 @@ public class REGERDoubleTest {
                     long decodeTime = 0;
                     double ratio = 0;
                     double compressed_size = 0;
-                    int repeatTime2 = 10;
+                    int repeatTime2 = 1;
                     long s = System.nanoTime();
                     int length = 0;
                     for (int repeat = 0; repeat < repeatTime2; repeat++)
@@ -3526,10 +3511,10 @@ public class REGERDoubleTest {
         output_path_list.add(output_parent_dir + "/FANYP-Sensors_ratio.csv"); // 12
         output_path_list.add(output_parent_dir + "/TRAJET-Transport_ratio.csv"); // 13
 
-//        int[] file_lists = {5,6,8,10};
-//        for (int file_i : file_lists) {
+        int[] file_lists = {5,6,8,10};
+        for (int file_i : file_lists) {
 //        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
-        for (int file_i = 12; file_i < 14; file_i++) {
+//        for (int file_i = 12; file_i < 14; file_i++) {
             String inputPath = input_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
 
@@ -3590,7 +3575,7 @@ public class REGERDoubleTest {
                     long decodeTime = 0;
                     double ratio = 0;
                     double compressed_size = 0;
-                    int repeatTime2 = 10;
+                    int repeatTime2 = 1;
                     long s = System.nanoTime();
                     int length = 0;
                     for (int repeat = 0; repeat < repeatTime2; repeat++)
