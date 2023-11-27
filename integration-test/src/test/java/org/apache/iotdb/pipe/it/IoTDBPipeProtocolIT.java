@@ -344,11 +344,6 @@ public class IoTDBPipeProtocolIT {
   }
 
   @Test
-  public void testLegacyConnectorUseNodeUrls() throws Exception {
-    doTestUseNodeUrls(BuiltinPipePlugin.IOTDB_LEGACY_PIPE_CONNECTOR.getPipePluginName());
-  }
-
-  @Test
   public void testAirGapConnectorUseNodeUrls() throws Exception {
     doTestUseNodeUrls(BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName());
   }
