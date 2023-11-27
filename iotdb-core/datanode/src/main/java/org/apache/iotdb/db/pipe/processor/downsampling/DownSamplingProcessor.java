@@ -26,7 +26,9 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.pipe.api.PipeProcessor;
+import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
+import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -47,8 +49,8 @@ public class DownSamplingProcessor implements PipeProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DownSamplingProcessor.class);
 
-  private String dataBaseName;
-  private long intervalSeconds;
+  private String dataBaseNameWithPathSeparator;
+  private long intervalInCurrentPrecision;
 
   private PartialPathLastTimeCache partialPathLastTimeCache;
 
@@ -60,14 +62,14 @@ public class DownSamplingProcessor implements PipeProcessor {
   @Override
   public void customize(PipeParameters parameters, PipeProcessorRuntimeConfiguration configuration)
       throws Exception {
-    dataBaseName =
+    final String dataBaseName =
         StorageEngine.getInstance()
             .getDataRegion(
                 new DataRegionId(
                     ((PipeTaskProcessorRuntimeEnvironment) configuration.getRuntimeEnvironment())
                         .getRegionId()))
             .getDatabaseName();
-    intervalSeconds =
+    final long intervalSeconds =
         parameters.getLongOrDefault(
             PROCESSOR_DOWN_SAMPLING_INTERVAL_SECONDS_KEY,
             PROCESSOR_DOWN_SAMPLING_INTERVAL_SECONDS_DEFAULT_VALUE);
@@ -77,6 +79,10 @@ public class DownSamplingProcessor implements PipeProcessor {
         PROCESSOR_DOWN_SAMPLING_INTERVAL_SECONDS_KEY,
         intervalSeconds);
 
+    dataBaseNameWithPathSeparator = dataBaseName + TsFileConstant.PATH_SEPARATOR;
+    intervalInCurrentPrecision =
+        TimestampPrecisionUtils.convertToCurrPrecision(intervalSeconds, TimeUnit.SECONDS);
+
     partialPathLastTimeCache = new PartialPathLastTimeCache();
   }
 
@@ -85,78 +91,30 @@ public class DownSamplingProcessor implements PipeProcessor {
       throws Exception {
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
-      LOGGER.warn(
-          "DownSamplingProcessor only support PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
-              + "Current event: {}.",
-          tabletInsertionEvent);
+      eventCollector.collect(tabletInsertionEvent);
       return;
     }
 
-    boolean isAligned =
+    final AtomicReference<String> suffixPath = new AtomicReference<>();
+    final boolean isAligned =
         tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent
             ? ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).isAligned()
             : ((PipeRawTabletInsertionEvent) tabletInsertionEvent).isAligned();
+    final AtomicReference<Exception> exception = new AtomicReference<>();
 
-    AtomicReference<Exception> exception = new AtomicReference<>();
     tabletInsertionEvent
         .processRowByRow(
             (row, rowCollector) -> {
-              String deviceSuffix =
-                  row.getDeviceId().replaceFirst(dataBaseName + TsFileConstant.PATH_SEPARATOR, "");
+              // To reduce the memory usage, we use the device suffix instead of the full path as
+              // the key.
+              if (suffixPath.get() == null) {
+                suffixPath.set(row.getDeviceId().replaceFirst(dataBaseNameWithPathSeparator, ""));
+              }
+
               if (isAligned) {
-                Long lastSendTime = partialPathLastTimeCache.getPartialPathLastTime(deviceSuffix);
-                if (lastSendTime != null) {
-                  if (row.getTime() - lastSendTime
-                      >= TimestampPrecisionUtils.convertToCurrPrecision(
-                          intervalSeconds, TimeUnit.SECONDS)) {
-                    partialPathLastTimeCache.setPartialPathLastTime(deviceSuffix, row.getTime());
-                    try {
-                      rowCollector.collectRow(row);
-                    } catch (Exception e) {
-                      exception.set(e);
-                    }
-                  }
-                } else {
-                  partialPathLastTimeCache.setPartialPathLastTime(deviceSuffix, row.getTime());
-                  try {
-                    rowCollector.collectRow(row);
-                  } catch (Exception e) {
-                    exception.set(e);
-                  }
-                }
+                processAlignedRow(row, rowCollector, suffixPath.get(), exception);
               } else {
-                boolean hasNonNull = false;
-                for (int index = 0; index < row.size(); ++index) {
-                  if (row.isNull(index)) {
-                    continue;
-                  }
-                  String timeSeriesSuffix =
-                      deviceSuffix + TsFileConstant.PATH_SEPARATOR + row.getColumnName(index);
-                  Long lastSendTime =
-                      partialPathLastTimeCache.getPartialPathLastTime(timeSeriesSuffix);
-                  if (lastSendTime != null) {
-                    if (row.getTime() - lastSendTime
-                        >= TimestampPrecisionUtils.convertToCurrPrecision(
-                            intervalSeconds, TimeUnit.SECONDS)) {
-                      hasNonNull = true;
-                      partialPathLastTimeCache.setPartialPathLastTime(
-                          timeSeriesSuffix, row.getTime());
-                    } else {
-                      // row.setNull(index);
-                    }
-                  } else {
-                    hasNonNull = true;
-                    partialPathLastTimeCache.setPartialPathLastTime(
-                        timeSeriesSuffix, row.getTime());
-                  }
-                }
-                if (hasNonNull) {
-                  try {
-                    rowCollector.collectRow(row);
-                  } catch (Exception e) {
-                    exception.set(e);
-                  }
-                }
+                processUnalignedRow(row, rowCollector, suffixPath.get(), exception);
               }
             })
         .forEach(
@@ -167,8 +125,70 @@ public class DownSamplingProcessor implements PipeProcessor {
                 exception.set(e);
               }
             });
+
     if (exception.get() != null) {
       throw exception.get();
+    }
+  }
+
+  private void processAlignedRow(
+      Row row,
+      RowCollector rowCollector,
+      String deviceSuffix,
+      AtomicReference<Exception> exception) {
+
+    boolean hasNonNull = false;
+    for (int index = 0; index < row.size(); ++index) {
+      if (row.isNull(index)) {
+        continue;
+      }
+      String timeSeriesSuffix =
+          deviceSuffix + TsFileConstant.PATH_SEPARATOR + row.getColumnName(index);
+      Long lastSendTime = partialPathLastTimeCache.getPartialPathLastTime(timeSeriesSuffix);
+      if (lastSendTime != null) {
+        if (row.getTime() - lastSendTime >= intervalInCurrentPrecision) {
+          hasNonNull = true;
+          partialPathLastTimeCache.setPartialPathLastTime(timeSeriesSuffix, row.getTime());
+        } else {
+          // row.setNull(index);
+        }
+      } else {
+        hasNonNull = true;
+        partialPathLastTimeCache.setPartialPathLastTime(timeSeriesSuffix, row.getTime());
+      }
+    }
+    if (hasNonNull) {
+      try {
+        rowCollector.collectRow(row);
+      } catch (Exception e) {
+        exception.set(e);
+      }
+    }
+  }
+
+  private void processUnalignedRow(
+      Row row,
+      RowCollector rowCollector,
+      String deviceSuffix,
+      AtomicReference<Exception> exception) {
+    final Long lastSendTime = partialPathLastTimeCache.getPartialPathLastTime(deviceSuffix);
+
+    if (lastSendTime != null) {
+      if (row.getTime() - lastSendTime >= intervalInCurrentPrecision) {
+        partialPathLastTimeCache.setPartialPathLastTime(deviceSuffix, row.getTime());
+        try {
+          rowCollector.collectRow(row);
+        } catch (Exception e) {
+          exception.set(e);
+        }
+      }
+    } else {
+      partialPathLastTimeCache.setPartialPathLastTime(deviceSuffix, row.getTime());
+      try {
+        rowCollector.collectRow(row);
+      } catch (Exception e) {
+        exception.set(e);
+      }
     }
   }
 
