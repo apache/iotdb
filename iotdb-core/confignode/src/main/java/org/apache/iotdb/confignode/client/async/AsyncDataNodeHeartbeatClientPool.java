@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.confignode.client.async.handlers.heartbeat.DataNodeHeartbeatHandler;
-import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatReq;
 
 /** Asynchronously send RPC requests to DataNodes. See queryengine.thrift for more details. */
 public class AsyncDataNodeHeartbeatClientPool {
@@ -44,7 +44,7 @@ public class AsyncDataNodeHeartbeatClientPool {
    * @param endPoint The specific DataNode
    */
   public void getDataNodeHeartBeat(
-      TEndPoint endPoint, THeartbeatReq req, DataNodeHeartbeatHandler handler) {
+      TEndPoint endPoint, TDataNodeHeartbeatReq req, DataNodeHeartbeatHandler handler) {
     try {
       clientManager.borrowClient(endPoint).getDataNodeHeartBeat(req, handler);
     } catch (Exception ignore) {

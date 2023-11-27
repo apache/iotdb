@@ -17,51 +17,47 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.read.filter;
+package org.apache.iotdb.tsfile.read.filter.operator;
 
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
+import org.apache.iotdb.tsfile.read.filter.basic.ITimeFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.OperatorType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public class GroupByFilter implements Filter, Serializable {
+public class GroupByFilter implements ITimeFilter {
 
-  private static final long serialVersionUID = -1211805021419281440L;
-  protected long interval;
-  protected long slidingStep;
+  // [startTime, endTime]
   protected long startTime;
   protected long endTime;
 
-  public GroupByFilter(long interval, long slidingStep, long startTime, long endTime) {
+  protected long interval;
+  protected long slidingStep;
+
+  public GroupByFilter(long startTime, long endTime, long interval, long slidingStep) {
+    this.startTime = startTime;
+    this.endTime = endTime;
     this.interval = interval;
     this.slidingStep = slidingStep;
+  }
+
+  protected GroupByFilter(long startTime, long endTime) {
     this.startTime = startTime;
     this.endTime = endTime;
   }
 
-  public GroupByFilter(long startTime, long endTime) {
-    this.startTime = startTime;
-    this.endTime = endTime;
-  }
-
-  public GroupByFilter() {}
-
-  @Override
-  public boolean satisfy(Statistics statistics) {
-    return satisfyStartEndTime(statistics.getStartTime(), statistics.getEndTime());
-  }
-
-  @Override
-  public boolean allSatisfy(Statistics statistics) {
-    return containStartEndTime(statistics.getStartTime(), statistics.getEndTime());
+  public GroupByFilter(ByteBuffer buffer) {
+    this.startTime = ReadWriteIOUtils.readLong(buffer);
+    this.endTime = ReadWriteIOUtils.readLong(buffer);
+    this.interval = ReadWriteIOUtils.readLong(buffer);
+    this.slidingStep = ReadWriteIOUtils.readLong(buffer);
   }
 
   @Override
@@ -106,65 +102,9 @@ public class GroupByFilter implements Filter, Serializable {
   }
 
   @Override
-  public Filter copy() {
-    return new GroupByFilter(interval, slidingStep, startTime, endTime);
-  }
-
-  @Override
   public String toString() {
     return String.format(
         "GroupByFilter{[%d, %d], %d, %d}", startTime, endTime, interval, slidingStep);
-  }
-
-  @Override
-  public void serialize(DataOutputStream outputStream) {
-    try {
-      outputStream.write(getSerializeId().ordinal());
-      outputStream.writeLong(interval);
-      outputStream.writeLong(slidingStep);
-      outputStream.writeLong(startTime);
-      outputStream.writeLong(endTime);
-    } catch (IOException ignored) {
-      // ignored
-    }
-  }
-
-  @Override
-  public void deserialize(ByteBuffer buffer) {
-    interval = buffer.getLong();
-    slidingStep = buffer.getLong();
-    startTime = buffer.getLong();
-    endTime = buffer.getLong();
-  }
-
-  @Override
-  public FilterSerializeId getSerializeId() {
-    return FilterSerializeId.GROUP_BY;
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    if (!(obj instanceof GroupByFilter)) {
-      return false;
-    }
-    GroupByFilter other = ((GroupByFilter) obj);
-    return this.interval == other.interval
-        && this.slidingStep == other.slidingStep
-        && this.startTime == other.startTime
-        && this.endTime == other.endTime;
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(interval, slidingStep, startTime, endTime);
-  }
-
-  public long getStartTime() {
-    return startTime;
-  }
-
-  public long getEndTime() {
-    return endTime;
   }
 
   @Override
@@ -177,5 +117,39 @@ public class GroupByFilter implements Filter, Serializable {
   @Override
   public Filter reverse() {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public OperatorType getOperatorType() {
+    return OperatorType.GROUP_BY_TIME;
+  }
+
+  @Override
+  public void serialize(DataOutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(getOperatorType().ordinal(), outputStream);
+    ReadWriteIOUtils.write(startTime, outputStream);
+    ReadWriteIOUtils.write(endTime, outputStream);
+    ReadWriteIOUtils.write(interval, outputStream);
+    ReadWriteIOUtils.write(slidingStep, outputStream);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    GroupByFilter that = (GroupByFilter) o;
+    return interval == that.interval
+        && slidingStep == that.slidingStep
+        && startTime == that.startTime
+        && endTime == that.endTime;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(interval, slidingStep, startTime, endTime);
   }
 }

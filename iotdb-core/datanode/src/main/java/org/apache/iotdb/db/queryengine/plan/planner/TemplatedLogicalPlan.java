@@ -158,7 +158,6 @@ public class TemplatedLogicalPlan {
         planBuilder.planRawDataSource(
             devicePath,
             queryStatement.getResultTimeOrder(),
-            analysis.getGlobalTimeFilter(),
             0,
             limitValue,
             analysis.isLastLevelUseWildcard());
@@ -192,7 +191,6 @@ public class TemplatedLogicalPlan {
                       .map(IMeasurementSchema::getType)
                       .collect(Collectors.toList()),
                   new HashSet<>(mergedMeasurementList),
-                  analysis.getGlobalTimeFilter(),
                   queryStatement.getResultTimeOrder(),
                   analysis.isLastLevelUseWildcard(),
                   analysis.getDeviceViewOutputExpressions().stream()
