@@ -20,6 +20,8 @@ package org.apache.iotdb.tsfile.read.filter;
 
 import org.apache.iotdb.tsfile.file.metadata.statistics.LongStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.operator.GroupByFilter;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -33,7 +35,7 @@ public class GroupByFilterTest {
 
   @Before
   public void setUp() {
-    groupByFilter = new GroupByFilter(3, 24, 8, 8 + 30 * 24 + 3 + 6);
+    groupByFilter = TimeFilter.groupBy(8, 8 + 30 * 24 + 3 + 6, 3, 24);
   }
 
   @Test

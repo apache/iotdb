@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.manager.load.cache.node.BaseNodeCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.DataNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
-import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
+import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -69,7 +69,7 @@ public class GreedyPriorityTest {
           .get(i)
           .cacheHeartbeatSample(
               new NodeHeartbeatSample(
-                  new THeartbeatResp(currentTimeMillis, statuses[i].getStatus()),
+                  new TDataNodeHeartbeatResp(currentTimeMillis, statuses[i].getStatus()),
                   currentTimeMillis));
     }
     nodeCacheMap.values().forEach(BaseNodeCache::periodicUpdate);

@@ -22,29 +22,35 @@ package org.apache.iotdb.tsfile.read.filter.operator;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
+import org.apache.iotdb.tsfile.read.filter.basic.OperatorType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class NotFilter implements Filter, Serializable {
+public class Not implements Filter {
 
-  private static final long serialVersionUID = 584860326604020881L;
-  private Filter that;
+  private final Filter filter;
 
   public static final String CONTAIN_NOT_ERR_MSG =
-      "This predicate contains a not! Did you forget to run this predicate through PredicateRemoveNotRewriter? ";
+      "This predicate contains a not! "
+          + "Did you forget to run this predicate through PredicateRemoveNotRewriter? ";
 
-  public NotFilter() {}
+  public Not(Filter filter) {
+    this.filter = Objects.requireNonNull(filter, "filter cannot be null");
+  }
 
-  public NotFilter(Filter that) {
-    this.that = that;
+  public Not(ByteBuffer buffer) {
+    this(Filter.deserialize(buffer));
+  }
+
+  @Override
+  public boolean satisfy(long time, Object value) {
+    return !filter.satisfy(time, value);
   }
 
   @Override
@@ -58,11 +64,6 @@ public class NotFilter implements Filter, Serializable {
   }
 
   @Override
-  public boolean satisfy(long time, Object value) {
-    return !that.satisfy(time, value);
-  }
-
-  @Override
   public boolean satisfyStartEndTime(long startTime, long endTime) {
     throw new UnsupportedOperationException(CONTAIN_NOT_ERR_MSG + this);
   }
@@ -72,57 +73,13 @@ public class NotFilter implements Filter, Serializable {
     throw new UnsupportedOperationException(CONTAIN_NOT_ERR_MSG + this);
   }
 
-  @Override
-  public Filter copy() {
-    return new NotFilter(that.copy());
-  }
-
   public Filter getFilter() {
-    return this.that;
-  }
-
-  @Override
-  public String toString() {
-    return "not (" + that + ")";
-  }
-
-  @Override
-  public void serialize(DataOutputStream outputStream) {
-    try {
-      outputStream.write(getSerializeId().ordinal());
-      that.serialize(outputStream);
-    } catch (IOException ignored) {
-      // ignored
-    }
-  }
-
-  @Override
-  public void deserialize(ByteBuffer buffer) {
-    that = FilterFactory.deserialize(buffer);
-  }
-
-  @Override
-  public FilterSerializeId getSerializeId() {
-    return FilterSerializeId.NOT;
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    if (!(obj instanceof NotFilter)) {
-      return false;
-    }
-    NotFilter other = ((NotFilter) obj);
-    return this.that.equals(other.that);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(that);
+    return this.filter;
   }
 
   @Override
   public List<TimeRange> getTimeRanges() {
-    List<TimeRange> list = that.getTimeRanges();
+    List<TimeRange> list = filter.getTimeRanges();
     if (list.isEmpty()) {
       return list;
     }
@@ -146,6 +103,39 @@ public class NotFilter implements Filter, Serializable {
 
   @Override
   public Filter reverse() {
-    return that;
+    return filter;
+  }
+
+  @Override
+  public OperatorType getOperatorType() {
+    return OperatorType.NOT;
+  }
+
+  @Override
+  public void serialize(DataOutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(getOperatorType().ordinal(), outputStream);
+    filter.serialize(outputStream);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    Not not = (Not) o;
+    return filter.equals(not.filter);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(filter);
+  }
+
+  @Override
+  public String toString() {
+    return "not(" + filter + ")";
   }
 }

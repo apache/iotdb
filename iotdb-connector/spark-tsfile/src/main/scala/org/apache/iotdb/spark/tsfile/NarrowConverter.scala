@@ -31,7 +31,7 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader
 import org.apache.iotdb.tsfile.read.common.Path
 import org.apache.iotdb.tsfile.read.expression.impl.{BinaryExpression, GlobalTimeExpression, SingleSeriesExpression}
 import org.apache.iotdb.tsfile.read.expression.{IExpression, QueryExpression}
-import org.apache.iotdb.tsfile.read.filter.{TimeFilter, ValueFilter}
+import org.apache.iotdb.tsfile.read.filter.factory.{TimeFilter, ValueFilter}
 import org.apache.iotdb.tsfile.write.record.TSRecord
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint
 import org.apache.iotdb.tsfile.write.schema.{MeasurementSchema, Schema}
