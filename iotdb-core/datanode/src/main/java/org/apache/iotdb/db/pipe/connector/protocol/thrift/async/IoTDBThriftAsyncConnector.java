@@ -501,4 +501,10 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       tabletBatchBuilder.close();
     }
   }
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  public int getRetryEventQueueSize() {
+    return retryEventQueue.size();
+  }
 }

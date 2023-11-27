@@ -209,8 +209,18 @@ public class WALInsertNodeCache {
     }
   }
 
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
   public double getCacheHitRate() {
     return Objects.nonNull(lruCache) ? lruCache.stats().hitRate() : 0;
+  }
+
+  public double getCacheHitCount() {
+    return Objects.nonNull(lruCache) ? lruCache.stats().hitCount() : 0;
+  }
+
+  public double getCacheRequestCount() {
+    return Objects.nonNull(lruCache) ? lruCache.stats().requestCount() : 0;
   }
 
   /////////////////////////// MemTable ///////////////////////////

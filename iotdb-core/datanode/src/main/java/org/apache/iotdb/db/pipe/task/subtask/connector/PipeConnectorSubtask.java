@@ -364,4 +364,10 @@ public class PipeConnectorSubtask extends PipeSubtask {
   public Integer getPipeHeartbeatEventCount() {
     return inputPendingQueue.getPipeHeartbeatEventCount();
   }
+
+  public Integer getAsyncConnectorRetryEventQueueSize() {
+    return outputPipeConnector instanceof IoTDBThriftAsyncConnector
+        ? ((IoTDBThriftAsyncConnector) outputPipeConnector).getRetryEventQueueSize()
+        : 0;
+  }
 }

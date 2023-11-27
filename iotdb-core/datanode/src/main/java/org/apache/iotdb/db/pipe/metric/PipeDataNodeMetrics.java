@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.metric;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 
-public class PipeMetrics implements IMetricSet {
+public class PipeDataNodeMetrics implements IMetricSet {
 
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
@@ -35,6 +35,7 @@ public class PipeMetrics implements IMetricSet {
     PipeHeartbeatEventMetrics.getInstance().bindTo(metricService);
     PipeWALInsertNodeCacheMetrics.getInstance().bindTo(metricService);
     PipeResourceMetrics.getInstance().bindTo(metricService);
+    PipeEventCommitMetrics.getInstance().bindTo(metricService);
   }
 
   @Override
@@ -46,24 +47,25 @@ public class PipeMetrics implements IMetricSet {
     PipeHeartbeatEventMetrics.getInstance().unbindFrom(metricService);
     PipeWALInsertNodeCacheMetrics.getInstance().unbindFrom(metricService);
     PipeResourceMetrics.getInstance().unbindFrom(metricService);
+    PipeEventCommitMetrics.getInstance().unbindFrom(metricService);
   }
 
   //////////////////////////// singleton ////////////////////////////
 
-  private static class PipeMetricsHolder {
+  private static class PipeDataNodeMetricsHolder {
 
-    private static final PipeMetrics INSTANCE = new PipeMetrics();
+    private static final PipeDataNodeMetrics INSTANCE = new PipeDataNodeMetrics();
 
-    private PipeMetricsHolder() {
+    private PipeDataNodeMetricsHolder() {
       // empty constructor
     }
   }
 
-  public static PipeMetrics getInstance() {
-    return PipeMetrics.PipeMetricsHolder.INSTANCE;
+  public static PipeDataNodeMetrics getInstance() {
+    return PipeDataNodeMetricsHolder.INSTANCE;
   }
 
-  private PipeMetrics() {
+  private PipeDataNodeMetrics() {
     // empty constructor
   }
 }
