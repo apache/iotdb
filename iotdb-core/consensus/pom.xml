@@ -87,7 +87,7 @@
         </dependency>
         <dependency>
             <groupId>org.apache.ratis</groupId>
-            <artifactId>ratis-metrics</artifactId>
+            <artifactId>ratis-metrics-api</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.ratis</groupId>
