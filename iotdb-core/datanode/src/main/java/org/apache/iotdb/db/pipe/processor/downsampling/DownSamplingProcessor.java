@@ -47,25 +47,19 @@ public class DownSamplingProcessor implements PipeProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DownSamplingProcessor.class);
 
-  private long intervalSeconds;
   private String dataBaseName;
+  private long intervalSeconds;
+
   private PartialPathLastTimeCache partialPathLastTimeCache;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
-    // Do nothing
+    // No need to validate.
   }
 
-  // TODO: Implement multiple down sampling methods, like "average"
   @Override
   public void customize(PipeParameters parameters, PipeProcessorRuntimeConfiguration configuration)
       throws Exception {
-    intervalSeconds =
-        parameters.getLongOrDefault(
-            PROCESSOR_DOWN_SAMPLING_INTERVAL_SECONDS_KEY,
-            PROCESSOR_DOWN_SAMPLING_INTERVAL_SECONDS_DEFAULT_VALUE);
-    LOGGER.info("DownSamplingProcessor intervalSeconds: {}", intervalSeconds);
-
     dataBaseName =
         StorageEngine.getInstance()
             .getDataRegion(
@@ -73,6 +67,15 @@ public class DownSamplingProcessor implements PipeProcessor {
                     ((PipeTaskProcessorRuntimeEnvironment) configuration.getRuntimeEnvironment())
                         .getRegionId()))
             .getDatabaseName();
+    intervalSeconds =
+        parameters.getLongOrDefault(
+            PROCESSOR_DOWN_SAMPLING_INTERVAL_SECONDS_KEY,
+            PROCESSOR_DOWN_SAMPLING_INTERVAL_SECONDS_DEFAULT_VALUE);
+    LOGGER.info(
+        "DownSamplingProcessor in {} is initialized with {}: {}s.",
+        dataBaseName,
+        PROCESSOR_DOWN_SAMPLING_INTERVAL_SECONDS_KEY,
+        intervalSeconds);
 
     partialPathLastTimeCache = new PartialPathLastTimeCache();
   }
