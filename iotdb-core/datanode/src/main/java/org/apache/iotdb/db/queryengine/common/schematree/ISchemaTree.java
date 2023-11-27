@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.common.schematree;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -36,12 +37,27 @@ public interface ISchemaTree {
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    * @return Left: all measurement paths; Right: remaining series offset
    */
+  @TestOnly
   Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(
       PartialPath pathPattern, int slimit, int soffset, boolean isPrefixMatch);
 
+  /**
+   * Return all measurement paths for given path pattern.
+   *
+   * @param pathPattern can be a pattern or a full path of timeseries.
+   * @return Left: all measurement paths; Right: remaining series offset
+   */
   Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(PartialPath pathPattern);
 
-  Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(PartialPath pathPattern, boolean ignoreAuthority);
+  /**
+   * Return all measurement paths for given path pattern.
+   *
+   * @param pathPattern can be a pattern or a full path of timeseries.
+   * @param scope only the tree nodes in the scope can be accessed.
+   * @return Left: all measurement paths; Right: remaining series offset
+   */
+  Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(
+      PartialPath pathPattern, PathPatternTree scope);
 
   /**
    * Get all device matching the path pattern.
@@ -101,10 +117,4 @@ public interface ISchemaTree {
    * @return whether there's view in this schema tree
    */
   boolean hasLogicalViewMeasurement();
-
-  /**
-   * Set the authority scope of this schema tree. After the authority scope is set, only the tree nodes in the scope can be accessed if not specify to ignore.
-   * @param scope the authority scope
-   */
-  void setAuthorityScope(PathPatternTree scope);
 }

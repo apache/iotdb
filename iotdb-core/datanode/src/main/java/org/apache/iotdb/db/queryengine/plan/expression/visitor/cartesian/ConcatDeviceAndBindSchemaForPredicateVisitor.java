@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -41,6 +42,13 @@ import static org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.
 
 public class ConcatDeviceAndBindSchemaForPredicateVisitor
     extends CartesianProductVisitor<ConcatDeviceAndBindSchemaForPredicateVisitor.Context> {
+
+  private final PathPatternTree authorityScope;
+
+  public ConcatDeviceAndBindSchemaForPredicateVisitor(PathPatternTree authorityScope) {
+    this.authorityScope = authorityScope;
+  }
+
   @Override
   public List<Expression> visitFunctionExpression(FunctionExpression predicate, Context context) {
     if (predicate.isBuiltInAggregationFunctionExpression() && context.isWhere()) {
@@ -63,7 +71,7 @@ public class ConcatDeviceAndBindSchemaForPredicateVisitor
     List<MeasurementPath> nonViewPathList = new ArrayList<>();
     List<MeasurementPath> viewPathList = new ArrayList<>();
     List<MeasurementPath> actualPaths =
-        context.getSchemaTree().searchMeasurementPaths(concatPath).left;
+        context.getSchemaTree().searchMeasurementPaths(concatPath, authorityScope).left;
     if (actualPaths.isEmpty()) {
       return Collections.singletonList(new NullOperand());
     }

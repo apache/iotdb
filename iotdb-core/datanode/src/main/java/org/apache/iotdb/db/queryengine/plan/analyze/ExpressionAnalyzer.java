@@ -402,8 +402,8 @@ public class ExpressionAnalyzer {
    *     expressions
    */
   public static List<Expression> bindSchemaForExpression(
-      Expression expression, ISchemaTree schemaTree) {
-    return new BindSchemaForExpressionVisitor().process(expression, schemaTree);
+      Expression expression, ISchemaTree schemaTree, PathPatternTree authorityScope) {
+    return new BindSchemaForExpressionVisitor(authorityScope).process(expression, schemaTree);
   }
 
   /**
@@ -416,8 +416,12 @@ public class ExpressionAnalyzer {
    * @return the expression list with full path and after binding schema
    */
   public static List<Expression> bindSchemaForPredicate(
-      Expression predicate, List<PartialPath> prefixPaths, ISchemaTree schemaTree, boolean isRoot) {
-    return new BindSchemaForPredicateVisitor()
+      Expression predicate,
+      List<PartialPath> prefixPaths,
+      ISchemaTree schemaTree,
+      boolean isRoot,
+      PathPatternTree authorityScope) {
+    return new BindSchemaForPredicateVisitor(authorityScope)
         .process(
             predicate, new BindSchemaForPredicateVisitor.Context(prefixPaths, schemaTree, isRoot));
   }
@@ -437,8 +441,11 @@ public class ExpressionAnalyzer {
    * @return expression list with full path and after binding schema
    */
   public static List<Expression> concatDeviceAndBindSchemaForExpression(
-      Expression expression, PartialPath devicePath, ISchemaTree schemaTree) {
-    return new ConcatDeviceAndBindSchemaForExpressionVisitor()
+      Expression expression,
+      PartialPath devicePath,
+      ISchemaTree schemaTree,
+      PathPatternTree authorityScope) {
+    return new ConcatDeviceAndBindSchemaForExpressionVisitor(authorityScope)
         .process(
             expression,
             new ConcatDeviceAndBindSchemaForExpressionVisitor.Context(devicePath, schemaTree));
@@ -451,8 +458,12 @@ public class ExpressionAnalyzer {
    * @return the expression list with full path and after binding schema
    */
   public static List<Expression> concatDeviceAndBindSchemaForPredicate(
-      Expression predicate, PartialPath devicePath, ISchemaTree schemaTree, boolean isWhere) {
-    return new ConcatDeviceAndBindSchemaForPredicateVisitor()
+      Expression predicate,
+      PartialPath devicePath,
+      ISchemaTree schemaTree,
+      boolean isWhere,
+      PathPatternTree authorityScope) {
+    return new ConcatDeviceAndBindSchemaForPredicateVisitor(authorityScope)
         .process(
             predicate,
             new ConcatDeviceAndBindSchemaForPredicateVisitor.Context(

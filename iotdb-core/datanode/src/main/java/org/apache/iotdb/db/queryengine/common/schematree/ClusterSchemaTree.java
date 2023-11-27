@@ -75,8 +75,6 @@ public class ClusterSchemaTree implements ISchemaTree {
 
   private Map<Integer, Template> templateMap = new HashMap<>();
 
-  private PathPatternTree authorityScope;
-
   public ClusterSchemaTree() {
     root = new SchemaInternalNode(PATH_ROOT);
   }
@@ -101,29 +99,26 @@ public class ClusterSchemaTree implements ISchemaTree {
       PartialPath pathPattern, int slimit, int soffset, boolean isPrefixMatch) {
     try (SchemaTreeVisitorWithLimitOffsetWrapper<MeasurementPath> visitor =
         SchemaTreeVisitorFactory.createSchemaTreeMeasurementVisitor(
-            root, pathPattern, isPrefixMatch, slimit, soffset, authorityScope)) {
+            root, pathPattern, isPrefixMatch, slimit, soffset, null)) {
       visitor.setTemplateMap(templateMap);
       return new Pair<>(visitor.getAllResult(), visitor.getNextOffset());
     }
   }
 
   @Override
-  public Pair<List<MeasurementPath>, Integer>  searchMeasurementPaths(PartialPath pathPattern) {
-    return searchMeasurementPaths(pathPattern, 0, 0, false);
+  public Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(PartialPath pathPattern) {
+    return searchMeasurementPaths(pathPattern, null);
   }
 
   @Override
   public Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(
-      PartialPath pathPattern, boolean ignoreAuthority) {
-    if (!ignoreAuthority) {
-      return searchMeasurementPaths(pathPattern, 0, 0, false);
-    } else {
-      try (SchemaTreeMeasurementVisitor visitor =
-          SchemaTreeVisitorFactory.createSchemaTreeMeasurementVisitor(root, pathPattern, null)) {
-        visitor.setTemplateMap(templateMap);
-        List<MeasurementPath> result = visitor.getAllResult();
-        return new Pair<>(result, result.size());
-      }
+      PartialPath pathPattern, PathPatternTree authorityScope) {
+    try (SchemaTreeMeasurementVisitor visitor =
+        SchemaTreeVisitorFactory.createSchemaTreeMeasurementVisitor(
+            root, pathPattern, authorityScope)) {
+      visitor.setTemplateMap(templateMap);
+      List<MeasurementPath> result = visitor.getAllResult();
+      return new Pair<>(result, result.size());
     }
   }
 
@@ -249,8 +244,7 @@ public class ClusterSchemaTree implements ISchemaTree {
     for (Integer index : indexOfTargetLogicalView) {
       LogicalViewSchema logicalViewSchema = logicalViewSchemaList.get(index);
       PartialPath sourceFullPath = logicalViewSchema.getSourcePathIfWritable();
-      List<MeasurementPath> measurementPathList =
-          this.searchMeasurementPaths(sourceFullPath, true).left;
+      List<MeasurementPath> measurementPathList = this.searchMeasurementPaths(sourceFullPath).left;
       if (measurementPathList.isEmpty()) {
         throw new SemanticException(
             new PathNotExistException(
@@ -475,6 +469,7 @@ public class ClusterSchemaTree implements ISchemaTree {
     Deque<SchemaNode> stack = new ArrayDeque<>();
     SchemaNode child;
     boolean hasLogicalView = false;
+    boolean hasNormalTimeSeries = false;
     Map<Integer, Template> templateMap = new HashMap<>();
 
     while (inputStream.available() > 0) {
@@ -485,6 +480,7 @@ public class ClusterSchemaTree implements ISchemaTree {
         if (measurementNode.isLogicalView()) {
           hasLogicalView = true;
         }
+        hasNormalTimeSeries = true;
       } else {
         SchemaInternalNode internalNode;
         if (nodeType == SCHEMA_ENTITY_NODE) {
@@ -517,6 +513,7 @@ public class ClusterSchemaTree implements ISchemaTree {
     ClusterSchemaTree result = new ClusterSchemaTree(stack.poll());
     result.templateMap = templateMap;
     result.hasLogicalMeasurementPath = hasLogicalView;
+    result.hasNormalTimeSeries = hasNormalTimeSeries;
     return result;
   }
 
@@ -562,10 +559,5 @@ public class ClusterSchemaTree implements ISchemaTree {
   @Override
   public boolean isEmpty() {
     return root.getChildren() == null || root.getChildren().isEmpty();
-  }
-
-  @Override
-  public void setAuthorityScope(PathPatternTree scope) {
-    this.authorityScope = scope;
   }
 }

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
@@ -48,6 +49,12 @@ import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
 
 public class BindSchemaForPredicateVisitor
     extends CartesianProductVisitor<BindSchemaForPredicateVisitor.Context> {
+
+  private final PathPatternTree authorityScope;
+
+  public BindSchemaForPredicateVisitor(PathPatternTree authorityScope) {
+    this.authorityScope = authorityScope;
+  }
 
   @Override
   public List<Expression> visitBinaryExpression(
@@ -119,7 +126,7 @@ public class BindSchemaForPredicateVisitor
     List<MeasurementPath> viewPathList = new ArrayList<>();
     for (PartialPath concatPath : concatPaths) {
       List<MeasurementPath> actualPaths =
-          context.getSchemaTree().searchMeasurementPaths(concatPath).left;
+          context.getSchemaTree().searchMeasurementPaths(concatPath, authorityScope).left;
       if (actualPaths.isEmpty()) {
         return Collections.singletonList(new NullOperand());
       }

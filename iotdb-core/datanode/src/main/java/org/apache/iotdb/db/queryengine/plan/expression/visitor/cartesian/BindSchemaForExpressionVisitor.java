@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
@@ -46,6 +47,12 @@ import static org.apache.iotdb.db.utils.TypeInferenceUtils.bindTypeForAggregatio
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
 
 public class BindSchemaForExpressionVisitor extends CartesianProductVisitor<ISchemaTree> {
+
+  private final PathPatternTree authorityScope;
+
+  public BindSchemaForExpressionVisitor(PathPatternTree authorityScope) {
+    this.authorityScope = authorityScope;
+  }
 
   @Override
   public List<Expression> visitFunctionExpression(
@@ -104,7 +111,7 @@ public class BindSchemaForExpressionVisitor extends CartesianProductVisitor<ISch
       TimeSeriesOperand timeSeriesOperand, ISchemaTree schemaTree) {
     PartialPath timeSeriesOperandPath = timeSeriesOperand.getPath();
     List<MeasurementPath> actualPaths =
-        schemaTree.searchMeasurementPaths(timeSeriesOperandPath).left;
+        schemaTree.searchMeasurementPaths(timeSeriesOperandPath, authorityScope).left;
     // process logical view
     List<MeasurementPath> nonViewActualPaths = new ArrayList<>();
     List<MeasurementPath> viewPaths = new ArrayList<>();

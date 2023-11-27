@@ -93,7 +93,7 @@ public class CompleteMeasurementSchemaVisitor extends ExpressionVisitor<Expressi
     try {
       path.getMeasurementSchema();
     } catch (Exception notAMeasurementPath) {
-      List<MeasurementPath> actualPaths = schemaTree.searchMeasurementPaths(path, true).left;
+      List<MeasurementPath> actualPaths = schemaTree.searchMeasurementPaths(path).left;
       if (actualPaths.size() != 1) {
         throw new SemanticException(new BrokenViewException(path.getFullPath(), actualPaths));
       }

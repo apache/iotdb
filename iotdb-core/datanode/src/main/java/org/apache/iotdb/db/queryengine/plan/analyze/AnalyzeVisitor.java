@@ -369,7 +369,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       } else {
         schemaTree = schemaFetcher.fetchSchema(concatPathRewriter.getPatternTree(), context);
       }
-      schemaTree.setAuthorityScope(queryStatement.getAuthorityScope());
 
       // make sure paths in logical view is fetched
       updateSchemaTreeByViews(analysis, schemaTree);
@@ -457,7 +456,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     for (Expression selectExpression : selectExpressions) {
       for (Expression lastQuerySourceExpression :
-          bindSchemaForExpression(selectExpression, schemaTree)) {
+          bindSchemaForExpression(
+              selectExpression,
+              schemaTree,
+              ((QueryStatement) analysis.getStatement()).getAuthorityScope())) {
         if (lastQuerySourceExpression instanceof TimeSeriesOperand) {
           lastQueryBaseExpressions.add(lastQuerySourceExpression);
           sourceExpressions.add(lastQuerySourceExpression);
@@ -542,7 +544,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
       List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
       List<Expression> resultExpressions =
-          bindSchemaForExpression(resultColumn.getExpression(), schemaTree);
+          bindSchemaForExpression(
+              resultColumn.getExpression(), schemaTree, queryStatement.getAuthorityScope());
 
       for (Expression resultExpression : resultExpressions) {
         if (paginationController.hasCurOffset()) {
@@ -617,7 +620,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           new LinkedHashMap<>();
       for (PartialPath device : deviceList) {
         List<Expression> selectExpressionsOfOneDevice =
-            concatDeviceAndBindSchemaForExpression(selectExpression, device, schemaTree);
+            concatDeviceAndBindSchemaForExpression(
+                selectExpression, device, schemaTree, queryStatement.getAuthorityScope());
         if (selectExpressionsOfOneDevice.isEmpty()) {
           continue;
         }
@@ -762,7 +766,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             queryStatement.getHavingCondition().getPredicate(),
             queryStatement.getFromComponent().getPrefixPaths(),
             schemaTree,
-            true);
+            true,
+            queryStatement.getAuthorityScope());
     Expression havingExpression =
         PredicateUtils.combineConjuncts(
             conJunctions.stream().distinct().collect(Collectors.toList()));
@@ -799,7 +804,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     for (PartialPath device : deviceSet) {
       List<Expression> expressionsInHaving =
-          concatDeviceAndBindSchemaForExpression(havingExpression, device, schemaTree);
+          concatDeviceAndBindSchemaForExpression(
+              havingExpression, device, schemaTree, queryStatement.getAuthorityScope());
 
       conJunctions.addAll(
           expressionsInHaving.stream()
@@ -1317,7 +1323,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             queryStatement.getWhereCondition().getPredicate(),
             queryStatement.getFromComponent().getPrefixPaths(),
             schemaTree,
-            true);
+            true,
+            queryStatement.getAuthorityScope());
     Expression whereExpression =
         PredicateUtils.combineConjuncts(
             conJunctions.stream().distinct().collect(Collectors.toList()));
@@ -1333,7 +1340,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       QueryStatement queryStatement, PartialPath devicePath, ISchemaTree schemaTree) {
     List<Expression> conJunctions =
         ExpressionAnalyzer.concatDeviceAndBindSchemaForPredicate(
-            queryStatement.getWhereCondition().getPredicate(), devicePath, schemaTree, true);
+            queryStatement.getWhereCondition().getPredicate(),
+            devicePath,
+            schemaTree,
+            true,
+            queryStatement.getAuthorityScope());
     return PredicateUtils.combineConjuncts(
         conJunctions.stream().distinct().collect(Collectors.toList()));
   }
@@ -1499,7 +1510,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Set<Expression> orderByExpressions = new LinkedHashSet<>();
     for (Expression expressionForItem : queryStatement.getExpressionSortItemList()) {
       // Expression in a sortItem only indicates one column
-      List<Expression> expressions = bindSchemaForExpression(expressionForItem, schemaTree);
+      List<Expression> expressions =
+          bindSchemaForExpression(
+              expressionForItem, schemaTree, queryStatement.getAuthorityScope());
       if (expressions.isEmpty()) {
         throw new SemanticException(
             String.format(
@@ -1543,7 +1556,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Expression expression = groupByComponent.getControlColumnExpression();
       for (PartialPath device : deviceSet) {
         List<Expression> groupByExpressionsOfOneDevice =
-            concatDeviceAndBindSchemaForExpression(expression, device, schemaTree);
+            concatDeviceAndBindSchemaForExpression(
+                expression, device, schemaTree, queryStatement.getAuthorityScope());
 
         if (groupByExpressionsOfOneDevice.isEmpty()) {
           throw new SemanticException(
@@ -1615,7 +1629,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Set<Expression> orderByExpressionsForOneDevice = new LinkedHashSet<>();
       for (Expression expressionForItem : queryStatement.getExpressionSortItemList()) {
         List<Expression> expressions =
-            concatDeviceAndBindSchemaForExpression(expressionForItem, device, schemaTree);
+            concatDeviceAndBindSchemaForExpression(
+                expressionForItem, device, schemaTree, queryStatement.getAuthorityScope());
         if (expressions.isEmpty()) {
           throw new SemanticException(
               String.format(
@@ -1664,7 +1679,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (queryStatement.hasGroupByExpression()) {
       groupByExpression = groupByComponent.getControlColumnExpression();
       // Expression in group by variation clause only indicates one column
-      List<Expression> expressions = bindSchemaForExpression(groupByExpression, schemaTree);
+      List<Expression> expressions =
+          bindSchemaForExpression(
+              groupByExpression, schemaTree, queryStatement.getAuthorityScope());
       if (expressions.isEmpty()) {
         throw new SemanticException(
             String.format(
@@ -2926,7 +2943,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     deleteDataStatement.getPathList().forEach(patternTree::appendPathPattern);
 
     ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, context);
-    // There is no need to set authority scope for schema tree because if invalid delete statements have been filtered out.
+    // There is no need to set authority scope for schema tree because if invalid delete statements
+    // have been filtered out.
     Set<String> deduplicatedDevicePaths = new HashSet<>();
 
     if (schemaTree.hasLogicalViewMeasurement()) {
@@ -2937,7 +2955,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       LogicalViewSchema logicalViewSchema;
       PartialPath sourcePathOfAliasSeries;
       for (MeasurementPath measurementPath :
-          schemaTree.searchMeasurementPaths(ALL_MATCH_PATTERN, true).left) {
+          schemaTree.searchMeasurementPaths(ALL_MATCH_PATTERN).left) {
         measurementSchema = measurementPath.getMeasurementSchema();
         if (measurementSchema.isLogicalView()) {
           logicalViewSchema = (LogicalViewSchema) measurementSchema;
@@ -3259,7 +3277,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     // search each path, make sure they all exist.
     int numOfExistPaths = 0;
     for (PartialPath path : pathList) {
-      Pair<List<MeasurementPath>, Integer> pathPair = schemaTree.searchMeasurementPaths(path, true);
+      Pair<List<MeasurementPath>, Integer> pathPair = schemaTree.searchMeasurementPaths(path);
       numOfExistPaths += !pathPair.left.isEmpty() ? 1 : 0;
     }
     return new Pair<>(schemaTree, numOfExistPaths);
@@ -3276,7 +3294,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     List<PartialPath> result = new ArrayList<>();
     for (PartialPath path : pathList) {
       Pair<List<MeasurementPath>, Integer> measurementPathList =
-          schemaTree.searchMeasurementPaths(path, true);
+          schemaTree.searchMeasurementPaths(path);
       if (measurementPathList.left.isEmpty()) {
         return new Pair<>(result, path);
       }

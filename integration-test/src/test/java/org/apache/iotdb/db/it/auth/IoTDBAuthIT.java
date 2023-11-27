@@ -1167,6 +1167,50 @@ public class IoTDBAuthIT {
       }
       Assert.assertTrue(standards.isEmpty());
     }
+    try (ResultSet resultSet =
+        user1Stmt.executeQuery("select * from root.sg.aligned_template where status=666;")) {
+      Set<String> standards =
+          new HashSet<>(Arrays.asList("Time", "root.sg.aligned_template.temperature"));
+      ResultSetMetaData metaData = resultSet.getMetaData();
+      for (int i = 1; i < metaData.getColumnCount() + 1; i++) {
+        Assert.assertTrue(standards.remove(metaData.getColumnName(i)));
+      }
+      Assert.assertTrue(standards.isEmpty());
+    }
+  }
+
+  @Test
+  public void testQueryTemplateAlignByDevice() throws SQLException {
+    // 1. revoke from user/role
+    Connection adminCon = EnvFactory.getEnv().getConnection();
+    Statement adminStmt = adminCon.createStatement();
+    adminStmt.execute("CREATE USER user1 'password'");
+    adminStmt.execute("GRANT READ_DATA ON root.sg.aligned_template.temperature TO USER user1;");
+    adminStmt.execute("CREATE DATABASE root.sg;");
+    adminStmt.execute(
+        "create device template t1 aligned (temperature FLOAT encoding=Gorilla, status BOOLEAN encoding=PLAIN);");
+    adminStmt.execute("set device template t1 to root.sg.aligned_template;");
+    adminStmt.execute(
+        "insert into root.sg.aligned_template(time,temperature,status) values(1,20,true)");
+    Connection user1Con = EnvFactory.getEnv().getConnection("user1", "password");
+    Statement user1Stmt = user1Con.createStatement();
+    try (ResultSet resultSet = user1Stmt.executeQuery("select * from root.** align by device;")) {
+      Set<String> standards = new HashSet<>(Arrays.asList("Time", "Device", "temperature"));
+      ResultSetMetaData metaData = resultSet.getMetaData();
+      for (int i = 1; i < metaData.getColumnCount() + 1; i++) {
+        Assert.assertTrue(standards.remove(metaData.getColumnName(i)));
+      }
+      Assert.assertTrue(standards.isEmpty());
+    }
+    try (ResultSet resultSet =
+        user1Stmt.executeQuery("select * from root.** where status=666 align by device;")) {
+      Set<String> standards = new HashSet<>(Arrays.asList("Time", "Device", "temperature"));
+      ResultSetMetaData metaData = resultSet.getMetaData();
+      for (int i = 1; i < metaData.getColumnCount() + 1; i++) {
+        Assert.assertTrue(standards.remove(metaData.getColumnName(i)));
+      }
+      Assert.assertTrue(standards.isEmpty());
+    }
   }
 
   @Test

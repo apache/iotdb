@@ -58,6 +58,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.PARTITION_FETCHER;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.CONFIG;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.DEVICE_EXPRESSION;
@@ -116,7 +117,7 @@ public class TemplatedAnalyze {
     if (template != null) {
       for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
         Expression expression = resultColumn.getExpression();
-        if ("*".equals(expression.getOutputSymbol())) {
+        if (expression.getOutputSymbol().equals(ONE_LEVEL_PATH_WILDCARD)) {
           for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
             String measurementName = entry.getKey();
             IMeasurementSchema measurementSchema = entry.getValue();
@@ -263,7 +264,11 @@ public class TemplatedAnalyze {
       QueryStatement queryStatement, PartialPath devicePath, ISchemaTree schemaTree) {
     List<Expression> conJunctions =
         ExpressionAnalyzer.concatDeviceAndBindSchemaForPredicate(
-            queryStatement.getWhereCondition().getPredicate(), devicePath, schemaTree, true);
+            queryStatement.getWhereCondition().getPredicate(),
+            devicePath,
+            schemaTree,
+            true,
+            queryStatement.getAuthorityScope());
     return PredicateUtils.combineConjuncts(
         conJunctions.stream().distinct().collect(Collectors.toList()));
   }
@@ -285,7 +290,8 @@ public class TemplatedAnalyze {
       Set<Expression> orderByExpressionsForOneDevice = new LinkedHashSet<>();
       for (Expression expressionForItem : queryStatement.getExpressionSortItemList()) {
         List<Expression> expressions =
-            concatDeviceAndBindSchemaForExpression(expressionForItem, device, schemaTree);
+            concatDeviceAndBindSchemaForExpression(
+                expressionForItem, device, schemaTree, queryStatement.getAuthorityScope());
         if (expressions.isEmpty()) {
           throw new SemanticException(
               String.format(
