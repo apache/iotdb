@@ -1057,6 +1057,8 @@ public class TsFileProcessor {
     if (!(tobeFlushed.isSignalMemTable() || tobeFlushed.isEmpty())) {
       totalMemTableSize += tobeFlushed.memSize();
     }
+    WritingMetrics.getInstance()
+        .recordMemTableLiveDuration(System.currentTimeMillis() - getWorkMemTableCreatedTime());
     workMemTable = null;
     return FlushManager.getInstance().registerTsFileProcessor(this);
   }
