@@ -27,7 +27,7 @@ import org.apache.iotdb.flink.sql.wrapper.SchemaWrapper;
 import org.apache.iotdb.flink.sql.wrapper.TabletWrapper;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.Pair;

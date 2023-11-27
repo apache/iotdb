@@ -21,15 +21,14 @@ package org.apache.iotdb.tsfile.read.filter;
 
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
-import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
-import org.apache.iotdb.tsfile.read.filter.operator.NotFilter;
-import org.apache.iotdb.tsfile.read.filter.operator.OrFilter;
+import org.apache.iotdb.tsfile.read.filter.operator.And;
+import org.apache.iotdb.tsfile.read.filter.operator.Not;
+import org.apache.iotdb.tsfile.read.filter.operator.Or;
 
 public class PredicateRemoveNotRewriter {
 
   private PredicateRemoveNotRewriter() {
-    // forbidden to construct
+    // forbidden construction
   }
 
   public static Filter rewrite(Filter filter) {
@@ -37,18 +36,15 @@ public class PredicateRemoveNotRewriter {
   }
 
   private static Filter removeNot(Filter filter) {
-    FilterSerializeId filterType = filter.getSerializeId();
-    switch (filterType) {
-      case AND:
-        return FilterFactory.and(
-            removeNot(((AndFilter) filter).getLeft()), removeNot(((AndFilter) filter).getRight()));
-      case OR:
-        return FilterFactory.or(
-            removeNot(((OrFilter) filter).getLeft()), removeNot(((OrFilter) filter).getRight()));
-      case NOT:
-        return ((NotFilter) filter).getFilter().reverse();
-      default:
-        return filter;
+    if (filter instanceof And) {
+      return FilterFactory.and(
+          removeNot(((And) filter).getLeft()), removeNot(((And) filter).getRight()));
+    } else if (filter instanceof Or) {
+      return FilterFactory.or(
+          removeNot(((Or) filter).getLeft()), removeNot(((Or) filter).getRight()));
+    } else if (filter instanceof Not) {
+      return ((Not) filter).getFilter().reverse();
     }
+    return filter;
   }
 }

@@ -20,8 +20,8 @@
 package org.apache.iotdb.tsfile.read.reader.page;
 
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
@@ -29,7 +29,7 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.reader.IAlignedPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
@@ -191,39 +191,71 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
     long[] timeBatch = timePageReader.getNextTimeBatch();
 
     if (canGoFastWay()) {
-      // skip all the page
-      if (paginationController.hasCurOffset(timeBatch.length)) {
-        paginationController.consumeOffset(timeBatch.length);
-      } else {
-        int readStartIndex =
-            paginationController.hasCurOffset() ? (int) paginationController.getCurOffset() : 0;
-        // consume the remaining offset
-        paginationController.consumeOffset(readStartIndex);
-        // not included
-        int readEndIndex =
-            (paginationController.hasCurLimit() && paginationController.getCurLimit() > 0)
-                    && (paginationController.getCurLimit() < timeBatch.length - readStartIndex + 1)
-                ? readStartIndex + (int) paginationController.getCurLimit()
-                : timeBatch.length;
-        if (paginationController.hasCurLimit() && paginationController.getCurLimit() > 0) {
-          paginationController.consumeLimit((long) readEndIndex - readStartIndex);
-        }
+      // all page data satisfy
+      if (filter == null || filter.allSatisfy(getTimeStatistics())) {
+        // skip all the page
+        if (paginationController.hasCurOffset(timeBatch.length)) {
+          paginationController.consumeOffset(timeBatch.length);
+        } else {
+          int readStartIndex =
+              paginationController.hasCurOffset() ? (int) paginationController.getCurOffset() : 0;
+          // consume the remaining offset
+          paginationController.consumeOffset(readStartIndex);
+          // not included
+          int readEndIndex =
+              (paginationController.hasCurLimit() && paginationController.getCurLimit() > 0)
+                      && (paginationController.getCurLimit()
+                          < timeBatch.length - readStartIndex + 1)
+                  ? readStartIndex + (int) paginationController.getCurLimit()
+                  : timeBatch.length;
+          if (paginationController.hasCurLimit() && paginationController.getCurLimit() > 0) {
+            paginationController.consumeLimit((long) readEndIndex - readStartIndex);
+          }
 
-        boolean[] keepCurrentRow = new boolean[readEndIndex - readStartIndex];
-        if (filter == null) {
-          Arrays.fill(keepCurrentRow, true);
           // construct time column
           for (int i = readStartIndex; i < readEndIndex; i++) {
             builder.getTimeColumnBuilder().writeLong(timeBatch[i]);
             builder.declarePosition();
           }
+
+          // construct value columns
+          for (int i = 0; i < valueCount; i++) {
+            ValuePageReader pageReader = valuePageReaderList.get(i);
+            if (pageReader != null) {
+              pageReader.writeColumnBuilderWithNextBatch(
+                  readStartIndex, readEndIndex, builder.getColumnBuilder(i));
+            } else {
+              builder.getColumnBuilder(i).appendNull(readEndIndex - readStartIndex);
+            }
+          }
+        }
+      } else {
+
+        // if all the sub sensors' value are null in current row, just discard it
+        // if !filter.satisfy, discard this row
+        boolean[] keepCurrentRow = new boolean[timeBatch.length];
+        if (filter == null) {
+          Arrays.fill(keepCurrentRow, true);
         } else {
-          for (int i = readStartIndex; i < readEndIndex; i++) {
-            keepCurrentRow[i - readStartIndex] = filter.satisfy(timeBatch[i], null);
-            // construct time column
-            if (keepCurrentRow[i - readStartIndex]) {
+          for (int i = 0, n = timeBatch.length; i < n; i++) {
+            keepCurrentRow[i] = filter.satisfy(timeBatch[i], null);
+          }
+        }
+
+        // construct time column
+        int readEndIndex = timeBatch.length;
+        for (int i = 0; i < timeBatch.length; i++) {
+          if (keepCurrentRow[i]) {
+            if (paginationController.hasCurOffset()) {
+              paginationController.consumeOffset();
+              keepCurrentRow[i] = false;
+            } else if (paginationController.hasCurLimit()) {
               builder.getTimeColumnBuilder().writeLong(timeBatch[i]);
               builder.declarePosition();
+              paginationController.consumeLimit();
+            } else {
+              readEndIndex = i;
+              break;
             }
           }
         }
@@ -233,16 +265,17 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
           ValuePageReader pageReader = valuePageReaderList.get(i);
           if (pageReader != null) {
             pageReader.writeColumnBuilderWithNextBatch(
-                readStartIndex, readEndIndex, builder.getColumnBuilder(i), keepCurrentRow);
+                readEndIndex, builder.getColumnBuilder(i), keepCurrentRow);
           } else {
-            for (int j = readStartIndex; j < readEndIndex; j++) {
-              if (keepCurrentRow[j - readStartIndex]) {
+            for (int j = 0; j < readEndIndex; j++) {
+              if (keepCurrentRow[j]) {
                 builder.getColumnBuilder(i).appendNull();
               }
             }
           }
         }
       }
+
     } else {
       // if all the sub sensors' value are null in current row, just discard it
       // if !filter.satisfy, discard this row
@@ -371,7 +404,7 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
     if (this.filter == null) {
       this.filter = filter;
     } else {
-      this.filter = new AndFilter(this.filter, filter);
+      this.filter = FilterFactory.and(this.filter, filter);
     }
   }
 

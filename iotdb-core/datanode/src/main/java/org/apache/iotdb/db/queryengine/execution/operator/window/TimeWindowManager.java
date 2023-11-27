@@ -22,7 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.window;
 import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockUtil;

@@ -42,7 +42,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFInformationInferrer;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -59,6 +59,17 @@ public class ExpressionTypeAnalyzer {
   private ExpressionTypeAnalyzer() {}
 
   public static TSDataType analyzeExpression(Analysis analysis, Expression expression) {
+    if (analysis.isAllDevicesInOneTemplate()
+        && (analysis.isOnlyQueryTemplateMeasurements()
+            || expression instanceof TimeSeriesOperand)) {
+      TimeSeriesOperand seriesOperand = (TimeSeriesOperand) expression;
+      return analysis
+          .getDeviceTemplate()
+          .getSchemaMap()
+          .get(seriesOperand.getPath().getMeasurement())
+          .getType();
+    }
+
     if (!analysis.getExpressionTypes().containsKey(NodeRef.of(expression))) {
       ExpressionTypeAnalyzer analyzer = new ExpressionTypeAnalyzer();
       analyzer.analyze(expression);

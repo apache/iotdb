@@ -118,6 +118,14 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setMaxInnerCompactionCandidateFileNum(
+      int maxInnerCompactionCandidateFileNum) {
+    cnConfig.setMaxInnerCompactionCandidateFileNum(maxInnerCompactionCandidateFileNum);
+    dnConfig.setMaxInnerCompactionCandidateFileNum(maxInnerCompactionCandidateFileNum);
+    return this;
+  }
+
+  @Override
   public CommonConfig setAutoCreateSchemaEnabled(boolean enableAutoCreateSchema) {
     cnConfig.setAutoCreateSchemaEnabled(enableAutoCreateSchema);
     dnConfig.setAutoCreateSchemaEnabled(enableAutoCreateSchema);
@@ -407,6 +415,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled) {
     dnConfig.setPipeAirGapReceiverEnabled(isPipeAirGapReceiverEnabled);
     cnConfig.setPipeAirGapReceiverEnabled(isPipeAirGapReceiverEnabled);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDriverTaskExecutionTimeSliceInMs(long driverTaskExecutionTimeSliceInMs) {
+    dnConfig.setDriverTaskExecutionTimeSliceInMs(driverTaskExecutionTimeSliceInMs);
+    cnConfig.setDriverTaskExecutionTimeSliceInMs(driverTaskExecutionTimeSliceInMs);
     return this;
   }
 }

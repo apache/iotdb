@@ -49,12 +49,12 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.tsfile.access.ColumnBuilder;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -104,11 +104,14 @@ public class TopKOperatorTest {
 
   private int dataNodeId;
 
+  private int maxTsBlockLineNumber;
+
   private final int limitValue = 100;
 
   @Before
   public void setUp() throws MetadataException, IOException, WriteProcessException {
     dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    maxTsBlockLineNumber = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
     IoTDBDescriptor.getInstance().getConfig().setDataNodeId(0);
     TSFileDescriptor.getInstance().getConfig().setMaxTsBlockLineNumber(3);
     SeriesReaderTestUtil.setUp(
@@ -119,6 +122,7 @@ public class TopKOperatorTest {
   public void tearDown() throws IOException {
     SeriesReaderTestUtil.tearDown(seqResources, unSeqResources);
     IoTDBDescriptor.getInstance().getConfig().setDataNodeId(dataNodeId);
+    TSFileDescriptor.getInstance().getConfig().setMaxTsBlockLineNumber(maxTsBlockLineNumber);
   }
 
   long getValue(long expectedTime) {

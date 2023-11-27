@@ -20,7 +20,7 @@
 package org.apache.iotdb.hadoop.tsfile;
 
 import org.apache.iotdb.hadoop.tsfile.record.HDFSTSRecord;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.DoubleDataPoint;
@@ -47,13 +47,13 @@ import java.io.IOException;
 /** One example for writing TsFile with MapReduce. */
 public class TSMRWriteExample {
 
-  private static Logger logger = LoggerFactory.getLogger(TSMRWriteExample.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TSMRWriteExample.class);
 
   public static void main(String[] args)
       throws IOException, ClassNotFoundException, TSFHadoopException {
 
     if (args.length != 3) {
-      logger.info("Please give hdfs url, input path, output path");
+      LOGGER.info("Please give hdfs url, input path, output path");
       return;
     }
 
@@ -128,9 +128,9 @@ public class TSMRWriteExample {
       throw new IOException(e.getMessage());
     }
     if (isSuccess) {
-      logger.info("Execute successfully");
+      LOGGER.info("Execute successfully");
     } else {
-      logger.info("Execute unsuccessfully");
+      LOGGER.info("Execute unsuccessfully");
     }
   }
 

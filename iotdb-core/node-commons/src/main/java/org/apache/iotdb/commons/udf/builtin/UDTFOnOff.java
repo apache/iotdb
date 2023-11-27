@@ -21,9 +21,9 @@ package org.apache.iotdb.commons.udf.builtin;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
-import org.apache.iotdb.tsfile.access.Column;
-import org.apache.iotdb.tsfile.access.ColumnBuilder;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;

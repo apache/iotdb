@@ -20,8 +20,8 @@
 package org.apache.iotdb.tsfile;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -46,7 +46,7 @@ import static org.apache.iotdb.tsfile.Constant.SENSOR_2;
 import static org.apache.iotdb.tsfile.Constant.SENSOR_3;
 
 public class TsFileWriteAlignedWithTablet {
-  private static final Logger logger = LoggerFactory.getLogger(TsFileWriteAlignedWithTablet.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileWriteAlignedWithTablet.class);
 
   public static void main(String[] args) throws IOException {
     File f = FSFactoryProducer.getFSFactory().getFile("alignedTablet.tsfile");
@@ -72,7 +72,7 @@ public class TsFileWriteAlignedWithTablet {
 
       writeNonAlignedWithTablet(tsFileWriter); // write nonAligned timeseries
     } catch (WriteProcessException e) {
-      logger.error("write Tablet failed", e);
+      LOGGER.error("write Tablet failed", e);
     }
   }
 

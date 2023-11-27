@@ -54,7 +54,7 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
 
   @Override
   public void onComplete(TSyncLogEntriesRes response) {
-    if (response.getStatuses().size() == 1 && needRetry(response.getStatuses().get(0).getCode())) {
+    if (response.getStatuses().stream().anyMatch(status -> needRetry(status.getCode()))) {
       logger.warn(
           "Can not send {} to peer {} for {} times because {}",
           batch,

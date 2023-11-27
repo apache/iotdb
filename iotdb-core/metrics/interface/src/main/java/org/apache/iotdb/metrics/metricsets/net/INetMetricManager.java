@@ -19,22 +19,14 @@
 
 package org.apache.iotdb.metrics.metricsets.net;
 
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.utils.MetricLevel;
+
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 
 public interface INetMetricManager {
-  static INetMetricManager getNetMetricManager() {
-    String os = System.getProperty("os.name").toLowerCase();
-
-    if (os.startsWith("windows")) {
-      return new WindowsNetMetricManager();
-    } else if (os.startsWith("linux")) {
-      return new LinuxNetMetricManager();
-    } else {
-      return new MacNetMetricManager();
-    }
-  }
 
   default Map<String, Long> getReceivedByte() {
     return Collections.emptyMap();
@@ -58,5 +50,24 @@ public interface INetMetricManager {
 
   default int getConnectionNum() {
     return 0;
+  }
+
+  static INetMetricManager getNetMetricManager() {
+    if (MetricConfigDescriptor.getInstance()
+        .getMetricConfig()
+        .getMetricLevel()
+        .equals(MetricLevel.OFF)) {
+      return new DoNothingNetMetricManager();
+    } else {
+      String os = System.getProperty("os.name").toLowerCase();
+
+      if (os.startsWith("windows")) {
+        return new WindowsNetMetricManager();
+      } else if (os.startsWith("linux")) {
+        return new LinuxNetMetricManager();
+      } else {
+        return new MacNetMetricManager();
+      }
+    }
   }
 }

@@ -44,10 +44,12 @@ import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
+import org.apache.iotdb.consensus.exception.RatisReadUnavailableException;
 import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
-import org.apache.iotdb.consensus.exception.RatisUnderRecoveryException;
 import org.apache.iotdb.consensus.ratis.metrics.RatisMetricSet;
 import org.apache.iotdb.consensus.ratis.metrics.RatisMetricsManager;
+import org.apache.iotdb.consensus.ratis.utils.Retriable;
+import org.apache.iotdb.consensus.ratis.utils.RetryPolicy;
 import org.apache.iotdb.consensus.ratis.utils.Utils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -65,6 +67,7 @@ import org.apache.ratis.protocol.RaftClientReply;
 import org.apache.ratis.protocol.RaftClientRequest;
 import org.apache.ratis.protocol.RaftGroup;
 import org.apache.ratis.protocol.RaftGroupId;
+import org.apache.ratis.protocol.RaftGroupMemberId;
 import org.apache.ratis.protocol.RaftPeer;
 import org.apache.ratis.protocol.RaftPeerId;
 import org.apache.ratis.protocol.SnapshotManagementRequest;
@@ -94,6 +97,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
 /** A multi-raft consensus implementation based on Apache Ratis. */
@@ -124,12 +128,14 @@ class RatisConsensus implements IConsensus {
   private static final int DEFAULT_WAIT_LEADER_READY_TIMEOUT = (int) TimeUnit.SECONDS.toMillis(20);
 
   private final RatisConfig config;
+  private final RatisConfig.Read.Option readOption;
+  private final RetryPolicy<RaftClientReply> readRetryPolicy;
+  private final RetryPolicy<RaftClientReply> writeRetryPolicy;
 
   private final RatisMetricSet ratisMetricSet;
   private final TConsensusGroupType consensusGroupType;
 
-  private final ConcurrentHashMap<ConsensusGroupId, AtomicBoolean> canServeStaleRead =
-      new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<ConsensusGroupId, AtomicBoolean> canServeStaleRead;
 
   public RatisConsensus(ConsensusConfig config, IStateMachine.Registry registry)
       throws IOException {
@@ -143,8 +149,31 @@ class RatisConsensus implements IConsensus {
 
     Utils.initRatisConfig(properties, config.getRatisConfig());
     this.config = config.getRatisConfig();
+    this.readOption = this.config.getRead().getReadOption();
+    this.canServeStaleRead =
+        this.readOption == RatisConfig.Read.Option.DEFAULT ? new ConcurrentHashMap<>() : null;
     this.consensusGroupType = config.getConsensusGroupType();
     this.ratisMetricSet = new RatisMetricSet();
+    this.readRetryPolicy =
+        RetryPolicy.<RaftClientReply>newBuilder()
+            .setRetryHandler(c -> !c.isSuccess() && c.getException() instanceof ReadIndexException)
+            .setMaxAttempts(this.config.getImpl().getRetryTimesMax())
+            .setWaitTime(
+                TimeDuration.valueOf(
+                    this.config.getImpl().getRetryWaitMillis(), TimeUnit.MILLISECONDS))
+            .build();
+    this.writeRetryPolicy =
+        RetryPolicy.<RaftClientReply>newBuilder()
+            // currently, we only retry when ResourceUnavailableException is caught
+            .setRetryHandler(
+                reply ->
+                    !reply.isSuccess()
+                        && (reply.getException() instanceof ResourceUnavailableException))
+            .setMaxAttempts(this.config.getImpl().getRetryTimesMax())
+            .setWaitTime(
+                TimeDuration.valueOf(
+                    this.config.getImpl().getRetryWaitMillis(), TimeUnit.MILLISECONDS))
+            .build();
 
     this.diskGuardian = new DiskGuardian(() -> this, this.config);
 
@@ -163,7 +192,7 @@ class RatisConsensus implements IConsensus {
                     new ApplicationStateMachineProxy(
                         registry.apply(Utils.fromRaftGroupIdToConsensusGroupId(raftGroupId)),
                         raftGroupId,
-                        canServeStaleRead))
+                        this::onLeaderChanged))
             .build();
   }
 
@@ -188,36 +217,17 @@ class RatisConsensus implements IConsensus {
     }
   }
 
-  private boolean shouldRetry(RaftClientReply reply) {
-    // currently, we only retry when ResourceUnavailableException is caught
-    return !reply.isSuccess() && (reply.getException() instanceof ResourceUnavailableException);
-  }
-
   /** launch a consensus write with retry mechanism */
   private RaftClientReply writeWithRetry(CheckedSupplier<RaftClientReply, IOException> caller)
       throws IOException {
-
-    final int maxRetryTimes = config.getImpl().getRetryTimesMax();
-    final long waitMillis = config.getImpl().getRetryWaitMillis();
-
-    int retry = 0;
     RaftClientReply reply = null;
-    while (retry < maxRetryTimes) {
-      retry++;
-
-      reply = caller.get();
-      if (!shouldRetry(reply)) {
-        return reply;
-      }
-      logger.debug("{} sending write request with retry = {} and reply = {}", this, retry, reply);
-
-      try {
-        Thread.sleep(waitMillis);
-      } catch (InterruptedException e) {
-        logger.warn("{} retry write sleep is interrupted: {}", this, e);
-        Thread.currentThread().interrupt();
-      }
+    try {
+      reply = Retriable.attempt(caller, writeRetryPolicy, () -> caller, logger);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger.debug("{}: interrupted when retrying for write request {}", this, caller);
     }
+
     if (reply == null) {
       return RaftClientReply.newBuilder()
           .setSuccess(false)
@@ -321,21 +331,25 @@ class RatisConsensus implements IConsensus {
       throw new ConsensusGroupNotExistException(groupId);
     }
 
+    // perform linearizable read under following two conditions:
+    // 1. Read.Option is linearizable
+    // 2. First probing read when Read.Option is default
     final boolean isLinearizableRead =
-        !canServeStaleRead.computeIfAbsent(groupId, id -> new AtomicBoolean(false)).get();
+        readOption == RatisConfig.Read.Option.LINEARIZABLE
+            || !canServeStaleRead.computeIfAbsent(groupId, id -> new AtomicBoolean(false)).get();
 
     RaftClientReply reply;
     try {
       reply = doRead(raftGroupId, request, isLinearizableRead);
       // allow stale read if current linearizable read returns successfully
-      if (isLinearizableRead) {
+      if (canServeStaleRead != null && isLinearizableRead) {
         canServeStaleRead.get(groupId).set(true);
       }
     } catch (ReadException | ReadIndexException e) {
       if (isLinearizableRead) {
         // linearizable read failed. the RaftServer is recovering from Raft Log and cannot serve
         // read requests.
-        throw new RatisUnderRecoveryException(e);
+        throw new RatisReadUnavailableException(e);
       } else {
         throw new RatisRequestFailedException(e);
       }
@@ -360,7 +374,12 @@ class RatisConsensus implements IConsensus {
     RaftClientReply reply;
     try (AutoCloseable ignored =
         RatisMetricsManager.getInstance().startReadTimer(consensusGroupType)) {
-      reply = server.submitClientRequest(request);
+      reply =
+          Retriable.attempt(
+              () -> server.submitClientRequest(request),
+              readRetryPolicy,
+              () -> readRequest,
+              logger);
     }
 
     // rethrow the exception if the reply is not successful
@@ -590,15 +609,27 @@ class RatisConsensus implements IConsensus {
       logger.info("isLeaderReady checking failed with exception: ", e);
       return false;
     }
-    long startTime = System.currentTimeMillis();
+
+    final long startTime = System.currentTimeMillis();
+    final BooleanSupplier noRetryAtAnyOfFollowingCondition =
+        () ->
+            Utils.anyOf(
+                // this peer is not a leader
+                () -> !divisionInfo.isLeader(),
+                // this peer is a ready leader
+                () -> divisionInfo.isLeader() && divisionInfo.isLeaderReady(),
+                // reaches max retry timeout
+                () -> System.currentTimeMillis() - startTime >= DEFAULT_WAIT_LEADER_READY_TIMEOUT);
+
     try {
-      while (divisionInfo.isLeader() && !divisionInfo.isLeaderReady()) {
-        Thread.sleep(10);
-        long consumedTime = System.currentTimeMillis() - startTime;
-        if (consumedTime >= DEFAULT_WAIT_LEADER_READY_TIMEOUT) {
-          logger.warn("{}: leader is still not ready after {}ms", groupId, consumedTime);
-          return false;
-        }
+      Retriable.attemptUntilTrue(
+          noRetryAtAnyOfFollowingCondition,
+          TimeDuration.valueOf(10, TimeUnit.MILLISECONDS),
+          "waitLeaderReady",
+          logger);
+      if (divisionInfo.isLeader() && !divisionInfo.isLeaderReady()) {
+        logger.warn(
+            "{}: leader is still not ready after {}ms", groupId, DEFAULT_WAIT_LEADER_READY_TIMEOUT);
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
@@ -721,7 +752,7 @@ class RatisConsensus implements IConsensus {
     try {
       return clientManager.borrowClient(group);
     } catch (ClientManagerException e) {
-      logger.error(String.format("Borrow client from pool for group %s failed.", group), e);
+      logger.error("Borrow client from pool for group {} failed.", group, e);
       // rethrow the exception
       throw e;
     }
@@ -741,6 +772,16 @@ class RatisConsensus implements IConsensus {
       throw new RatisRequestFailedException(e);
     }
     return reply;
+  }
+
+  private void onLeaderChanged(RaftGroupMemberId groupMemberId, RaftPeerId leaderId) {
+    Optional.ofNullable(canServeStaleRead)
+        .ifPresent(
+            m -> {
+              final ConsensusGroupId gid =
+                  Utils.fromRaftGroupIdToConsensusGroupId(groupMemberId.getGroupId());
+              canServeStaleRead.computeIfAbsent(gid, id -> new AtomicBoolean()).set(false);
+            });
   }
 
   @TestOnly

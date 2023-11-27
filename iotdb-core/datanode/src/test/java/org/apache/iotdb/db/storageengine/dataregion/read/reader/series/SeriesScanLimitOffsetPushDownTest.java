@@ -31,9 +31,9 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
@@ -247,8 +247,8 @@ public class SeriesScanLimitOffsetPushDownTest {
 
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
     scanOptionsBuilder.withAllSensors(Collections.singleton(scanPath.getMeasurement()));
-    scanOptionsBuilder.withLimit(limit);
-    scanOptionsBuilder.withOffset(offset);
+    scanOptionsBuilder.withPushDownLimit(limit);
+    scanOptionsBuilder.withPushDownOffset(offset);
     SeriesScanUtil seriesScanUtil =
         new SeriesScanUtil(
             scanPath,

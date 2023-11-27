@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.consensus.index.impl.HybridProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -38,14 +39,18 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import javax.annotation.Nonnull;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.stream.IntStream;
 
 public class TsFileResourceProgressIndexTest {
@@ -91,8 +96,8 @@ public class TsFileResourceProgressIndexTest {
 
   @Test
   public void testProgressIndexRecorder() {
-    HybridProgressIndex hybridProgressIndex = new HybridProgressIndex();
-    hybridProgressIndex.updateToMinimumIsAfterProgressIndex(new SimpleProgressIndex(3, 4));
+    HybridProgressIndex hybridProgressIndex =
+        new HybridProgressIndex(new SimpleProgressIndex(3, 4));
     hybridProgressIndex.updateToMinimumIsAfterProgressIndex(new SimpleProgressIndex(6, 6));
     hybridProgressIndex.updateToMinimumIsAfterProgressIndex(
         new RecoverProgressIndex(1, new SimpleProgressIndex(1, 2)));
@@ -137,7 +142,7 @@ public class TsFileResourceProgressIndexTest {
     // TODO: wait for implements of ProgressIndex.deserializeFrom
   }
 
-  public static class MockProgressIndex implements ProgressIndex {
+  public static class MockProgressIndex extends ProgressIndex {
     private final int type;
     private int val;
 
@@ -161,7 +166,7 @@ public class TsFileResourceProgressIndexTest {
     }
 
     @Override
-    public boolean isAfter(ProgressIndex progressIndex) {
+    public boolean isAfter(@Nonnull ProgressIndex progressIndex) {
       if (!(progressIndex instanceof MockProgressIndex)) {
         return true;
       }
@@ -197,6 +202,11 @@ public class TsFileResourceProgressIndexTest {
     public ProgressIndexType getType() {
       throw new UnsupportedOperationException("method not implemented.");
     }
+
+    @Override
+    public TotalOrderSumTuple getTotalOrderSumTuple() {
+      return new TotalOrderSumTuple((long) val);
+    }
   }
 
   @Test
@@ -204,9 +214,8 @@ public class TsFileResourceProgressIndexTest {
     final IoTProgressIndex ioTProgressIndex = new IoTProgressIndex(1, 123L);
     final RecoverProgressIndex recoverProgressIndex =
         new RecoverProgressIndex(1, new SimpleProgressIndex(2, 2));
-    final HybridProgressIndex hybridProgressIndex = new HybridProgressIndex();
+    final HybridProgressIndex hybridProgressIndex = new HybridProgressIndex(ioTProgressIndex);
 
-    hybridProgressIndex.updateToMinimumIsAfterProgressIndex(ioTProgressIndex);
     hybridProgressIndex.updateToMinimumIsAfterProgressIndex(recoverProgressIndex);
 
     Assert.assertTrue(hybridProgressIndex.isAfter(new IoTProgressIndex(1, 100L)));
@@ -217,5 +226,146 @@ public class TsFileResourceProgressIndexTest {
     Assert.assertFalse(hybridProgressIndex.isAfter(new IoTProgressIndex(2, 200L)));
     Assert.assertFalse(
         hybridProgressIndex.isAfter(new RecoverProgressIndex(1, new SimpleProgressIndex(2, 21))));
+  }
+
+  @Test
+  public void testProgressIndexMinimumProgressIndexTopologicalSort() {
+    List<ProgressIndex> progressIndexList = new ArrayList<>();
+
+    int ioTProgressIndexNum = 100;
+    IntStream.range(0, ioTProgressIndexNum)
+        .forEach(i -> progressIndexList.add(new IoTProgressIndex(i, 0L)));
+
+    int minimumProgressIndexNum = 100;
+    IntStream.range(0, minimumProgressIndexNum)
+        .forEach(i -> progressIndexList.add(MinimumProgressIndex.INSTANCE));
+
+    int hybridProgressIndexNum = 100;
+    IntStream.range(0, hybridProgressIndexNum)
+        .forEach(i -> progressIndexList.add(new HybridProgressIndex(new IoTProgressIndex(i, 0L))));
+    IntStream.range(0, hybridProgressIndexNum)
+        .forEach(
+            i -> progressIndexList.add(new HybridProgressIndex(MinimumProgressIndex.INSTANCE)));
+
+    Collections.shuffle(progressIndexList);
+    progressIndexList.sort(ProgressIndex::topologicalCompareTo);
+
+    int size = progressIndexList.size();
+    for (int i = 0; i < size - 1; i++) {
+      int finalI = i;
+      for (int j = i; j < size; j++) {
+        if (progressIndexList.get(i).isAfter(progressIndexList.get(j))) {
+          System.out.println("progressIndexList.get(i) = " + progressIndexList.get(i));
+          System.out.println("i = " + i);
+          System.out.println(
+              "progressIndexList.get(i).getTotalOrderSumTuple() = "
+                  + progressIndexList.get(i).getTotalOrderSumTuple());
+          System.out.println("progressIndexList.get(j) = " + progressIndexList.get(j));
+          System.out.println("j = " + j);
+          System.out.println(
+              "progressIndexList.get(j).getTotalOrderSumTuple() = "
+                  + progressIndexList.get(j).getTotalOrderSumTuple());
+          System.out.println(System.lineSeparator());
+        }
+      }
+      Assert.assertTrue(
+          IntStream.range(i, size)
+              .noneMatch(j -> progressIndexList.get(finalI).isAfter(progressIndexList.get(j))));
+    }
+  }
+
+  @Test
+  public void testProgressIndexTopologicalSort() {
+    Random random = new Random();
+    List<ProgressIndex> progressIndexList = new ArrayList<>();
+
+    int ioTProgressIndexNum = 10000, peerIdRange = 3, searchIndexRange = 100000;
+    IntStream.range(0, ioTProgressIndexNum)
+        .forEach(
+            i ->
+                progressIndexList.add(
+                    new IoTProgressIndex(
+                        random.nextInt(peerIdRange), (long) random.nextInt(searchIndexRange))));
+
+    int simpleProgressIndexNum = 10000, rebootTimesRange = 3, memtableFlushOrderIdRange = 100000;
+    IntStream.range(0, simpleProgressIndexNum)
+        .forEach(
+            i ->
+                progressIndexList.add(
+                    new SimpleProgressIndex(
+                        random.nextInt(rebootTimesRange),
+                        random.nextInt(memtableFlushOrderIdRange))));
+
+    int recoverProgressIndexNum = 10000, dataNodeIdRange = 3;
+    IntStream.range(0, recoverProgressIndexNum)
+        .forEach(
+            i ->
+                progressIndexList.add(
+                    new RecoverProgressIndex(
+                        random.nextInt(dataNodeIdRange),
+                        new SimpleProgressIndex(
+                            random.nextInt(rebootTimesRange),
+                            random.nextInt(memtableFlushOrderIdRange)))));
+
+    int minimumProgressIndexNum = 10000;
+    IntStream.range(0, minimumProgressIndexNum)
+        .forEach(i -> progressIndexList.add(MinimumProgressIndex.INSTANCE));
+
+    int hybridProgressIndexNum = 10000;
+    IntStream.range(0, hybridProgressIndexNum)
+        .forEach(
+            i -> {
+              HybridProgressIndex hybridProgressIndex =
+                  new HybridProgressIndex(
+                      new IoTProgressIndex(
+                          random.nextInt(peerIdRange), (long) random.nextInt(searchIndexRange)));
+              if (random.nextInt(2) == 1) {
+                hybridProgressIndex.updateToMinimumIsAfterProgressIndex(
+                    new SimpleProgressIndex(
+                        random.nextInt(rebootTimesRange),
+                        random.nextInt(memtableFlushOrderIdRange)));
+              }
+              if (random.nextInt(2) == 1) {
+                hybridProgressIndex.updateToMinimumIsAfterProgressIndex(
+                    new RecoverProgressIndex(
+                        random.nextInt(dataNodeIdRange),
+                        new SimpleProgressIndex(
+                            random.nextInt(rebootTimesRange),
+                            random.nextInt(memtableFlushOrderIdRange))));
+              }
+              progressIndexList.add(hybridProgressIndex);
+            });
+
+    Collections.shuffle(progressIndexList);
+    final long startTime = System.currentTimeMillis();
+    progressIndexList.sort(ProgressIndex::topologicalCompareTo);
+    final long costTime = System.currentTimeMillis() - startTime;
+    System.out.println("ProgressIndex List Size = " + progressIndexList.size());
+    System.out.println("sort time = " + costTime + "ms");
+    System.out.println(
+        ("Sort speed = " + (double) (costTime) / ((double) (progressIndexList.size())) + "ms/s"));
+
+    int size = progressIndexList.size();
+    for (int i = 0; i < size - 1; i++) {
+      int finalI = i;
+      for (int j = i; j < size; j++) {
+        if (progressIndexList.get(i).isAfter(progressIndexList.get(j))) {
+          System.out.println("progressIndexList.get(i) = " + progressIndexList.get(i));
+          System.out.println("i = " + i);
+          System.out.println(
+              "progressIndexList.get(i).getTotalOrderSumTuple() = "
+                  + progressIndexList.get(i).getTotalOrderSumTuple());
+          System.out.println("progressIndexList.get(j) = " + progressIndexList.get(j));
+          System.out.println("j = " + j);
+          System.out.println(
+              "progressIndexList.get(j).getTotalOrderSumTuple() = "
+                  + progressIndexList.get(j).getTotalOrderSumTuple());
+          System.out.println(System.lineSeparator());
+        }
+      }
+      Assert.assertTrue(
+          IntStream.range(i, size)
+              .noneMatch(j -> progressIndexList.get(finalI).isAfter(progressIndexList.get(j))));
+    }
   }
 }

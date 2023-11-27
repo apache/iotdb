@@ -27,6 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
@@ -43,6 +44,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -90,12 +92,13 @@ public class DatabasePartitionTable {
    * Cache allocation result of new RegionGroups.
    *
    * @param replicaSets List<TRegionReplicaSet>
-   * @param createTime The creation time of RegionGroups
    */
-  public void createRegionGroups(List<TRegionReplicaSet> replicaSets, long createTime) {
+  public void createRegionGroups(List<TRegionReplicaSet> replicaSets) {
     replicaSets.forEach(
         replicaSet ->
-            regionGroupMap.put(replicaSet.getRegionId(), new RegionGroup(createTime, replicaSet)));
+            regionGroupMap.put(
+                replicaSet.getRegionId(),
+                new RegionGroup(CommonDateTimeUtils.currentTime(), replicaSet)));
   }
 
   /** @return Deep copy of all Regions' RegionReplicaSet within one StorageGroup */
@@ -186,6 +189,34 @@ public class DatabasePartitionTable {
               }
             });
     return result.get();
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * <p>Count the scatter width of the specified DataNode
+   *
+   * @param dataNodeId The specified DataNode
+   * @param type SchemaRegion or DataRegion
+   * @param scatterSet The DataNodes in the cluster which have at least one identical schema/data
+   *     replica as the specified DataNode will be set true in the scatterSet.
+   */
+  public void countDataNodeScatterWidth(
+      int dataNodeId, TConsensusGroupType type, BitSet scatterSet) {
+    regionGroupMap
+        .values()
+        .forEach(
+            regionGroup -> {
+              if (type.equals(regionGroup.getId().getType())) {
+                Set<Integer> dataNodeIds =
+                    regionGroup.getReplicaSet().getDataNodeLocations().stream()
+                        .map(TDataNodeLocation::getDataNodeId)
+                        .collect(Collectors.toSet());
+                if (dataNodeIds.contains(dataNodeId)) {
+                  dataNodeIds.forEach(scatterSet::set);
+                }
+              }
+            });
   }
 
   /**

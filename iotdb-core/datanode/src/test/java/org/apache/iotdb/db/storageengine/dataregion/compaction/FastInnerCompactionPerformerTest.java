@@ -34,8 +34,8 @@ import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManag
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -949,7 +949,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
             0, tsFileManager, unseqResources, false, new FastCompactionPerformer(false), 0);
-    Assert.assertFalse(task.start());
+    Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     validateSeqFiles(true);

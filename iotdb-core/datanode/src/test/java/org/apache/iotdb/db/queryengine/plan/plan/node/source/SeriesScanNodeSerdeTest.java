@@ -25,8 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
-import org.apache.iotdb.tsfile.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.junit.Test;
 
@@ -43,7 +42,6 @@ public class SeriesScanNodeSerdeTest {
             new PlanNodeId("TestSeriesScanNode"),
             new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
             Ordering.DESC,
-            new GroupByFilter(1, 2, 3, 4),
             null,
             100,
             100,

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.task.subtask.connector;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.execution.scheduler.PipeSubtaskScheduler;
@@ -67,6 +68,16 @@ public class PipeConnectorSubtask extends PipeSubtask {
   private final String attributeSortedString;
   private final int connectorIndex;
 
+  // Now parallel connectors run the same time, thus the heartbeat events are not sure
+  // to trigger the general event transfer function, causing potentially such as
+  // the random delay of the batch transmission. Therefore, here we inject cron events
+  // when no event can be pulled.
+  private static final PipeHeartbeatEvent CRON_HEARTBEAT_EVENT =
+      new PipeHeartbeatEvent("cron", false);
+  private static final long CRON_HEARTBEAT_EVENT_INJECT_INTERVAL_SECONDS =
+      PipeConfig.getInstance().getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds();
+  private long lastHeartbeatEventInjectTime = System.currentTimeMillis();
+
   public PipeConnectorSubtask(
       String taskID,
       long creationTime,
@@ -112,11 +123,16 @@ public class PipeConnectorSubtask extends PipeSubtask {
     final Event event = lastEvent != null ? lastEvent : inputPendingQueue.waitedPoll();
     // Record this event for retrying on connection failure or other exceptions
     setLastEvent(event);
-    if (event == null) {
-      return false;
-    }
 
     try {
+      if (event == null) {
+        if (System.currentTimeMillis() - lastHeartbeatEventInjectTime
+            > CRON_HEARTBEAT_EVENT_INJECT_INTERVAL_SECONDS) {
+          transferHeartbeatEvent(CRON_HEARTBEAT_EVENT);
+        }
+        return false;
+      }
+
       if (event instanceof TabletInsertionEvent) {
         outputPipeConnector.transfer((TabletInsertionEvent) event);
         PipeConnectorMetrics.getInstance().markTabletEvent(taskID);
@@ -124,16 +140,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
         outputPipeConnector.transfer((TsFileInsertionEvent) event);
         PipeConnectorMetrics.getInstance().markTsFileEvent(taskID);
       } else if (event instanceof PipeHeartbeatEvent) {
-        try {
-          outputPipeConnector.heartbeat();
-          outputPipeConnector.transfer(event);
-        } catch (Exception e) {
-          throw new PipeConnectionException(
-              "PipeConnector: " + outputPipeConnector.getClass().getName() + " heartbeat failed",
-              e);
-        }
-        ((PipeHeartbeatEvent) event).onTransferred();
-        PipeConnectorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
+        transferHeartbeatEvent((PipeHeartbeatEvent) event);
       } else {
         outputPipeConnector.transfer(event);
       }
@@ -160,6 +167,24 @@ public class PipeConnectorSubtask extends PipeSubtask {
     }
 
     return true;
+  }
+
+  private void transferHeartbeatEvent(PipeHeartbeatEvent event) {
+    try {
+      outputPipeConnector.heartbeat();
+      outputPipeConnector.transfer(event);
+    } catch (Exception e) {
+      throw new PipeConnectionException(
+          "PipeConnector: "
+              + outputPipeConnector.getClass().getName()
+              + " heartbeat failed, or encountered failure when transferring generic event.",
+          e);
+    }
+
+    lastHeartbeatEventInjectTime = System.currentTimeMillis();
+
+    event.onTransferred();
+    PipeConnectorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
   }
 
   @Override
@@ -308,6 +333,16 @@ public class PipeConnectorSubtask extends PipeSubtask {
     }
   }
 
+  /**
+   * When a pipe is dropped, the connector maybe reused and will not be closed. So we just discard
+   * its queued events in the output pipe connector.
+   */
+  public void discardEventsOfPipe(String pipeNameToDrop) {
+    if (outputPipeConnector instanceof IoTDBThriftAsyncConnector) {
+      ((IoTDBThriftAsyncConnector) outputPipeConnector).discardEventsOfPipe(pipeNameToDrop);
+    }
+  }
+
   //////////////////////////// APIs provided for metric framework ////////////////////////////
 
   public String getAttributeSortedString() {
@@ -328,5 +363,11 @@ public class PipeConnectorSubtask extends PipeSubtask {
 
   public Integer getPipeHeartbeatEventCount() {
     return inputPendingQueue.getPipeHeartbeatEventCount();
+  }
+
+  public Integer getAsyncConnectorRetryEventQueueSize() {
+    return outputPipeConnector instanceof IoTDBThriftAsyncConnector
+        ? ((IoTDBThriftAsyncConnector) outputPipeConnector).getRetryEventQueueSize()
+        : 0;
   }
 }

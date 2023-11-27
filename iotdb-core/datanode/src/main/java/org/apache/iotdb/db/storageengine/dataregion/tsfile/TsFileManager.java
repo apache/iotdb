@@ -35,20 +35,20 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class TsFileManager {
-  private String storageGroupName;
+  private final String storageGroupName;
   private String dataRegionId;
-  private String storageGroupDir;
+  private final String storageGroupDir;
 
   /** Serialize queries, delete resource files, compaction cleanup files */
   private final ReadWriteLock resourceListLock = new ReentrantReadWriteLock();
 
   private String writeLockHolder;
   // time partition -> double linked list of tsfiles
-  private TreeMap<Long, TsFileResourceList> sequenceFiles = new TreeMap<>();
-  private TreeMap<Long, TsFileResourceList> unsequenceFiles = new TreeMap<>();
+  private final TreeMap<Long, TsFileResourceList> sequenceFiles = new TreeMap<>();
+  private final TreeMap<Long, TsFileResourceList> unsequenceFiles = new TreeMap<>();
 
   private boolean allowCompaction = true;
-  private AtomicLong currentCompactionTaskSerialId = new AtomicLong(0);
+  private final AtomicLong currentCompactionTaskSerialId = new AtomicLong(0);
 
   public TsFileManager(String storageGroupName, String dataRegionId, String storageGroupDir) {
     this.storageGroupName = storageGroupName;
@@ -115,7 +115,11 @@ public class TsFileManager {
       List<TsFileResource> seqTsFileResourceList =
           sequenceFiles.computeIfAbsent(partitionId, l -> new TsFileResourceList());
       for (int i = seqTsFileResourceList.size() - 1; i >= 0; i--) {
-        Set<String> deviceSet = seqTsFileResourceList.get(i).getDevices();
+        TsFileResource seqResource = seqTsFileResourceList.get(i);
+        if (!seqResource.isClosed()) {
+          continue;
+        }
+        Set<String> deviceSet = seqResource.getDevices();
         if (deviceSet.contains(devicePath)) {
           lastFlushTime = seqTsFileResourceList.get(i).getEndTime(devicePath);
           break;
