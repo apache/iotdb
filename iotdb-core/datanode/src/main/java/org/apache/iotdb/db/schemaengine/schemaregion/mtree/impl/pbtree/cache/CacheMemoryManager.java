@@ -350,5 +350,6 @@ public class CacheMemoryManager {
           }
         };
     registerFlushTask();
+    registerReleaseTask();
   }
 }
