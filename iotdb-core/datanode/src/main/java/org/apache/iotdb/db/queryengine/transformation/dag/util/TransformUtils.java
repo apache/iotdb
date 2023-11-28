@@ -80,21 +80,17 @@ public class TransformUtils {
 
       switch (constantOperand.getDataType()) {
         case INT32:
-          return new IntColumn(1, Optional.of(new boolean[] {false}), new int[] {(int) value});
+          return new IntColumn(1, Optional.empty(), new int[] {(int) value});
         case INT64:
-          return new LongColumn(1, Optional.of(new boolean[] {false}), new long[] {(long) value});
+          return new LongColumn(1, Optional.empty(), new long[] {(long) value});
         case FLOAT:
-          return new FloatColumn(
-              1, Optional.of(new boolean[] {false}), new float[] {(float) value});
+          return new FloatColumn(1, Optional.empty(), new float[] {(float) value});
         case DOUBLE:
-          return new DoubleColumn(
-              1, Optional.of(new boolean[] {false}), new double[] {(double) value});
+          return new DoubleColumn(1, Optional.empty(), new double[] {(double) value});
         case TEXT:
-          return new BinaryColumn(
-              1, Optional.of(new boolean[] {false}), new Binary[] {(Binary) value});
+          return new BinaryColumn(1, Optional.empty(), new Binary[] {(Binary) value});
         case BOOLEAN:
-          return new BooleanColumn(
-              1, Optional.of(new boolean[] {false}), new boolean[] {(boolean) value});
+          return new BooleanColumn(1, Optional.empty(), new boolean[] {(boolean) value});
         default:
           throw new UnSupportedDataTypeException(
               "Unsupported type: " + constantOperand.getDataType());

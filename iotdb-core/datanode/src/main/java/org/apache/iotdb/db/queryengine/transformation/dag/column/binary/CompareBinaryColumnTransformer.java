@@ -20,10 +20,9 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.column.binary;
 
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.util.TransformUtils;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 import org.apache.iotdb.tsfile.read.common.type.TypeEnum;
 
@@ -37,33 +36,34 @@ public abstract class CompareBinaryColumnTransformer extends BinaryColumnTransfo
   @Override
   protected void doTransform(
       Column leftColumn, Column rightColumn, ColumnBuilder builder, int positionCount) {
+    // if either column is all null, append nullCount
+    if ((leftColumn.mayHaveNull() && leftColumn instanceof RunLengthEncodedColumn)
+        || (rightColumn.mayHaveNull() && rightColumn instanceof RunLengthEncodedColumn)) {
+      builder.appendNull(positionCount);
+      return;
+    }
     for (int i = 0; i < positionCount; i++) {
       if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
         boolean flag = false;
         // compare binary type
-        if (leftTransformer.getType().getTypeEnum().equals(TypeEnum.BINARY)) {
+        if (TypeEnum.BINARY.equals(leftTransformer.getType().getTypeEnum())) {
           flag =
               transform(
-                  TransformUtils.compare(
-                      leftTransformer
-                          .getType()
-                          .getBinary(leftColumn, i)
-                          .getStringValue(TSFileConfig.STRING_CHARSET),
-                      rightTransformer
-                          .getType()
-                          .getBinary(rightColumn, i)
-                          .getStringValue(TSFileConfig.STRING_CHARSET)));
-        } else if (leftTransformer.getType().getTypeEnum().equals(TypeEnum.BOOLEAN)) {
+                  leftTransformer
+                      .getType()
+                      .getBinary(leftColumn, i)
+                      .compareTo(rightTransformer.getType().getBinary(rightColumn, i)));
+        } else if (TypeEnum.BOOLEAN.equals(leftTransformer.getType().getTypeEnum())) {
           flag =
               transform(
                   Boolean.compare(
                       leftTransformer.getType().getBoolean(leftColumn, i),
                       rightTransformer.getType().getBoolean(rightColumn, i)));
         } else {
-          double left = leftTransformer.getType().getDouble(leftColumn, i);
-          double right = rightTransformer.getType().getDouble(rightColumn, i);
+          final double left = leftTransformer.getType().getDouble(leftColumn, i);
+          final double right = rightTransformer.getType().getDouble(rightColumn, i);
           if (!Double.isNaN(left) && !Double.isNaN(right)) {
-            flag = transform(compare(left, right));
+            flag = transform(Double.compare(left, right));
           }
         }
         returnType.writeBoolean(builder, flag);
@@ -81,10 +81,6 @@ public abstract class CompareBinaryColumnTransformer extends BinaryColumnTransfo
       return;
     }
     throw new UnsupportedOperationException("Unsupported Type");
-  }
-
-  protected int compare(double d1, double d2) {
-    return Double.compare(d1, d2);
   }
 
   /**
