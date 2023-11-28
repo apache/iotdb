@@ -181,8 +181,7 @@ public class IoTConsensusServerImpl {
       ioTConsensusServerMetrics.recordGetStateMachineLockTime(
           getStateMachineLockTime - consensusWriteStartTime);
       if (needBlockWrite()) {
-        logger.info(
-            "[Throttle Down] index:{}, safeIndex:{}", getSearchIndex(), getMinFlushedSyncIndex());
+        logger.info("[Throttle Down] index:{}, safeIndex:{}", getSearchIndex(), getMinSyncIndex());
         try {
           boolean timeout =
               !stateMachineCondition.await(
