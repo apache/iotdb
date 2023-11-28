@@ -172,6 +172,7 @@ public class IoTDBPipeExtractorIT {
         return;
       }
 
+      // invalid 'extractor.history.start-time'
       String formatString =
           String.format(
               "create pipe p1"
@@ -198,6 +199,29 @@ public class IoTDBPipeExtractorIT {
       }
 
       List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      Assert.assertEquals(0, showPipeResult.size());
+
+      // can not set 'extractor.history.enabled' and 'extractor.realtime.enabled' both to false
+      String sql =
+          String.format(
+              "create pipe p1"
+                  + " with extractor ("
+                  + "'extractor.history.enabled'='false',"
+                  + "'extractor.realtime.enabled'='false')"
+                  + " with connector ("
+                  + "'connector'='iotdb-thrift-connector',"
+                  + "'connector.ip'='%s',"
+                  + "'connector.port'='%s',"
+                  + "'connector.batch.enable'='false')",
+              receiverIp, receiverPort);
+      try (Connection connection = senderEnv.getConnection();
+          Statement statement = connection.createStatement()) {
+        statement.execute(sql);
+        fail();
+      } catch (SQLException ignored) {
+      }
+
+      showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(0, showPipeResult.size());
     }
   }
@@ -477,21 +501,10 @@ public class IoTDBPipeExtractorIT {
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
-      extractorAttributes.put("extractor.pattern", "root.db.d1");
+      extractorAttributes.put("extractor.pattern", "root.db.d2");
       extractorAttributes.put("extractor.history.enable", "false");
-      extractorAttributes.put("extractor.realtime.enable", "false");
+      extractorAttributes.put("extractor.realtime.enable", "true");
       TSStatus status =
-          client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
-                  .setProcessorAttributes(processorAttributes));
-      // can not set both to false
-      Assert.assertEquals(TSStatusCode.PIPE_ERROR.getStatusCode(), status.getCode());
-
-      extractorAttributes.replace("extractor.pattern", "root.db.d2");
-      extractorAttributes.replace("extractor.history.enable", "false");
-      extractorAttributes.replace("extractor.realtime.enable", "true");
-      status =
           client.createPipe(
               new TCreatePipeReq("p2", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)
