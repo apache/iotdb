@@ -34,6 +34,7 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import org.slf4j.Logger;
@@ -44,6 +45,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.db.pipe.config.constant.PipeProcessorConstant.PROCESSOR_DOWN_SAMPLING_INTERVAL_SECONDS_DEFAULT_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeProcessorConstant.PROCESSOR_DOWN_SAMPLING_INTERVAL_SECONDS_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeProcessorConstant.PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_DEFAULT_VALUE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeProcessorConstant.PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_KEY;
 
 public class DownSamplingProcessor implements PipeProcessor {
 
@@ -51,6 +54,7 @@ public class DownSamplingProcessor implements PipeProcessor {
 
   private String dataBaseNameWithPathSeparator;
   private long intervalInCurrentPrecision;
+  private boolean shouldSplitFile;
 
   private PartialPathLastTimeCache partialPathLastTimeCache;
 
@@ -73,11 +77,17 @@ public class DownSamplingProcessor implements PipeProcessor {
         parameters.getLongOrDefault(
             PROCESSOR_DOWN_SAMPLING_INTERVAL_SECONDS_KEY,
             PROCESSOR_DOWN_SAMPLING_INTERVAL_SECONDS_DEFAULT_VALUE);
+    shouldSplitFile =
+        parameters.getBooleanOrDefault(
+            PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_KEY,
+            PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_DEFAULT_VALUE);
     LOGGER.info(
-        "DownSamplingProcessor in {} is initialized with {}: {}s.",
+        "DownSamplingProcessor in {} is initialized with {}: {}s, {}: {}. ",
         dataBaseName,
         PROCESSOR_DOWN_SAMPLING_INTERVAL_SECONDS_KEY,
-        intervalSeconds);
+        intervalSeconds,
+        PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_KEY,
+        shouldSplitFile);
 
     dataBaseNameWithPathSeparator = dataBaseName + TsFileConstant.PATH_SEPARATOR;
     intervalInCurrentPrecision =
@@ -95,27 +105,19 @@ public class DownSamplingProcessor implements PipeProcessor {
       return;
     }
 
-    final AtomicReference<String> suffixPath = new AtomicReference<>();
-    final boolean isAligned =
-        tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent
-            ? ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).isAligned()
-            : ((PipeRawTabletInsertionEvent) tabletInsertionEvent).isAligned();
+    final AtomicReference<String> deviceSuffix = new AtomicReference<>();
     final AtomicReference<Exception> exception = new AtomicReference<>();
 
     tabletInsertionEvent
         .processRowByRow(
             (row, rowCollector) -> {
-              // To reduce the memory usage, we use the device suffix instead of the full path as
-              // the key.
-              if (suffixPath.get() == null) {
-                suffixPath.set(row.getDeviceId().replaceFirst(dataBaseNameWithPathSeparator, ""));
+              // To reduce the memory usage, we use the device suffix
+              // instead of the full path as the key.
+              if (deviceSuffix.get() == null) {
+                deviceSuffix.set(row.getDeviceId().replaceFirst(dataBaseNameWithPathSeparator, ""));
               }
 
-              if (isAligned) {
-                processAlignedRow(row, rowCollector, suffixPath.get(), exception);
-              } else {
-                processUnalignedRow(row, rowCollector, suffixPath.get(), exception);
-              }
+              processRow(row, rowCollector, deviceSuffix.get(), exception);
             })
         .forEach(
             event -> {
@@ -131,33 +133,34 @@ public class DownSamplingProcessor implements PipeProcessor {
     }
   }
 
-  private void processAlignedRow(
+  private void processRow(
       Row row,
       RowCollector rowCollector,
       String deviceSuffix,
       AtomicReference<Exception> exception) {
+    boolean hasNonNullMeasurements = false;
 
-    boolean hasNonNull = false;
-    for (int index = 0; index < row.size(); ++index) {
+    for (int index = 0, size = row.size(); index < size; ++index) {
       if (row.isNull(index)) {
         continue;
       }
-      String timeSeriesSuffix =
+
+      final String timeSeriesSuffix =
           deviceSuffix + TsFileConstant.PATH_SEPARATOR + row.getColumnName(index);
-      Long lastSendTime = partialPathLastTimeCache.getPartialPathLastTime(timeSeriesSuffix);
-      if (lastSendTime != null) {
-        if (row.getTime() - lastSendTime >= intervalInCurrentPrecision) {
-          hasNonNull = true;
+      final Long lastSampleTime = partialPathLastTimeCache.getPartialPathLastTime(timeSeriesSuffix);
+
+      if (lastSampleTime != null) {
+        if (row.getTime() - lastSampleTime >= intervalInCurrentPrecision) {
+          hasNonNullMeasurements = true;
           partialPathLastTimeCache.setPartialPathLastTime(timeSeriesSuffix, row.getTime());
-        } else {
-          // row.setNull(index);
         }
       } else {
-        hasNonNull = true;
+        hasNonNullMeasurements = true;
         partialPathLastTimeCache.setPartialPathLastTime(timeSeriesSuffix, row.getTime());
       }
     }
-    if (hasNonNull) {
+
+    if (hasNonNullMeasurements) {
       try {
         rowCollector.collectRow(row);
       } catch (Exception e) {
@@ -166,29 +169,25 @@ public class DownSamplingProcessor implements PipeProcessor {
     }
   }
 
-  private void processUnalignedRow(
-      Row row,
-      RowCollector rowCollector,
-      String deviceSuffix,
-      AtomicReference<Exception> exception) {
-    final Long lastSendTime = partialPathLastTimeCache.getPartialPathLastTime(deviceSuffix);
-
-    if (lastSendTime != null) {
-      if (row.getTime() - lastSendTime >= intervalInCurrentPrecision) {
-        partialPathLastTimeCache.setPartialPathLastTime(deviceSuffix, row.getTime());
-        try {
-          rowCollector.collectRow(row);
-        } catch (Exception e) {
-          exception.set(e);
+  /**
+   * If data comes in TsFileInsertionEvent, we will not split it into TabletInsertionEvent by
+   * default, because the data in TsFileInsertionEvent is already compressed, down-sampling will not
+   * reduce the size of data but will increase the CPU usage.
+   */
+  @Override
+  public void process(TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector)
+      throws Exception {
+    if (shouldSplitFile) {
+      try {
+        for (final TabletInsertionEvent tabletInsertionEvent :
+            tsFileInsertionEvent.toTabletInsertionEvents()) {
+          process(tabletInsertionEvent, eventCollector);
         }
+      } finally {
+        tsFileInsertionEvent.close();
       }
     } else {
-      partialPathLastTimeCache.setPartialPathLastTime(deviceSuffix, row.getTime());
-      try {
-        rowCollector.collectRow(row);
-      } catch (Exception e) {
-        exception.set(e);
-      }
+      eventCollector.collect(tsFileInsertionEvent);
     }
   }
 

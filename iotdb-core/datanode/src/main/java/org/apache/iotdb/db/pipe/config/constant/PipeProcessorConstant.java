@@ -26,6 +26,9 @@ public class PipeProcessorConstant {
   public static final String PROCESSOR_DOWN_SAMPLING_INTERVAL_SECONDS_KEY =
       "processor.down-sampling.interval-seconds";
   public static final long PROCESSOR_DOWN_SAMPLING_INTERVAL_SECONDS_DEFAULT_VALUE = 60;
+  public static final String PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_KEY =
+      "processor.down-sampling.split-file";
+  public static final boolean PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_DEFAULT_VALUE = false;
 
   private PipeProcessorConstant() {
     throw new IllegalStateException("Utility class");
