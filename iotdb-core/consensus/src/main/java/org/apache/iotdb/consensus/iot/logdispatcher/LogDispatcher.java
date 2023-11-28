@@ -154,7 +154,7 @@ public class LogDispatcher {
   }
 
   public synchronized OptionalLong getMinFlushedIndex() {
-    return threads.stream().mapToLong(LogDispatcherThread::getLastFlushedSyncIndex).min();
+    return threads.stream().mapToLong(LogDispatcherThread::getLastFlushedIndex).min();
   }
 
   public void offer(IndexedConsensusRequest request) {
@@ -237,7 +237,7 @@ public class LogDispatcher {
       return controller.getCurrentIndex();
     }
 
-    public long getLastFlushedSyncIndex() {
+    public long getLastFlushedIndex() {
       return controller.getLastFlushedIndex();
     }
 
@@ -351,7 +351,9 @@ public class LogDispatcher {
     public void updateSafelyDeletedSearchIndex() {
       // update safely deleted search index to delete outdated info,
       // indicating that insert nodes whose search index are before this value can be deleted
-      // safely
+      // safely.
+      //
+      // Use minFlushedIndex here to reserve the WAL which are not flushed and support kill -9.
       long currentSafelyDeletedSearchIndex = impl.getMinFlushedIndex();
       reader.setSafelyDeletedSearchIndex(currentSafelyDeletedSearchIndex);
       // notify

@@ -92,7 +92,7 @@ public class IoTConsensusServerMetrics implements IMetricSet {
         Metric.IOT_CONSENSUS.toString(),
         MetricLevel.IMPORTANT,
         impl,
-        IoTConsensusServerImpl::getMinFlushedIndex,
+        IoTConsensusServerImpl::getCurrentSafelyDeletedSearchIndex,
         Tag.NAME.toString(),
         IMPL,
         Tag.REGION.toString(),
