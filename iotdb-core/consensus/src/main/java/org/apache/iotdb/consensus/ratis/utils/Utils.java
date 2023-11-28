@@ -61,7 +61,7 @@ public class Utils {
   private static final String SCHEMA_REGION_GROUP = "group-0002";
   private static final CommonConfig config = CommonDescriptor.getInstance().getConfig();
   private static final Cache<ConsensusGroupId, RaftGroupId> cache =
-      CacheBuilder.newBuilder().weakValues().build();
+      CacheBuilder.newBuilder().weakValues().expireAfterAccess(5, TimeUnit.MINUTES).build();
 
   private Utils() {}
 
