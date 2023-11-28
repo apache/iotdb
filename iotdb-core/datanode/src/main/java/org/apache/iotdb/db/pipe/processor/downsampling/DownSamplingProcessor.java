@@ -158,7 +158,7 @@ public class DownSamplingProcessor implements PipeProcessor {
       final Long lastSampleTime = partialPathLastTimeCache.getPartialPathLastTime(timeSeriesSuffix);
 
       if (lastSampleTime != null) {
-        if (row.getTime() - lastSampleTime >= intervalInCurrentPrecision) {
+        if (Math.abs(row.getTime() - lastSampleTime) >= intervalInCurrentPrecision) {
           hasNonNullMeasurements = true;
           partialPathLastTimeCache.setPartialPathLastTime(timeSeriesSuffix, row.getTime());
         }
