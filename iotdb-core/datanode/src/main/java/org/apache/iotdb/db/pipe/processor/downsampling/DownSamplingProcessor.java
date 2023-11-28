@@ -45,6 +45,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.db.pipe.config.constant.PipeProcessorConstant.PROCESSOR_DOWN_SAMPLING_INTERVAL_SECONDS_DEFAULT_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeProcessorConstant.PROCESSOR_DOWN_SAMPLING_INTERVAL_SECONDS_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeProcessorConstant.PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_DEFAULT_VALUE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeProcessorConstant.PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeProcessorConstant.PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_DEFAULT_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeProcessorConstant.PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_KEY;
 
@@ -77,15 +79,21 @@ public class DownSamplingProcessor implements PipeProcessor {
         parameters.getLongOrDefault(
             PROCESSOR_DOWN_SAMPLING_INTERVAL_SECONDS_KEY,
             PROCESSOR_DOWN_SAMPLING_INTERVAL_SECONDS_DEFAULT_VALUE);
+    final long memoryLimitInBytes =
+        parameters.getLongOrDefault(
+            PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_KEY,
+            PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_DEFAULT_VALUE);
     shouldSplitFile =
         parameters.getBooleanOrDefault(
             PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_KEY,
             PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_DEFAULT_VALUE);
     LOGGER.info(
-        "DownSamplingProcessor in {} is initialized with {}: {}s, {}: {}. ",
+        "DownSamplingProcessor in {} is initialized with {}: {}s, {}: {}, {}: {}.",
         dataBaseName,
         PROCESSOR_DOWN_SAMPLING_INTERVAL_SECONDS_KEY,
         intervalSeconds,
+        PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_KEY,
+        memoryLimitInBytes,
         PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_KEY,
         shouldSplitFile);
 
@@ -93,7 +101,7 @@ public class DownSamplingProcessor implements PipeProcessor {
     intervalInCurrentPrecision =
         TimestampPrecisionUtils.convertToCurrPrecision(intervalSeconds, TimeUnit.SECONDS);
 
-    partialPathLastTimeCache = new PartialPathLastTimeCache();
+    partialPathLastTimeCache = new PartialPathLastTimeCache(memoryLimitInBytes);
   }
 
   @Override
