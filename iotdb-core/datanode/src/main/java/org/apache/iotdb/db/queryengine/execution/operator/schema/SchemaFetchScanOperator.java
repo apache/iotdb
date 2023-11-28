@@ -49,6 +49,7 @@ public class SchemaFetchScanOperator implements SourceOperator {
 
   private final ISchemaRegion schemaRegion;
   private final boolean withTags;
+  private final boolean withTemplate;
   private boolean isFinished = false;
 
   private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
@@ -60,13 +61,15 @@ public class SchemaFetchScanOperator implements SourceOperator {
       PathPatternTree patternTree,
       Map<Integer, Template> templateMap,
       ISchemaRegion schemaRegion,
-      boolean withTags) {
+      boolean withTags,
+      boolean withTemplate) {
     this.sourceId = planNodeId;
     this.operatorContext = context;
     this.patternTree = patternTree;
     this.schemaRegion = schemaRegion;
     this.templateMap = templateMap;
     this.withTags = withTags;
+    this.withTemplate = withTemplate;
   }
 
   @Override
@@ -103,7 +106,8 @@ public class SchemaFetchScanOperator implements SourceOperator {
   }
 
   private TsBlock fetchSchema() throws MetadataException {
-    ClusterSchemaTree schemaTree = schemaRegion.fetchSchema(patternTree, templateMap, withTags);
+    ClusterSchemaTree schemaTree =
+        schemaRegion.fetchSchema(patternTree, templateMap, withTags, withTemplate);
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {

@@ -29,7 +29,7 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.reader.IAlignedPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
@@ -404,7 +404,7 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
     if (this.filter == null) {
       this.filter = filter;
     } else {
-      this.filter = new AndFilter(this.filter, filter);
+      this.filter = FilterFactory.and(this.filter, filter);
     }
   }
 
@@ -420,6 +420,16 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
 
   @Override
   public void initTsBlockBuilder(List<TSDataType> dataTypes) {
-    builder = new TsBlockBuilder((int) timePageReader.getStatistics().getCount(), dataTypes);
+    if (paginationController.hasCurLimit()) {
+      builder =
+          new TsBlockBuilder(
+              (int)
+                  Math.min(
+                      paginationController.getCurLimit(),
+                      timePageReader.getStatistics().getCount()),
+              dataTypes);
+    } else {
+      builder = new TsBlockBuilder((int) timePageReader.getStatistics().getCount(), dataTypes);
+    }
   }
 }
