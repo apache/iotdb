@@ -71,7 +71,8 @@ public class StatementMemorySourceVisitor
     return (context.getAnalysis().getSourceExpressions() == null
             || context.getAnalysis().getSourceExpressions().isEmpty())
         && (context.getAnalysis().getDeviceToSourceExpressions() == null
-            || context.getAnalysis().getDeviceToSourceExpressions().isEmpty());
+            || context.getAnalysis().getDeviceToSourceExpressions().isEmpty())
+        && context.getAnalysis().getDeviceTemplate() == null;
   }
 
   @Override

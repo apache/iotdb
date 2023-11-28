@@ -21,49 +21,27 @@ package org.apache.iotdb.db.queryengine.plan.analyze;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 public class TypeProvider {
 
   private final Map<String, TSDataType> typeMap;
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-  // All Queries Devices Set In One Template
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-  private List<String> measurementList;
-  private List<IMeasurementSchema> schemaList;
-  private List<TSDataType> dataTypes;
-  private Set<String> allSensors;
+  private TemplatedInfo templatedInfo;
 
   public TypeProvider() {
     this.typeMap = new HashMap<>();
   }
 
-  public TypeProvider(Map<String, TSDataType> typeMap) {
+  public TypeProvider(Map<String, TSDataType> typeMap, TemplatedInfo templatedInfo) {
     this.typeMap = typeMap;
-  }
-
-  public TypeProvider(
-      List<String> measurementList,
-      List<IMeasurementSchema> schemaList,
-      List<TSDataType> dataTypes,
-      Set<String> allSensors) {
-    if (measurementList != null) {
-      this.measurementList = measurementList;
-      this.schemaList = schemaList;
-      this.dataTypes = dataTypes;
-      this.allSensors = allSensors;
-    }
-    this.typeMap = new HashMap<>();
+    this.templatedInfo = templatedInfo;
   }
 
   public TSDataType getType(String symbol) {
@@ -77,11 +55,30 @@ public class TypeProvider {
     }
   }
 
+  public Map<String, TSDataType> getTypeMap() {
+    return this.typeMap;
+  }
+
+  public void setTemplatedInfo(TemplatedInfo templatedInfo) {
+    this.templatedInfo = templatedInfo;
+  }
+
+  public TemplatedInfo getTemplatedInfo() {
+    return this.templatedInfo;
+  }
+
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(typeMap.size(), byteBuffer);
     for (Map.Entry<String, TSDataType> entry : typeMap.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), byteBuffer);
       ReadWriteIOUtils.write(entry.getValue().ordinal(), byteBuffer);
+    }
+
+    if (templatedInfo == null) {
+      ReadWriteIOUtils.write((byte) 0, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, byteBuffer);
+      templatedInfo.serialize(byteBuffer);
     }
   }
 
@@ -90,6 +87,13 @@ public class TypeProvider {
     for (Map.Entry<String, TSDataType> entry : typeMap.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), stream);
       ReadWriteIOUtils.write(entry.getValue().ordinal(), stream);
+    }
+
+    if (templatedInfo == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      templatedInfo.serialize(stream);
     }
   }
 
@@ -102,7 +106,14 @@ public class TypeProvider {
           TSDataType.values()[ReadWriteIOUtils.readInt(byteBuffer)]);
       mapSize--;
     }
-    return new TypeProvider(typeMap);
+
+    TemplatedInfo templatedInfo = null;
+    byte hasTemplatedInfo = ReadWriteIOUtils.readByte(byteBuffer);
+    if (hasTemplatedInfo == 1) {
+      templatedInfo = TemplatedInfo.deserialize(byteBuffer);
+    }
+
+    return new TypeProvider(typeMap, templatedInfo);
   }
 
   @Override
@@ -120,41 +131,5 @@ public class TypeProvider {
   @Override
   public int hashCode() {
     return Objects.hash(typeMap);
-  }
-
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-  // All Queries Devices Set In One Template
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-
-  public void setMeasurementList(List<String> measurementList) {
-    this.measurementList = measurementList;
-  }
-
-  public List<String> getMeasurementList() {
-    return this.measurementList;
-  }
-
-  public void setSchemaList(List<IMeasurementSchema> schemaList) {
-    this.schemaList = schemaList;
-  }
-
-  public List<IMeasurementSchema> getSchemaList() {
-    return this.schemaList;
-  }
-
-  public void setDataTypes(List<TSDataType> dataTypes) {
-    this.dataTypes = dataTypes;
-  }
-
-  public List<TSDataType> getDataTypes() {
-    return this.dataTypes;
-  }
-
-  public void setAllSensors(Set<String> allSensors) {
-    this.allSensors = allSensors;
-  }
-
-  public Set<String> getAllSensors() {
-    return this.allSensors;
   }
 }

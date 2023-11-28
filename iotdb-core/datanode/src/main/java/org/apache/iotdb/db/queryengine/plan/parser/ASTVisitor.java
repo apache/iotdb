@@ -2919,13 +2919,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private Expression parseRegularExpression(ExpressionContext context, boolean canUseFullPath) {
     return new RegularExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, canUseFullPath),
-        parseStringLiteral(context.STRING_LITERAL().getText()));
+        parseStringLiteral(context.STRING_LITERAL().getText()),
+        false);
   }
 
   private Expression parseLikeExpression(ExpressionContext context, boolean canUseFullPath) {
     return new LikeExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, canUseFullPath),
-        parseStringLiteral(context.STRING_LITERAL().getText()));
+        parseStringLiteral(context.STRING_LITERAL().getText()),
+        false);
   }
 
   private Expression parseIsNullExpression(ExpressionContext context, boolean canUseFullPath) {

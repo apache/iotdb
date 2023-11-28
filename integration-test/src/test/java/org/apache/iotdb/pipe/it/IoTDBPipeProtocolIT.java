@@ -39,6 +39,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -402,6 +403,9 @@ public class IoTDBPipeProtocolIT {
       connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.node-urls", nodeUrlsBuilder.toString());
 
+      // Test forced-log mode, in TimechoDB this might be "file"
+      extractorAttributes.put("source.realtime.mode", "forced-log");
+
       TSStatus status =
           client.createPipe(
               new TCreatePipeReq("p1", connectorAttributes)
@@ -413,11 +417,8 @@ public class IoTDBPipeProtocolIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (2, 2)")) {
-        return;
-      }
-      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv, Arrays.asList("insert into root.db.d1(time, s1) values (2, 2)", "flush"))) {
         return;
       }
 
@@ -426,6 +427,31 @@ public class IoTDBPipeProtocolIT {
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
           Collections.singleton("2,"));
+
+      // Test file mode
+      extractorAttributes.replace("source.realtime.mode", "file");
+
+      status =
+          client.createPipe(
+              new TCreatePipeReq("p2", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      System.out.println(status.getMessage());
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p2").getCode());
+
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv, Arrays.asList("insert into root.db.d1(time, s1) values (3, 3)", "flush"))) {
+        return;
+      }
+
+      TestUtils.assertDataOnEnv(
+          receiverEnv,
+          "select count(*) from root.**",
+          "count(root.db.d1.s1),",
+          Collections.singleton("3,"));
     }
   }
 }

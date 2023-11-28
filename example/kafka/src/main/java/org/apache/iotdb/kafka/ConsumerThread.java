@@ -39,7 +39,7 @@ import java.util.List;
 @SuppressWarnings({"squid:S1144"})
 public class ConsumerThread implements Runnable {
 
-  private static final Logger logger = LoggerFactory.getLogger(ConsumerThread.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ConsumerThread.class);
   private KafkaConsumer<String, String> consumer;
   private SessionPool pool;
 
@@ -158,7 +158,7 @@ public class ConsumerThread implements Runnable {
         insertDatas(datas);
       } while (true);
     } catch (Exception e) {
-      logger.error(e.getMessage());
+      LOGGER.error(e.getMessage());
     }
   }
 }

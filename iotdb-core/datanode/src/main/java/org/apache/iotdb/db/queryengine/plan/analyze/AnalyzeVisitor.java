@@ -60,6 +60,7 @@ import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.SchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.CompareBinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
@@ -136,16 +137,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
-import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
-import org.apache.iotdb.tsfile.read.filter.GroupByMonthFilter;
-import org.apache.iotdb.tsfile.read.filter.PredicateRemoveNotRewriter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
@@ -168,7 +164,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.TimeZone;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkState;
@@ -243,14 +238,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Analysis analysis = new Analysis();
     analysis.setLastLevelUseWildcard(queryStatement.isLastLevelUseWildcard());
 
-    long startTime = System.currentTimeMillis();
     try {
       // check for semantic errors
       queryStatement.semanticCheck();
 
       ISchemaTree schemaTree = analyzeSchema(queryStatement, analysis, context);
-
-      logger.warn("--- [analyzeSchema] : {}ms", System.currentTimeMillis() - startTime);
 
       // If there is no leaf node in the schema tree, the query should be completed immediately
       if (schemaTree.isEmpty()) {
@@ -261,13 +253,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analyzeGlobalTimeFilter(analysis, queryStatement);
 
       if (queryStatement.isLastQuery()) {
-        return analyzeLastQuery(queryStatement, analysis, schemaTree);
+        return analyzeLastQuery(queryStatement, analysis, schemaTree, context);
       }
 
       List<Pair<Expression, String>> outputExpressions;
       if (queryStatement.isAlignByDevice()) {
         if (TemplatedAnalyze.canBuildPlanUseTemplate(
-            analysis, queryStatement, partitionFetcher, schemaTree)) {
+            analysis, queryStatement, partitionFetcher, schemaTree, context)) {
           return analysis;
         }
 
@@ -339,6 +331,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
 
       analyzeGroupByTime(analysis, queryStatement);
+      context.generateGlobalTimeFilter(analysis);
 
       analyzeFill(analysis, queryStatement);
 
@@ -346,7 +339,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analyzeOutput(analysis, queryStatement, outputExpressions);
 
       // fetch partition information
-      analyzeDataPartition(analysis, queryStatement, schemaTree);
+      analyzeDataPartition(analysis, queryStatement, schemaTree, context.getGlobalTimeFilter());
 
     } catch (StatementAnalyzeException e) {
       throw new StatementAnalyzeException(
@@ -403,21 +396,21 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private void analyzeGlobalTimeFilter(Analysis analysis, QueryStatement queryStatement) {
-    Filter globalTimeFilter = null;
+    Expression globalTimePredicate = null;
     boolean hasValueFilter = false;
     if (queryStatement.getWhereCondition() != null) {
       WhereCondition whereCondition = queryStatement.getWhereCondition();
       Expression predicate = whereCondition.getPredicate();
 
-      Pair<Filter, Boolean> resultPair =
-          ExpressionAnalyzer.extractGlobalTimeFilter(predicate, true, true);
-      globalTimeFilter = resultPair.left;
-      if (globalTimeFilter != null) {
-        globalTimeFilter = PredicateRemoveNotRewriter.rewrite(globalTimeFilter);
+      Pair<Expression, Boolean> resultPair =
+          PredicateUtils.extractGlobalTimePredicate(predicate, true, true);
+      globalTimePredicate = resultPair.left;
+      if (globalTimePredicate != null) {
+        globalTimePredicate = PredicateUtils.predicateRemoveNot(globalTimePredicate);
       }
       hasValueFilter = resultPair.right;
 
-      predicate = ExpressionAnalyzer.evaluatePredicate(predicate);
+      predicate = PredicateUtils.simplifyPredicate(predicate);
 
       // set where condition to null if predicate is true or time filter.
       if (!hasValueFilter
@@ -428,12 +421,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         whereCondition.setPredicate(predicate);
       }
     }
-    analysis.setGlobalTimeFilter(globalTimeFilter);
+    analysis.setGlobalTimePredicate(globalTimePredicate);
     analysis.setHasValueFilter(hasValueFilter);
   }
 
   private Analysis analyzeLastQuery(
-      QueryStatement queryStatement, Analysis analysis, ISchemaTree schemaTree) {
+      QueryStatement queryStatement,
+      Analysis analysis,
+      ISchemaTree schemaTree,
+      MPPQueryContext context) {
     if (analysis.hasValueFilter()) {
       throw new SemanticException("Only time filters are supported in LAST query");
     }
@@ -448,7 +444,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getLastQueryHeader());
 
     // fetch partition information
-    analyzeDataPartition(analysis, queryStatement, schemaTree);
+    analyzeDataPartition(analysis, queryStatement, schemaTree, context.getGlobalTimeFilter());
 
     return analysis;
   }
@@ -767,7 +763,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             schemaTree,
             true);
     Expression havingExpression =
-        ExpressionUtils.constructQueryFilter(
+        PredicateUtils.combineConjuncts(
             conJunctions.stream().distinct().collect(Collectors.toList()));
     havingExpression = normalizeExpression(havingExpression);
 
@@ -830,7 +826,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
     }
 
-    havingExpression = ExpressionUtils.constructQueryFilter(new ArrayList<>(conJunctions));
+    havingExpression = PredicateUtils.combineConjuncts(new ArrayList<>(conJunctions));
     TSDataType outputType = analyzeExpressionType(analysis, havingExpression);
     if (outputType != TSDataType.BOOLEAN) {
       throw new SemanticException(
@@ -1322,7 +1318,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             schemaTree,
             true);
     Expression whereExpression =
-        ExpressionUtils.constructQueryFilter(
+        PredicateUtils.combineConjuncts(
             conJunctions.stream().distinct().collect(Collectors.toList()));
     whereExpression = normalizeExpression(whereExpression);
     TSDataType outputType = analyzeExpressionType(analysis, whereExpression);
@@ -1337,7 +1333,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     List<Expression> conJunctions =
         ExpressionAnalyzer.concatDeviceAndBindSchemaForPredicate(
             queryStatement.getWhereCondition().getPredicate(), devicePath, schemaTree, true);
-    return ExpressionUtils.constructQueryFilter(
+    return PredicateUtils.combineConjuncts(
         conJunctions.stream().distinct().collect(Collectors.toList()));
   }
 
@@ -1776,16 +1772,17 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       throw new SemanticException(
           "The query time range should be specified in the GROUP BY TIME clause.");
     }
-    analysis.setGroupByTimeParameter(new GroupByTimeParameter(groupByTimeComponent));
+    GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(groupByTimeComponent);
+    analysis.setGroupByTimeParameter(groupByTimeParameter);
 
-    Filter globalTimeFilter = analysis.getGlobalTimeFilter();
-    Filter groupByFilter = initGroupByFilter(groupByTimeComponent);
-    if (globalTimeFilter == null) {
-      globalTimeFilter = groupByFilter;
+    Expression globalTimePredicate = analysis.getGlobalTimePredicate();
+    Expression groupByTimePredicate = ExpressionFactory.groupByTime(groupByTimeParameter);
+    if (globalTimePredicate == null) {
+      globalTimePredicate = groupByTimePredicate;
     } else {
-      globalTimeFilter = FilterFactory.and(globalTimeFilter, groupByFilter);
+      globalTimePredicate = ExpressionFactory.and(globalTimePredicate, groupByTimePredicate);
     }
-    analysis.setGlobalTimeFilter(globalTimeFilter);
+    analysis.setGlobalTimePredicate(globalTimePredicate);
   }
 
   static void analyzeFill(Analysis analysis, QueryStatement queryStatement) {
@@ -1802,7 +1799,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private void analyzeDataPartition(
-      Analysis analysis, QueryStatement queryStatement, ISchemaTree schemaTree) {
+      Analysis analysis,
+      QueryStatement queryStatement,
+      ISchemaTree schemaTree,
+      Filter globalTimeFilter) {
     Set<String> deviceSet = new HashSet<>();
     if (queryStatement.isAlignByDevice()) {
       deviceSet = new HashSet<>(analysis.getOutputDeviceToQueriedDevicesMap().values());
@@ -1812,7 +1812,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
     }
     DataPartition dataPartition =
-        fetchDataPartitionByDevices(deviceSet, schemaTree, analysis.getGlobalTimeFilter());
+        fetchDataPartitionByDevices(deviceSet, schemaTree, globalTimeFilter);
     analysis.setDataPartitionInfo(dataPartition);
   }
 
@@ -2700,7 +2700,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           Collections.singletonList(
               new TimeSeriesOperand(showTimeSeriesStatement.getPathPattern())),
           schemaTree);
-      analyzeDataPartition(analysis, new QueryStatement(), schemaTree);
+      analyzeDataPartition(
+          analysis, new QueryStatement(), schemaTree, context.getGlobalTimeFilter());
     }
 
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowTimeSeriesHeader());
@@ -3011,33 +3012,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setStatement(showSchemaTemplateStatement);
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowSchemaTemplateHeader());
     return analysis;
-  }
-
-  private GroupByFilter initGroupByFilter(GroupByTimeComponent groupByTimeComponent) {
-    long startTime =
-        groupByTimeComponent.isLeftCRightO()
-            ? groupByTimeComponent.getStartTime()
-            : groupByTimeComponent.getStartTime() + 1;
-    long endTime =
-        groupByTimeComponent.isLeftCRightO()
-            ? groupByTimeComponent.getEndTime()
-            : groupByTimeComponent.getEndTime() + 1;
-    if (groupByTimeComponent.getInterval().containsMonth()
-        || groupByTimeComponent.getSlidingStep().containsMonth()) {
-      return new GroupByMonthFilter(
-          groupByTimeComponent.getInterval(),
-          groupByTimeComponent.getSlidingStep(),
-          startTime,
-          endTime,
-          TimeZone.getTimeZone("+00:00"),
-          TimestampPrecisionUtils.currPrecision);
-    } else {
-      return new GroupByFilter(
-          groupByTimeComponent.getInterval().nonMonthDuration,
-          groupByTimeComponent.getSlidingStep().nonMonthDuration,
-          startTime,
-          endTime);
-    }
   }
 
   @Override

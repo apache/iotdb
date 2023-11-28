@@ -20,11 +20,21 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe;
 
 public enum PipeTaskOperation {
-  CREATE_PIPE,
-  START_PIPE,
-  STOP_PIPE,
-  DROP_PIPE,
-  HANDLE_LEADER_CHANGE,
-  SYNC_PIPE_META,
-  HANDLE_PIPE_META_CHANGE
+  CREATE_PIPE("createPipe"),
+  START_PIPE("startPipe"),
+  STOP_PIPE("stopPipe"),
+  DROP_PIPE("dropPipe"),
+  HANDLE_LEADER_CHANGE("handleLeaderChange"),
+  SYNC_PIPE_META("syncPipeMeta"),
+  HANDLE_PIPE_META_CHANGE("handlePipeMetaChange");
+
+  private final String name;
+
+  PipeTaskOperation(String name) {
+    this.name = name;
+  }
+
+  public String getName() {
+    return name;
+  }
 }
