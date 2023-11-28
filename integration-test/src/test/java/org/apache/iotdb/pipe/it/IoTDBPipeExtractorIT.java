@@ -91,7 +91,7 @@ public class IoTDBPipeExtractorIT {
       Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor", "iotdb-extractor");
-      extractorAttributes.put("extractor.history.enabled", "true");
+      extractorAttributes.put("extractor.history.enable", "true");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -174,7 +174,7 @@ public class IoTDBPipeExtractorIT {
           String.format(
               "create pipe p1"
                   + " with extractor ("
-                  + "'extractor.history.enabled'='true',"
+                  + "'extractor.history.enable'='true',"
                   + "'extractor.history.start-time'=%s)"
                   + " with connector ("
                   + "'connector'='iotdb-thrift-connector',"
@@ -198,13 +198,13 @@ public class IoTDBPipeExtractorIT {
       List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(0, showPipeResult.size());
 
-      // can not set 'extractor.history.enabled' and 'extractor.realtime.enabled' both to false
+      // can not set 'extractor.history.enable' and 'extractor.realtime.enable' both to false
       String sql =
           String.format(
               "create pipe p1"
                   + " with extractor ("
-                  + "'extractor.history.enabled'='false',"
-                  + "'extractor.realtime.enabled'='false')"
+                  + "'extractor.history.enable'='false',"
+                  + "'extractor.realtime.enable'='false')"
                   + " with connector ("
                   + "'connector'='iotdb-thrift-connector',"
                   + "'connector.ip'='%s',"
