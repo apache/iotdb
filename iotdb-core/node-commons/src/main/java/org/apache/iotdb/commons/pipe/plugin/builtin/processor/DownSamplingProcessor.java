@@ -17,33 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.config.plugin.env;
+package org.apache.iotdb.commons.pipe.plugin.builtin.processor;
 
-import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment;
-
-public class PipeTaskRuntimeEnvironment implements PipeRuntimeEnvironment {
-
-  private final String pipeName;
-  private final long creationTime;
-  private final int regionId;
-
-  protected PipeTaskRuntimeEnvironment(String pipeName, long creationTime, int regionId) {
-    this.pipeName = pipeName;
-    this.creationTime = creationTime;
-    this.regionId = regionId;
-  }
-
-  @Override
-  public String getPipeName() {
-    return pipeName;
-  }
-
-  @Override
-  public long getCreationTime() {
-    return creationTime;
-  }
-
-  public int getRegionId() {
-    return regionId;
-  }
-}
+/**
+ * This class is a placeholder and should not be initialized. It represents the Down Sampling
+ * processor. There is a real implementation in the server module but cannot be imported here. The
+ * pipe agent in the server module will replace this class with the real implementation when
+ * initializing the Down Sampling processor.
+ */
+public class DownSamplingProcessor extends PlaceHolderProcessor {}

@@ -35,11 +35,10 @@ import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2;
-import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.pipe.PipeEnvironmentException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
-import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -61,41 +60,37 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
-public class IoTDBPipeClusterIT {
+public class IoTDBPipeClusterIT extends AbstractPipeDualIT {
 
-  private BaseEnv senderEnv;
-  private BaseEnv receiverEnv;
-
+  @Override
   @Before
-  public void setUp() throws Exception {
-    MultiEnvFactory.createEnv(2);
-    senderEnv = MultiEnvFactory.getEnv(0);
-    receiverEnv = MultiEnvFactory.getEnv(1);
+  public void setUp() throws PipeEnvironmentException {
+    try {
+      MultiEnvFactory.createEnv(2);
+      senderEnv = MultiEnvFactory.getEnv(0);
+      receiverEnv = MultiEnvFactory.getEnv(1);
 
-    senderEnv
-        .getConfig()
-        .getCommonConfig()
-        .setAutoCreateSchemaEnabled(true)
-        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
+      senderEnv
+          .getConfig()
+          .getCommonConfig()
+          .setAutoCreateSchemaEnabled(true)
+          .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+          .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+          .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
 
-    receiverEnv
-        .getConfig()
-        .getCommonConfig()
-        .setAutoCreateSchemaEnabled(true)
-        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
+      receiverEnv
+          .getConfig()
+          .getCommonConfig()
+          .setAutoCreateSchemaEnabled(true)
+          .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+          .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+          .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
 
-    senderEnv.initClusterEnvironment(3, 3, 180);
-    receiverEnv.initClusterEnvironment(3, 3, 180);
-  }
-
-  @After
-  public void tearDown() {
-    senderEnv.cleanClusterEnvironment();
-    receiverEnv.cleanClusterEnvironment();
+      senderEnv.initClusterEnvironment(3, 3, 180);
+      receiverEnv.initClusterEnvironment(3, 3, 180);
+    } catch (Exception | Error e) {
+      throw new PipeEnvironmentException(e.getMessage(), e);
+    }
   }
 
   @Test
