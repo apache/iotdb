@@ -170,9 +170,9 @@ public class DownSamplingProcessor implements PipeProcessor {
   }
 
   /**
-   * If data comes in TsFileInsertionEvent, we will not split it into TabletInsertionEvent by
-   * default, because the data in TsFileInsertionEvent is already compressed, down-sampling will not
-   * reduce the size of data but will increase the CPU usage.
+   * If data comes in {@link TsFileInsertionEvent}, we will not split it into {@link
+   * TabletInsertionEvent} by default, because the data in {@link TsFileInsertionEvent} is already
+   * compressed, down-sampling will not reduce the size of data but will increase the CPU usage.
    */
   @Override
   public void process(TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector)

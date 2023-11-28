@@ -414,11 +414,13 @@ public class TestUtils {
   // This method will not throw failure given that a failure is encountered.
   // Instead, it return a flag to indicate the result of the execution.
   public static boolean tryExecuteNonQueriesWithRetry(BaseEnv env, List<String> sqlList) {
+    int lastIndex = 0;
     for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
       try (Connection connection = env.getConnection();
           Statement statement = connection.createStatement()) {
-        for (String sql : sqlList) {
-          statement.execute(sql);
+        for (int i = lastIndex; i < sqlList.size(); ++i) {
+          statement.execute(sqlList.get(i));
+          lastIndex = i;
         }
         return true;
       } catch (SQLException e) {
