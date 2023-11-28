@@ -420,6 +420,16 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
 
   @Override
   public void initTsBlockBuilder(List<TSDataType> dataTypes) {
-    builder = new TsBlockBuilder((int) timePageReader.getStatistics().getCount(), dataTypes);
+    if (paginationController.hasCurLimit()) {
+      builder =
+          new TsBlockBuilder(
+              (int)
+                  Math.min(
+                      paginationController.getCurLimit(),
+                      timePageReader.getStatistics().getCount()),
+              dataTypes);
+    } else {
+      builder = new TsBlockBuilder((int) timePageReader.getStatistics().getCount(), dataTypes);
+    }
   }
 }
