@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.config.constant;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
+
 public class PipeProcessorConstant {
 
   public static final String PROCESSOR_KEY = "processor";
@@ -29,6 +31,9 @@ public class PipeProcessorConstant {
   public static final String PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_KEY =
       "processor.down-sampling.split-file";
   public static final boolean PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_DEFAULT_VALUE = false;
+  public static final String PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_KEY =
+      "processor.down-sampling.memory-limit-in-bytes";
+  public static final long PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_DEFAULT_VALUE = 16 * MB;
 
   private PipeProcessorConstant() {
     throw new IllegalStateException("Utility class");

@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.pipe.processor.downsampling;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.utils.MemUtils;
@@ -39,19 +37,17 @@ import org.slf4j.LoggerFactory;
 public class PartialPathLastTimeCache implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartialPathLastTimeCache.class);
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private final PipeMemoryBlock allocatedMemoryBlock;
   // Used to adjust the memory usage of the cache
   private final AtomicDouble memoryUsageCheatFactor = new AtomicDouble(1);
+
   private final Cache<String, Long> partialPath2TimeCache;
 
-  public PartialPathLastTimeCache() {
-    final long requestedAllocateSize = (long) (CONFIG.getAllocateMemoryForPipe() * 0.8 / 5);
-
+  public PartialPathLastTimeCache(long memoryLimitInBytes) {
     allocatedMemoryBlock =
         PipeResourceManager.memory()
-            .tryAllocate(requestedAllocateSize)
+            .tryAllocate(memoryLimitInBytes)
             .setShrinkMethod(oldMemory -> Math.max(oldMemory / 2, 1))
             .setShrinkCallback(
                 (oldMemory, newMemory) -> {
@@ -62,8 +58,7 @@ public class PartialPathLastTimeCache implements AutoCloseable {
                       oldMemory,
                       newMemory);
                 })
-            .setExpandMethod(
-                oldMemory -> Math.min(Math.max(oldMemory, 1) * 2, requestedAllocateSize))
+            .setExpandMethod(oldMemory -> Math.min(Math.max(oldMemory, 1) * 2, memoryLimitInBytes))
             .setExpandCallback(
                 (oldMemory, newMemory) -> {
                   memoryUsageCheatFactor.set(
