@@ -22,6 +22,7 @@ package org.apache.iotdb.db.utils.sort;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
@@ -32,8 +33,6 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
-
-import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
 public class FileSpillerReader implements SortReader {
 
@@ -46,6 +45,9 @@ public class FileSpillerReader implements SortReader {
   private int tsBlockIndex;
   private int rowIndex;
   private boolean isEnd = false;
+
+  private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
+      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
   public FileSpillerReader(String fileName, SortBufferManager sortBufferManager, TsBlockSerde serde)
       throws IOException {

@@ -25,10 +25,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Transform between {@link org.apache.iotdb.tsfile.file.metadata.enums.TSDataType} and {@link
- * org.apache.iotdb.pipe.api.type.Type}.
- */
+/** Transform between {@link TSDataType} and {@link org.apache.iotdb.pipe.api.type.Type}. */
 public class PipeDataTypeTransformer {
 
   public static List<Type> transformToPipeDataTypeList(List<TSDataType> tsDataTypeList) {

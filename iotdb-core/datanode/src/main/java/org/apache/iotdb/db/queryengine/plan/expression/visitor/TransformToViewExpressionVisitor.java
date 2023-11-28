@@ -135,7 +135,10 @@ public class TransformToViewExpressionVisitor extends ExpressionVisitor<ViewExpr
   public ViewExpression visitLikeExpression(LikeExpression likeExpression, Void context) {
     ViewExpression child = this.process(likeExpression.getExpression(), context);
     return new LikeViewExpression(
-        child, likeExpression.getPatternString(), likeExpression.getPattern());
+        child,
+        likeExpression.getPatternString(),
+        likeExpression.getPattern(),
+        likeExpression.isNot());
   }
 
   @Override
@@ -156,7 +159,10 @@ public class TransformToViewExpressionVisitor extends ExpressionVisitor<ViewExpr
   public ViewExpression visitRegularExpression(RegularExpression regularExpression, Void context) {
     ViewExpression child = this.process(regularExpression.getExpression(), context);
     return new RegularViewExpression(
-        child, regularExpression.getPatternString(), regularExpression.getPattern());
+        child,
+        regularExpression.getPatternString(),
+        regularExpression.getPattern(),
+        regularExpression.isNot());
   }
   // endregion
 

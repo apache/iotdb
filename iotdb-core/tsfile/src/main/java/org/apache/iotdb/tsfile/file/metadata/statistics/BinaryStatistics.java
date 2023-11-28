@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.openjdk.jol.info.ClassLayout;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -31,12 +33,19 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
+import static io.airlift.slice.SizeOf.sizeOfCharArray;
+
 /** Statistics for string type. */
 public class BinaryStatistics extends Statistics<Binary> {
 
-  private Binary firstValue = new Binary("");
-  private Binary lastValue = new Binary("");
-  static final int BINARY_STATISTICS_FIXED_RAM_SIZE = 32;
+  public static final int INSTANCE_SIZE =
+      ClassLayout.parseClass(BinaryStatistics.class).instanceSize()
+          + 2 * ClassLayout.parseClass(Binary.class).instanceSize();
+
+  private static final Binary EMPTY_VALUE = new Binary("", TSFileConfig.STRING_CHARSET);
+
+  private Binary firstValue = EMPTY_VALUE;
+  private Binary lastValue = EMPTY_VALUE;
 
   @Override
   public TSDataType getType() {
@@ -47,6 +56,13 @@ public class BinaryStatistics extends Statistics<Binary> {
   @Override
   public int getStatsSize() {
     return 4 + firstValue.getValues().length + 4 + lastValue.getValues().length;
+  }
+
+  @Override
+  public long getRetainedSizeInBytes() {
+    return INSTANCE_SIZE
+        + sizeOfCharArray(firstValue.getLength())
+        + sizeOfCharArray(lastValue.getLength());
   }
 
   /**
@@ -140,11 +156,6 @@ public class BinaryStatistics extends Statistics<Binary> {
     for (int i = 0; i < batchSize; i++) {
       updateStats(values[i]);
     }
-  }
-
-  @Override
-  public long calculateRamSize() {
-    return RamUsageEstimator.sizeOf(this);
   }
 
   @Override

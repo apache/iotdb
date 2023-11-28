@@ -85,7 +85,7 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
 
       return StatementGenerator.createStatement(request);
     } catch (MetadataException e) {
-      LOGGER.warn(String.format("Generate Statement from tablet %s error.", tablet), e);
+      LOGGER.warn("Generate Statement from tablet {} error.", tablet, e);
       return null;
     }
   }
@@ -198,6 +198,17 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
       }
     }
     return sortedBitMap;
+  }
+
+  /////////////////////////////// WriteBack ///////////////////////////////
+
+  public static PipeTransferTabletRawReq toTPipeTransferRawReq(Tablet tablet, boolean isAligned) {
+    final PipeTransferTabletRawReq tabletReq = new PipeTransferTabletRawReq();
+
+    tabletReq.tablet = tablet;
+    tabletReq.isAligned = isAligned;
+
+    return tabletReq;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////

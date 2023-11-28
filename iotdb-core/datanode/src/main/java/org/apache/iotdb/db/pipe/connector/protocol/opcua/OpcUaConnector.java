@@ -161,7 +161,7 @@ public class OpcUaConnector implements PipeConnector {
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
       LOGGER.warn(
-          "IoTDBThriftSyncConnector only support "
+          "OpcUaConnector only support "
               + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
               + "Ignore {}.",
           tabletInsertionEvent);

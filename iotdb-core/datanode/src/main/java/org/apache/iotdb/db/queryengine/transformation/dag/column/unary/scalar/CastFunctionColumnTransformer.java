@@ -22,11 +22,13 @@ package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.helper.CastFunctionHelper;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 import org.apache.iotdb.tsfile.read.common.type.TypeEnum;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
 
@@ -91,7 +93,7 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
         returnType.writeBoolean(columnBuilder, value != 0);
         break;
       case BINARY:
-        returnType.writeBinary(columnBuilder, Binary.valueOf(String.valueOf(value)));
+        returnType.writeBinary(columnBuilder, BytesUtils.valueOf(String.valueOf(value)));
         break;
       default:
         throw new UnsupportedOperationException(String.format(ERROR_MSG, returnType.getTypeEnum()));
@@ -116,7 +118,7 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
         returnType.writeBoolean(columnBuilder, value != 0L);
         break;
       case BINARY:
-        returnType.writeBinary(columnBuilder, Binary.valueOf(String.valueOf(value)));
+        returnType.writeBinary(columnBuilder, BytesUtils.valueOf(String.valueOf(value)));
         break;
       default:
         throw new UnsupportedOperationException(String.format(ERROR_MSG, returnType.getTypeEnum()));
@@ -141,7 +143,7 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
         returnType.writeBoolean(columnBuilder, value != 0.0f);
         break;
       case BINARY:
-        returnType.writeBinary(columnBuilder, Binary.valueOf(String.valueOf(value)));
+        returnType.writeBinary(columnBuilder, BytesUtils.valueOf(String.valueOf(value)));
         break;
       default:
         throw new UnsupportedOperationException(String.format(ERROR_MSG, returnType.getTypeEnum()));
@@ -166,7 +168,7 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
         returnType.writeBoolean(columnBuilder, value != 0.0);
         break;
       case BINARY:
-        returnType.writeBinary(columnBuilder, Binary.valueOf(String.valueOf(value)));
+        returnType.writeBinary(columnBuilder, BytesUtils.valueOf(String.valueOf(value)));
         break;
       default:
         throw new UnsupportedOperationException(String.format(ERROR_MSG, returnType.getTypeEnum()));
@@ -191,7 +193,7 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
         returnType.writeBoolean(columnBuilder, value);
         break;
       case BINARY:
-        returnType.writeBinary(columnBuilder, Binary.valueOf(String.valueOf(value)));
+        returnType.writeBinary(columnBuilder, BytesUtils.valueOf(String.valueOf(value)));
         break;
       default:
         throw new UnsupportedOperationException(String.format(ERROR_MSG, returnType.getTypeEnum()));
@@ -199,7 +201,7 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
   }
 
   private void cast(ColumnBuilder columnBuilder, Binary value) {
-    String stringValue = value.getStringValue();
+    String stringValue = value.getStringValue(TSFileConfig.STRING_CHARSET);
     switch (returnType.getTypeEnum()) {
       case INT32:
         returnType.writeInt(columnBuilder, Integer.parseInt(stringValue));

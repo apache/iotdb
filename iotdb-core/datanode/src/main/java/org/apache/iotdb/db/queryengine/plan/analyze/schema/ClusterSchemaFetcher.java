@@ -78,22 +78,26 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   private ClusterSchemaFetcher() {}
 
   @Override
-  public ClusterSchemaTree fetchSchema(PathPatternTree patternTree, MPPQueryContext context) {
+  public ClusterSchemaTree fetchSchema(
+      PathPatternTree patternTree, boolean withTemplate, MPPQueryContext context) {
     patternTree.constructTree();
     List<PartialPath> pathPatternList = patternTree.getAllPathPatterns();
     List<PartialPath> explicitPathList = new ArrayList<>();
-    List<PartialPath> explicitDevicePatternList = new ArrayList<>();
+    Set<PartialPath> explicitDevicePatternList = new HashSet<>();
+    int explicitDevicePatternCount = 0;
     for (PartialPath pattern : pathPatternList) {
       if (!pattern.hasWildcard()) {
         explicitPathList.add(pattern);
       } else if (pattern.hasExplicitDevice()
           && templateManager.checkTemplateSetInfo(pattern) != null) {
-        explicitDevicePatternList.add(pattern);
+        explicitDevicePatternList.add(pattern.getDevicePath());
+        explicitDevicePatternCount++;
       }
     }
 
-    if (explicitPathList.size() + explicitDevicePatternList.size() < pathPatternList.size()) {
-      return clusterSchemaFetchExecutor.fetchSchemaOfFuzzyMatch(patternTree, false, context);
+    if (explicitPathList.size() + explicitDevicePatternCount < pathPatternList.size()) {
+      return clusterSchemaFetchExecutor.fetchSchemaOfFuzzyMatch(
+          patternTree, false, withTemplate, context);
     }
 
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
@@ -120,7 +124,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
       if (isAllCached && !explicitPathList.isEmpty()) {
         for (PartialPath fullPath : explicitPathList) {
-          cachedSchema = schemaCache.get(fullPath);
+          cachedSchema = schemaCache.getMatchedSchemaWithoutTemplate(fullPath);
           if (cachedSchema.isEmpty()) {
             isAllCached = false;
             break;
@@ -137,7 +141,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       }
 
       return clusterSchemaFetchExecutor.fetchSchemaOfPreciseMatchOrPreciseDeviceUsingTemplate(
-          pathPatternList, patternTree, context);
+          pathPatternList, patternTree, withTemplate, context);
 
     } finally {
       schemaCache.releaseReadLock();
@@ -146,9 +150,10 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   @Override
   public ClusterSchemaTree fetchSchemaWithTags(
-      PathPatternTree patternTree, MPPQueryContext context) {
+      PathPatternTree patternTree, boolean withTemplate, MPPQueryContext context) {
     patternTree.constructTree();
-    return clusterSchemaFetchExecutor.fetchSchemaOfFuzzyMatch(patternTree, true, context);
+    return clusterSchemaFetchExecutor.fetchSchemaOfFuzzyMatch(
+        patternTree, true, withTemplate, context);
   }
 
   @Override

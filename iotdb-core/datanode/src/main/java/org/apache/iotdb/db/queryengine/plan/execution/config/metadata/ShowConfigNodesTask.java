@@ -31,7 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTas
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
@@ -62,12 +62,12 @@ public class ShowConfigNodesTask implements IConfigTask {
       for (TConfigNodeInfo configNodeInfo : showConfigNodesResp.getConfigNodesInfoList()) {
         builder.getTimeColumnBuilder().writeLong(0L);
         builder.getColumnBuilder(0).writeInt(configNodeInfo.getConfigNodeId());
-        builder.getColumnBuilder(1).writeBinary(Binary.valueOf(configNodeInfo.getStatus()));
+        builder.getColumnBuilder(1).writeBinary(BytesUtils.valueOf(configNodeInfo.getStatus()));
         builder
             .getColumnBuilder(2)
-            .writeBinary(Binary.valueOf(configNodeInfo.getInternalAddress()));
+            .writeBinary(BytesUtils.valueOf(configNodeInfo.getInternalAddress()));
         builder.getColumnBuilder(3).writeInt(configNodeInfo.getInternalPort());
-        builder.getColumnBuilder(4).writeBinary(Binary.valueOf(configNodeInfo.getRoleType()));
+        builder.getColumnBuilder(4).writeBinary(BytesUtils.valueOf(configNodeInfo.getRoleType()));
         builder.declarePosition();
       }
     }

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
@@ -74,7 +75,7 @@ public class AlignedTVListTest {
       value[2] = 1000L;
       value[3] = 0.1f;
       value[4] = 0.2d;
-      value[5] = new Binary("Test");
+      value[5] = new Binary("Test", TSFileConfig.STRING_CHARSET);
       tvList.putAlignedValue(i, value);
     }
     tvList.sort();
@@ -193,7 +194,7 @@ public class AlignedTVListTest {
     for (int i = 0; i < 10; i++) {
       Object[] value = new Object[2];
       value[0] = i;
-      value[1] = new Binary(String.valueOf(i));
+      value[1] = new Binary(String.valueOf(i), TSFileConfig.STRING_CHARSET);
       tvList.putAlignedValue(i, value);
     }
 
@@ -212,7 +213,7 @@ public class AlignedTVListTest {
     for (int i = 0; i < 10; i++) {
       timeList.add((long) i + 10);
       ((int[]) vectorArray[0])[i] = i;
-      ((Binary[]) vectorArray[1])[i] = new Binary(String.valueOf(i));
+      ((Binary[]) vectorArray[1])[i] = new Binary(String.valueOf(i), TSFileConfig.STRING_CHARSET);
 
       if (i % 2 == 0) {
         bitMaps[1].mark(i);

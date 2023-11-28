@@ -41,6 +41,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.dataregion.DataExecutionVisitor;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.LoadFileException;
+import org.apache.iotdb.db.exception.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
@@ -98,9 +99,9 @@ import java.util.function.Consumer;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 
 public class StorageEngine implements IService {
-  private static final Logger logger = LoggerFactory.getLogger(StorageEngine.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(StorageEngine.class);
 
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
   private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();
 
@@ -109,7 +110,7 @@ public class StorageEngine implements IService {
    * subfolder under the systemDir.
    */
   private final String systemDir =
-      FilePathUtils.regularizePath(config.getSystemDir()) + "databases";
+      FilePathUtils.regularizePath(CONFIG.getSystemDir()) + "databases";
 
   /** DataRegionId -> DataRegion */
   private final ConcurrentHashMap<DataRegionId, DataRegion> dataRegionMap =
@@ -161,8 +162,8 @@ public class StorageEngine implements IService {
         break;
       }
       try {
-        TimeUnit.MILLISECONDS.sleep(config.getCheckPeriodWhenInsertBlocked());
-        if (System.currentTimeMillis() - startTime > config.getMaxWaitingTimeWhenInsertBlocked()) {
+        TimeUnit.MILLISECONDS.sleep(CONFIG.getCheckPeriodWhenInsertBlocked());
+        if (System.currentTimeMillis() - startTime > CONFIG.getMaxWaitingTimeWhenInsertBlocked()) {
           throw new WriteProcessRejectException(
               "System rejected over " + (System.currentTimeMillis() - startTime) + "ms");
         }
@@ -193,7 +194,7 @@ public class StorageEngine implements IService {
     isAllSgReady.set(allSgReady);
   }
 
-  public void recover() throws StartupException {
+  public void asyncRecover() throws StartupException {
     setAllSgReady(false);
     cachedThreadPool =
         IoTDBThreadPoolFactory.newCachedThreadPool(ThreadName.STORAGE_ENGINE_CACHED_POOL.getName());
@@ -202,12 +203,12 @@ public class StorageEngine implements IService {
     asyncRecover(futures);
 
     // wait until wal is recovered
-    if (!config.isClusterMode()
-        || !config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+    if (!CONFIG.isClusterMode()
+        || !CONFIG.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
       try {
         WALRecoverManager.getInstance().recover();
       } catch (WALException e) {
-        logger.error("Fail to recover wal.", e);
+        LOGGER.error("Fail to recover wal.", e);
       }
     }
 
@@ -243,12 +244,12 @@ public class StorageEngine implements IService {
                         dataRegionId,
                         ttlMapForRecover.getOrDefault(sgName, Long.MAX_VALUE));
               } catch (DataRegionException e) {
-                logger.error(
+                LOGGER.error(
                     "Failed to recover data region {}[{}]", sgName, dataRegionId.getId(), e);
                 return null;
               }
               dataRegionMap.put(dataRegionId, dataRegion);
-              logger.info(
+              LOGGER.info(
                   "Data regions have been recovered {}/{}",
                   readyDataRegionNum.incrementAndGet(),
                   recoverDataRegionNum);
@@ -295,12 +296,7 @@ public class StorageEngine implements IService {
       throw new StorageEngineFailureException(e);
     }
 
-    recover();
-    for (DataRegion dataRegion : dataRegionMap.values()) {
-      if (dataRegion != null) {
-        dataRegion.initCompaction();
-      }
-    }
+    asyncRecover();
 
     ttlCheckThread =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.TTL_CHECK.getName());
@@ -310,7 +306,7 @@ public class StorageEngine implements IService {
         TTL_CHECK_INTERVAL,
         TTL_CHECK_INTERVAL,
         TimeUnit.MILLISECONDS);
-    logger.info("start ttl check thread successfully.");
+    LOGGER.info("start ttl check thread successfully.");
 
     startTimedService();
   }
@@ -325,36 +321,36 @@ public class StorageEngine implements IService {
     } catch (ConcurrentModificationException e) {
       // ignore
     } catch (Exception e) {
-      logger.error("An error occurred when checking TTL", e);
+      LOGGER.error("An error occurred when checking TTL", e);
     }
   }
 
   private void startTimedService() {
     // timed flush sequence memtable
-    if (config.isEnableTimedFlushSeqMemtable()) {
+    if (CONFIG.isEnableTimedFlushSeqMemtable()) {
       seqMemtableTimedFlushCheckThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
               ThreadName.TIMED_FLUSH_SEQ_MEMTABLE.getName());
       ScheduledExecutorUtil.safelyScheduleAtFixedRate(
           seqMemtableTimedFlushCheckThread,
           this::timedFlushSeqMemTable,
-          config.getSeqMemtableFlushCheckInterval(),
-          config.getSeqMemtableFlushCheckInterval(),
+          CONFIG.getSeqMemtableFlushCheckInterval(),
+          CONFIG.getSeqMemtableFlushCheckInterval(),
           TimeUnit.MILLISECONDS);
-      logger.info("start sequence memtable timed flush check thread successfully.");
+      LOGGER.info("start sequence memtable timed flush check thread successfully.");
     }
     // timed flush unsequence memtable
-    if (config.isEnableTimedFlushUnseqMemtable()) {
+    if (CONFIG.isEnableTimedFlushUnseqMemtable()) {
       unseqMemtableTimedFlushCheckThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
               ThreadName.TIMED_FLUSH_UNSEQ_MEMTABLE.getName());
       ScheduledExecutorUtil.safelyScheduleAtFixedRate(
           unseqMemtableTimedFlushCheckThread,
           this::timedFlushUnseqMemTable,
-          config.getUnseqMemtableFlushCheckInterval(),
-          config.getUnseqMemtableFlushCheckInterval(),
+          CONFIG.getUnseqMemtableFlushCheckInterval(),
+          CONFIG.getUnseqMemtableFlushCheckInterval(),
           TimeUnit.MILLISECONDS);
-      logger.info("start unsequence memtable timed flush check thread successfully.");
+      LOGGER.info("start unsequence memtable timed flush check thread successfully.");
     }
   }
 
@@ -418,7 +414,7 @@ public class StorageEngine implements IService {
       try {
         pool.awaitTermination(30, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
-        logger.warn("{} still doesn't exit after 30s", poolName);
+        LOGGER.warn("{} still doesn't exit after 30s", poolName);
         Thread.currentThread().interrupt();
       }
     }
@@ -439,7 +435,7 @@ public class StorageEngine implements IService {
       String logicalStorageGroupName, DataRegionId dataRegionId, long ttl)
       throws DataRegionException {
     DataRegion dataRegion;
-    logger.info(
+    LOGGER.info(
         "construct a data region instance, the database is {}, Thread is {}",
         logicalStorageGroupName,
         Thread.currentThread().getId());
@@ -470,7 +466,7 @@ public class StorageEngine implements IService {
 
   /** flush command Sync asyncCloseOneProcessor all file node processors. */
   public void syncCloseAllProcessor() {
-    logger.info("Start closing all database processor");
+    LOGGER.info("Start closing all database processor");
     List<Future<Void>> tasks = new ArrayList<>();
     for (DataRegion dataRegion : dataRegionMap.values()) {
       if (dataRegion != null) {
@@ -486,7 +482,7 @@ public class StorageEngine implements IService {
   }
 
   public void forceCloseAllProcessor() throws TsFileProcessorException {
-    logger.info("Start force closing all database processor");
+    LOGGER.info("Start force closing all database processor");
     List<Future<Void>> tasks = new ArrayList<>();
     for (DataRegion dataRegion : dataRegionMap.values()) {
       if (dataRegion != null) {
@@ -652,8 +648,8 @@ public class StorageEngine implements IService {
         region.abortCompaction();
         region.syncDeleteDataFiles();
         region.deleteFolder(systemDir);
-        if (config.isClusterMode()
-            && config
+        if (CONFIG.isClusterMode()
+            && CONFIG
                 .getDataRegionConsensusProtocolClass()
                 .equals(ConsensusFactory.IOT_CONSENSUS)) {
           // delete wal
@@ -661,7 +657,7 @@ public class StorageEngine implements IService {
               .deleteWALNode(
                   region.getDatabaseName() + FILE_NAME_SEPARATOR + region.getDataRegionId());
           // delete snapshot
-          for (String dataDir : config.getLocalDataDirs()) {
+          for (String dataDir : CONFIG.getLocalDataDirs()) {
             File regionSnapshotDir =
                 new File(
                     dataDir + File.separator + IoTDBConstant.SNAPSHOT_FOLDER_NAME,
@@ -670,13 +666,13 @@ public class StorageEngine implements IService {
               try {
                 FileUtils.deleteDirectory(regionSnapshotDir);
               } catch (IOException e) {
-                logger.error("Failed to delete snapshot dir {}", regionSnapshotDir, e);
+                LOGGER.error("Failed to delete snapshot dir {}", regionSnapshotDir, e);
               }
             }
           }
         }
       } catch (Exception e) {
-        logger.error(
+        LOGGER.error(
             "Error occurs when deleting data region {}-{}",
             region.getDatabaseName(),
             region.getDataRegionId(),
@@ -772,13 +768,19 @@ public class StorageEngine implements IService {
       DataRegionId dataRegionId, LoadTsFilePieceNode pieceNode, String uuid) {
     TSStatus status = new TSStatus();
 
+    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+      status.setCode(TSStatusCode.SYSTEM_READ_ONLY.getStatusCode());
+      status.setMessage(LoadReadOnlyException.MESSAGE);
+      return status;
+    }
+
     try {
       getLoadTsFileManager().writeToDataRegion(getDataRegion(dataRegionId), pieceNode, uuid);
     } catch (IOException e) {
-      logger.error(
-          String.format(
-              "IO error when writing piece node of TsFile %s to DataRegion %s.",
-              pieceNode.getTsFile(), dataRegionId),
+      LOGGER.error(
+          "IO error when writing piece node of TsFile {} to DataRegion {}.",
+          pieceNode.getTsFile(),
+          dataRegionId,
           e);
       status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
@@ -821,7 +823,7 @@ public class StorageEngine implements IService {
           status.setMessage(String.format("Wrong load command %s.", loadCommand));
       }
     } catch (IOException | LoadFileException e) {
-      logger.error(String.format("Execute load command %s error.", loadCommand), e);
+      LOGGER.error("Execute load command {} error.", loadCommand, e);
       status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
     }
@@ -831,18 +833,18 @@ public class StorageEngine implements IService {
 
   /** reboot timed flush sequence/unsequence memetable thread */
   public void rebootTimedService() throws ShutdownException {
-    logger.info("Start rebooting all timed service.");
+    LOGGER.info("Start rebooting all timed service.");
 
     // exclude ttl check thread
     stopTimedServiceAndThrow(seqMemtableTimedFlushCheckThread, "SeqMemtableTimedFlushCheckThread");
     stopTimedServiceAndThrow(
         unseqMemtableTimedFlushCheckThread, "UnseqMemtableTimedFlushCheckThread");
 
-    logger.info("Stop all timed service successfully, and now restart them.");
+    LOGGER.info("Stop all timed service successfully, and now restart them.");
 
     startTimedService();
 
-    logger.info("Reboot all timed service successfully");
+    LOGGER.info("Reboot all timed service successfully");
   }
 
   private void stopTimedServiceAndThrow(ScheduledExecutorService pool, String poolName)
@@ -852,7 +854,7 @@ public class StorageEngine implements IService {
       try {
         pool.awaitTermination(30, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
-        logger.warn("{} still doesn't exit after 30s", poolName);
+        LOGGER.warn("{} still doesn't exit after 30s", poolName);
         throw new ShutdownException(e);
       }
     }

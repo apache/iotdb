@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.recover;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InsertionCrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
@@ -59,12 +60,15 @@ public class CompactionRecoverManager {
   }
 
   public void recoverInnerSpaceCompaction(boolean isSequence) {
-    logger.info("recovering inner compaction");
+    logger.info(
+        "{} [Compaction][Recover] recovering {} inner compaction",
+        logicalStorageGroupName,
+        isSequence ? "sequence" : "unsequence");
     recoverCompaction(true, isSequence);
   }
 
   public void recoverCrossSpaceCompaction() {
-    logger.info("recovering cross compaction");
+    logger.info("{} [Compaction][Recover] recovering cross compaction", logicalStorageGroupName);
     recoverCompaction(false, true);
   }
 
@@ -79,6 +83,10 @@ public class CompactionRecoverManager {
     for (String dir : dirs) {
       File storageGroupDir =
           new File(dir + File.separator + logicalStorageGroupName + File.separator + dataRegionId);
+      logger.info(
+          "{} [Compaction][Recover] recover compaction in data region dir {}",
+          logicalStorageGroupName,
+          storageGroupDir.getAbsolutePath());
       if (!storageGroupDir.exists()) {
         return;
       }
@@ -91,6 +99,10 @@ public class CompactionRecoverManager {
             || !Pattern.compile("\\d*").matcher(timePartitionDir.getName()).matches()) {
           continue;
         }
+        logger.info(
+            "{} [Compaction][Recover] recover compaction in time partition dir {}",
+            logicalStorageGroupName,
+            timePartitionDir.getAbsolutePath());
         // recover temporary files generated during compacted
         recoverCompaction(isInnerSpace, timePartitionDir);
 
@@ -129,10 +141,20 @@ public class CompactionRecoverManager {
     File[] compactionLogs =
         CompactionLogger.findCompactionLogs(isInnerSpace, timePartitionDir.getPath());
     for (File compactionLog : compactionLogs) {
-      logger.info("Calling compaction recover task.");
-      new CompactionRecoverTask(
-              logicalStorageGroupName, dataRegionId, tsFileManager, compactionLog, isInnerSpace)
-          .doCompaction();
+      logger.info(
+          "{} [Compaction][Recover] calling compaction recover task.", logicalStorageGroupName);
+      if (!isInnerSpace
+          && compactionLog
+              .getAbsolutePath()
+              .endsWith(CompactionLogger.INSERTION_COMPACTION_LOG_NAME_SUFFIX)) {
+        new InsertionCrossSpaceCompactionTask(
+                logicalStorageGroupName, dataRegionId, tsFileManager, compactionLog)
+            .recover();
+      } else {
+        new CompactionRecoverTask(
+                logicalStorageGroupName, dataRegionId, tsFileManager, compactionLog, isInnerSpace)
+            .doCompaction();
+      }
     }
   }
 }

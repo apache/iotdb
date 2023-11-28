@@ -40,11 +40,6 @@ public class LogicNotExpression extends UnaryExpression {
   }
 
   @Override
-  protected Expression constructExpression(Expression childExpression) {
-    return new LogicNotExpression(childExpression);
-  }
-
-  @Override
   public String getExpressionStringInternal() {
     return expression instanceof FunctionExpression || expression instanceof LeafOperand
         ? "!" + expression.getExpressionString()

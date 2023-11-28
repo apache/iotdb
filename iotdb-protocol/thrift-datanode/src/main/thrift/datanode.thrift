@@ -240,29 +240,38 @@ struct TInvalidatePermissionCacheReq {
   2: required string roleName
 }
 
-struct THeartbeatReq {
+struct TDataNodeHeartbeatReq {
   1: required i64 heartbeatTimestamp
   2: required bool needJudgeLeader
   3: required bool needSamplingLoad
-  4: required i64 schemaQuotaCount
+  4: required i64 timeSeriesQuotaRemain
   5: optional list<i32> schemaRegionIds
   6: optional list<i32> dataRegionIds
   7: optional map<string, common.TSpaceQuota> spaceQuotaUsage
   8: optional bool needPipeMetaList
+  9: optional i64 deviceQuotaRemain
+  10: optional TDataNodeActivation activation
 }
 
-struct THeartbeatResp {
+struct TDataNodeActivation {
+  1: required bool activated
+  2: required i64 deviceNumRemain
+  3: required i64 sensorNumRemain
+}
+
+struct TDataNodeHeartbeatResp {
   1: required i64 heartbeatTimestamp
   2: required string status
   3: optional string statusReason
   4: optional map<common.TConsensusGroupId, bool> judgedLeaders
   5: optional TLoadSample loadSample
-  6: optional map<i32, i64> regionDeviceNumMap
-  7: optional map<i32, i64> regionTimeSeriesNumMap
+  6: optional map<i32, i64> regionSeriesUsageMap
+  7: optional map<i32, i64> regionDeviceUsageMap
   8: optional map<i32, i64> regionDisk
-  // TODO: schemaLimitLevel can be removed if confignode support hot load configuration
+  // TODO: schemaLimitLevel is not used from 1.3.0, keep it for compatibility
   9: optional TSchemaLimitLevel schemaLimitLevel
   10: optional list<binary> pipeMetaList
+  11: optional string activateStatus
 }
 
 struct TPipeHeartbeatReq {
@@ -560,9 +569,9 @@ service IDataNodeRPCService {
   /**
   * ConfigNode will ask DataNode for heartbeat in every few seconds.
   *
-  * @param ConfigNode will send the latest config_node_list and load balancing policies in THeartbeatReq
+  * @param ConfigNode will send the latest config_node_list and load balancing policies in TDataNodeHeartbeatReq
   **/
-  THeartbeatResp getDataNodeHeartBeat(THeartbeatReq req)
+  TDataNodeHeartbeatResp getDataNodeHeartBeat(TDataNodeHeartbeatReq req)
 
   /**
   * ConfigNode will ask DataNode to update region cache

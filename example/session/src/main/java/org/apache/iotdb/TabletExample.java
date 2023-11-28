@@ -21,7 +21,7 @@ package org.apache.iotdb;
 
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -101,7 +101,7 @@ public class TabletExample {
               ret.get(measurement).add(Double.parseDouble(items[idx]));
               break;
             case TEXT:
-              ret.get(measurement).add(Binary.valueOf(items[idx]));
+              ret.get(measurement).add(BytesUtils.valueOf(items[idx]));
               break;
             case VECTOR:
               throw new IOException(String.format("data type %s is not yet.", TSDataType.VECTOR));

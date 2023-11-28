@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -43,7 +44,7 @@ import java.util.Random;
 import java.util.TreeSet;
 
 public class TsFileGenerator implements AutoCloseable {
-  private static final Logger logger = LoggerFactory.getLogger(TsFileGenerator.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileGenerator.class);
 
   private final File tsFile;
   private final TsFileWriter writer;
@@ -69,7 +70,7 @@ public class TsFileGenerator implements AutoCloseable {
 
   public void registerTimeseries(String path, List<MeasurementSchema> measurementSchemaList) {
     if (device2MeasurementSchema.containsKey(path)) {
-      logger.error("Register same device {}.", path);
+      LOGGER.error("Register same device {}.", path);
       return;
     }
     writer.registerTimeseries(new Path(path), measurementSchemaList);
@@ -80,7 +81,7 @@ public class TsFileGenerator implements AutoCloseable {
   public void registerAlignedTimeseries(String path, List<MeasurementSchema> measurementSchemaList)
       throws WriteProcessException {
     if (device2MeasurementSchema.containsKey(path)) {
-      logger.error("Register same device {}.", path);
+      LOGGER.error("Register same device {}.", path);
       return;
     }
     writer.registerAlignedTimeseries(new Path(path), measurementSchemaList);
@@ -126,7 +127,7 @@ public class TsFileGenerator implements AutoCloseable {
       tablet.reset();
     }
 
-    logger.info("Write {} points into device {}", number, device);
+    LOGGER.info("Write {} points into device {}", number, device);
   }
 
   public void generateData(
@@ -168,7 +169,7 @@ public class TsFileGenerator implements AutoCloseable {
       tablet.reset();
     }
 
-    logger.info(String.format("Write %d points into device %s", number, device));
+    LOGGER.info("Write {} points into device {}", number, device);
   }
 
   private void generateDataPoint(Object obj, int row, MeasurementSchema schema) {
@@ -192,7 +193,7 @@ public class TsFileGenerator implements AutoCloseable {
         generateTEXT(obj, row);
         break;
       default:
-        logger.error(String.format("Wrong data type %s.", schema.getType()));
+        LOGGER.error("Wrong data type {}.", schema.getType());
     }
   }
 
@@ -223,7 +224,8 @@ public class TsFileGenerator implements AutoCloseable {
 
   private void generateTEXT(Object obj, int row) {
     Binary[] binaries = (Binary[]) obj;
-    binaries[row] = new Binary(String.format("test point %d", random.nextInt()));
+    binaries[row] =
+        new Binary(String.format("test point %d", random.nextInt()), TSFileConfig.STRING_CHARSET);
   }
 
   public void generateDeletion(String device, int number) throws IOException, IllegalPathException {
@@ -255,7 +257,7 @@ public class TsFileGenerator implements AutoCloseable {
         for (long j = startTime; j <= endTime; j++) {
           timeSet.remove(j);
         }
-        logger.info("Delete {} - {} timestamp of device {}", startTime, endTime, device);
+        LOGGER.info("Delete {} - {} timestamp of device {}", startTime, endTime, device);
       }
     }
   }

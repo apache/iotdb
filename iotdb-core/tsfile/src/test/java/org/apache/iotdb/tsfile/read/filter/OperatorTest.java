@@ -18,8 +18,11 @@
  */
 package org.apache.iotdb.tsfile.read.filter;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.ValueFilter;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.junit.Assert;
@@ -57,9 +60,11 @@ public class OperatorTest {
     Assert.assertFalse(valueGt.satisfy(TESTED_TIMESTAMP, 0.01f));
     Assert.assertFalse(valueGt.satisfy(TESTED_TIMESTAMP, -0.01f));
 
-    Filter binaryFilter = ValueFilter.gt(new Binary("test1"));
-    Assert.assertTrue(binaryFilter.satisfy(TESTED_TIMESTAMP, new Binary("test2")));
-    Assert.assertFalse(binaryFilter.satisfy(TESTED_TIMESTAMP, new Binary("test0")));
+    Filter binaryFilter = ValueFilter.gt(new Binary("test1", TSFileConfig.STRING_CHARSET));
+    Assert.assertTrue(
+        binaryFilter.satisfy(TESTED_TIMESTAMP, new Binary("test2", TSFileConfig.STRING_CHARSET)));
+    Assert.assertFalse(
+        binaryFilter.satisfy(TESTED_TIMESTAMP, new Binary("test0", TSFileConfig.STRING_CHARSET)));
   }
 
   @Test

@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
-import org.apache.iotdb.commons.exception.runtime.UnSupportedDataTypeException;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.utils.datastructure.MergeSortHeap;
 import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -290,7 +290,9 @@ public class TopKOperator implements ProcessOperator {
 
     tsBlockBuilder.reset();
     ColumnBuilder[] valueColumnBuilders = tsBlockBuilder.getValueColumnBuilders();
-    for (int i = resultReturnSize; i < topKResult.length; i++) {
+    for (int i = resultReturnSize, size = (topKResult == null ? 0 : topKResult.length);
+        i < size;
+        i++) {
       MergeSortKey mergeSortKey = topKResult[i];
       TsBlock targetBlock = mergeSortKey.tsBlock;
       tsBlockBuilder

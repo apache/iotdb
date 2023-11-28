@@ -20,22 +20,27 @@ package org.apache.iotdb.tsfile.read.filter;
 
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.ValueFilter;
+import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.TimeZone;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 
 public class FilterSerializeTest {
 
   @Test
-  public void testValueFilter() {
+  public void testValueFilter() throws IOException {
     Filter[] filters =
         new Filter[] {
           ValueFilter.eq(1),
@@ -61,17 +66,16 @@ public class FilterSerializeTest {
   }
 
   @Test
-  public void testTimeFilter() {
+  public void testTimeFilter() throws IOException {
     Filter[] filters =
         new Filter[] {
           TimeFilter.eq(1),
+          TimeFilter.notEq(7),
           TimeFilter.gt(2),
           TimeFilter.gtEq(3),
           TimeFilter.lt(4),
           TimeFilter.ltEq(5),
-          FilterFactory.not(ValueFilter.eq(6)),
-          TimeFilter.notEq(7),
-          TimeFilter.notEq(7),
+          FilterFactory.not(TimeFilter.eq(6)),
           TimeFilter.in(new HashSet<>(Arrays.asList(1L, 2L))),
           TimeFilter.notIn(new HashSet<>(Arrays.asList(3L, 4L))),
           TimeFilter.between(1, 100),
@@ -83,7 +87,7 @@ public class FilterSerializeTest {
   }
 
   @Test
-  public void testBinaryFilter() {
+  public void testBinaryFilter() throws IOException {
     Filter[] filters =
         new Filter[] {
           FilterFactory.and(TimeFilter.eq(1), ValueFilter.eq(1)),
@@ -95,10 +99,10 @@ public class FilterSerializeTest {
   }
 
   @Test
-  public void testGroupByFilter() {
+  public void testGroupByFilter() throws IOException {
     Filter[] filters =
         new Filter[] {
-          new GroupByFilter(1, 2, 3, 4), new GroupByFilter(4, 3, 2, 1),
+          TimeFilter.groupBy(1, 2, 3, 4), TimeFilter.groupBy(4, 3, 2, 1),
         };
     for (Filter filter : filters) {
       validateSerialization(filter);
@@ -106,24 +110,36 @@ public class FilterSerializeTest {
   }
 
   @Test
-  public void testGroupByMonthFilter() {
+  public void testGroupByMonthFilter() throws IOException {
     Filter[] filters =
         new Filter[] {
-          new GroupByMonthFilter(1, 2, 3, 4, true, false, TimeZone.getTimeZone("Asia/Shanghai")),
-          new GroupByMonthFilter(4, 3, 2, 1, false, true, TimeZone.getTimeZone("Atlantic/Faeroe")),
+          TimeFilter.groupByMonth(
+              3,
+              4,
+              new TimeDuration(0, 1),
+              new TimeDuration(0, 2),
+              TimeZone.getTimeZone("Asia/Shanghai"),
+              TimeUnit.MILLISECONDS),
+          TimeFilter.groupByMonth(
+              2,
+              1,
+              new TimeDuration(0, 4),
+              new TimeDuration(0, 3),
+              TimeZone.getTimeZone("Atlantic/Faeroe"),
+              TimeUnit.MILLISECONDS),
         };
     for (Filter filter : filters) {
       validateSerialization(filter);
     }
   }
 
-  private void validateSerialization(Filter filter) {
+  private void validateSerialization(Filter filter) throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
     filter.serialize(dataOutputStream);
 
     ByteBuffer buffer = ByteBuffer.wrap(outputStream.toByteArray());
-    Filter serialized = FilterFactory.deserialize(buffer);
+    Filter serialized = Filter.deserialize(buffer);
     assertEquals(filter, serialized);
   }
 }

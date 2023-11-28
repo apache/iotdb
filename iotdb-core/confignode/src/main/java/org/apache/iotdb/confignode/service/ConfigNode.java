@@ -41,6 +41,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.pipe.metric.PipeConfigNodeMetrics;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
@@ -92,7 +93,7 @@ public class ConfigNode implements ConfigNodeMBean {
           ServiceType.CONFIG_NODE.getJmxName());
   private final RegisterManager registerManager = new RegisterManager();
 
-  private ConfigManager configManager;
+  protected ConfigManager configManager;
 
   private ConfigNode() {
     // We do not init anything here, so that we can re-initialize the instance in IT.
@@ -116,7 +117,7 @@ public class ConfigNode implements ConfigNodeMBean {
     try {
       processPid();
       // Add shutdown hook
-      Runtime.getRuntime().addShutdownHook(new ConfigNodeShutdownHook());
+      addShutDownHook();
       // Set up internal services
       setUpInternalServices();
       // Init ConfigManager
@@ -267,6 +268,8 @@ public class ConfigNode implements ConfigNodeMBean {
     MetricService.getInstance().addMetricSet(ThreadPoolMetrics.getInstance());
     initCpuMetrics();
     initSystemMetrics();
+    MetricService.getInstance()
+        .addMetricSet(new PipeConfigNodeMetrics(configManager.getPipeManager()));
   }
 
   private void initSystemMetrics() {
@@ -291,7 +294,7 @@ public class ConfigNode implements ConfigNodeMBean {
                 x -> ThreadName.getThreadPoolTheThreadBelongs(x).name()));
   }
 
-  private void initConfigManager() {
+  void initConfigManager() {
     try {
       configManager = new ConfigManager();
     } catch (IOException e) {
@@ -418,6 +421,10 @@ public class ConfigNode implements ConfigNodeMBean {
   public void addMetrics() {
     // Add some Metrics for configManager
     configManager.addMetrics();
+  }
+
+  protected void addShutDownHook() {
+    Runtime.getRuntime().addShutdownHook(new ConfigNodeShutdownHook());
   }
 
   @TestOnly

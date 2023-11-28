@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata;
 
+import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
@@ -30,6 +31,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
@@ -42,10 +44,10 @@ import java.util.stream.Collectors;
 
 public class ShowPipePluginsTask implements IConfigTask {
 
-  private static final Binary PIPE_PLUGIN_TYPE_BUILTIN = Binary.valueOf("Builtin");
-  private static final Binary PIPE_PLUGIN_TYPE_EXTERNAL = Binary.valueOf("External");
+  private static final Binary PIPE_PLUGIN_TYPE_BUILTIN = BytesUtils.valueOf("Builtin");
+  private static final Binary PIPE_PLUGIN_TYPE_EXTERNAL = BytesUtils.valueOf("External");
 
-  private static final Binary PIPE_JAR_NAME_EMPTY_FIELD = Binary.valueOf("");
+  private static final Binary PIPE_JAR_NAME_EMPTY_FIELD = BytesUtils.valueOf("");
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
@@ -69,19 +71,24 @@ public class ShowPipePluginsTask implements IConfigTask {
             .collect(Collectors.toList());
     final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     for (final PipePluginMeta pipePluginMeta : pipePluginMetaList) {
+      // some pipe plugins are not for user's direct use
+      if (BuiltinPipePlugin.SHOW_PIPE_PLUGINS_BLACKLIST.contains(pipePluginMeta.getPluginName())) {
+        continue;
+      }
+
       builder.getTimeColumnBuilder().writeLong(0L);
-      builder.getColumnBuilder(0).writeBinary(Binary.valueOf(pipePluginMeta.getPluginName()));
+      builder.getColumnBuilder(0).writeBinary(BytesUtils.valueOf(pipePluginMeta.getPluginName()));
       builder
           .getColumnBuilder(1)
           .writeBinary(
               pipePluginMeta.isBuiltin() ? PIPE_PLUGIN_TYPE_BUILTIN : PIPE_PLUGIN_TYPE_EXTERNAL);
-      builder.getColumnBuilder(2).writeBinary(Binary.valueOf(pipePluginMeta.getClassName()));
+      builder.getColumnBuilder(2).writeBinary(BytesUtils.valueOf(pipePluginMeta.getClassName()));
       builder
           .getColumnBuilder(3)
           .writeBinary(
               pipePluginMeta.getJarName() == null
                   ? PIPE_JAR_NAME_EMPTY_FIELD
-                  : Binary.valueOf(pipePluginMeta.getJarName()));
+                  : BytesUtils.valueOf(pipePluginMeta.getJarName()));
       builder.declarePosition();
     }
 

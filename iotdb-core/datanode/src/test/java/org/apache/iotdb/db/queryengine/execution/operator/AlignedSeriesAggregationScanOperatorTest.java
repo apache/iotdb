@@ -42,12 +42,14 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOpt
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilter;
+import org.apache.iotdb.tsfile.utils.TimeDuration;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -66,7 +68,6 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationOperatorTest.TEST_TIME_SLICE;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.initTimeRangeIterator;
-import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -74,6 +75,9 @@ public class AlignedSeriesAggregationScanOperatorTest {
 
   private static final String SERIES_AGGREGATION_SCAN_OPERATOR_TEST_SG =
       "root.AlignedSeriesAggregationScanOperatorTest";
+
+  private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
+      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
   private static final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
 
   private static final List<TsFileResource> seqResources = new ArrayList<>();
@@ -340,7 +344,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
 
   @Test
   public void testAggregationWithTimeFilter3() throws Exception {
-    Filter timeFilter = new AndFilter(TimeFilter.gtEq(100), TimeFilter.ltEq(399));
+    Filter timeFilter = FilterFactory.and(TimeFilter.gtEq(100), TimeFilter.ltEq(399));
     List<Aggregator> aggregators = new ArrayList<>();
     for (int i = 0; i < measurementSchemas.size(); i++) {
       TSDataType dataType = measurementSchemas.get(i).getType();
@@ -395,7 +399,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
               AggregationStep.SINGLE,
               inputLocations));
     }
-    Filter timeFilter = new AndFilter(TimeFilter.gtEq(100), TimeFilter.ltEq(399));
+    Filter timeFilter = FilterFactory.and(TimeFilter.gtEq(100), TimeFilter.ltEq(399));
     AlignedSeriesAggregationScanOperator seriesAggregationScanOperator =
         initAlignedSeriesAggregationScanOperator(aggregators, timeFilter, true, null);
     int count = 0;
@@ -416,7 +420,8 @@ public class AlignedSeriesAggregationScanOperatorTest {
   @Test
   public void testGroupByWithoutGlobalTimeFilter() throws Exception {
     int[] result = new int[] {100, 100, 100, 99};
-    GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 399, 100, 100, true);
+    GroupByTimeParameter groupByTimeParameter =
+        new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
     List<Aggregator> aggregators = new ArrayList<>();
     for (int i = 0; i < measurementSchemas.size(); i++) {
       TSDataType dataType = measurementSchemas.get(i).getType();
@@ -454,8 +459,9 @@ public class AlignedSeriesAggregationScanOperatorTest {
   @Test
   public void testGroupByWithGlobalTimeFilter() throws Exception {
     int[] result = new int[] {0, 80, 100, 80};
-    Filter timeFilter = new AndFilter(TimeFilter.gtEq(120), TimeFilter.ltEq(379));
-    GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 399, 100, 100, true);
+    Filter timeFilter = FilterFactory.and(TimeFilter.gtEq(120), TimeFilter.ltEq(379));
+    GroupByTimeParameter groupByTimeParameter =
+        new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
     List<Aggregator> aggregators = new ArrayList<>();
     for (int i = 0; i < measurementSchemas.size(); i++) {
       TSDataType dataType = measurementSchemas.get(i).getType();
@@ -504,7 +510,8 @@ public class AlignedSeriesAggregationScanOperatorTest {
     aggregationTypes.add(TAggregationType.LAST_VALUE);
     aggregationTypes.add(TAggregationType.MAX_VALUE);
     aggregationTypes.add(TAggregationType.MIN_VALUE);
-    GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 399, 100, 100, true);
+    GroupByTimeParameter groupByTimeParameter =
+        new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
     List<Aggregator> aggregators = new ArrayList<>();
     List<InputLocation[]> inputLocations =
         Collections.singletonList(new InputLocation[] {new InputLocation(0, 1)});
@@ -547,7 +554,8 @@ public class AlignedSeriesAggregationScanOperatorTest {
     aggregationTypes.add(TAggregationType.LAST_VALUE);
     aggregationTypes.add(TAggregationType.MAX_VALUE);
     aggregationTypes.add(TAggregationType.MIN_VALUE);
-    GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 399, 100, 100, true);
+    GroupByTimeParameter groupByTimeParameter =
+        new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
     List<Aggregator> aggregators = new ArrayList<>();
     List<InputLocation[]> inputLocations =
         Collections.singletonList(new InputLocation[] {new InputLocation(0, 1)});
@@ -579,7 +587,8 @@ public class AlignedSeriesAggregationScanOperatorTest {
   @Test
   public void testGroupBySlidingTimeWindow() throws Exception {
     int[] result = new int[] {50, 50, 50, 50, 50, 50, 50, 49};
-    GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 399, 100, 50, true);
+    GroupByTimeParameter groupByTimeParameter =
+        new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 50), true);
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
     List<Aggregator> aggregators = new ArrayList<>();
     List<InputLocation[]> inputLocations =
@@ -610,7 +619,8 @@ public class AlignedSeriesAggregationScanOperatorTest {
   public void testGroupBySlidingTimeWindow2() throws Exception {
     int[] timeColumn = new int[] {0, 20, 30, 50, 60, 80, 90, 110, 120, 140};
     int[] result = new int[] {20, 10, 20, 10, 20, 10, 20, 10, 20, 9};
-    GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 149, 50, 30, true);
+    GroupByTimeParameter groupByTimeParameter =
+        new GroupByTimeParameter(0, 149, new TimeDuration(0, 50), new TimeDuration(0, 30), true);
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
     List<Aggregator> aggregators = new ArrayList<>();
     List<InputLocation[]> inputLocations =
@@ -652,7 +662,8 @@ public class AlignedSeriesAggregationScanOperatorTest {
     aggregationTypes.add(TAggregationType.LAST_VALUE);
     aggregationTypes.add(TAggregationType.MAX_VALUE);
     aggregationTypes.add(TAggregationType.MIN_VALUE);
-    GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 149, 50, 30, true);
+    GroupByTimeParameter groupByTimeParameter =
+        new GroupByTimeParameter(0, 149, new TimeDuration(0, 50), new TimeDuration(0, 30), true);
     List<Aggregator> aggregators = new ArrayList<>();
     List<InputLocation[]> inputLocations =
         Collections.singletonList(new InputLocation[] {new InputLocation(0, 1)});

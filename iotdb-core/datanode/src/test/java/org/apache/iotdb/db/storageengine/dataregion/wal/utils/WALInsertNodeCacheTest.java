@@ -30,6 +30,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -160,8 +161,9 @@ public class WALInsertNodeCacheTest {
   @Test
   public void testBatchLoad() throws Exception {
     // Enable batch load
-    boolean oldIsBatchLoadEnabled = WALInsertNodeCache.getInstance(1).isBatchLoadEnabled();
-    WALInsertNodeCache.getInstance(1).setIsBatchLoadEnabled(true);
+    boolean oldIsBatchLoadEnabled = cache.isBatchLoadEnabled();
+    cache.setIsBatchLoadEnabled(true);
+    WALInsertNodeCache localC = cache;
     try {
       // write memTable1
       IMemTable memTable1 = new PrimitiveMemTable(databasePath, dataRegionId);
@@ -185,11 +187,11 @@ public class WALInsertNodeCacheTest {
       walNode.rollWALFile();
       Awaitility.await().until(() -> walNode.isAllWALEntriesConsumed() && position3.canRead());
       // check batch load memTable1
+      cache.clear();
       cache.addMemTable(memTable1.getMemTableId());
       assertEquals(node1, cache.getInsertNode(position1));
       assertTrue(cache.contains(position1));
-      assertEquals(
-          WALInsertNodeCache.getInstance(1).isBatchLoadEnabled(), cache.contains(position2));
+      assertTrue(cache.contains(position2));
       assertFalse(cache.contains(position3));
       // check batch load none
       cache.removeMemTable(memTable1.getMemTableId());
@@ -220,7 +222,7 @@ public class WALInsertNodeCacheTest {
     columns[2] = 10000L;
     columns[3] = 100;
     columns[4] = false;
-    columns[5] = new Binary("hh" + 0);
+    columns[5] = new Binary("hh" + 0, TSFileConfig.STRING_CHARSET);
 
     InsertRowNode node =
         new InsertRowNode(

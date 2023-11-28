@@ -24,10 +24,7 @@ import org.apache.iotdb.udf.api.type.Type;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Transform between {@link org.apache.iotdb.tsfile.file.metadata.enums.TSDataType} and {@link
- * org.apache.iotdb.udf.api.type.Type}
- */
+/** Transform between {@link TSDataType} and {@link org.apache.iotdb.udf.api.type.Type} */
 public class UDFDataTypeTransformer {
 
   private UDFDataTypeTransformer() {}

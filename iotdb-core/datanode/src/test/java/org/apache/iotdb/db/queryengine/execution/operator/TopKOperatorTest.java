@@ -104,11 +104,14 @@ public class TopKOperatorTest {
 
   private int dataNodeId;
 
+  private int maxTsBlockLineNumber;
+
   private final int limitValue = 100;
 
   @Before
   public void setUp() throws MetadataException, IOException, WriteProcessException {
     dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    maxTsBlockLineNumber = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
     IoTDBDescriptor.getInstance().getConfig().setDataNodeId(0);
     TSFileDescriptor.getInstance().getConfig().setMaxTsBlockLineNumber(3);
     SeriesReaderTestUtil.setUp(
@@ -119,6 +122,7 @@ public class TopKOperatorTest {
   public void tearDown() throws IOException {
     SeriesReaderTestUtil.tearDown(seqResources, unSeqResources);
     IoTDBDescriptor.getInstance().getConfig().setDataNodeId(dataNodeId);
+    TSFileDescriptor.getInstance().getConfig().setMaxTsBlockLineNumber(maxTsBlockLineNumber);
   }
 
   long getValue(long expectedTime) {

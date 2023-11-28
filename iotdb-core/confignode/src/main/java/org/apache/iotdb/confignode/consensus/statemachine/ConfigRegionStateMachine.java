@@ -59,8 +59,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /** StateMachine for ConfigRegion. */
-public class ConfigRegionStateMachine
-    implements IStateMachine, IStateMachine.EventApi, IStateMachine.RetryPolicy {
+public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.EventApi {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigRegionStateMachine.class);
 

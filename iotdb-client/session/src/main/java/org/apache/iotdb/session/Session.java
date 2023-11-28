@@ -387,11 +387,12 @@ public class Session implements ISession {
   public Session(Builder builder) {
     if (builder.nodeUrls != null && builder.nodeUrls.size() > 0) {
       this.nodeUrls = builder.nodeUrls;
-      this.enableRedirection = true;
+      this.enableQueryRedirection = true;
     } else {
       this.defaultEndPoint = new TEndPoint(builder.host, builder.rpcPort);
-      this.enableRedirection = builder.enableRedirection;
+      this.enableQueryRedirection = builder.enableRedirection;
     }
+    this.enableRedirection = builder.enableRedirection;
     this.username = builder.username;
     this.password = builder.pw;
     this.fetchSize = builder.fetchSize;

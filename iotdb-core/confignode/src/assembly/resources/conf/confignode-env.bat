@@ -99,27 +99,32 @@ set /a off_heap_memory_size_in_mb=%memory_size_in_mb%-%on_heap_memory_size_in_mb
 set ON_HEAP_MEMORY=%on_heap_memory_size_in_mb%M
 set OFF_HEAP_MEMORY=%off_heap_memory_size_in_mb%M
 
-@REM if the heap size is larger than 16GB, we will forbid writing the heap dump file
-if %off_heap_memory_size_in_mb% GTR 16384 (
-	set IOTDB_ALLOW_HEAP_DUMP="false"
-) else set IOTDB_ALLOW_HEAP_DUMP="true"
+set IOTDB_ALLOW_HEAP_DUMP="true"
 
 @REM on heap memory size
 @REM set ON_HEAP_MEMORY=2G
 @REM off heap memory size
 @REM set OFF_HEAP_MEMORY=512M
 
-@REM threads number that may use direct memory, including query threads(8) + merge threads(4) + space left for system(4)
-set threads_number=16
-@REM the size of buffer cache pool(IOV_MAX) depends on operating system
-set temp_buffer_pool_size=1024
+if "%OFF_HEAP_MEMORY:~-1%"=="M" (
+    set /a off_heap_memory_size_in_mb=%OFF_HEAP_MEMORY:~0,-1%
+  ) else if "%OFF_HEAP_MEMORY:~-1%"=="G" (
+    set /a off_heap_memory_size_in_mb=%OFF_HEAP_MEMORY:~0,-1%*1024
+  ) 
+
+@REM threads number of io
+set IO_THREADS_NUMBER=100
 @REM Max cached buffer size, Note: unit can only be B!
-@REM which equals DIRECT_MEMORY_SIZE / threads_number / temp_buffer_pool_size
-set MAX_CACHED_BUFFER_SIZE=%on_heap_memory_size_in_mb%*1024*1024/%threads_number%/%temp_buffer_pool_size%
+@REM which equals OFF_HEAP_MEMORY / IO_THREADS_NUMBER
+set /a MAX_CACHED_BUFFER_SIZE=%off_heap_memory_size_in_mb%/%IO_THREADS_NUMBER%*1024*1024
 
 set CONFIGNODE_HEAP_OPTS=-Xmx%ON_HEAP_MEMORY% -Xms%ON_HEAP_MEMORY%
 set CONFIGNODE_HEAP_OPTS=%CONFIGNODE_HEAP_OPTS% -XX:MaxDirectMemorySize=%OFF_HEAP_MEMORY%
 set CONFIGNODE_HEAP_OPTS=%CONFIGNODE_HEAP_OPTS% -Djdk.nio.maxCachedBufferSize=%MAX_CACHED_BUFFER_SIZE%
+set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:+ExitOnOutOfMemoryError
+
+@REM if you want to dump the heap memory while OOM happening, you can use the following command, remember to replace /tmp/heapdump.hprof with your own file path and the folder where this file is located needs to be created in advance
+@REM IOTDB_JMX_OPTS=%IOTDB_HEAP_OPTS% -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=\tmp\confignode_heapdump.hprof
 
 @REM You can put your env variable here
 @REM set JAVA_HOME=%JAVA_HOME%

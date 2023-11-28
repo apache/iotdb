@@ -43,6 +43,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -179,8 +180,8 @@ public class LimitOffsetPushDown implements PlanOptimizer {
     @Override
     public PlanNode visitSeriesScan(SeriesScanNode node, RewriterContext context) {
       if (context.isEnablePushDown()) {
-        node.setLimit(context.getLimit());
-        node.setOffset(context.getOffset());
+        node.setPushDownLimit(context.getLimit());
+        node.setPushDownOffset(context.getOffset());
       }
       return node;
     }
@@ -188,8 +189,8 @@ public class LimitOffsetPushDown implements PlanOptimizer {
     @Override
     public PlanNode visitAlignedSeriesScan(AlignedSeriesScanNode node, RewriterContext context) {
       if (context.isEnablePushDown()) {
-        node.setLimit(context.getLimit());
-        node.setOffset(context.getOffset());
+        node.setPushDownLimit(context.getLimit());
+        node.setPushDownOffset(context.getOffset());
       }
       return node;
     }
@@ -264,8 +265,8 @@ public class LimitOffsetPushDown implements PlanOptimizer {
     GroupByTimeComponent groupByTimeComponent = queryStatement.getGroupByTimeComponent();
     long startTime = groupByTimeComponent.getStartTime();
     long endTime = groupByTimeComponent.getEndTime();
-    long step = groupByTimeComponent.getSlidingStep();
-    long interval = groupByTimeComponent.getInterval();
+    long step = groupByTimeComponent.getSlidingStep().nonMonthDuration;
+    long interval = groupByTimeComponent.getInterval().nonMonthDuration;
 
     long size = (endTime - startTime + step - 1) / step;
     if (size > queryStatement.getRowOffset()) {
@@ -309,12 +310,14 @@ public class LimitOffsetPushDown implements PlanOptimizer {
   public static List<PartialPath> pushDownLimitOffsetInGroupByTimeForDevice(
       List<PartialPath> deviceNames, QueryStatement queryStatement) {
     GroupByTimeComponent groupByTimeComponent = queryStatement.getGroupByTimeComponent();
+    if (groupByTimeComponent.getInterval().containsMonth()
+        || groupByTimeComponent.getSlidingStep().containsMonth()) {
+      return Collections.emptyList();
+    }
     long startTime = groupByTimeComponent.getStartTime();
     long endTime = groupByTimeComponent.getEndTime();
-
-    long size =
-        (endTime - startTime + groupByTimeComponent.getSlidingStep() - 1)
-            / groupByTimeComponent.getSlidingStep();
+    long slidingStep = groupByTimeComponent.getSlidingStep().nonMonthDuration;
+    long size = (endTime - startTime + slidingStep - 1) / slidingStep;
     if (size == 0 || size * deviceNames.size() <= queryStatement.getRowOffset()) {
       // resultSet is empty
       queryStatement.setResultSetEmpty(true);

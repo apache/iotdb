@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.transformation.dag.column.unary;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.type.Type;
@@ -77,7 +78,8 @@ public class InColumnTransformer extends UnaryColumnTransformer {
             break;
           case BINARY:
             returnType.writeBoolean(
-                columnBuilder, satisfy.of(column.getBinary(i).getStringValue()));
+                columnBuilder,
+                satisfy.of(column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET)));
             break;
           default:
             throw new UnsupportedOperationException("unsupported data type: " + childType);

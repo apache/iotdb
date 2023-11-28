@@ -50,7 +50,7 @@ import static org.apache.iotdb.tsfile.Constant.SENSOR_3;
  * addMeasurement(MeasurementSchema measurementSchema) throws WriteProcessException
  */
 public class TsFileWriteWithTSRecord {
-  private static final Logger logger = LoggerFactory.getLogger(TsFileWriteWithTSRecord.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileWriteWithTSRecord.class);
 
   public static void main(String[] args) {
     try {
@@ -73,7 +73,7 @@ public class TsFileWriteWithTSRecord {
         write(tsFileWriter, DEVICE_1, schemas, 10000, 0, 0);
       }
     } catch (Exception e) {
-      logger.error("TsFileWriteWithTSRecord meet error", e);
+      LOGGER.error("TsFileWriteWithTSRecord meet error", e);
     }
   }
 

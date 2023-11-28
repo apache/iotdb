@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
+import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.IFragmentParallelPlaner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
@@ -41,7 +42,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
@@ -135,12 +135,12 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
   }
 
   private void produceFragmentInstance(PlanFragment fragment) {
-    Filter timeFilter = analysis.getGlobalTimeFilter();
+    Expression globalTimePredicate = analysis.getGlobalTimePredicate();
     FragmentInstance fragmentInstance =
         new FragmentInstance(
             fragment,
             fragment.getId().genFragmentInstanceId(),
-            timeFilter,
+            globalTimePredicate,
             queryContext.getQueryType(),
             queryContext.getTimeOut(),
             queryContext.getSession(),

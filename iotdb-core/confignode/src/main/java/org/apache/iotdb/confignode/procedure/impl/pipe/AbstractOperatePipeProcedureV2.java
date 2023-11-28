@@ -20,12 +20,14 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe;
 
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
+import org.apache.iotdb.confignode.manager.pipe.metric.PipeProcedureMetrics;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeMetaSyncProcedure;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.pipe.task.OperatePipeTaskState;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
@@ -141,6 +143,15 @@ public abstract class AbstractOperatePipeProcedureV2
       LOGGER.warn("ProcedureId {} release lock. No need to release pipe lock.", getProcId());
     } else {
       LOGGER.info("ProcedureId {} release lock. Pipe lock will be released.", getProcId());
+      if (this instanceof PipeMetaSyncProcedure) {
+        configNodeProcedureEnv
+            .getConfigManager()
+            .getPipeManager()
+            .getPipeTaskCoordinator()
+            .updateLastSyncedVersion();
+      }
+      PipeProcedureMetrics.getInstance()
+          .updateTimer(this.getOperation().getName(), this.elapsedTime());
       configNodeProcedureEnv.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
       pipeTaskInfo = null;
     }

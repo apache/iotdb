@@ -22,6 +22,7 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -73,7 +74,7 @@ public class QueryDataSetUtilsTest {
     builder.getColumnBuilder(2).writeLong(1L);
     builder.getColumnBuilder(3).writeFloat(1.1f);
     builder.getColumnBuilder(4).appendNull();
-    builder.getColumnBuilder(5).writeBinary(new Binary(BINARY_STR));
+    builder.getColumnBuilder(5).writeBinary(new Binary(BINARY_STR, TSFileConfig.STRING_CHARSET));
     builder.declarePosition();
     builder.getTimeColumnBuilder().writeLong(2L);
     builder.getColumnBuilder(0).appendNull();
@@ -177,7 +178,8 @@ public class QueryDataSetUtilsTest {
     assertEquals(3.14d, tsBlock.getColumn(4).getDouble(1), delta);
 
     assertFalse(tsBlock.getColumn(5).isNull(0));
-    assertEquals(new Binary(BINARY_STR), tsBlock.getColumn(5).getBinary(0));
+    assertEquals(
+        new Binary(BINARY_STR, TSFileConfig.STRING_CHARSET), tsBlock.getColumn(5).getBinary(0));
     assertTrue(tsBlock.getColumn(5).isNull(1));
   }
 }

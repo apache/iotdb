@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.schema.source.ISchemaS
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import org.junit.Assert;
@@ -112,7 +113,8 @@ public class CountGroupByLevelMergeOperatorTest {
       Set<String> pathSet = new HashSet<>(2001);
       for (TsBlock tsBlock : tsBlocks) {
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          String path = tsBlock.getColumn(0).getBinary(i).getStringValue();
+          String path =
+              tsBlock.getColumn(0).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
           pathSet.add(path);
           assertTrue(path.startsWith(OPERATOR_TEST_SG));
           if (path.equals(OPERATOR_TEST_SG + ".device2")) {

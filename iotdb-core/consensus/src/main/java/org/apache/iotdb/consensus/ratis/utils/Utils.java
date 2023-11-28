@@ -48,6 +48,7 @@ import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
 public class Utils {
@@ -306,11 +307,9 @@ public class Utils {
     RaftServerConfigKeys.Rpc.setFirstElectionTimeoutMax(
         properties, config.getRpc().getFirstElectionTimeoutMax());
 
-    RaftServerConfigKeys.Read.Option option =
-        config.getRead().getReadOption() == RatisConfig.Read.Option.DEFAULT
-            ? RaftServerConfigKeys.Read.Option.DEFAULT
-            : RaftServerConfigKeys.Read.Option.LINEARIZABLE;
-    RaftServerConfigKeys.Read.setOption(properties, option);
+    /* linearizable means we can obtain consistent data from followers.
+    If we prefer latency, we can directly use staleRead */
+    RaftServerConfigKeys.Read.setOption(properties, RaftServerConfigKeys.Read.Option.LINEARIZABLE);
     RaftServerConfigKeys.Read.setTimeout(properties, config.getRead().getReadTimeout());
 
     RaftServerConfigKeys.setSleepDeviationThreshold(
@@ -318,5 +317,14 @@ public class Utils {
 
     final TimeDuration clientMaxRetryGap = getMaxRetrySleepTime(config.getClient());
     RaftServerConfigKeys.RetryCache.setExpiryTime(properties, clientMaxRetryGap);
+  }
+
+  public static boolean anyOf(BooleanSupplier... conditions) {
+    for (BooleanSupplier condition : conditions) {
+      if (condition.getAsBoolean()) {
+        return true;
+      }
+    }
+    return false;
   }
 }

@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTas
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -69,14 +70,21 @@ public class ShowNodesInSchemaTemplateTask implements IConfigTask {
           String keyName = entry.getKey();
           IMeasurementSchema measurementSchema = entry.getValue();
           builder.getTimeColumnBuilder().writeLong(0L);
-          builder.getColumnBuilder(0).writeBinary(new Binary(keyName));
-          builder.getColumnBuilder(1).writeBinary(new Binary(measurementSchema.getType().name()));
+          builder.getColumnBuilder(0).writeBinary(new Binary(keyName, TSFileConfig.STRING_CHARSET));
+          builder
+              .getColumnBuilder(1)
+              .writeBinary(
+                  new Binary(measurementSchema.getType().name(), TSFileConfig.STRING_CHARSET));
           builder
               .getColumnBuilder(2)
-              .writeBinary(new Binary(measurementSchema.getEncodingType().name()));
+              .writeBinary(
+                  new Binary(
+                      measurementSchema.getEncodingType().name(), TSFileConfig.STRING_CHARSET));
           builder
               .getColumnBuilder(3)
-              .writeBinary(new Binary(measurementSchema.getCompressor().name()));
+              .writeBinary(
+                  new Binary(
+                      measurementSchema.getCompressor().name(), TSFileConfig.STRING_CHARSET));
           builder.declarePosition();
         }
       }

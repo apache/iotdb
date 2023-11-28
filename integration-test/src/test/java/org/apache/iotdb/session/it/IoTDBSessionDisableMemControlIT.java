@@ -25,6 +25,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -98,7 +99,7 @@ public class IoTDBSessionDisableMemControlIT {
         tablet.addTimestamp(rowIndex, timestamp);
         tablet.addValue("s1", rowIndex, 1L);
         tablet.addValue("s2", rowIndex, 1D);
-        tablet.addValue("s3", rowIndex, new Binary("1"));
+        tablet.addValue("s3", rowIndex, new Binary("1", TSFileConfig.STRING_CHARSET));
         if (tablet.rowSize == tablet.getMaxRowNumber()) {
           try {
             session.insertTablet(tablet, true);
@@ -177,7 +178,7 @@ public class IoTDBSessionDisableMemControlIT {
         tablet.addTimestamp(rowIndex, timestamp);
         tablet.addValue("s1", rowIndex, 1L);
         tablet.addValue("s2", rowIndex, 1D);
-        tablet.addValue("s3", rowIndex, new Binary("1"));
+        tablet.addValue("s3", rowIndex, new Binary("1", TSFileConfig.STRING_CHARSET));
         if (tablet.rowSize == tablet.getMaxRowNumber()) {
           try {
             session.insertAlignedTablet(tablet, true);

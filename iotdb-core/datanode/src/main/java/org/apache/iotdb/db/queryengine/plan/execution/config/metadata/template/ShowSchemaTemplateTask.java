@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTas
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -68,7 +69,9 @@ public class ShowSchemaTemplateTask implements IConfigTask {
         .forEach(
             template -> {
               builder.getTimeColumnBuilder().writeLong(0L);
-              builder.getColumnBuilder(0).writeBinary(new Binary(template.getName()));
+              builder
+                  .getColumnBuilder(0)
+                  .writeBinary(new Binary(template.getName(), TSFileConfig.STRING_CHARSET));
               builder.declarePosition();
             });
     DatasetHeader datasetHeader = DatasetHeaderFactory.getShowSchemaTemplateHeader();

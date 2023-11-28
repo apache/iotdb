@@ -32,7 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDataNodesStat
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
@@ -70,9 +70,10 @@ public class ShowDataNodesTask implements IConfigTask {
         builder
             .getColumnBuilder(1)
             .writeBinary(
-                Binary.valueOf(dataNodeInfo.getStatus() == null ? "" : dataNodeInfo.getStatus()));
+                BytesUtils.valueOf(
+                    dataNodeInfo.getStatus() == null ? "" : dataNodeInfo.getStatus()));
 
-        builder.getColumnBuilder(2).writeBinary(Binary.valueOf(dataNodeInfo.getRpcAddresss()));
+        builder.getColumnBuilder(2).writeBinary(BytesUtils.valueOf(dataNodeInfo.getRpcAddresss()));
         builder.getColumnBuilder(3).writeInt(dataNodeInfo.getRpcPort());
         builder.getColumnBuilder(4).writeInt(dataNodeInfo.getDataRegionNum());
 

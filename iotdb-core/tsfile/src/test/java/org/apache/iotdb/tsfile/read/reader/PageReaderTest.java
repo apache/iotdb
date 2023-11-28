@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.reader;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.encoding.decoder.DeltaBinaryDecoder;
 import org.apache.iotdb.tsfile.encoding.decoder.DoublePrecisionDecoderV1;
@@ -176,7 +177,7 @@ public class PageReaderTest {
             POINTS_COUNT_IN_ONE_PAGE) {
           @Override
           public Object generateValueByIndex(int i) {
-            return new Binary("TEST TEXT" + i);
+            return new Binary("TEST TEXT" + i, TSFileConfig.STRING_CHARSET);
           }
         };
     test.test(TSDataType.TEXT);

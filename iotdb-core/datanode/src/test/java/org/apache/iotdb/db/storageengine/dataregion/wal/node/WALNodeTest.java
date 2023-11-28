@@ -35,12 +35,14 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -188,7 +190,7 @@ public class WALNodeTest {
       ((long[]) columns[2])[r] = 10000L + r;
       ((int[]) columns[3])[r] = 100 + r;
       ((boolean[]) columns[4])[r] = (r % 2 == 0);
-      ((Binary[]) columns[5])[r] = new Binary("hh" + r);
+      ((Binary[]) columns[5])[r] = new Binary("hh" + r, TSFileConfig.STRING_CHARSET);
     }
 
     BitMap[] bitMaps = new BitMap[dataTypes.length];
@@ -250,6 +252,8 @@ public class WALNodeTest {
     for (Future<Void> future : futures) {
       future.get();
     }
+    walNode.rollWALFile();
+    Awaitility.await().until(() -> walNode.isAllWALEntriesConsumed());
     executorService.shutdown();
     // recover info from checkpoint file
     Map<Long, MemTableInfo> actualMemTableId2Info =
@@ -276,6 +280,7 @@ public class WALNodeTest {
     }
     walNode.onMemTableFlushed(memTable);
     walNode.onMemTableCreated(new PrimitiveMemTable(databasePath, dataRegionId), tsFilePath);
+    Awaitility.await().until(() -> walNode.isAllWALEntriesConsumed());
     // check existence of _0-0-0.wal file and _1-0-1.wal file
     assertTrue(
         new File(

@@ -27,13 +27,22 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+// This file contains the relationship of privilege between old and new version.
+// To handle online upgrade from old version to new version. We need to handle information:
+// 1. Pre privilege store in user.profile
+// 2. Pre Privilege store in raftlog.
+// Upgrade action has these stage:
+// 1. load old version's profile from snapshot
+// 2. redo raft log.
+// 3. do new version's raftlog.
+
 public enum PriPrivilegeType {
-  CREATE_DATABASE(true, false, PrivilegeType.MANAGE_DATABASE),
-  INSERT_TIMESERIES(true, true, PrivilegeType.WRITE_DATA),
-  UPDATE_TIMESERIES(true, true, PrivilegeType.WRITE_DATA),
-  READ_TIMESERIES(true, true, PrivilegeType.READ_DATA),
-  CREATE_TIMESERIES(true, true, PrivilegeType.WRITE_SCHEMA),
-  DELETE_TIMESERIES(true, true, PrivilegeType.WRITE_SCHEMA),
+  CREATE_DATABASE(true, PrivilegeType.MANAGE_DATABASE),
+  INSERT_TIMESERIES(true, PrivilegeType.WRITE_DATA),
+  UPDATE_TIMESERIES(true, PrivilegeType.WRITE_DATA),
+  READ_TIMESERIES(true, PrivilegeType.READ_DATA),
+  CREATE_TIMESERIES(true, PrivilegeType.WRITE_SCHEMA),
+  DELETE_TIMESERIES(true, PrivilegeType.WRITE_SCHEMA),
   CREATE_USER(false, PrivilegeType.MANAGE_USER),
   DELETE_USER(false, PrivilegeType.MANAGE_USER),
   MODIFY_PASSWORD(false),
@@ -49,10 +58,10 @@ public enum PriPrivilegeType {
   REVOKE_ROLE_PRIVILEGE(false),
   CREATE_FUNCTION(false, PrivilegeType.USE_UDF),
   DROP_FUNCTION(false, PrivilegeType.USE_UDF),
-  CREATE_TRIGGER(true, false, PrivilegeType.USE_TRIGGER),
-  DROP_TRIGGER(true, false, PrivilegeType.USE_TRIGGER),
-  START_TRIGGER(true, false, PrivilegeType.USE_TRIGGER),
-  STOP_TRIGGER(true, false, PrivilegeType.USE_TRIGGER),
+  CREATE_TRIGGER(true, PrivilegeType.USE_TRIGGER),
+  DROP_TRIGGER(true, PrivilegeType.USE_TRIGGER),
+  START_TRIGGER(true, PrivilegeType.USE_TRIGGER),
+  STOP_TRIGGER(true, PrivilegeType.USE_TRIGGER),
   CREATE_CONTINUOUS_QUERY(false, PrivilegeType.USE_CQ),
   DROP_CONTINUOUS_QUERY(false, PrivilegeType.USE_CQ),
   ALL(
@@ -60,6 +69,7 @@ public enum PriPrivilegeType {
       PrivilegeType.USE_PIPE,
       PrivilegeType.USE_UDF,
       PrivilegeType.USE_CQ,
+      PrivilegeType.USE_MODEL,
       PrivilegeType.USE_TRIGGER,
       PrivilegeType.MANAGE_USER,
       PrivilegeType.MANAGE_ROLE,
@@ -70,8 +80,8 @@ public enum PriPrivilegeType {
       PrivilegeType.READ_DATA,
       PrivilegeType.READ_SCHEMA,
       PrivilegeType.MAINTAIN),
-  DELETE_DATABASE(true, false, PrivilegeType.MANAGE_DATABASE),
-  ALTER_TIMESERIES(true, true, PrivilegeType.WRITE_SCHEMA),
+  DELETE_DATABASE(true, PrivilegeType.MANAGE_DATABASE),
+  ALTER_TIMESERIES(true, PrivilegeType.WRITE_SCHEMA),
   UPDATE_TEMPLATE(false),
   READ_TEMPLATE(false),
   APPLY_TEMPLATE(true, PrivilegeType.WRITE_SCHEMA),
@@ -92,28 +102,17 @@ public enum PriPrivilegeType {
   ;
 
   boolean accept = false;
-  private final boolean isPathRelevant;
   private final boolean preIsPathRelevant;
   private final List<PrivilegeType> refPri = new ArrayList<>();
 
   PriPrivilegeType(boolean accept) {
     this.accept = accept;
-    this.isPathRelevant = false;
     this.preIsPathRelevant = false;
   }
 
-  PriPrivilegeType(boolean isPathRelevant, PrivilegeType... privilegeTypes) {
-    this.accept = true;
-    this.isPathRelevant = isPathRelevant;
-    this.preIsPathRelevant = false;
-    this.refPri.addAll(Arrays.asList(privilegeTypes));
-  }
-
-  PriPrivilegeType(
-      boolean preIsPathRelevant, boolean isPathRelevant, PrivilegeType... privilegeTypes) {
+  PriPrivilegeType(boolean preIsPathRelevant, PrivilegeType... privilegeTypes) {
     this.accept = true;
     this.preIsPathRelevant = preIsPathRelevant;
-    this.isPathRelevant = isPathRelevant;
     this.refPri.addAll(Arrays.asList(privilegeTypes));
   }
 
@@ -121,12 +120,8 @@ public enum PriPrivilegeType {
     return this.accept;
   }
 
-  public boolean isPathRelevant() {
-    return this.isPathRelevant;
-  }
-
   @TestOnly
-  public boolean isPreIsPathRelevant() {
+  public boolean isPrePathRelevant() {
     return this.preIsPathRelevant;
   }
 

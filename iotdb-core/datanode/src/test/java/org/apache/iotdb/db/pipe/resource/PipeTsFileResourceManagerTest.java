@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResource;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
@@ -45,14 +47,16 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.concurrent.TimeUnit;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.fail;
 
 public class PipeTsFileResourceManagerTest {
 
   private static final String ROOT_DIR = "target" + File.separator + "PipeTsFileHolderTest";
   private static final String SEQUENCE_DIR =
-      ROOT_DIR + File.separator + IoTDBConstant.SEQUENCE_FLODER_NAME;
+      ROOT_DIR + File.separator + IoTDBConstant.SEQUENCE_FOLDER_NAME;
   private static final String TS_FILE_NAME = SEQUENCE_DIR + File.separator + "test.tsfile";
   private static final String MODS_FILE_NAME = TS_FILE_NAME + ".mods";
 
@@ -61,6 +65,7 @@ public class PipeTsFileResourceManagerTest {
   @Before
   public void setUp() throws Exception {
     pipeTsFileResourceManager = new PipeTsFileResourceManager();
+    PipeAgent.runtime().startPeriodicalJobExecutor();
 
     createTsfile(TS_FILE_NAME);
     creatModsFile(MODS_FILE_NAME);
@@ -145,6 +150,9 @@ public class PipeTsFileResourceManagerTest {
     if (pipeFolder.exists()) {
       FileUtils.deleteDirectory(pipeFolder);
     }
+
+    PipeAgent.runtime().stopPeriodicalJobExecutor();
+    PipeAgent.runtime().clearPeriodicalJobExecutor();
   }
 
   @Test
@@ -218,7 +226,13 @@ public class PipeTsFileResourceManagerTest {
     Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(pipeModFile));
     Assert.assertFalse(Files.exists(originFile.toPath()));
     Assert.assertFalse(Files.exists(originModFile.toPath()));
-    Assert.assertFalse(Files.exists(pipeTsfile.toPath()));
-    Assert.assertFalse(Files.exists(pipeModFile.toPath()));
+    // Pipe TsFile will be cleaned by a timed thread, so we wait some time here.
+    await()
+        .atMost(3 * PipeTsFileResource.TSFILE_MIN_TIME_TO_LIVE_IN_MS, TimeUnit.MILLISECONDS)
+        .untilAsserted(
+            () -> {
+              Assert.assertFalse(Files.exists(pipeTsfile.toPath()));
+              Assert.assertFalse(Files.exists(pipeModFile.toPath()));
+            });
   }
 }

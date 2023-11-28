@@ -31,6 +31,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
 import org.apache.iotdb.db.utils.MathUtils;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -488,7 +489,8 @@ public class PrimitiveMemTableTest {
           ret[i] =
               new TimeValuePair(
                   rand.nextLong(),
-                  TsPrimitiveType.getByType(dataType, new Binary("a" + rand.nextDouble())));
+                  TsPrimitiveType.getByType(
+                      dataType, new Binary("a" + rand.nextDouble(), TSFileConfig.STRING_CHARSET)));
           break;
         default:
           throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);

@@ -22,8 +22,9 @@ package org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.sca
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.UnaryTransformer;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 import java.io.IOException;
 
@@ -45,6 +46,10 @@ public class ReplaceFunctionTransformer extends UnaryTransformer {
   @Override
   protected void transformAndCache() throws QueryProcessException, IOException {
     cachedBinary =
-        Binary.valueOf(layerPointReader.currentBinary().getStringValue().replace(from, to));
+        BytesUtils.valueOf(
+            layerPointReader
+                .currentBinary()
+                .getStringValue(TSFileConfig.STRING_CHARSET)
+                .replace(from, to));
   }
 }

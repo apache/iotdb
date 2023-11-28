@@ -21,10 +21,11 @@ package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.type.Type;
-import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 public class ReplaceFunctionColumnTransformer extends UnaryColumnTransformer {
   private final String from;
@@ -43,11 +44,11 @@ public class ReplaceFunctionColumnTransformer extends UnaryColumnTransformer {
       if (!column.isNull(i)) {
         returnType.writeBinary(
             columnBuilder,
-            Binary.valueOf(
+            BytesUtils.valueOf(
                 childColumnTransformer
                     .getType()
                     .getBinary(column, i)
-                    .getStringValue()
+                    .getStringValue(TSFileConfig.STRING_CHARSET)
                     .replace(from, to)));
       } else {
         columnBuilder.appendNull();

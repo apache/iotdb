@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -88,7 +89,9 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
       String storageGroup = entry.getKey();
       TDatabaseInfo storageGroupInfo = entry.getValue();
       builder.getTimeColumnBuilder().writeLong(0L);
-      builder.getColumnBuilder(0).writeBinary(new Binary(storageGroup));
+      builder
+          .getColumnBuilder(0)
+          .writeBinary(new Binary(storageGroup, TSFileConfig.STRING_CHARSET));
 
       if (Long.MAX_VALUE == storageGroupInfo.getTTL()) {
         builder.getColumnBuilder(1).appendNull();

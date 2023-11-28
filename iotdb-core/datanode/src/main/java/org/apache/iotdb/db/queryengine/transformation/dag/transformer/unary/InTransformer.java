@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -116,7 +117,7 @@ public class InTransformer extends UnaryTransformer {
         break;
       case TEXT:
         Binary binaryValue = layerPointReader.currentBinary();
-        cachedBoolean = satisfy.of(binaryValue.getStringValue());
+        cachedBoolean = satisfy.of(binaryValue.getStringValue(TSFileConfig.STRING_CHARSET));
         break;
       default:
         throw new QueryProcessException("unsupported data type: " + layerPointReader.getDataType());

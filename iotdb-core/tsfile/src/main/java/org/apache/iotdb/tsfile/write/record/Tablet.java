@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.write.record;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -189,7 +190,10 @@ public class Tablet {
           if (value instanceof Binary) {
             sensor[rowIndex] = (Binary) value;
           } else {
-            sensor[rowIndex] = value != null ? new Binary((String) value) : Binary.EMPTY_VALUE;
+            sensor[rowIndex] =
+                value != null
+                    ? new Binary((String) value, TSFileConfig.STRING_CHARSET)
+                    : Binary.EMPTY_VALUE;
           }
           break;
         }

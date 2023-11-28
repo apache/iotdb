@@ -350,6 +350,10 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
   }
 
+  public void clearCachedDeviceMetadata() {
+    cachedDeviceMetadata.clear();
+  }
+
   private Map<String, TimeseriesMetadata> readDeviceMetadataFromDisk(String device)
       throws IOException {
     readFileMetadata();
@@ -1265,11 +1269,10 @@ public class TsFileSequenceReader implements AutoCloseable {
    * read the chunk's header.
    *
    * @param position the file offset of this chunk's header
-   * @param chunkHeaderSize the size of chunk's header
    */
-  private ChunkHeader readChunkHeader(long position, int chunkHeaderSize) throws IOException {
+  private ChunkHeader readChunkHeader(long position) throws IOException {
     try {
-      return ChunkHeader.deserializeFrom(tsFileInput, position, chunkHeaderSize);
+      return ChunkHeader.deserializeFrom(tsFileInput, position);
     } catch (Throwable t) {
       logger.warn("Exception {} happened while reading chunk header of {}", t.getMessage(), file);
       throw t;
@@ -1295,13 +1298,28 @@ public class TsFileSequenceReader implements AutoCloseable {
   /**
    * read memory chunk.
    *
+   * @return -chunk
+   */
+  public Chunk readMemChunk(long offset) throws IOException {
+    try {
+      ChunkHeader header = readChunkHeader(offset);
+      ByteBuffer buffer = readChunk(offset + header.getSerializedSize(), header.getDataSize());
+      return new Chunk(header, buffer);
+    } catch (Throwable t) {
+      logger.warn("Exception {} happened while reading chunk of {}", t.getMessage(), file);
+      throw t;
+    }
+  }
+
+  /**
+   * read memory chunk.
+   *
    * @param metaData -given chunk meta data
    * @return -chunk
    */
   public Chunk readMemChunk(ChunkMetadata metaData) throws IOException {
     try {
-      int chunkHeadSize = ChunkHeader.getSerializedSize(metaData.getMeasurementUid());
-      ChunkHeader header = readChunkHeader(metaData.getOffsetOfChunkHeader(), chunkHeadSize);
+      ChunkHeader header = readChunkHeader(metaData.getOffsetOfChunkHeader());
       ByteBuffer buffer =
           readChunk(
               metaData.getOffsetOfChunkHeader() + header.getSerializedSize(), header.getDataSize());
@@ -1319,8 +1337,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @return chunk
    */
   public Chunk readMemChunk(CachedChunkLoaderImpl.ChunkCacheKey chunkCacheKey) throws IOException {
-    int chunkHeadSize = ChunkHeader.getSerializedSize(chunkCacheKey.getMeasurementUid());
-    ChunkHeader header = readChunkHeader(chunkCacheKey.getOffsetOfChunkHeader(), chunkHeadSize);
+    ChunkHeader header = readChunkHeader(chunkCacheKey.getOffsetOfChunkHeader());
     ByteBuffer buffer =
         readChunk(
             chunkCacheKey.getOffsetOfChunkHeader() + header.getSerializedSize(),
@@ -1357,8 +1374,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       return null;
     }
     IChunkMetadata lastChunkMetadata = chunkMetadataList.get(chunkMetadataList.size() - 1);
-    int chunkHeadSize = ChunkHeader.getSerializedSize(lastChunkMetadata.getMeasurementUid());
-    ChunkHeader header = readChunkHeader(lastChunkMetadata.getOffsetOfChunkHeader(), chunkHeadSize);
+    ChunkHeader header = readChunkHeader(lastChunkMetadata.getOffsetOfChunkHeader());
     return new MeasurementSchema(
         lastChunkMetadata.getMeasurementUid(),
         header.getDataType(),

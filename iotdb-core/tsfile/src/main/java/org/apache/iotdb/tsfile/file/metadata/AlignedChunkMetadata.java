@@ -145,16 +145,6 @@ public class AlignedChunkMetadata implements IChunkMetadata {
   }
 
   @Override
-  public void setFilePath(String filePath) {
-    timeChunkMetadata.setFilePath(filePath);
-    for (IChunkMetadata chunkMetadata : valueChunkMetadataList) {
-      if (chunkMetadata != null) {
-        chunkMetadata.setFilePath(filePath);
-      }
-    }
-  }
-
-  @Override
   public void setClosed(boolean closed) {
     timeChunkMetadata.setClosed(closed);
     for (IChunkMetadata chunkMetadata : valueChunkMetadataList) {

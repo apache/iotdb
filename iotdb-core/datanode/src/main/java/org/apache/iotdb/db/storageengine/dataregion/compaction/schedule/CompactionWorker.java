@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.service.metrics.CompactionMetrics;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionFileCountExceededException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionMemoryNotEnoughException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.FileCannotTransitToCompactingException;
@@ -40,7 +42,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 public class CompactionWorker implements Runnable {
-  private static final Logger log = LoggerFactory.getLogger("COMPACTION");
+  private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
   private final int threadId;
   private final FixedPriorityBlockingQueue<AbstractCompactionTask> compactionTaskQueue;
 
@@ -54,36 +56,43 @@ public class CompactionWorker implements Runnable {
   @Override
   public void run() {
     while (!Thread.currentThread().isInterrupted()) {
-      processOneCompactionTask();
+      AbstractCompactionTask task;
+      try {
+        task = compactionTaskQueue.take();
+      } catch (InterruptedException e) {
+        LOGGER.warn("CompactionThread-{} terminates because interruption", threadId);
+        Thread.currentThread().interrupt();
+        return;
+      }
+      processOneCompactionTask(task);
     }
   }
 
-  private void processOneCompactionTask() {
-    AbstractCompactionTask task;
-    try {
-      task = compactionTaskQueue.take();
-    } catch (InterruptedException e) {
-      log.warn("CompactionThread-{} terminates because interruption", threadId);
-      Thread.currentThread().interrupt();
-      return;
-    }
+  public boolean processOneCompactionTask(AbstractCompactionTask task) {
     long estimatedMemoryCost = 0L;
     boolean memoryAcquired = false;
     boolean fileHandleAcquired = false;
     try {
       if (task == null || !task.isCompactionAllowed()) {
-        log.info("Compaction task is not allowed to be executed by TsFileManager. Task {}", task);
-        return;
+        LOGGER.info(
+            "Compaction task is not allowed to be executed by TsFileManager. Task {}", task);
+        return false;
       }
       if (!task.isDiskSpaceCheckPassed()) {
-        log.debug(
+        LOGGER.debug(
             "Compaction task start check failed because disk free ratio is less than disk_space_warning_threshold");
-        return;
+        return false;
       }
       task.transitSourceFilesToMerging();
       if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionMemControl()) {
         estimatedMemoryCost = task.getEstimatedMemoryCost();
-        memoryAcquired = SystemInfo.getInstance().addCompactionMemoryCost(estimatedMemoryCost, 60);
+        CompactionTaskType taskType = task.getCompactionTaskType();
+        memoryAcquired =
+            SystemInfo.getInstance().addCompactionMemoryCost(taskType, estimatedMemoryCost, 60);
+        CompactionMetrics.getInstance()
+            .updateCompactionMemoryMetrics(taskType, estimatedMemoryCost);
+        CompactionMetrics.getInstance()
+            .updateCompactionTaskSelectedFileNum(taskType, task.getAllSourceTsFiles().size());
       }
       fileHandleAcquired =
           SystemInfo.getInstance().addCompactionFileNum(task.getProcessedFileNum(), 60);
@@ -91,25 +100,29 @@ public class CompactionWorker implements Runnable {
       CompactionTaskFuture future = new CompactionTaskFuture(summary);
       CompactionTaskManager.getInstance().recordTask(task, future);
       task.start();
+      return true;
     } catch (FileCannotTransitToCompactingException
         | IOException
         | CompactionMemoryNotEnoughException
         | CompactionFileCountExceededException e) {
-      log.info("CompactionTask {} cannot be executed. Reason: {}", task, e);
+      LOGGER.info("CompactionTask {} cannot be executed. Reason: {}", task, e);
     } catch (InterruptedException e) {
-      log.warn("InterruptedException occurred when preparing compaction task. {}", task, e);
+      LOGGER.warn("InterruptedException occurred when preparing compaction task. {}", task, e);
       Thread.currentThread().interrupt();
     } finally {
       if (task != null) {
         task.resetCompactionCandidateStatusForAllSourceFiles();
+        task.handleTaskCleanup();
       }
       if (memoryAcquired) {
-        SystemInfo.getInstance().resetCompactionMemoryCost(estimatedMemoryCost);
+        SystemInfo.getInstance()
+            .resetCompactionMemoryCost(task.getCompactionTaskType(), estimatedMemoryCost);
       }
       if (fileHandleAcquired) {
         SystemInfo.getInstance().decreaseCompactionFileNumCost(task.getProcessedFileNum());
       }
     }
+    return false;
   }
 
   static class CompactionTaskFuture implements Future<CompactionTaskSummary> {

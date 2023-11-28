@@ -62,6 +62,11 @@ public class IoTDBConstant {
   public static final String CN_INTERNAL_ADDRESS = "cn_internal_address";
   public static final String DN_INTERNAL_ADDRESS = "dn_internal_address";
 
+  public static final String CN_METRIC_PROMETHEUS_REPORTER_PORT =
+      "cn_metric_prometheus_reporter_port";
+  public static final String DN_METRIC_PROMETHEUS_REPORTER_PORT =
+      "dn_metric_prometheus_reporter_port";
+
   public static final String CN_INTERNAL_PORT = "cn_internal_port";
   public static final String DN_INTERNAL_PORT = "dn_internal_port";
   public static final String CN_CONSENSUS_PORT = "cn_consensus_port";
@@ -220,8 +225,8 @@ public class IoTDBConstant {
 
   // data folder name
   public static final String DATA_FOLDER_NAME = "data";
-  public static final String SEQUENCE_FLODER_NAME = "sequence";
-  public static final String UNSEQUENCE_FLODER_NAME = "unsequence";
+  public static final String SEQUENCE_FOLDER_NAME = "sequence";
+  public static final String UNSEQUENCE_FOLDER_NAME = "unsequence";
   public static final String FILE_NAME_SEPARATOR = "-";
   public static final String CONSENSUS_FOLDER_NAME = "consensus";
   public static final String SNAPSHOT_FOLDER_NAME = "snapshot";
@@ -263,12 +268,6 @@ public class IoTDBConstant {
 
   // cross space compaction
   public static final String CROSS_COMPACTION_TMP_FILE_SUFFIX = ".cross";
-
-  // cross space compaction of previous version (<0.13)
-  public static final String CROSS_COMPACTION_TMP_FILE_SUFFIX_FROM_OLD = ".merge";
-
-  // compaction mods of previous version (<0.13)
-  public static final String COMPACTION_MODIFICATION_FILE_NAME_FROM_OLD = "merge.mods";
 
   public static final String SETTLE_SUFFIX = ".settle";
   public static final String MODS_SETTLE_FILE_SUFFIX = ".mods.settle";

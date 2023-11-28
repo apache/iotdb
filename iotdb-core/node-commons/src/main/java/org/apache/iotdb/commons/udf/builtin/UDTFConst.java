@@ -22,16 +22,20 @@ package org.apache.iotdb.commons.udf.builtin;
 import org.apache.iotdb.commons.udf.utils.UDFBinaryTransformer;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.customizer.strategy.MappableRowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.exception.UDFParameterNotValidException;
 
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -88,14 +92,14 @@ public class UDTFConst implements UDTF {
         booleanValue = Boolean.parseBoolean(parameters.getString("value"));
         break;
       case TEXT:
-        binaryValue = Binary.valueOf(parameters.getString("value"));
+        binaryValue = BytesUtils.valueOf(parameters.getString("value"));
         break;
       default:
         throw new UnsupportedOperationException();
     }
 
     configurations
-        .setAccessStrategy(new RowByRowAccessStrategy())
+        .setAccessStrategy(new MappableRowByRowAccessStrategy())
         .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(dataType));
   }
 
@@ -120,6 +124,126 @@ public class UDTFConst implements UDTF {
       case TEXT:
         collector.putBinary(row.getTime(), UDFBinaryTransformer.transformToUDFBinary(binaryValue));
         break;
+      default:
+        throw new UnsupportedOperationException();
+    }
+  }
+
+  @Override
+  public Object transform(Row row) throws IOException {
+    switch (dataType) {
+      case INT32:
+        return intValue;
+      case INT64:
+        return longValue;
+      case FLOAT:
+        return floatValue;
+      case DOUBLE:
+        return doubleValue;
+      case BOOLEAN:
+        return booleanValue;
+      case TEXT:
+        return UDFBinaryTransformer.transformToUDFBinary(binaryValue);
+      default:
+        throw new UnsupportedOperationException();
+    }
+  }
+
+  @Override
+  public void transform(Column[] columns, ColumnBuilder builder) throws Exception {
+    int count = columns[0].getPositionCount();
+
+    switch (dataType) {
+      case INT32:
+        for (int i = 0; i < count; i++) {
+          boolean hasWritten = false;
+          for (Column column : columns) {
+            if (!column.isNull(i)) {
+              builder.writeInt(intValue);
+              hasWritten = true;
+              break;
+            }
+          }
+          if (!hasWritten) {
+            builder.appendNull();
+          }
+        }
+        return;
+      case INT64:
+        for (int i = 0; i < count; i++) {
+          boolean hasWritten = false;
+          for (Column column : columns) {
+            if (!column.isNull(i)) {
+              builder.writeLong(longValue);
+              hasWritten = true;
+              break;
+            }
+          }
+          if (!hasWritten) {
+            builder.appendNull();
+          }
+        }
+        return;
+      case FLOAT:
+        for (int i = 0; i < count; i++) {
+          boolean hasWritten = false;
+          for (Column column : columns) {
+            if (!column.isNull(i)) {
+              builder.writeFloat(floatValue);
+              hasWritten = true;
+              break;
+            }
+          }
+          if (!hasWritten) {
+            builder.appendNull();
+          }
+        }
+        return;
+      case DOUBLE:
+        for (int i = 0; i < count; i++) {
+          boolean hasWritten = false;
+          for (Column column : columns) {
+            if (!column.isNull(i)) {
+              builder.writeDouble(doubleValue);
+              hasWritten = true;
+              break;
+            }
+          }
+          if (!hasWritten) {
+            builder.appendNull();
+          }
+        }
+        return;
+      case BOOLEAN:
+        for (int i = 0; i < count; i++) {
+          boolean hasWritten = false;
+          for (Column column : columns) {
+            if (!column.isNull(i)) {
+              builder.writeBoolean(booleanValue);
+              hasWritten = true;
+              break;
+            }
+          }
+          if (!hasWritten) {
+            builder.appendNull();
+          }
+        }
+        return;
+      case TEXT:
+        for (int i = 0; i < count; i++) {
+          boolean hasWritten = false;
+          for (Column column : columns) {
+            if (!column.isNull(i)) {
+              builder.writeBinary(binaryValue);
+              hasWritten = true;
+              break;
+            }
+          }
+          if (!hasWritten) {
+            builder.appendNull();
+          }
+        }
+        return;
       default:
         throw new UnsupportedOperationException();
     }

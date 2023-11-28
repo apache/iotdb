@@ -25,6 +25,9 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
+import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
+import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -432,6 +435,9 @@ public class AlignedSeriesScanLimitOffsetPushDownTest {
     }
     seqResources.clear();
     unSeqResources.clear();
+    ChunkCache.getInstance().clear();
+    TimeSeriesMetadataCache.getInstance().clear();
+    BloomFilterCache.getInstance().clear();
     EnvironmentUtils.cleanAllDir();
   }
 
@@ -447,8 +453,8 @@ public class AlignedSeriesScanLimitOffsetPushDownTest {
 
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
     scanOptionsBuilder.withAllSensors(new HashSet<>(scanPath.getMeasurementList()));
-    scanOptionsBuilder.withLimit(limit);
-    scanOptionsBuilder.withOffset(offset);
+    scanOptionsBuilder.withPushDownLimit(limit);
+    scanOptionsBuilder.withPushDownOffset(offset);
     AlignedSeriesScanUtil seriesScanUtil =
         new AlignedSeriesScanUtil(
             scanPath,

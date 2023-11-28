@@ -21,6 +21,7 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -95,13 +96,14 @@ public class CommonUtils {
           if ((value.startsWith(SqlConstant.QUOTE) && value.endsWith(SqlConstant.QUOTE))
               || (value.startsWith(SqlConstant.DQUOTE) && value.endsWith(SqlConstant.DQUOTE))) {
             if (value.length() == 1) {
-              return new Binary(value);
+              return new Binary(value, TSFileConfig.STRING_CHARSET);
             } else {
-              return new Binary(value.substring(1, value.length() - 1));
+              return new Binary(
+                  value.substring(1, value.length() - 1), TSFileConfig.STRING_CHARSET);
             }
           }
 
-          return new Binary(value);
+          return new Binary(value, TSFileConfig.STRING_CHARSET);
         default:
           throw new QueryProcessException("Unsupported data type:" + dataType);
       }
@@ -210,7 +212,7 @@ public class CommonUtils {
         case DOUBLE:
           return Double.parseDouble(value);
         case TEXT:
-          return new Binary(value);
+          return new Binary(value, TSFileConfig.STRING_CHARSET);
         default:
           throw new QueryProcessException("Unsupported data type:" + dataType);
       }

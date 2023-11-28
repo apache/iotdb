@@ -52,33 +52,30 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
-import org.apache.iotdb.tsfile.utils.Pair;
 
-import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nullable;
-
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Optional;
-import java.util.PriorityQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_BATCH_MODE_ENABLE_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_ENABLE_KEY;
 
 public class IoTDBThriftAsyncConnector extends IoTDBConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftAsyncConnector.class);
 
-  private static final String FAILED_TO_BORROW_CLIENT_FORMATTER =
-      "Failed to borrow client from client pool for receiver %s:%s.";
+  private static final String THRIFT_ERROR_FORMATTER =
+      "Failed to borrow client from client pool or exception occurred "
+          + "when sending to receiver %s:%s.";
 
   private static final AtomicReference<
           IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>>
@@ -87,13 +84,14 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       asyncPipeDataTransferClientManager;
 
   private final IoTDBThriftSyncConnector retryConnector = new IoTDBThriftSyncConnector();
-  private final PriorityBlockingQueue<Pair<Long, Event>> retryEventQueue =
-      new PriorityBlockingQueue<>(11, Comparator.comparing(o -> o.left));
-
-  private final AtomicLong commitIdGenerator = new AtomicLong(0);
-  private final AtomicLong lastCommitId = new AtomicLong(0);
-  private final PriorityQueue<Pair<Long, Runnable>> commitQueue =
-      new PriorityQueue<>(Comparator.comparing(o -> o.left));
+  private final PriorityBlockingQueue<Event> retryEventQueue =
+      new PriorityBlockingQueue<>(
+          11,
+          Comparator.comparing(
+              e ->
+                  // Non-enriched events will be put at the front of the queue,
+                  // because they are more likely to be lost and need to be retried first.
+                  e instanceof EnrichedEvent ? ((EnrichedEvent) e).getCommitId() : 0));
 
   private IoTDBThriftAsyncPipeTransferBatchReqBuilder tabletBatchBuilder;
 
@@ -115,6 +113,12 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
   public void validate(PipeParameterValidator validator) throws Exception {
     super.validate(validator);
     retryConnector.validate(validator);
+
+    final PipeParameters parameters = validator.getParameters();
+    validator.validate(
+        useSSL -> !((boolean) useSSL),
+        "IoTDBThriftAsyncConnector does not support SSL transmission currently",
+        parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false));
   }
 
   @Override
@@ -125,6 +129,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
     // Disable batch mode for retry connector, in case retry events are never sent again
     PipeParameters retryParameters = new PipeParameters(new HashMap<>(parameters.getAttribute()));
     retryParameters.getAttribute().put(SINK_IOTDB_BATCH_MODE_ENABLE_KEY, "false");
+    retryParameters.getAttribute().put(CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY, "false");
     retryConnector.customize(retryParameters, configuration);
 
     if (isTabletBatchModeEnabled) {
@@ -166,14 +171,14 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       return;
     }
 
-    final long requestCommitId = commitIdGenerator.incrementAndGet();
+    final long commitId = ((EnrichedEvent) tabletInsertionEvent).getCommitId();
 
     if (isTabletBatchModeEnabled) {
-      if (tabletBatchBuilder.onEvent(tabletInsertionEvent, requestCommitId)) {
+      if (tabletBatchBuilder.onEvent(tabletInsertionEvent)) {
         final PipeTransferTabletBatchEventHandler pipeTransferTabletBatchEventHandler =
             new PipeTransferTabletBatchEventHandler(tabletBatchBuilder, this);
 
-        transfer(requestCommitId, pipeTransferTabletBatchEventHandler);
+        transfer(commitId, pipeTransferTabletBatchEventHandler);
 
         tabletBatchBuilder.onSuccess();
       }
@@ -189,9 +194,9 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
                     pipeInsertNodeTabletInsertionEvent.getInsertNode());
         final PipeTransferTabletInsertNodeEventHandler pipeTransferInsertNodeReqHandler =
             new PipeTransferTabletInsertNodeEventHandler(
-                requestCommitId, pipeInsertNodeTabletInsertionEvent, pipeTransferReq, this);
+                pipeInsertNodeTabletInsertionEvent, pipeTransferReq, this);
 
-        transfer(requestCommitId, pipeTransferInsertNodeReqHandler);
+        transfer(commitId, pipeTransferInsertNodeReqHandler);
       } else { // tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
         final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
             (PipeRawTabletInsertionEvent) tabletInsertionEvent;
@@ -201,9 +206,9 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
                 pipeRawTabletInsertionEvent.isAligned());
         final PipeTransferTabletRawEventHandler pipeTransferTabletReqHandler =
             new PipeTransferTabletRawEventHandler(
-                requestCommitId, pipeRawTabletInsertionEvent, pipeTransferTabletRawReq, this);
+                pipeRawTabletInsertionEvent, pipeTransferTabletRawReq, this);
 
-        transfer(requestCommitId, pipeTransferTabletReqHandler);
+        transfer(commitId, pipeTransferTabletReqHandler);
       }
     }
   }
@@ -215,22 +220,12 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
 
     try {
       final AsyncPipeDataTransferServiceClient client = borrowClient(targetNodeUrl);
-
-      try {
-        pipeTransferTabletBatchEventHandler.transfer(client);
-      } catch (TException e) {
-        LOGGER.warn(
-            String.format(
-                "Transfer batched insertion requests to receiver %s:%s error, retrying...",
-                targetNodeUrl.getIp(), targetNodeUrl.getPort()),
-            e);
-      }
+      pipeTransferTabletBatchEventHandler.transfer(client);
     } catch (Exception ex) {
-      pipeTransferTabletBatchEventHandler.onError(ex);
       LOGGER.warn(
-          String.format(
-              FAILED_TO_BORROW_CLIENT_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()),
+          String.format(THRIFT_ERROR_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()),
           ex);
+      pipeTransferTabletBatchEventHandler.onError(ex);
     }
   }
 
@@ -241,22 +236,12 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
 
     try {
       final AsyncPipeDataTransferServiceClient client = borrowClient(targetNodeUrl);
-
-      try {
-        pipeTransferInsertNodeReqHandler.transfer(client);
-      } catch (TException e) {
-        LOGGER.warn(
-            String.format(
-                "Transfer insert node to receiver %s:%s error, retrying...",
-                targetNodeUrl.getIp(), targetNodeUrl.getPort()),
-            e);
-      }
+      pipeTransferInsertNodeReqHandler.transfer(client);
     } catch (Exception ex) {
-      pipeTransferInsertNodeReqHandler.onError(ex);
       LOGGER.warn(
-          String.format(
-              FAILED_TO_BORROW_CLIENT_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()),
+          String.format(THRIFT_ERROR_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()),
           ex);
+      pipeTransferInsertNodeReqHandler.onError(ex);
     }
   }
 
@@ -266,22 +251,12 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
 
     try {
       final AsyncPipeDataTransferServiceClient client = borrowClient(targetNodeUrl);
-
-      try {
-        pipeTransferTabletReqHandler.transfer(client);
-      } catch (TException e) {
-        LOGGER.warn(
-            String.format(
-                "Transfer tablet to receiver %s:%s error, retrying...",
-                targetNodeUrl.getIp(), targetNodeUrl.getPort()),
-            e);
-      }
+      pipeTransferTabletReqHandler.transfer(client);
     } catch (Exception ex) {
-      pipeTransferTabletReqHandler.onError(ex);
       LOGGER.warn(
-          String.format(
-              FAILED_TO_BORROW_CLIENT_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()),
+          String.format(THRIFT_ERROR_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()),
           ex);
+      pipeTransferTabletReqHandler.onError(ex);
     }
   }
 
@@ -318,12 +293,15 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       return;
     }
 
-    final long requestCommitId = commitIdGenerator.incrementAndGet();
-    final PipeTransferTsFileInsertionEventHandler pipeTransferTsFileInsertionEventHandler =
-        new PipeTransferTsFileInsertionEventHandler(
-            requestCommitId, pipeTsFileInsertionEvent, this);
+    // Just in case. To avoid the case that exception occurred when constructing the handler.
+    if (!pipeTsFileInsertionEvent.getTsFile().exists()) {
+      throw new FileNotFoundException(pipeTsFileInsertionEvent.getTsFile().getAbsolutePath());
+    }
 
-    transfer(requestCommitId, pipeTransferTsFileInsertionEventHandler);
+    final PipeTransferTsFileInsertionEventHandler pipeTransferTsFileInsertionEventHandler =
+        new PipeTransferTsFileInsertionEventHandler(pipeTsFileInsertionEvent, this);
+
+    transfer(pipeTsFileInsertionEvent.getCommitId(), pipeTransferTsFileInsertionEventHandler);
   }
 
   private void transfer(
@@ -333,22 +311,12 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
 
     try {
       final AsyncPipeDataTransferServiceClient client = borrowClient(targetNodeUrl);
-
-      try {
-        pipeTransferTsFileInsertionEventHandler.transfer(client);
-      } catch (TException e) {
-        LOGGER.warn(
-            String.format(
-                "Transfer tsfile to receiver %s:%s error, retrying...",
-                targetNodeUrl.getIp(), targetNodeUrl.getPort()),
-            e);
-      }
+      pipeTransferTsFileInsertionEventHandler.transfer(client);
     } catch (Exception ex) {
-      pipeTransferTsFileInsertionEventHandler.onError(ex);
       LOGGER.warn(
-          String.format(
-              FAILED_TO_BORROW_CLIENT_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()),
+          String.format(THRIFT_ERROR_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()),
           ex);
+      pipeTransferTsFileInsertionEventHandler.onError(ex);
     }
   }
 
@@ -358,25 +326,19 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
     transferBatchedEventsIfNecessary();
 
     if (!(event instanceof PipeHeartbeatEvent)) {
-      LOGGER.warn("IoTDBThriftAsyncConnector does not support transfer generic event: {}.", event);
+      LOGGER.warn(
+          "IoTDBThriftAsyncConnector does not support transferring generic event: {}.", event);
     }
   }
 
   private AsyncPipeDataTransferServiceClient borrowClient(TEndPoint targetNodeUrl)
-      throws PipeConnectionException {
-    try {
-      while (true) {
-        final AsyncPipeDataTransferServiceClient client =
-            asyncPipeDataTransferClientManager.borrowClient(targetNodeUrl);
-        if (handshakeIfNecessary(targetNodeUrl, client)) {
-          return client;
-        }
+      throws Exception {
+    while (true) {
+      final AsyncPipeDataTransferServiceClient client =
+          asyncPipeDataTransferClientManager.borrowClient(targetNodeUrl);
+      if (handshakeIfNecessary(targetNodeUrl, client)) {
+        return client;
       }
-    } catch (Exception e) {
-      throw new PipeConnectionException(
-          String.format(
-              FAILED_TO_BORROW_CLIENT_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()),
-          e);
     }
   }
 
@@ -470,9 +432,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
    */
   private synchronized void transferQueuedEventsIfNecessary() throws Exception {
     while (!retryEventQueue.isEmpty()) {
-      final Pair<Long, Event> queuedEventPair = retryEventQueue.peek();
-      final long requestCommitId = queuedEventPair.getLeft();
-      final Event event = queuedEventPair.getRight();
+      final Event event = retryEventQueue.peek();
 
       if (event instanceof PipeInsertNodeTabletInsertionEvent) {
         retryConnector.transfer((PipeInsertNodeTabletInsertionEvent) event);
@@ -486,7 +446,8 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       }
 
       if (event instanceof EnrichedEvent) {
-        commit(requestCommitId, (EnrichedEvent) event);
+        ((EnrichedEvent) event)
+            .decreaseReferenceCount(IoTDBThriftAsyncConnector.class.getName(), true);
       }
 
       retryEventQueue.poll();
@@ -501,7 +462,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
 
     // requestCommitId can not be generated by commitIdGenerator because the commit id must
     // be bind to a specific InsertTabletEvent or TsFileInsertionEvent, otherwise the commit
-    // process will be stuck.
+    // process will stuck.
     final long requestCommitId = tabletBatchBuilder.getLastCommitId();
     final PipeTransferTabletBatchEventHandler pipeTransferTabletBatchEventHandler =
         new PipeTransferTabletBatchEventHandler(tabletBatchBuilder, this);
@@ -512,54 +473,38 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
   }
 
   /**
-   * Commit the event. Decrease the reference count of the event. If the reference count is 0, the
-   * progress index of the event will be recalculated and the resources of the event will be
-   * released.
+   * Add failure event to retry queue.
    *
-   * <p>The synchronization is necessary because the commit order must be the same as the order of
-   * the events. Concurrent commit may cause the commit order to be inconsistent with the order of
-   * the events.
-   *
-   * @param requestCommitId commit id of the request
-   * @param enrichedEvent event to commit
+   * @param event event to retry
    */
-  public synchronized void commit(long requestCommitId, @Nullable EnrichedEvent enrichedEvent) {
-    commitQueue.offer(
-        new Pair<>(
-            requestCommitId,
-            () ->
-                Optional.ofNullable(enrichedEvent)
-                    .ifPresent(
-                        event ->
-                            event.decreaseReferenceCount(
-                                IoTDBThriftAsyncConnector.class.getName(), true))));
-
-    while (!commitQueue.isEmpty()) {
-      final Pair<Long, Runnable> committer = commitQueue.peek();
-      if (lastCommitId.get() + 1 != committer.left) {
-        break;
-      }
-
-      committer.right.run();
-      lastCommitId.incrementAndGet();
-
-      commitQueue.poll();
-    }
+  public void addFailureEventToRetryQueue(Event event) {
+    retryEventQueue.offer(event);
   }
 
   /**
-   * Add failure event to retry queue.
-   *
-   * @param requestCommitId commit id of the request
-   * @param event event to retry
+   * When a pipe is dropped, the connector maybe reused and will not be closed. So we just discard
+   * its queued events in the output pipe connector.
    */
-  public void addFailureEventToRetryQueue(long requestCommitId, Event event) {
-    retryEventQueue.offer(new Pair<>(requestCommitId, event));
+  public synchronized void discardEventsOfPipe(String pipeNameToDrop) {
+    retryEventQueue.removeIf(
+        event ->
+            event instanceof EnrichedEvent
+                && pipeNameToDrop.equals(((EnrichedEvent) event).getPipeName()));
   }
 
   @Override
   // synchronized to avoid close connector when transfer event
   public synchronized void close() throws Exception {
     retryConnector.close();
+
+    if (tabletBatchBuilder != null) {
+      tabletBatchBuilder.close();
+    }
+  }
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  public int getRetryEventQueueSize() {
+    return retryEventQueue.size();
   }
 }

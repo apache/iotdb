@@ -31,6 +31,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTe
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -171,7 +172,7 @@ public class WALRecoverWriterTest {
     columns[2] = 10000L;
     columns[3] = 100;
     columns[4] = false;
-    columns[5] = new Binary("hh" + 0);
+    columns[5] = new Binary("hh" + 0, TSFileConfig.STRING_CHARSET);
 
     InsertRowNode insertRowNode =
         new InsertRowNode(

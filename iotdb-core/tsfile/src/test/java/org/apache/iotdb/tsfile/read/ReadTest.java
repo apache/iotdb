@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -26,8 +27,8 @@ import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
-import org.apache.iotdb.tsfile.read.filter.ValueFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.ValueFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.FileGenerator;
 
@@ -318,7 +319,7 @@ public class ReadTest {
       if (cnt == 1) {
         assertEquals(1480562618976L, r.getTimestamp());
         Field f1 = r.getFields().get(0);
-        assertEquals("dog976", f1.getBinaryV().getStringValue());
+        assertEquals("dog976", f1.getBinaryV().getStringValue(TSFileConfig.STRING_CHARSET));
       }
       cnt++;
     }

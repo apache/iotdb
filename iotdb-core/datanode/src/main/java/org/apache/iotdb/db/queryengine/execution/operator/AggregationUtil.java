@@ -48,10 +48,11 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockUtil.skipPointsOutOfTimeRange;
 
 public class AggregationUtil {
+  private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
+      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
   private AggregationUtil() {
     // Forbidding instantiation
@@ -67,7 +68,7 @@ public class AggregationUtil {
       boolean ascending,
       boolean outputPartialTimeWindow) {
     if (groupByTimeParameter == null) {
-      return new SingleTimeWindowIterator(0, Long.MAX_VALUE);
+      return new SingleTimeWindowIterator(Long.MIN_VALUE, Long.MAX_VALUE);
     } else {
       return TimeRangeIteratorFactory.getTimeRangeIterator(
           groupByTimeParameter.getStartTime(),
@@ -75,8 +76,6 @@ public class AggregationUtil {
           groupByTimeParameter.getInterval(),
           groupByTimeParameter.getSlidingStep(),
           ascending,
-          groupByTimeParameter.isIntervalByMonth(),
-          groupByTimeParameter.isSlidingStepByMonth(),
           groupByTimeParameter.isLeftCRightO(),
           outputPartialTimeWindow);
     }

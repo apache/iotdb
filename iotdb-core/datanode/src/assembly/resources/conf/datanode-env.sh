@@ -140,13 +140,6 @@ calculate_memory_sizes()
 
     ON_HEAP_MEMORY="${on_heap_memory_size_in_mb}M"
     OFF_HEAP_MEMORY="${off_heap_memory_size_in_mb}M"
-
-    # if the heap size is larger than 16GB, we will forbid writing the heap dump file
-    if [ "$on_heap_memory_size_in_mb" -gt "16384" ]
-    then
-       echo "IoTDB memory is too large ($on_heap_memory_size_in_mb MB), will forbid writing heap dump file"
-       IOTDB_ALLOW_HEAP_DUMP="false"
-    fi
 }
 
 
@@ -227,13 +220,19 @@ calculate_memory_sizes
 # off heap memory size
 #OFF_HEAP_MEMORY="512M"
 
-# threads number that may use direct memory, including query threads(8) + merge threads(4) + space left for system(4)
-threads_number="16"
-# the size of buffer cache pool(IOV_MAX) depends on operating system
-temp_buffer_pool_size="1024"
+
+if [ "${OFF_HEAP_MEMORY%"G"}" != "$OFF_HEAP_MEMORY" ]
+then
+    off_heap_memory_size_in_mb=`expr ${OFF_HEAP_MEMORY%"G"} "*" 1024`
+else
+    off_heap_memory_size_in_mb=`expr ${OFF_HEAP_MEMORY%"M"}`
+fi
+
+# threads number for io
+IO_THREADS_NUMBER="1000"
 # Max cached buffer size, Note: unit can only be B!
-# which equals OFF_HEAP_MEMORY / threads_number / temp_buffer_pool_size
-MAX_CACHED_BUFFER_SIZE=`expr $on_heap_memory_size_in_mb \* 1024 \* 1024 / $threads_number / $temp_buffer_pool_size`
+# which equals OFF_HEAP_MEMORY / IO_THREADS_NUMBER 
+MAX_CACHED_BUFFER_SIZE=`expr $off_heap_memory_size_in_mb \* 1024 \* 1024 / $IO_THREADS_NUMBER`
 
 #true or false
 #DO NOT FORGET TO MODIFY THE PASSWORD FOR SECURITY (${IOTDB_CONF}/jmx.password and ${IOTDB_CONF}/jmx.access)
@@ -269,8 +268,9 @@ IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xms${ON_HEAP_MEMORY}"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xmx${ON_HEAP_MEMORY}"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:MaxDirectMemorySize=${OFF_HEAP_MEMORY}"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Djdk.nio.maxCachedBufferSize=${MAX_CACHED_BUFFER_SIZE}"
+IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+ExitOnOutOfMemoryError"
 # if you want to dump the heap memory while OOM happening, you can use the following command, remember to replace /tmp/heapdump.hprof with your own file path and the folder where this file is located needs to be created in advance
-#IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/heapdump.hprof"
+#IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/datanode_heapdump.hprof"
 
 
 echo "DataNode on heap memory size = ${ON_HEAP_MEMORY}B, off heap memory size = ${OFF_HEAP_MEMORY}B"

@@ -34,11 +34,7 @@ import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.pool.ISessionPool;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.EnvUtils;
-import org.apache.iotdb.it.env.cluster.config.MppClusterConfig;
-import org.apache.iotdb.it.env.cluster.config.MppCommonConfig;
-import org.apache.iotdb.it.env.cluster.config.MppConfigNodeConfig;
-import org.apache.iotdb.it.env.cluster.config.MppDataNodeConfig;
-import org.apache.iotdb.it.env.cluster.config.MppJVMConfig;
+import org.apache.iotdb.it.env.cluster.config.*;
 import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
@@ -46,11 +42,7 @@ import org.apache.iotdb.it.framework.IoTDBTestLogger;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.itbase.env.BaseNodeWrapper;
 import org.apache.iotdb.itbase.env.ClusterConfig;
-import org.apache.iotdb.itbase.runtime.ClusterTestConnection;
-import org.apache.iotdb.itbase.runtime.NodeConnection;
-import org.apache.iotdb.itbase.runtime.ParallelRequestDelegate;
-import org.apache.iotdb.itbase.runtime.RequestDelegate;
-import org.apache.iotdb.itbase.runtime.SerialRequestDelegate;
+import org.apache.iotdb.itbase.runtime.*;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.jdbc.IoTDBConnection;
@@ -67,22 +59,13 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.NODE_NETWORK_TIMEOUT_MS;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.NODE_START_TIMEOUT;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.PROBE_TIMEOUT_MS;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.TEMPLATE_NODE_LIB_PATH;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.TEMPLATE_NODE_PATH;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.*;
 import static org.apache.iotdb.jdbc.Config.VERSION;
 
 public abstract class AbstractEnv implements BaseEnv {
@@ -119,6 +102,34 @@ public abstract class AbstractEnv implements BaseEnv {
   @Override
   public ClusterConfig getConfig() {
     return clusterConfig;
+  }
+
+  @Override
+  public List<String> getMetricPrometheusReporterContents() {
+    List<String> result = new ArrayList<>();
+    // get all report content of confignodes
+    for (ConfigNodeWrapper configNode : this.configNodeWrapperList) {
+      String configNodeMetricContent =
+          getUrlContent(
+              Config.IOTDB_HTTP_URL_PREFIX
+                  + configNode.getIp()
+                  + ":"
+                  + configNode.getMetricPort()
+                  + "/metrics");
+      result.add(configNodeMetricContent);
+    }
+    // get all report content of datanodes
+    for (DataNodeWrapper dataNode : this.dataNodeWrapperList) {
+      String dataNodeMetricContent =
+          getUrlContent(
+              Config.IOTDB_HTTP_URL_PREFIX
+                  + dataNode.getIp()
+                  + ":"
+                  + dataNode.getMetricPort()
+                  + "/metrics");
+      result.add(dataNodeMetricContent);
+    }
+    return result;
   }
 
   protected void initEnvironment(int configNodesNum, int dataNodesNum) {
@@ -597,6 +608,24 @@ public abstract class AbstractEnv implements BaseEnv {
     } else {
       throw new IOException("Empty configNode set");
     }
+  }
+
+  @Override
+  public IConfigNodeRPCService.Iface getConfigNodeConnection(int index) throws Exception {
+    Exception lastException = null;
+    ConfigNodeWrapper configNodeWrapper = configNodeWrapperList.get(index);
+    for (int i = 0; i < 30; i++) {
+      try {
+        return clientManager.borrowClient(
+            new TEndPoint(configNodeWrapper.getIp(), configNodeWrapper.getPort()));
+      } catch (Exception e) {
+        lastException = e;
+      }
+      // Sleep 1s before next retry
+      TimeUnit.SECONDS.sleep(1);
+    }
+    throw new IOException(
+        "Failed to get connection to this ConfigNode. Last error: " + lastException);
   }
 
   @Override

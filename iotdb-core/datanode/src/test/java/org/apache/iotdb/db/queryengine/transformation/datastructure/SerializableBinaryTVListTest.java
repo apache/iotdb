@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.Serializa
 import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.SerializableTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 import org.junit.After;
 import org.junit.Before;
@@ -57,7 +58,7 @@ public class SerializableBinaryTVListTest extends SerializableTVListTest {
 
   @Override
   protected void generateData(int index) {
-    Binary value = Binary.valueOf(String.valueOf(index));
+    Binary value = BytesUtils.valueOf(String.valueOf(index));
     originalList.add(value);
     testList.putBinary(index, value);
   }

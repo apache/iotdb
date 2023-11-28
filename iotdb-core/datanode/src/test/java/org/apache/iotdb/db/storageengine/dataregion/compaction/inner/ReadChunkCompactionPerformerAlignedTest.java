@@ -37,6 +37,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -681,7 +682,7 @@ public class ReadChunkCompactionPerformerAlignedTest {
           new TsPrimitiveType.TsFloat(0.0F),
           null,
           null,
-          new TsPrimitiveType.TsBinary(new Binary("")),
+          new TsPrimitiveType.TsBinary(new Binary("", TSFileConfig.STRING_CHARSET)),
           new TsPrimitiveType.TsBoolean(false)
         };
         originData

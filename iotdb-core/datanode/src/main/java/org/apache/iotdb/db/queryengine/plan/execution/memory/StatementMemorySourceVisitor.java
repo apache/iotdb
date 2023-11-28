@@ -42,6 +42,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildPathsSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -70,7 +71,8 @@ public class StatementMemorySourceVisitor
     return (context.getAnalysis().getSourceExpressions() == null
             || context.getAnalysis().getSourceExpressions().isEmpty())
         && (context.getAnalysis().getDeviceToSourceExpressions() == null
-            || context.getAnalysis().getDeviceToSourceExpressions().isEmpty());
+            || context.getAnalysis().getDeviceToSourceExpressions().isEmpty())
+        && context.getAnalysis().getDeviceTemplate() == null;
   }
 
   @Override
@@ -100,7 +102,7 @@ public class StatementMemorySourceVisitor
     lines.forEach(
         line -> {
           builder.getTimeColumnBuilder().writeLong(0L);
-          builder.getColumnBuilder(0).writeBinary(new Binary(line));
+          builder.getColumnBuilder(0).writeBinary(new Binary(line, TSFileConfig.STRING_CHARSET));
           builder.declarePosition();
         });
     TsBlock tsBlock = builder.build();
@@ -131,11 +133,15 @@ public class StatementMemorySourceVisitor
     sortSet.forEach(
         node -> {
           tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-          tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(node.getNodeName()));
+          tsBlockBuilder
+              .getColumnBuilder(0)
+              .writeBinary(new Binary(node.getNodeName(), TSFileConfig.STRING_CHARSET));
           tsBlockBuilder
               .getColumnBuilder(1)
               .writeBinary(
-                  new Binary(MNodeType.getMNodeType(node.getNodeType()).getNodeTypeName()));
+                  new Binary(
+                      MNodeType.getMNodeType(node.getNodeType()).getNodeTypeName(),
+                      TSFileConfig.STRING_CHARSET));
           tsBlockBuilder.declarePosition();
         });
     return new StatementMemorySource(
@@ -160,7 +166,9 @@ public class StatementMemorySourceVisitor
             PartialPath nodePath = new PartialPath(node);
             String nodeName = nodePath.getTailNode();
             tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-            tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(nodeName));
+            tsBlockBuilder
+                .getColumnBuilder(0)
+                .writeBinary(new Binary(nodeName, TSFileConfig.STRING_CHARSET));
             tsBlockBuilder.declarePosition();
           } catch (IllegalPathException ignored) {
             // definitely won't happen
@@ -179,8 +187,12 @@ public class StatementMemorySourceVisitor
             .collect(Collectors.toList());
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-    tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(IoTDBConstant.VERSION));
-    tsBlockBuilder.getColumnBuilder(1).writeBinary(new Binary(IoTDBConstant.BUILD_INFO));
+    tsBlockBuilder
+        .getColumnBuilder(0)
+        .writeBinary(new Binary(IoTDBConstant.VERSION, TSFileConfig.STRING_CHARSET));
+    tsBlockBuilder
+        .getColumnBuilder(1)
+        .writeBinary(new Binary(IoTDBConstant.BUILD_INFO, TSFileConfig.STRING_CHARSET));
     tsBlockBuilder.declarePosition();
     return new StatementMemorySource(
         tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());

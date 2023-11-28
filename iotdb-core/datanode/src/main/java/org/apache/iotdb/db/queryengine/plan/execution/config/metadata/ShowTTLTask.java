@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -62,7 +63,9 @@ public class ShowTTLTask implements IConfigTask {
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     for (Map.Entry<String, Long> entry : storageGroupToTTL.entrySet()) {
       builder.getTimeColumnBuilder().writeLong(0);
-      builder.getColumnBuilder(0).writeBinary(new Binary(entry.getKey()));
+      builder
+          .getColumnBuilder(0)
+          .writeBinary(new Binary(entry.getKey(), TSFileConfig.STRING_CHARSET));
       if (Long.MAX_VALUE == entry.getValue()) {
         builder.getColumnBuilder(1).appendNull();
       } else {

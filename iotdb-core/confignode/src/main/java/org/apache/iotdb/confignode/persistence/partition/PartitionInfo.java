@@ -78,6 +78,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -164,8 +165,8 @@ public class PartitionInfo implements SnapshotProcessor {
 
     plan.getRegionGroupMap()
         .forEach(
-            (storageGroup, regionReplicaSets) -> {
-              databasePartitionTables.get(storageGroup).createRegionGroups(regionReplicaSets);
+            (database, regionReplicaSets) -> {
+              databasePartitionTables.get(database).createRegionGroups(regionReplicaSets);
               regionReplicaSets.forEach(
                   regionReplicaSet ->
                       maxRegionId.set(
@@ -720,6 +721,29 @@ public class PartitionInfo implements SnapshotProcessor {
             databasePartitionTable ->
                 result.getAndAdd(databasePartitionTable.getRegionCount(dataNodeId, type)));
     return result.get();
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * <p>Count the scatter width of the specified DataNode
+   *
+   * @param dataNodeId The specified DataNode
+   * @param type SchemaRegion or DataRegion
+   * @param clusterNodeCount The number of registeredNodes
+   * @return The schema/data scatter width of the specified DataNode. The scatter width refers to
+   *     the number of other DataNodes in the cluster which have at least one identical schema/data
+   *     replica as the specified DataNode.
+   */
+  public int countDataNodeScatterWidth(
+      int dataNodeId, TConsensusGroupType type, int clusterNodeCount) {
+    BitSet scatterSet = new BitSet(clusterNodeCount);
+    databasePartitionTables
+        .values()
+        .forEach(
+            databasePartitionTable ->
+                databasePartitionTable.countDataNodeScatterWidth(dataNodeId, type, scatterSet));
+    return scatterSet.cardinality() - 1;
   }
 
   /**

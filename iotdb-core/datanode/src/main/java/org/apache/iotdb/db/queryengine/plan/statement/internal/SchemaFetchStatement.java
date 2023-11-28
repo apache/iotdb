@@ -34,13 +34,18 @@ public class SchemaFetchStatement extends Statement {
   private final PathPatternTree patternTree;
   private final Map<Integer, Template> templateMap;
   private final boolean withTags;
+  private final boolean withTemplate;
 
   public SchemaFetchStatement(
-      PathPatternTree patternTree, Map<Integer, Template> templateMap, boolean withTags) {
+      PathPatternTree patternTree,
+      Map<Integer, Template> templateMap,
+      boolean withTags,
+      boolean withTemplate) {
     super();
     this.patternTree = patternTree;
     this.templateMap = templateMap;
     this.withTags = withTags;
+    this.withTemplate = withTemplate;
     setType(StatementType.FETCH_SCHEMA);
   }
 
@@ -64,5 +69,9 @@ public class SchemaFetchStatement extends Statement {
 
   public boolean isWithTags() {
     return withTags;
+  }
+
+  public boolean isWithTemplate() {
+    return withTemplate;
   }
 }

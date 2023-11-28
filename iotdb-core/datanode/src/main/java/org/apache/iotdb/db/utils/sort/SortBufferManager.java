@@ -20,10 +20,11 @@
 package org.apache.iotdb.db.utils.sort;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-
-import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 
 public class SortBufferManager {
+  private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
+      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
   public static final long SORT_BUFFER_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getSortBufferSize();

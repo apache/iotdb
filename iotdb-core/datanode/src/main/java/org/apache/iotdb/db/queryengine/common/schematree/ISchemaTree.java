@@ -21,6 +21,8 @@ package org.apache.iotdb.db.queryengine.common.schematree;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.List;
@@ -34,9 +36,16 @@ public interface ISchemaTree {
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    * @return Left: all measurement paths; Right: remaining series offset
    */
+  @TestOnly
   Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(
       PartialPath pathPattern, int slimit, int soffset, boolean isPrefixMatch);
 
+  /**
+   * Return all measurement paths for given path pattern.
+   *
+   * @param pathPattern can be a pattern or a full path of timeseries.
+   * @return Left: all measurement paths; Right: remaining series offset
+   */
   Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(PartialPath pathPattern);
 
   /**
@@ -45,8 +54,6 @@ public interface ISchemaTree {
    * @param pathPattern the pattern of the target devices.
    * @return A HashSet instance which stores info of the devices matching the given path pattern.
    */
-  List<DeviceSchemaInfo> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch);
-
   List<DeviceSchemaInfo> getMatchedDevices(PartialPath pathPattern);
 
   DeviceSchemaInfo searchDeviceSchemaInfo(PartialPath devicePath, List<String> measurements);
@@ -70,6 +77,28 @@ public interface ISchemaTree {
   boolean isEmpty();
 
   void mergeSchemaTree(ISchemaTree schemaTree);
+
+  /**
+   * Check whether this schema tree has normal series(not template series).
+   *
+   * @return true if it has normal series, else false
+   */
+  boolean hasNormalTimeSeries();
+
+  /**
+   * Get all templates being used in this schema tree.
+   *
+   * @return template list
+   */
+  List<Template> getUsingTemplates();
+
+  /**
+   * Get all devices using the given template.
+   *
+   * @param templateId template id
+   * @return device path list
+   */
+  List<PartialPath> getDeviceUsingTemplate(int templateId);
 
   /**
    * If there is view in this schema tree, return true, else return false.

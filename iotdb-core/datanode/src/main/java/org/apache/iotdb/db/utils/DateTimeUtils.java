@@ -20,10 +20,11 @@ package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.SessionManager;
+import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 import java.time.DateTimeException;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -664,19 +665,6 @@ public class DateTimeUtils {
     }
   }
 
-  public static long currentTime() {
-    long startupNano = IoTDBDescriptor.getInstance().getConfig().getStartUpNanosecond();
-    String timePrecision = CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
-    switch (timePrecision) {
-      case "ns":
-        return System.currentTimeMillis() * 1000_000 + (System.nanoTime() - startupNano) % 1000_000;
-      case "us":
-        return System.currentTimeMillis() * 1000 + (System.nanoTime() - startupNano) / 1000 % 1000;
-      default:
-        return System.currentTimeMillis();
-    }
-  }
-
   public static String convertLongToDate(long timestamp) {
     return convertLongToDate(
         timestamp, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
@@ -693,6 +681,32 @@ public class DateTimeUtils {
     }
     return LocalDateTime.ofInstant(Instant.ofEpochMilli(timestamp), ZoneId.systemDefault())
         .toString();
+  }
+
+  public static String convertMillisecondToDurationStr(long millisecond) {
+    Duration duration = Duration.ofMillis(millisecond);
+    long days = duration.toDays();
+    long years = days / 365;
+    days = days % 365;
+    long months = days / 30;
+    days %= 30;
+    long hours = duration.toHours() % 24;
+    long minutes = duration.toMinutes() % 60;
+    long seconds = duration.getSeconds() % 60;
+    StringBuilder result = new StringBuilder();
+    if (years > 0) {
+      result.append(years).append(" years ");
+    }
+    if (months > 0) {
+      result.append(months).append(" months ");
+    }
+    if (days > 0) {
+      result.append(days).append(" days ");
+    }
+    result.append(hours).append(" hours ");
+    result.append(minutes).append(" minutes ");
+    result.append(seconds).append(" seconds");
+    return result.toString();
   }
 
   public static ZoneOffset toZoneOffset(ZoneId zoneId) {
@@ -737,23 +751,66 @@ public class DateTimeUtils {
 
   public static final long MS_TO_MONTH = 30 * 86400_000L;
 
+  public static long calcPositiveIntervalByMonth(
+      long startTime, TimeDuration duration, long times) {
+    return TimeDuration.calcPositiveIntervalByMonth(
+        startTime,
+        duration,
+        times,
+        SessionManager.getInstance().getSessionTimeZone(),
+        TimestampPrecisionUtils.currPrecision);
+  }
+
+  public static long calcNegativeIntervalByMonth(long startTime, TimeDuration duration) {
+    return TimeDuration.calcNegativeIntervalByMonth(
+        startTime,
+        duration,
+        SessionManager.getInstance().getSessionTimeZone(),
+        TimestampPrecisionUtils.currPrecision);
+  }
+
   /**
-   * add natural months based on the startTime to avoid edge cases, ie 2/28
+   * Storage the duration into two parts: month part and non-month part, the non-month part's
+   * precision is depended on current time precision. e.g. ms precision: '1y1mo1ms' -> monthDuration
+   * = 13, nonMonthDuration = 1, ns precision: '1y1mo1ms' -> monthDuration = 13, nonMonthDuration =
+   * 1000_000.
    *
-   * @param startTime current start time
-   * @param numMonths numMonths is updated in hasNextWithoutConstraint()
-   * @return nextStartTime
+   * @param duration the input duration string
+   * @return the TimeDuration instance contains month part and non-month part
    */
-  public static long calcIntervalByMonth(long startTime, long numMonths) {
-    Calendar calendar = Calendar.getInstance();
-    calendar.setTimeZone(SessionManager.getInstance().getSessionTimeZone());
-    calendar.setTimeInMillis(startTime);
-    boolean isLastDayOfMonth =
-        calendar.get(Calendar.DAY_OF_MONTH) == calendar.getActualMaximum(Calendar.DAY_OF_MONTH);
-    calendar.add(Calendar.MONTH, (int) (numMonths));
-    if (isLastDayOfMonth) {
-      calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH));
+  public static TimeDuration constructTimeDuration(String duration) {
+    duration = duration.toLowerCase();
+    String currTimePrecision = CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
+    int temp = 0;
+    int monthDuration = 0;
+    long nonMonthDuration = 0;
+    for (int i = 0; i < duration.length(); i++) {
+      char ch = duration.charAt(i);
+      if (Character.isDigit(ch)) {
+        temp *= 10;
+        temp += (ch - '0');
+      } else {
+        String unit = String.valueOf(duration.charAt(i));
+        // This is to identify units with two letters.
+        if (i + 1 < duration.length() && !Character.isDigit(duration.charAt(i + 1))) {
+          i++;
+          unit += duration.charAt(i);
+        }
+        if (unit.equals("y")) {
+          monthDuration += temp * 12;
+          temp = 0;
+          continue;
+        }
+        if (unit.equals("mo")) {
+          monthDuration += temp;
+          temp = 0;
+          continue;
+        }
+        nonMonthDuration +=
+            DateTimeUtils.convertDurationStrToLong(-1, temp, unit, currTimePrecision);
+        temp = 0;
+      }
     }
-    return calendar.getTimeInMillis();
+    return new TimeDuration(monthDuration, nonMonthDuration);
   }
 }

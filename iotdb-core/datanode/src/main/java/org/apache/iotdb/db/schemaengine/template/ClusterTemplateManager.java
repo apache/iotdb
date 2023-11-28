@@ -641,9 +641,23 @@ public class ClusterTemplateManager implements ITemplateManager {
     }
   }
 
+  public Integer getTemplateId(String templateName) {
+    return templateNameMap.get(templateName);
+  }
+
   @TestOnly
   public void putTemplate(Template template) {
     templateIdMap.put(template.getId(), template);
     templateNameMap.put(template.getName(), template.getId());
+  }
+
+  @TestOnly
+  public void clear() {
+    templateIdMap.clear();
+    templateNameMap.clear();
+    pathSetTemplateMap.clear();
+    templateSetOnPathsMap.clear();
+    pathPreSetTemplateMap.clear();
+    templatePreSetOnPathsMap.clear();
   }
 }

@@ -27,6 +27,7 @@ import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -939,7 +940,14 @@ public class SessionTest {
     long[] timestamp = new long[] {2l, 3l};
     Binary[][] values =
         new Binary[][] {
-          {new Binary("test"), new Binary("test2")}, {new Binary("test"), new Binary("test1")}
+          {
+            new Binary("test", TSFileConfig.STRING_CHARSET),
+            new Binary("test2", TSFileConfig.STRING_CHARSET)
+          },
+          {
+            new Binary("test", TSFileConfig.STRING_CHARSET),
+            new Binary("test1", TSFileConfig.STRING_CHARSET)
+          }
         };
     BitMap[] partBitMap = new BitMap[2];
     Tablet tablet = new Tablet("device1", schemas, timestamp, values, partBitMap, 2);

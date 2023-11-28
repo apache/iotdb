@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -62,7 +63,7 @@ public class InsertMultiTabletsNodeSerdeTest {
       ((long[]) columns[2])[r] = 10000;
       ((int[]) columns[3])[r] = 100;
       ((boolean[]) columns[4])[r] = false;
-      ((Binary[]) columns[5])[r] = new Binary("hh" + r);
+      ((Binary[]) columns[5])[r] = new Binary("hh" + r, TSFileConfig.STRING_CHARSET);
     }
 
     PlanNodeId planNodeId = new PlanNodeId("plan node 1");

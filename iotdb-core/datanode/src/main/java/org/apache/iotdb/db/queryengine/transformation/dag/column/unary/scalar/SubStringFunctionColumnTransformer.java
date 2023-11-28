@@ -21,10 +21,11 @@ package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.type.Type;
-import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 public class SubStringFunctionColumnTransformer extends UnaryColumnTransformer {
 
@@ -44,7 +45,7 @@ public class SubStringFunctionColumnTransformer extends UnaryColumnTransformer {
   protected void doTransform(Column column, ColumnBuilder columnBuilder) {
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
       if (!column.isNull(i)) {
-        String currentValue = column.getBinary(i).getStringValue();
+        String currentValue = column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
         if (beginPosition >= currentValue.length() || endPosition < 0) {
           currentValue = EMPTY_STRING;
         } else {
@@ -54,7 +55,7 @@ public class SubStringFunctionColumnTransformer extends UnaryColumnTransformer {
             currentValue = currentValue.substring(beginPosition, endPosition);
           }
         }
-        columnBuilder.writeBinary(Binary.valueOf(currentValue));
+        columnBuilder.writeBinary(BytesUtils.valueOf(currentValue));
       } else {
         columnBuilder.appendNull();
       }

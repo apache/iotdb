@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary;
 
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.type.Type;
@@ -43,7 +44,11 @@ public class RegularColumnTransformer extends UnaryColumnTransformer {
         returnType.writeBoolean(
             columnBuilder,
             pattern
-                .matcher(childColumnTransformer.getType().getBinary(column, i).getStringValue())
+                .matcher(
+                    childColumnTransformer
+                        .getType()
+                        .getBinary(column, i)
+                        .getStringValue(TSFileConfig.STRING_CHARSET))
                 .find());
       } else {
         columnBuilder.appendNull();

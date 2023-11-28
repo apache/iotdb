@@ -18,16 +18,11 @@
  */
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
-import org.apache.iotdb.tsfile.read.filter.operator.NotFilter;
-import org.apache.iotdb.tsfile.read.filter.operator.OrFilter;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsBinary;
@@ -110,66 +105,10 @@ public class TimeValuePairUtils {
       case DOUBLE:
         return new TimeValuePair(0, new TsDouble(0.0));
       case TEXT:
-        return new TimeValuePair(0, new TsBinary(new Binary("")));
+        return new TimeValuePair(0, new TsBinary(new Binary("", TSFileConfig.STRING_CHARSET)));
       default:
         throw new UnsupportedOperationException("Unrecognized datatype: " + dataType);
     }
-  }
-
-  public static Intervals extractTimeInterval(Filter filter) {
-    if (filter == null) {
-      return Intervals.ALL_INTERVAL;
-    }
-    // and, or, not, value, time, group by
-    // eq, neq, gt, gteq, lt, lteq, in
-    if (filter instanceof AndFilter) {
-      AndFilter andFilter = ((AndFilter) filter);
-      Intervals leftIntervals = extractTimeInterval(andFilter.getLeft());
-      Intervals rightIntervals = extractTimeInterval(andFilter.getRight());
-      return leftIntervals.intersection(rightIntervals);
-    } else if (filter instanceof OrFilter) {
-      OrFilter orFilter = ((OrFilter) filter);
-      Intervals leftIntervals = extractTimeInterval(orFilter.getLeft());
-      Intervals rightIntervals = extractTimeInterval(orFilter.getRight());
-      return leftIntervals.union(rightIntervals);
-    } else if (filter instanceof NotFilter) {
-      NotFilter notFilter = ((NotFilter) filter);
-      return extractTimeInterval(notFilter.getFilter()).not();
-    } else if (filter instanceof TimeFilter.TimeGt) {
-      TimeFilter.TimeGt timeGt = ((TimeFilter.TimeGt) filter);
-      return new Intervals(((long) timeGt.getValue()) + 1, Long.MAX_VALUE);
-    } else if (filter instanceof TimeFilter.TimeGtEq) {
-      TimeFilter.TimeGtEq timeGtEq = ((TimeFilter.TimeGtEq) filter);
-      return new Intervals(((long) timeGtEq.getValue()), Long.MAX_VALUE);
-    } else if (filter instanceof TimeFilter.TimeEq) {
-      TimeFilter.TimeEq timeEq = ((TimeFilter.TimeEq) filter);
-      return new Intervals(((long) timeEq.getValue()), ((long) timeEq.getValue()));
-    } else if (filter instanceof TimeFilter.TimeNotEq) {
-      TimeFilter.TimeNotEq timeNotEq = ((TimeFilter.TimeNotEq) filter);
-      Intervals intervals = new Intervals();
-      intervals.addInterval(Long.MIN_VALUE, (long) timeNotEq.getValue() - 1);
-      intervals.addInterval((long) timeNotEq.getValue() + 1, Long.MAX_VALUE);
-      return intervals;
-    } else if (filter instanceof TimeFilter.TimeLt) {
-      TimeFilter.TimeLt timeLt = ((TimeFilter.TimeLt) filter);
-      return new Intervals(Long.MIN_VALUE, (long) timeLt.getValue() - 1);
-    } else if (filter instanceof TimeFilter.TimeLtEq) {
-      TimeFilter.TimeLtEq timeLtEq = ((TimeFilter.TimeLtEq) filter);
-      return new Intervals(Long.MIN_VALUE, (long) timeLtEq.getValue());
-    } else if (filter instanceof TimeFilter.TimeIn) {
-      TimeFilter.TimeIn timeIn = ((TimeFilter.TimeIn) filter);
-      Intervals intervals = new Intervals();
-      for (Object value : timeIn.getValues()) {
-        long time = ((long) value);
-        intervals.addInterval(time, time);
-      }
-      return intervals;
-    } else if (filter instanceof GroupByFilter) {
-      GroupByFilter groupByFilter = ((GroupByFilter) filter);
-      return new Intervals(groupByFilter.getStartTime(), groupByFilter.getEndTime() + 1);
-    }
-    // value filter
-    return Intervals.ALL_INTERVAL;
   }
 
   /** All intervals are closed. */

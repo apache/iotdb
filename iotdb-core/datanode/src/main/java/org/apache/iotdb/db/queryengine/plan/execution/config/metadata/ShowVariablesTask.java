@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -63,64 +64,91 @@ public class ShowVariablesTask implements IConfigTask {
     TClusterParameters clusterParameters = showVariablesResp.getClusterParameters();
     buildTSBlock(
         builder,
-        new Binary(ColumnHeaderConstant.COLUMN_CLUSTER_NAME),
-        new Binary(clusterParameters.getClusterName()));
+        new Binary(ColumnHeaderConstant.COLUMN_CLUSTER_NAME, TSFileConfig.STRING_CHARSET),
+        new Binary(clusterParameters.getClusterName(), TSFileConfig.STRING_CHARSET));
     buildTSBlock(
         builder,
-        new Binary(ColumnHeaderConstant.DATA_REPLICATION_FACTOR),
-        new Binary(String.valueOf(clusterParameters.getDataReplicationFactor())));
+        new Binary(ColumnHeaderConstant.DATA_REPLICATION_FACTOR, TSFileConfig.STRING_CHARSET),
+        new Binary(
+            String.valueOf(clusterParameters.getDataReplicationFactor()),
+            TSFileConfig.STRING_CHARSET));
     buildTSBlock(
         builder,
-        new Binary(ColumnHeaderConstant.SCHEMA_REPLICATION_FACTOR),
-        new Binary(String.valueOf(clusterParameters.getSchemaReplicationFactor())));
+        new Binary(ColumnHeaderConstant.SCHEMA_REPLICATION_FACTOR, TSFileConfig.STRING_CHARSET),
+        new Binary(
+            String.valueOf(clusterParameters.getSchemaReplicationFactor()),
+            TSFileConfig.STRING_CHARSET));
     buildTSBlock(
         builder,
-        new Binary(ColumnHeaderConstant.DATA_REGION_CONSENSUS_PROTOCOL_CLASS),
-        new Binary(clusterParameters.getDataRegionConsensusProtocolClass()));
+        new Binary(
+            ColumnHeaderConstant.DATA_REGION_CONSENSUS_PROTOCOL_CLASS, TSFileConfig.STRING_CHARSET),
+        new Binary(
+            clusterParameters.getDataRegionConsensusProtocolClass(), TSFileConfig.STRING_CHARSET));
     buildTSBlock(
         builder,
-        new Binary(ColumnHeaderConstant.SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS),
-        new Binary(clusterParameters.getSchemaRegionConsensusProtocolClass()));
+        new Binary(
+            ColumnHeaderConstant.SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS,
+            TSFileConfig.STRING_CHARSET),
+        new Binary(
+            clusterParameters.getSchemaRegionConsensusProtocolClass(),
+            TSFileConfig.STRING_CHARSET));
     buildTSBlock(
         builder,
-        new Binary(ColumnHeaderConstant.CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS),
-        new Binary(clusterParameters.getConfigNodeConsensusProtocolClass()));
+        new Binary(
+            ColumnHeaderConstant.CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS, TSFileConfig.STRING_CHARSET),
+        new Binary(
+            clusterParameters.getConfigNodeConsensusProtocolClass(), TSFileConfig.STRING_CHARSET));
     buildTSBlock(
         builder,
-        new Binary(ColumnHeaderConstant.TIME_PARTITION_INTERVAL),
-        new Binary(String.valueOf(clusterParameters.getTimePartitionInterval())));
+        new Binary(ColumnHeaderConstant.TIME_PARTITION_INTERVAL, TSFileConfig.STRING_CHARSET),
+        new Binary(
+            String.valueOf(clusterParameters.getTimePartitionInterval()),
+            TSFileConfig.STRING_CHARSET));
     buildTSBlock(
         builder,
-        new Binary(ColumnHeaderConstant.DEFAULT_TTL),
-        new Binary(String.valueOf(clusterParameters.getDefaultTTL())));
+        new Binary(ColumnHeaderConstant.DEFAULT_TTL, TSFileConfig.STRING_CHARSET),
+        new Binary(String.valueOf(clusterParameters.getDefaultTTL()), TSFileConfig.STRING_CHARSET));
     buildTSBlock(
         builder,
-        new Binary(ColumnHeaderConstant.READ_CONSISTENCY_LEVEL),
-        new Binary(String.valueOf(clusterParameters.getReadConsistencyLevel())));
+        new Binary(ColumnHeaderConstant.READ_CONSISTENCY_LEVEL, TSFileConfig.STRING_CHARSET),
+        new Binary(
+            String.valueOf(clusterParameters.getReadConsistencyLevel()),
+            TSFileConfig.STRING_CHARSET));
     buildTSBlock(
         builder,
-        new Binary(ColumnHeaderConstant.SCHEMA_REGION_PER_DATA_NODE),
-        new Binary(String.valueOf(clusterParameters.getSchemaRegionPerDataNode())));
+        new Binary(ColumnHeaderConstant.SCHEMA_REGION_PER_DATA_NODE, TSFileConfig.STRING_CHARSET),
+        new Binary(
+            String.valueOf(clusterParameters.getSchemaRegionPerDataNode()),
+            TSFileConfig.STRING_CHARSET));
     buildTSBlock(
         builder,
-        new Binary(ColumnHeaderConstant.DATA_REGION_PER_DATA_NODE),
-        new Binary(String.valueOf(clusterParameters.getDataRegionPerDataNode())));
+        new Binary(ColumnHeaderConstant.DATA_REGION_PER_DATA_NODE, TSFileConfig.STRING_CHARSET),
+        new Binary(
+            String.valueOf(clusterParameters.getDataRegionPerDataNode()),
+            TSFileConfig.STRING_CHARSET));
     buildTSBlock(
         builder,
-        new Binary(ColumnHeaderConstant.SERIES_SLOT_NUM),
-        new Binary(String.valueOf(clusterParameters.getSeriesPartitionSlotNum())));
+        new Binary(ColumnHeaderConstant.SERIES_SLOT_NUM, TSFileConfig.STRING_CHARSET),
+        new Binary(
+            String.valueOf(clusterParameters.getSeriesPartitionSlotNum()),
+            TSFileConfig.STRING_CHARSET));
     buildTSBlock(
         builder,
-        new Binary(ColumnHeaderConstant.SERIES_SLOT_EXECUTOR_CLASS),
-        new Binary(clusterParameters.getSeriesPartitionExecutorClass()));
+        new Binary(ColumnHeaderConstant.SERIES_SLOT_EXECUTOR_CLASS, TSFileConfig.STRING_CHARSET),
+        new Binary(
+            clusterParameters.getSeriesPartitionExecutorClass(), TSFileConfig.STRING_CHARSET));
     buildTSBlock(
         builder,
-        new Binary(ColumnHeaderConstant.DISK_SPACE_WARNING_THRESHOLD),
-        new Binary(String.valueOf(clusterParameters.getDiskSpaceWarningThreshold())));
+        new Binary(ColumnHeaderConstant.DISK_SPACE_WARNING_THRESHOLD, TSFileConfig.STRING_CHARSET),
+        new Binary(
+            String.valueOf(clusterParameters.getDiskSpaceWarningThreshold()),
+            TSFileConfig.STRING_CHARSET));
     buildTSBlock(
         builder,
-        new Binary(ColumnHeaderConstant.TIMESTAMP_PRECISION),
-        new Binary(String.valueOf(clusterParameters.getTimestampPrecision())));
+        new Binary(ColumnHeaderConstant.TIMESTAMP_PRECISION, TSFileConfig.STRING_CHARSET),
+        new Binary(
+            String.valueOf(clusterParameters.getTimestampPrecision()),
+            TSFileConfig.STRING_CHARSET));
 
     DatasetHeader datasetHeader = DatasetHeaderFactory.getShowClusterParametersHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));

@@ -39,10 +39,10 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-/** Create regions for specific StorageGroups. */
+/** Create regions for specified Databases. */
 public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
 
-  // Map<StorageGroupName, List<TRegionReplicaSet>>
+  // Map<Database, List<TRegionReplicaSet>>
   protected final Map<String, List<TRegionReplicaSet>> regionGroupMap;
 
   public CreateRegionGroupsPlan() {
@@ -59,20 +59,20 @@ public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
     return regionGroupMap;
   }
 
-  public void addRegionGroup(String storageGroup, TRegionReplicaSet regionReplicaSet) {
+  public void addRegionGroup(String database, TRegionReplicaSet regionReplicaSet) {
     regionGroupMap
-        .computeIfAbsent(storageGroup, regionReplicaSets -> new ArrayList<>())
+        .computeIfAbsent(database, regionReplicaSets -> new ArrayList<>())
         .add(regionReplicaSet);
   }
 
   public void planLog(Logger logger) {
     for (Map.Entry<String, List<TRegionReplicaSet>> regionGroupEntry : regionGroupMap.entrySet()) {
-      String storageGroup = regionGroupEntry.getKey();
+      String database = regionGroupEntry.getKey();
       for (TRegionReplicaSet regionReplicaSet : regionGroupEntry.getValue()) {
         logger.info(
-            "[CreateRegionGroups] RegionGroup: {}, belonged StorageGroup: {}, on DataNodes: {}",
+            "[CreateRegionGroups] RegionGroup: {}, belonged database: {}, on DataNodes: {}",
             regionReplicaSet.getRegionId(),
-            storageGroup,
+            database,
             regionReplicaSet.getDataNodeLocations().stream()
                 .map(TDataNodeLocation::getDataNodeId)
                 .collect(Collectors.toList()));
@@ -96,9 +96,9 @@ public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
 
     stream.writeInt(regionGroupMap.size());
     for (Entry<String, List<TRegionReplicaSet>> entry : regionGroupMap.entrySet()) {
-      String storageGroup = entry.getKey();
+      String database = entry.getKey();
       List<TRegionReplicaSet> regionReplicaSets = entry.getValue();
-      BasicStructureSerDeUtil.write(storageGroup, stream);
+      BasicStructureSerDeUtil.write(database, stream);
       stream.writeInt(regionReplicaSets.size());
       regionReplicaSets.forEach(
           regionReplicaSet ->
@@ -108,16 +108,16 @@ public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    int storageGroupNum = buffer.getInt();
-    for (int i = 0; i < storageGroupNum; i++) {
-      String storageGroup = BasicStructureSerDeUtil.readString(buffer);
-      regionGroupMap.put(storageGroup, new ArrayList<>());
+    int databaseNum = buffer.getInt();
+    for (int i = 0; i < databaseNum; i++) {
+      String database = BasicStructureSerDeUtil.readString(buffer);
+      regionGroupMap.put(database, new ArrayList<>());
 
       int regionReplicaSetNum = buffer.getInt();
       for (int j = 0; j < regionReplicaSetNum; j++) {
         TRegionReplicaSet regionReplicaSet =
             ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(buffer);
-        regionGroupMap.get(storageGroup).add(regionReplicaSet);
+        regionGroupMap.get(database).add(regionReplicaSet);
       }
     }
   }
@@ -130,12 +130,15 @@ public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
+    if (!super.equals(o)) {
+      return false;
+    }
     CreateRegionGroupsPlan that = (CreateRegionGroupsPlan) o;
-    return regionGroupMap.equals(that.regionGroupMap);
+    return Objects.equals(regionGroupMap, that.regionGroupMap);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(regionGroupMap);
+    return Objects.hash(super.hashCode(), regionGroupMap);
   }
 }

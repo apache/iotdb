@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-connector</artifactId>
-        <version>1.3.0-SNAPSHOT</version>
+        <version>1.3.1-SNAPSHOT</version>
     </parent>
     <artifactId>spark-iotdb-connector</artifactId>
     <!-- NOTE: This module actually only contains the sources and the common settings
@@ -46,17 +46,17 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-jdbc</artifactId>
-            <version>1.3.0-SNAPSHOT</version>
+            <version>1.3.1-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-session</artifactId>
-            <version>1.3.0-SNAPSHOT</version>
+            <version>1.3.1-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>tsfile</artifactId>
-            <version>1.3.0-SNAPSHOT</version>
+            <artifactId>common-api</artifactId>
+            <version>1.3.1-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>

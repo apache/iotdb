@@ -36,7 +36,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.NullColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
-import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -65,7 +65,7 @@ public class ColumnTest {
   public void binaryColumnSubColumnTest() {
     BinaryColumnBuilder columnBuilder = new BinaryColumnBuilder(null, 10);
     for (int i = 0; i < 10; i++) {
-      columnBuilder.writeBinary(Binary.valueOf(String.valueOf(i)));
+      columnBuilder.writeBinary(BytesUtils.valueOf(String.valueOf(i)));
     }
     BinaryColumn binaryColumn = (BinaryColumn) columnBuilder.build();
     binaryColumn = (BinaryColumn) binaryColumn.subColumn(5);

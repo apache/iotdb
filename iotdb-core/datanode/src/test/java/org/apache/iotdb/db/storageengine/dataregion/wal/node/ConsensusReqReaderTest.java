@@ -34,6 +34,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
@@ -637,7 +638,7 @@ public class ConsensusReqReaderTest {
     columns[2] = 10000L;
     columns[3] = 100;
     columns[4] = false;
-    columns[5] = new Binary("hh" + 0);
+    columns[5] = new Binary("hh" + 0, TSFileConfig.STRING_CHARSET);
 
     InsertRowNode insertRowNode =
         new InsertRowNode(
@@ -688,7 +689,7 @@ public class ConsensusReqReaderTest {
       ((long[]) columns[2])[r] = 10000 + r;
       ((int[]) columns[3])[r] = 100 + r;
       ((boolean[]) columns[4])[r] = (r % 2 == 0);
-      ((Binary[]) columns[5])[r] = new Binary("hh" + r);
+      ((Binary[]) columns[5])[r] = new Binary("hh" + r, TSFileConfig.STRING_CHARSET);
     }
 
     BitMap[] bitMaps = new BitMap[dataTypes.length];

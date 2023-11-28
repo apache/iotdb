@@ -19,9 +19,14 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeighUtil;
+import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -32,7 +37,7 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
@@ -57,6 +62,8 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
   private final PipeTaskMeta pipeTaskMeta; // used to report progress
   private final EnrichedEvent sourceEvent; // used to report progress
+
+  private final PipeMemoryBlock allocatedMemoryBlock;
 
   private final TsFileSequenceReader tsFileSequenceReader;
   private final TsFileReader tsFileReader;
@@ -90,23 +97,48 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
     this.sourceEvent = sourceEvent;
 
     try {
-      tsFileSequenceReader = new TsFileSequenceReader(tsFile.getAbsolutePath(), true, true);
+      final PipeTsFileResourceManager tsFileResourceManager = PipeResourceManager.tsfile();
+      final Map<String, List<String>> deviceMeasurementsMap;
+
+      // TsFileReader is not thread-safe, so we need to create it here and close it later.
+      long memoryRequiredInBytes =
+          PipeConfig.getInstance().getPipeMemoryAllocateForTsFileSequenceReaderInBytes();
+      tsFileSequenceReader = new TsFileSequenceReader(tsFile.getPath(), true, true);
       tsFileReader = new TsFileReader(tsFileSequenceReader);
 
-      deviceMeasurementsMapIterator = filterDeviceMeasurementsMapByPattern().entrySet().iterator();
-      deviceIsAlignedMap = readDeviceIsAlignedMap();
-      measurementDataTypeMap = tsFileSequenceReader.getFullPathDataTypeMap();
+      if (tsFileResourceManager.cacheObjectsIfAbsent(tsFile)) {
+        // These read-only objects can be found in cache.
+        deviceIsAlignedMap = tsFileResourceManager.getDeviceIsAlignedMapFromCache(tsFile);
+        measurementDataTypeMap = tsFileResourceManager.getMeasurementDataTypeMapFromCache(tsFile);
+        deviceMeasurementsMap = tsFileResourceManager.getDeviceMeasurementsMapFromCache(tsFile);
+      } else {
+        // We need to create these objects here and remove them later.
+        deviceIsAlignedMap = readDeviceIsAlignedMap();
+        memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfStr2Bool(deviceIsAlignedMap);
+
+        measurementDataTypeMap = tsFileSequenceReader.getFullPathDataTypeMap();
+        memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfStr2TSDataType(measurementDataTypeMap);
+
+        deviceMeasurementsMap = tsFileSequenceReader.getDeviceMeasurementsMap();
+        memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfStr2StrList(deviceMeasurementsMap);
+      }
+      allocatedMemoryBlock = PipeResourceManager.memory().forceAllocate(memoryRequiredInBytes);
+
+      deviceMeasurementsMapIterator =
+          filterDeviceMeasurementsMapByPattern(deviceMeasurementsMap).entrySet().iterator();
+
+      // No longer need this. Help GC.
+      tsFileSequenceReader.clearCachedDeviceMetadata();
     } catch (Exception e) {
       close();
       throw e;
     }
   }
 
-  private Map<String, List<String>> filterDeviceMeasurementsMapByPattern() throws IOException {
+  private Map<String, List<String>> filterDeviceMeasurementsMapByPattern(
+      Map<String, List<String>> originalDeviceMeasurementsMap) {
     final Map<String, List<String>> filteredDeviceMeasurementsMap = new HashMap<>();
-
-    for (Map.Entry<String, List<String>> entry :
-        tsFileSequenceReader.getDeviceMeasurementsMap().entrySet()) {
+    for (Map.Entry<String, List<String>> entry : originalDeviceMeasurementsMap.entrySet()) {
       final String deviceId = entry.getKey();
 
       // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
@@ -200,12 +232,22 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
             if (!hasNext()) {
               next =
                   new PipeRawTabletInsertionEvent(
-                      tablet, isAligned, pipeTaskMeta, sourceEvent, true);
+                      tablet,
+                      isAligned,
+                      sourceEvent != null ? sourceEvent.getPipeName() : null,
+                      pipeTaskMeta,
+                      sourceEvent,
+                      true);
               close();
             } else {
               next =
                   new PipeRawTabletInsertionEvent(
-                      tablet, isAligned, pipeTaskMeta, sourceEvent, false);
+                      tablet,
+                      isAligned,
+                      sourceEvent != null ? sourceEvent.getPipeName() : null,
+                      pipeTaskMeta,
+                      sourceEvent,
+                      false);
             }
             return next;
           }
@@ -228,6 +270,10 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
       }
     } catch (IOException e) {
       LOGGER.warn("Failed to close TsFileSequenceReader", e);
+    }
+
+    if (allocatedMemoryBlock != null) {
+      allocatedMemoryBlock.close();
     }
   }
 }

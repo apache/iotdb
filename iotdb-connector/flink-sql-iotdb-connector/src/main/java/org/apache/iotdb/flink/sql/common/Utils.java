@@ -19,6 +19,7 @@
 package org.apache.iotdb.flink.sql.common;
 
 import org.apache.iotdb.flink.sql.exception.UnsupportedDataTypeException;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.NullFieldException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -151,7 +152,9 @@ public class Utils {
     int length = Array.getLength(obj);
     for (int i = 0; i < length; i++) {
       if (dataType == TSDataType.TEXT) {
-        objects.add(StringData.fromString(((Binary) Array.get(obj, i)).getStringValue()));
+        objects.add(
+            StringData.fromString(
+                ((Binary) Array.get(obj, i)).getStringValue(TSFileConfig.STRING_CHARSET)));
       } else {
         objects.add(Array.get(obj, i));
       }

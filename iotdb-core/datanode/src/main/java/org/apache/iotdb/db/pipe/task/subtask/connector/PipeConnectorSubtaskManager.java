@@ -22,18 +22,13 @@ package org.apache.iotdb.db.pipe.task.subtask.connector;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.commit.PipeEventCommitManager;
 import org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
-import org.apache.iotdb.db.pipe.connector.protocol.airgap.IoTDBAirGapConnector;
-import org.apache.iotdb.db.pipe.connector.protocol.legacy.IoTDBLegacyPipeConnector;
-import org.apache.iotdb.db.pipe.connector.protocol.opcua.OpcUaConnector;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBThriftSyncConnector;
-import org.apache.iotdb.db.pipe.connector.protocol.websocket.WebSocketConnector;
+import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskConnectorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.PipeConnector;
-import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -45,12 +40,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.function.Supplier;
 
 public class PipeConnectorSubtaskManager {
-
-  private static final Map<String, Supplier<PipeConnector>> CONNECTOR_CONSTRUCTORS =
-      new HashMap<>();
 
   private static final String FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE =
       "Failed to deregister PipeConnectorSubtask. No such subtask: ";
@@ -61,7 +52,18 @@ public class PipeConnectorSubtaskManager {
   public synchronized String register(
       PipeConnectorSubtaskExecutor executor,
       PipeParameters pipeConnectorParameters,
-      PipeRuntimeEnvironment pipeRuntimeEnvironment) {
+      PipeTaskConnectorRuntimeEnvironment environment) {
+    final String connectorKey =
+        pipeConnectorParameters
+            .getStringOrDefault(
+                Arrays.asList(PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
+                BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())
+            // Convert the value of `CONNECTOR_KEY` or `SINK_KEY` to lowercase
+            // for matching in `CONNECTOR_CONSTRUCTORS`
+            .toLowerCase();
+    PipeEventCommitManager.getInstance()
+        .register(environment.getPipeName(), environment.getRegionId(), connectorKey);
+
     final String attributeSortedString =
         new TreeMap<>(pipeConnectorParameters.getAttribute()).toString();
 
@@ -75,29 +77,21 @@ public class PipeConnectorSubtaskManager {
       final List<PipeConnectorSubtaskLifeCycle> pipeConnectorSubtaskLifeCycleList =
           new ArrayList<>(connectorNum);
 
-      final String connectorKey =
-          pipeConnectorParameters.getStringOrDefault(
-              Arrays.asList(PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
-              BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName());
       // Shared pending queue for all subtasks
       final BoundedBlockingPendingQueue<Event> pendingQueue =
           new BoundedBlockingPendingQueue<>(
               PipeConfig.getInstance().getPipeConnectorPendingQueueSize());
 
-      for (int i = 0; i < connectorNum; i++) {
+      for (int connectorIndex = 0; connectorIndex < connectorNum; connectorIndex++) {
         final PipeConnector pipeConnector =
-            CONNECTOR_CONSTRUCTORS
-                .getOrDefault(
-                    connectorKey,
-                    () -> PipeAgent.plugin().reflectConnector(pipeConnectorParameters))
-                .get();
+            PipeAgent.plugin().reflectConnector(pipeConnectorParameters);
 
         // 1. Construct, validate and customize PipeConnector, and then handshake (create
         // connection) with the target
         try {
           pipeConnector.validate(new PipeParameterValidator(pipeConnectorParameters));
           pipeConnector.customize(
-              pipeConnectorParameters, new PipeTaskRuntimeConfiguration(pipeRuntimeEnvironment));
+              pipeConnectorParameters, new PipeTaskRuntimeConfiguration(environment));
           pipeConnector.handshake();
         } catch (Exception e) {
           throw new PipeException(
@@ -108,7 +102,11 @@ public class PipeConnectorSubtaskManager {
         final PipeConnectorSubtask pipeConnectorSubtask =
             new PipeConnectorSubtask(
                 String.format(
-                    "%s_%s_%s", attributeSortedString, pipeRuntimeEnvironment.getCreationTime(), i),
+                    "%s_%s_%s",
+                    attributeSortedString, environment.getCreationTime(), connectorIndex),
+                environment.getCreationTime(),
+                attributeSortedString,
+                connectorIndex,
                 pendingQueue,
                 pipeConnector);
         final PipeConnectorSubtaskLifeCycle pipeConnectorSubtaskLifeCycle =
@@ -128,18 +126,21 @@ public class PipeConnectorSubtaskManager {
     return attributeSortedString;
   }
 
-  public synchronized void deregister(String attributeSortedString) {
+  public synchronized void deregister(
+      String pipeName, int dataRegionId, String attributeSortedString) {
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       throw new PipeException(FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE + attributeSortedString);
     }
 
     final List<PipeConnectorSubtaskLifeCycle> lifeCycles =
         attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString);
-    lifeCycles.removeIf(PipeConnectorSubtaskLifeCycle::deregister);
+    lifeCycles.removeIf(o -> o.deregister(pipeName));
 
     if (lifeCycles.isEmpty()) {
       attributeSortedString2SubtaskLifeCycleMap.remove(attributeSortedString);
     }
+
+    PipeEventCommitManager.getInstance().deregister(pipeName, dataRegionId);
   }
 
   public synchronized void start(String attributeSortedString) {
@@ -181,24 +182,7 @@ public class PipeConnectorSubtaskManager {
   /////////////////////////  Singleton Instance Holder  /////////////////////////
 
   private PipeConnectorSubtaskManager() {
-    CONNECTOR_CONSTRUCTORS.put(
-        BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName(),
-        IoTDBThriftAsyncConnector::new);
-    CONNECTOR_CONSTRUCTORS.put(
-        BuiltinPipePlugin.IOTDB_THRIFT_SYNC_CONNECTOR.getPipePluginName(),
-        IoTDBThriftSyncConnector::new);
-    CONNECTOR_CONSTRUCTORS.put(
-        BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName(),
-        IoTDBThriftAsyncConnector::new);
-    CONNECTOR_CONSTRUCTORS.put(
-        BuiltinPipePlugin.IOTDB_LEGACY_PIPE_CONNECTOR.getPipePluginName(),
-        IoTDBLegacyPipeConnector::new);
-    CONNECTOR_CONSTRUCTORS.put(
-        BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName(), IoTDBAirGapConnector::new);
-    CONNECTOR_CONSTRUCTORS.put(
-        BuiltinPipePlugin.WEBSOCKET_CONNECTOR.getPipePluginName(), WebSocketConnector::new);
-    CONNECTOR_CONSTRUCTORS.put(
-        BuiltinPipePlugin.OPC_UA_CONNECTOR.getPipePluginName(), OpcUaConnector::new);
+    // Do nothing
   }
 
   private static class PipeSubtaskManagerHolder {

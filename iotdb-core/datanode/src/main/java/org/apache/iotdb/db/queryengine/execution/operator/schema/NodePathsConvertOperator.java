@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -86,7 +87,9 @@ public class NodePathsConvertOperator implements ProcessOperator {
         continue;
       }
       tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-      tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(partialPath.getTailNode()));
+      tsBlockBuilder
+          .getColumnBuilder(0)
+          .writeBinary(new Binary(partialPath.getTailNode(), TSFileConfig.STRING_CHARSET));
       tsBlockBuilder.declarePosition();
     }
 
