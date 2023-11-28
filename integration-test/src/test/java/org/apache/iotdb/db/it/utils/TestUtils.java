@@ -485,11 +485,13 @@ public class TestUtils {
 
   public static boolean tryExecuteNonQueriesOnSpecifiedDataNodeWithRetry(
       BaseEnv env, DataNodeWrapper wrapper, List<String> sqlList) {
+    int lastIndex = 0;
     for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
       try (Connection connection = env.getConnectionWithSpecifiedDataNode(wrapper);
           Statement statement = connection.createStatement()) {
-        for (String sql : sqlList) {
-          statement.execute(sql);
+        for (int i = lastIndex; i < sqlList.size(); ++i) {
+          statement.execute(sqlList.get(i));
+          lastIndex = i;
         }
         return true;
       } catch (SQLException e) {
