@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary;
 
 import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.queryengine.transformation.dag.util.TransformUtils;
 
 public class CompareLessEqualTransformer extends CompareBinaryTransformer {
 
@@ -39,6 +40,8 @@ public class CompareLessEqualTransformer extends CompareBinaryTransformer {
 
   @Override
   protected Evaluator constructTextEvaluator() {
-    return () -> leftPointReader.currentBinary().compareTo(rightPointReader.currentBinary()) <= 0;
+    return () ->
+        TransformUtils.compare(leftPointReader.currentBinary(), rightPointReader.currentBinary())
+            <= 0;
   }
 }
