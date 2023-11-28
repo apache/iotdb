@@ -26,7 +26,15 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
-public interface FormerPipeRuntimeMeta {
+/**
+ * The interface for all outdated PipeRuntimeMetas. With this, we are able to intuitively test the
+ * compatibility between the previous ones and the current one, ease the transformation of old
+ * snapShot to incumbent class instance, and avoid the dilation of the deserialization method
+ * numbers emerging in the working process.
+ *
+ * <p>The current version of {@link PipeRuntimeMeta} is PipeRuntimeMetaV2_2.
+ */
+interface FormerPipeRuntimeMeta {
 
   @TestOnly
   ByteBuffer serialize() throws IOException;
@@ -37,7 +45,7 @@ public interface FormerPipeRuntimeMeta {
   /**
    * This method always return the incumbent {@link PipeRuntimeMeta}. When switching to a new
    * version, be sure to move the previous one to the packet, grant it a version, make it implement
-   * this interface, and then update this very method in all {@link FormerPipeRuntimeMeta}s.
+   * this interface, and then update this method in all {@link FormerPipeRuntimeMeta}s.
    */
   PipeRuntimeMeta toCurrentPipeRuntimeMetaVersion();
 }
