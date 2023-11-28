@@ -32,7 +32,7 @@ import java.nio.ByteBuffer;
  * snapShot to incumbent class instance, and avoid the dilation of the deserialization method
  * numbers emerging in the working process.
  *
- * <p>The current version of {@link PipeRuntimeMeta} is PipeRuntimeMetaV2_2.
+ * <p>The current version of {@link PipeRuntimeMeta} is PipeRuntimeMetaV3.
  */
 interface FormerPipeRuntimeMeta {
 
