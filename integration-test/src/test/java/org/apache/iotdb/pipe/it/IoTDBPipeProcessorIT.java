@@ -83,17 +83,19 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualIT {
           senderEnv,
           Arrays.asList(
               "insert into root.vehicle.d0(time, s1) values (0, 1)",
-              "insert into root.vehicle.d0(time, s1) values (10, 2)",
-              "insert into root.vehicle.d0(time, s1) values (20, 3)",
-              "insert into root.vehicle.d0(time, s1) values (45, 4)"))) {
+              "insert into root.vehicle.d0(time, s1) values (10000, 2)",
+              "insert into root.vehicle.d0(time, s1) values (19999, 3)",
+              "insert into root.vehicle.d0(time, s1) values (20000, 4)",
+              "insert into root.vehicle.d0(time, s1) values (20001, 5)",
+              "insert into root.vehicle.d0(time, s1) values (45000, 6)"))) {
         return;
       }
 
       Set<String> expectedResSet = new HashSet<>();
 
       expectedResSet.add("0,1.0,");
-      expectedResSet.add("20,3.0,");
-      expectedResSet.add("45,4.0,");
+      expectedResSet.add("20000,4.0,");
+      expectedResSet.add("45000,6.0,");
 
       TestUtils.assertDataOnEnv(
           receiverEnv, "select * from root.**", "Time,root.vehicle.d0.s1,", expectedResSet);
