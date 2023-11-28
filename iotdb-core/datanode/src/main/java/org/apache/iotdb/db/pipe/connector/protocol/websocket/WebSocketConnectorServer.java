@@ -97,6 +97,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
             webSocket.getRemoteSocketAddress().getAddress(),
             webSocket.getRemoteSocketAddress().getPort());
     LOGGER.info(log);
+    router.remove(router.getKey(webSocket));
   }
 
   @Override
@@ -131,12 +132,13 @@ public class WebSocketConnectorServer extends WebSocketServer {
     if (webSocket.getRemoteSocketAddress() != null) {
       log =
           String.format(
-              "Got an error `%s` from %s:%d",
+              "Got an error `%s` from %s:%d.",
               e.getMessage(),
               webSocket.getLocalSocketAddress().getHostName(),
               webSocket.getLocalSocketAddress().getPort());
     } else {
-      log = String.format("Got an error `%s` from client", e.getMessage());
+      log = String.format("Got an error `%s` from client.", e.getMessage());
+      router.remove(router.getKey(webSocket));
     }
     LOGGER.error(log);
   }
@@ -170,8 +172,11 @@ public class WebSocketConnectorServer extends WebSocketServer {
 
   private void handleBind(WebSocket webSocket, String pipeName) {
     if (router.containsKey(pipeName)) {
+      this.broadcast("ERROR", Collections.singletonList(webSocket));
       webSocket.close(4000, "Too many connections.");
+      return;
     }
+    this.broadcast("READY", Collections.singletonList(webSocket));
     router.put(pipeName, webSocket);
   }
 

@@ -21,6 +21,7 @@ package org.apache.iotdb.flink.sql.function;
 import org.apache.iotdb.flink.sql.client.IoTDBWebSocketClient;
 import org.apache.iotdb.flink.sql.common.Options;
 import org.apache.iotdb.flink.sql.common.Utils;
+import org.apache.iotdb.flink.sql.exception.IllegalOptionException;
 import org.apache.iotdb.flink.sql.exception.IllegalSchemaException;
 import org.apache.iotdb.flink.sql.wrapper.SchemaWrapper;
 import org.apache.iotdb.flink.sql.wrapper.TabletWrapper;
@@ -107,15 +108,20 @@ public class IoTDBCDCSourceFunction extends RichSourceFunction<RowData> {
                     + ")",
                 pipeName, pattern, cdcPort);
         session.executeNonQueryStatement(createPipeCommand);
-      }
-    }
-
-    try (SessionDataSet dataSet =
-        session.executeQueryStatement(String.format("show pipe %s", pipeName))) {
-      RowRecord pipe = dataSet.next();
-      String status = pipe.getFields().get(2).getStringValue();
-      if ("STOPPED".equals(status)) {
         session.executeNonQueryStatement(String.format("start pipe %s", pipeName));
+      } else {
+        RowRecord pipe = dataSet.next();
+        String pipePattern = pipe.getFields().get(3).getStringValue().split(",")[0].split("=")[1];
+        if (!pipePattern.equals(this.pattern)) {
+          throw new IllegalOptionException(
+              String.format(
+                  "The CDC task `%s` has been created by pattern `%s`.",
+                  this.taskName, this.pattern));
+        }
+        String status = pipe.getFields().get(2).getStringValue();
+        if ("STOPPED".equals(status)) {
+          session.executeNonQueryStatement(String.format("start pipe %s", pipeName));
+        }
       }
     }
     session.close();
@@ -191,6 +197,13 @@ public class IoTDBCDCSourceFunction extends RichSourceFunction<RowData> {
       Thread.sleep(1000);
     }
     client.send(String.format("BIND:%s", pipeName));
+    while (IoTDBWebSocketClient.Status.WAITING == client.getStatus()) {
+      Thread.sleep(1000);
+    }
+    if (IoTDBWebSocketClient.Status.ERROR == client.getStatus()) {
+      throw new IllegalOptionException(
+          "An exception occurred during binding. The CDC task is running. Please stop it first.");
+    }
     return client;
   }
 
