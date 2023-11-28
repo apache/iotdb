@@ -56,6 +56,7 @@ import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.BitMap;
@@ -1345,5 +1346,118 @@ public class DataRegionTest {
         throws DataRegionException {
       super(systemInfoDir, "0", new TsFileFlushPolicy.DirectFlushPolicy(), storageGroupName);
     }
+  }
+
+  // -- test for deleting data directly
+
+  /** | | SEQ | UNSEQ | |SEALED | | | |UNSEALED | | | */
+  @Test
+  public void testDeleteDataDirectlyInSeqFlushingMemtable()
+      throws IllegalPathException, WriteProcessException, IOException {
+    for (int j = 100; j < 200; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+    }
+    TsFileResource tsFileResource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+    TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
+    tsFileProcessor.getFlushingMemTable().addLast(tsFileProcessor.getWorkMemTable());
+
+    // delete data which is in flushing memtable
+    // this deletion will write a mods file
+    dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 50, 100, 0);
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+    Assert.assertTrue(tsFileResource.getModFile().exists());
+    Assert.assertEquals(1, tsFileResource.getModFile().getModifications().size());
+
+    dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 50, 200, 0);
+    Assert.assertFalse(tsFileResource.getModFile().exists());
+    Assert.assertFalse(
+        FSFactoryProducer.getFSFactory()
+            .getFile(tsFileProcessor.getTsFileResource().getTsFilePath())
+            .exists());
+  }
+
+  @Test
+  public void testDeletedDataDirectlyInUnSeqFlushingMemtable()
+      throws IllegalPathException, WriteProcessException, IOException {
+
+    for (int j = 100; j < 200; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+    }
+    TsFileResource tsFileResource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+    dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 50, 150, 0);
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+    Assert.assertFalse(tsFileResource.getModFile().exists());
+
+    // insert unseq data points
+    for (int j = 50; j < 100; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+    }
+    // delete data which is in work memtable
+    dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 50, 70, 0);
+    Assert.assertFalse(
+        dataRegion.getTsFileManager().getTsFileList(false).get(0).getModFile().exists());
+    tsFileResource = dataRegion.getTsFileManager().getTsFileList(false).get(0);
+    String filename = tsFileResource.getTsFilePath();
+    Assert.assertTrue(tsFileResource.getTsFile().exists());
+    dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 50, 100, 0);
+    Assert.assertFalse(FSFactoryProducer.getFSFactory().getFile(filename).exists());
+  }
+
+  @Test
+  public void testDeleteDataDirectlyInUnseqUnsealed()
+      throws WriteProcessException, IOException, MetadataException {
+    TSRecord record = new TSRecord(10000, deviceId);
+    record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
+    dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    for (int j = 1; j <= 10; j++) {
+      record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+    }
+
+    for (TsFileProcessor tsfileProcessor : dataRegion.getWorkUnsequenceTsFileProcessors()) {
+      tsfileProcessor.syncFlush();
+    }
+
+    for (int j = 11; j <= 20; j++) {
+      record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+    }
+
+    PartialPath databasePath = new PartialPath(storageGroup + ".**");
+    List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
+    PartialPath fullPath =
+        new MeasurementPath(
+            deviceId,
+            measurementId,
+            new MeasurementSchema(
+                measurementId,
+                TSDataType.INT32,
+                TSEncoding.RLE,
+                CompressionType.UNCOMPRESSED,
+                Collections.emptyMap()));
+    String filePath = null;
+    for (TsFileProcessor tsfileProcessor : dataRegion.getWorkUnsequenceTsFileProcessors()) {
+      tsfileProcessor.query(
+          Collections.singletonList(fullPath),
+          EnvironmentUtils.TEST_QUERY_CONTEXT,
+          tsfileResourcesForQuery);
+      filePath = tsfileResourcesForQuery.get(0).getTsFilePath();
+    }
+
+    dataRegion.deleteDataDirectly(databasePath, 0, 30L, -1);
+    Assert.assertFalse(FSFactoryProducer.getFSFactory().getFile(filePath).exists());
+
+    Assert.assertEquals(1, tsfileResourcesForQuery.size());
+    List<ReadOnlyMemChunk> memChunks = tsfileResourcesForQuery.get(0).getReadOnlyMemChunk(fullPath);
   }
 }
