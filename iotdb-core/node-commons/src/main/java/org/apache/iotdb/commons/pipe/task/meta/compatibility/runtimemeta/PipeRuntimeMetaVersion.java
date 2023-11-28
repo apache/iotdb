@@ -17,12 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.task.meta.compatibility;
+package org.apache.iotdb.commons.pipe.task.meta.compatibility.runtimemeta;
 
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
-import org.apache.iotdb.commons.pipe.task.meta.compatibility.runtimemeta.PipeRuntimeMetaV1;
-import org.apache.iotdb.commons.pipe.task.meta.compatibility.runtimemeta.PipeRuntimeMetaV2;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;

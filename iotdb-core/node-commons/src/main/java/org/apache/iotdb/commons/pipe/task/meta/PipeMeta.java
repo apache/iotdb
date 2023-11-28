@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.task.meta;
 
-import org.apache.iotdb.commons.pipe.task.meta.compatibility.PipeRuntimeMetaVersion;
+import org.apache.iotdb.commons.pipe.task.meta.compatibility.runtimemeta.PipeRuntimeMetaVersion;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import javax.annotation.Nonnull;

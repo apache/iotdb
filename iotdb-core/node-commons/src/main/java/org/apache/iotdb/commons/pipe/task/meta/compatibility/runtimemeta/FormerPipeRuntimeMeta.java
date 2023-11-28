@@ -35,9 +35,9 @@ public interface FormerPipeRuntimeMeta {
   void serialize(OutputStream outputStream) throws IOException;
 
   /**
-   * This method always return the incumbent {@link PipeRuntimeMeta}. When changing to a new
+   * This method always return the incumbent {@link PipeRuntimeMeta}. When switching to a new
    * version, be sure to move the previous one to the packet, grant it a version, make it implement
-   * this interface, and then update this method in all {@link FormerPipeRuntimeMeta}s.
+   * this interface, and then update this very method in all {@link FormerPipeRuntimeMeta}s.
    */
   PipeRuntimeMeta toCurrentPipeRuntimeMetaVersion();
 }
