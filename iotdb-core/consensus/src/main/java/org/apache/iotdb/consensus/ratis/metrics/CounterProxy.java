@@ -55,6 +55,6 @@ public class CounterProxy implements LongCounter {
 
   @Override
   public long getCount() {
-    return counter.getCount();
+    return counter.count();
   }
 }
