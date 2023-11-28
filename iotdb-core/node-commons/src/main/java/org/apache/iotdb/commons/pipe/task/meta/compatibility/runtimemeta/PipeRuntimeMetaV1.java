@@ -151,14 +151,14 @@ public class PipeRuntimeMetaV1 implements FormerPipeRuntimeMeta {
 
   @Override
   public int hashCode() {
-    return Objects.hash(status, consensusGroupIdToTaskMetaMap);
+    return Objects.hash(status.get(), consensusGroupIdToTaskMetaMap);
   }
 
   @Override
   public String toString() {
     return "PipeRuntimeMetaV1{"
         + "status="
-        + status
+        + status.get()
         + ", consensusGroupIdToTaskMetaMap="
         + consensusGroupIdToTaskMetaMap
         + '}';

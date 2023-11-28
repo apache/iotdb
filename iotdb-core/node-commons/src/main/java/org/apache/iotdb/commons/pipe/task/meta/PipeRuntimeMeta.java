@@ -305,7 +305,7 @@ public class PipeRuntimeMeta {
   @Override
   public int hashCode() {
     return Objects.hash(
-        status,
+        status.get(),
         dataRegionId2TaskMetaMap,
         schemaRegionId2TaskMetaMap,
         dataNodeId2PipeRuntimeExceptionMap,
@@ -317,11 +317,12 @@ public class PipeRuntimeMeta {
   public String toString() {
     return "PipeRuntimeMeta{"
         + "status="
-        + status
+        + status.get()
         + ", dataRegionId2TaskMetaMap="
         + dataRegionId2TaskMetaMap
         + ", schemaRegionId2TaskMetaMap="
         + schemaRegionId2TaskMetaMap
+        + ", dataNodeId2PipeRuntimeExceptionMap="
         + dataNodeId2PipeRuntimeExceptionMap
         + ", exceptionsClearTime="
         + exceptionsClearTime.get()

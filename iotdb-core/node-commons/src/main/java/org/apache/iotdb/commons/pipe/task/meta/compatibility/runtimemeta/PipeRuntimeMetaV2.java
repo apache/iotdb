@@ -246,7 +246,7 @@ public class PipeRuntimeMetaV2 implements FormerPipeRuntimeMeta {
   @Override
   public int hashCode() {
     return Objects.hash(
-        status,
+        status.get(),
         consensusGroupId2TaskMetaMap,
         dataNodeId2PipeRuntimeExceptionMap,
         exceptionsClearTime.get(),
@@ -255,12 +255,12 @@ public class PipeRuntimeMetaV2 implements FormerPipeRuntimeMeta {
 
   @Override
   public String toString() {
-    return "PipeRuntimeMeta{"
+    return "PipeRuntimeMetaV2{"
         + "status="
-        + status
+        + status.get()
         + ", consensusGroupId2TaskMetaMap="
         + consensusGroupId2TaskMetaMap
-        + ", dataNodeId2PipeMetaExceptionMap="
+        + ", dataNodeId2PipeRuntimeExceptionMap="
         + dataNodeId2PipeRuntimeExceptionMap
         + ", exceptionsClearTime="
         + exceptionsClearTime.get()
