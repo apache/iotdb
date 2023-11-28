@@ -35,8 +35,6 @@ import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.LongColumn;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-import org.apache.commons.lang3.Validate;
-
 import java.io.IOException;
 import java.util.Objects;
 import java.util.Optional;
@@ -47,28 +45,16 @@ public class TransformUtils {
     throw new IllegalStateException("TransformUtils should not be instantiated.");
   }
 
-  public static int compare(CharSequence cs1, CharSequence cs2) {
-    if (Objects.requireNonNull(cs1) == Objects.requireNonNull(cs2)) {
+  public static int compare(Binary first, Binary second) {
+    if (Objects.requireNonNull(first) == Objects.requireNonNull(second)) {
       return 0;
     }
 
-    if (cs1.getClass() == cs2.getClass() && cs1 instanceof Comparable) {
-      return ((Comparable<Object>) cs1).compareTo(cs2);
-    }
-
-    for (int i = 0, len = Math.min(cs1.length(), cs2.length()); i < len; i++) {
-      char a = cs1.charAt(i);
-      char b = cs2.charAt(i);
-      if (a != b) {
-        return a - b;
-      }
-    }
-
-    return cs1.length() - cs2.length();
+    return first.compareTo(second);
   }
 
   public static Column transformConstantOperandToColumn(ConstantOperand constantOperand) {
-    Validate.notNull(constantOperand);
+    Objects.requireNonNull(constantOperand);
 
     try {
       Object value =
@@ -169,7 +155,8 @@ public class TransformUtils {
         }
         break;
       default:
-        throw new RuntimeException("The data type of the state window strategy is not valid.");
+        throw new UnsupportedOperationException(
+            "The data type of the state window strategy is not valid.");
     }
     return res;
   }

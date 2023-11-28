@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.column.binary;
 
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.util.TransformUtils;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
@@ -50,10 +51,9 @@ public abstract class CompareBinaryColumnTransformer extends BinaryColumnTransfo
         if (TypeEnum.BINARY.equals(leftTransformer.getType().getTypeEnum())) {
           flag =
               transform(
-                  leftTransformer
-                      .getType()
-                      .getBinary(leftColumn, i)
-                      .compareTo(rightTransformer.getType().getBinary(rightColumn, i)));
+                  TransformUtils.compare(
+                      leftTransformer.getType().getBinary(leftColumn, i),
+                      rightTransformer.getType().getBinary(rightColumn, i)));
         } else if (TypeEnum.BOOLEAN.equals(leftTransformer.getType().getTypeEnum())) {
           flag =
               transform(
