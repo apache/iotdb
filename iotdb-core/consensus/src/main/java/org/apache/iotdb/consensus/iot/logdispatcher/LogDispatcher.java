@@ -153,8 +153,8 @@ public class LogDispatcher {
     return threads.stream().mapToLong(LogDispatcherThread::getCurrentSyncIndex).min();
   }
 
-  public synchronized OptionalLong getMinFlushedIndex() {
-    return threads.stream().mapToLong(LogDispatcherThread::getLastFlushedIndex).min();
+  public synchronized OptionalLong getMinFlushedSyncIndex() {
+    return threads.stream().mapToLong(LogDispatcherThread::getLastFlushedSyncIndex).min();
   }
 
   public void offer(IndexedConsensusRequest request) {
@@ -237,7 +237,7 @@ public class LogDispatcher {
       return controller.getCurrentIndex();
     }
 
-    public long getLastFlushedIndex() {
+    public long getLastFlushedSyncIndex() {
       return controller.getLastFlushedIndex();
     }
 
@@ -353,8 +353,8 @@ public class LogDispatcher {
       // indicating that insert nodes whose search index are before this value can be deleted
       // safely.
       //
-      // Use minFlushedIndex here to reserve the WAL which are not flushed and support kill -9.
-      long currentSafelyDeletedSearchIndex = impl.getMinFlushedIndex();
+      // Use minFlushedSyncIndex here to reserve the WAL which are not flushed and support kill -9.
+      long currentSafelyDeletedSearchIndex = impl.getMinFlushedSyncIndex();
       reader.setSafelyDeletedSearchIndex(currentSafelyDeletedSearchIndex);
       // notify
       if (impl.unblockWrite()) {
