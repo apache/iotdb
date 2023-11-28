@@ -36,7 +36,8 @@ public abstract class CompareBinaryColumnTransformer extends BinaryColumnTransfo
   @Override
   protected void doTransform(
       Column leftColumn, Column rightColumn, ColumnBuilder builder, int positionCount) {
-    // if either column is all null, append nullCount
+    // if either column is all null, append nullCount. For now, a RunLengthEncodeColumn with
+    // mayHaveNull == true is all null
     if ((leftColumn.mayHaveNull() && leftColumn instanceof RunLengthEncodedColumn)
         || (rightColumn.mayHaveNull() && rightColumn instanceof RunLengthEncodedColumn)) {
       builder.appendNull(positionCount);
