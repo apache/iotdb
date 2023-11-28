@@ -19,18 +19,23 @@
 
 package org.apache.iotdb.tsfile.read.filter.basic;
 
-import org.apache.iotdb.tsfile.file.metadata.IAlignedMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IAlignedMetadataProvider;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 
 import java.io.Serializable;
 
 public interface ITimeFilter extends Filter {
 
+  default boolean satisfy(long time, Object[] values) {
+    // only use time to filter
+    return satisfy(time, values[0]);
+  }
+
   default boolean canSkip(Statistics<? extends Serializable> statistics) {
     return !satisfyStartEndTime(statistics.getStartTime(), statistics.getEndTime());
   }
 
-  default boolean canSkip(IAlignedMetadata alignedMetadata) {
+  default boolean canSkip(IAlignedMetadataProvider alignedMetadata) {
     return canSkip(alignedMetadata.getTimeStatistics());
   }
 
@@ -38,7 +43,7 @@ public interface ITimeFilter extends Filter {
     return containStartEndTime(statistics.getStartTime(), statistics.getEndTime());
   }
 
-  default boolean allSatisfy(IAlignedMetadata alignedMetadata) {
+  default boolean allSatisfy(IAlignedMetadataProvider alignedMetadata) {
     return allSatisfy(alignedMetadata.getTimeStatistics());
   }
 }

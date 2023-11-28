@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.tsfile.read.filter.operator;
 
-import org.apache.iotdb.tsfile.file.metadata.IAlignedMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IAlignedMetadataProvider;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -47,6 +47,11 @@ public class And extends BinaryLogicalFilter {
   }
 
   @Override
+  public boolean satisfy(long time, Object[] values) {
+    return left.satisfy(time, values) && right.satisfy(time, values);
+  }
+
+  @Override
   public boolean canSkip(Statistics<? extends Serializable> statistics) {
     // we can drop a chunk of records if we know that either the left or the right predicate agrees
     // that no matter what we don't need this chunk.
@@ -54,7 +59,7 @@ public class And extends BinaryLogicalFilter {
   }
 
   @Override
-  public boolean canSkip(IAlignedMetadata alignedMetadata) {
+  public boolean canSkip(IAlignedMetadataProvider alignedMetadata) {
     return left.canSkip(alignedMetadata) || right.canSkip(alignedMetadata);
   }
 
@@ -64,7 +69,7 @@ public class And extends BinaryLogicalFilter {
   }
 
   @Override
-  public boolean allSatisfy(IAlignedMetadata alignedMetadata) {
+  public boolean allSatisfy(IAlignedMetadataProvider alignedMetadata) {
     return left.allSatisfy(alignedMetadata) && right.allSatisfy(alignedMetadata);
   }
 

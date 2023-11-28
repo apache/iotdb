@@ -20,24 +20,21 @@
 package org.apache.iotdb.tsfile.file.metadata;
 
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.file.metadata.statistics.TimeStatistics;
 
 import java.io.Serializable;
 
-public interface IAlignedMetadata {
+public interface IAlignedMetadataProvider {
 
-  TimeStatistics getTimeStatistics();
+  Statistics<? extends Serializable> getTimeStatistics();
 
-  Statistics<Serializable> getMeasurementStatistics(String measurement);
+  Statistics<? extends Serializable> getMeasurementStatistics(int measurementIndex);
 
-  /** @return whether there are any nulls. */
-  default boolean hasNullValue(String measurement) {
-    return getMeasurementStatistics(measurement).hasNullValue(getRowCount());
+  default boolean hasNullValue(int measurementIndex) {
+    long rowCount = getTimeStatistics().getCount();
+    return getMeasurementStatistics(measurementIndex).hasNullValue(rowCount);
   }
 
-  default long getRowCount() {
-    return getTimeStatistics().getCount();
+  default boolean isAllNulls(int measurementIndex) {
+    return false;
   }
-
-  boolean isAllNulls(String measurement);
 }

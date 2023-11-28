@@ -42,127 +42,127 @@ public class ValueFilter {
     // forbidden construction
   }
 
-  private static final String FAKE_MEASUREMENT = "value";
+  private static final int DEFAULT_MEASUREMENT_INDEX = 0;
 
   public static <T extends Comparable<T>> ValueGt<T> gt(T value) {
-    return new ValueGt<>(FAKE_MEASUREMENT, value);
+    return new ValueGt<>(DEFAULT_MEASUREMENT_INDEX, value);
   }
 
-  public static <T extends Comparable<T>> ValueGt<T> gt(String measurement, T value) {
-    return new ValueGt<>(measurement, value);
+  public static <T extends Comparable<T>> ValueGt<T> gt(int measurementIndex, T value) {
+    return new ValueGt<>(measurementIndex, value);
   }
 
   public static <T extends Comparable<T>> ValueGtEq<T> gtEq(T value) {
-    return new ValueGtEq<>(FAKE_MEASUREMENT, value);
+    return new ValueGtEq<>(DEFAULT_MEASUREMENT_INDEX, value);
   }
 
-  public static <T extends Comparable<T>> ValueGtEq<T> gtEq(String measurement, T value) {
-    return new ValueGtEq<>(measurement, value);
+  public static <T extends Comparable<T>> ValueGtEq<T> gtEq(int measurementIndex, T value) {
+    return new ValueGtEq<>(measurementIndex, value);
   }
 
   public static <T extends Comparable<T>> ValueLt<T> lt(T value) {
-    return new ValueLt<>(FAKE_MEASUREMENT, value);
+    return new ValueLt<>(DEFAULT_MEASUREMENT_INDEX, value);
   }
 
-  public static <T extends Comparable<T>> ValueLt<T> lt(String measurement, T value) {
-    return new ValueLt<>(measurement, value);
+  public static <T extends Comparable<T>> ValueLt<T> lt(int measurementIndex, T value) {
+    return new ValueLt<>(measurementIndex, value);
   }
 
   public static <T extends Comparable<T>> ValueLtEq<T> ltEq(T value) {
-    return new ValueLtEq<>(FAKE_MEASUREMENT, value);
+    return new ValueLtEq<>(DEFAULT_MEASUREMENT_INDEX, value);
   }
 
-  public static <T extends Comparable<T>> ValueLtEq<T> ltEq(String measurement, T value) {
-    return new ValueLtEq<>(measurement, value);
+  public static <T extends Comparable<T>> ValueLtEq<T> ltEq(int measurementIndex, T value) {
+    return new ValueLtEq<>(measurementIndex, value);
   }
 
   public static <T extends Comparable<T>> ValueEq<T> eq(T value) {
-    return new ValueEq<>(FAKE_MEASUREMENT, value);
+    return new ValueEq<>(DEFAULT_MEASUREMENT_INDEX, value);
   }
 
-  public static <T extends Comparable<T>> ValueEq<T> eq(String measurement, T value) {
-    return new ValueEq<>(measurement, value);
+  public static <T extends Comparable<T>> ValueEq<T> eq(int measurementIndex, T value) {
+    return new ValueEq<>(measurementIndex, value);
   }
 
   public static <T extends Comparable<T>> ValueNotEq<T> notEq(T value) {
-    return new ValueNotEq<>(FAKE_MEASUREMENT, value);
+    return new ValueNotEq<>(DEFAULT_MEASUREMENT_INDEX, value);
   }
 
-  public static <T extends Comparable<T>> ValueNotEq<T> notEq(String measurement, T value) {
-    return new ValueNotEq<>(measurement, value);
+  public static <T extends Comparable<T>> ValueNotEq<T> notEq(int measurementIndex, T value) {
+    return new ValueNotEq<>(measurementIndex, value);
   }
 
   public static <T extends Comparable<T>> ValueBetweenAnd<T> between(T value1, T value2) {
-    return new ValueBetweenAnd<>(FAKE_MEASUREMENT, value1, value2);
+    return new ValueBetweenAnd<>(DEFAULT_MEASUREMENT_INDEX, value1, value2);
   }
 
   public static <T extends Comparable<T>> ValueBetweenAnd<T> between(
-      String measurement, T value1, T value2) {
-    return new ValueBetweenAnd<>(measurement, value1, value2);
+      int measurementIndex, T value1, T value2) {
+    return new ValueBetweenAnd<>(measurementIndex, value1, value2);
   }
 
   public static <T extends Comparable<T>> ValueNotBetweenAnd<T> notBetween(T value1, T value2) {
-    return new ValueNotBetweenAnd<>(FAKE_MEASUREMENT, value1, value2);
+    return new ValueNotBetweenAnd<>(DEFAULT_MEASUREMENT_INDEX, value1, value2);
   }
 
   public static <T extends Comparable<T>> ValueNotBetweenAnd<T> notBetween(
-      String measurement, T value1, T value2) {
-    return new ValueNotBetweenAnd<>(measurement, value1, value2);
+      int measurementIndex, T value1, T value2) {
+    return new ValueNotBetweenAnd<>(measurementIndex, value1, value2);
   }
 
   public static ValueRegexp like(String likePattern) {
-    return regexp(FAKE_MEASUREMENT, RegexUtils.parseLikePatternToRegex(likePattern));
+    return regexp(DEFAULT_MEASUREMENT_INDEX, RegexUtils.parseLikePatternToRegex(likePattern));
   }
 
-  public static ValueRegexp like(String measurement, String likePattern) {
-    return regexp(measurement, RegexUtils.parseLikePatternToRegex(likePattern));
+  public static ValueRegexp like(int measurementIndex, String likePattern) {
+    return regexp(measurementIndex, RegexUtils.parseLikePatternToRegex(likePattern));
   }
 
   public static ValueNotRegexp notLike(String likePattern) {
-    return notRegexp(FAKE_MEASUREMENT, RegexUtils.parseLikePatternToRegex(likePattern));
+    return notRegexp(DEFAULT_MEASUREMENT_INDEX, RegexUtils.parseLikePatternToRegex(likePattern));
   }
 
-  public static ValueNotRegexp notLike(String measurement, String likePattern) {
-    return notRegexp(measurement, RegexUtils.parseLikePatternToRegex(likePattern));
+  public static ValueNotRegexp notLike(int measurementIndex, String likePattern) {
+    return notRegexp(measurementIndex, RegexUtils.parseLikePatternToRegex(likePattern));
   }
 
   public static ValueRegexp regexp(String regex) {
-    return new ValueRegexp(FAKE_MEASUREMENT, RegexUtils.compileRegex(regex));
+    return new ValueRegexp(DEFAULT_MEASUREMENT_INDEX, RegexUtils.compileRegex(regex));
   }
 
-  public static ValueRegexp regexp(String measurement, String regex) {
-    return new ValueRegexp(measurement, RegexUtils.compileRegex(regex));
+  public static ValueRegexp regexp(int measurementIndex, String regex) {
+    return new ValueRegexp(measurementIndex, RegexUtils.compileRegex(regex));
   }
 
-  public static ValueRegexp regexp(String measurement, Pattern pattern) {
-    return new ValueRegexp(measurement, pattern);
+  public static ValueRegexp regexp(int measurementIndex, Pattern pattern) {
+    return new ValueRegexp(measurementIndex, pattern);
   }
 
   public static ValueNotRegexp notRegexp(String regex) {
-    return new ValueNotRegexp(FAKE_MEASUREMENT, RegexUtils.compileRegex(regex));
+    return new ValueNotRegexp(DEFAULT_MEASUREMENT_INDEX, RegexUtils.compileRegex(regex));
   }
 
-  public static ValueNotRegexp notRegexp(String measurement, String regex) {
-    return new ValueNotRegexp(measurement, RegexUtils.compileRegex(regex));
+  public static ValueNotRegexp notRegexp(int measurementIndex, String regex) {
+    return new ValueNotRegexp(measurementIndex, RegexUtils.compileRegex(regex));
   }
 
-  public static ValueNotRegexp notRegexp(String measurement, Pattern pattern) {
-    return new ValueNotRegexp(measurement, pattern);
+  public static ValueNotRegexp notRegexp(int measurementIndex, Pattern pattern) {
+    return new ValueNotRegexp(measurementIndex, pattern);
   }
 
   public static <T extends Comparable<T>> ValueIn<T> in(Set<T> values) {
-    return new ValueIn<>(FAKE_MEASUREMENT, values);
+    return new ValueIn<>(DEFAULT_MEASUREMENT_INDEX, values);
   }
 
-  public static <T extends Comparable<T>> ValueIn<T> in(String measurement, Set<T> values) {
-    return new ValueIn<>(measurement, values);
+  public static <T extends Comparable<T>> ValueIn<T> in(int measurementIndex, Set<T> values) {
+    return new ValueIn<>(measurementIndex, values);
   }
 
   public static <T extends Comparable<T>> ValueNotIn<T> notIn(Set<T> values) {
-    return new ValueNotIn<>(FAKE_MEASUREMENT, values);
+    return new ValueNotIn<>(DEFAULT_MEASUREMENT_INDEX, values);
   }
 
-  public static <T extends Comparable<T>> ValueNotIn<T> notIn(String measurement, Set<T> values) {
-    return new ValueNotIn<>(measurement, values);
+  public static <T extends Comparable<T>> ValueNotIn<T> notIn(int measurementIndex, Set<T> values) {
+    return new ValueNotIn<>(measurementIndex, values);
   }
 }

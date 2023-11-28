@@ -22,11 +22,12 @@ package org.apache.iotdb.tsfile.file.metadata;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class AlignedTimeSeriesMetadata implements ITimeSeriesMetadata {
+public class AlignedTimeSeriesMetadata implements ITimeSeriesMetadata, IAlignedMetadataProvider {
 
   // TimeSeriesMetadata for time column
   private final TimeseriesMetadata timeseriesMetadata;
@@ -52,7 +53,7 @@ public class AlignedTimeSeriesMetadata implements ITimeSeriesMetadata {
         : timeseriesMetadata.getStatistics();
   }
 
-  public Statistics getStatistics(int index) {
+  public Statistics<? extends Serializable> getStatistics(int index) {
     TimeseriesMetadata v = valueTimeseriesMetadataList.get(index);
     return v == null ? null : v.getStatistics();
   }
@@ -65,8 +66,14 @@ public class AlignedTimeSeriesMetadata implements ITimeSeriesMetadata {
     return valueStatisticsList;
   }
 
-  public Statistics getTimeStatistics() {
+  @Override
+  public Statistics<? extends Serializable> getTimeStatistics() {
     return timeseriesMetadata.getStatistics();
+  }
+
+  @Override
+  public Statistics<? extends Serializable> getMeasurementStatistics(int measurementIndex) {
+    return getStatistics(measurementIndex);
   }
 
   @Override

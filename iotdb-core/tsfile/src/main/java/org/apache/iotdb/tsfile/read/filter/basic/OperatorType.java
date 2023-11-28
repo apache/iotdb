@@ -21,41 +21,51 @@ package org.apache.iotdb.tsfile.read.filter.basic;
 
 public enum OperatorType {
   // comparison
-  TIME_EQ,
-  VALUE_EQ,
-  TIME_NEQ,
-  VALUE_NEQ,
-  TIME_GT,
-  VALUE_GT,
-  TIME_GTEQ,
-  VALUE_GTEQ,
-  TIME_LT,
-  VALUE_LT,
-  TIME_LTEQ,
-  VALUE_LTEQ,
+  TIME_EQ("=="),
+  VALUE_EQ("=="),
+  TIME_NEQ("!="),
+  VALUE_NEQ("!="),
+  TIME_GT(">"),
+  VALUE_GT(">"),
+  TIME_GTEQ(">="),
+  VALUE_GTEQ(">="),
+  TIME_LT("<"),
+  VALUE_LT("<"),
+  TIME_LTEQ("<="),
+  VALUE_LTEQ("<="),
 
   // logical
-  NOT,
-  AND,
-  OR,
+  NOT("NOT"),
+  AND("&&"),
+  OR("||"),
 
   // range
-  TIME_BETWEEN_AND,
-  VALUE_BETWEEN_AND,
-  TIME_NOT_BETWEEN_AND,
-  VALUE_NOT_BETWEEN_AND,
+  TIME_BETWEEN_AND("BETWEEN"),
+  VALUE_BETWEEN_AND("BETWEEN"),
+  TIME_NOT_BETWEEN_AND("NOT BETWEEN"),
+  VALUE_NOT_BETWEEN_AND("NOT BETWEEN"),
 
   // set
-  TIME_IN,
-  VALUE_IN,
-  TIME_NOT_IN,
-  VALUE_NOT_IN,
+  TIME_IN("IN"),
+  VALUE_IN("IN"),
+  TIME_NOT_IN("NOT IN"),
+  VALUE_NOT_IN("NOT IN"),
 
   // pattern match
-  VALUE_REGEXP,
-  VALUE_NOT_REGEXP,
+  VALUE_REGEXP("MATCH"),
+  VALUE_NOT_REGEXP("NOT MATCH"),
 
   // group by
-  GROUP_BY_TIME,
-  GROUP_BY_MONTH;
+  GROUP_BY_TIME("GROUP BY TIME"),
+  GROUP_BY_MONTH("GROUP BY MONTH");
+
+  private final String symbol;
+
+  OperatorType(String symbol) {
+    this.symbol = symbol;
+  }
+
+  public String getSymbol() {
+    return symbol;
+  }
 }

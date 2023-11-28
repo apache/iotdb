@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.read.filter.operator;
 
+import org.apache.iotdb.tsfile.file.metadata.IAlignedMetadataProvider;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -29,7 +30,6 @@ import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class Or extends BinaryLogicalFilter {
 
@@ -47,6 +47,11 @@ public class Or extends BinaryLogicalFilter {
   }
 
   @Override
+  public boolean satisfy(long time, Object[] values) {
+    return left.satisfy(time, values) || right.satisfy(time, values);
+  }
+
+  @Override
   public boolean canSkip(Statistics<? extends Serializable> statistics) {
     // we can only drop a chunk of records if we know that both the left and right predicates agree
     // that no matter what we don't need this chunk.
@@ -54,14 +59,18 @@ public class Or extends BinaryLogicalFilter {
   }
 
   @Override
-  public boolean canSkip(
-      Map<String, Statistics<? extends Serializable>> measurementToStatisticsMap) {
-    return left.canSkip(measurementToStatisticsMap) && right.canSkip(measurementToStatisticsMap);
+  public boolean canSkip(IAlignedMetadataProvider alignedMetadata) {
+    return left.canSkip(alignedMetadata) && right.canSkip(alignedMetadata);
   }
 
   @Override
   public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
     return left.allSatisfy(statistics) || right.allSatisfy(statistics);
+  }
+
+  @Override
+  public boolean allSatisfy(IAlignedMetadataProvider alignedMetadata) {
+    return left.allSatisfy(alignedMetadata) || right.allSatisfy(alignedMetadata);
   }
 
   @Override

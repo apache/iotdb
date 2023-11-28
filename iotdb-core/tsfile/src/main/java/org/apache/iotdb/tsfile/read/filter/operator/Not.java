@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.read.filter.operator;
 
+import org.apache.iotdb.tsfile.file.metadata.IAlignedMetadataProvider;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -31,7 +32,6 @@ import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 public class Not implements Filter {
@@ -56,18 +56,27 @@ public class Not implements Filter {
   }
 
   @Override
+  public boolean satisfy(long time, Object[] values) {
+    return !filter.satisfy(time, values);
+  }
+
+  @Override
   public boolean canSkip(Statistics<? extends Serializable> statistics) {
     throw new IllegalArgumentException(CONTAIN_NOT_ERR_MSG + this);
   }
 
   @Override
-  public boolean canSkip(
-      Map<String, Statistics<? extends Serializable>> measurementToStatisticsMap) {
+  public boolean canSkip(IAlignedMetadataProvider alignedMetadata) {
     throw new IllegalArgumentException(CONTAIN_NOT_ERR_MSG + this);
   }
 
   @Override
   public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
+    throw new IllegalArgumentException(CONTAIN_NOT_ERR_MSG + this);
+  }
+
+  @Override
+  public boolean allSatisfy(IAlignedMetadataProvider alignedMetadata) {
     throw new IllegalArgumentException(CONTAIN_NOT_ERR_MSG + this);
   }
 

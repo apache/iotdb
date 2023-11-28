@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.read.reader.page;
 
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.IAlignedMetadataProvider;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -45,7 +46,8 @@ import java.util.List;
 
 import static org.apache.iotdb.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
 
-public class AlignedPageReader implements IPageReader, IAlignedPageReader {
+public class AlignedPageReader
+    implements IPageReader, IAlignedPageReader, IAlignedMetadataProvider {
 
   private final TimePageReader timePageReader;
   private final List<ValuePageReader> valuePageReaderList;
@@ -368,6 +370,28 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
         }
       }
     }
+
+    if (filter == null || filter.allSatisfy(getTimeStatistics())) {
+      return builder.build();
+    }
+
+    // filter the block
+    TsBlock unfilteredBlock = builder.build();
+    Object[] values = new Object[valueCount];
+
+    for (int i = 0, size = unfilteredBlock.getPositionCount(); i < size; i++) {
+      long time = unfilteredBlock.getTimeByIndex(i);
+      for (int j = 0; j < valueCount; j++) {
+        values[j] = unfilteredBlock.getValueColumns()[j].getObject(i);
+      }
+
+      if (filter.satisfy(time, values)) {
+        builder.getTimeColumnBuilder().writeLong(time);
+        for (int j = 0; j < valueCount; j++) {
+          builder.getValueColumnBuilders()[j].writeObject(values[j]);
+        }
+      }
+    }
     return builder.build();
   }
 
@@ -395,6 +419,11 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
   @Override
   public Statistics<? extends Serializable> getTimeStatistics() {
     return timePageReader.getStatistics();
+  }
+
+  @Override
+  public Statistics<? extends Serializable> getMeasurementStatistics(int measurementIndex) {
+    return getStatistics(measurementIndex);
   }
 
   private List<Statistics<? extends Serializable>> getValueStatisticsList() {

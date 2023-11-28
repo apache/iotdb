@@ -29,7 +29,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class AlignedChunkMetadata implements IChunkMetadata {
+public class AlignedChunkMetadata implements IChunkMetadata, IAlignedMetadataProvider {
 
   // ChunkMetadata for time column
   private final IChunkMetadata timeChunkMetadata;
@@ -46,13 +46,13 @@ public class AlignedChunkMetadata implements IChunkMetadata {
   }
 
   @Override
-  public Statistics<? extends Serializable> getStatistics() {
+  public Statistics<Serializable> getStatistics() {
     return valueChunkMetadataList.size() == 1 && valueChunkMetadataList.get(0) != null
         ? valueChunkMetadataList.get(0).getStatistics()
         : timeChunkMetadata.getStatistics();
   }
 
-  public Statistics<? extends Serializable> getStatistics(int index) {
+  public Statistics<Serializable> getStatistics(int index) {
     IChunkMetadata v = valueChunkMetadataList.get(index);
     return v == null ? null : v.getStatistics();
   }
@@ -65,8 +65,14 @@ public class AlignedChunkMetadata implements IChunkMetadata {
     return valueStatisticsList;
   }
 
-  public Statistics<? extends Serializable> getTimeStatistics() {
+  @Override
+  public Statistics<Serializable> getTimeStatistics() {
     return timeChunkMetadata.getStatistics();
+  }
+
+  @Override
+  public Statistics<Serializable> getMeasurementStatistics(int measurementIndex) {
+    return getStatistics(measurementIndex);
   }
 
   @Override

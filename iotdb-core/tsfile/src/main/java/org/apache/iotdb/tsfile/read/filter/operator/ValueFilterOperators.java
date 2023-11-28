@@ -20,7 +20,7 @@
 package org.apache.iotdb.tsfile.read.filter.operator;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.IAlignedMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IAlignedMetadataProvider;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -52,32 +52,34 @@ public final class ValueFilterOperators {
     // forbidden construction
   }
 
-  private static final String MEASUREMENT_CANNOT_BE_NULL_MSG = "measurement cannot be null";
   private static final String CONSTANT_CANNOT_BE_NULL_MSG = "constant cannot be null";
 
   private static final boolean BLOCK_MIGHT_MATCH = false;
   private static final boolean BLOCK_CANNOT_MATCH = true;
+  private static final boolean BLOCK_ALL_MATCH = true;
+
+  private static final String OPERATOR_TO_STRING_FORMAT = "measurements[%s] %s %s";
 
   // base class for ValueEq, ValueNotEq, ValueLt, ValueGt, ValueLtEq, ValueGtEq
   abstract static class ValueColumnCompareFilter<T extends Comparable<T>>
       extends ColumnCompareFilter<T> implements IValueFilter {
 
-    protected final String measurement;
+    protected final int measurementIndex;
 
-    protected ValueColumnCompareFilter(String measurement, T constant) {
+    protected ValueColumnCompareFilter(int measurementIndex, T constant) {
       super(constant);
-      this.measurement = Objects.requireNonNull(measurement, MEASUREMENT_CANNOT_BE_NULL_MSG);
+      this.measurementIndex = measurementIndex;
     }
 
     @Override
-    public String getMeasurement() {
-      return measurement;
+    public int getMeasurementIndex() {
+      return measurementIndex;
     }
 
     @Override
     public void serialize(DataOutputStream outputStream) throws IOException {
       ReadWriteIOUtils.write(getOperatorType().ordinal(), outputStream);
-      ReadWriteIOUtils.write(measurement, outputStream);
+      ReadWriteIOUtils.write(measurementIndex, outputStream);
       ReadWriteIOUtils.writeObject(constant, outputStream);
     }
 
@@ -89,26 +91,35 @@ public final class ValueFilterOperators {
       if (o == null || getClass() != o.getClass()) {
         return false;
       }
+      if (!super.equals(o)) {
+        return false;
+      }
       ValueColumnCompareFilter<?> that = (ValueColumnCompareFilter<?>) o;
-      return measurement.equals(that.measurement);
+      return measurementIndex == that.measurementIndex;
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(measurement);
+      return Objects.hash(super.hashCode(), measurementIndex);
+    }
+
+    @Override
+    public String toString() {
+      return String.format(
+          OPERATOR_TO_STRING_FORMAT, measurementIndex, getOperatorType().getSymbol(), constant);
     }
   }
 
   public static final class ValueEq<T extends Comparable<T>> extends ValueColumnCompareFilter<T> {
 
     // constant can be null
-    public ValueEq(String measurement, T constant) {
-      super(measurement, constant);
+    public ValueEq(int measurementIndex, T constant) {
+      super(measurementIndex, constant);
     }
 
     @SuppressWarnings("unchecked")
     public ValueEq(ByteBuffer buffer) {
-      this(ReadWriteIOUtils.readString(buffer), (T) ReadWriteIOUtils.readObject(buffer));
+      this(ReadWriteIOUtils.readInt(buffer), (T) ReadWriteIOUtils.readObject(buffer));
     }
 
     @Override
@@ -123,6 +134,11 @@ public final class ValueFilterOperators {
         return BLOCK_MIGHT_MATCH;
       }
 
+      if (constant == null) {
+        // non-aligned page don't have null value
+        return BLOCK_CANNOT_MATCH;
+      }
+
       // drop if value < min || value > max
       return constant.compareTo((T) statistics.getMinValue()) < 0
           || constant.compareTo((T) statistics.getMaxValue()) > 0;
@@ -130,9 +146,9 @@ public final class ValueFilterOperators {
 
     @Override
     @SuppressWarnings("unchecked")
-    public boolean canSkip(IAlignedMetadata alignedMetadata) {
+    public boolean canSkip(IAlignedMetadataProvider alignedMetadata) {
       Statistics<? extends Serializable> statistics =
-          alignedMetadata.getMeasurementStatistics(measurement);
+          alignedMetadata.getMeasurementStatistics(measurementIndex);
 
       if (statistics == null) {
         // the measurement isn't in this block so all values are null.
@@ -150,7 +166,10 @@ public final class ValueFilterOperators {
       if (constant == null) {
         // we are looking for records where v eq(null)
         // so drop if there are no nulls in this chunk
-        return !alignedMetadata.hasNullValue(measurement);
+        if (!alignedMetadata.hasNullValue(measurementIndex)) {
+          return BLOCK_CANNOT_MATCH;
+        }
+        return BLOCK_MIGHT_MATCH;
       }
 
       // drop if value < min || value > max
@@ -165,23 +184,53 @@ public final class ValueFilterOperators {
         return BLOCK_MIGHT_MATCH;
       }
 
+      if (constant == null) {
+        // non-aligned page don't have null value
+        return BLOCK_MIGHT_MATCH;
+      }
+
+      return constant.compareTo((T) statistics.getMinValue()) == 0
+          && constant.compareTo((T) statistics.getMaxValue()) == 0;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public boolean allSatisfy(IAlignedMetadataProvider alignedMetadata) {
+      Statistics<? extends Serializable> statistics =
+          alignedMetadata.getMeasurementStatistics(measurementIndex);
+
+      if (statistics == null) {
+        // the measurement isn't in this block so all values are null.
+        if (constant == null) {
+          // null is always equal to null
+          return BLOCK_ALL_MATCH;
+        }
+        return BLOCK_MIGHT_MATCH;
+      }
+
+      if (statisticsNotAvailable(statistics)) {
+        return BLOCK_MIGHT_MATCH;
+      }
+
+      if (constant == null) {
+        if (alignedMetadata.isAllNulls(measurementIndex)) {
+          return BLOCK_ALL_MATCH;
+        }
+        return BLOCK_MIGHT_MATCH;
+      }
+
       return constant.compareTo((T) statistics.getMinValue()) == 0
           && constant.compareTo((T) statistics.getMaxValue()) == 0;
     }
 
     @Override
     public Filter reverse() {
-      return new ValueNotEq<>(measurement, constant);
+      return new ValueNotEq<>(measurementIndex, constant);
     }
 
     @Override
     public OperatorType getOperatorType() {
       return OperatorType.VALUE_EQ;
-    }
-
-    @Override
-    public String toString() {
-      return measurement + " == " + constant;
     }
   }
 
@@ -189,13 +238,13 @@ public final class ValueFilterOperators {
       extends ValueColumnCompareFilter<T> {
 
     // constant can be null
-    public ValueNotEq(String measurement, T constant) {
-      super(measurement, constant);
+    public ValueNotEq(int measurementIndex, T constant) {
+      super(measurementIndex, constant);
     }
 
     @SuppressWarnings("unchecked")
     public ValueNotEq(ByteBuffer buffer) {
-      this(ReadWriteIOUtils.readString(buffer), (T) ReadWriteIOUtils.readObject(buffer));
+      this(ReadWriteIOUtils.readInt(buffer), (T) ReadWriteIOUtils.readObject(buffer));
     }
 
     @Override
@@ -210,6 +259,11 @@ public final class ValueFilterOperators {
         return BLOCK_MIGHT_MATCH;
       }
 
+      if (constant == null) {
+        // non-aligned page don't have null value
+        return BLOCK_MIGHT_MATCH;
+      }
+
       // drop if this is a column where min = max = value
       return constant.compareTo((T) statistics.getMinValue()) == 0
           && constant.compareTo((T) statistics.getMaxValue()) == 0;
@@ -217,9 +271,9 @@ public final class ValueFilterOperators {
 
     @Override
     @SuppressWarnings("unchecked")
-    public boolean canSkip(IAlignedMetadata alignedMetadata) {
+    public boolean canSkip(IAlignedMetadataProvider alignedMetadata) {
       Statistics<? extends Serializable> statistics =
-          alignedMetadata.getMeasurementStatistics(measurement);
+          alignedMetadata.getMeasurementStatistics(measurementIndex);
 
       if (statistics == null) {
         if (constant == null) {
@@ -236,7 +290,10 @@ public final class ValueFilterOperators {
       if (constant == null) {
         // we are looking for records where v notEq(null)
         // so, if this is a column of all nulls, we can drop it
-        return alignedMetadata.isAllNulls(measurement);
+        if (alignedMetadata.isAllNulls(measurementIndex)) {
+          return BLOCK_CANNOT_MATCH;
+        }
+        return BLOCK_MIGHT_MATCH;
       }
 
       // drop if this is a column where min = max = value
@@ -251,36 +308,66 @@ public final class ValueFilterOperators {
         return BLOCK_MIGHT_MATCH;
       }
 
+      if (constant == null) {
+        // non-aligned page don't have null value
+        return BLOCK_ALL_MATCH;
+      }
+
+      return constant.compareTo((T) statistics.getMinValue()) < 0
+          || constant.compareTo((T) statistics.getMaxValue()) > 0;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public boolean allSatisfy(IAlignedMetadataProvider alignedMetadata) {
+      Statistics<? extends Serializable> statistics =
+          alignedMetadata.getMeasurementStatistics(measurementIndex);
+
+      if (statistics == null) {
+        if (constant != null) {
+          return BLOCK_ALL_MATCH;
+        }
+        return BLOCK_MIGHT_MATCH;
+      }
+
+      if (statisticsNotAvailable(statistics)) {
+        return BLOCK_MIGHT_MATCH;
+      }
+
+      if (constant == null) {
+        // we are looking for records where v notEq(null)
+        // so, if this is a column of all nulls, we can drop it
+        if (!alignedMetadata.hasNullValue(measurementIndex)) {
+          return BLOCK_ALL_MATCH;
+        }
+        return BLOCK_MIGHT_MATCH;
+      }
+
       return constant.compareTo((T) statistics.getMinValue()) < 0
           || constant.compareTo((T) statistics.getMaxValue()) > 0;
     }
 
     @Override
     public Filter reverse() {
-      return new ValueEq<>(measurement, constant);
+      return new ValueEq<>(measurementIndex, constant);
     }
 
     @Override
     public OperatorType getOperatorType() {
       return OperatorType.VALUE_NEQ;
     }
-
-    @Override
-    public String toString() {
-      return measurement + " != " + constant;
-    }
   }
 
   public static final class ValueLt<T extends Comparable<T>> extends ValueColumnCompareFilter<T> {
 
     // constant cannot be null
-    public ValueLt(String measurement, T constant) {
-      super(measurement, Objects.requireNonNull(constant, CONSTANT_CANNOT_BE_NULL_MSG));
+    public ValueLt(int measurementIndex, T constant) {
+      super(measurementIndex, Objects.requireNonNull(constant, CONSTANT_CANNOT_BE_NULL_MSG));
     }
 
     @SuppressWarnings("unchecked")
     public ValueLt(ByteBuffer buffer) {
-      this(ReadWriteIOUtils.readString(buffer), (T) ReadWriteIOUtils.readObject(buffer));
+      this(ReadWriteIOUtils.readInt(buffer), (T) ReadWriteIOUtils.readObject(buffer));
     }
 
     @Override
@@ -312,30 +399,25 @@ public final class ValueFilterOperators {
 
     @Override
     public Filter reverse() {
-      return new ValueGtEq<>(measurement, constant);
+      return new ValueGtEq<>(measurementIndex, constant);
     }
 
     @Override
     public OperatorType getOperatorType() {
       return OperatorType.VALUE_LT;
     }
-
-    @Override
-    public String toString() {
-      return measurement + " < " + constant;
-    }
   }
 
   public static final class ValueLtEq<T extends Comparable<T>> extends ValueColumnCompareFilter<T> {
 
     // constant cannot be null
-    public ValueLtEq(String measurement, T constant) {
-      super(measurement, Objects.requireNonNull(constant, CONSTANT_CANNOT_BE_NULL_MSG));
+    public ValueLtEq(int measurementIndex, T constant) {
+      super(measurementIndex, Objects.requireNonNull(constant, CONSTANT_CANNOT_BE_NULL_MSG));
     }
 
     @SuppressWarnings("unchecked")
     public ValueLtEq(ByteBuffer buffer) {
-      this(ReadWriteIOUtils.readString(buffer), (T) ReadWriteIOUtils.readObject(buffer));
+      this(ReadWriteIOUtils.readInt(buffer), (T) ReadWriteIOUtils.readObject(buffer));
     }
 
     @Override
@@ -367,30 +449,25 @@ public final class ValueFilterOperators {
 
     @Override
     public Filter reverse() {
-      return new ValueGt<>(measurement, constant);
+      return new ValueGt<>(measurementIndex, constant);
     }
 
     @Override
     public OperatorType getOperatorType() {
       return OperatorType.VALUE_LTEQ;
     }
-
-    @Override
-    public String toString() {
-      return measurement + " <= " + constant;
-    }
   }
 
   public static final class ValueGt<T extends Comparable<T>> extends ValueColumnCompareFilter<T> {
 
     // constant cannot be null
-    public ValueGt(String measurement, T constant) {
-      super(measurement, Objects.requireNonNull(constant, CONSTANT_CANNOT_BE_NULL_MSG));
+    public ValueGt(int measurementIndex, T constant) {
+      super(measurementIndex, Objects.requireNonNull(constant, CONSTANT_CANNOT_BE_NULL_MSG));
     }
 
     @SuppressWarnings("unchecked")
     public ValueGt(ByteBuffer buffer) {
-      this(ReadWriteIOUtils.readString(buffer), (T) ReadWriteIOUtils.readObject(buffer));
+      this(ReadWriteIOUtils.readInt(buffer), (T) ReadWriteIOUtils.readObject(buffer));
     }
 
     @Override
@@ -422,30 +499,25 @@ public final class ValueFilterOperators {
 
     @Override
     public Filter reverse() {
-      return new ValueLtEq<>(measurement, constant);
+      return new ValueLtEq<>(measurementIndex, constant);
     }
 
     @Override
     public OperatorType getOperatorType() {
       return OperatorType.VALUE_GT;
     }
-
-    @Override
-    public String toString() {
-      return measurement + " > " + constant;
-    }
   }
 
   public static final class ValueGtEq<T extends Comparable<T>> extends ValueColumnCompareFilter<T> {
 
     // constant cannot be null
-    public ValueGtEq(String measurement, T constant) {
-      super(measurement, Objects.requireNonNull(constant, CONSTANT_CANNOT_BE_NULL_MSG));
+    public ValueGtEq(int measurementIndex, T constant) {
+      super(measurementIndex, Objects.requireNonNull(constant, CONSTANT_CANNOT_BE_NULL_MSG));
     }
 
     @SuppressWarnings("unchecked")
     public ValueGtEq(ByteBuffer buffer) {
-      this(ReadWriteIOUtils.readString(buffer), (T) ReadWriteIOUtils.readObject(buffer));
+      this(ReadWriteIOUtils.readInt(buffer), (T) ReadWriteIOUtils.readObject(buffer));
     }
 
     @Override
@@ -477,17 +549,12 @@ public final class ValueFilterOperators {
 
     @Override
     public Filter reverse() {
-      return new ValueLt<>(measurement, constant);
+      return new ValueLt<>(measurementIndex, constant);
     }
 
     @Override
     public OperatorType getOperatorType() {
       return OperatorType.VALUE_GTEQ;
-    }
-
-    @Override
-    public String toString() {
-      return measurement + " >= " + constant;
     }
   }
 
@@ -495,22 +562,22 @@ public final class ValueFilterOperators {
   abstract static class ValueColumnRangeFilter<T extends Comparable<T>> extends ColumnRangeFilter<T>
       implements IValueFilter {
 
-    protected final String measurement;
+    protected final int measurementIndex;
 
-    protected ValueColumnRangeFilter(String measurement, T min, T max) {
+    protected ValueColumnRangeFilter(int measurementIndex, T min, T max) {
       super(min, max);
-      this.measurement = Objects.requireNonNull(measurement, MEASUREMENT_CANNOT_BE_NULL_MSG);
+      this.measurementIndex = measurementIndex;
     }
 
     @Override
-    public String getMeasurement() {
-      return measurement;
+    public int getMeasurementIndex() {
+      return measurementIndex;
     }
 
     @Override
     public void serialize(DataOutputStream outputStream) throws IOException {
       ReadWriteIOUtils.write(getOperatorType().ordinal(), outputStream);
-      ReadWriteIOUtils.write(measurement, outputStream);
+      ReadWriteIOUtils.write(measurementIndex, outputStream);
       ReadWriteIOUtils.writeObject(min, outputStream);
       ReadWriteIOUtils.writeObject(max, outputStream);
     }
@@ -527,26 +594,33 @@ public final class ValueFilterOperators {
         return false;
       }
       ValueColumnRangeFilter<?> that = (ValueColumnRangeFilter<?>) o;
-      return measurement.equals(that.measurement);
+      return measurementIndex == that.measurementIndex;
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(super.hashCode(), measurement);
+      return Objects.hash(super.hashCode(), measurementIndex);
+    }
+
+    @Override
+    public String toString() {
+      return String.format(
+          "measurements[%s] %s %s AND %s",
+          measurementIndex, getOperatorType().getSymbol(), min, max);
     }
   }
 
   public static final class ValueBetweenAnd<T extends Comparable<T>>
       extends ValueColumnRangeFilter<T> {
 
-    public ValueBetweenAnd(String measurement, T min, T max) {
-      super(measurement, min, max);
+    public ValueBetweenAnd(int measurementIndex, T min, T max) {
+      super(measurementIndex, min, max);
     }
 
     @SuppressWarnings("unchecked")
     public ValueBetweenAnd(ByteBuffer buffer) {
       this(
-          ReadWriteIOUtils.readString(buffer),
+          ReadWriteIOUtils.readInt(buffer),
           (T) ReadWriteIOUtils.readObject(buffer),
           (T) ReadWriteIOUtils.readObject(buffer));
     }
@@ -581,31 +655,26 @@ public final class ValueFilterOperators {
 
     @Override
     public Filter reverse() {
-      return new ValueNotBetweenAnd<>(measurement, min, max);
+      return new ValueNotBetweenAnd<>(measurementIndex, min, max);
     }
 
     @Override
     public OperatorType getOperatorType() {
       return OperatorType.VALUE_BETWEEN_AND;
     }
-
-    @Override
-    public String toString() {
-      return measurement + " between " + min + " and " + max;
-    }
   }
 
   public static final class ValueNotBetweenAnd<T extends Comparable<T>>
       extends ValueColumnRangeFilter<T> {
 
-    public ValueNotBetweenAnd(String measurement, T min, T max) {
-      super(measurement, min, max);
+    public ValueNotBetweenAnd(int measurementIndex, T min, T max) {
+      super(measurementIndex, min, max);
     }
 
     @SuppressWarnings("unchecked")
     public ValueNotBetweenAnd(ByteBuffer buffer) {
       this(
-          ReadWriteIOUtils.readString(buffer),
+          ReadWriteIOUtils.readInt(buffer),
           (T) ReadWriteIOUtils.readObject(buffer),
           (T) ReadWriteIOUtils.readObject(buffer));
     }
@@ -640,17 +709,12 @@ public final class ValueFilterOperators {
 
     @Override
     public Filter reverse() {
-      return new ValueBetweenAnd<>(measurement, min, max);
+      return new ValueBetweenAnd<>(measurementIndex, min, max);
     }
 
     @Override
     public OperatorType getOperatorType() {
       return OperatorType.VALUE_NOT_BETWEEN_AND;
-    }
-
-    @Override
-    public String toString() {
-      return measurement + " not between " + min + " and " + max;
     }
   }
 
@@ -666,22 +730,22 @@ public final class ValueFilterOperators {
   abstract static class ValueColumnSetFilter<T> extends ColumnSetFilter<T>
       implements IDisableStatisticsValueFilter {
 
-    protected final String measurement;
+    protected final int measurementIndex;
 
-    protected ValueColumnSetFilter(String measurement, Set<T> candidates) {
+    protected ValueColumnSetFilter(int measurementIndex, Set<T> candidates) {
       super(candidates);
-      this.measurement = Objects.requireNonNull(measurement, MEASUREMENT_CANNOT_BE_NULL_MSG);
+      this.measurementIndex = measurementIndex;
     }
 
     @Override
-    public String getMeasurement() {
-      return measurement;
+    public int getMeasurementIndex() {
+      return measurementIndex;
     }
 
     @Override
     public void serialize(DataOutputStream outputStream) throws IOException {
       ReadWriteIOUtils.write(getOperatorType().ordinal(), outputStream);
-      ReadWriteIOUtils.write(measurement, outputStream);
+      ReadWriteIOUtils.write(measurementIndex, outputStream);
       ReadWriteIOUtils.writeObjectSet(candidates, outputStream);
     }
 
@@ -697,23 +761,29 @@ public final class ValueFilterOperators {
         return false;
       }
       ValueColumnSetFilter<?> that = (ValueColumnSetFilter<?>) o;
-      return measurement.equals(that.measurement);
+      return measurementIndex == that.measurementIndex;
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(super.hashCode(), measurement);
+      return Objects.hash(super.hashCode(), measurementIndex);
+    }
+
+    @Override
+    public String toString() {
+      return String.format(
+          OPERATOR_TO_STRING_FORMAT, measurementIndex, getOperatorType().getSymbol(), candidates);
     }
   }
 
   public static final class ValueIn<T> extends ValueColumnSetFilter<T> {
 
-    public ValueIn(String measurement, Set<T> candidates) {
-      super(measurement, candidates);
+    public ValueIn(int measurementIndex, Set<T> candidates) {
+      super(measurementIndex, candidates);
     }
 
     public ValueIn(ByteBuffer buffer) {
-      this(ReadWriteIOUtils.readString(buffer), ReadWriteIOUtils.readObjectSet(buffer));
+      this(ReadWriteIOUtils.readInt(buffer), ReadWriteIOUtils.readObjectSet(buffer));
     }
 
     @Override
@@ -723,28 +793,23 @@ public final class ValueFilterOperators {
 
     @Override
     public Filter reverse() {
-      return new ValueNotIn<>(measurement, candidates);
+      return new ValueNotIn<>(measurementIndex, candidates);
     }
 
     @Override
     public OperatorType getOperatorType() {
       return OperatorType.VALUE_IN;
     }
-
-    @Override
-    public String toString() {
-      return measurement + " in " + candidates;
-    }
   }
 
   public static final class ValueNotIn<T> extends ValueColumnSetFilter<T> {
 
-    public ValueNotIn(String measurement, Set<T> candidates) {
-      super(measurement, candidates);
+    public ValueNotIn(int measurementIndex, Set<T> candidates) {
+      super(measurementIndex, candidates);
     }
 
     public ValueNotIn(ByteBuffer buffer) {
-      this(ReadWriteIOUtils.readString(buffer), ReadWriteIOUtils.readObjectSet(buffer));
+      this(ReadWriteIOUtils.readInt(buffer), ReadWriteIOUtils.readObjectSet(buffer));
     }
 
     @Override
@@ -754,17 +819,12 @@ public final class ValueFilterOperators {
 
     @Override
     public Filter reverse() {
-      return new ValueIn<>(measurement, candidates);
+      return new ValueIn<>(measurementIndex, candidates);
     }
 
     @Override
     public OperatorType getOperatorType() {
       return OperatorType.VALUE_NOT_IN;
-    }
-
-    @Override
-    public String toString() {
-      return measurement + " not in " + candidates;
     }
   }
 
@@ -772,22 +832,22 @@ public final class ValueFilterOperators {
   abstract static class ValueColumnPatternMatchFilter extends ColumnPatternMatchFilter
       implements IDisableStatisticsValueFilter {
 
-    protected final String measurement;
+    protected final int measurementIndex;
 
-    protected ValueColumnPatternMatchFilter(String measurement, Pattern pattern) {
+    protected ValueColumnPatternMatchFilter(int measurementIndex, Pattern pattern) {
       super(pattern);
-      this.measurement = Objects.requireNonNull(measurement, MEASUREMENT_CANNOT_BE_NULL_MSG);
+      this.measurementIndex = measurementIndex;
     }
 
     @Override
-    public String getMeasurement() {
-      return measurement;
+    public int getMeasurementIndex() {
+      return measurementIndex;
     }
 
     @Override
     public void serialize(DataOutputStream outputStream) throws IOException {
       ReadWriteIOUtils.write(getOperatorType().ordinal(), outputStream);
-      ReadWriteIOUtils.write(measurement, outputStream);
+      ReadWriteIOUtils.write(measurementIndex, outputStream);
       ReadWriteIOUtils.write(pattern.pattern(), outputStream);
     }
 
@@ -803,24 +863,30 @@ public final class ValueFilterOperators {
         return false;
       }
       ValueColumnPatternMatchFilter that = (ValueColumnPatternMatchFilter) o;
-      return measurement.equals(that.measurement);
+      return measurementIndex == that.measurementIndex;
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(super.hashCode(), measurement);
+      return Objects.hash(super.hashCode(), measurementIndex);
+    }
+
+    @Override
+    public String toString() {
+      return String.format(
+          OPERATOR_TO_STRING_FORMAT, measurementIndex, getOperatorType().getSymbol(), pattern);
     }
   }
 
   public static final class ValueRegexp extends ValueColumnPatternMatchFilter {
 
-    public ValueRegexp(String measurement, Pattern pattern) {
-      super(measurement, pattern);
+    public ValueRegexp(int measurementIndex, Pattern pattern) {
+      super(measurementIndex, pattern);
     }
 
     public ValueRegexp(ByteBuffer buffer) {
       this(
-          ReadWriteIOUtils.readString(buffer),
+          ReadWriteIOUtils.readInt(buffer),
           RegexUtils.compileRegex(ReadWriteIOUtils.readString(buffer)));
     }
 
@@ -831,29 +897,24 @@ public final class ValueFilterOperators {
 
     @Override
     public Filter reverse() {
-      return new ValueNotRegexp(measurement, pattern);
+      return new ValueNotRegexp(measurementIndex, pattern);
     }
 
     @Override
     public OperatorType getOperatorType() {
       return OperatorType.VALUE_REGEXP;
     }
-
-    @Override
-    public String toString() {
-      return measurement + " match " + pattern;
-    }
   }
 
   public static final class ValueNotRegexp extends ValueColumnPatternMatchFilter {
 
-    public ValueNotRegexp(String measurement, Pattern pattern) {
-      super(measurement, pattern);
+    public ValueNotRegexp(int measurementIndex, Pattern pattern) {
+      super(measurementIndex, pattern);
     }
 
     public ValueNotRegexp(ByteBuffer buffer) {
       this(
-          ReadWriteIOUtils.readString(buffer),
+          ReadWriteIOUtils.readInt(buffer),
           RegexUtils.compileRegex(ReadWriteIOUtils.readString(buffer)));
     }
 
@@ -864,17 +925,12 @@ public final class ValueFilterOperators {
 
     @Override
     public Filter reverse() {
-      return new ValueRegexp(measurement, pattern);
+      return new ValueRegexp(measurementIndex, pattern);
     }
 
     @Override
     public OperatorType getOperatorType() {
       return OperatorType.VALUE_NOT_REGEXP;
-    }
-
-    @Override
-    public String toString() {
-      return measurement + " not match " + pattern;
     }
   }
 
