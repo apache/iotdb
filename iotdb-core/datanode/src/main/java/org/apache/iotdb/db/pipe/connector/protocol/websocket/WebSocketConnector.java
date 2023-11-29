@@ -35,61 +35,62 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nullable;
-
 import java.util.Arrays;
 import java.util.Optional;
 
 public class WebSocketConnector implements PipeConnector {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketConnector.class);
+
   private Integer port;
   private WebSocketConnectorServer server;
   private String pipeName;
 
-  public String getPipeName() {
-    return pipeName;
-  }
-
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
-    // Do nothing
-  }
+    final PipeParameters parameters = validator.getParameters();
 
-  @Override
-  public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
-      throws Exception {
     port =
         parameters.getIntOrDefault(
             Arrays.asList(
                 PipeConnectorConstant.CONNECTOR_WEBSOCKET_PORT_KEY,
                 PipeConnectorConstant.SINK_WEBSOCKET_PORT_KEY),
             PipeConnectorConstant.CONNECTOR_WEBSOCKET_PORT_DEFAULT_VALUE);
-    server = WebSocketConnectorServer.getInstance(port);
+
+    server = WebSocketConnectorServer.getOrCreateInstance(port);
     if (server.getPort() != port) {
       throw new PipeException(
           String.format(
-              "The webSocketServer has been created by port %d. Please set the option cdc.port=%d.",
+              "The websocket server has already been created with port = %d. "
+                  + "Please set the option cdc.port = %d.",
               server.getPort(), server.getPort()));
     }
+  }
+
+  @Override
+  public void customize(
+      PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration) {
     pipeName = configuration.getRuntimeEnvironment().getPipeName();
   }
 
   @Override
-  public void handshake() throws Exception {
-    server = WebSocketConnectorServer.getInstance(port);
+  public void handshake() {
+    server = WebSocketConnectorServer.getOrCreateInstance(port);
     server.register(this);
-    if (!WebSocketConnectorServer.isStarted) {
-      synchronized (WebSocketConnectorServer.isStarted) {
-        if (!WebSocketConnectorServer.isStarted) {
+
+    if (!server.isStarted()) {
+      synchronized (WebSocketConnectorServer.class) {
+        if (!server.isStarted()) {
           server.start();
-          WebSocketConnectorServer.isStarted = true;
         }
       }
     }
   }
 
   @Override
-  public void heartbeat() throws Exception {}
+  public void heartbeat() throws Exception {
+    // Do nothing
+  }
 
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) {
@@ -129,18 +130,23 @@ public class WebSocketConnector implements PipeConnector {
   }
 
   @Override
-  public void transfer(Event event) throws Exception {}
+  public void transfer(Event event) throws Exception {
+    // Do nothing
+  }
 
   @Override
   public void close() throws Exception {
-    if (port == null) {
-      return;
+    if (server != null) {
+      server.unregister(this);
     }
-    server.unregister(this);
   }
 
-  public synchronized void commit(@Nullable EnrichedEvent enrichedEvent) {
+  public void commit(EnrichedEvent enrichedEvent) {
     Optional.ofNullable(enrichedEvent)
         .ifPresent(event -> event.decreaseReferenceCount(WebSocketConnector.class.getName(), true));
+  }
+
+  public String getPipeName() {
+    return pipeName;
   }
 }

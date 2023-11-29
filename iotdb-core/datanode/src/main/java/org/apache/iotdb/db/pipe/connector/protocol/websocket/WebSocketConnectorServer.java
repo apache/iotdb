@@ -40,34 +40,38 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class WebSocketConnectorServer extends WebSocketServer {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketConnectorServer.class);
+
   private final AtomicLong eventIdGenerator = new AtomicLong(0);
   // Map<pipeName, Queue<Tuple<eventId, connector, event>>>
-  private final ConcurrentHashMap<String, PriorityBlockingQueue<EventQueueElement>>
+  private final ConcurrentHashMap<String, PriorityBlockingQueue<EventWaitingForTransfer>>
       eventsWaitingForTransfer = new ConcurrentHashMap<>();
   // Map<pipeName, Map<eventId, Tuple<connector, event>>>
-  private final ConcurrentHashMap<String, ConcurrentHashMap<Long, EventMapElement>>
+  private final ConcurrentHashMap<String, ConcurrentHashMap<Long, EventWaitingForAck>>
       eventsWaitingForAck = new ConcurrentHashMap<>();
+
   private final BidiMap<String, WebSocket> router =
       new DualTreeBidiMap<String, WebSocket>(null, Comparator.comparing(Object::hashCode)) {};
 
-  private static WebSocketConnectorServer instance;
-  public static Boolean isStarted = false;
+  private static final AtomicReference<WebSocketConnectorServer> instance = new AtomicReference<>();
+  private static final AtomicBoolean isStarted = new AtomicBoolean(false);
 
   private WebSocketConnectorServer(int port) {
     super(new InetSocketAddress(port));
-    TransferThread transferThread = new TransferThread(this);
-    transferThread.start();
+    new TransferThread(this).start();
   }
 
-  public static synchronized WebSocketConnectorServer getInstance(int port) {
-    if (null == instance) {
-      instance = new WebSocketConnectorServer(port);
+  public static synchronized WebSocketConnectorServer getOrCreateInstance(int port) {
+    if (null == instance.get()) {
+      instance.set(new WebSocketConnectorServer(port));
     }
-    return instance;
+    return instance.get();
   }
 
   public void register(WebSocketConnector connector) {
@@ -77,26 +81,41 @@ public class WebSocketConnectorServer extends WebSocketServer {
     eventsWaitingForAck.putIfAbsent(connector.getPipeName(), new ConcurrentHashMap<>());
   }
 
-  public void unregister(WebSocketConnector connector) {}
+  public void unregister(WebSocketConnector connector) {
+    eventsWaitingForTransfer.remove(connector.getPipeName());
+    eventsWaitingForAck.remove(connector.getPipeName());
+  }
+
+  @Override
+  public void start() {
+    super.start();
+    isStarted.set(true);
+  }
+
+  @Override
+  public synchronized void onStart() {
+    LOGGER.info(
+        "The websocket server {}:{} has been started!", getAddress().getHostName(), getPort());
+  }
+
+  public boolean isStarted() {
+    return isStarted.get();
+  }
 
   @Override
   public void onOpen(WebSocket webSocket, ClientHandshake clientHandshake) {
-    String log =
-        String.format(
-            "The connection from client %s:%d has been opened!",
-            webSocket.getRemoteSocketAddress().getHostName(),
-            webSocket.getRemoteSocketAddress().getPort());
-    LOGGER.info(log);
+    LOGGER.info(
+        "The websocket connection from client {}:{} has been opened!",
+        webSocket.getRemoteSocketAddress().getHostName(),
+        webSocket.getRemoteSocketAddress().getPort());
   }
 
   @Override
   public void onClose(WebSocket webSocket, int i, String s, boolean b) {
-    String log =
-        String.format(
-            "The client from %s:%d has been closed!",
-            webSocket.getRemoteSocketAddress().getAddress(),
-            webSocket.getRemoteSocketAddress().getPort());
-    LOGGER.info(log);
+    LOGGER.info(
+        "The websocket connection from client {}:{} has been closed!",
+        webSocket.getRemoteSocketAddress().getHostName(),
+        webSocket.getRemoteSocketAddress().getPort());
     router.remove(router.getKey(webSocket));
   }
 
@@ -107,54 +126,106 @@ public class WebSocketConnectorServer extends WebSocketServer {
           "Received a bind message from {}:{}",
           webSocket.getRemoteSocketAddress().getHostName(),
           webSocket.getRemoteSocketAddress().getPort());
+
       handleBind(webSocket, s.replace("BIND:", ""));
     } else if (s.startsWith("ACK")) {
-      LOGGER.info(
-          "Received a ack message from {}:{}",
-          webSocket.getRemoteSocketAddress().getHostName(),
-          webSocket.getRemoteSocketAddress().getPort());
-      long commitId = Long.parseLong(s.replace("ACK:", ""));
-      handleAck(webSocket, commitId);
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "Received a ack message from {}:{}",
+            webSocket.getRemoteSocketAddress().getHostName(),
+            webSocket.getRemoteSocketAddress().getPort());
+      }
+
+      handleAck(webSocket, Long.parseLong(s.replace("ACK:", "")));
     } else if (s.startsWith("ERROR")) {
-      LOGGER.error(
+      LOGGER.warn(
           "Received an error message {} from {}:{}",
           s,
           webSocket.getRemoteSocketAddress().getHostName(),
           webSocket.getRemoteSocketAddress().getPort());
-      long commitId = Long.parseLong(s.replace("ERROR:", ""));
-      handleError(webSocket, commitId);
+
+      handleError(webSocket, Long.parseLong(s.replace("ERROR:", "")));
+    } else {
+      LOGGER.warn(
+          "Received an unknown message {} from {}:{}",
+          s,
+          webSocket.getRemoteSocketAddress().getHostName(),
+          webSocket.getRemoteSocketAddress().getPort());
     }
+  }
+
+  private void handleBind(WebSocket webSocket, String pipeName) {
+    if (router.containsKey(pipeName)) {
+      broadcast("ERROR", Collections.singletonList(webSocket));
+      webSocket.close(4000, "Too many connections.");
+      return;
+    }
+
+    broadcast("READY", Collections.singletonList(webSocket));
+    router.put(pipeName, webSocket);
+  }
+
+  private void handleAck(WebSocket webSocket, long eventId) {
+    final String pipeName = router.getKey(webSocket);
+    final EventWaitingForAck eventWrapper = eventsWaitingForAck.get(pipeName).remove(eventId);
+
+    if (pipeName == null) {
+      LOGGER.warn(
+          "The websocket connection from {}:{} has been closed, "
+              + "but the ack message of commitId: {} is received.",
+          webSocket.getRemoteSocketAddress().getHostName(),
+          webSocket.getRemoteSocketAddress().getPort(),
+          eventId);
+      return;
+    }
+
+    eventWrapper.connector.commit(
+        eventWrapper.event instanceof EnrichedEvent ? (EnrichedEvent) eventWrapper.event : null);
+  }
+
+  private void handleError(WebSocket webSocket, long eventId) {
+    LOGGER.warn(
+        "The tablet of commitId: {} can't be parsed by client, it will be retried later.", eventId);
+
+    final String pipeName = router.getKey(webSocket);
+    final EventWaitingForAck eventWrapper = eventsWaitingForAck.get(pipeName).remove(eventId);
+
+    if (pipeName == null) {
+      LOGGER.warn(
+          "The websocket connection from {}:{} has been closed, "
+              + "but the error message of commitId: {} is received.",
+          webSocket.getRemoteSocketAddress().getHostName(),
+          webSocket.getRemoteSocketAddress().getPort(),
+          eventId);
+      return;
+    }
+
+    eventsWaitingForTransfer
+        .get(pipeName)
+        .put(new EventWaitingForTransfer(eventId, eventWrapper.connector, eventWrapper.event));
   }
 
   @Override
   public void onError(WebSocket webSocket, Exception e) {
-    String log;
     if (webSocket.getRemoteSocketAddress() != null) {
-      log =
-          String.format(
-              "Got an error `%s` from %s:%d.",
-              e.getMessage(),
-              webSocket.getLocalSocketAddress().getHostName(),
-              webSocket.getLocalSocketAddress().getPort());
+      LOGGER.warn(
+          "Got an error \"{}\" from {}:{}.",
+          e.getMessage(),
+          webSocket.getLocalSocketAddress().getHostName(),
+          webSocket.getLocalSocketAddress().getPort(),
+          e);
     } else {
-      log = String.format("Got an error `%s` from client.", e.getMessage());
+      LOGGER.warn("Got an error \"{}\" from an unknown client.", e.getMessage(), e);
+      // if the remote socket address is null, it means the connection is not established yet.
+      // we should close the connection manually.
       router.remove(router.getKey(webSocket));
     }
-    LOGGER.error(log);
-  }
-
-  @Override
-  public synchronized void onStart() {
-    String log =
-        String.format(
-            "The webSocket server %s:%d has been started!",
-            this.getAddress().getHostName(), this.getPort());
-    LOGGER.info(log);
   }
 
   public void addEvent(Event event, WebSocketConnector connector) {
-    PriorityBlockingQueue<EventQueueElement> queue =
+    final PriorityBlockingQueue<EventWaitingForTransfer> queue =
         eventsWaitingForTransfer.get(connector.getPipeName());
+
     if (queue.size() >= 5) {
       synchronized (queue) {
         while (queue.size() >= 5) {
@@ -167,41 +238,13 @@ public class WebSocketConnectorServer extends WebSocketServer {
         }
       }
     }
-    queue.put(new EventQueueElement(eventIdGenerator.incrementAndGet(), connector, event));
-  }
 
-  private void handleBind(WebSocket webSocket, String pipeName) {
-    if (router.containsKey(pipeName)) {
-      this.broadcast("ERROR", Collections.singletonList(webSocket));
-      webSocket.close(4000, "Too many connections.");
-      return;
-    }
-    this.broadcast("READY", Collections.singletonList(webSocket));
-    router.put(pipeName, webSocket);
-  }
-
-  private void handleAck(WebSocket webSocket, long eventId) {
-    String pipeName = router.getKey(webSocket);
-    EventMapElement mapElement = eventsWaitingForAck.get(pipeName).remove(eventId);
-    mapElement.connector.commit(
-        mapElement.event instanceof EnrichedEvent ? (EnrichedEvent) mapElement.event : null);
-  }
-
-  private void handleError(WebSocket webSocket, long eventId) {
-    String log =
-        String.format(
-            "The tablet of commitId: %d can't be parsed by client, it will be retried later.",
-            eventId);
-    LOGGER.warn(log);
-    String pipeName = router.getKey(webSocket);
-    EventMapElement mapElement = eventsWaitingForAck.get(pipeName).remove(eventId);
-    eventsWaitingForTransfer
-        .get(pipeName)
-        .put(new EventQueueElement(eventId, mapElement.connector, mapElement.event));
+    queue.put(new EventWaitingForTransfer(eventIdGenerator.incrementAndGet(), connector, event));
   }
 
   private class TransferThread extends Thread {
-    WebSocketConnectorServer server;
+
+    private final WebSocketConnectorServer server;
 
     public TransferThread(WebSocketConnectorServer server) {
       this.server = server;
@@ -210,34 +253,36 @@ public class WebSocketConnectorServer extends WebSocketServer {
     @Override
     public void run() {
       while (true) {
-        for (String pipeName : eventsWaitingForTransfer.keySet()) {
-          PriorityBlockingQueue<EventQueueElement> queue =
+        for (final String pipeName : eventsWaitingForTransfer.keySet()) {
+          final PriorityBlockingQueue<EventWaitingForTransfer> queue =
               eventsWaitingForTransfer.getOrDefault(pipeName, null);
           if (queue == null || queue.isEmpty() || !router.containsKey(pipeName)) {
             continue;
           }
+
           try {
-            EventQueueElement queueElement = queue.take();
+            final EventWaitingForTransfer queueElement = queue.take();
             synchronized (queue) {
               queue.notifyAll();
             }
             transfer(pipeName, queueElement);
           } catch (InterruptedException e) {
-            String log = String.format("The event can't be taken, because: %s", e.getMessage());
-            LOGGER.warn(log);
+            LOGGER.warn("The transfer thread is interrupted.", e);
             Thread.currentThread().interrupt();
+
             throw new PipeException(e.getMessage());
           }
         }
       }
     }
 
-    private void transfer(String pipeName, EventQueueElement element) {
-      Long eventId = element.eventId;
-      Event event = element.event;
-      WebSocketConnector connector = element.connector;
+    private void transfer(String pipeName, EventWaitingForTransfer element) {
+      final Long eventId = element.eventId;
+      final Event event = element.event;
+      final WebSocketConnector connector = element.connector;
+
       try {
-        ByteBuffer tabletBuffer = null;
+        ByteBuffer tabletBuffer;
         if (event instanceof PipeInsertNodeTabletInsertionEvent) {
           tabletBuffer = ((PipeInsertNodeTabletInsertionEvent) event).convertToTablet().serialize();
         } else if (event instanceof PipeRawTabletInsertionEvent) {
@@ -247,42 +292,47 @@ public class WebSocketConnectorServer extends WebSocketServer {
               "IoTDBCDCConnector only support "
                   + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent.");
         }
+
         if (tabletBuffer == null) {
           connector.commit((EnrichedEvent) event);
           return;
         }
-        ByteBuffer payload = ByteBuffer.allocate(Long.BYTES + tabletBuffer.limit());
+
+        final ByteBuffer payload = ByteBuffer.allocate(Long.BYTES + tabletBuffer.limit());
         payload.putLong(eventId);
         payload.put(tabletBuffer);
         payload.flip();
+
         server.broadcast(payload, Collections.singletonList(router.get(pipeName)));
-        eventsWaitingForAck.get(pipeName).put(eventId, new EventMapElement(connector, event));
+        eventsWaitingForAck.get(pipeName).put(eventId, new EventWaitingForAck(connector, event));
       } catch (Exception e) {
         eventsWaitingForTransfer
             .get(pipeName)
-            .put(new EventQueueElement(eventId, connector, event));
-        throw new PipeException(e.getMessage());
+            .put(new EventWaitingForTransfer(eventId, connector, event));
+        throw new PipeException(e.getMessage(), e);
       }
     }
   }
 
-  private class EventQueueElement {
-    Long eventId;
-    WebSocketConnector connector;
-    Event event;
+  private static class EventWaitingForTransfer {
 
-    public EventQueueElement(Long eventId, WebSocketConnector connector, Event event) {
+    private final Long eventId;
+    private final WebSocketConnector connector;
+    private final Event event;
+
+    public EventWaitingForTransfer(Long eventId, WebSocketConnector connector, Event event) {
       this.eventId = eventId;
       this.connector = connector;
       this.event = event;
     }
   }
 
-  private class EventMapElement {
-    WebSocketConnector connector;
-    Event event;
+  private static class EventWaitingForAck {
 
-    public EventMapElement(WebSocketConnector connector, Event event) {
+    private final WebSocketConnector connector;
+    private final Event event;
+
+    public EventWaitingForAck(WebSocketConnector connector, Event event) {
       this.connector = connector;
       this.event = event;
     }
