@@ -132,17 +132,21 @@ public class SourceHandle implements ISourceHandle {
       SourceHandleListener sourceHandleListener,
       IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
           mppDataExchangeServiceClientManager) {
-    this.remoteEndpoint = Validate.notNull(remoteEndpoint);
-    this.remoteFragmentInstanceId = Validate.notNull(remoteFragmentInstanceId);
-    this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
+    this.remoteEndpoint = Validate.notNull(remoteEndpoint, "remoteEndpoint can not be null.");
+    this.remoteFragmentInstanceId =
+        Validate.notNull(remoteFragmentInstanceId, "remoteFragmentInstanceId can not be null.");
+    this.localFragmentInstanceId =
+        Validate.notNull(localFragmentInstanceId, "localFragmentInstanceId can not be null.");
     this.fullFragmentInstanceId =
         FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(localFragmentInstanceId);
-    this.localPlanNodeId = Validate.notNull(localPlanNodeId);
+    this.localPlanNodeId = Validate.notNull(localPlanNodeId, "localPlanNodeId can not be null.");
     this.indexOfUpstreamSinkHandle = indexOfUpstreamSinkHandle;
-    this.localMemoryManager = Validate.notNull(localMemoryManager);
-    this.executorService = Validate.notNull(executorService);
-    this.serde = Validate.notNull(serde);
-    this.sourceHandleListener = Validate.notNull(sourceHandleListener);
+    this.localMemoryManager =
+        Validate.notNull(localMemoryManager, "localMemoryManager can not be null.");
+    this.executorService = Validate.notNull(executorService, "executorService can not be null.");
+    this.serde = Validate.notNull(serde, "serde can not be null.");
+    this.sourceHandleListener =
+        Validate.notNull(sourceHandleListener, "sourceHandleListener can not be null.");
     this.bufferRetainedSizeInBytes = 0L;
     this.mppDataExchangeServiceClientManager = mppDataExchangeServiceClientManager;
     this.retryIntervalInMs = DEFAULT_RETRY_INTERVAL_IN_MS;
