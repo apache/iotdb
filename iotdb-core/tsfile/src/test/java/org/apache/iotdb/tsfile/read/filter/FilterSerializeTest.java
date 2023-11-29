@@ -58,7 +58,9 @@ public class FilterSerializeTest {
           ValueFilter.notRegexp("s.*"),
           ValueFilter.notLike("s.*"),
           ValueFilter.between(1, 100),
-          ValueFilter.notBetween(1, 100)
+          ValueFilter.notBetween(1, 100),
+          ValueFilter.isNull(),
+          ValueFilter.isNotNull()
         };
     for (Filter filter : filters) {
       validateSerialization(filter);

@@ -45,10 +45,13 @@ public class OperatorTest {
     Filter filter3 = ValueFilter.eq(true);
     Assert.assertTrue(filter3.satisfy(100, true));
     Assert.assertFalse(filter3.satisfy(100, false));
+  }
 
-    Filter isNullFilter = ValueFilter.eq(null);
-    Assert.assertTrue(isNullFilter.satisfy(100, null));
-    Assert.assertFalse(isNullFilter.satisfy(100, 1));
+  @Test
+  public void testIsNull() {
+    Filter isNullFilter = ValueFilter.isNull(0);
+    Assert.assertTrue(isNullFilter.satisfyRow(100, new Object[] {null}));
+    Assert.assertFalse(isNullFilter.satisfyRow(100, new Object[] {1}));
   }
 
   @Test
@@ -131,10 +134,13 @@ public class OperatorTest {
     Filter valueNotEq = ValueFilter.notEq(50);
     Assert.assertFalse(valueNotEq.satisfy(100, 50));
     Assert.assertTrue(valueNotEq.satisfy(100, 51));
+  }
 
-    Filter isNotNullFilter = ValueFilter.notEq(null);
-    Assert.assertFalse(isNotNullFilter.satisfy(100, null));
-    Assert.assertTrue(isNotNullFilter.satisfy(100, 1));
+  @Test
+  public void testIsNotNull() {
+    Filter isNotNullFilter = ValueFilter.isNotNull(0);
+    Assert.assertFalse(isNotNullFilter.satisfyRow(100, new Object[] {null}));
+    Assert.assertTrue(isNotNullFilter.satisfyRow(100, new Object[] {1}));
   }
 
   @Test

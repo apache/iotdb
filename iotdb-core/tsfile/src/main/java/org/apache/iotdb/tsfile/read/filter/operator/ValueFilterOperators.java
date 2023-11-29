@@ -60,6 +60,9 @@ public final class ValueFilterOperators {
 
   private static final String OPERATOR_TO_STRING_FORMAT = "measurements[%s] %s %s";
 
+  private static final String CANNOT_PUSH_DOWN_MSG =
+      " operator can not be pushed down for non-aligned timeseries";
+
   // base class for ValueEq, ValueNotEq, ValueLt, ValueGt, ValueLtEq, ValueGtEq
   abstract static class ValueColumnCompareFilter<T extends Comparable<T>>
       extends ColumnCompareFilter<T> implements IValueFilter {
@@ -112,9 +115,9 @@ public final class ValueFilterOperators {
 
   public static final class ValueEq<T extends Comparable<T>> extends ValueColumnCompareFilter<T> {
 
-    // constant can be null
+    // constant cannot be null
     public ValueEq(int measurementIndex, T constant) {
-      super(measurementIndex, constant);
+      super(measurementIndex, Objects.requireNonNull(constant, CONSTANT_CANNOT_BE_NULL_MSG));
     }
 
     @SuppressWarnings("unchecked")
@@ -124,51 +127,13 @@ public final class ValueFilterOperators {
 
     @Override
     public boolean satisfy(long time, Object value) {
-      return Objects.equals(value, constant);
+      return constant.equals(value);
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public boolean canSkip(Statistics<? extends Serializable> statistics) {
       if (statisticsNotAvailable(statistics)) {
-        return BLOCK_MIGHT_MATCH;
-      }
-
-      if (constant == null) {
-        // non-aligned page don't have null value
-        return BLOCK_CANNOT_MATCH;
-      }
-
-      // drop if value < min || value > max
-      return constant.compareTo((T) statistics.getMinValue()) < 0
-          || constant.compareTo((T) statistics.getMaxValue()) > 0;
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public boolean canSkip(IAlignedMetadataProvider alignedMetadata) {
-      Statistics<? extends Serializable> statistics =
-          alignedMetadata.getMeasurementStatistics(measurementIndex);
-
-      if (statistics == null) {
-        // the measurement isn't in this block so all values are null.
-        if (constant != null) {
-          // non-null is never null
-          return BLOCK_CANNOT_MATCH;
-        }
-        return BLOCK_MIGHT_MATCH;
-      }
-
-      if (statisticsNotAvailable(statistics)) {
-        return BLOCK_MIGHT_MATCH;
-      }
-
-      if (constant == null) {
-        // we are looking for records where v eq(null)
-        // so drop if there are no nulls in this chunk
-        if (!alignedMetadata.hasNullValue(measurementIndex)) {
-          return BLOCK_CANNOT_MATCH;
-        }
         return BLOCK_MIGHT_MATCH;
       }
 
@@ -181,41 +146,6 @@ public final class ValueFilterOperators {
     @SuppressWarnings("unchecked")
     public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
       if (statisticsNotAvailable(statistics)) {
-        return BLOCK_MIGHT_MATCH;
-      }
-
-      if (constant == null) {
-        // non-aligned page don't have null value
-        return BLOCK_MIGHT_MATCH;
-      }
-
-      return constant.compareTo((T) statistics.getMinValue()) == 0
-          && constant.compareTo((T) statistics.getMaxValue()) == 0;
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public boolean allSatisfy(IAlignedMetadataProvider alignedMetadata) {
-      Statistics<? extends Serializable> statistics =
-          alignedMetadata.getMeasurementStatistics(measurementIndex);
-
-      if (statistics == null) {
-        // the measurement isn't in this block so all values are null.
-        if (constant == null) {
-          // null is always equal to null
-          return BLOCK_ALL_MATCH;
-        }
-        return BLOCK_MIGHT_MATCH;
-      }
-
-      if (statisticsNotAvailable(statistics)) {
-        return BLOCK_MIGHT_MATCH;
-      }
-
-      if (constant == null) {
-        if (alignedMetadata.isAllNulls(measurementIndex)) {
-          return BLOCK_ALL_MATCH;
-        }
         return BLOCK_MIGHT_MATCH;
       }
 
@@ -237,9 +167,9 @@ public final class ValueFilterOperators {
   public static final class ValueNotEq<T extends Comparable<T>>
       extends ValueColumnCompareFilter<T> {
 
-    // constant can be null
+    // constant cannot be null
     public ValueNotEq(int measurementIndex, T constant) {
-      super(measurementIndex, constant);
+      super(measurementIndex, Objects.requireNonNull(constant, CONSTANT_CANNOT_BE_NULL_MSG));
     }
 
     @SuppressWarnings("unchecked")
@@ -249,50 +179,13 @@ public final class ValueFilterOperators {
 
     @Override
     public boolean satisfy(long time, Object value) {
-      return !Objects.equals(value, constant);
+      return !constant.equals(value);
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public boolean canSkip(Statistics<? extends Serializable> statistics) {
       if (statisticsNotAvailable(statistics)) {
-        return BLOCK_MIGHT_MATCH;
-      }
-
-      if (constant == null) {
-        // non-aligned page don't have null value
-        return BLOCK_MIGHT_MATCH;
-      }
-
-      // drop if this is a column where min = max = value
-      return constant.compareTo((T) statistics.getMinValue()) == 0
-          && constant.compareTo((T) statistics.getMaxValue()) == 0;
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public boolean canSkip(IAlignedMetadataProvider alignedMetadata) {
-      Statistics<? extends Serializable> statistics =
-          alignedMetadata.getMeasurementStatistics(measurementIndex);
-
-      if (statistics == null) {
-        if (constant == null) {
-          // null is always equal to null
-          return BLOCK_CANNOT_MATCH;
-        }
-        return BLOCK_MIGHT_MATCH;
-      }
-
-      if (statisticsNotAvailable(statistics)) {
-        return BLOCK_MIGHT_MATCH;
-      }
-
-      if (constant == null) {
-        // we are looking for records where v notEq(null)
-        // so, if this is a column of all nulls, we can drop it
-        if (alignedMetadata.isAllNulls(measurementIndex)) {
-          return BLOCK_CANNOT_MATCH;
-        }
         return BLOCK_MIGHT_MATCH;
       }
 
@@ -308,41 +201,6 @@ public final class ValueFilterOperators {
         return BLOCK_MIGHT_MATCH;
       }
 
-      if (constant == null) {
-        // non-aligned page don't have null value
-        return BLOCK_ALL_MATCH;
-      }
-
-      return constant.compareTo((T) statistics.getMinValue()) < 0
-          || constant.compareTo((T) statistics.getMaxValue()) > 0;
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public boolean allSatisfy(IAlignedMetadataProvider alignedMetadata) {
-      Statistics<? extends Serializable> statistics =
-          alignedMetadata.getMeasurementStatistics(measurementIndex);
-
-      if (statistics == null) {
-        if (constant != null) {
-          return BLOCK_ALL_MATCH;
-        }
-        return BLOCK_MIGHT_MATCH;
-      }
-
-      if (statisticsNotAvailable(statistics)) {
-        return BLOCK_MIGHT_MATCH;
-      }
-
-      if (constant == null) {
-        // we are looking for records where v notEq(null)
-        // so, if this is a column of all nulls, we can drop it
-        if (!alignedMetadata.hasNullValue(measurementIndex)) {
-          return BLOCK_ALL_MATCH;
-        }
-        return BLOCK_MIGHT_MATCH;
-      }
-
       return constant.compareTo((T) statistics.getMinValue()) < 0
           || constant.compareTo((T) statistics.getMaxValue()) > 0;
     }
@@ -355,6 +213,178 @@ public final class ValueFilterOperators {
     @Override
     public OperatorType getOperatorType() {
       return OperatorType.VALUE_NEQ;
+    }
+  }
+
+  public static final class ValueIsNull<T extends Comparable<T>>
+      extends ValueColumnCompareFilter<T> {
+
+    // constant can be null
+    public ValueIsNull(int measurementIndex) {
+      super(measurementIndex, null);
+    }
+
+    public ValueIsNull(ByteBuffer buffer) {
+      this(ReadWriteIOUtils.readInt(buffer));
+    }
+
+    @Override
+    public boolean satisfy(long time, Object value) {
+      throw new IllegalArgumentException(getOperatorType().getSymbol() + CANNOT_PUSH_DOWN_MSG);
+    }
+
+    @Override
+    public boolean satisfyRow(long time, Object[] values) {
+      return values[measurementIndex] == null;
+    }
+
+    @Override
+    public boolean canSkip(Statistics<? extends Serializable> statistics) {
+      throw new IllegalArgumentException(getOperatorType().getSymbol() + CANNOT_PUSH_DOWN_MSG);
+    }
+
+    @Override
+    public boolean canSkip(IAlignedMetadataProvider alignedMetadata) {
+      Statistics<? extends Serializable> statistics =
+          alignedMetadata.getMeasurementStatistics(measurementIndex);
+
+      if (statistics == null) {
+        // the measurement isn't in this block so all values are null.
+        return BLOCK_MIGHT_MATCH;
+      }
+
+      if (statisticsNotAvailable(statistics)) {
+        return BLOCK_MIGHT_MATCH;
+      }
+
+      // we are looking for records where v eq(null)
+      // so drop if there are no nulls in this chunk
+      if (!alignedMetadata.hasNullValue(measurementIndex)) {
+        return BLOCK_CANNOT_MATCH;
+      }
+      return BLOCK_MIGHT_MATCH;
+    }
+
+    @Override
+    public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
+      throw new IllegalArgumentException(getOperatorType().getSymbol() + CANNOT_PUSH_DOWN_MSG);
+    }
+
+    @Override
+    public boolean allSatisfy(IAlignedMetadataProvider alignedMetadata) {
+      Statistics<? extends Serializable> statistics =
+          alignedMetadata.getMeasurementStatistics(measurementIndex);
+
+      if (statistics == null) {
+        // the measurement isn't in this block so all values are null.
+        // null is always equal to null
+        return BLOCK_ALL_MATCH;
+      }
+
+      if (statisticsNotAvailable(statistics)) {
+        return BLOCK_MIGHT_MATCH;
+      }
+
+      if (alignedMetadata.isAllNulls(measurementIndex)) {
+        return BLOCK_ALL_MATCH;
+      }
+      return BLOCK_MIGHT_MATCH;
+    }
+
+    @Override
+    public Filter reverse() {
+      return new ValueIsNotNull<>(measurementIndex);
+    }
+
+    @Override
+    public OperatorType getOperatorType() {
+      return OperatorType.VALUE_IS_NULL;
+    }
+  }
+
+  public static final class ValueIsNotNull<T extends Comparable<T>>
+      extends ValueColumnCompareFilter<T> {
+
+    // constant can be null
+    public ValueIsNotNull(int measurementIndex) {
+      super(measurementIndex, null);
+    }
+
+    public ValueIsNotNull(ByteBuffer buffer) {
+      this(ReadWriteIOUtils.readInt(buffer));
+    }
+
+    @Override
+    public boolean satisfy(long time, Object value) {
+      throw new IllegalArgumentException(getOperatorType().getSymbol() + CANNOT_PUSH_DOWN_MSG);
+    }
+
+    @Override
+    public boolean satisfyRow(long time, Object[] values) {
+      return values[measurementIndex] != null;
+    }
+
+    @Override
+    public boolean canSkip(Statistics<? extends Serializable> statistics) {
+      throw new IllegalArgumentException(getOperatorType().getSymbol() + CANNOT_PUSH_DOWN_MSG);
+    }
+
+    @Override
+    public boolean canSkip(IAlignedMetadataProvider alignedMetadata) {
+      Statistics<? extends Serializable> statistics =
+          alignedMetadata.getMeasurementStatistics(measurementIndex);
+
+      if (statistics == null) {
+        // null is always equal to null
+        return BLOCK_CANNOT_MATCH;
+      }
+
+      if (statisticsNotAvailable(statistics)) {
+        return BLOCK_MIGHT_MATCH;
+      }
+
+      // we are looking for records where v notEq(null)
+      // so, if this is a column of all nulls, we can drop it
+      if (alignedMetadata.isAllNulls(measurementIndex)) {
+        return BLOCK_CANNOT_MATCH;
+      }
+      return BLOCK_MIGHT_MATCH;
+    }
+
+    @Override
+    public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
+      throw new IllegalArgumentException(getOperatorType().getSymbol() + CANNOT_PUSH_DOWN_MSG);
+    }
+
+    @Override
+    public boolean allSatisfy(IAlignedMetadataProvider alignedMetadata) {
+      Statistics<? extends Serializable> statistics =
+          alignedMetadata.getMeasurementStatistics(measurementIndex);
+
+      if (statistics == null) {
+        return BLOCK_MIGHT_MATCH;
+      }
+
+      if (statisticsNotAvailable(statistics)) {
+        return BLOCK_MIGHT_MATCH;
+      }
+
+      // we are looking for records where v notEq(null)
+      // so, if this is a column of all nulls, we can drop it
+      if (!alignedMetadata.hasNullValue(measurementIndex)) {
+        return BLOCK_ALL_MATCH;
+      }
+      return BLOCK_MIGHT_MATCH;
+    }
+
+    @Override
+    public Filter reverse() {
+      return new ValueIsNull<>(measurementIndex);
+    }
+
+    @Override
+    public OperatorType getOperatorType() {
+      return OperatorType.VALUE_IS_NOT_NULL;
     }
   }
 

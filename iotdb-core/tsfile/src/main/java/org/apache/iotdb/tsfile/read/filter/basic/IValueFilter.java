@@ -28,7 +28,12 @@ public interface IValueFilter extends Filter {
 
   int getMeasurementIndex();
 
-  default boolean satisfy(long time, Object[] values) {
+  default boolean satisfyRow(long time, Object[] values) {
+    Object value = values[getMeasurementIndex()];
+    if (value == null) {
+      // null not satisfy any filter, except IS NULL/IS NOT NULL
+      return false;
+    }
     return satisfy(time, values[getMeasurementIndex()]);
   }
 

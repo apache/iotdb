@@ -56,8 +56,8 @@ public class Not implements Filter {
   }
 
   @Override
-  public boolean satisfy(long time, Object[] values) {
-    return !filter.satisfy(time, values);
+  public boolean satisfyRow(long time, Object[] values) {
+    return !filter.satisfyRow(time, values);
   }
 
   @Override

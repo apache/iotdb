@@ -47,8 +47,8 @@ public class Or extends BinaryLogicalFilter {
   }
 
   @Override
-  public boolean satisfy(long time, Object[] values) {
-    return left.satisfy(time, values) || right.satisfy(time, values);
+  public boolean satisfyRow(long time, Object[] values) {
+    return left.satisfyRow(time, values) || right.satisfyRow(time, values);
   }
 
   @Override

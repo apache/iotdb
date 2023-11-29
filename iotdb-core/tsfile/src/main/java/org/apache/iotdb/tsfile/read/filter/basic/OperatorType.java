@@ -57,7 +57,11 @@ public enum OperatorType {
 
   // group by
   GROUP_BY_TIME("GROUP BY TIME"),
-  GROUP_BY_MONTH("GROUP BY MONTH");
+  GROUP_BY_MONTH("GROUP BY MONTH"),
+
+  // is null
+  VALUE_IS_NULL("IS NULL"),
+  VALUE_IS_NOT_NULL("IS NOT NULL");
 
   private final String symbol;
 

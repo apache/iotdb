@@ -66,7 +66,7 @@ public interface Filter {
    */
   boolean satisfy(long time, Object value);
 
-  boolean satisfy(long time, Object[] values);
+  boolean satisfyRow(long time, Object[] values);
 
   /**
    * To examine whether there are data points satisfied with the filter.
@@ -208,6 +208,10 @@ public interface Filter {
         return new Or(buffer);
       case NOT:
         return new Not(buffer);
+      case VALUE_IS_NULL:
+        return new ValueFilterOperators.ValueIsNull<>(buffer);
+      case VALUE_IS_NOT_NULL:
+        return new ValueFilterOperators.ValueIsNotNull<>(buffer);
       default:
         throw new UnsupportedOperationException("Unsupported operator type:" + type);
     }

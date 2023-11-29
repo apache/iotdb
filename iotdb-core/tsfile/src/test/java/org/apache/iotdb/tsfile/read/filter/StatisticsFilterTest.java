@@ -18,8 +18,10 @@
  */
 package org.apache.iotdb.tsfile.read.filter;
 
+import org.apache.iotdb.tsfile.file.metadata.IAlignedMetadataProvider;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.file.metadata.statistics.TimeStatistics;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.filter.factory.TimeFilter;
@@ -30,6 +32,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.Serializable;
+import java.util.Collections;
+import java.util.List;
 
 import static org.apache.iotdb.tsfile.read.filter.operator.Not.CONTAIN_NOT_ERR_MSG;
 import static org.junit.Assert.fail;
@@ -43,12 +47,23 @@ public class StatisticsFilterTest {
   private final Statistics<? extends Serializable> statistics3 =
       Statistics.getStatsByType(TSDataType.INT64);
 
+  private final TimeStatistics timeStatistics1 = new TimeStatistics();
+  private final TimeStatistics timeStatistics2 = new TimeStatistics();
+  private final TimeStatistics timeStatistics3 = new TimeStatistics();
+
   @Before
   public void before() {
     statistics1.update(1L, 1L);
     statistics1.update(100L, 100L);
+    timeStatistics1.update(1L);
+    timeStatistics1.update(100L);
+
     statistics2.update(101L, 101L);
     statistics2.update(200L, 200L);
+    timeStatistics2.update(101L);
+    timeStatistics2.update(200L);
+    timeStatistics2.update(201L);
+
     statistics3.update(10L, 10L);
   }
 
@@ -203,5 +218,67 @@ public class StatisticsFilterTest {
     Assert.assertFalse(timeNotBetweenAnd.allSatisfy(statistics1));
     Assert.assertTrue(timeNotBetweenAnd.allSatisfy(statistics2));
     Assert.assertFalse(timeNotBetweenAnd.allSatisfy(statistics3));
+  }
+
+  @Test
+  public void testIsNull() {
+    Filter valueIsNull = ValueFilter.isNull(0);
+
+    Assert.assertTrue(
+        valueIsNull.canSkip(getAlignedMetadataProvider(timeStatistics1, statistics1)));
+    Assert.assertFalse(
+        valueIsNull.canSkip(getAlignedMetadataProvider(timeStatistics2, statistics2)));
+    Assert.assertFalse(valueIsNull.canSkip(getAlignedMetadataProvider(timeStatistics1, null)));
+
+    Assert.assertFalse(
+        valueIsNull.allSatisfy(getAlignedMetadataProvider(timeStatistics1, statistics1)));
+    Assert.assertFalse(
+        valueIsNull.allSatisfy(getAlignedMetadataProvider(timeStatistics2, statistics2)));
+    Assert.assertTrue(valueIsNull.allSatisfy(getAlignedMetadataProvider(timeStatistics1, null)));
+  }
+
+  @Test
+  public void testIsNotNull() {
+    Filter valueIsNotNull = ValueFilter.isNotNull(0);
+
+    Assert.assertFalse(
+        valueIsNotNull.canSkip(getAlignedMetadataProvider(timeStatistics1, statistics1)));
+    Assert.assertFalse(
+        valueIsNotNull.canSkip(getAlignedMetadataProvider(timeStatistics2, statistics2)));
+    Assert.assertTrue(valueIsNotNull.canSkip(getAlignedMetadataProvider(timeStatistics1, null)));
+
+    Assert.assertTrue(
+        valueIsNotNull.allSatisfy(getAlignedMetadataProvider(timeStatistics1, statistics1)));
+    Assert.assertFalse(
+        valueIsNotNull.allSatisfy(getAlignedMetadataProvider(timeStatistics2, statistics2)));
+    Assert.assertFalse(
+        valueIsNotNull.allSatisfy(getAlignedMetadataProvider(timeStatistics1, null)));
+  }
+
+  private AlignedMetadataProvider getAlignedMetadataProvider(
+      TimeStatistics timeStatistics, Statistics<? extends Serializable> valueStatistics) {
+    return new AlignedMetadataProvider(timeStatistics, Collections.singletonList(valueStatistics));
+  }
+
+  private static class AlignedMetadataProvider implements IAlignedMetadataProvider {
+
+    private final TimeStatistics timeStatistics;
+    private final List<Statistics<? extends Serializable>> statisticsList;
+
+    public AlignedMetadataProvider(
+        TimeStatistics timeStatistics, List<Statistics<? extends Serializable>> statisticsList) {
+      this.timeStatistics = timeStatistics;
+      this.statisticsList = statisticsList;
+    }
+
+    @Override
+    public Statistics<? extends Serializable> getTimeStatistics() {
+      return timeStatistics;
+    }
+
+    @Override
+    public Statistics<? extends Serializable> getMeasurementStatistics(int measurementIndex) {
+      return statisticsList.get(measurementIndex);
+    }
   }
 }

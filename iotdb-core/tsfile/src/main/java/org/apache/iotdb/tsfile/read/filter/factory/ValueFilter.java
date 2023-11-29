@@ -24,6 +24,8 @@ import org.apache.iotdb.tsfile.read.filter.operator.ValueFilterOperators.ValueEq
 import org.apache.iotdb.tsfile.read.filter.operator.ValueFilterOperators.ValueGt;
 import org.apache.iotdb.tsfile.read.filter.operator.ValueFilterOperators.ValueGtEq;
 import org.apache.iotdb.tsfile.read.filter.operator.ValueFilterOperators.ValueIn;
+import org.apache.iotdb.tsfile.read.filter.operator.ValueFilterOperators.ValueIsNotNull;
+import org.apache.iotdb.tsfile.read.filter.operator.ValueFilterOperators.ValueIsNull;
 import org.apache.iotdb.tsfile.read.filter.operator.ValueFilterOperators.ValueLt;
 import org.apache.iotdb.tsfile.read.filter.operator.ValueFilterOperators.ValueLtEq;
 import org.apache.iotdb.tsfile.read.filter.operator.ValueFilterOperators.ValueNotBetweenAnd;
@@ -90,6 +92,22 @@ public class ValueFilter {
 
   public static <T extends Comparable<T>> ValueNotEq<T> notEq(int measurementIndex, T value) {
     return new ValueNotEq<>(measurementIndex, value);
+  }
+
+  public static <T extends Comparable<T>> ValueIsNull<T> isNull() {
+    return new ValueIsNull<>(DEFAULT_MEASUREMENT_INDEX);
+  }
+
+  public static <T extends Comparable<T>> ValueIsNull<T> isNull(int measurementIndex) {
+    return new ValueIsNull<>(measurementIndex);
+  }
+
+  public static <T extends Comparable<T>> ValueIsNotNull<T> isNotNull() {
+    return new ValueIsNotNull<>(DEFAULT_MEASUREMENT_INDEX);
+  }
+
+  public static <T extends Comparable<T>> ValueIsNotNull<T> isNotNull(int measurementIndex) {
+    return new ValueIsNotNull<>(measurementIndex);
   }
 
   public static <T extends Comparable<T>> ValueBetweenAnd<T> between(T value1, T value2) {

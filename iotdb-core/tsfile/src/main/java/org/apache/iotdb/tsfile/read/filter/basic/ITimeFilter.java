@@ -26,7 +26,7 @@ import java.io.Serializable;
 
 public interface ITimeFilter extends Filter {
 
-  default boolean satisfy(long time, Object[] values) {
+  default boolean satisfyRow(long time, Object[] values) {
     // only use time to filter
     return satisfy(time, values[0]);
   }
