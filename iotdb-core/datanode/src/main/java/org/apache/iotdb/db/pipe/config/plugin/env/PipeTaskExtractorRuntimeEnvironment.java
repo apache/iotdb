@@ -23,19 +23,12 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 
 public class PipeTaskExtractorRuntimeEnvironment extends PipeTaskRuntimeEnvironment {
 
-  private final int regionId;
-
   private final PipeTaskMeta pipeTaskMeta;
 
   public PipeTaskExtractorRuntimeEnvironment(
       String pipeName, long creationTime, int regionId, PipeTaskMeta pipeTaskMeta) {
-    super(pipeName, creationTime);
-    this.regionId = regionId;
+    super(pipeName, creationTime, regionId);
     this.pipeTaskMeta = pipeTaskMeta;
-  }
-
-  public int getRegionId() {
-    return regionId;
   }
 
   public PipeTaskMeta getPipeTaskMeta() {

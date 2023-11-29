@@ -41,26 +41,30 @@ import java.util.Set;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
-public class IoTDBPipeConnectorParallelIT extends AbstractPipeDualIT {
+public class IoTDBPipeProcessorIT extends AbstractPipeDualIT {
   @Test
-  public void testIoTConnectorParallel() throws Exception {
+  public void testDownSamplingProcessor() throws Exception {
     DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     String receiverIp = receiverDataNode.getIp();
     int receiverPort = receiverDataNode.getPort();
 
-    Set<String> expectedResSet = new HashSet<>();
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
       Map<String, String> connectorAttributes = new HashMap<>();
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
-      connectorAttributes.put("connector.parallel.tasks", "3");
+      extractorAttributes.put("source.realtime.mode", "log");
+
+      processorAttributes.put("processor", "down-sampling-processor");
+      processorAttributes.put("processor.down-sampling.interval-seconds", "20");
+      processorAttributes.put("processor.down-sampling.split-file", "true");
+
+      connectorAttributes.put("sink", "iotdb-thrift-sink");
+      connectorAttributes.put("sink.batch.enable", "false");
+      connectorAttributes.put("sink.ip", receiverIp);
+      connectorAttributes.put("sink.port", Integer.toString(receiverPort));
 
       TSStatus status =
           client.createPipe(
@@ -73,22 +77,28 @@ public class IoTDBPipeConnectorParallelIT extends AbstractPipeDualIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
+      // Do not fail if the failure has nothing to do with pipe
+      // Because the failures will randomly generate due to resource limitation
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
           Arrays.asList(
-              "insert into root.sg1.d1(time, s1) values (0, 1)",
-              "insert into root.sg1.d1(time, s1) values (1, 2)",
-              "insert into root.sg1.d1(time, s1) values (2, 3)",
-              "insert into root.sg1.d1(time, s1) values (3, 4)"))) {
+              "insert into root.vehicle.d0(time, s1) values (0, 1)",
+              "insert into root.vehicle.d0(time, s1) values (10000, 2)",
+              "insert into root.vehicle.d0(time, s1) values (19999, 3)",
+              "insert into root.vehicle.d0(time, s1) values (20000, 4)",
+              "insert into root.vehicle.d0(time, s1) values (20001, 5)",
+              "insert into root.vehicle.d0(time, s1) values (45000, 6)"))) {
         return;
       }
 
+      Set<String> expectedResSet = new HashSet<>();
+
       expectedResSet.add("0,1.0,");
-      expectedResSet.add("1,2.0,");
-      expectedResSet.add("2,3.0,");
-      expectedResSet.add("3,4.0,");
+      expectedResSet.add("20000,4.0,");
+      expectedResSet.add("45000,6.0,");
+
       TestUtils.assertDataOnEnv(
-          receiverEnv, "select * from root.**", "Time,root.sg1.d1.s1,", expectedResSet);
+          receiverEnv, "select * from root.**", "Time,root.vehicle.d0.s1,", expectedResSet);
     }
   }
 }

@@ -25,16 +25,12 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
-import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2;
-import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -45,30 +41,7 @@ import java.util.Map;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
-public class IoTDBPipeSwitchStatusIT {
-
-  private BaseEnv senderEnv;
-  private BaseEnv receiverEnv;
-
-  @Before
-  public void setUp() throws Exception {
-    MultiEnvFactory.createEnv(2);
-    senderEnv = MultiEnvFactory.getEnv(0);
-    receiverEnv = MultiEnvFactory.getEnv(1);
-
-    senderEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
-    receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
-
-    senderEnv.initClusterEnvironment();
-    receiverEnv.initClusterEnvironment();
-  }
-
-  @After
-  public void tearDown() {
-    senderEnv.cleanClusterEnvironment();
-    receiverEnv.cleanClusterEnvironment();
-  }
-
+public class IoTDBPipeSwitchStatusIT extends AbstractPipeDualIT {
   @Test
   public void testPipeSwitchStatus() throws Exception {
     DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);

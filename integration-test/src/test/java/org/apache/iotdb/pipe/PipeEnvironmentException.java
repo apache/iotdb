@@ -17,33 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.config.plugin.env;
+package org.apache.iotdb.pipe;
 
-import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment;
+public class PipeEnvironmentException extends RuntimeException {
 
-public class PipeTaskRuntimeEnvironment implements PipeRuntimeEnvironment {
-
-  private final String pipeName;
-  private final long creationTime;
-  private final int regionId;
-
-  protected PipeTaskRuntimeEnvironment(String pipeName, long creationTime, int regionId) {
-    this.pipeName = pipeName;
-    this.creationTime = creationTime;
-    this.regionId = regionId;
+  public PipeEnvironmentException(String message) {
+    super(message);
   }
 
-  @Override
-  public String getPipeName() {
-    return pipeName;
-  }
-
-  @Override
-  public long getCreationTime() {
-    return creationTime;
-  }
-
-  public int getRegionId() {
-    return regionId;
+  public PipeEnvironmentException(String message, Throwable cause) {
+    super(message, cause);
   }
 }

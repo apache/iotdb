@@ -25,16 +25,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
-import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -53,30 +50,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
-public class IoTDBPipeExtractorIT {
-
-  private BaseEnv senderEnv;
-  private BaseEnv receiverEnv;
-
-  @Before
-  public void setUp() throws Exception {
-    MultiEnvFactory.createEnv(2);
-    senderEnv = MultiEnvFactory.getEnv(0);
-    receiverEnv = MultiEnvFactory.getEnv(1);
-
-    senderEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
-    receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
-
-    senderEnv.initClusterEnvironment();
-    receiverEnv.initClusterEnvironment();
-  }
-
-  @After
-  public void tearDown() {
-    senderEnv.cleanClusterEnvironment();
-    receiverEnv.cleanClusterEnvironment();
-  }
-
+public class IoTDBPipeExtractorIT extends AbstractPipeDualIT {
   @Test
   public void testExtractorValidParameter() throws Exception {
     DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -91,7 +65,7 @@ public class IoTDBPipeExtractorIT {
       Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor", "iotdb-extractor");
-      extractorAttributes.put("extractor.history.enabled", "true");
+      extractorAttributes.put("extractor.history.enable", "true");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -169,11 +143,12 @@ public class IoTDBPipeExtractorIT {
         return;
       }
 
+      // invalid 'extractor.history.start-time'
       String formatString =
           String.format(
               "create pipe p1"
                   + " with extractor ("
-                  + "'extractor.history.enabled'='true',"
+                  + "'extractor.history.enable'='true',"
                   + "'extractor.history.start-time'=%s)"
                   + " with connector ("
                   + "'connector'='iotdb-thrift-connector',"
@@ -195,6 +170,29 @@ public class IoTDBPipeExtractorIT {
       }
 
       List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      Assert.assertEquals(0, showPipeResult.size());
+
+      // can not set 'extractor.history.enable' and 'extractor.realtime.enable' both to false
+      String sql =
+          String.format(
+              "create pipe p1"
+                  + " with extractor ("
+                  + "'extractor.history.enable'='false',"
+                  + "'extractor.realtime.enable'='false')"
+                  + " with connector ("
+                  + "'connector'='iotdb-thrift-connector',"
+                  + "'connector.ip'='%s',"
+                  + "'connector.port'='%s',"
+                  + "'connector.batch.enable'='false')",
+              receiverIp, receiverPort);
+      try (Connection connection = senderEnv.getConnection();
+          Statement statement = connection.createStatement()) {
+        statement.execute(sql);
+        fail();
+      } catch (SQLException ignored) {
+      }
+
+      showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(0, showPipeResult.size());
     }
   }
@@ -401,21 +399,10 @@ public class IoTDBPipeExtractorIT {
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
-      extractorAttributes.put("extractor.pattern", "root.db.d1");
+      extractorAttributes.put("extractor.pattern", "root.db.d2");
       extractorAttributes.put("extractor.history.enable", "false");
-      extractorAttributes.put("extractor.realtime.enable", "false");
+      extractorAttributes.put("extractor.realtime.enable", "true");
       TSStatus status =
-          client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
-                  .setProcessorAttributes(processorAttributes));
-      // can not set both to false
-      Assert.assertEquals(TSStatusCode.PIPE_ERROR.getStatusCode(), status.getCode());
-
-      extractorAttributes.replace("extractor.pattern", "root.db.d2");
-      extractorAttributes.replace("extractor.history.enable", "false");
-      extractorAttributes.replace("extractor.realtime.enable", "true");
-      status =
           client.createPipe(
               new TCreatePipeReq("p2", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)

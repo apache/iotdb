@@ -990,16 +990,19 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
   @Override
   public ClusterSchemaTree fetchSchema(
-      PathPatternTree patternTree, Map<Integer, Template> templateMap, boolean withTags)
+      PathPatternTree patternTree,
+      Map<Integer, Template> templateMap,
+      boolean withTags,
+      boolean withTemplate)
       throws MetadataException {
     if (patternTree.isContainWildcard()) {
       ClusterSchemaTree schemaTree = new ClusterSchemaTree();
       for (PartialPath path : patternTree.getAllPathPatterns()) {
-        schemaTree.mergeSchemaTree(mtree.fetchSchema(path, templateMap, withTags));
+        schemaTree.mergeSchemaTree(mtree.fetchSchema(path, templateMap, withTags, withTemplate));
       }
       return schemaTree;
     } else {
-      return mtree.fetchSchemaWithoutWildcard(patternTree, templateMap, withTags);
+      return mtree.fetchSchemaWithoutWildcard(patternTree, templateMap, withTags, withTemplate);
     }
   }
 
