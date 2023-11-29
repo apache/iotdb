@@ -2075,7 +2075,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         node.getPatternTree(),
         node.getTemplateMap(),
         ((SchemaDriverContext) (context.getDriverContext())).getSchemaRegion(),
-        node.isWithTags());
+        node.isWithTags(),
+        node.isWithTemplate());
   }
 
   @Override
