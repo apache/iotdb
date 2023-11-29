@@ -22,7 +22,6 @@ toolchain go1.21.0
 require github.com/grafana/grafana-plugin-sdk-go v0.193.0
 
 require (
-	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	github.com/BurntSushi/toml v1.3.2 // indirect
 	github.com/apache/arrow/go/v13 v13.0.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
