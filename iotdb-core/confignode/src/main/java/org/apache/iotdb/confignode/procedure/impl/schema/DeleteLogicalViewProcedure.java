@@ -110,15 +110,13 @@ public class DeleteLogicalViewProcedure
           deleteViewSchema(env);
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized state " + state.toString()));
+          setFailure(new ProcedureException("Unrecognized state " + state));
           return Flow.NO_MORE_STATE;
       }
       return Flow.HAS_MORE_STATE;
     } finally {
       LOGGER.info(
-          String.format(
-              "DeleteLogicalView-[%s] costs %sms",
-              state.toString(), (System.currentTimeMillis() - startTime)));
+          "DeleteLogicalView-[{}] costs {}ms", state, (System.currentTimeMillis() - startTime));
     }
   }
 

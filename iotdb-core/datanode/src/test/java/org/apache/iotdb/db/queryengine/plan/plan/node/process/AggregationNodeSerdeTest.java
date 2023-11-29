@@ -31,9 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDe
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
-import org.apache.iotdb.tsfile.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
-import org.apache.iotdb.tsfile.read.filter.ValueFilter;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 import com.google.common.collect.Sets;
@@ -41,9 +39,12 @@ import org.junit.Test;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.in;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.timeSeries;
 import static org.junit.Assert.assertEquals;
 
 public class AggregationNodeSerdeTest {
@@ -63,8 +64,7 @@ public class AggregationNodeSerdeTest {
                     Collections.singletonList(
                         new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))))),
             Ordering.ASC,
-            TimeFilter.gt(100L),
-            ValueFilter.in(Sets.newHashSet("s1", "s2")),
+            in(timeSeries("root.sg.d1.s1"), Sets.newLinkedHashSet(Arrays.asList("s1", "s2"))),
             groupByTimeParameter,
             null);
     AggregationNode aggregationNode =

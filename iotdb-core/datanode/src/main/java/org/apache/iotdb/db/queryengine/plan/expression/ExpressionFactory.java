@@ -24,21 +24,30 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.AdditionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.EqualToExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.binary.GreaterEqualExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.GreaterThanExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LessEqualExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LessThanExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicAndExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicOrExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.binary.NonEqualExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.WhenThenExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.db.queryengine.plan.expression.other.GroupByTimeExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.ternary.BetweenExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.unary.InExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 
 public class ExpressionFactory {
 
@@ -124,6 +133,10 @@ public class ExpressionFactory {
     return new GreaterThanExpression(leftExpression, rightExpression);
   }
 
+  public static GreaterEqualExpression gte(Expression leftExpression, Expression rightExpression) {
+    return new GreaterEqualExpression(leftExpression, rightExpression);
+  }
+
   public static LessThanExpression lt(Expression leftExpression, Expression rightExpression) {
     return new LessThanExpression(leftExpression, rightExpression);
   }
@@ -136,7 +149,47 @@ public class ExpressionFactory {
     return new EqualToExpression(leftExpression, rightExpression);
   }
 
+  public static NonEqualExpression neq(Expression leftExpression, Expression rightExpression) {
+    return new NonEqualExpression(leftExpression, rightExpression);
+  }
+
   public static WhenThenExpression whenThen(Expression whenExpression, Expression thenExpression) {
     return new WhenThenExpression(whenExpression, thenExpression);
+  }
+
+  public static LogicNotExpression not(Expression expression) {
+    return new LogicNotExpression(expression);
+  }
+
+  public static InExpression in(Expression expression, LinkedHashSet<String> values) {
+    return new InExpression(expression, false, values);
+  }
+
+  public static InExpression notIn(Expression expression, LinkedHashSet<String> values) {
+    return new InExpression(expression, true, values);
+  }
+
+  public static BetweenExpression between(
+      Expression firstExpression, Expression secondExpression, Expression thirdExpression) {
+    return new BetweenExpression(firstExpression, secondExpression, thirdExpression, false);
+  }
+
+  public static BetweenExpression notBetween(
+      Expression firstExpression, Expression secondExpression, Expression thirdExpression) {
+    return new BetweenExpression(firstExpression, secondExpression, thirdExpression, true);
+  }
+
+  public static GroupByTimeExpression groupByTime(GroupByTimeParameter parameter) {
+    long startTime =
+        parameter.isLeftCRightO() ? parameter.getStartTime() : parameter.getStartTime() + 1;
+    long endTime = parameter.isLeftCRightO() ? parameter.getEndTime() : parameter.getEndTime() + 1;
+    return new GroupByTimeExpression(
+        startTime, endTime, parameter.getInterval(), parameter.getSlidingStep());
+  }
+
+  public static GroupByTimeExpression groupByTime(
+      long startTime, long endTime, long interval, long slidingStep) {
+    return new GroupByTimeExpression(
+        startTime, endTime, new TimeDuration(0, interval), new TimeDuration(0, slidingStep));
   }
 }

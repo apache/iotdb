@@ -20,12 +20,13 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.fill.identity;
 
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
-import org.apache.iotdb.tsfile.access.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 
 public class IdentityFill implements IFill {
 
   @Override
-  public Column fill(Column valueColumn) {
+  public Column fill(TimeColumn timeColumn, Column valueColumn) {
     return valueColumn;
   }
 }

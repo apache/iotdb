@@ -42,7 +42,9 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -1090,7 +1092,7 @@ public class IoTDBAuthIT {
       sql = "GRANT %s on root.** to USER user2";
       adminStmt.execute(String.format(sql, item));
     }
-    Connection user1Con = EnvFactory.getEnv().getConnection();
+    Connection user1Con = EnvFactory.getEnv().getConnection("user1", "password");
     Statement user1Stmt = user1Con.createStatement();
     ResultSet resultSet;
     String ans = "";
@@ -1114,5 +1116,91 @@ public class IoTDBAuthIT {
     resultSet = adminStmt.executeQuery("LIST PRIVILEGES OF USER user1");
     ans = ",root.t1.**,READ_DATA,false,\n" + ",root.t1.**,READ_SCHEMA,false,\n";
     validateResultSet(resultSet, ans);
+  }
+
+  @Test
+  public void testQueryTemplate() throws SQLException {
+    // 1. revoke from user/role
+    Connection adminCon = EnvFactory.getEnv().getConnection();
+    Statement adminStmt = adminCon.createStatement();
+    adminStmt.execute("CREATE USER user1 'password'");
+    adminStmt.execute("GRANT READ_DATA ON root.sg.d1.** TO USER user1 with grant option;");
+    adminStmt.execute("GRANT READ_DATA ON root.sg.aligned_template.temperature TO USER user1;");
+    adminStmt.execute("CREATE DATABASE root.sg;");
+    adminStmt.execute(
+        "create device template t1 aligned (temperature FLOAT encoding=Gorilla, status BOOLEAN encoding=PLAIN);");
+    adminStmt.execute("set device template t1 to root.sg.aligned_template;");
+    adminStmt.execute("insert into root.sg.d1(time,s1,s2) values(1,1,1)");
+    adminStmt.execute("insert into root.sg.d2(time,s1,s2) values(1,1,1)");
+    adminStmt.execute(
+        "insert into root.sg.aligned_template(time,temperature,status) values(1,20,true)");
+    try (ResultSet resultSet = adminStmt.executeQuery("select * from root.**;")) {
+      Set<String> standards =
+          new HashSet<>(
+              Arrays.asList(
+                  "Time",
+                  "root.sg.aligned_template.temperature",
+                  "root.sg.aligned_template.status",
+                  "root.sg.d2.s1",
+                  "root.sg.d2.s2",
+                  "root.sg.d1.s1",
+                  "root.sg.d1.s2"));
+      ResultSetMetaData metaData = resultSet.getMetaData();
+      for (int i = 1; i < metaData.getColumnCount() + 1; i++) {
+        Assert.assertTrue(standards.remove(metaData.getColumnName(i)));
+      }
+      Assert.assertTrue(standards.isEmpty());
+    }
+    Connection user1Con = EnvFactory.getEnv().getConnection("user1", "password");
+    Statement user1Stmt = user1Con.createStatement();
+    try (ResultSet resultSet = user1Stmt.executeQuery("select * from root.**;")) {
+      Set<String> standards =
+          new HashSet<>(
+              Arrays.asList(
+                  "Time",
+                  "root.sg.aligned_template.temperature",
+                  "root.sg.d1.s1",
+                  "root.sg.d1.s2"));
+      ResultSetMetaData metaData = resultSet.getMetaData();
+      for (int i = 1; i < metaData.getColumnCount() + 1; i++) {
+        Assert.assertTrue(standards.remove(metaData.getColumnName(i)));
+      }
+      Assert.assertTrue(standards.isEmpty());
+    }
+  }
+
+  @Test
+  public void insertWithTemplateTest() throws SQLException {
+    try (Connection adminCon = EnvFactory.getEnv().getConnection();
+        Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("CREATE USER tempuser 'temppw'");
+
+      try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw");
+          Statement userStmt = userCon.createStatement()) {
+
+        adminStmt.execute("CREATE DATABASE root.a");
+        adminStmt.execute("create schema template t1 aligned (s_name TEXT)");
+        adminStmt.execute("GRANT EXTEND_TEMPLATE ON root.** TO USER tempuser");
+        adminStmt.execute("GRANT WRITE_DATA ON root.a.** TO USER tempuser");
+        adminStmt.execute("set schema template t1 to root.a");
+
+        // grant privilege to insert
+        Assert.assertThrows(
+            SQLException.class,
+            () ->
+                userStmt.execute(
+                    "INSERT INTO root.a.d1(timestamp, s_name, s_value) VALUES (1,'IoTDB', 2)"));
+
+        adminStmt.execute("GRANT WRITE_SCHEMA ON root.a.d1.** TO USER tempuser");
+        userStmt.execute("INSERT INTO root.a.d1(timestamp, s_name, s_value) VALUES (1,'IoTDB', 2)");
+        adminStmt.execute("REVOKE EXTEND_TEMPLATE ON root.** FROM USER tempuser");
+
+        Assert.assertThrows(
+            SQLException.class,
+            () ->
+                userStmt.execute(
+                    "INSERT INTO root.a.d1(timestamp, s_name, s_value, s_value_2) VALUES (1,'IoTDB', 2, 2)"));
+      }
+    }
   }
 }

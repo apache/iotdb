@@ -38,6 +38,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.metadata.SeriesOverflowException;
+import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionMemMetric;
 import org.apache.iotdb.db.schemaengine.rescon.DataNodeSchemaQuotaManager;
@@ -85,7 +86,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IPreDeleteLo
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IRollbackPreDeleteLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.utils.SchemaUtils;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -908,10 +909,29 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   // region Interfaces for timeseries, measurement and schema info Query
 
   @Override
-  public List<MeasurementPath> fetchSchema(
-      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
+  public MeasurementPath fetchMeasurementPath(PartialPath fullPath) throws MetadataException {
+    IMeasurementMNode<IMemMNode> node = mtree.getMeasurementMNode(fullPath);
+    MeasurementPath res = new MeasurementPath(node.getPartialPath(), node.getSchema());
+    res.setUnderAlignedEntity(node.getParent().getAsDeviceMNode().isAligned());
+    return res;
+  }
+
+  @Override
+  public ClusterSchemaTree fetchSchema(
+      PathPatternTree patternTree,
+      Map<Integer, Template> templateMap,
+      boolean withTags,
+      boolean withTemplate)
       throws MetadataException {
-    return mtree.fetchSchema(pathPattern, templateMap, withTags);
+    if (patternTree.isContainWildcard()) {
+      ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+      for (PartialPath path : patternTree.getAllPathPatterns()) {
+        schemaTree.mergeSchemaTree(mtree.fetchSchema(path, templateMap, withTags, withTemplate));
+      }
+      return schemaTree;
+    } else {
+      return mtree.fetchSchemaWithoutWildcard(patternTree, templateMap, withTags, withTemplate);
+    }
   }
 
   // endregion

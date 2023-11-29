@@ -27,7 +27,7 @@ import org.apache.iotdb.it.utils.TsFileGenerator;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -119,7 +119,7 @@ public class IOTDBLoadTsFileIT {
             "create timeseries %s %s",
             new Path(device, schema.getMeasurementId(), true).getFullPath(),
             schema.getType().name());
-    LOGGER.info(String.format("schema execute: %s.", sql));
+    LOGGER.info("schema execute: {}", sql);
     return sql;
   }
 
@@ -130,7 +130,7 @@ public class IOTDBLoadTsFileIT {
       sql += (String.format("%s %s", schema.getMeasurementId(), schema.getType().name()));
       sql += (i == schemas.size() - 1 ? ")" : ",");
     }
-    LOGGER.info(String.format("schema execute: %s.", sql));
+    LOGGER.info("schema execute: {}.", sql);
     return sql;
   }
 

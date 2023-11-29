@@ -26,9 +26,9 @@ import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -172,7 +172,13 @@ public class ExportTsFile extends AbstractTsFileTool {
         || sqlLower.contains("first_value(")
         || sqlLower.contains("last_value(")
         || sqlLower.contains("max_time(")
-        || sqlLower.contains("min_time(")) {
+        || sqlLower.contains("min_time(")
+        || sqlLower.contains("stddev(")
+        || sqlLower.contains("stddev_pop(")
+        || sqlLower.contains("stddev_samp(")
+        || sqlLower.contains("variance(")
+        || sqlLower.contains("var_pop(")
+        || sqlLower.contains("var_samp(")) {
       IoTPrinter.println("The sql you entered is invalid, please don't use aggregate query.");
       System.exit(CODE_ERROR);
     }

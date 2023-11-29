@@ -152,7 +152,7 @@
     -->
         <ratis.version>2.5.2-0f5f95d-SNAPSHOT</ratis.version>
         <reactive-streams.version>1.0.4</reactive-streams.version>
-        <reactor-netty.version>1.1.11</reactor-netty.version>
+        <reactor-netty.version>1.1.13</reactor-netty.version>
         <reactor.version>3.5.10</reactor.version>
         <reflections.version>0.10.2</reflections.version>
         <rocketmq-client.version>5.1.3</rocketmq-client.version>
@@ -177,7 +177,7 @@
         <!-- This was the last version to support Java 8 -->
         <spotless.version>2.27.1</spotless.version>
         <!-- This is the matching version of spring-boot for spring 5.3.30 -->
-        <spring-boot.version>2.7.15</spring-boot.version>
+        <spring-boot.version>2.7.18</spring-boot.version>
         <!-- This is the last version to support the javax namespace -->
         <spring.version>5.3.30</spring.version>
         <!-- This was the last version to support Java 8 -->

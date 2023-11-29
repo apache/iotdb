@@ -54,6 +54,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -64,8 +65,12 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   private final PipeMetaKeeper pipeMetaKeeper;
 
+  // Pure in-memory object, not involved in snapshot serialization and deserialization.
+  private final PipeTaskInfoVersion pipeTaskInfoVersion;
+
   public PipeTaskInfo() {
     this.pipeMetaKeeper = new PipeMetaKeeper();
+    this.pipeTaskInfoVersion = new PipeTaskInfoVersion();
   }
 
   /////////////////////////////// Lock ///////////////////////////////
@@ -80,10 +85,52 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   private void acquireWriteLock() {
     pipeMetaKeeper.acquireWriteLock();
+    // We use the number of times obtaining the write lock of PipeMetaKeeper as the version number
+    // of PipeTaskInfo.
+    pipeTaskInfoVersion.increaseLatestVersion();
   }
 
   private void releaseWriteLock() {
     pipeMetaKeeper.releaseWriteLock();
+  }
+
+  /////////////////////////////// Version ///////////////////////////////
+
+  private class PipeTaskInfoVersion {
+
+    private final AtomicLong latestVersion;
+    private long lastSyncedVersion;
+    private boolean isLastSyncedPipeTaskInfoEmpty;
+
+    public PipeTaskInfoVersion() {
+      this.latestVersion = new AtomicLong(0);
+      this.lastSyncedVersion = 0;
+      this.isLastSyncedPipeTaskInfoEmpty = false;
+    }
+
+    public void increaseLatestVersion() {
+      latestVersion.incrementAndGet();
+    }
+
+    public void updateLastSyncedVersion() {
+      lastSyncedVersion = latestVersion.get();
+      isLastSyncedPipeTaskInfoEmpty = pipeMetaKeeper.isEmpty();
+    }
+
+    public boolean canSkipNextSync() {
+      return isLastSyncedPipeTaskInfoEmpty
+          && pipeMetaKeeper.isEmpty()
+          && lastSyncedVersion == latestVersion.get();
+    }
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock}. */
+  public void updateLastSyncedVersion() {
+    pipeTaskInfoVersion.updateLastSyncedVersion();
+  }
+
+  public boolean canSkipNextSync() {
+    return pipeTaskInfoVersion.canSkipNextSync();
   }
 
   /////////////////////////////// Validator ///////////////////////////////
@@ -674,5 +721,23 @@ public class PipeTaskInfo implements SnapshotProcessor {
   @Override
   public String toString() {
     return pipeMetaKeeper.toString();
+  }
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  public long runningPipeCount() {
+    return pipeMetaKeeper.runningPipeCount();
+  }
+
+  public long droppedPipeCount() {
+    return pipeMetaKeeper.droppedPipeCount();
+  }
+
+  public long userStoppedPipeCount() {
+    return pipeMetaKeeper.userStoppedPipeCount();
+  }
+
+  public long exceptionStoppedPipeCount() {
+    return pipeMetaKeeper.exceptionStoppedPipeCount();
   }
 }

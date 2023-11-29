@@ -28,8 +28,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.session.util.SessionUtils;
-import org.apache.iotdb.tsfile.enums.TSDataType;
-import org.apache.iotdb.tsfile.exception.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -85,7 +85,7 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
 
       return StatementGenerator.createStatement(request);
     } catch (MetadataException e) {
-      LOGGER.warn(String.format("Generate Statement from tablet %s error.", tablet), e);
+      LOGGER.warn("Generate Statement from tablet {} error.", tablet, e);
       return null;
     }
   }

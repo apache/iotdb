@@ -28,12 +28,14 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateAlterInfo;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import java.util.Collections;
 import java.util.List;
+
+import static org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType.EXTEND_TEMPLATE;
 
 public class AlterSchemaTemplateStatement extends Statement implements IConfigStatement {
 
@@ -54,7 +56,7 @@ public class AlterSchemaTemplateStatement extends Statement implements IConfigSt
       List<CompressionType> compressors,
       TemplateAlterOperationType operationType) {
     this();
-    if (operationType.equals(TemplateAlterOperationType.EXTEND_TEMPLATE)) {
+    if (operationType.equals(EXTEND_TEMPLATE)) {
       this.templateAlterInfo =
           new TemplateExtendInfo(templateName, measurements, dataTypes, encodings, compressors);
     }

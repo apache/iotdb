@@ -36,6 +36,7 @@ import com.github.benmanes.caffeine.cache.CacheLoader;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.github.benmanes.caffeine.cache.Weigher;
+import com.google.common.util.concurrent.AtomicDouble;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
@@ -50,6 +51,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /** This cache is used by {@link WALEntryPosition}. */
 public class WALInsertNodeCache {
@@ -57,9 +59,11 @@ public class WALInsertNodeCache {
   private static final Logger LOGGER = LoggerFactory.getLogger(WALInsertNodeCache.class);
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  // LRU cache, find Pair<ByteBuffer, InsertNode> by WALEntryPosition
   private final PipeMemoryBlock allocatedMemoryBlock;
-  private boolean isBatchLoadEnabled;
+  // Used to adjust the memory usage of the cache
+  private final AtomicDouble memoryUsageCheatFactor = new AtomicDouble(1);
+  private final AtomicBoolean isBatchLoadEnabled = new AtomicBoolean(true);
+  // LRU cache, find Pair<ByteBuffer, InsertNode> by WALEntryPosition
   private final LoadingCache<WALEntryPosition, Pair<ByteBuffer, InsertNode>> lruCache;
 
   // ids of all pinned memTables
@@ -68,21 +72,55 @@ public class WALInsertNodeCache {
   private volatile boolean hasPipeRunning = false;
 
   private WALInsertNodeCache(Integer dataRegionId) {
+    final long requestedAllocateSize =
+        (long)
+            Math.min(
+                2 * CONFIG.getWalFileSizeThresholdInByte(),
+                CONFIG.getAllocateMemoryForPipe() * 0.8 / 5);
     allocatedMemoryBlock =
         PipeResourceManager.memory()
-            .tryAllocate(
-                (long)
-                    Math.min(
-                        2 * CONFIG.getWalFileSizeThresholdInByte(),
-                        CONFIG.getAllocateMemoryForPipe() * 0.8 / 5));
-    isBatchLoadEnabled =
-        allocatedMemoryBlock.getMemoryUsageInBytes() >= CONFIG.getWalFileSizeThresholdInByte();
+            .tryAllocate(requestedAllocateSize)
+            .setShrinkMethod(oldMemory -> Math.max(oldMemory / 2, 1))
+            .setShrinkCallback(
+                (oldMemory, newMemory) -> {
+                  memoryUsageCheatFactor.set(
+                      memoryUsageCheatFactor.get() * ((double) oldMemory / newMemory));
+                  isBatchLoadEnabled.set(newMemory >= CONFIG.getWalFileSizeThresholdInByte());
+                  LOGGER.info(
+                      "WALInsertNodeCache.allocatedMemoryBlock of dataRegion {} has shrunk from {} to {}.",
+                      dataRegionId,
+                      oldMemory,
+                      newMemory);
+                })
+            .setExpandMethod(
+                oldMemory -> Math.min(Math.max(oldMemory, 1) * 2, requestedAllocateSize))
+            .setExpandCallback(
+                (oldMemory, newMemory) -> {
+                  memoryUsageCheatFactor.set(
+                      memoryUsageCheatFactor.get() / ((double) newMemory / oldMemory));
+                  isBatchLoadEnabled.set(newMemory >= CONFIG.getWalFileSizeThresholdInByte());
+                  LOGGER.info(
+                      "WALInsertNodeCache.allocatedMemoryBlock of dataRegion {} has expanded from {} to {}.",
+                      dataRegionId,
+                      oldMemory,
+                      newMemory);
+                });
+    isBatchLoadEnabled.set(
+        allocatedMemoryBlock.getMemoryUsageInBytes() >= CONFIG.getWalFileSizeThresholdInByte());
     lruCache =
         Caffeine.newBuilder()
             .maximumWeight(allocatedMemoryBlock.getMemoryUsageInBytes())
             .weigher(
                 (Weigher<WALEntryPosition, Pair<ByteBuffer, InsertNode>>)
-                    (position, pair) -> position.getSize())
+                    (position, pair) -> {
+                      final long weightInLong =
+                          (long) (position.getSize() * memoryUsageCheatFactor.get());
+                      if (weightInLong <= 0) {
+                        return Integer.MAX_VALUE;
+                      }
+                      final int weightInInt = (int) weightInLong;
+                      return weightInInt != weightInLong ? Integer.MAX_VALUE : weightInInt;
+                    })
             .recordStats()
             .build(new WALInsertNodeCacheLoader());
     PipeWALInsertNodeCacheMetrics.getInstance().register(this, dataRegionId);
@@ -153,7 +191,7 @@ public class WALInsertNodeCache {
     hasPipeRunning = true;
 
     final Pair<ByteBuffer, InsertNode> pair =
-        isBatchLoadEnabled
+        isBatchLoadEnabled.get()
             ? lruCache.getAll(Collections.singleton(position)).get(position)
             : lruCache.get(position);
 
@@ -171,8 +209,18 @@ public class WALInsertNodeCache {
     }
   }
 
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
   public double getCacheHitRate() {
     return Objects.nonNull(lruCache) ? lruCache.stats().hitRate() : 0;
+  }
+
+  public double getCacheHitCount() {
+    return Objects.nonNull(lruCache) ? lruCache.stats().hitCount() : 0;
+  }
+
+  public double getCacheRequestCount() {
+    return Objects.nonNull(lruCache) ? lruCache.stats().requestCount() : 0;
   }
 
   /////////////////////////// MemTable ///////////////////////////
@@ -282,12 +330,12 @@ public class WALInsertNodeCache {
 
   @TestOnly
   public boolean isBatchLoadEnabled() {
-    return isBatchLoadEnabled;
+    return isBatchLoadEnabled.get();
   }
 
   @TestOnly
   public void setIsBatchLoadEnabled(boolean isBatchLoadEnabled) {
-    this.isBatchLoadEnabled = isBatchLoadEnabled;
+    this.isBatchLoadEnabled.set(isBatchLoadEnabled);
   }
 
   @TestOnly

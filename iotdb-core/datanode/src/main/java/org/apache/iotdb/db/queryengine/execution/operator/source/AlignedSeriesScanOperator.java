@@ -24,22 +24,22 @@ import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
-import org.apache.iotdb.tsfile.access.Column;
-import org.apache.iotdb.tsfile.access.ColumnBuilder;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder.MAX_LINE_NUMBER;
 
 public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
 
-  private final TsBlockBuilder builder;
   private final int valueColumnCount;
   private boolean finished = false;
 
@@ -49,7 +49,8 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
       AlignedPath seriesPath,
       Ordering scanOrder,
       SeriesScanOptions seriesScanOptions,
-      boolean queryAllSensors) {
+      boolean queryAllSensors,
+      List<TSDataType> dataTypes) {
     this.sourceId = sourceId;
     this.operatorContext = context;
     this.seriesScanUtil =
@@ -58,9 +59,8 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
             scanOrder,
             seriesScanOptions,
             context.getInstanceContext(),
-            queryAllSensors);
-    // time + all value columns
-    this.builder = new TsBlockBuilder(seriesScanUtil.getTsDataTypeList());
+            queryAllSensors,
+            dataTypes);
     this.valueColumnCount = seriesPath.getColumnNum();
     this.maxReturnSize =
         Math.min(
@@ -74,8 +74,8 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
     if (retainedTsBlock != null) {
       return getResultFromRetainedTsBlock();
     }
-    resultTsBlock = builder.build();
-    builder.reset();
+    resultTsBlock = resultTsBlockBuilder.build();
+    resultTsBlockBuilder.reset();
     return checkTsBlockSizeAndGetResult();
   }
 
@@ -103,10 +103,10 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
         }
 
       } while (System.nanoTime() - start < maxRuntime
-          && !builder.isFull()
+          && !resultTsBlockBuilder.isFull()
           && retainedTsBlock == null);
 
-      finished = (builder.isEmpty() && retainedTsBlock == null);
+      finished = (resultTsBlockBuilder.isEmpty() && retainedTsBlock == null);
 
       return !finished;
     } catch (IOException e) {
@@ -167,15 +167,15 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
 
   private void appendToBuilder(TsBlock tsBlock) {
     int size = tsBlock.getPositionCount();
-    if (builder.isEmpty() && tsBlock.getPositionCount() >= MAX_LINE_NUMBER) {
+    if (resultTsBlockBuilder.isEmpty() && tsBlock.getPositionCount() >= MAX_LINE_NUMBER) {
       retainedTsBlock = tsBlock;
       return;
     }
-    TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
+    TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
     TimeColumn timeColumn = tsBlock.getTimeColumn();
     for (int i = 0; i < size; i++) {
       timeColumnBuilder.writeLong(timeColumn.getLong(i));
-      builder.declarePosition();
+      resultTsBlockBuilder.declarePosition();
     }
     for (int columnIndex = 0, columnSize = tsBlock.getValueColumnCount();
         columnIndex < columnSize;
@@ -185,7 +185,7 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
   }
 
   private void appendOneColumn(int columnIndex, TsBlock tsBlock, int size) {
-    ColumnBuilder columnBuilder = builder.getColumnBuilder(columnIndex);
+    ColumnBuilder columnBuilder = resultTsBlockBuilder.getColumnBuilder(columnIndex);
     Column column = tsBlock.getColumn(columnIndex);
     if (column.mayHaveNull()) {
       for (int i = 0; i < size; i++) {
@@ -204,5 +204,11 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
 
   private boolean isEmpty(TsBlock tsBlock) {
     return tsBlock == null || tsBlock.isEmpty();
+  }
+
+  @Override
+  protected List<TSDataType> getResultDataTypes() {
+    // time + all value columns
+    return seriesScanUtil.getTsDataTypeList();
   }
 }

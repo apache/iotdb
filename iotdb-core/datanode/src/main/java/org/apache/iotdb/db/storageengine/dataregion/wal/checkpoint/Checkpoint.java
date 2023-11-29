@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint;
 
-import org.apache.iotdb.db.utils.SerializedSize;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -32,7 +33,7 @@ import java.util.Objects;
  * Checkpoint is the basic element of .checkpoint file, including type, number of memTables, and
  * brief information of each memTable.
  */
-public class Checkpoint implements SerializedSize {
+public class Checkpoint implements WALEntryValue {
   // checkpoint type 1 byte, checkpoint number 4 bytes
   private static final int FIXED_SERIALIZED_SIZE = Byte.BYTES + Integer.BYTES;
 
@@ -53,6 +54,11 @@ public class Checkpoint implements SerializedSize {
       size += memTableInfo.serializedSize();
     }
     return size;
+  }
+
+  @Override
+  public void serializeToWAL(IWALByteBufferView buffer) {
+    throw new UnsupportedOperationException();
   }
 
   public void serialize(ByteBuffer buffer) {

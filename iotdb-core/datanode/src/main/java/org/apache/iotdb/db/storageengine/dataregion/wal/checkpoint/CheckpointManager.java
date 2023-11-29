@@ -125,16 +125,33 @@ public class CheckpointManager implements AutoCloseable {
     memTableInfos.removeIf(MemTableInfo::isFlushed);
     Checkpoint checkpoint = new Checkpoint(CheckpointType.GLOBAL_MEMORY_TABLE_INFO, memTableInfos);
     logByCachedByteBuffer(checkpoint);
+    fsyncCheckpointFile();
     WRITING_METRICS.recordMakeCheckpointCost(checkpoint.getType(), System.nanoTime() - start);
   }
 
-  /** Make checkpoint for create memTable info. */
-  public void makeCreateMemTableCP(MemTableInfo memTableInfo) {
+  /** Make checkpoint for create memTable info in memory. */
+  public void makeCreateMemTableCPInMemory(MemTableInfo memTableInfo) {
     infoLock.lock();
     long start = System.nanoTime();
     try {
       maxMemTableId = Math.max(maxMemTableId, memTableInfo.getMemTableId());
       memTableId2Info.put(memTableInfo.getMemTableId(), memTableInfo);
+    } finally {
+      WRITING_METRICS.recordMakeCheckpointCost(
+          CheckpointType.CREATE_MEMORY_TABLE, System.nanoTime() - start);
+      infoLock.unlock();
+    }
+  }
+
+  /** Make checkpoint for create memTable info on disk. */
+  public void makeCreateMemTableCPOnDisk(long memTableId) {
+    infoLock.lock();
+    long start = System.nanoTime();
+    try {
+      MemTableInfo memTableInfo = memTableId2Info.get(memTableId);
+      if (memTableInfo == null) {
+        return;
+      }
       Checkpoint checkpoint =
           new Checkpoint(
               CheckpointType.CREATE_MEMORY_TABLE, Collections.singletonList(memTableInfo));
@@ -185,13 +202,11 @@ public class CheckpointManager implements AutoCloseable {
     } finally {
       cachedByteBuffer.clear();
     }
-
-    fsyncCheckpointFile();
   }
 
   // region Task to fsync checkpoint file
   /** Fsync checkpoints to the disk. */
-  private void fsyncCheckpointFile() {
+  public void fsyncCheckpointFile() {
     infoLock.lock();
     try {
       try {

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.Chunk;
@@ -37,18 +38,29 @@ import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.INI
 /** To read one chunk from disk, and only used in iotdb server module. */
 public class DiskChunkLoader implements IChunkLoader {
 
+  private final TsFileResource resource;
+
   private final boolean debug;
 
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
 
-  public DiskChunkLoader(boolean debug) {
+  public DiskChunkLoader(boolean debug, TsFileResource resource) {
     this.debug = debug;
+    this.resource = resource;
   }
 
   @Override
   public Chunk loadChunk(ChunkMetadata chunkMetaData) throws IOException {
-    return ChunkCache.getInstance().get(chunkMetaData, debug);
+    return ChunkCache.getInstance()
+        .get(
+            new ChunkCache.ChunkCacheKey(
+                resource.getTsFilePath(),
+                resource.getTsFileID(),
+                chunkMetaData.getOffsetOfChunkHeader()),
+            chunkMetaData.getDeleteIntervalList(),
+            chunkMetaData.getStatistics(),
+            debug);
   }
 
   @Override
@@ -61,7 +73,16 @@ public class DiskChunkLoader implements IChunkLoader {
       throws IOException {
     long t1 = System.nanoTime();
     try {
-      Chunk chunk = ChunkCache.getInstance().get((ChunkMetadata) chunkMetaData, debug);
+      Chunk chunk =
+          ChunkCache.getInstance()
+              .get(
+                  new ChunkCache.ChunkCacheKey(
+                      resource.getTsFilePath(),
+                      resource.getTsFileID(),
+                      chunkMetaData.getOffsetOfChunkHeader()),
+                  chunkMetaData.getDeleteIntervalList(),
+                  chunkMetaData.getStatistics(),
+                  debug);
 
       long t2 = System.nanoTime();
       IChunkReader chunkReader = new ChunkReader(chunk, timeFilter);

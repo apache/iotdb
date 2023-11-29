@@ -74,6 +74,7 @@ import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
+import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
@@ -754,6 +755,22 @@ public class PartitionManager {
   /**
    * Only leader use this interface.
    *
+   * <p>Count the scatter width of the specified DataNode
+   *
+   * @param dataNodeId The specified DataNode
+   * @param type SchemaRegion or DataRegion
+   * @return The schema/data scatter width of the specified DataNode. The scatter width refers to
+   *     the number of other DataNodes in the cluster which have at least one identical schema/data
+   *     replica as the specified DataNode.
+   */
+  public int countDataNodeScatterWidth(int dataNodeId, TConsensusGroupType type) {
+    int clusterNodeCount = getNodeManager().getRegisteredNodeCount();
+    return partitionInfo.countDataNodeScatterWidth(dataNodeId, type, clusterNodeCount);
+  }
+
+  /**
+   * Only leader use this interface.
+   *
    * <p>Get the number of RegionGroups currently owned by the specified Database
    *
    * @param database DatabaseName
@@ -1403,5 +1420,9 @@ public class PartitionManager {
 
   private ProcedureManager getProcedureManager() {
     return configManager.getProcedureManager();
+  }
+
+  private NodeManager getNodeManager() {
+    return configManager.getNodeManager();
   }
 }

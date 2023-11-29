@@ -25,10 +25,12 @@ public class PipeTaskRuntimeEnvironment implements PipeRuntimeEnvironment {
 
   private final String pipeName;
   private final long creationTime;
+  private final int regionId;
 
-  public PipeTaskRuntimeEnvironment(String pipeName, long creationTime) {
+  protected PipeTaskRuntimeEnvironment(String pipeName, long creationTime, int regionId) {
     this.pipeName = pipeName;
     this.creationTime = creationTime;
+    this.regionId = regionId;
   }
 
   @Override
@@ -39,5 +41,9 @@ public class PipeTaskRuntimeEnvironment implements PipeRuntimeEnvironment {
   @Override
   public long getCreationTime() {
     return creationTime;
+  }
+
+  public int getRegionId() {
+    return regionId;
   }
 }

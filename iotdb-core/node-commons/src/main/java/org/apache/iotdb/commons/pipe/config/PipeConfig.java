@@ -191,6 +191,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeMemoryAllocateForTsFileSequenceReaderInBytes();
   }
 
+  public long getPipeMemoryExpanderIntervalSeconds() {
+    return COMMON_CONFIG.getPipeMemoryExpanderIntervalSeconds();
+  }
+
   /////////////////////////////// Utils ///////////////////////////////
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfig.class);

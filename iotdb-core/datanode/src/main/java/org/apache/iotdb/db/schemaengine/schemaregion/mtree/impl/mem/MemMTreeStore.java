@@ -135,7 +135,7 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
   }
 
   @Override
-  public void updateMNode(IMemMNode node) {}
+  public void updateMNode(IMemMNode node, Consumer<IMemMNode> operation) {}
 
   @Override
   public IDeviceMNode<IMemMNode> setToEntity(IMemMNode node) {

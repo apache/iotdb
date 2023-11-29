@@ -31,8 +31,8 @@ import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaNode;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputationWithAutoCreation;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.schemaengine.template.Template;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -44,18 +44,18 @@ import java.util.Map;
 public class FakeSchemaFetcherImpl implements ISchemaFetcher {
 
   private final ClusterSchemaTree schemaTree = new ClusterSchemaTree(generateSchemaTree());
-  private MPPQueryContext context;
 
   @Override
-  public ClusterSchemaTree fetchSchema(PathPatternTree patternTree, MPPQueryContext context) {
-    this.context = context;
+  public ClusterSchemaTree fetchSchema(
+      PathPatternTree patternTree, boolean withTemplate, MPPQueryContext context) {
     schemaTree.setDatabases(Collections.singleton("root.sg"));
     return schemaTree;
   }
 
   @Override
-  public ISchemaTree fetchSchemaWithTags(PathPatternTree patternTree, MPPQueryContext context) {
-    return fetchSchema(patternTree, context);
+  public ISchemaTree fetchSchemaWithTags(
+      PathPatternTree patternTree, boolean withTemplate, MPPQueryContext context) {
+    return fetchSchema(patternTree, withTemplate, context);
   }
 
   @Override
@@ -77,7 +77,7 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
    * Generate the following tree: root.sg.d1.s1, root.sg.d1.s2(status) root.sg.d2.s1,
    * root.sg.d2.s2(status) root.sg.d2.a.s1, root.sg.d2.a.s2(status)
    *
-   * @return the root node of the generated schemTree
+   * @return the root node of the generated schemaTree
    */
   private SchemaNode generateSchemaTree() {
     SchemaNode root = new SchemaInternalNode("root");
