@@ -20,7 +20,6 @@
 package org.apache.iotdb.consensus.ratis.metrics;
 
 import org.apache.iotdb.metrics.type.Counter;
-
 import org.apache.ratis.metrics.LongCounter;
 
 /** CounterProxy will route Ratis' internal counter metrics to our IoTDB {@link Counter} */
@@ -55,6 +54,6 @@ public class CounterProxy implements LongCounter {
 
   @Override
   public long getCount() {
-    return counter.count();
+    return counter.getCount();
   }
 }
