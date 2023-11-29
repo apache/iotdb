@@ -370,28 +370,6 @@ public class AlignedPageReader
         }
       }
     }
-
-    if (filter == null || filter.allSatisfy(getTimeStatistics())) {
-      return builder.build();
-    }
-
-    // filter the block
-    TsBlock unfilteredBlock = builder.build();
-    Object[] values = new Object[valueCount];
-
-    for (int i = 0, size = unfilteredBlock.getPositionCount(); i < size; i++) {
-      long time = unfilteredBlock.getTimeByIndex(i);
-      for (int j = 0; j < valueCount; j++) {
-        values[j] = unfilteredBlock.getValueColumns()[j].getObject(i);
-      }
-
-      if (filter.satisfy(time, values)) {
-        builder.getTimeColumnBuilder().writeLong(time);
-        for (int j = 0; j < valueCount; j++) {
-          builder.getValueColumnBuilders()[j].writeObject(values[j]);
-        }
-      }
-    }
     return builder.build();
   }
 
