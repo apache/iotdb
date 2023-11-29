@@ -17,15 +17,20 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
+# Check if go is intalled
 exists_env=$(go version | grep -c "go version")
 if [ "$exists_env" -eq 0 ]; then
     echo "Need to install go environment"
     exit 1
 fi
+
 work_path=$(pwd | sed 's/\"//g')
 echo work_path="$work_path" || exit
 go env
-check_results=$(go env | grep GOPATH= | sed 's/\"//g' | sed "s/\'//g")
+# List the current go environment configuration, take the line that starts with
+# "GOPATH=" and remove all single or double-quotes from that.
+check_results=$(go env | grep GOPATH= | sed "s/['\"]//g")
 go_path=${check_results/GOPATH=/}
 echo GOPATH="$go_path"
 
