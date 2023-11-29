@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.consensus.iot.logdispatcher;
 
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.ratis.utils.Utils;
 
@@ -97,7 +96,6 @@ public class IndexController {
     }
   }
 
-  @TestOnly
   public long getLastFlushedIndex() {
     return lastFlushedIndex;
   }

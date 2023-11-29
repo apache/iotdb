@@ -411,6 +411,33 @@ public class TestUtils {
     return false;
   }
 
+  // This method will not throw failure given that a failure is encountered.
+  // Instead, it return a flag to indicate the result of the execution.
+  public static boolean tryExecuteNonQueriesWithRetry(BaseEnv env, List<String> sqlList) {
+    int lastIndex = 0;
+    for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
+      try (Connection connection = env.getConnection();
+          Statement statement = connection.createStatement()) {
+        for (int i = lastIndex; i < sqlList.size(); ++i) {
+          statement.execute(sqlList.get(i));
+          lastIndex = i;
+        }
+        return true;
+      } catch (SQLException e) {
+        if (retryCountLeft > 0) {
+          try {
+            Thread.sleep(10000);
+          } catch (InterruptedException ignored) {
+          }
+        } else {
+          e.printStackTrace();
+          return false;
+        }
+      }
+    }
+    return false;
+  }
+
   public static void executeNonQueryOnSpecifiedDataNodeWithRetry(
       BaseEnv env, DataNodeWrapper wrapper, String sql) {
     for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
@@ -440,6 +467,32 @@ public class TestUtils {
       try (Connection connection = env.getConnectionWithSpecifiedDataNode(wrapper);
           Statement statement = connection.createStatement()) {
         statement.execute(sql);
+        return true;
+      } catch (SQLException e) {
+        if (retryCountLeft > 0) {
+          try {
+            Thread.sleep(10000);
+          } catch (InterruptedException ignored) {
+          }
+        } else {
+          e.printStackTrace();
+          return false;
+        }
+      }
+    }
+    return false;
+  }
+
+  public static boolean tryExecuteNonQueriesOnSpecifiedDataNodeWithRetry(
+      BaseEnv env, DataNodeWrapper wrapper, List<String> sqlList) {
+    int lastIndex = 0;
+    for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
+      try (Connection connection = env.getConnectionWithSpecifiedDataNode(wrapper);
+          Statement statement = connection.createStatement()) {
+        for (int i = lastIndex; i < sqlList.size(); ++i) {
+          statement.execute(sqlList.get(i));
+          lastIndex = i;
+        }
         return true;
       } catch (SQLException e) {
         if (retryCountLeft > 0) {
