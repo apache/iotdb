@@ -74,16 +74,45 @@ public class WebSocketConnectorServer extends WebSocketServer {
     return instance.get();
   }
 
-  public void register(WebSocketConnector connector) {
+  public synchronized void register(WebSocketConnector connector) {
     eventsWaitingForTransfer.putIfAbsent(
         connector.getPipeName(),
         new PriorityBlockingQueue<>(11, Comparator.comparing(o -> o.eventId)));
     eventsWaitingForAck.putIfAbsent(connector.getPipeName(), new ConcurrentHashMap<>());
   }
 
-  public void unregister(WebSocketConnector connector) {
-    eventsWaitingForTransfer.remove(connector.getPipeName());
-    eventsWaitingForAck.remove(connector.getPipeName());
+  public synchronized void unregister(WebSocketConnector connector) {
+    final String pipeName = connector.getPipeName();
+
+    if (eventsWaitingForTransfer.containsKey(pipeName)) {
+      final PriorityBlockingQueue<EventWaitingForTransfer> eventTransferQueue =
+          eventsWaitingForTransfer.remove(pipeName);
+      while (!eventTransferQueue.isEmpty()) {
+        eventTransferQueue.forEach(
+            (eventWrapper) -> {
+              if (eventWrapper.event instanceof EnrichedEvent) {
+                ((EnrichedEvent) eventWrapper.event)
+                    .decreaseReferenceCount(WebSocketConnectorServer.class.getName(), false);
+              }
+            });
+        eventTransferQueue.clear();
+        synchronized (eventTransferQueue) {
+          eventTransferQueue.notifyAll();
+        }
+      }
+    }
+
+    if (eventsWaitingForAck.containsKey(pipeName)) {
+      eventsWaitingForAck
+          .remove(pipeName)
+          .forEach(
+              (eventId, eventWrapper) -> {
+                if (eventWrapper.event instanceof EnrichedEvent) {
+                  ((EnrichedEvent) eventWrapper.event)
+                      .decreaseReferenceCount(WebSocketConnectorServer.class.getName(), false);
+                }
+              });
+    }
   }
 
   @Override
@@ -93,7 +122,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
   }
 
   @Override
-  public synchronized void onStart() {
+  public void onStart() {
     LOGGER.info(
         "The websocket server {}:{} has been started!", getAddress().getHostName(), getPort());
   }
@@ -111,11 +140,15 @@ public class WebSocketConnectorServer extends WebSocketServer {
   }
 
   @Override
-  public void onClose(WebSocket webSocket, int i, String s, boolean b) {
+  public void onClose(WebSocket webSocket, int code, String reason, boolean remote) {
     LOGGER.info(
-        "The websocket connection from client {}:{} has been closed!",
+        "The websocket connection from client {}:{} has been closed! "
+            + "The code is {}. The reason is {}. Is it closed by remote? {}",
         webSocket.getRemoteSocketAddress().getHostName(),
-        webSocket.getRemoteSocketAddress().getPort());
+        webSocket.getRemoteSocketAddress().getPort(),
+        code,
+        reason,
+        remote);
     router.remove(router.getKey(webSocket));
   }
 
@@ -167,8 +200,6 @@ public class WebSocketConnectorServer extends WebSocketServer {
 
   private void handleAck(WebSocket webSocket, long eventId) {
     final String pipeName = router.getKey(webSocket);
-    final EventWaitingForAck eventWrapper = eventsWaitingForAck.get(pipeName).remove(eventId);
-
     if (pipeName == null) {
       LOGGER.warn(
           "The websocket connection from {}:{} has been closed, "
@@ -179,17 +210,27 @@ public class WebSocketConnectorServer extends WebSocketServer {
       return;
     }
 
+    final ConcurrentHashMap<Long, EventWaitingForAck> eventId2EventMap =
+        eventsWaitingForAck.get(pipeName);
+    if (eventId2EventMap == null) {
+      LOGGER.warn(
+          "The pipe {} was dropped so the event ack {} will be ignored.", pipeName, eventId);
+      return;
+    }
+
+    final EventWaitingForAck eventWrapper = eventId2EventMap.remove(eventId);
+    if (eventWrapper == null) {
+      LOGGER.warn("The event ack {} is not found.", eventId);
+      return;
+    }
+
     eventWrapper.connector.commit(
         eventWrapper.event instanceof EnrichedEvent ? (EnrichedEvent) eventWrapper.event : null);
   }
 
-  private void handleError(WebSocket webSocket, long eventId) {
-    LOGGER.warn(
-        "The tablet of commitId: {} can't be parsed by client, it will be retried later.", eventId);
-
+  // synchronized with register and unregister to avoid resource leak
+  private synchronized void handleError(WebSocket webSocket, long eventId) {
     final String pipeName = router.getKey(webSocket);
-    final EventWaitingForAck eventWrapper = eventsWaitingForAck.get(pipeName).remove(eventId);
-
     if (pipeName == null) {
       LOGGER.warn(
           "The websocket connection from {}:{} has been closed, "
@@ -200,9 +241,26 @@ public class WebSocketConnectorServer extends WebSocketServer {
       return;
     }
 
-    eventsWaitingForTransfer
-        .get(pipeName)
-        .put(new EventWaitingForTransfer(eventId, eventWrapper.connector, eventWrapper.event));
+    final ConcurrentHashMap<Long, EventWaitingForAck> eventId2EventMap =
+        eventsWaitingForAck.get(pipeName);
+    final PriorityBlockingQueue<EventWaitingForTransfer> eventTransferQueue =
+        eventsWaitingForTransfer.get(pipeName);
+    if (eventId2EventMap == null || eventTransferQueue == null) {
+      LOGGER.warn(
+          "The pipe {} was dropped so the event in error {} will be ignored.", pipeName, eventId);
+      return;
+    }
+
+    final EventWaitingForAck eventWrapper = eventId2EventMap.remove(eventId);
+    if (eventWrapper == null) {
+      LOGGER.warn("The event in error {} is not found.", eventId);
+      return;
+    }
+
+    LOGGER.warn(
+        "The tablet of commitId: {} can't be parsed by client, it will be retried later.", eventId);
+    eventTransferQueue.put(
+        new EventWaitingForTransfer(eventId, eventWrapper.connector, eventWrapper.event));
   }
 
   @Override
@@ -226,6 +284,15 @@ public class WebSocketConnectorServer extends WebSocketServer {
     final PriorityBlockingQueue<EventWaitingForTransfer> queue =
         eventsWaitingForTransfer.get(connector.getPipeName());
 
+    if (queue == null) {
+      LOGGER.warn("The pipe {} was dropped so the event {} will be dropped.", connector, event);
+      if (event instanceof EnrichedEvent) {
+        ((EnrichedEvent) event)
+            .decreaseReferenceCount(WebSocketConnectorServer.class.getName(), false);
+      }
+      return;
+    }
+
     if (queue.size() >= 5) {
       synchronized (queue) {
         while (queue.size() >= 5) {
@@ -236,6 +303,10 @@ public class WebSocketConnectorServer extends WebSocketServer {
             throw new PipeException(e.getMessage());
           }
         }
+
+        queue.put(
+            new EventWaitingForTransfer(eventIdGenerator.incrementAndGet(), connector, event));
+        return;
       }
     }
 
@@ -253,6 +324,10 @@ public class WebSocketConnectorServer extends WebSocketServer {
     @Override
     public void run() {
       while (true) {
+        if (sleepIfNecessary()) {
+          continue;
+        }
+
         for (final String pipeName : eventsWaitingForTransfer.keySet()) {
           final PriorityBlockingQueue<EventWaitingForTransfer> queue =
               eventsWaitingForTransfer.getOrDefault(pipeName, null);
@@ -269,8 +344,6 @@ public class WebSocketConnectorServer extends WebSocketServer {
           } catch (InterruptedException e) {
             LOGGER.warn("The transfer thread is interrupted.", e);
             Thread.currentThread().interrupt();
-
-            throw new PipeException(e.getMessage());
           }
         }
       }
@@ -304,12 +377,49 @@ public class WebSocketConnectorServer extends WebSocketServer {
         payload.flip();
 
         server.broadcast(payload, Collections.singletonList(router.get(pipeName)));
-        eventsWaitingForAck.get(pipeName).put(eventId, new EventWaitingForAck(connector, event));
+
+        final ConcurrentHashMap<Long, EventWaitingForAck> eventId2EventMap =
+            eventsWaitingForAck.get(pipeName);
+        if (eventId2EventMap == null) {
+          LOGGER.warn(
+              "The pipe {} was dropped so the event ack {} will be ignored.", pipeName, eventId);
+          return;
+        }
+        eventId2EventMap.put(eventId, new EventWaitingForAck(connector, event));
       } catch (Exception e) {
-        eventsWaitingForTransfer
-            .get(pipeName)
-            .put(new EventWaitingForTransfer(eventId, connector, event));
-        throw new PipeException(e.getMessage(), e);
+        synchronized (server) {
+          final PriorityBlockingQueue<EventWaitingForTransfer> queue =
+              eventsWaitingForTransfer.get(pipeName);
+          if (queue == null) {
+            LOGGER.warn(
+                "The pipe {} was dropped so the event {} will be dropped.", pipeName, eventId);
+            if (event instanceof EnrichedEvent) {
+              ((EnrichedEvent) event)
+                  .decreaseReferenceCount(WebSocketConnectorServer.class.getName(), false);
+            }
+            return;
+          }
+
+          LOGGER.warn(
+              "The event {} can't be transferred to client, it will be retried later.", eventId, e);
+          queue.put(new EventWaitingForTransfer(eventId, connector, event));
+        }
+      }
+    }
+
+    private boolean sleepIfNecessary() {
+      if (!eventsWaitingForTransfer.isEmpty()) {
+        return false;
+      }
+
+      try {
+        Thread.sleep(10000);
+        return true;
+      } catch (InterruptedException e) {
+        LOGGER.warn("The transfer thread is interrupted.", e);
+        Thread.currentThread().interrupt();
+
+        throw new PipeException(e.getMessage());
       }
     }
   }
