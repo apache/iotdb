@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.operator.source;
+package org.apache.iotdb.db.queryengine.execution.operator.scan;
 
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -84,31 +84,31 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
 
   @SuppressWarnings("squid:S3740")
   @Override
-  protected Statistics currentFileStatistics(int index) {
+  public Statistics currentFileStatistics(int index) {
     return ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getStatistics(index);
   }
 
   @SuppressWarnings("squid:S3740")
   @Override
-  protected Statistics currentFileTimeStatistics() {
+  public Statistics currentFileTimeStatistics() {
     return ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getTimeStatistics();
   }
 
   @SuppressWarnings("squid:S3740")
   @Override
-  protected Statistics currentChunkStatistics(int index) {
+  public Statistics currentChunkStatistics(int index) {
     return ((AlignedChunkMetadata) firstChunkMetadata).getStatistics(index);
   }
 
   @SuppressWarnings("squid:S3740")
   @Override
-  protected Statistics currentChunkTimeStatistics() {
+  public Statistics currentChunkTimeStatistics() {
     return ((AlignedChunkMetadata) firstChunkMetadata).getTimeStatistics();
   }
 
   @SuppressWarnings("squid:S3740")
   @Override
-  protected Statistics currentPageStatistics(int index) throws IOException {
+  public Statistics currentPageStatistics(int index) {
     if (firstPageReader == null) {
       return null;
     }
@@ -117,7 +117,7 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
 
   @SuppressWarnings("squid:S3740")
   @Override
-  protected Statistics currentPageTimeStatistics() throws IOException {
+  public Statistics currentPageTimeStatistics() {
     if (firstPageReader == null) {
       return null;
     }
@@ -147,7 +147,7 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
   }
 
   @Override
-  protected List<TSDataType> getTsDataTypeList() {
+  public List<TSDataType> getTsDataTypeList() {
     return dataTypes;
   }
 

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.source;
 import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.db.queryengine.execution.operator.scan.SeriesScanUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -225,7 +226,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
     // start stopwatch
     long start = System.nanoTime();
     while (System.nanoTime() - start < leftRuntimeOfOneNextCall && seriesScanUtil.hasNextFile()) {
-      if (canUseCurrentFileStatistics()) {
+      if (seriesScanUtil.canUseCurrentFileStatistics()) {
         Statistics fileTimeStatistics = seriesScanUtil.currentFileTimeStatistics();
         if (fileTimeStatistics.getStartTime() > curTimeRange.getMax()) {
           if (ascending) {
@@ -266,7 +267,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
     // start stopwatch
     long start = System.nanoTime();
     while (System.nanoTime() - start < leftRuntimeOfOneNextCall && seriesScanUtil.hasNextChunk()) {
-      if (canUseCurrentChunkStatistics()) {
+      if (seriesScanUtil.canUseCurrentChunkStatistics()) {
         Statistics chunkTimeStatistics = seriesScanUtil.currentChunkTimeStatistics();
         if (chunkTimeStatistics.getStartTime() > curTimeRange.getMax()) {
           if (ascending) {
@@ -308,7 +309,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
     long start = System.nanoTime();
     try {
       while (System.nanoTime() - start < leftRuntimeOfOneNextCall && seriesScanUtil.hasNextPage()) {
-        if (canUseCurrentPageStatistics()) {
+        if (seriesScanUtil.canUseCurrentPageStatistics()) {
           Statistics pageTimeStatistics = seriesScanUtil.currentPageTimeStatistics();
           // There is no more eligible points in current time range
           if (pageTimeStatistics.getStartTime() > curTimeRange.getMax()) {
@@ -351,33 +352,6 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
     } finally {
       leftRuntimeOfOneNextCall -= (System.nanoTime() - start);
     }
-  }
-
-  @SuppressWarnings({"squid:S3740"})
-  protected boolean canUseCurrentFileStatistics() throws IOException {
-    Statistics fileStatistics = seriesScanUtil.currentFileTimeStatistics();
-    return !seriesScanUtil.isFileOverlapped()
-        && fileStatistics.containedByTimeFilter(seriesScanUtil.getGlobalTimeFilter())
-        && !seriesScanUtil.currentFileModified();
-  }
-
-  @SuppressWarnings({"squid:S3740"})
-  protected boolean canUseCurrentChunkStatistics() throws IOException {
-    Statistics chunkStatistics = seriesScanUtil.currentChunkTimeStatistics();
-    return !seriesScanUtil.isChunkOverlapped()
-        && chunkStatistics.containedByTimeFilter(seriesScanUtil.getGlobalTimeFilter())
-        && !seriesScanUtil.currentChunkModified();
-  }
-
-  @SuppressWarnings({"squid:S3740"})
-  protected boolean canUseCurrentPageStatistics() throws IOException {
-    Statistics currentPageStatistics = seriesScanUtil.currentPageTimeStatistics();
-    if (currentPageStatistics == null) {
-      return false;
-    }
-    return !seriesScanUtil.isPageOverlapped()
-        && currentPageStatistics.containedByTimeFilter(seriesScanUtil.getGlobalTimeFilter())
-        && !seriesScanUtil.currentPageModified();
   }
 
   @Override
