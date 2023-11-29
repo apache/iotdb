@@ -43,12 +43,11 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
   @Before
@@ -673,18 +672,12 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    TsFileResource tsFileResource = seqResources.get(0);
-
-    ModificationFile modFile = tsFileResource.getModFile();
-
-    while (modFile.getSize() < 1024 * 1024 * 50) {
-      modFile.write(
-          new Deletion(
-              new PartialPath(COMPACTION_TEST_SG + PATH_SEPARATOR + "**"),
-              Long.MIN_VALUE,
-              Long.MAX_VALUE));
-    }
-
+    // mock modification file size must greater than 50M
+    MockModiFicationFile mockModiFicationFile =
+        new MockModiFicationFile(
+            seqResources.get(0).getTsFilePath() + ModificationFile.FILE_SUFFIX);
+    mockModiFicationFile.write(new Deletion(new PartialPath("root.a.b"), 1, 1));
+    seqResources.get(0).setModFile(mockModiFicationFile);
     SizeTieredCompactionSelector selector =
         new SizeTieredCompactionSelector("", "", 0, true, tsFileManager);
     // copy candidate source file list
@@ -692,6 +685,24 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         selector.selectInnerSpaceTask(resources);
     Assert.assertEquals(1, innerSpaceCompactionTasks.size());
-    modFile.remove();
+    mockModiFicationFile.remove();
+  }
+
+  class MockModiFicationFile extends ModificationFile {
+
+    /**
+     * Construct a ModificationFile using a file as its storage.
+     *
+     * @param filePath the path of the storage file.
+     */
+    public MockModiFicationFile(String filePath) {
+      super(filePath);
+      new File(filePath);
+    }
+
+    @Override
+    public long getSize() {
+      return 1024 * 1024 * 50 + 1;
+    }
   }
 }
