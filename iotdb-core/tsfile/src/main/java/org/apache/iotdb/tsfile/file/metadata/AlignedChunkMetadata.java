@@ -46,13 +46,13 @@ public class AlignedChunkMetadata implements IChunkMetadata, IAlignedMetadataPro
   }
 
   @Override
-  public Statistics<Serializable> getStatistics() {
+  public Statistics<? extends Serializable> getStatistics() {
     return valueChunkMetadataList.size() == 1 && valueChunkMetadataList.get(0) != null
         ? valueChunkMetadataList.get(0).getStatistics()
         : timeChunkMetadata.getStatistics();
   }
 
-  public Statistics<Serializable> getStatistics(int index) {
+  public Statistics<? extends Serializable> getStatistics(int index) {
     IChunkMetadata v = valueChunkMetadataList.get(index);
     return v == null ? null : v.getStatistics();
   }
@@ -66,12 +66,12 @@ public class AlignedChunkMetadata implements IChunkMetadata, IAlignedMetadataPro
   }
 
   @Override
-  public Statistics<Serializable> getTimeStatistics() {
+  public Statistics<? extends Serializable> getTimeStatistics() {
     return timeChunkMetadata.getStatistics();
   }
 
   @Override
-  public Statistics<Serializable> getMeasurementStatistics(int measurementIndex) {
+  public Statistics<? extends Serializable> getMeasurementStatistics(int measurementIndex) {
     return getStatistics(measurementIndex);
   }
 

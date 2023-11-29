@@ -158,8 +158,8 @@ public class AlignedPageReader
     // NOTE: if we change the query semantic in the future for aligned series, we need to remove
     // this check here.
     long rowCount = getTimeStatistics().getCount();
-    for (Statistics<? extends Serializable> vStatistics : getValueStatisticsList()) {
-      if (vStatistics != null && vStatistics.hasNullValue(rowCount)) {
+    for (Statistics<? extends Serializable> statistics : getValueStatisticsList()) {
+      if (statistics != null && statistics.hasNullValue(rowCount)) {
         return false;
       }
     }
