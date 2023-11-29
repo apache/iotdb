@@ -137,13 +137,21 @@ public interface Row {
   int size();
 
   /**
-   * Returns the actual column index of the given column name.
+   * Returns the actual column index of the given column (measurement) name.
    *
    * @param columnName the column name in Path form
    * @return the actual column index of the given column name
    * @throws PipeParameterNotValidException if the given column name is not existed in the Row
    */
   int getColumnIndex(Path columnName) throws PipeParameterNotValidException;
+
+  /**
+   * Returns the actual column (measurement) name of the given column index.
+   *
+   * @param columnIndex the column index
+   * @return the actual column (measurement) name of the given column index
+   */
+  String getColumnName(int columnIndex);
 
   /**
    * Returns the column data types in the Row.

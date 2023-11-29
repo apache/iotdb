@@ -19,31 +19,9 @@
 
 package org.apache.iotdb.db.pipe.config.plugin.env;
 
-import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment;
+public class PipeTaskProcessorRuntimeEnvironment extends PipeTaskRuntimeEnvironment {
 
-public class PipeTaskRuntimeEnvironment implements PipeRuntimeEnvironment {
-
-  private final String pipeName;
-  private final long creationTime;
-  private final int regionId;
-
-  protected PipeTaskRuntimeEnvironment(String pipeName, long creationTime, int regionId) {
-    this.pipeName = pipeName;
-    this.creationTime = creationTime;
-    this.regionId = regionId;
-  }
-
-  @Override
-  public String getPipeName() {
-    return pipeName;
-  }
-
-  @Override
-  public long getCreationTime() {
-    return creationTime;
-  }
-
-  public int getRegionId() {
-    return regionId;
+  public PipeTaskProcessorRuntimeEnvironment(String pipeName, long creationTime, int regionId) {
+    super(pipeName, creationTime, regionId);
   }
 }

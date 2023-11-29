@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.DoNothingProcessor;
 import org.apache.iotdb.commons.pipe.plugin.meta.DataNodePipePluginMetaKeeper;
+import org.apache.iotdb.db.pipe.config.constant.PipeProcessorConstant;
+import org.apache.iotdb.db.pipe.processor.downsampling.DownSamplingProcessor;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
@@ -35,6 +37,8 @@ public class PipeProcessorConstructor extends PipePluginConstructor {
   protected void initConstructors() {
     PLUGIN_CONSTRUCTORS.put(
         BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName(), DoNothingProcessor::new);
+    PLUGIN_CONSTRUCTORS.put(
+        BuiltinPipePlugin.DOWN_SAMPLING_PROCESSOR.getPipePluginName(), DownSamplingProcessor::new);
   }
 
   @Override

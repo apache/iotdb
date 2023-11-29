@@ -73,6 +73,11 @@ public class IoTDBTemplatePermissionIT {
         "test",
         "test123");
     assertNonQueryTestFail(
+        "alter device template t1 add (speed FLOAT encoding=RLE, FLOAT TEXT encoding=PLAIN compression=SNAPPY)",
+        "803: Only the admin user can perform this operation",
+        "test",
+        "test123");
+    assertNonQueryTestFail(
         "show device templates",
         "803: Only the admin user can perform this operation",
         "test",
