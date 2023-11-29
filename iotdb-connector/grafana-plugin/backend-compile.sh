@@ -18,7 +18,7 @@
 # under the License.
 #
 
-# Check if go is intalled
+# Check if go is installed
 exists_env=$(go version | grep -c "go version")
 if [ "$exists_env" -eq 0 ]; then
     echo "Need to install go environment"
@@ -27,7 +27,6 @@ fi
 
 work_path=$(pwd | sed 's/\"//g')
 echo work_path="$work_path" || exit
-go env
 # List the current go environment configuration, take the line that starts with
 # "GOPATH=" and remove all single or double-quotes from that.
 check_results=$(go env | grep GOPATH= | sed "s/['\"]//g")
