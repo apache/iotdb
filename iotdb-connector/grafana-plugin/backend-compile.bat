@@ -22,7 +22,7 @@ for /F %%i in ('cd') do ( set pwdpath=%%i)
 for /F %%i in ('go env GOPATH') do ( set gopath=%%i)
 %gopath:~0,2%
 cd /d %gopath%
-go get -u github.com/grafana/grafana-plugin-sdk-go
+go get -u github.com/grafana/grafana-plugin-sdk-go@v0.193.0
 go mod tidy
 git clone https://github.com/magefile/mage
 cd mage
