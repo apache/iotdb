@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -121,9 +122,34 @@ public class PipeTsFileResource implements AutoCloseable {
       allocatedMemoryBlock = null;
     }
 
-    Files.deleteIfExists(hardlinkOrCopiedFile.toPath());
+    deleteFileWithRetry(hardlinkOrCopiedFile.toPath());
 
     LOGGER.info("PipeTsFileResource: Closed tsfile {} and cleaned up.", hardlinkOrCopiedFile);
+  }
+
+  private void deleteFileWithRetry(Path path) throws IOException {
+    final int maxRetries = 10;
+    final long waitIntervalInMs = 5000;
+
+    for (int i = 0; i < maxRetries; i++) {
+      try {
+        if (Files.deleteIfExists(path)) {
+          return;
+        }
+      } catch (IOException e) {
+        LOGGER.warn("Delete file failed, retrying... (" + (i + 1) + "/" + maxRetries + ")", e);
+      }
+
+      try {
+        Thread.sleep(waitIntervalInMs * i);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new IOException("Interrupted while deleting tsfile: " + path, e);
+      }
+    }
+
+    LOGGER.error("Failed to delete file, max retry times reached: " + path);
+    throw new IOException("Failed to delete file: " + path);
   }
 
   //////////////////////////// Cache Getter ////////////////////////////
