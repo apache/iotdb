@@ -143,7 +143,7 @@ public interface PipeConnector extends PipePlugin {
   /**
    * This method is used to transfer schema change events.
    *
-   * @param schemaEvent TabletInsertionEvent to be transferred
+   * @param schemaEvent SchemaEvent to be transferred
    * @throws PipeConnectionException if the connection is broken
    * @throws Exception the user can throw errors if necessary
    */
