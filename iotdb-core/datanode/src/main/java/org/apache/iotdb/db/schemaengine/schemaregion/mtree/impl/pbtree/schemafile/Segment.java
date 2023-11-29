@@ -362,7 +362,6 @@ public abstract class Segment<R> implements ISegment<ByteBuffer, R> {
       this.buffer.clear();
       this.buffer.position(migOffset);
       this.buffer.limit(migOffset + 4 + migKey.getBytes().length + recLen);
-      this.toString();
 
       accSiz += this.buffer.remaining();
 
@@ -514,93 +513,4 @@ public abstract class Segment<R> implements ISegment<ByteBuffer, R> {
   }
 
   // endregion
-
-  protected static <T> int binarySearchPairList(List<Pair<String, T>> list, String key) {
-    int head = 0;
-    int tail = list.size() - 1;
-    if (tail < 0
-        || key.compareTo(list.get(head).left) < 0
-        || key.compareTo(list.get(tail).left) > 0) {
-      return -1;
-    }
-    if (key.compareTo(list.get(head).left) == 0) {
-      return head;
-    }
-    if (key.compareTo(list.get(tail).left) == 0) {
-      return tail;
-    }
-    int pivot = (head + tail) / 2;
-    while (key.compareTo(list.get(pivot).left) != 0) {
-      if (head == tail || pivot == head || pivot == tail) {
-        return -1;
-      }
-      if (key.compareTo(list.get(pivot).left) < 0) {
-        tail = pivot;
-      } else if (key.compareTo(list.get(pivot).left) > 0) {
-        head = pivot;
-      }
-      pivot = (head + tail) / 2;
-    }
-    return pivot;
-  }
-
-  /**
-   * @return target index the record with passing in key should be inserted
-   * @throws RecordDuplicatedException
-   */
-  protected static <T> int binaryInsertPairList(List<Pair<String, T>> list, String key)
-      throws RecordDuplicatedException {
-    if (list.isEmpty()) {
-      return 0;
-    }
-
-    int tarIdx = 0;
-    int head = 0;
-    int tail = list.size() - 1;
-
-    if (list.get(head).left.compareTo(key) == 0 || list.get(tail).left.compareTo(key) == 0) {
-      throw new RecordDuplicatedException(key);
-    }
-
-    if (key.compareTo(list.get(head).left) < 0) {
-      return 0;
-    }
-
-    if (key.compareTo(list.get(tail).left) > 0) {
-      return list.size();
-    }
-
-    int pivot;
-    while (head != tail) {
-      pivot = (head + tail) / 2;
-      // notice pivot always smaller than list.size()-1
-      if (list.get(pivot).left.compareTo(key) == 0
-          || list.get(pivot + 1).left.compareTo(key) == 0) {
-        throw new RecordDuplicatedException(key);
-      }
-
-      if (list.get(pivot).left.compareTo(key) < 0 && list.get(pivot + 1).left.compareTo(key) > 0) {
-        return pivot + 1;
-      }
-
-      if (pivot == head || pivot == tail) {
-        if (list.get(head).left.compareTo(key) > 0) {
-          return head;
-        }
-        if (list.get(tail).left.compareTo(key) < 0) {
-          return tail + 1;
-        }
-      }
-
-      // impossible for pivot.cmp > 0 and (pivot+1).cmp < 0
-      if (list.get(pivot).left.compareTo(key) > 0) {
-        tail = pivot;
-      }
-
-      if (list.get(pivot + 1).left.compareTo(key) < 0) {
-        head = pivot;
-      }
-    }
-    return tarIdx;
-  }
 }
