@@ -57,7 +57,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
   @Test
   public void testPBTreeMemoryStatistics() throws Exception {
     ISchemaRegion schemaRegion1 = getSchemaRegion("root.sg1", 0);
-    ISchemaRegion schemaRegion2 = getSchemaRegion("root.sg2", 0);
+    ISchemaRegion schemaRegion2 = getSchemaRegion("root.sg2", 1);
     ISchemaEngineStatistics engineStatistics =
         SchemaEngine.getInstance().getSchemaEngineStatistics();
 
@@ -77,7 +77,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
       IMNodeFactory<ICachedMNode> nodeFactory =
           MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
       // wait release and flush task
-      Thread.sleep(1000);
+      //      Thread.sleep(6000);
       // schemaRegion1
       IMNode<ICachedMNode> sg1 =
           nodeFactory.createDatabaseMNode(

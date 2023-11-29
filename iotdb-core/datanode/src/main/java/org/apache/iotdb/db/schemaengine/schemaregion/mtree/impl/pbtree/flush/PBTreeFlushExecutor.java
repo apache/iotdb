@@ -31,6 +31,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
@@ -52,6 +53,13 @@ public class PBTreeFlushExecutor {
   }
 
   public PBTreeFlushExecutor(
+      IDatabaseMNode<ICachedMNode> databaseMNode, ICacheManager cacheManager, ISchemaFile file) {
+    this.subtreeRoots = Collections.singletonList(databaseMNode.getAsMNode()).iterator();
+    this.cacheManager = cacheManager;
+    this.file = file;
+  }
+
+  public PBTreeFlushExecutor(
       Iterator<ICachedMNode> subtreeRoots, ICacheManager cacheManager, ISchemaFile file) {
     this.subtreeRoots = subtreeRoots;
     this.cacheManager = cacheManager;
@@ -60,16 +68,18 @@ public class PBTreeFlushExecutor {
 
   public void flushVolatileNodes() throws MetadataException {
     while (subtreeRoots.hasNext()) {
-      ICachedMNode subtreeRoot = subtreeRoots.next();
-      if (subtreeRoot.isDatabase()) {
-        processFlushDatabase(subtreeRoot);
-      } else {
-        processFlushNonDatabase(subtreeRoot);
-      }
+      processFlushNonDatabase(subtreeRoots.next());
     }
     if (!exceptions.isEmpty()) {
       throw new MetadataException(
           exceptions.stream().map(Exception::getMessage).reduce("", (a, b) -> a + ", " + b));
+    }
+  }
+
+  public void flushDatabase() throws IOException {
+    while (subtreeRoots.hasNext()) {
+      ICachedMNode subtreeRoot = subtreeRoots.next();
+      processFlushDatabase(subtreeRoot.getAsDatabaseMNode());
     }
   }
 
@@ -113,8 +123,8 @@ public class PBTreeFlushExecutor {
     }
   }
 
-  private void processFlushDatabase(ICachedMNode subtreeRoot) {
-    IDatabaseMNode<ICachedMNode> updatedStorageGroupMNode = subtreeRoot.getAsDatabaseMNode();
+  private void processFlushDatabase(IDatabaseMNode<ICachedMNode> updatedStorageGroupMNode)
+      throws IOException {
     try {
       file.updateDatabaseNode(updatedStorageGroupMNode);
     } catch (IOException e) {
@@ -122,7 +132,7 @@ public class PBTreeFlushExecutor {
           "IOException occurred during updating StorageGroupMNode {}",
           updatedStorageGroupMNode.getFullPath(),
           e);
-      exceptions.add(e);
+      throw e;
     }
   }
 

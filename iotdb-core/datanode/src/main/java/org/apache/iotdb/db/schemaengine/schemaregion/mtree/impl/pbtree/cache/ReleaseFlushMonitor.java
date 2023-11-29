@@ -20,6 +20,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.schemaengine.metric.SchemaEngineCachedMetric;
@@ -139,7 +140,8 @@ public class ReleaseFlushMonitor {
             Thread.currentThread().interrupt();
           }
         });
-    flushMonitor.scheduleAtFixedRate(
+    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+        flushMonitor,
         () -> {
           if (releaseFlushStrategy.isExceedReleaseThreshold()) {
             releaseSemaphore.release();

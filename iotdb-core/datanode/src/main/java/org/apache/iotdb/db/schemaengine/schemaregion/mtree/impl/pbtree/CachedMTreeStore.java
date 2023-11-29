@@ -49,7 +49,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -586,31 +585,20 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       IDatabaseMNode<ICachedMNode> updatedStorageGroupMNode =
           cacheManager.collectUpdatedStorageGroupMNodes();
       if (updatedStorageGroupMNode != null) {
-        flushExecutor =
-            new PBTreeFlushExecutor(
-                Collections.singletonList(updatedStorageGroupMNode.getAsMNode()),
-                cacheManager,
-                file);
-        flushExecutor.flushVolatileNodes();
+        flushExecutor = new PBTreeFlushExecutor(updatedStorageGroupMNode, cacheManager, file);
+        flushExecutor.flushDatabase();
       }
 
       Iterator<ICachedMNode> volatileSubtrees = cacheManager.collectVolatileSubtrees();
-      if (volatileSubtrees.hasNext()) {
-        long startTime = System.currentTimeMillis();
 
-        ICachedMNode subtreeRoot;
-        while (volatileSubtrees.hasNext()) {
-          subtreeRoot = volatileSubtrees.next();
-          flushExecutor =
-              new PBTreeFlushExecutor(Collections.singletonList(subtreeRoot), cacheManager, file);
-          flushExecutor.flushVolatileNodes();
-        }
-        long time = System.currentTimeMillis() - startTime;
-        if (time > 10_000) {
-          logger.info("It takes {}ms to flush MTree in SchemaRegion {}", time, schemaRegionId);
-        } else {
-          logger.debug("It takes {}ms to flush MTree in SchemaRegion {}", time, schemaRegionId);
-        }
+      long startTime = System.currentTimeMillis();
+      flushExecutor = new PBTreeFlushExecutor(volatileSubtrees, cacheManager, file);
+      flushExecutor.flushVolatileNodes();
+      long time = System.currentTimeMillis() - startTime;
+      if (time > 10_000) {
+        logger.info("It takes {}ms to flush MTree in SchemaRegion {}", time, schemaRegionId);
+      } else {
+        logger.debug("It takes {}ms to flush MTree in SchemaRegion {}", time, schemaRegionId);
       }
     } catch (Throwable e) {
       logger.error(

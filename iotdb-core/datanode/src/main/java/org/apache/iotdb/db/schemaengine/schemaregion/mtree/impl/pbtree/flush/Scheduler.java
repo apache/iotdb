@@ -33,8 +33,8 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafil
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -106,14 +106,10 @@ public class Scheduler {
                               IDatabaseMNode<ICachedMNode> dbNode =
                                   cacheManager.collectUpdatedStorageGroupMNodes();
                               if (dbNode != null) {
-                                flushExecutor =
-                                    new PBTreeFlushExecutor(
-                                        Collections.singletonList(dbNode.getAsMNode()),
-                                        cacheManager,
-                                        file);
+                                flushExecutor = new PBTreeFlushExecutor(dbNode, cacheManager, file);
                                 try {
-                                  flushExecutor.flushVolatileNodes();
-                                } catch (MetadataException e) {
+                                  flushExecutor.flushDatabase();
+                                } catch (IOException e) {
                                   LOGGER.warn(
                                       "Error occurred during MTree flush, current SchemaRegionId is {} because {}",
                                       regionId,
