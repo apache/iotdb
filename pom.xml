@@ -177,7 +177,7 @@
         <!-- This was the last version to support Java 8 -->
         <spotless.version>2.27.1</spotless.version>
         <!-- This is the matching version of spring-boot for spring 5.3.30 -->
-        <spring-boot.version>2.7.15</spring-boot.version>
+        <spring-boot.version>2.7.18</spring-boot.version>
         <!-- This is the last version to support the javax namespace -->
         <spring.version>5.3.30</spring.version>
         <!-- This was the last version to support Java 8 -->
