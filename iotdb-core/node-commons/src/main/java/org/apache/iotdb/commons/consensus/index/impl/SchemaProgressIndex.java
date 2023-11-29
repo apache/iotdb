@@ -121,7 +121,7 @@ public class SchemaProgressIndex extends ProgressIndex {
     if (!(obj instanceof SchemaProgressIndex)) {
       return false;
     }
-    return this.equals(obj);
+    return this.equals((SchemaProgressIndex) obj);
   }
 
   @Override

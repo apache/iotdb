@@ -149,7 +149,7 @@ public class RecoverProgressIndex extends ProgressIndex {
     if (!(obj instanceof RecoverProgressIndex)) {
       return false;
     }
-    return this.equals(obj);
+    return this.equals((RecoverProgressIndex) obj);
   }
 
   @Override
