@@ -18,18 +18,21 @@
 # under the License.
 #
 exists_env=$(go version | grep -c "go version")
-if [ $exists_env -eq 0 ]; then
+if [ "$exists_env" -eq 0 ]; then
     echo "Need to install go environment"
     exit 1
 fi
 work_path=$(pwd | sed 's/\"//g')
-echo $work_path
+echo work_path="$work_path" || exit
+# Get the grafana-plugin-sdk (This also fetches mage 1.15.0)
 go get -u github.com/grafana/grafana-plugin-sdk-go@v0.193.0
 go mod tidy
 check_results=$(go env | grep GOPATH= | sed 's/\"//g' | sed "s/\'//g")
 go_path=${check_results/GOPATH=/}
-cd $go_path/pkg/mod/github.com/magefile/mage@v1.15.0
-chmod 755 $go_path/pkg/mod/github.com/magefile/*
-go run $go_path/pkg/mod/github.com/magefile/mage@v1.15.0/bootstrap.go
-cd $work_path
+echo GOPATH="$go_path"
+# Bootstrap mage (which should compile and install it)
+cd "$go_path"/pkg/mod/github.com/magefile/mage@v1.15.0 || exit
+chmod 755 "$go_path"/pkg/mod/github.com/magefile/*
+go run "$go_path"/pkg/mod/github.com/magefile/mage@v1.15.0/bootstrap.go
+cd "$work_path" || exit
 $go_path/bin/mage -v
