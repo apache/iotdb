@@ -181,7 +181,19 @@ public class PageReader implements IPageReader {
 
   @Override
   public TsBlock getAllSatisfiedData() throws IOException {
-    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(dataType));
+    TsBlockBuilder builder;
+    if (paginationController.hasCurLimit()) {
+      builder =
+          new TsBlockBuilder(
+              (int)
+                  Math.min(
+                      paginationController.getCurLimit(), pageHeader.getStatistics().getCount()),
+              Collections.singletonList(dataType));
+    } else {
+      builder =
+          new TsBlockBuilder(
+              (int) pageHeader.getStatistics().getCount(), Collections.singletonList(dataType));
+    }
     TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
     ColumnBuilder valueBuilder = builder.getColumnBuilder(0);
     if (!pageCanSkip()) {

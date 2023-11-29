@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.manager.load.cache.node.BaseNodeCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.DataNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
-import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
+import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -67,7 +67,7 @@ public class LeaderPriorityBalancerTest {
             .get(i)
             .cacheHeartbeatSample(
                 new NodeHeartbeatSample(
-                    new THeartbeatResp(currentTimeMillis, NodeStatus.Running.getStatus()),
+                    new TDataNodeHeartbeatResp(currentTimeMillis, NodeStatus.Running.getStatus()),
                     currentTimeMillis));
       }
     }
