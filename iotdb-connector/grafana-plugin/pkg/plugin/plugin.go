@@ -57,7 +57,7 @@ func ApacheIoTDBDatasource(ctx context.Context, d backend.DataSourceInstanceSett
 	if err := json.Unmarshal(d.JSONData, &dm); err != nil {
 		return nil, err
 	}
-	ops, err := d.HTTPClientOptions(ctx)
+	ops, err := d.HTTPClientOptions()
 	if err != nil {
 		return nil, fmt.Errorf("http client options: %w", err)
 	}
