@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.config.constant;
+package org.apache.iotdb.commons.pipe.config.constant;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import java.io.File;
 
@@ -97,8 +97,8 @@ public class PipeConnectorConstant {
   public static final String CONNECTOR_OPC_UA_SECURITY_DIR_KEY = "connector.opcua.security.dir";
   public static final String SINK_OPC_UA_SECURITY_DIR_KEY = "sink.opcua.security.dir";
   public static final String CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE =
-      IoTDBDescriptor.getInstance().getConfDir() != null
-          ? IoTDBDescriptor.getInstance().getConfDir() + File.separatorChar + "opc_security"
+      CommonDescriptor.getInstance().getConfDir() != null
+          ? CommonDescriptor.getInstance().getConfDir() + File.separatorChar + "opc_security"
           : System.getProperty("user.home") + File.separatorChar + "iotdb_opc_security";
 
   private PipeConnectorConstant() {

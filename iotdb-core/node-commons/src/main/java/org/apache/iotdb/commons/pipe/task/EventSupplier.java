@@ -17,13 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.config.constant;
+package org.apache.iotdb.commons.pipe.task;
 
-public class PipeProcessorConstant {
+import org.apache.iotdb.pipe.api.event.Event;
 
-  public static final String PROCESSOR_KEY = "processor";
+@FunctionalInterface
+public interface EventSupplier {
 
-  private PipeProcessorConstant() {
-    throw new IllegalStateException("Utility class");
-  }
+  /**
+   * @return the event to be supplied. the event may be null if the extractor has no more events at
+   *     the moment, but the extractor is still running for more events.
+   * @throws Exception if the supplier fails to supply the event.
+   */
+  @SuppressWarnings("squid:S00112") // Exception is thrown by the interface
+  Event supply() throws Exception;
 }

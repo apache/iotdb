@@ -50,6 +50,19 @@ public class CommonDescriptor {
     return config;
   }
 
+  public String getConfDir() {
+    // Check if a config-directory was specified first.
+    String confString = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
+    // If it wasn't, check if a home directory was provided (This usually contains a config)
+    if (confString == null) {
+      confString = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
+      if (confString != null) {
+        confString = confString + File.separatorChar + "conf";
+      }
+    }
+    return confString;
+  }
+
   public void initCommonConfigDir(String systemDir) {
     config.setUserFolder(systemDir + File.separator + "users");
     config.setRoleFolder(systemDir + File.separator + "roles");

@@ -23,6 +23,7 @@ import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeCo
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.event.ddl.ISchemaEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
@@ -137,6 +138,17 @@ public interface PipeConnector extends PipePlugin {
     } finally {
       tsFileInsertionEvent.close();
     }
+  }
+
+  /**
+   * This method is used to transfer schema change events.
+   *
+   * @param schemaEvent TabletInsertionEvent to be transferred
+   * @throws PipeConnectionException if the connection is broken
+   * @throws Exception the user can throw errors if necessary
+   */
+  default void transfer(ISchemaEvent schemaEvent) throws Exception {
+    throw new UnsupportedOperationException("this sink can't transfer SchemaEvent.");
   }
 
   /**

@@ -20,6 +20,8 @@
 package org.apache.iotdb.confignode.manager.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.execution.executor.PipeConfigSubtaskExecutor;
+import org.apache.iotdb.commons.pipe.task.subtask.PipeConfigSubtask;
 import org.apache.iotdb.confignode.consensus.request.read.pipe.task.ShowPipePlanV2;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -100,16 +102,37 @@ public class PipeTaskCoordinator {
 
   /** Caller should ensure that the method is called in the lock {@link #tryLock()}. */
   public TSStatus createPipe(TCreatePipeReq req) {
-    return configManager.getProcedureManager().createPipe(req);
+    final TSStatus status = configManager.getProcedureManager().createPipe(req);
+    if (status == RpcUtils.SUCCESS_STATUS) {
+      // Create subtask of schema pipe here
+      try {
+        // TODO: is it OK to use pipe name as subtask id on CN?
+        PipeConfigSubtaskExecutor.getInstance()
+            .register(
+                new PipeConfigSubtask(
+                    req.getPipeName(), req.getExtractorAttributes(), req.getConnectorAttributes()));
+      } catch (Exception e) {
+        LOGGER.error("Failed to create subtask for schema pipe {}.", req.getPipeName(), e);
+        return RpcUtils.getStatus(
+            TSStatusCode.PIPE_ERROR,
+            String.format(
+                "Failed to create subtask for schema pipe %s. Error: %s",
+                req.getPipeName(), e.getMessage()));
+      }
+    }
+    return status;
   }
 
   /** Caller should ensure that the method is called in the lock {@link #tryLock()}. */
   public TSStatus startPipe(String pipeName) {
     final boolean hasException = pipeTaskInfo.hasExceptions(pipeName);
     final TSStatus status = configManager.getProcedureManager().startPipe(pipeName);
-    if (status == RpcUtils.SUCCESS_STATUS && hasException) {
-      LOGGER.info("Pipe {} has started successfully, clear its exceptions.", pipeName);
-      configManager.getProcedureManager().pipeHandleMetaChange(true, true);
+    if (status == RpcUtils.SUCCESS_STATUS) {
+      PipeConfigSubtaskExecutor.getInstance().start(pipeName);
+      if (hasException) {
+        LOGGER.info("Pipe {} has started successfully, clear its exceptions.", pipeName);
+        configManager.getProcedureManager().pipeHandleMetaChange(true, true);
+      }
     }
     return status;
   }
@@ -118,11 +141,14 @@ public class PipeTaskCoordinator {
   public TSStatus stopPipe(String pipeName) {
     final boolean isStoppedByRuntimeException = pipeTaskInfo.isStoppedByRuntimeException(pipeName);
     final TSStatus status = configManager.getProcedureManager().stopPipe(pipeName);
-    if (status == RpcUtils.SUCCESS_STATUS && isStoppedByRuntimeException) {
-      LOGGER.info(
-          "Pipe {} has stopped successfully manually, stop its auto restart process.", pipeName);
-      pipeTaskInfo.setIsStoppedByRuntimeExceptionToFalse(pipeName);
-      configManager.getProcedureManager().pipeHandleMetaChange(true, true);
+    if (status == RpcUtils.SUCCESS_STATUS) {
+      PipeConfigSubtaskExecutor.getInstance().stop(pipeName);
+      if (isStoppedByRuntimeException) {
+        LOGGER.info(
+            "Pipe {} has stopped successfully manually, stop its auto restart process.", pipeName);
+        pipeTaskInfo.setIsStoppedByRuntimeExceptionToFalse(pipeName);
+        configManager.getProcedureManager().pipeHandleMetaChange(true, true);
+      }
     }
     return status;
   }
@@ -133,6 +159,8 @@ public class PipeTaskCoordinator {
     final TSStatus status = configManager.getProcedureManager().dropPipe(pipeName);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn("Failed to drop pipe {}. Result status: {}.", pipeName, status);
+    } else {
+      PipeConfigSubtaskExecutor.getInstance().deregister(pipeName);
     }
     return isPipeExistedBeforeDrop
         ? status

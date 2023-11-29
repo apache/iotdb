@@ -17,28 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.subtask;
+package org.apache.iotdb.commons.pipe.config.constant;
 
-import java.util.concurrent.atomic.AtomicBoolean;
+public class PipeProcessorConstant {
 
-public class DecoratingLock {
-  private final AtomicBoolean isDecorating = new AtomicBoolean(false);
+  public static final String PROCESSOR_KEY = "processor";
 
-  public void waitForDecorated() {
-    while (isDecorating.get()) {
-      try {
-        Thread.sleep(10);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-      }
-    }
-  }
-
-  public void markAsDecorating() {
-    isDecorating.set(true);
-  }
-
-  public void markAsDecorated() {
-    isDecorating.set(false);
+  private PipeProcessorConstant() {
+    throw new IllegalStateException("Utility class");
   }
 }
