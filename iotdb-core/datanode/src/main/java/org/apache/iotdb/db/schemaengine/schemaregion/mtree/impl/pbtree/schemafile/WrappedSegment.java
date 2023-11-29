@@ -31,10 +31,13 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
+import java.nio.ShortBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
+
+import static org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.SchemaFileConfig.SEG_HEADER_SIZE;
 
 /**
  * This class initiate a segment object with corresponding bytes. Implements add, get, remove
@@ -43,9 +46,6 @@ import java.util.Queue;
  * And itself is wrapped inside a SchemaPage.
  */
 public class WrappedSegment extends Segment<ICachedMNode> {
-
-  // reconstruct every initiation after keyAddressList but not write into buffer
-  private List<Pair<String, String>> aliasKeyList;
 
   /**
    * Init Segment with a buffer, which contains all information about this segment
@@ -69,12 +69,6 @@ public class WrappedSegment extends Segment<ICachedMNode> {
    */
   public WrappedSegment(ByteBuffer buffer, boolean override) throws RecordDuplicatedException {
     super(buffer, override);
-
-    if (override) {
-      aliasKeyList = new ArrayList<>();
-    } else {
-      reconstructAliasAddressList();
-    }
   }
 
   public WrappedSegment(ByteBuffer buffer) throws RecordDuplicatedException {
@@ -102,26 +96,6 @@ public class WrappedSegment extends Segment<ICachedMNode> {
     return new WrappedSegment(buffer, false);
   }
 
-  private void reconstructAliasAddressList() throws RecordDuplicatedException {
-    if (aliasKeyList != null) {
-      aliasKeyList.clear();
-    } else {
-      aliasKeyList = new ArrayList<>();
-    }
-
-    ByteBuffer bufferR = this.buffer.asReadOnlyBuffer();
-    bufferR.clear();
-    for (Pair<String, Short> p : keyAddressList) {
-      if (p.right >= 0) {
-        bufferR.position(p.right);
-        String alias = RecordUtils.getRecordAlias(bufferR);
-        if (alias != null) {
-          aliasKeyList.add(binaryInsertPairList(aliasKeyList, alias), new Pair<>(alias, p.left));
-        }
-      }
-    }
-  }
-
   // region Interface Implementation
 
   @Override
@@ -129,27 +103,52 @@ public class WrappedSegment extends Segment<ICachedMNode> {
       throws RecordDuplicatedException {
     buf.clear();
 
-    int recordStartAddr = freeAddr - buf.capacity();
+    // key and body store adjacently
+    byte[] ikBytes = key.getBytes();
+    int recordStartAddr = freeAddr - buf.capacity() - 4 - ikBytes.length;
 
-    int newPairLength = pairLength + key.getBytes().length + 4 + 2;
+    int newPairLength = pairLength + 2;
     if (recordStartAddr < SchemaFileConfig.SEG_HEADER_SIZE + newPairLength) {
       return -1;
     }
     pairLength = (short) newPairLength;
 
-    int tarIdx = binaryInsertPairList(keyAddressList, key);
+    int tarIdx = binaryInsertOnKeys(key);
 
-    // update aliasKeyList
+    // fixme EXPENSIVE cross check of duplication between name and alias
+    if (aliasFlag && getIndexByAlias(key) != -1) {
+      throw new RecordDuplicatedException(
+          String.format("Record [%s] has conflict name with alias of its siblings.", key));
+    }
+
+    // check alias-key duplication, set flag if necessary
     String alias = RecordUtils.getRecordAlias(buf);
     if (alias != null && !alias.equals("")) {
-      aliasKeyList.add(binaryInsertPairList(aliasKeyList, alias), new Pair<>(alias, key));
+      if (binarySearchOnKeys(alias) >= 0 || getIndexByAlias(alias) != -1) {
+        throw new RecordDuplicatedException(
+            String.format("Record [%s] has conflict alias [%s] with its siblings.", key, alias));
+      }
+      aliasFlag = true;
     }
 
     buf.clear();
     this.buffer.clear();
     this.buffer.position(recordStartAddr);
+    ReadWriteIOUtils.write(key, this.buffer);
     this.buffer.put(buf);
-    keyAddressList.add(tarIdx, new Pair<>(key, (short) recordStartAddr));
+
+    this.buffer.clear().position(SchemaFileConfig.SEG_HEADER_SIZE + tarIdx * 2);
+    int shiftOffsets = recordNum - tarIdx;
+    if (shiftOffsets > 0) {
+      short[] shifts = new short[shiftOffsets];
+      this.buffer.asShortBuffer().get(shifts);
+      this.buffer.position(SchemaFileConfig.SEG_HEADER_SIZE + tarIdx * 2);
+      this.buffer.putShort((short) recordStartAddr);
+      this.buffer.asShortBuffer().put(shifts);
+    } else {
+      this.buffer.putShort((short) recordStartAddr);
+    }
+
     this.freeAddr = (short) recordStartAddr;
     this.recordNum++;
 
@@ -158,64 +157,96 @@ public class WrappedSegment extends Segment<ICachedMNode> {
     return recordStartAddr - pairLength - SchemaFileConfig.SEG_HEADER_SIZE;
   }
 
+  private int getIndexByAlias(String target) {
+    ByteBuffer checkBuffer = this.buffer.asReadOnlyBuffer();
+    short[] offsets = new short[recordNum];
+
+    checkBuffer
+        .position(SchemaFileConfig.SEG_HEADER_SIZE)
+        .limit(SchemaFileConfig.SEG_HEADER_SIZE + pairLength);
+    checkBuffer.asShortBuffer().get(offsets);
+
+    checkBuffer.clear();
+    int keySize;
+    for (int i = 0; i < offsets.length; i++) {
+      checkBuffer.position(offsets[i]);
+      keySize = checkBuffer.getInt();
+      checkBuffer.position(checkBuffer.position() + keySize);
+      if (target.equals(RecordUtils.getRecordAlias(checkBuffer))) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
   @Override
   public synchronized String splitByKey(
       String key, ByteBuffer recBuf, ByteBuffer dstBuffer, boolean inclineSplit)
       throws MetadataException {
     String sk = super.splitByKey(key, recBuf, dstBuffer, inclineSplit);
-    reconstructAliasAddressList();
     return sk;
   }
 
   @Override
   public ICachedMNode getRecordByKey(String key) throws MetadataException {
     // index means order for target node in keyAddressList, NOT aliasKeyList
-    int index = getRecordIndexByKey(key);
+    int index = binarySearchOnKeys(key);
 
     if (index < 0) {
       return null;
     }
 
     ByteBuffer roBuffer = this.buffer.asReadOnlyBuffer(); // for concurrent read
-    short offset = getOffsetByKeyIndex(index);
+    short offset = getOffsetByIndex(index);
     roBuffer.clear();
-    roBuffer.position(offset);
+    roBuffer.position(offset + key.getBytes().length + 4);
     short len = RecordUtils.getRecordLength(roBuffer);
-    roBuffer.limit(offset + len);
+    roBuffer.limit(offset + key.getBytes().length + 4 + len);
 
-    return RecordUtils.buffer2Node(keyAddressList.get(index).left, roBuffer);
+    return RecordUtils.buffer2Node(key, roBuffer);
   }
 
   @Override
   public ICachedMNode getRecordByAlias(String alias) throws MetadataException {
-    int ix = getRecordIndexByAlias(alias);
+    int ix = getIndexByAlias(alias);
 
     if (ix < 0) {
       return null;
     }
 
     ByteBuffer rBuffer = this.buffer.asReadOnlyBuffer();
-    short offset = getOffsetByKeyIndex(ix);
-    rBuffer.clear().position(offset).limit(offset + RecordUtils.getRecordLength(rBuffer));
-    return RecordUtils.buffer2Node(keyAddressList.get(ix).left, rBuffer);
+    short offset = getOffsetByIndex(ix);
+    rBuffer.position(offset);
+    String key = ReadWriteIOUtils.readString(rBuffer);
+    rBuffer.limit(rBuffer.position() + RecordUtils.getRecordLength(rBuffer));
+    return RecordUtils.buffer2Node(key, rBuffer);
   }
 
   @Override
   public boolean hasRecordAlias(String alias) {
-    return getRecordIndexByAlias(alias) > -1;
+    return getIndexByAlias(alias) > -1;
   }
 
   @Override
   public Queue<ICachedMNode> getAllRecords() throws MetadataException {
-    Queue<ICachedMNode> res = new ArrayDeque<>(keyAddressList.size());
+    Queue<ICachedMNode> res = new ArrayDeque<>(recordNum);
     ByteBuffer roBuffer = this.buffer.asReadOnlyBuffer();
+
+    short[] offsets = new short[recordNum];
+    roBuffer.position(SchemaFileConfig.SEG_HEADER_SIZE);
+    roBuffer.asShortBuffer().get(offsets);
+
     roBuffer.clear();
-    for (Pair<String, Short> p : keyAddressList) {
-      roBuffer.limit(roBuffer.capacity());
-      roBuffer.position(p.right);
-      short len = RecordUtils.getRecordLength(roBuffer);
-      roBuffer.limit(p.right + len);
-      res.add(RecordUtils.buffer2Node(p.left, roBuffer));
+
+    short len;
+    String key;
+    for (short offset : offsets) {
+      roBuffer.clear();
+      roBuffer.position(offset);
+      key = ReadWriteIOUtils.readString(roBuffer);
+      len = RecordUtils.getRecordLength(roBuffer);
+      roBuffer.limit(roBuffer.position() + len);
+      res.add(RecordUtils.buffer2Node(key, roBuffer));
     }
     return res;
   }
@@ -224,16 +255,14 @@ public class WrappedSegment extends Segment<ICachedMNode> {
   public int updateRecord(String key, ByteBuffer uBuffer)
       throws SegmentOverflowException, RecordDuplicatedException {
 
-    int idx = getRecordIndexByKey(key);
+    int idx = binarySearchOnKeys(key);
     if (idx < 0) {
       return -1;
     }
 
     this.buffer.clear();
     uBuffer.clear();
-    this.buffer.position(keyAddressList.get(idx).right);
-
-    String oriAlias = RecordUtils.getRecordAlias(this.buffer);
+    this.buffer.position(getOffsetByIndex(idx) + 4 + key.getBytes().length);
 
     short oriLen = RecordUtils.getRecordLength(this.buffer);
     short newLen = (short) uBuffer.capacity();
@@ -242,28 +271,21 @@ public class WrappedSegment extends Segment<ICachedMNode> {
       this.buffer.limit(this.buffer.position() + oriLen);
       this.buffer.put(uBuffer);
     } else {
-      // allocate new space for record, modify key-address list, freeAddr
-      if (SchemaFileConfig.SEG_HEADER_SIZE + pairLength + newLen > freeAddr) {
+      // allocate new space for record, update offset array, freeAddr
+      if (SchemaFileConfig.SEG_HEADER_SIZE + pairLength + newLen + 4 + key.getBytes().length
+          > freeAddr) {
         // not enough space
         throw new SegmentOverflowException(idx);
       }
 
-      freeAddr = (short) (freeAddr - newLen);
+      freeAddr = (short) (freeAddr - newLen - 4 - key.getBytes().length);
       // it will not mark old record as expired
       this.buffer.position(freeAddr);
-      this.buffer.limit(freeAddr + newLen);
-      keyAddressList.get(idx).right = freeAddr;
+      ReadWriteIOUtils.write(key, this.buffer);
       this.buffer.put(uBuffer);
-    }
 
-    // update alias-key list accordingly
-    if (oriAlias != null) {
-      aliasKeyList.remove(binarySearchPairList(aliasKeyList, oriAlias));
-    }
-    uBuffer.clear();
-    String alias = RecordUtils.getRecordAlias(uBuffer);
-    if (alias != null) {
-      aliasKeyList.add(binaryInsertPairList(aliasKeyList, alias), new Pair<>(alias, key));
+      this.buffer.position(SchemaFileConfig.SEG_HEADER_SIZE + 2 * idx);
+      this.buffer.putShort(freeAddr);
     }
 
     return idx;
@@ -271,33 +293,35 @@ public class WrappedSegment extends Segment<ICachedMNode> {
 
   @Override
   public int removeRecord(String key) {
-    int idx = getRecordIndexByKey(key);
+    int idx = binarySearchOnKeys(key);
 
     // deletion only seeks for name of ICacheMNode
     if (idx < 0) {
       return -1;
     }
 
-    this.buffer.clear();
-    this.buffer.position(keyAddressList.get(idx).right);
-
-    // free address pointer forwards if last record removed
-    if (keyAddressList.get(idx).right == freeAddr) {
+    // restore space immediately if the last record removed
+    short offset = getOffsetByIndex(idx);
+    if (offset == freeAddr) {
+      this.buffer.position(offset + 4 + key.getBytes().length);
       short len = RecordUtils.getRecordLength(this.buffer);
-      freeAddr += len;
+      freeAddr += len + 4 + key.getBytes().length;
     }
 
-    // update alias-key list accordingly
-    String alias = RecordUtils.getRecordAlias(this.buffer);
-    if (alias != null && !alias.equals("")) {
-      aliasKeyList.remove(binarySearchPairList(aliasKeyList, alias));
+    // shift offsets forward
+    if (idx != recordNum) {
+      int shift = recordNum - idx;
+      this.buffer.position(SchemaFileConfig.SEG_HEADER_SIZE + idx * 2);
+      ShortBuffer lb = this.buffer.asReadOnlyBuffer().asShortBuffer();
+      lb.get();
+      while (shift != 0) {
+        this.buffer.putShort(lb.get());
+        shift--;
+      }
     }
 
-    // TODO: compact segment further as well
     recordNum--;
     pairLength -= 2;
-    pairLength -= (key.getBytes().length + 4);
-    keyAddressList.remove(idx);
 
     return idx;
   }
@@ -311,45 +335,12 @@ public class WrappedSegment extends Segment<ICachedMNode> {
   // region Segment & Record Buffer Operation
 
   protected void updateRecordSegAddr(String key, long newSegAddr) {
-    int index = getRecordIndexByKey(key);
-    short offset = getOffsetByKeyIndex(index);
+    int index = binarySearchOnKeys(key);
+    short offset = getOffsetByIndex(index);
 
     this.buffer.clear();
-    this.buffer.position(offset);
+    this.buffer.position(offset + 4 + key.getBytes().length);
     RecordUtils.updateSegAddr(this.buffer, newSegAddr);
-  }
-
-  // endregion
-
-  // region Getters of Record Index or Offset
-  /**
-   * To decouple search implementation from other methods Rather than offset of the target key,
-   * index could be used to update or remove on keyAddressList
-   *
-   * @param key Record Key
-   * @return index of record, -1 for not found
-   */
-  private int getRecordIndexByKey(String key) {
-    return binarySearchPairList(keyAddressList, key);
-  }
-
-  /**
-   * Notice it figures index of the record within {@link #keyAddressList} whose alias is target
-   * parameter.
-   *
-   * @param alias
-   * @return index of the record within {@link #keyAddressList}
-   */
-  private int getRecordIndexByAlias(String alias) {
-    int aliasIndex = binarySearchPairList(aliasKeyList, alias);
-    if (aliasIndex < 0) {
-      return -1;
-    }
-    return binarySearchPairList(keyAddressList, aliasKeyList.get(aliasIndex).right);
-  }
-
-  private short getOffsetByKeyIndex(int index) {
-    return keyAddressList.get(index).right;
   }
 
   // endregion
@@ -358,6 +349,7 @@ public class WrappedSegment extends Segment<ICachedMNode> {
   public String toString() {
     ByteBuffer bufferR = this.buffer.asReadOnlyBuffer();
     StringBuilder builder = new StringBuilder("");
+    List<Pair<String, Short>> keyAddressList = getKeyOffsetList();
     builder.append(
         String.format(
             "[size: %d, K-AL size: %d, spare:%d,",
@@ -366,7 +358,7 @@ public class WrappedSegment extends Segment<ICachedMNode> {
             freeAddr - pairLength - SchemaFileConfig.SEG_HEADER_SIZE));
     bufferR.clear();
     for (Pair<String, Short> pair : keyAddressList) {
-      bufferR.position(pair.right);
+      bufferR.position(pair.right + 4 + pair.left.getBytes().length);
       if (RecordUtils.getRecordType(bufferR) == 0 || RecordUtils.getRecordType(bufferR) == 1) {
         builder.append(
             String.format(
@@ -391,6 +383,8 @@ public class WrappedSegment extends Segment<ICachedMNode> {
       return "";
     }
 
+    List<Pair<String, Short>> keyAddressList = getKeyOffsetList();
+
     // Internal/Entity presents as (name, is_aligned, child_segment_address)
     // Measurement presents as (name, data_type, encoding, compressor, alias_if_exist)
     ByteBuffer bufferR = this.buffer.asReadOnlyBuffer();
@@ -403,7 +397,7 @@ public class WrappedSegment extends Segment<ICachedMNode> {
             freeAddr - pairLength - SchemaFileConfig.SEG_HEADER_SIZE));
     bufferR.clear();
     for (Pair<String, Short> pair : keyAddressList) {
-      bufferR.position(pair.right);
+      bufferR.position(pair.right + pair.left.getBytes().length + 4);
       if (RecordUtils.getRecordType(bufferR) == 0 || RecordUtils.getRecordType(bufferR) == 1) {
         builder.append(
             String.format(
@@ -457,13 +451,14 @@ public class WrappedSegment extends Segment<ICachedMNode> {
   @TestOnly
   public ByteBuffer getRecord(String key) {
     short targetAddr;
-    int idx = getRecordIndexByKey(key);
+    int idx = binarySearchOnKeys(key);
     if (idx >= 0) {
-      targetAddr = keyAddressList.get(idx).right;
+      targetAddr = getOffsetByIndex(idx);
       this.buffer.clear();
       this.buffer.position(targetAddr);
+      this.buffer.position(targetAddr + 4 + this.buffer.getInt());
       short len = RecordUtils.getRecordLength(this.buffer);
-      this.buffer.limit(targetAddr + len);
+      this.buffer.limit(this.buffer.position() + len);
       return this.buffer.slice();
     }
     return null;
@@ -471,7 +466,29 @@ public class WrappedSegment extends Segment<ICachedMNode> {
 
   @TestOnly
   public List<Pair<String, Short>> getKeyOffsetList() {
-    return keyAddressList;
+    short[] offsets = new short[recordNum];
+    List<Pair<String, Short>> res = new ArrayList<>();
+
+    ByteBuffer buffer = this.buffer.asReadOnlyBuffer();
+    buffer.position(SchemaFileConfig.SEG_HEADER_SIZE);
+    buffer.asShortBuffer().get(offsets);
+
+    buffer.clear();
+    for (short offset : offsets) {
+      buffer.position(offset);
+      res.add(new Pair<>(ReadWriteIOUtils.readString(buffer), offset));
+    }
+
+    return res;
+  }
+
+  @TestOnly
+  public short[] getOffsets() {
+    ByteBuffer buf = this.buffer.asReadOnlyBuffer();
+    short[] ofs = new short[recordNum];
+    buf.clear().position(SEG_HEADER_SIZE);
+    buf.asShortBuffer().get(ofs);
+    return ofs;
   }
 
   // endregion

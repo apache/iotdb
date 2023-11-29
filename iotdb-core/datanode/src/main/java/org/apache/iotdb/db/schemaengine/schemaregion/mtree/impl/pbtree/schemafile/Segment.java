@@ -25,7 +25,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.SchemaFileConfig.SEG_HEADER_SIZE;
@@ -41,11 +40,12 @@ public abstract class Segment<R> implements ISegment<ByteBuffer, R> {
   // members load from buffer
   protected final ByteBuffer buffer;
   protected short length, freeAddr, recordNum, pairLength;
-  protected boolean delFlag;
+  protected boolean delFlag, aliasFlag;
   protected long prevSegAddress, nextSegAddress;
 
+  // todo remove
   // reconstruct from key-address pair buffer
-  protected List<Pair<String, Short>> keyAddressList;
+  // protected List<Pair<String, Short>> keyAddressList;
 
   // assess monotonic
   protected String penuKey = null, lastKey = null;
@@ -57,18 +57,20 @@ public abstract class Segment<R> implements ISegment<ByteBuffer, R> {
    * segment.
    *
    * <p><b>Segment Structure:</b>
-   * <li>25 byte: header
+   * <li>(25 byte: header)
    * <li>1 short: length, segment length
    * <li>1 short: freeAddr, start offset of records
    * <li>1 short: recordNum, amount of records in this segment
    * <li>1 short: pairLength, length of key-address in bytes
    * <li>1 long (8 bytes): prevSegIndex, previous segment index
    * <li>1 long (8 bytes): nextSegIndex, next segment index
-   * <li>1 bit: delFlag, delete flag <br>
+   * <li>1 bit: delFlag, delete flag
+   * <li>1 bit: aliasFlag, whether alias existed<br>
    *     (--- checksum, parent record address, max/min record key may be contained further ---)
-   * <li>var length: key-address pairs, begin at 25 bytes offset, length of pairLength <br>
+   * <li><s>var length: key-address pairs, begin at 25 bytes offset, length of pairLength </s><br>
+   * <li>var length: ORDERED record offset<br>
    *     ... empty space ...
-   * <li>var length: records
+   * <li>var length: (record key, record body) * recordNum
    */
   protected Segment(ByteBuffer buffer, boolean override) {
     this.buffer = buffer;
@@ -85,40 +87,25 @@ public abstract class Segment<R> implements ISegment<ByteBuffer, R> {
       prevSegAddress = -1;
       nextSegAddress = -1;
       delFlag = false;
-      // parRecord = lastSegAddr = nextSegAddr = 0L;
+      aliasFlag = false;
 
-      keyAddressList = new ArrayList<>();
     } else {
       length = ReadWriteIOUtils.readShort(buffer);
       freeAddr = ReadWriteIOUtils.readShort(buffer);
       recordNum = ReadWriteIOUtils.readShort(buffer);
       pairLength = ReadWriteIOUtils.readShort(buffer);
 
-      // parRecord = ReadWriteIOUtils.readLong(buffer);
       prevSegAddress = ReadWriteIOUtils.readLong(buffer);
       nextSegAddress = ReadWriteIOUtils.readLong(buffer);
-      delFlag = ReadWriteIOUtils.readBool(buffer);
-
-      buffer.position(SEG_HEADER_SIZE);
-      buffer.limit(SEG_HEADER_SIZE + pairLength);
-      ByteBuffer pairBuffer = buffer.slice();
-      buffer.clear(); // reconstruction finished, reset buffer position and limit
-      reconstructKeyAddress(pairBuffer);
-    }
-  }
-
-  private void reconstructKeyAddress(ByteBuffer pairBuffer) {
-    keyAddressList = new ArrayList<>();
-    for (int idx = 0; idx < recordNum; idx++) {
-      String key = ReadWriteIOUtils.readString(pairBuffer);
-      Short address = ReadWriteIOUtils.readShort(pairBuffer);
-      keyAddressList.add(new Pair<>(key, address));
+      byte flags = ReadWriteIOUtils.readByte(buffer);
+      delFlag = (0x80 & flags) != 0;
+      aliasFlag = (0x40 & flags) != 0;
     }
   }
 
   @Override
   public boolean hasRecordKey(String key) {
-    return binarySearchPairList(keyAddressList, key) > -1;
+    return binarySearchOnKeys(key) > -1;
   }
 
   @Override
@@ -127,8 +114,8 @@ public abstract class Segment<R> implements ISegment<ByteBuffer, R> {
   }
 
   @Override
-  public void syncBuffer() {
-    ByteBuffer prefBuffer = ByteBuffer.allocate(SEG_HEADER_SIZE + pairLength);
+  public synchronized void syncBuffer() {
+    ByteBuffer prefBuffer = ByteBuffer.allocate(SEG_HEADER_SIZE);
 
     ReadWriteIOUtils.write(length, prefBuffer);
     ReadWriteIOUtils.write(freeAddr, prefBuffer);
@@ -136,18 +123,17 @@ public abstract class Segment<R> implements ISegment<ByteBuffer, R> {
     ReadWriteIOUtils.write(pairLength, prefBuffer);
     ReadWriteIOUtils.write(prevSegAddress, prefBuffer);
     ReadWriteIOUtils.write(nextSegAddress, prefBuffer);
-    ReadWriteIOUtils.write(delFlag, prefBuffer);
-
-    prefBuffer.position(SEG_HEADER_SIZE);
-
-    for (Pair<String, Short> pair : keyAddressList) {
-      ReadWriteIOUtils.write(pair.left, prefBuffer);
-      ReadWriteIOUtils.write(pair.right, prefBuffer);
-    }
+    ReadWriteIOUtils.write(getFlag(), prefBuffer);
 
     prefBuffer.clear();
     this.buffer.clear();
     this.buffer.put(prefBuffer);
+  }
+
+  private byte getFlag() {
+    byte flags = delFlag ? (byte) 0x80 : (byte) 0x00;
+    flags = (byte) (aliasFlag ? flags | 0x40 : flags | 0x00);
+    return flags;
   }
 
   @Override
@@ -165,7 +151,7 @@ public abstract class Segment<R> implements ISegment<ByteBuffer, R> {
     this.delFlag = true;
     this.buffer.clear();
     this.buffer.position(SchemaFileConfig.SEG_HEADER_SIZE - 1);
-    ReadWriteIOUtils.write(true, this.buffer);
+    ReadWriteIOUtils.write(getFlag(), this.buffer);
   }
 
   @Override
@@ -204,12 +190,12 @@ public abstract class Segment<R> implements ISegment<ByteBuffer, R> {
     ReadWriteIOUtils.write(pairLength, newBuffer);
     ReadWriteIOUtils.write(prevSegAddress, newBuffer);
     ReadWriteIOUtils.write(nextSegAddress, newBuffer);
-    ReadWriteIOUtils.write(delFlag, newBuffer);
+    ReadWriteIOUtils.write(getFlag(), newBuffer);
 
     newBuffer.position(SchemaFileConfig.SEG_HEADER_SIZE);
-    for (Pair<String, Short> pair : keyAddressList) {
-      ReadWriteIOUtils.write(pair.left, newBuffer);
-      ReadWriteIOUtils.write((short) (pair.right + sizeGap), newBuffer);
+    this.buffer.position(SchemaFileConfig.SEG_HEADER_SIZE);
+    for (int i = 0; i < recordNum; i++) {
+      newBuffer.putShort((short) (this.buffer.getShort() + sizeGap));
     }
 
     this.buffer.clear();
@@ -228,7 +214,8 @@ public abstract class Segment<R> implements ISegment<ByteBuffer, R> {
     pairLength = 0;
     prevSegAddress = -1;
     nextSegAddress = -1;
-    keyAddressList.clear();
+    delFlag = false;
+    aliasFlag = false;
     syncBuffer();
     this.buffer.clear();
     return this.buffer.slice();
@@ -243,11 +230,11 @@ public abstract class Segment<R> implements ISegment<ByteBuffer, R> {
       throw new MetadataException("Segments only splits with same capacity.");
     }
 
-    if (keyAddressList.size() == 0) {
+    if (recordNum == 0) {
       throw new MetadataException("Segment can not be split with no records.");
     }
 
-    if (key == null && keyAddressList.size() == 1) {
+    if (key == null && recordNum == 1) {
       throw new MetadataException("Segment can not be split with only one record.");
     }
 
@@ -259,10 +246,10 @@ public abstract class Segment<R> implements ISegment<ByteBuffer, R> {
             && inclineSplit
             && (key.compareTo(lastKey)) * (lastKey.compareTo(penuKey)) > 0;
 
-    int n = keyAddressList.size();
+    int n = recordNum;
 
     // actual index of key just smaller than the insert, -2 for null key
-    int pos = key != null ? binaryInsertPairList(keyAddressList, key) - 1 : -2;
+    int pos = key != null ? binaryInsertOnKeys(key) - 1 : -2;
 
     int sp; // virtual index to split
     if (monotonic) {
@@ -275,12 +262,12 @@ public abstract class Segment<R> implements ISegment<ByteBuffer, R> {
     // little different from InternalSegment, only the front edge key can not split
     sp = sp <= 0 ? 1 : sp;
 
+    short recordLeft = this.recordNum;
     // prepare header for dstBuffer
     short length = this.length,
         freeAddr = (short) dstBuffer.capacity(),
         recordNum = 0,
         pairLength = 0;
-    boolean delFlag = false;
     long prevSegAddress = this.prevSegAddress, nextSegAddress = this.nextSegAddress;
 
     int recSize, keySize;
@@ -302,16 +289,16 @@ public abstract class Segment<R> implements ISegment<ByteBuffer, R> {
         srcBuf = this.buffer;
         // pos equals -2 if key is null
         aix = (ix > pos) && (pos != -2) ? ix - 1 : ix;
-        mKey = keyAddressList.get(aix).left;
+        mKey = getKeyByIndex(aix);
         keySize = 4 + mKey.getBytes().length;
 
         // prepare on this.buffer
         this.buffer.clear();
-        this.buffer.position(keyAddressList.get(aix).right);
+        this.buffer.position(getOffsetByIndex(aix) + keySize);
         recSize = getRecordLength();
         this.buffer.limit(this.buffer.position() + recSize);
 
-        this.recordNum--;
+        recordLeft--;
       }
 
       if (ix == sp) {
@@ -319,20 +306,20 @@ public abstract class Segment<R> implements ISegment<ByteBuffer, R> {
         sKey = mKey;
       }
 
-      freeAddr -= recSize;
+      freeAddr -= recSize + keySize;
       dstBuffer.position(freeAddr);
+      ReadWriteIOUtils.write(mKey, dstBuffer);
       dstBuffer.put(srcBuf);
 
       dstBuffer.position(SchemaFileConfig.SEG_HEADER_SIZE + pairLength);
-      ReadWriteIOUtils.write(mKey, dstBuffer);
       ReadWriteIOUtils.write(freeAddr, dstBuffer);
 
       recordNum++;
-      pairLength += keySize + 2;
+      pairLength += 2;
     }
 
     // compact and update status
-    this.keyAddressList = this.keyAddressList.subList(0, this.recordNum);
+    this.recordNum = recordLeft;
     compactRecords();
     if (sp > pos + 1 && key != null) {
       // new insert shall be in this
@@ -349,7 +336,8 @@ public abstract class Segment<R> implements ISegment<ByteBuffer, R> {
     ReadWriteIOUtils.write(pairLength, dstBuffer);
     ReadWriteIOUtils.write(prevSegAddress, dstBuffer);
     ReadWriteIOUtils.write(nextSegAddress, dstBuffer);
-    ReadWriteIOUtils.write(delFlag, dstBuffer);
+    // FIXME flag of split page is not always the same
+    ReadWriteIOUtils.write(getFlag(), dstBuffer);
 
     penuKey = null;
     lastKey = null;
@@ -360,24 +348,37 @@ public abstract class Segment<R> implements ISegment<ByteBuffer, R> {
     // compact by existed item on keyAddressList
     ByteBuffer tempBuf = ByteBuffer.allocate(this.buffer.capacity() - this.freeAddr);
     int accSiz = 0;
-    this.pairLength = 0;
-    for (Pair<String, Short> pair : keyAddressList) {
-      this.pairLength += pair.left.getBytes().length + 4 + 2;
+    short[] newOffsets = new short[recordNum];
+
+    String migKey;
+    short migOffset;
+    int recLen;
+    for (int i = 0; i < recordNum; i++) {
+      migOffset = getOffsetByIndex(i);
+      migKey = getKeyByOffset(migOffset);
+      this.buffer.position(migOffset + 4 + migKey.getBytes().length);
+      recLen = getRecordLength();
+
       this.buffer.clear();
-      this.buffer.position(pair.right);
-      this.buffer.limit(pair.right + getRecordLength());
+      this.buffer.position(migOffset);
+      this.buffer.limit(migOffset + 4 + migKey.getBytes().length + recLen);
+      this.toString();
 
       accSiz += this.buffer.remaining();
-      pair.right = (short) (this.buffer.capacity() - accSiz);
 
+      newOffsets[i] = (short) (this.buffer.capacity() - accSiz);
       tempBuf.position(tempBuf.capacity() - accSiz);
       tempBuf.put(this.buffer);
     }
+
     tempBuf.clear();
     tempBuf.position(tempBuf.capacity() - accSiz);
     this.freeAddr = (short) (this.buffer.capacity() - accSiz);
 
     this.buffer.clear();
+    this.buffer.position(SEG_HEADER_SIZE);
+    this.buffer.asShortBuffer().put(newOffsets);
+
     this.buffer.position(this.freeAddr);
     this.buffer.put(tempBuf);
 
@@ -386,6 +387,133 @@ public abstract class Segment<R> implements ISegment<ByteBuffer, R> {
 
   /** Assuming that buffer has been set position well, record length depends on implementation. */
   protected abstract short getRecordLength();
+
+  // region Record Index Access
+  // todo abstract with same name method within Internal
+
+  protected short getOffsetByIndex(int index) {
+    if (index < 0 || index >= recordNum) {
+      throw new IndexOutOfBoundsException();
+    }
+    synchronized (this.buffer) {
+      this.buffer.limit(this.buffer.capacity());
+      this.buffer.position(SEG_HEADER_SIZE + index * SchemaFileConfig.SEG_OFF_DIG);
+      return ReadWriteIOUtils.readShort(this.buffer);
+    }
+  }
+
+  protected String getKeyByOffset(short offset) {
+    synchronized (this.buffer) {
+      this.buffer.limit(this.buffer.capacity());
+      this.buffer.position(offset);
+      return ReadWriteIOUtils.readString(this.buffer);
+    }
+  }
+
+  private String getKeyByIndex(int index) {
+    if (index < 0 || index >= recordNum) {
+      throw new IndexOutOfBoundsException();
+    }
+    synchronized (this.buffer) {
+      this.buffer
+          .limit(this.buffer.capacity())
+          .position(SEG_HEADER_SIZE + index * SchemaFileConfig.SEG_OFF_DIG);
+      this.buffer.position(ReadWriteIOUtils.readShort(this.buffer));
+      return ReadWriteIOUtils.readString(this.buffer);
+    }
+  }
+
+  /**
+   * @param key
+   * @return -1 if not existed, otherwise correspondent position of target offset
+   */
+  protected int binarySearchOnKeys(String key) {
+    int head = 0;
+    int tail = recordNum - 1;
+    if (tail < 0
+        || key.compareTo(getKeyByIndex(head)) < 0
+        || key.compareTo(getKeyByIndex(tail)) > 0) {
+      return -1;
+    }
+
+    if (key.compareTo(getKeyByIndex(head)) == 0) {
+      return head;
+    }
+    if (key.compareTo(getKeyByIndex(tail)) == 0) {
+      return tail;
+    }
+
+    int pivot = (head + tail) / 2;
+    while (key.compareTo(getKeyByIndex(pivot)) != 0) {
+      if (head == tail || pivot == head || pivot == tail) {
+        return -1;
+      }
+      if (key.compareTo(getKeyByIndex(pivot)) < 0) {
+        tail = pivot;
+      } else if (key.compareTo(getKeyByIndex(pivot)) > 0) {
+        head = pivot;
+      }
+      pivot = (head + tail) / 2;
+    }
+    return pivot;
+  }
+
+  protected int binaryInsertOnKeys(String key) throws RecordDuplicatedException {
+    if (recordNum == 0) {
+      return 0;
+    }
+
+    int tarIdx = 0;
+    int head = 0;
+    int tail = recordNum - 1;
+
+    if (getKeyByIndex(head).compareTo(key) == 0 || getKeyByIndex(tail).compareTo(key) == 0) {
+      throw new RecordDuplicatedException(key);
+    }
+
+    if (key.compareTo(getKeyByIndex(head)) < 0) {
+      return 0;
+    }
+
+    if (key.compareTo(getKeyByIndex(tail)) > 0) {
+      return recordNum;
+    }
+
+    int pivot;
+    while (head != tail) {
+      pivot = (head + tail) / 2;
+      // notice pivot always smaller than list.size()-1
+      if (getKeyByIndex(pivot).compareTo(key) == 0
+          || getKeyByIndex(pivot + 1).compareTo(key) == 0) {
+        throw new RecordDuplicatedException(key);
+      }
+
+      if (getKeyByIndex(pivot).compareTo(key) < 0 && getKeyByIndex(pivot + 1).compareTo(key) > 0) {
+        return pivot + 1;
+      }
+
+      if (pivot == head || pivot == tail) {
+        if (getKeyByIndex(head).compareTo(key) > 0) {
+          return head;
+        }
+        if (getKeyByIndex(tail).compareTo(key) < 0) {
+          return tail + 1;
+        }
+      }
+
+      // impossible for pivot.cmp > 0 and (pivot+1).cmp < 0
+      if (getKeyByIndex(pivot).compareTo(key) > 0) {
+        tail = pivot;
+      }
+
+      if (getKeyByIndex(pivot + 1).compareTo(key) < 0) {
+        head = pivot;
+      }
+    }
+    return tarIdx;
+  }
+
+  // endregion
 
   protected static <T> int binarySearchPairList(List<Pair<String, T>> list, String key) {
     int head = 0;
