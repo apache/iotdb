@@ -130,10 +130,12 @@ public class QueryExecutionMetricSet implements IMetricSet {
             DRIVER_INTERNAL_PROCESS,
             WAIT_FOR_RESULT)
         .forEach(
-            stage -> {
-              metricService.remove(
-                  MetricType.TIMER, Metric.QUERY_EXECUTION.toString(), Tag.STAGE.toString(), stage);
-            });
+            stage ->
+                metricService.remove(
+                    MetricType.TIMER,
+                    Metric.QUERY_EXECUTION.toString(),
+                    Tag.STAGE.toString(),
+                    stage));
   }
   // endregion
 

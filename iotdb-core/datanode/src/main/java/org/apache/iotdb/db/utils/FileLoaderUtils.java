@@ -46,6 +46,9 @@ import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -63,6 +66,8 @@ import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.TIM
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.TIMESERIES_METADATA_MODIFICATION_NONALIGNED;
 
 public class FileLoaderUtils {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(FileLoaderUtils.class);
 
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
@@ -248,11 +253,19 @@ public class FileLoaderUtils {
       }
       return alignedTimeSeriesMetadata;
     } finally {
+      long loadAlignedTimeSeriesMetadataTime = System.nanoTime() - t1;
+      LOGGER.warn(
+          "!!!!! loadAlignedTimeSeriesMetadataTime, path: {}, type: {}, time: {}ms",
+          alignedPath.getFullPath(),
+          loadFromMem
+              ? LOAD_TIMESERIES_METADATA_ALIGNED_MEM
+              : LOAD_TIMESERIES_METADATA_ALIGNED_DISK,
+          loadAlignedTimeSeriesMetadataTime / 1000000);
       SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
           loadFromMem
               ? LOAD_TIMESERIES_METADATA_ALIGNED_MEM
               : LOAD_TIMESERIES_METADATA_ALIGNED_DISK,
-          System.nanoTime() - t1);
+          loadAlignedTimeSeriesMetadataTime);
     }
   }
 

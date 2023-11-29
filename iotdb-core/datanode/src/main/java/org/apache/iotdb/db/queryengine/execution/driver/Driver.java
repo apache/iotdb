@@ -79,6 +79,8 @@ public abstract class Driver implements IDriver {
     DESTROYED
   }
 
+  private long allExecuteTime = 0;
+
   protected Driver(Operator root, DriverContext driverContext) {
     checkNotNull(root, "root Operator should not be null");
     checkNotNull(driverContext.getSink(), "Sink should not be null");
@@ -263,6 +265,7 @@ public abstract class Driver implements IDriver {
       driverContext.failed(newException);
       throw newException;
     } finally {
+      allExecuteTime += (System.nanoTime() - startTimeNanos);
       QUERY_EXECUTION_METRICS.recordExecutionCost(
           DRIVER_INTERNAL_PROCESS, System.nanoTime() - startTimeNanos);
     }
@@ -434,6 +437,10 @@ public abstract class Driver implements IDriver {
         Thread.currentThread().interrupt();
       }
     }
+    LOGGER.warn(
+        "~~~~~ closeAndDestroyOperators of driver, allExecuteTime: {}ms, root operator: {}",
+        allExecuteTime / 1000000,
+        root.getClass());
     return inFlightException;
   }
 

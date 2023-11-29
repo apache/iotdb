@@ -72,6 +72,9 @@ public class FragmentInstanceContext extends QueryContext {
   private final AtomicLong startNanos = new AtomicLong();
   private final AtomicLong endNanos = new AtomicLong();
 
+  private AtomicLong releaseTime = new AtomicLong();
+  private AtomicLong durationTime = new AtomicLong();
+
   private final AtomicReference<Long> executionStartTime = new AtomicReference<>();
   private final AtomicReference<Long> lastExecutionStartTime = new AtomicReference<>();
   private final AtomicReference<Long> executionEndTime = new AtomicReference<>();
@@ -444,10 +447,21 @@ public class FragmentInstanceContext extends QueryContext {
       unClosedFilePaths = null;
     }
 
+    long endTime = System.currentTimeMillis();
+    releaseTime.set(endTime);
+    durationTime.set(endTime - executionStartTime.get());
+    LOGGER.warn(
+        " ===== FragmentInstanceContext released, id: {}, releaseTime: {}, startTime: {}, durationTime:{}ms",
+        id,
+        releaseTime.get(),
+        executionStartTime.get(),
+        durationTime.get());
+
     dataRegion = null;
     globalTimeFilter = null;
     sourcePaths = null;
     sharedQueryDataSource = null;
+
     releaseDataNodeQueryContext();
   }
 
