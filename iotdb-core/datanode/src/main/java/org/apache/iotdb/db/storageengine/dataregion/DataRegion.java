@@ -2158,12 +2158,15 @@ public class DataRegion implements IDataRegionForQuery {
       // be
       // evicted due to the low priority of the task
       try {
+        CompactionScheduler.lockCompactionSelection();
         for (long timePartition : timePartitions) {
           trySubmitCount +=
               CompactionScheduler.scheduleCompaction(tsFileManager, timePartition, summary);
         }
       } catch (Throwable e) {
         logger.error("Meet error in compaction schedule.", e);
+      } finally {
+        CompactionScheduler.unlockCompactionSelection();
       }
     }
     if (summary.hasSubmitTask()) {
@@ -2185,6 +2188,7 @@ public class DataRegion implements IDataRegionForQuery {
   protected int executeInsertionCompaction(List<Long> timePartitions) {
     int trySubmitCount = 0;
     try {
+      CompactionScheduler.lockCompactionSelection();
       while (true) {
         int currentSubmitCount = 0;
         Phaser insertionTaskPhaser = new Phaser(1);
@@ -2202,6 +2206,8 @@ public class DataRegion implements IDataRegionForQuery {
       }
     } catch (Throwable e) {
       logger.error("Meet error in compaction schedule.", e);
+    } finally {
+      CompactionScheduler.unlockCompactionSelection();
     }
     return trySubmitCount;
   }

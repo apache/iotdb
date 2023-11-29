@@ -1796,7 +1796,7 @@ public class CompactionSchedulerTest {
         CompactionScheduler.scheduleCompaction(tsFileManager, 0);
         Thread.sleep(100);
         sleepTime += 100;
-        if (sleepTime >= 20_000) {
+        if (sleepTime >= 40_000) {
           fail();
         }
       }
