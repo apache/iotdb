@@ -577,6 +577,22 @@ public class IoTDBAlignByDeviceWithTemplateIT {
         "select count(s1+1) from root.sg1.** align by device;", expectedHeader, retArray);
   }
 
+  @Test
+  public void emptyResultTest() {
+    String[] expectedHeader = new String[] {"Time,Device,s3,s1,s2"};
+    String[] retArray = new String[] {};
+    resultSetEqualTest(
+        "SELECT * FROM root.sg1.** where time>=now()-1d and time<=now() "
+            + "ORDER BY TIME DESC ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+    resultSetEqualTest(
+        "SELECT * FROM root.sg2.** where time>=now()-1d and time<=now() "
+            + "ORDER BY TIME DESC ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+  }
+
   private static void insertData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

@@ -171,6 +171,7 @@ public class TemplatedAnalyze {
     // generate result set header according to output expressions
     analyzeOutput(analysis, queryStatement, outputExpressions);
 
+    context.generateGlobalTimeFilter(analysis);
     // fetch partition information
     analyzeDataPartition(analysis, schemaTree, partitionFetcher, context.getGlobalTimeFilter());
     return true;
