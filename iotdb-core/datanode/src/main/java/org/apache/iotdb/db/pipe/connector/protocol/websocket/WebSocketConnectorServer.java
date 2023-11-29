@@ -414,13 +414,11 @@ public class WebSocketConnectorServer extends WebSocketServer {
 
       try {
         Thread.sleep(10000);
-        return true;
       } catch (InterruptedException e) {
         LOGGER.warn("The transfer thread is interrupted.", e);
         Thread.currentThread().interrupt();
-
-        throw new PipeException(e.getMessage());
       }
+      return true;
     }
   }
 
