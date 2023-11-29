@@ -24,6 +24,7 @@ if [ "$exists_env" -eq 0 ]; then
 fi
 work_path=$(pwd | sed 's/\"//g')
 echo work_path="$work_path" || exit
+go env
 check_results=$(go env | grep GOPATH= | sed 's/\"//g' | sed "s/\'//g")
 go_path=${check_results/GOPATH=/}
 echo GOPATH="$go_path"
