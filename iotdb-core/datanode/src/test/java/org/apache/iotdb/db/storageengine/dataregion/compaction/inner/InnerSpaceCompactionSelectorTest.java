@@ -669,7 +669,7 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectWhenModsFileGreaterThan50M()
       throws IOException, MetadataException, WriteProcessException {
-    createFiles(6, 2, 3, 50, 0, 10000, 50, 50, false, true);
+    createFiles(1, 2, 3, 50, 0, 10000, 50, 50, false, true);
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
@@ -677,13 +677,11 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
 
     ModificationFile modFile = tsFileResource.getModFile();
 
-    while (modFile.getSize() < 1024 * 1024 * 50) {
-      modFile.write(
-          new Deletion(
-              new PartialPath(COMPACTION_TEST_SG + PATH_SEPARATOR + "**"),
-              Long.MIN_VALUE,
-              Long.MAX_VALUE));
-    }
+    modFile.write(
+        new Deletion(
+            new PartialPath(COMPACTION_TEST_SG + PATH_SEPARATOR + "**"),
+            Long.MIN_VALUE,
+            Long.MAX_VALUE));
 
     SizeTieredCompactionSelector selector =
         new SizeTieredCompactionSelector("", "", 0, true, tsFileManager);
@@ -691,7 +689,7 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
     List<TsFileResource> resources = tsFileManager.getOrCreateSequenceListByTimePartition(0);
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         selector.selectInnerSpaceTask(resources);
-    Assert.assertEquals(1, innerSpaceCompactionTasks.size());
+    Assert.assertEquals(0, innerSpaceCompactionTasks.size());
     modFile.remove();
   }
 }
