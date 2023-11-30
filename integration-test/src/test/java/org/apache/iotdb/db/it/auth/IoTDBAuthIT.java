@@ -1203,4 +1203,14 @@ public class IoTDBAuthIT {
       }
     }
   }
+
+  @Test
+  public void testCreateRoleIdentifierName() throws SQLException {
+    Connection adminCon = EnvFactory.getEnv().getConnection();
+    Statement adminStmt = adminCon.createStatement();
+    adminStmt.execute("create role head");
+    adminStmt.execute("create user head 'password'");
+    adminStmt.execute("create role tail");
+    adminStmt.execute("create user tail 'password'");
+  }
 }
