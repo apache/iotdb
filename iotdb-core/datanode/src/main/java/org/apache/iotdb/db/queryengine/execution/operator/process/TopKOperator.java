@@ -242,6 +242,19 @@ public class TopKOperator implements ProcessOperator {
     return (topValue - resultReturnSize) * getMemoryUsageOfOneMergeSortKey();
   }
 
+  @Override
+  public void close() throws Exception {
+    for (Operator child : deviceOperators) {
+      if (child != null) {
+        child.close();
+      }
+    }
+
+    canCallNext = null;
+    topKResult = null;
+    tmpResultTsBlock = null;
+  }
+
   private void initResultTsBlock() {
     int positionCount = topValue;
     Column[] columns = new Column[dataTypes.size()];
