@@ -127,7 +127,8 @@ public class IExpressionOptimizerTest {
     try {
       String rightRet =
           "[[d2.s1:((measurements[0] > 100 || measurements[0] < 50) && time < 14001234)] "
-              + "|| [d1.s2:((measurements[0] > 100.5 || measurements[0] < 50.6) && time < 14001234)]]";
+              + "|| [d1.s2:((measurements[0] > 100.5 || measurements[0] < 50.6) "
+              + "&& time < 14001234)]]";
       IExpression regularFilter = expressionOptimizer.optimize(expression, selectedSeries);
       Assert.assertEquals(rightRet, regularFilter.toString());
     } catch (QueryFilterOptimizationException e) {
@@ -153,8 +154,8 @@ public class IExpressionOptimizerTest {
     try {
       String rightRet =
           "[[[[d1.s1:time > 1] || "
-              + "[d2.s1:(time > 1 || ((measurements[0] > 100 || measurements[0] < 50) && time < 14001234))]] "
-              + "|| [d1.s2:time > 1]] || [d2.s2:time > 1]]";
+              + "[d2.s1:(time > 1 || ((measurements[0] > 100 || measurements[0] < 50) "
+              + "&& time < 14001234))]] || [d1.s2:time > 1]] || [d2.s2:time > 1]]";
       IExpression regularFilter = expressionOptimizer.optimize(expression, selectedSeries);
       Assert.assertEquals(rightRet, regularFilter.toString());
     } catch (QueryFilterOptimizationException e) {
@@ -202,8 +203,10 @@ public class IExpressionOptimizerTest {
     try {
       String rightRet =
           "[[[[d1.s1:time < 14001234] "
-              + "|| [d2.s1:(time < 14001234 || (measurements[0] > 100 || measurements[0] < 50))]] "
-              + "|| [d1.s2:(time < 14001234 || (measurements[0] > 100.5 || measurements[0] < 50.6))]] "
+              + "|| [d2.s1:(time < 14001234 || "
+              + "(measurements[0] > 100 || measurements[0] < 50))]] "
+              + "|| [d1.s2:(time < 14001234 || "
+              + "(measurements[0] > 100.5 || measurements[0] < 50.6))]] "
               + "|| [d2.s2:time < 14001234]]";
       IExpression regularFilter = expressionOptimizer.optimize(expression, selectedSeries);
       Assert.assertEquals(rightRet, regularFilter.toString());

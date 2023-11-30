@@ -161,14 +161,10 @@ public class OperatorTest {
     Assert.assertTrue(andFilter2.satisfy(1000L, 51d));
   }
 
-  @Test
+  @Test(expected = ClassCastException.class)
   public void testWrongUsage() {
     Filter andFilter = FilterFactory.and(TimeFilter.gt(100L), ValueFilter.lt(true));
-    try {
-      andFilter.satisfy(101L, 50);
-      Assert.fail();
-    } catch (ClassCastException ignored) {
-
-    }
+    andFilter.satisfy(101L, 50);
+    Assert.fail();
   }
 }
