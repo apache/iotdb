@@ -80,7 +80,8 @@ public interface Operator extends AutoCloseable {
   boolean hasNext() throws Exception;
 
   /**
-   * The close method cleans up the resources occupied by this Operator.
+   * The close method cleans up the resources occupied by this Operator. This method will always be
+   * called before releasing the Operator reference.
    *
    * <p><b>Note:</b> If this Operator has child Operators, please ensure that child operators are
    * also closed.
