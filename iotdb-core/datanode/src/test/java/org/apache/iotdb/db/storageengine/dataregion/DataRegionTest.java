@@ -1350,8 +1350,22 @@ public class DataRegionTest {
 
   // -- test for deleting data directly
   /** | | SEQ | UNSEQ | |SEALED | | | |UNSEALED | | | */
+  // Because these tests will delete files at the same folder.
+  // If these tests run parallelly, it will have a conflict on
+  // file system, which makes these test fail.
   @Test
-  public void testDeleteDataDirectlyInSeqFlushingMemtable()
+  public void testDeleteDirectlyFiles()
+      throws WriteProcessException, IOException, MetadataException, Exception {
+    testDeleteDataDirectlyInUnseqUnsealed();
+    tearDown();
+    setUp();
+    testDeleteDataDirectlyInSeqFlushingMemtable();
+    tearDown();
+    setUp();
+    testDeletedDataDirectlyInUnSeqFlushingMemtable();
+  }
+
+  private void testDeleteDataDirectlyInSeqFlushingMemtable()
       throws IllegalPathException, WriteProcessException, IOException {
     for (int j = 100; j < 200; j++) {
       TSRecord record = new TSRecord(j, deviceId);
@@ -1377,8 +1391,7 @@ public class DataRegionTest {
             .exists());
   }
 
-  @Test
-  public void testDeletedDataDirectlyInUnSeqFlushingMemtable()
+  private void testDeletedDataDirectlyInUnSeqFlushingMemtable()
       throws IllegalPathException, WriteProcessException, IOException {
 
     for (int j = 100; j < 200; j++) {
@@ -1408,8 +1421,7 @@ public class DataRegionTest {
     Assert.assertFalse(FSFactoryProducer.getFSFactory().getFile(filename).exists());
   }
 
-  @Test
-  public void testDeleteDataDirectlyInUnseqUnsealed()
+  private void testDeleteDataDirectlyInUnseqUnsealed()
       throws WriteProcessException, IOException, MetadataException {
     TSRecord record = new TSRecord(10000, deviceId);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
@@ -1457,6 +1469,5 @@ public class DataRegionTest {
     Assert.assertFalse(FSFactoryProducer.getFSFactory().getFile(filePath).exists());
 
     Assert.assertEquals(1, tsfileResourcesForQuery.size());
-    List<ReadOnlyMemChunk> memChunks = tsfileResourcesForQuery.get(0).getReadOnlyMemChunk(fullPath);
   }
 }
