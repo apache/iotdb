@@ -1349,7 +1349,6 @@ public class DataRegionTest {
   }
 
   // -- test for deleting data directly
-
   /** | | SEQ | UNSEQ | |SEALED | | | |UNSEALED | | | */
   @Test
   public void testDeleteDataDirectlyInSeqFlushingMemtable()

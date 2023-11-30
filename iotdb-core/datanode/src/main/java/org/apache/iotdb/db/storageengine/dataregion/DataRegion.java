@@ -1851,7 +1851,6 @@ public class DataRegion implements IDataRegionForQuery {
       throw new IOException(
           "Delete failed. " + "Please do not delete until the old files settled.");
     }
-    logger.info("delete by device");
     // TODO: how to avoid partial deletion?
     // FIXME: notice that if we may remove a SGProcessor out of memory, we need to close all opened
     // mod files in mergingModification, sequenceFileList, and unsequenceFileList
@@ -1908,7 +1907,7 @@ public class DataRegion implements IDataRegionForQuery {
   public void deleteDataDirectly(
       PartialPath pathToDelete, long startTime, long endTime, long searchIndex) throws IOException {
     logger.info(
-        "{} will close all files for deleting data between {} and {}",
+        "{} will delete data files directly for deleting data between {} and {}",
         databaseName + "-" + dataRegionId,
         startTime,
         endTime);
@@ -1941,7 +1940,6 @@ public class DataRegion implements IDataRegionForQuery {
       writeUnlock();
       releasedLock = true;
       deleteDataDirectlyInFile(sealedTsFileResource, pathToDelete, startTime, endTime);
-
     } catch (Exception e) {
       throw new IOException(e);
     } finally {
@@ -2183,15 +2181,16 @@ public class DataRegion implements IDataRegionForQuery {
             .deleteDataInMemory(deletion, new HashSet<>(pathToDelete.getDevicePathPattern()));
       }
     }
+
+    // can be deleted by files
     for (TsFileResource tsFileResource : deletedByFiles) {
-      // If the time range of the file is not a subinterval of the time range
-      // to be deleted, then it needs to be deleted through mods.
       if (!tsFileResource.isClosed()) {
         tsFileResource
             .getProcessor()
             .deleteDataInMemory(deletion, new HashSet<>(pathToDelete.getDevicePathPattern()));
         tsFileResource.close();
       }
+
       tsFileResource.setStatus(TsFileResourceStatus.DELETED);
       tsFileManager.remove(tsFileResource, tsFileResource.isSeq());
       tsFileResource.writeLock();
@@ -2199,6 +2198,10 @@ public class DataRegion implements IDataRegionForQuery {
         tsFileResource.remove();
         FileMetrics.getInstance()
             .deleteTsFile(tsFileResource.isSeq(), Collections.singletonList(tsFileResource));
+        if (tsFileResource.getModFile().exists()) {
+          FileMetrics.getInstance().decreaseModFileNum(1);
+          FileMetrics.getInstance().decreaseModFileSize(tsFileResource.getModFile().getSize());
+        }
         logger.info("Remove tsfile {} directly when delete data", tsFileResource.getTsFilePath());
       } finally {
         tsFileResource.writeUnlock();
@@ -2214,19 +2217,11 @@ public class DataRegion implements IDataRegionForQuery {
       long endTime) {
 
     for (TsFileResource file : tsFileResourceList) {
+      // If the time range of the file is not a subinterval of the time range
+      // to be deleted, then it needs to be deleted through mods.
       long fileStartTime = file.getTimeIndex().getMinStartTime();
       long fileEndTime = file.getTimeIndex().getMaxEndTime();
-      logger.info(
-          "LSL To delete: file device:{},\n fileStartTime:{},\n fileEndTime:{},\n"
-              + "fileisClosed:{}, \n filterStartTime:{},\n filterEndTime:{}\n",
-          file.getDevices(),
-          fileStartTime,
-          fileEndTime,
-          file.isClosed(),
-          startTime,
-          endTime);
       if (startTime == Long.MIN_VALUE && endTime == Long.MAX_VALUE) {
-        logger.info("Add to delete files");
         deletedByFiles.add(file);
         continue;
       }
@@ -2235,19 +2230,15 @@ public class DataRegion implements IDataRegionForQuery {
         if (endTime < fileStartTime) {
           continue;
         } else if (startTime <= fileStartTime && endTime == Long.MAX_VALUE) {
-          logger.info("Add to delete files");
           deletedByFiles.add(file);
         } else if (endTime >= fileStartTime) {
-          logger.info("Add to mods files");
           deletedByMods.add(file);
         }
       } else {
         // sealed file or unsealed unseq file.
         if (endTime >= fileEndTime && startTime <= fileStartTime) {
-          logger.info("Add to delete files");
           deletedByFiles.add(file);
         } else if (endTime >= fileStartTime && startTime <= fileEndTime) {
-          logger.info("Add to mods files");
           deletedByMods.add(file);
         }
       }
