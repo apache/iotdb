@@ -2157,8 +2157,8 @@ public class DataRegion implements IDataRegionForQuery {
       // the name of this variable is trySubmitCount, because the task submitted to the queue could
       // be
       // evicted due to the low priority of the task
+      CompactionScheduler.lockCompactionSelection();
       try {
-        CompactionScheduler.lockCompactionSelection();
         for (long timePartition : timePartitions) {
           trySubmitCount +=
               CompactionScheduler.scheduleCompaction(tsFileManager, timePartition, summary);
@@ -2187,8 +2187,8 @@ public class DataRegion implements IDataRegionForQuery {
 
   protected int executeInsertionCompaction(List<Long> timePartitions) {
     int trySubmitCount = 0;
+    CompactionScheduler.lockCompactionSelection();
     try {
-      CompactionScheduler.lockCompactionSelection();
       while (true) {
         int currentSubmitCount = 0;
         Phaser insertionTaskPhaser = new Phaser(1);

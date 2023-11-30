@@ -74,8 +74,8 @@ public class SettleRequestHandler {
   public TSStatus handleSettleRequest(TSettleReq req) {
     List<String> paths = req.getPaths();
 
+    CompactionScheduler.lockCompactionSelection();
     try {
-      CompactionScheduler.lockCompactionSelection();
       SettleRequestContext context = new SettleRequestContext(paths);
       TSStatus validationResult = context.validate();
       if (validationResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
