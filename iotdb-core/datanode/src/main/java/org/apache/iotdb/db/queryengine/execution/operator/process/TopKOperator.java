@@ -210,6 +210,16 @@ public class TopKOperator implements ProcessOperator {
   }
 
   @Override
+  public void close() throws Exception {
+    for (Operator operator : deviceOperators) {
+      if (operator != null) {
+        operator.close();
+      }
+    }
+    deviceOperators.clear();
+  }
+
+  @Override
   public long calculateMaxPeekMemory() {
     // traverse each child serial,
     // so no need to accumulate the returnSize and retainedSize of each child
