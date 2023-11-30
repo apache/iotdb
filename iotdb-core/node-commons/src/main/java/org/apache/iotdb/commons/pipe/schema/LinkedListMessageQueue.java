@@ -33,6 +33,7 @@ public class LinkedListMessageQueue<E> {
 
   Condition hasNext = lock.newCondition();
 
+  // The index of elements are [firstIndex, firstIndex + 1, ....,lastIndex - 1]
   int firstIndex = 0;
   int lastIndex = 0;
 
@@ -60,7 +61,7 @@ public class LinkedListMessageQueue<E> {
     return true;
   }
 
-  public void removeUntil(int newFirst) {
+  public void removeBefore(int newFirst) {
     lock.lock();
     try {
       if (newFirst <= firstIndex) {
@@ -84,7 +85,7 @@ public class LinkedListMessageQueue<E> {
   public void clear() {
     lock.lock();
     try {
-      removeUntil(lastIndex + 1);
+      removeBefore(lastIndex);
       first = null;
       firstIndex = 0;
       lastIndex = 0;
@@ -104,6 +105,15 @@ public class LinkedListMessageQueue<E> {
     lock.lock();
     try {
       return firstIndex;
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  public int getLastIndex() {
+    lock.lock();
+    try {
+      return lastIndex;
     } finally {
       lock.unlock();
     }
@@ -137,7 +147,9 @@ public class LinkedListMessageQueue<E> {
   public class ConsumerItr {
 
     private LinkedListNode<E> next;
-    int offset;
+
+    // Offset is the position of the next element to read
+    private int offset;
 
     ConsumerItr(int offset) {
       lock.lock();
@@ -147,7 +159,7 @@ public class LinkedListMessageQueue<E> {
           offset = lastIndex;
         } else {
           next = pilot;
-          if (firstIndex > offset) {
+          if (firstIndex < offset) {
             for (int i = 0; i < offset - firstIndex; ++i) {
               next();
             }
@@ -175,7 +187,7 @@ public class LinkedListMessageQueue<E> {
         Thread.currentThread().interrupt();
       } catch (NullPointerException ignore) {
         // NullPointerException means the "next" node is null, typically because the
-        // linked queue is cleared. Though we don't except a linked queue to be cleared
+        // element is cleared. Though we don't except a linked queue to be cleared
         // when there are subscriptions alive, still we simply return null to notify the subscriber.
       } finally {
         lock.unlock();
@@ -187,11 +199,21 @@ public class LinkedListMessageQueue<E> {
       return next.next != null;
     }
 
-    public boolean seek(int newOffset) {
+    /**
+     * Seek the offset to the closest position allowed to the given offset. Note that one can seek
+     * to "lastIndex + 1" to subscribe the next incoming element.
+     *
+     * @param newOffset the attempt newOffset
+     * @return the actual new offset
+     */
+    public int seek(int newOffset) {
       lock.lock();
       try {
-        if (newOffset < firstIndex && newOffset > lastIndex) {
-          return false;
+        if (newOffset < firstIndex) {
+          newOffset = firstIndex;
+        }
+        if (newOffset > lastIndex) {
+          newOffset = lastIndex;
         }
         if (newOffset < offset) {
           next = pilot;
@@ -204,13 +226,13 @@ public class LinkedListMessageQueue<E> {
           }
         }
         offset = newOffset;
-        return true;
+        return offset;
       } finally {
         lock.unlock();
       }
     }
 
-    public int position() {
+    public int getOffset() {
       lock.lock();
       try {
         return offset;

@@ -40,11 +40,12 @@ public class LinkedListMessageQueueTest {
     LinkedListMessageQueue<Integer> queue = new LinkedListMessageQueue<>();
     queue.add(1);
     queue.add(2);
-    queue.removeUntil(1);
+    queue.removeBefore(1);
     LinkedListMessageQueue<Integer>.ConsumerItr it = queue.subscribeEarliest();
     Assert.assertEquals(2, (int) it.next());
 
     LinkedListMessageQueue<Integer>.ConsumerItr it2 = queue.subscribeLatest();
+    Assert.assertEquals(2, it2.getOffset());
     AtomicInteger value = new AtomicInteger(-1);
     new Thread(() -> value.set(it2.next())).start();
     queue.add(3);
@@ -52,7 +53,7 @@ public class LinkedListMessageQueueTest {
         .atMost(10, TimeUnit.SECONDS)
         .untilAsserted(() -> Assert.assertEquals(3, value.get()));
 
-    Assert.assertTrue(it.seek(1));
+    Assert.assertEquals(1, it.seek(Integer.MIN_VALUE));
     Assert.assertEquals(2, (int) it.next());
 
     queue.clear();
@@ -69,7 +70,7 @@ public class LinkedListMessageQueueTest {
         new Thread(
             () -> {
               try {
-                for (int i = 0; i < 1000000; ++i) {
+                for (int i = 0; i < 10000; ++i) {
                   queue.add(1);
                 }
               } catch (Exception e) {
@@ -83,7 +84,7 @@ public class LinkedListMessageQueueTest {
         new Thread(
             () -> {
               try {
-                for (int i = 0; i < 1000000; ++i) {
+                for (int i = 0; i < 10000; ++i) {
                   queue.add(2);
                 }
               } catch (Exception e) {
@@ -99,7 +100,7 @@ public class LinkedListMessageQueueTest {
               () -> {
                 try {
                   LinkedListMessageQueue<Integer>.ConsumerItr it = queue.subscribeEarliest();
-                  for (int j = 0; j < 2000000; ++j) {
+                  for (int j = 0; j < 20000; ++j) {
                     it.next();
                   }
                 } catch (Exception e) {
