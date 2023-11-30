@@ -1816,7 +1816,7 @@ public class CompactionSchedulerTest {
         }
         Thread.sleep(100);
         sleepTime += 100;
-        if (sleepTime >= 400_000) {
+        if (sleepTime >= 200_000) {
           fail();
         }
       }
