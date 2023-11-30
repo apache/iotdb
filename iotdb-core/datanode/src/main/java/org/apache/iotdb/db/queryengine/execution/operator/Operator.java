@@ -79,9 +79,16 @@ public interface Operator extends AutoCloseable {
   @SuppressWarnings("squid:S112")
   boolean hasNext() throws Exception;
 
-  /** This method will always be called before releasing the Operator reference. */
+  /**
+   * The close method cleans up the resources occupied by this Operator.
+   *
+   * <p><b>Note:</b> If this Operator has child Operators, please ensure that child operators are
+   * also closed.
+   *
+   * @throws Exception An exception occurred during the close operation.
+   */
   @Override
-  default void close() throws Exception {}
+  void close() throws Exception;
 
   /**
    * Is this operator completely finished processing and no more output TsBlock will be produced.

@@ -211,12 +211,12 @@ public class TopKOperator implements ProcessOperator {
 
   @Override
   public void close() throws Exception {
-    for (Operator operator : deviceOperators) {
+    for (int i = deviceIndex; i < deviceOperators.size(); i++) {
+      final Operator operator = deviceOperators.get(i);
       if (operator != null) {
         operator.close();
       }
     }
-    deviceOperators.clear();
   }
 
   @Override
