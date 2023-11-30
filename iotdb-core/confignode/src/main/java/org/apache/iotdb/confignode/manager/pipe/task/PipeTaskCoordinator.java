@@ -179,4 +179,22 @@ public class PipeTaskCoordinator {
   public boolean canSkipNextSync() {
     return pipeTaskInfo.canSkipNextSync();
   }
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  public long runningPipeCount() {
+    return pipeTaskInfo.runningPipeCount();
+  }
+
+  public long droppedPipeCount() {
+    return pipeTaskInfo.droppedPipeCount();
+  }
+
+  public long userStoppedPipeCount() {
+    return pipeTaskInfo.userStoppedPipeCount();
+  }
+
+  public long exceptionStoppedPipeCount() {
+    return pipeTaskInfo.exceptionStoppedPipeCount();
+  }
 }

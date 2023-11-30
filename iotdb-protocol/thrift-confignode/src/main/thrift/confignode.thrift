@@ -410,6 +410,7 @@ struct TConfigNodeRegisterResp {
 struct TConfigNodeHeartbeatReq {
     1: required i64 timestamp
     2: optional common.TLicense licence
+    3: optional TActivationControl activationControl
 }
 
 struct TConfigNodeHeartbeatResp {
@@ -808,6 +809,10 @@ struct TGetPartitionParameterResp{
 struct TLicenseContentResp {
     1: required common.TSStatus status
     2: optional common.TLicense licenseContent
+}
+
+enum TActivationControl {
+  ALL_LICENSE_FILE_DELETED
 }
 
 

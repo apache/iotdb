@@ -21,8 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.analyze;
 
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -44,7 +42,6 @@ public class TemplatedInfo {
   private List<IMeasurementSchema> schemaList;
   private List<TSDataType> dataTypes;
   private Set<String> allSensors;
-  private Filter timeFilter;
   private Ordering scanOrder;
   private boolean queryAllSensors;
   private List<String> selectMeasurements;
@@ -57,7 +54,6 @@ public class TemplatedInfo {
       List<IMeasurementSchema> schemaList,
       List<TSDataType> dataTypes,
       Set<String> allSensors,
-      Filter timeFilter,
       Ordering scanOrder,
       boolean queryAllSensors,
       List<String> selectMeasurements,
@@ -68,7 +64,6 @@ public class TemplatedInfo {
     this.schemaList = schemaList;
     this.dataTypes = dataTypes;
     this.allSensors = allSensors;
-    this.timeFilter = timeFilter;
     this.scanOrder = scanOrder;
     this.queryAllSensors = queryAllSensors;
     this.selectMeasurements = selectMeasurements;
@@ -107,14 +102,6 @@ public class TemplatedInfo {
 
   public Set<String> getAllSensors() {
     return this.allSensors;
-  }
-
-  public void setTimeFilter(Filter timeFilter) {
-    this.timeFilter = timeFilter;
-  }
-
-  public Filter getTimeFilter() {
-    return this.timeFilter;
   }
 
   public void setScanOrder(Ordering scanOrder) {
@@ -176,12 +163,6 @@ public class TemplatedInfo {
     for (String dataType : allSensors) {
       ReadWriteIOUtils.write(dataType, byteBuffer);
     }
-    if (timeFilter == null) {
-      ReadWriteIOUtils.write((byte) 0, byteBuffer);
-    } else {
-      ReadWriteIOUtils.write((byte) 1, byteBuffer);
-      timeFilter.serialize(byteBuffer);
-    }
     ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
     ReadWriteIOUtils.write(queryAllSensors, byteBuffer);
 
@@ -213,12 +194,6 @@ public class TemplatedInfo {
     ReadWriteIOUtils.write(allSensors.size(), stream);
     for (String dataType : allSensors) {
       ReadWriteIOUtils.write(dataType, stream);
-    }
-    if (timeFilter == null) {
-      ReadWriteIOUtils.write((byte) 0, stream);
-    } else {
-      ReadWriteIOUtils.write((byte) 1, stream);
-      timeFilter.serialize(stream);
     }
     ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
     ReadWriteIOUtils.write(queryAllSensors, stream);
@@ -265,12 +240,6 @@ public class TemplatedInfo {
       allSensorSet.add(ReadWriteIOUtils.readString(byteBuffer));
     }
 
-    byte isNull = ReadWriteIOUtils.readByte(byteBuffer);
-    Filter timeFilter = null;
-    if (isNull == 1) {
-      timeFilter = FilterFactory.deserialize(byteBuffer);
-    }
-
     Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
 
     boolean queryAllSensors = ReadWriteIOUtils.readBool(byteBuffer);
@@ -296,7 +265,6 @@ public class TemplatedInfo {
         measurementSchemaList,
         dataTypeList,
         allSensorSet,
-        timeFilter,
         scanOrder,
         queryAllSensors,
         selectMeasurements,

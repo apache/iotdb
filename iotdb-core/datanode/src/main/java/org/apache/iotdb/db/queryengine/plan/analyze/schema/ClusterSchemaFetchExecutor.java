@@ -96,14 +96,17 @@ class ClusterSchemaFetchExecutor {
    * cache the result.
    */
   ClusterSchemaTree fetchSchemaOfFuzzyMatch(
-      PathPatternTree patternTree, boolean withTags, MPPQueryContext context) {
+      PathPatternTree patternTree,
+      boolean withTags,
+      boolean withTemplate,
+      MPPQueryContext context) {
     Map<Integer, Template> templateMap = new HashMap<>();
     List<PartialPath> pathPatternList = patternTree.getAllPathPatterns();
     for (PartialPath pattern : pathPatternList) {
       templateMap.putAll(templateManager.checkAllRelatedTemplate(pattern));
     }
     return executeSchemaFetchQuery(
-        new SchemaFetchStatement(patternTree, templateMap, withTags), context);
+        new SchemaFetchStatement(patternTree, templateMap, withTags, withTemplate), context);
   }
 
   /**
@@ -115,10 +118,14 @@ class ClusterSchemaFetchExecutor {
    * @return fetched schema
    */
   ClusterSchemaTree fetchSchemaOfPreciseMatchOrPreciseDeviceUsingTemplate(
-      List<PartialPath> fullPathList, PathPatternTree rawPatternTree, MPPQueryContext context) {
+      List<PartialPath> fullPathList,
+      PathPatternTree rawPatternTree,
+      boolean withTemplate,
+      MPPQueryContext context) {
     ClusterSchemaTree schemaTree =
         executeSchemaFetchQuery(
-            new SchemaFetchStatement(rawPatternTree, analyzeTemplate(fullPathList), false),
+            new SchemaFetchStatement(
+                rawPatternTree, analyzeTemplate(fullPathList), false, withTemplate),
             context);
     if (!schemaTree.isEmpty()) {
       schemaCacheUpdater.accept(schemaTree);
@@ -182,7 +189,7 @@ class ClusterSchemaFetchExecutor {
     ClusterSchemaTree schemaTree =
         executeSchemaFetchQuery(
             new SchemaFetchStatement(
-                patternTree, analyzeTemplate(patternTree.getAllPathPatterns()), false),
+                patternTree, analyzeTemplate(patternTree.getAllPathPatterns()), false, true),
             context);
     if (!schemaTree.isEmpty()) {
       schemaCacheUpdater.accept(schemaTree);

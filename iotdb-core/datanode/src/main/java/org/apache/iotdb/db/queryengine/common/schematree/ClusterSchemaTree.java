@@ -459,6 +459,7 @@ public class ClusterSchemaTree implements ISchemaTree {
     Deque<SchemaNode> stack = new ArrayDeque<>();
     SchemaNode child;
     boolean hasLogicalView = false;
+    boolean hasNormalTimeSeries = false;
     Map<Integer, Template> templateMap = new HashMap<>();
 
     while (inputStream.available() > 0) {
@@ -469,6 +470,7 @@ public class ClusterSchemaTree implements ISchemaTree {
         if (measurementNode.isLogicalView()) {
           hasLogicalView = true;
         }
+        hasNormalTimeSeries = true;
       } else {
         SchemaInternalNode internalNode;
         if (nodeType == SCHEMA_ENTITY_NODE) {
@@ -501,6 +503,7 @@ public class ClusterSchemaTree implements ISchemaTree {
     ClusterSchemaTree result = new ClusterSchemaTree(stack.poll());
     result.templateMap = templateMap;
     result.hasLogicalMeasurementPath = hasLogicalView;
+    result.hasNormalTimeSeries = hasNormalTimeSeries;
     return result;
   }
 
@@ -546,10 +549,5 @@ public class ClusterSchemaTree implements ISchemaTree {
   @Override
   public boolean isEmpty() {
     return root.getChildren() == null || root.getChildren().isEmpty();
-  }
-
-  @Override
-  public void setAuthorityScope(PathPatternTree scope) {
-    this.authorityScope = scope;
   }
 }

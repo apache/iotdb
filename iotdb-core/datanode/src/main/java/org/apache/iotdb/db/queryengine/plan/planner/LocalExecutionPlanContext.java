@@ -75,8 +75,7 @@ public class LocalExecutionPlanContext {
   // left is cached last value in last query
   // right is full path for each cached last value
   private List<Pair<TimeValuePair, Binary>> cachedLastValueAndPathList;
-  // timeFilter for last query
-  private Filter lastQueryTimeFilter;
+
   // whether we need to update last cache
   private boolean needUpdateLastCache;
   private boolean needUpdateNullEntry;
@@ -219,10 +218,6 @@ public class LocalExecutionPlanContext {
     return allSensors;
   }
 
-  public void setLastQueryTimeFilter(Filter lastQueryTimeFilter) {
-    this.lastQueryTimeFilter = lastQueryTimeFilter;
-  }
-
   public void setNeedUpdateLastCache(boolean needUpdateLastCache) {
     this.needUpdateLastCache = needUpdateLastCache;
   }
@@ -261,10 +256,6 @@ public class LocalExecutionPlanContext {
     return driverContext.getFragmentInstanceContext();
   }
 
-  public Filter getLastQueryTimeFilter() {
-    return lastQueryTimeFilter;
-  }
-
   public boolean isNeedUpdateLastCache() {
     return needUpdateLastCache;
   }
@@ -279,5 +270,9 @@ public class LocalExecutionPlanContext {
 
   public long getDataRegionTTL() {
     return dataRegionTTL;
+  }
+
+  public Filter getGlobalTimeFilter() {
+    return driverContext.getFragmentInstanceContext().getGlobalTimeFilter();
   }
 }
