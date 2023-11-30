@@ -21,7 +21,7 @@ package org.apache.iotdb.tsfile.read.reader.page;
 
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.IAlignedMetadataProvider;
+import org.apache.iotdb.tsfile.file.metadata.IStatisticsProvider;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -46,8 +46,7 @@ import java.util.List;
 
 import static org.apache.iotdb.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
 
-public class AlignedPageReader
-    implements IPageReader, IAlignedPageReader, IAlignedMetadataProvider {
+public class AlignedPageReader implements IPageReader, IAlignedPageReader, IStatisticsProvider {
 
   private final TimePageReader timePageReader;
   private final List<ValuePageReader> valuePageReaderList;

@@ -23,7 +23,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 
 import java.io.Serializable;
 
-public interface IAlignedMetadataProvider {
+public interface IStatisticsProvider {
 
   Statistics<? extends Serializable> getTimeStatistics();
 

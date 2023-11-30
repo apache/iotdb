@@ -29,7 +29,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class AlignedChunkMetadata implements IChunkMetadata, IAlignedMetadataProvider {
+public class AlignedChunkMetadata implements IChunkMetadata, IStatisticsProvider {
 
   // ChunkMetadata for time column
   private final IChunkMetadata timeChunkMetadata;

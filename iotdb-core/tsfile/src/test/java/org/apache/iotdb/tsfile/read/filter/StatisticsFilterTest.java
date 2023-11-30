@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.filter;
 
-import org.apache.iotdb.tsfile.file.metadata.IAlignedMetadataProvider;
+import org.apache.iotdb.tsfile.file.metadata.IStatisticsProvider;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.TimeStatistics;
@@ -255,17 +255,17 @@ public class StatisticsFilterTest {
         valueIsNotNull.allSatisfy(getAlignedMetadataProvider(timeStatistics1, null)));
   }
 
-  private AlignedMetadataProvider getAlignedMetadataProvider(
+  private StatisticsProvider getAlignedMetadataProvider(
       TimeStatistics timeStatistics, Statistics<? extends Serializable> valueStatistics) {
-    return new AlignedMetadataProvider(timeStatistics, Collections.singletonList(valueStatistics));
+    return new StatisticsProvider(timeStatistics, Collections.singletonList(valueStatistics));
   }
 
-  private static class AlignedMetadataProvider implements IAlignedMetadataProvider {
+  private static class StatisticsProvider implements IStatisticsProvider {
 
     private final TimeStatistics timeStatistics;
     private final List<Statistics<? extends Serializable>> statisticsList;
 
-    public AlignedMetadataProvider(
+    public StatisticsProvider(
         TimeStatistics timeStatistics, List<Statistics<? extends Serializable>> statisticsList) {
       this.timeStatistics = timeStatistics;
       this.statisticsList = statisticsList;

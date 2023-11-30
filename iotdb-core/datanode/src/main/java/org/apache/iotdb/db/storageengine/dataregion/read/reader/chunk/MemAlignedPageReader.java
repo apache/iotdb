@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.IAlignedMetadataProvider;
+import org.apache.iotdb.tsfile.file.metadata.IStatisticsProvider;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -42,8 +42,7 @@ import java.util.List;
 
 import static org.apache.iotdb.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
 
-public class MemAlignedPageReader
-    implements IPageReader, IAlignedPageReader, IAlignedMetadataProvider {
+public class MemAlignedPageReader implements IPageReader, IAlignedPageReader, IStatisticsProvider {
 
   private final TsBlock tsBlock;
   private final AlignedChunkMetadata chunkMetadata;

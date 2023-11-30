@@ -20,7 +20,7 @@
 package org.apache.iotdb.tsfile.read.filter.operator;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.IAlignedMetadataProvider;
+import org.apache.iotdb.tsfile.file.metadata.IStatisticsProvider;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -244,9 +244,9 @@ public final class ValueFilterOperators {
     }
 
     @Override
-    public boolean canSkip(IAlignedMetadataProvider alignedMetadata) {
+    public boolean canSkip(IStatisticsProvider statisticsProvider) {
       Statistics<? extends Serializable> statistics =
-          alignedMetadata.getMeasurementStatistics(measurementIndex);
+          statisticsProvider.getMeasurementStatistics(measurementIndex);
 
       if (statistics == null) {
         // the measurement isn't in this block so all values are null.
@@ -259,7 +259,7 @@ public final class ValueFilterOperators {
 
       // we are looking for records where v eq(null)
       // so drop if there are no nulls in this chunk
-      if (!alignedMetadata.hasNullValue(measurementIndex)) {
+      if (!statisticsProvider.hasNullValue(measurementIndex)) {
         return BLOCK_CANNOT_MATCH;
       }
       return BLOCK_MIGHT_MATCH;
@@ -271,9 +271,9 @@ public final class ValueFilterOperators {
     }
 
     @Override
-    public boolean allSatisfy(IAlignedMetadataProvider alignedMetadata) {
+    public boolean allSatisfy(IStatisticsProvider statisticsProvider) {
       Statistics<? extends Serializable> statistics =
-          alignedMetadata.getMeasurementStatistics(measurementIndex);
+          statisticsProvider.getMeasurementStatistics(measurementIndex);
 
       if (statistics == null) {
         // the measurement isn't in this block so all values are null.
@@ -285,7 +285,7 @@ public final class ValueFilterOperators {
         return BLOCK_MIGHT_MATCH;
       }
 
-      if (alignedMetadata.isAllNulls(measurementIndex)) {
+      if (statisticsProvider.isAllNulls(measurementIndex)) {
         return BLOCK_ALL_MATCH;
       }
       return BLOCK_MIGHT_MATCH;
@@ -330,9 +330,9 @@ public final class ValueFilterOperators {
     }
 
     @Override
-    public boolean canSkip(IAlignedMetadataProvider alignedMetadata) {
+    public boolean canSkip(IStatisticsProvider statisticsProvider) {
       Statistics<? extends Serializable> statistics =
-          alignedMetadata.getMeasurementStatistics(measurementIndex);
+          statisticsProvider.getMeasurementStatistics(measurementIndex);
 
       if (statistics == null) {
         // null is always equal to null
@@ -345,7 +345,7 @@ public final class ValueFilterOperators {
 
       // we are looking for records where v notEq(null)
       // so, if this is a column of all nulls, we can drop it
-      if (alignedMetadata.isAllNulls(measurementIndex)) {
+      if (statisticsProvider.isAllNulls(measurementIndex)) {
         return BLOCK_CANNOT_MATCH;
       }
       return BLOCK_MIGHT_MATCH;
@@ -357,9 +357,9 @@ public final class ValueFilterOperators {
     }
 
     @Override
-    public boolean allSatisfy(IAlignedMetadataProvider alignedMetadata) {
+    public boolean allSatisfy(IStatisticsProvider statisticsProvider) {
       Statistics<? extends Serializable> statistics =
-          alignedMetadata.getMeasurementStatistics(measurementIndex);
+          statisticsProvider.getMeasurementStatistics(measurementIndex);
 
       if (statistics == null) {
         return BLOCK_MIGHT_MATCH;
@@ -371,7 +371,7 @@ public final class ValueFilterOperators {
 
       // we are looking for records where v notEq(null)
       // so, if this is a column of all nulls, we can drop it
-      if (!alignedMetadata.hasNullValue(measurementIndex)) {
+      if (!statisticsProvider.hasNullValue(measurementIndex)) {
         return BLOCK_ALL_MATCH;
       }
       return BLOCK_MIGHT_MATCH;

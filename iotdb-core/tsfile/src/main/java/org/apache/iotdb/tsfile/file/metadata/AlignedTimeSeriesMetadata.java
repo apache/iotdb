@@ -27,7 +27,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class AlignedTimeSeriesMetadata implements ITimeSeriesMetadata, IAlignedMetadataProvider {
+public class AlignedTimeSeriesMetadata implements ITimeSeriesMetadata, IStatisticsProvider {
 
   // TimeSeriesMetadata for time column
   private final TimeseriesMetadata timeseriesMetadata;

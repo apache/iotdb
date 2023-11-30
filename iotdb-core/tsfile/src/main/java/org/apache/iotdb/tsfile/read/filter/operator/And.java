@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.tsfile.read.filter.operator;
 
-import org.apache.iotdb.tsfile.file.metadata.IAlignedMetadataProvider;
+import org.apache.iotdb.tsfile.file.metadata.IStatisticsProvider;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -59,8 +59,8 @@ public class And extends BinaryLogicalFilter {
   }
 
   @Override
-  public boolean canSkip(IAlignedMetadataProvider alignedMetadata) {
-    return left.canSkip(alignedMetadata) || right.canSkip(alignedMetadata);
+  public boolean canSkip(IStatisticsProvider statisticsProvider) {
+    return left.canSkip(statisticsProvider) || right.canSkip(statisticsProvider);
   }
 
   @Override
@@ -69,8 +69,8 @@ public class And extends BinaryLogicalFilter {
   }
 
   @Override
-  public boolean allSatisfy(IAlignedMetadataProvider alignedMetadata) {
-    return left.allSatisfy(alignedMetadata) && right.allSatisfy(alignedMetadata);
+  public boolean allSatisfy(IStatisticsProvider statisticsProvider) {
+    return left.allSatisfy(statisticsProvider) && right.allSatisfy(statisticsProvider);
   }
 
   @Override
