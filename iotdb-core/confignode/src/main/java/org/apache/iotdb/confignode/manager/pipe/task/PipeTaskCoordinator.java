@@ -105,13 +105,7 @@ public class PipeTaskCoordinator {
 
   /** Caller should ensure that the method is called in the lock {@link #tryLock()}. */
   public TSStatus startPipe(String pipeName) {
-    final boolean hasException = pipeTaskInfo.hasExceptions(pipeName);
-    final TSStatus status = configManager.getProcedureManager().startPipe(pipeName);
-    if (status == RpcUtils.SUCCESS_STATUS && hasException) {
-      LOGGER.info("Pipe {} has started successfully, clear its exceptions.", pipeName);
-      configManager.getProcedureManager().pipeHandleMetaChange(true, true);
-    }
-    return status;
+    return configManager.getProcedureManager().startPipe(pipeName);
   }
 
   /** Caller should ensure that the method is called in the lock {@link #tryLock()}. */
