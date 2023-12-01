@@ -23,7 +23,10 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskPriorityType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -47,6 +50,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -54,6 +58,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTest
     extends AbstractCompactionTest {
@@ -68,6 +73,39 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
   @After
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
+  }
+
+  @Test
+  public void test00() throws IOException {
+    long start = System.currentTimeMillis();
+    String path = "/Users/shuww/Downloads/1124test_副本";
+    List<TsFileResource> resources = new ArrayList<>();
+    for (File file :
+        Arrays.stream(new File(path).listFiles()).sorted().collect(Collectors.toList())) {
+      if (file.getName().endsWith(".resource")) {
+        continue;
+      }
+      if (!new File(file.getPath() + ".resource").exists()) {
+        continue;
+      }
+      TsFileResource resource = new TsFileResource();
+      resource.setFile(file);
+      //      resource.setStatusForTest(TsFileResourceStatus.COMPACTING);
+      resource.deserialize();
+      resources.add(resource);
+    }
+
+    InnerSpaceCompactionTask task =
+        new InnerSpaceCompactionTask(
+            0,
+            tsFileManager,
+            resources,
+            false,
+            new ReadChunkCompactionPerformer(),
+            0,
+            CompactionTaskPriorityType.NORMAL);
+    task.start();
+    System.out.println((System.currentTimeMillis() - start) / 1000);
   }
 
   @Test

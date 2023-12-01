@@ -109,6 +109,10 @@ public class PageHeader {
     return statistics;
   }
 
+  public void setStatistics(Statistics<? extends Serializable> statistics) {
+    this.statistics = statistics;
+  }
+
   public long getEndTime() {
     return statistics.getEndTime();
   }

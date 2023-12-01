@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
@@ -99,6 +100,18 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
               dataSize);
       return chunk;
     }
+  }
+
+  public InputStream wrapAsInputStream() throws IOException {
+    return this.tsFileInput.wrapAsInputStream();
+  }
+
+  public ByteBuffer readPageWithoutUnCompressing(long startOffset, int pageSize)
+      throws IOException {
+    if (pageSize == 0) {
+      return null;
+    }
+    return readData(startOffset, pageSize);
   }
 
   @Override

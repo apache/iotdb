@@ -65,6 +65,10 @@ public class PublicBAOS extends ByteArrayOutputStream {
     out.write(buf, 0, count);
   }
 
+  public void writeTo(OutputStream out, int offset, int length) throws IOException {
+    out.write(buf, offset, length);
+  }
+
   /**
    * It's not a thread-safe method. Override the super class's implementation. Remove the
    * synchronized key word, to save the synchronization overhead.
