@@ -197,23 +197,25 @@ public class Scheduler {
             ICacheManager cacheManager = store.getCacheManager();
             ISchemaFile file = store.getSchemaFile();
             List<ICachedMNode> nodesToFlush = new ArrayList<>();
+            PBTreeFlushExecutor flushExecutor;
             long startTime = System.currentTimeMillis();
-            IDatabaseMNode<ICachedMNode> dbNode = cacheManager.collectUpdatedStorageGroupMNodes();
-            if (dbNode != null) {
-              nodesToFlush.add(dbNode.getAsMNode());
-            }
-            Iterator<ICachedMNode> volatileSubtrees = cacheManager.collectVolatileSubtrees();
-            while (volatileSubtrees.hasNext()) {
-              nodesToFlush.add(volatileSubtrees.next());
-              if (nodesToFlush.size() > remainToFlush.get()) {
-                break;
-              }
-            }
-            PBTreeFlushExecutor flushExecutor =
-                new PBTreeFlushExecutor(nodesToFlush, cacheManager, file);
             try {
+              IDatabaseMNode<ICachedMNode> dbNode = cacheManager.collectUpdatedStorageGroupMNodes();
+              if (dbNode != null) {
+                flushExecutor = new PBTreeFlushExecutor(dbNode, cacheManager, file);
+                flushExecutor.flushDatabase();
+                remainToFlush.decrementAndGet();
+              }
+              Iterator<ICachedMNode> volatileSubtrees = cacheManager.collectVolatileSubtrees();
+              while (volatileSubtrees.hasNext()) {
+                nodesToFlush.add(volatileSubtrees.next());
+                if (nodesToFlush.size() > remainToFlush.get()) {
+                  break;
+                }
+              }
+              flushExecutor = new PBTreeFlushExecutor(nodesToFlush, cacheManager, file);
               flushExecutor.flushVolatileNodes();
-            } catch (MetadataException e) {
+            } catch (MetadataException | IOException e) {
               LOGGER.warn(
                   "Error occurred during MTree flush, current SchemaRegionId is {} because {}",
                   regionId,
