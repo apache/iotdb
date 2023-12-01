@@ -24,7 +24,6 @@ import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
-import com.codahale.metrics.MetricRegistry;
 import org.apache.ratis.metrics.LongCounter;
 import org.apache.ratis.metrics.MetricRegistryInfo;
 import org.apache.ratis.metrics.RatisMetricRegistry;
@@ -85,15 +84,14 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
   IoTDBMetricRegistry(MetricRegistryInfo info, AbstractMetricService service) {
     this.info = info;
     this.metricService = service;
-    prefix =
-        MetricRegistry.name(
-            Utils.getConsensusGroupTypeFromPrefix(info.getPrefix()).toString(),
-            info.getApplicationName(),
-            info.getMetricsComponentName());
+    this.prefix =
+        Utils.getConsensusGroupTypeFromPrefix(info.getPrefix()).toString()
+            + info.getApplicationName()
+            + info.getMetricsComponentName();
   }
 
   private String getMetricName(String name) {
-    return metricNameCache.computeIfAbsent(name, n -> MetricRegistry.name(prefix, n));
+    return metricNameCache.computeIfAbsent(name, n -> this.prefix + n);
   }
 
   public MetricLevel getMetricLevel(String name) {
