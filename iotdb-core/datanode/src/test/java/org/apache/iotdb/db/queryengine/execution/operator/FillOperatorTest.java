@@ -134,6 +134,11 @@ public class FillOperatorTest {
                 }
 
                 @Override
+                public void close() throws Exception {
+                  // do nothing
+                }
+
+                @Override
                 public long calculateMaxPeekMemory() {
                   return 0;
                 }
@@ -307,6 +312,11 @@ public class FillOperatorTest {
                 }
 
                 @Override
+                public void close() throws Exception {
+                  // do nothing
+                }
+
+                @Override
                 public long calculateMaxPeekMemory() {
                   return 0;
                 }
@@ -471,6 +481,11 @@ public class FillOperatorTest {
                 @Override
                 public boolean isFinished() {
                   return index >= 3;
+                }
+
+                @Override
+                public void close() throws Exception {
+                  // do nothing
                 }
 
                 @Override
