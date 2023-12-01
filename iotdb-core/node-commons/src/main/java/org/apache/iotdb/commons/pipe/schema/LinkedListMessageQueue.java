@@ -28,7 +28,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * This class allows dynamic iterating over the elements, namely an iterator is able to read the
  * incoming element.
  *
- * @param <E>
+ * @param <E> Element type
  */
 public class LinkedListMessageQueue<E> {
   LinkedListNode<E> pilot = new LinkedListNode<>(null);
