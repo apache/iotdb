@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.commons.pipe.datastructure;
 
-import org.apache.iotdb.commons.pipe.datastructure.LinkedListMessageQueue;
-
 import org.awaitility.Awaitility;
 import org.junit.Assert;
 import org.junit.Before;
@@ -38,13 +36,13 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-public class LinkedListMessageQueueTest {
+public class ConcurrentIterableLinkedQueueTest {
 
-  private LinkedListMessageQueue<Integer> queue;
+  private ConcurrentIterableLinkedQueue<Integer> queue;
 
   @Before
   public void setUp() {
-    queue = new LinkedListMessageQueue<>();
+    queue = new ConcurrentIterableLinkedQueue<>();
   }
 
   @Test
@@ -72,7 +70,7 @@ public class LinkedListMessageQueueTest {
     queue.add(1);
     queue.add(2);
 
-    LinkedListMessageQueue<Integer>.ConsumerItr itr = queue.subscribe(0);
+    ConcurrentIterableLinkedQueue<Integer>.ConsumerItr itr = queue.subscribe(0);
     Assert.assertNotNull(itr);
     Assert.assertEquals(Integer.valueOf(1), itr.next());
     Assert.assertEquals(Integer.valueOf(2), itr.next());
@@ -83,8 +81,8 @@ public class LinkedListMessageQueueTest {
     queue.add(1);
     queue.add(2);
 
-    LinkedListMessageQueue<Integer>.ConsumerItr earliest = queue.subscribeEarliest();
-    LinkedListMessageQueue<Integer>.ConsumerItr latest = queue.subscribeLatest();
+    ConcurrentIterableLinkedQueue<Integer>.ConsumerItr earliest = queue.subscribeEarliest();
+    ConcurrentIterableLinkedQueue<Integer>.ConsumerItr latest = queue.subscribeLatest();
 
     Assert.assertEquals(Integer.valueOf(1), earliest.next());
     Assert.assertFalse(latest.hasNext());
@@ -96,7 +94,7 @@ public class LinkedListMessageQueueTest {
     queue.add(2);
     queue.add(3);
 
-    LinkedListMessageQueue<Integer>.ConsumerItr itr = queue.subscribe(0);
+    ConcurrentIterableLinkedQueue<Integer>.ConsumerItr itr = queue.subscribe(0);
     itr.seek(2);
     Assert.assertEquals(Integer.valueOf(3), itr.next());
   }
@@ -141,7 +139,7 @@ public class LinkedListMessageQueueTest {
     for (int i = 0; i < numberOfThreads; i++) {
       executor.submit(
           () -> {
-            LinkedListMessageQueue<Integer>.ConsumerItr itr = queue.subscribeEarliest();
+            ConcurrentIterableLinkedQueue<Integer>.ConsumerItr itr = queue.subscribeEarliest();
             while (itr.hasNext()) {
               // Processing the element
               itr.next();
@@ -188,10 +186,10 @@ public class LinkedListMessageQueueTest {
     queue.add(1);
     queue.add(2);
     queue.removeBefore(1);
-    LinkedListMessageQueue<Integer>.ConsumerItr it = queue.subscribeEarliest();
+    ConcurrentIterableLinkedQueue<Integer>.ConsumerItr it = queue.subscribeEarliest();
     Assert.assertEquals(2, (int) it.next());
 
-    LinkedListMessageQueue<Integer>.ConsumerItr it2 = queue.subscribeLatest();
+    ConcurrentIterableLinkedQueue<Integer>.ConsumerItr it2 = queue.subscribeLatest();
     Assert.assertEquals(2, it2.getOffset());
     AtomicInteger value = new AtomicInteger(-1);
     new Thread(() -> value.set(it2.next())).start();
@@ -245,7 +243,7 @@ public class LinkedListMessageQueueTest {
           new Thread(
               () -> {
                 try {
-                  LinkedListMessageQueue<Integer>.ConsumerItr it = queue.subscribeEarliest();
+                  ConcurrentIterableLinkedQueue<Integer>.ConsumerItr it = queue.subscribeEarliest();
                   for (int j = 0; j < 20000; ++j) {
                     it.next();
                   }

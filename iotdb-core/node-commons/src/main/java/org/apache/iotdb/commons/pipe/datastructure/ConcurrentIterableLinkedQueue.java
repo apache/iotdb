@@ -30,7 +30,7 @@ import java.util.concurrent.locks.ReentrantLock;
  *
  * @param <E> Element type
  */
-public class LinkedListMessageQueue<E> {
+public class ConcurrentIterableLinkedQueue<E> {
   LinkedListNode<E> pilot = new LinkedListNode<>(null);
   LinkedListNode<E> first;
   LinkedListNode<E> last;
@@ -43,7 +43,7 @@ public class LinkedListMessageQueue<E> {
   int firstIndex = 0;
   int lastIndex = 0;
 
-  public LinkedListMessageQueue() {
+  public ConcurrentIterableLinkedQueue() {
     // first == last == null
   }
 
@@ -220,8 +220,8 @@ public class LinkedListMessageQueue<E> {
 
     /**
      * Seek the {@link ConsumerItr#offset} to the closest position allowed to the given offset. Note
-     * that one can seek to {@link LinkedListMessageQueue#lastIndex} to subscribe the next incoming
-     * element.
+     * that one can seek to {@link ConcurrentIterableLinkedQueue#lastIndex} to subscribe the next
+     * incoming element.
      *
      * @param newOffset the attempt newOffset
      * @return the actual new offset
