@@ -58,8 +58,8 @@ public class IoTDBThriftSyncConnectorClient extends IClientRPCService.Client
     }
   }
 
-  public void setTimeout(int timeOut) {
-    ((TimeoutChangeableTransport) (getInputProtocol().getTransport())).setTimeout(timeOut);
+  public void setTimeout(int timeout) {
+    ((TimeoutChangeableTransport) (getInputProtocol().getTransport())).setTimeout(timeout);
   }
 
   @Override
