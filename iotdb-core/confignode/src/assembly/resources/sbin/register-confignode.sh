@@ -58,7 +58,21 @@ RestartPreventExitStatus=SIGKILL
 WantedBy=multi-user.target
 EOF
 
-echo "Confignode service registration successful!"
-"${IOTDB_SBIN_HOME}"/sbin/stop-confignode.sh >/dev/null 2>&1 &
-systemctl start iotdb-confignode
-systemctl enable iotdb-confignode >> result.log
+echo "ConfigNode service registration successful!"
+
+systemctl daemon-reload
+
+echo "Do you want to start IoTDB ConfigNode service ? y/n (default n)"
+read -r START_SERVICE
+echo - - - - - - - - - -
+if [[ "$START_SERVICE" =~ ^[Yy]$ ]]; then
+    ${IOTDB_SBIN_HOME}/sbin/stop-confignode.sh >/dev/null 2>&1 &
+    systemctl start iotdb-confignode
+fi
+
+echo "Do you want to start IoTDB ConfigNode service when startup ? y/n (default n)"
+read -r ADD_STARTUP
+echo - - - - - - - - - -
+if [[ "$ADD_STARTUP" =~ ^[Yy]$ ]]; then
+   systemctl enable iotdb-confignode
+fi
