@@ -19,8 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.datastructure;
 
-import java.util.Set;
-import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -35,7 +34,6 @@ public class ConcurrentIterableLinkedQueue<E> {
   LinkedListNode<E> first;
   LinkedListNode<E> last;
   ReentrantLock lock = new ReentrantLock();
-  Set<ConsumerItr> consumerItrSet = new CopyOnWriteArraySet<>();
 
   Condition hasNext = lock.newCondition();
 
@@ -47,9 +45,13 @@ public class ConcurrentIterableLinkedQueue<E> {
     // first == last == null
   }
 
-  public boolean add(E e) {
+  public void add(E e) {
     lock.lock();
     try {
+      if (e == null) {
+        throw new IllegalArgumentException(
+            "Null is reserved as the signal to imply a get operation failure. Please use another element to imply null.");
+      }
       final LinkedListNode<E> l = last;
       final LinkedListNode<E> newNode = new LinkedListNode<>(e);
       last = newNode;
@@ -64,7 +66,6 @@ public class ConcurrentIterableLinkedQueue<E> {
     } finally {
       lock.unlock();
     }
-    return true;
   }
 
   public void removeBefore(int newFirst) {
@@ -82,6 +83,9 @@ public class ConcurrentIterableLinkedQueue<E> {
       }
       first = x;
       pilot.next = first;
+      if (first == null) {
+        last = null;
+      }
       hasNext.signalAll();
     } finally {
       lock.unlock();
@@ -92,19 +96,15 @@ public class ConcurrentIterableLinkedQueue<E> {
     lock.lock();
     try {
       removeBefore(lastIndex);
-      first = null;
       firstIndex = 0;
       lastIndex = 0;
-      consumerItrSet.clear();
     } finally {
       lock.unlock();
     }
   }
 
-  public ConsumerItr subscribe(int offset) {
-    ConsumerItr itr = new ConsumerItr(offset);
-    consumerItrSet.add(itr);
-    return itr;
+  public DynamicIterator iterateFrom(int offset) {
+    return new DynamicIterator(offset);
   }
 
   public int getFirstIndex() {
@@ -125,16 +125,12 @@ public class ConcurrentIterableLinkedQueue<E> {
     }
   }
 
-  public ConsumerItr subscribeEarliest() {
-    return subscribe(Integer.MIN_VALUE);
+  public DynamicIterator iterateFromEarliest() {
+    return iterateFrom(Integer.MIN_VALUE);
   }
 
-  public ConsumerItr subscribeLatest() {
-    return subscribe(Integer.MAX_VALUE);
-  }
-
-  public int getSubscriptionNum() {
-    return consumerItrSet.size();
+  public DynamicIterator iterateFromLatest() {
+    return iterateFrom(Integer.MAX_VALUE);
   }
 
   private static class LinkedListNode<E> {
@@ -150,14 +146,14 @@ public class ConcurrentIterableLinkedQueue<E> {
   // Temporarily, we do not use read lock because read lock in java does not
   // support condition. Besides, The pure park and un-park method is fairly slow,
   // thus we use Reentrant lock here.
-  public class ConsumerItr {
+  public class DynamicIterator {
 
     private LinkedListNode<E> next;
 
     // Offset is the position of the next element to read
     private int offset;
 
-    ConsumerItr(int offset) {
+    DynamicIterator(int offset) {
       lock.lock();
       try {
         if (last != null && offset >= lastIndex) {
@@ -180,7 +176,7 @@ public class ConcurrentIterableLinkedQueue<E> {
     }
 
     /**
-     * The getter of the iterator.
+     * The getter of the iterator. Never timeOut.
      *
      * @return
      *     <p>1. Directly The next element if exists.
@@ -188,10 +184,25 @@ public class ConcurrentIterableLinkedQueue<E> {
      *     <p>3. Null iff the current element is null or the next element's data is null.
      */
     public E next() {
+      return next(Long.MAX_VALUE);
+    }
+
+    /**
+     * The getter of the iterator with the given timeOut.
+     *
+     * @param waitTimeMillis the timeOut of the get operation
+     * @return
+     *     <p>1. Directly The next element if exists.
+     *     <p>2. Blocking until available iff the next element does not exist.
+     *     <p>3. Null iff the current element is null or the next element's data is null.
+     */
+    public E next(long waitTimeMillis) {
       lock.lock();
       try {
         while (!hasNext()) {
-          hasNext.await();
+          if (!hasNext.await(waitTimeMillis, TimeUnit.MILLISECONDS)) {
+            return null;
+          }
         }
 
         next = next.next;
@@ -219,9 +230,9 @@ public class ConcurrentIterableLinkedQueue<E> {
     }
 
     /**
-     * Seek the {@link ConsumerItr#offset} to the closest position allowed to the given offset. Note
-     * that one can seek to {@link ConcurrentIterableLinkedQueue#lastIndex} to subscribe the next
-     * incoming element.
+     * Seek the {@link DynamicIterator#offset} to the closest position allowed to the given offset.
+     * Note that one can seek to {@link ConcurrentIterableLinkedQueue#lastIndex} to subscribe the
+     * next incoming element.
      *
      * @param newOffset the attempt newOffset
      * @return the actual new offset
@@ -235,17 +246,18 @@ public class ConcurrentIterableLinkedQueue<E> {
         if (newOffset > lastIndex) {
           newOffset = lastIndex;
         }
-        if (newOffset < offset) {
+        int oldOffset = offset;
+        if (newOffset < oldOffset) {
           next = pilot;
+          offset = firstIndex;
           for (int i = 0; i < newOffset - firstIndex; ++i) {
             next();
           }
         } else {
-          for (int i = 0; i < newOffset - offset; ++i) {
+          for (int i = 0; i < newOffset - oldOffset; ++i) {
             next();
           }
         }
-        offset = newOffset;
         return offset;
       } finally {
         lock.unlock();

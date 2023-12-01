@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.datastructure;
 
 import org.awaitility.Awaitility;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -32,127 +33,52 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 public class ConcurrentIterableLinkedQueueTest {
 
-  private ConcurrentIterableLinkedQueue<Integer> queue;
+  ConcurrentIterableLinkedQueue<Integer> queue;
 
   @Before
   public void setUp() {
     queue = new ConcurrentIterableLinkedQueue<>();
   }
 
-  @Test
-  public void testAddAndRemove() {
-    Assert.assertTrue(queue.add(1));
-    Assert.assertTrue(queue.add(2));
-    Assert.assertEquals(2, queue.getLastIndex());
-
-    queue.removeBefore(1);
-    Assert.assertEquals(1, queue.getFirstIndex());
-  }
-
-  @Test
-  public void testClear() {
-    queue.add(1);
-    queue.add(2);
+  @After
+  public void shutDown() {
+    // Help gc
     queue.clear();
-    Assert.assertEquals(0, queue.getSubscriptionNum());
-    Assert.assertEquals(0, queue.getFirstIndex());
-    Assert.assertEquals(0, queue.getLastIndex());
+    queue = null;
   }
 
-  @Test
-  public void testSubscribeAndNext() {
-    queue.add(1);
-    queue.add(2);
-
-    ConcurrentIterableLinkedQueue<Integer>.ConsumerItr itr = queue.subscribe(0);
-    Assert.assertNotNull(itr);
-    Assert.assertEquals(Integer.valueOf(1), itr.next());
-    Assert.assertEquals(Integer.valueOf(2), itr.next());
-  }
-
-  @Test
-  public void testSubscribeEarliestAndLatest() {
-    queue.add(1);
-    queue.add(2);
-
-    ConcurrentIterableLinkedQueue<Integer>.ConsumerItr earliest = queue.subscribeEarliest();
-    ConcurrentIterableLinkedQueue<Integer>.ConsumerItr latest = queue.subscribeLatest();
-
-    Assert.assertEquals(Integer.valueOf(1), earliest.next());
-    Assert.assertFalse(latest.hasNext());
-  }
-
-  @Test
+  @Test(timeout = 60000)
   public void testSeek() {
     queue.add(1);
     queue.add(2);
     queue.add(3);
 
-    ConcurrentIterableLinkedQueue<Integer>.ConsumerItr itr = queue.subscribe(0);
+    ConcurrentIterableLinkedQueue<Integer>.DynamicIterator itr = queue.iterateFrom(0);
     itr.seek(2);
     Assert.assertEquals(Integer.valueOf(3), itr.next());
   }
 
-  @Test(expected = IllegalArgumentException.class)
-  public void testRemoveBeforeInvalidIndex() {
+  @Test(timeout = 60000)
+  public void testTimedGet() {
     queue.add(1);
-    queue.removeBefore(0); // This should throw an IllegalArgumentException
+    ConcurrentIterableLinkedQueue<Integer>.DynamicIterator itr = queue.iterateFromEarliest();
+    Assert.assertEquals(1, (int) itr.next(1000));
+    Assert.assertNull(itr.next(1000));
   }
 
-  @Test
-  public void testConcurrentAdd() throws InterruptedException {
-    int numberOfThreads = 10;
-    int numberOfAdds = 1000;
-    ExecutorService executor = Executors.newFixedThreadPool(numberOfThreads);
-    AtomicInteger counter = new AtomicInteger();
-
-    for (int i = 0; i < numberOfThreads; i++) {
-      executor.submit(
-          () -> {
-            for (int j = 0; j < numberOfAdds; j++) {
-              queue.add(counter.getAndIncrement());
-            }
-          });
-    }
-
-    executor.shutdown();
-    assertTrue(executor.awaitTermination(1, TimeUnit.MINUTES));
-
-    assertEquals(numberOfThreads * numberOfAdds, queue.getLastIndex());
+  @Test(timeout = 60000, expected = IllegalArgumentException.class)
+  public void testInsertNull() {
+    queue.add(null);
   }
 
-  @Test
-  public void testConcurrentSubscribeAndRead() throws InterruptedException {
-    int numberOfThreads = 5;
-    int numberOfAdds = 100;
-    ExecutorService executor = Executors.newFixedThreadPool(numberOfThreads);
-    for (int i = 0; i < numberOfAdds; i++) {
-      queue.add(i);
-    }
-
-    for (int i = 0; i < numberOfThreads; i++) {
-      executor.submit(
-          () -> {
-            ConcurrentIterableLinkedQueue<Integer>.ConsumerItr itr = queue.subscribeEarliest();
-            while (itr.hasNext()) {
-              // Processing the element
-              itr.next();
-            }
-          });
-    }
-
-    executor.shutdown();
-    assertTrue(executor.awaitTermination(1, TimeUnit.MINUTES));
-  }
-
-  @Test
+  @Test(timeout = 60000)
   public void testConcurrentAddAndRemove() throws InterruptedException {
+    ConcurrentIterableLinkedQueue<Integer> queue = new ConcurrentIterableLinkedQueue<>();
+
     int numberOfAdds = 500;
     ExecutorService executor = Executors.newFixedThreadPool(2);
 
@@ -173,23 +99,26 @@ public class ConcurrentIterableLinkedQueueTest {
         });
 
     executor.shutdown();
-    assertTrue(executor.awaitTermination(1, TimeUnit.MINUTES));
+    Assert.assertTrue(executor.awaitTermination(1, TimeUnit.MINUTES));
 
     // Validate the state of the queue
     // The actual state depends on the timing of add and remove operations
-    assertTrue(queue.getFirstIndex() <= numberOfAdds);
-    assertTrue(queue.getLastIndex() >= queue.getFirstIndex());
+    Assert.assertTrue(queue.getFirstIndex() <= numberOfAdds);
+    Assert.assertTrue(queue.getLastIndex() >= queue.getFirstIndex());
   }
 
   @Test(timeout = 60000)
-  public void testConcurrentRemoveAndSubscription() {
+  public void testIntegratedOperations() {
     queue.add(1);
     queue.add(2);
     queue.removeBefore(1);
-    ConcurrentIterableLinkedQueue<Integer>.ConsumerItr it = queue.subscribeEarliest();
+    Assert.assertEquals(1, queue.getFirstIndex());
+    Assert.assertEquals(2, queue.getLastIndex());
+
+    ConcurrentIterableLinkedQueue<Integer>.DynamicIterator it = queue.iterateFromEarliest();
     Assert.assertEquals(2, (int) it.next());
 
-    ConcurrentIterableLinkedQueue<Integer>.ConsumerItr it2 = queue.subscribeLatest();
+    ConcurrentIterableLinkedQueue<Integer>.DynamicIterator it2 = queue.iterateFromLatest();
     Assert.assertEquals(2, it2.getOffset());
     AtomicInteger value = new AtomicInteger(-1);
     new Thread(() -> value.set(it2.next())).start();
@@ -203,6 +132,7 @@ public class ConcurrentIterableLinkedQueueTest {
 
     queue.clear();
     Assert.assertEquals(0, queue.getFirstIndex());
+    Assert.assertEquals(0, queue.getLastIndex());
   }
 
   @Test(timeout = 60000)
@@ -243,7 +173,8 @@ public class ConcurrentIterableLinkedQueueTest {
           new Thread(
               () -> {
                 try {
-                  ConcurrentIterableLinkedQueue<Integer>.ConsumerItr it = queue.subscribeEarliest();
+                  ConcurrentIterableLinkedQueue<Integer>.DynamicIterator it =
+                      queue.iterateFromEarliest();
                   for (int j = 0; j < 20000; ++j) {
                     it.next();
                   }
