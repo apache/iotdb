@@ -21,8 +21,8 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.rpc.RpcTransportFactory;
+import org.apache.iotdb.rpc.TimeoutChangeableTransport;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 
 import org.apache.thrift.transport.TTransport;
@@ -47,17 +47,19 @@ public class IoTDBThriftSyncConnectorClient extends IClientRPCService.Client
                     ? RpcTransportFactory.INSTANCE.getTransport(
                         ipAddress,
                         port,
-                        (int) PipeConfig.getInstance().getPipeConnectorTimeoutMs(),
+                        property.getConnectionTimeoutMs(),
                         trustStore,
                         trustStorePwd)
                     : RpcTransportFactory.INSTANCE.getTransport(
-                        ipAddress,
-                        port,
-                        (int) PipeConfig.getInstance().getPipeConnectorTimeoutMs())));
+                        ipAddress, port, property.getConnectionTimeoutMs())));
     TTransport transport = getInputProtocol().getTransport();
     if (!transport.isOpen()) {
       transport.open();
     }
+  }
+
+  public void setTimeout(int timeOut) {
+    ((TimeoutChangeableTransport) (getInputProtocol().getTransport())).setTimeout(timeOut);
   }
 
   @Override

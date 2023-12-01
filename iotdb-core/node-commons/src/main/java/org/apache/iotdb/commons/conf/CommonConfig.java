@@ -162,7 +162,8 @@ public class CommonConfig {
   private long pipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes = 50; // 50B
   private int pipeExtractorMatcherCacheSize = 1024;
 
-  private long pipeConnectorTimeoutMs = 15 * 60 * 1000L; // 15 minutes
+  private long pipeConnectorHandshakeTimeoutMs = 30 * 1000L; // 30 seconds
+  private long pipeConnectorTransferTimeoutMs = 15 * 60 * 1000L; // 15 minutes
   private int pipeConnectorReadFileBufferSize = 8388608;
   private long pipeConnectorRetryIntervalMs = 1000L;
   // recommend to set this value to 3 * pipeSubtaskExecutorMaxThreadNum *
@@ -561,12 +562,20 @@ public class CommonConfig {
     this.pipeExtractorMatcherCacheSize = pipeExtractorMatcherCacheSize;
   }
 
-  public long getPipeConnectorTimeoutMs() {
-    return pipeConnectorTimeoutMs;
+  public long getPipeConnectorHandshakeTimeoutMs() {
+    return pipeConnectorHandshakeTimeoutMs;
   }
 
-  public void setPipeConnectorTimeoutMs(long pipeConnectorTimeoutMs) {
-    this.pipeConnectorTimeoutMs = pipeConnectorTimeoutMs;
+  public void setPipeConnectorHandshakeTimeoutMs(long pipeConnectorHandshakeTimeoutMs) {
+    this.pipeConnectorHandshakeTimeoutMs = pipeConnectorHandshakeTimeoutMs;
+  }
+
+  public long getPipeConnectorTransferTimeoutMs() {
+    return pipeConnectorTransferTimeoutMs;
+  }
+
+  public void setPipeConnectorTransferTimeoutMs(long pipeConnectorTransferTimeoutMs) {
+    this.pipeConnectorTransferTimeoutMs = pipeConnectorTransferTimeoutMs;
   }
 
   public int getPipeConnectorReadFileBufferSize() {

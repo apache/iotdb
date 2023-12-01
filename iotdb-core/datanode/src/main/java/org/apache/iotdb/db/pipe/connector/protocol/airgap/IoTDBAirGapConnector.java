@@ -199,7 +199,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
         throw new PipeException("Handshake error with target server ip: " + ip + ", port: " + port);
       } else {
         isSocketAlive.set(i, true);
-        socket.setSoTimeout((int) PIPE_CONFIG.getPipeConnectorTimeoutMs());
+        socket.setSoTimeout((int) PIPE_CONFIG.getPipeConnectorTransferTimeoutMs());
         LOGGER.info("Handshake success. Target server ip: {}, port: {}", ip, port);
       }
     }
