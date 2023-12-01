@@ -20,11 +20,11 @@
 package org.apache.iotdb.commons.pipe.plugin.builtin.connector;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
-import org.apache.iotdb.session.util.SessionUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -113,13 +113,13 @@ public abstract class IoTDBConnector implements PipeConnector {
 
     if (parameters.hasAttribute(CONNECTOR_IOTDB_NODE_URLS_KEY)) {
       givenNodeUrls.addAll(
-          SessionUtils.parseSeedNodeUrls(
+          NodeUrlUtils.parseTEndPointUrls(
               Arrays.asList(parameters.getStringByKeys(CONNECTOR_IOTDB_NODE_URLS_KEY).split(","))));
     }
 
     if (parameters.hasAttribute(SINK_IOTDB_NODE_URLS_KEY)) {
       givenNodeUrls.addAll(
-          SessionUtils.parseSeedNodeUrls(
+          NodeUrlUtils.parseTEndPointUrls(
               Arrays.asList(parameters.getStringByKeys(SINK_IOTDB_NODE_URLS_KEY).split(","))));
     }
 
