@@ -37,13 +37,21 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** QueryContext contains the shared information with in a query. */
 public class QueryContext {
-  public int loadTimeSeriesMetadataDiskCount = 0;
-  public long loadTimeSeriesMetadataDiskTime = 0;
-  public int loadTimeSeriesMetadataMemCount = 0;
-  public long loadTimeSeriesMetadataMemTime = 0;
+  public AtomicLong loadTimeSeriesMetadataDiskCount = new AtomicLong(0);
+  public AtomicLong loadTimeSeriesMetadataDiskTime = new AtomicLong(0);
+  public AtomicLong loadTimeSeriesMetadataMemCount = new AtomicLong(0);
+  public AtomicLong loadTimeSeriesMetadataMemTime = new AtomicLong(0);
+  public AtomicLong constructChunkReaderDiskCount = new AtomicLong(0);
+  public AtomicLong constructChunkReaderDiskTime = new AtomicLong(0);
+  public AtomicLong constructChunkReaderDiskDeserializationTime = new AtomicLong(0);
+  public AtomicLong buildTsBlockFromPageReaderDiskCount = new AtomicLong(0);
+  public AtomicLong buildTsBlockFromPageReaderDiskTime = new AtomicLong(0);
+  public AtomicLong buildTsBlockFromPageReaderMemCount = new AtomicLong(0);
+  public AtomicLong buildTsBlockFromPageReaderMemTime = new AtomicLong(0);
 
   /**
    * The key is the path of a ModificationFile and the value is all Modifications in this file. We

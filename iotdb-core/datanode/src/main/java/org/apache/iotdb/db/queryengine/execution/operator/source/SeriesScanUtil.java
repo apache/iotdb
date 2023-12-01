@@ -547,7 +547,8 @@ public class SeriesScanUtil {
                   chunkMetaData.getVersion(),
                   chunkMetaData.getOffsetOfChunkHeader(),
                   iPageReader,
-                  true));
+                  true,
+                  context));
         }
       } else {
         for (int i = pageReaderList.size() - 1; i >= 0; i--) {
@@ -556,7 +557,8 @@ public class SeriesScanUtil {
                   chunkMetaData.getVersion(),
                   chunkMetaData.getOffsetOfChunkHeader(),
                   pageReaderList.get(i),
-                  true));
+                  true,
+                  context));
         }
       }
     } else {
@@ -567,7 +569,8 @@ public class SeriesScanUtil {
                       chunkMetaData.getVersion(),
                       chunkMetaData.getOffsetOfChunkHeader(),
                       pageReader,
-                      false)));
+                      false,
+                      context)));
     }
   }
 
@@ -1130,7 +1133,7 @@ public class SeriesScanUtil {
   }
 
   protected static class VersionPageReader {
-
+    private final QueryContext queryContext;
     private final PriorityMergeReader.MergeReaderPriority version;
     private final IPageReader data;
 
@@ -1138,12 +1141,14 @@ public class SeriesScanUtil {
     private final boolean isAligned;
     private final boolean isMem;
 
-    VersionPageReader(long version, long offset, IPageReader data, boolean isSeq) {
+    VersionPageReader(
+        long version, long offset, IPageReader data, boolean isSeq, QueryContext queryContext) {
       this.version = new PriorityMergeReader.MergeReaderPriority(version, offset);
       this.data = data;
       this.isSeq = isSeq;
       this.isAligned = data instanceof IAlignedPageReader;
       this.isMem = data instanceof MemPageReader || data instanceof MemAlignedPageReader;
+      this.queryContext = queryContext;
     }
 
     @SuppressWarnings("squid:S3740")
@@ -1176,6 +1181,16 @@ public class SeriesScanUtil {
         }
         return tsBlock;
       } finally {
+        long time = System.nanoTime() - startTime;
+        if (isAligned) {
+          if (isMem) {
+            queryContext.buildTsBlockFromPageReaderMemCount.getAndAdd(1);
+            queryContext.buildTsBlockFromPageReaderMemTime.getAndAdd(time);
+          } else {
+            queryContext.buildTsBlockFromPageReaderDiskCount.getAndAdd(1);
+            queryContext.buildTsBlockFromPageReaderDiskTime.getAndAdd(time);
+          }
+        }
         SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
             isAligned
                 ? (isMem
@@ -1184,7 +1199,7 @@ public class SeriesScanUtil {
                 : (isMem
                     ? BUILD_TSBLOCK_FROM_PAGE_READER_NONALIGNED_MEM
                     : BUILD_TSBLOCK_FROM_PAGE_READER_NONALIGNED_DISK),
-            System.nanoTime() - startTime);
+            time);
       }
     }
 

@@ -433,10 +433,10 @@ public abstract class Driver implements IDriver {
         Thread.currentThread().interrupt();
       }
     }
-    LOGGER.warn(
-        "~~~~~ closeAndDestroyOperators of driver, allExecuteTime: {}ms, root operator: {}",
-        allExecuteTime / 1000000,
-        root.getClass());
+    //    LOGGER.warn(
+    //        "~~~~~ closeAndDestroyOperators of driver, allExecuteTime: {}ms, root operator: {}",
+    //        allExecuteTime / 1000000,
+    //        root.getClass());
     return inFlightException;
   }
 

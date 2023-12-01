@@ -452,18 +452,31 @@ public class FragmentInstanceContext extends QueryContext {
     releaseTime.set(endTime);
     durationTime.set(endTime - executionStartTime.get());
     LOGGER.warn(
-        " ===== FragmentInstanceContext released, id: {}, "
+        " ========== \r\n "
+            + "FragmentInstanceContext released, id: {}, "
             + "releaseTime: {}, "
             + "startTime: {}, "
-            + "durationTime: {}ms, "
-            + "loadTimeseriesMetadataDiskCount: {}, "
-            + "loadTimeseriesMetadataDiskTime: {}",
+            + "durationTime: {}ms, \r\n"
+            + "loadTimeseriesMetadataCount: [Disk: {}, Mem: {}], \r\n"
+            + "loadTimeseriesMetadataTime: [Disk: {}, Mem: {}]ns, \r\n"
+            + "constructChunkReaderDisk - Count: {}, Time:{}ns,  constructChunkReaderDiskDeserializationTime: {}ns\r\n"
+            + "buildTsBlockFromPageReaderCount: [Disk: {}, Mem: {}], \r\n"
+            + "buildTsBlockFromPageReaderTime: [Disk: {}, Mem: {}]ns",
         id,
         releaseTime.get(),
         executionStartTime.get(),
         durationTime.get(),
         loadTimeSeriesMetadataDiskCount,
-        loadTimeSeriesMetadataDiskCount);
+        loadTimeSeriesMetadataMemCount,
+        loadTimeSeriesMetadataDiskTime,
+        loadTimeSeriesMetadataMemTime,
+        constructChunkReaderDiskCount,
+        constructChunkReaderDiskTime,
+        constructChunkReaderDiskDeserializationTime,
+        buildTsBlockFromPageReaderDiskCount,
+        buildTsBlockFromPageReaderMemCount,
+        buildTsBlockFromPageReaderDiskTime,
+        buildTsBlockFromPageReaderMemTime);
 
     dataRegion = null;
     globalTimeFilter = null;

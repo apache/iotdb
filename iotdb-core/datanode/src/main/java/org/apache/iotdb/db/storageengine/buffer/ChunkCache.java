@@ -131,8 +131,8 @@ public class ChunkCache {
       return new Chunk(
           chunk.getHeader(), chunk.getData().duplicate(), timeRangeList, chunkStatistic);
     } finally {
-      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-          READ_CHUNK_ALL, System.nanoTime() - startTime);
+      long time = System.nanoTime() - startTime;
+      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(READ_CHUNK_ALL, time);
     }
   }
 

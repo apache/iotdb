@@ -58,8 +58,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.LOAD_TIMESERIES_METADATA_ALIGNED_DISK;
-import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.LOAD_TIMESERIES_METADATA_ALIGNED_MEM;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.LOAD_TIMESERIES_METADATA_NONALIGNED_DISK;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.LOAD_TIMESERIES_METADATA_NONALIGNED_MEM;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.TIMESERIES_METADATA_MODIFICATION_ALIGNED;
@@ -191,13 +189,6 @@ public class FileLoaderUtils {
       return timeSeriesMetadata;
     } finally {
       long time = System.nanoTime() - t1;
-      if (loadFromMem) {
-        context.loadTimeSeriesMetadataMemCount += 1;
-        context.loadTimeSeriesMetadataMemTime += time;
-      } else {
-        context.loadTimeSeriesMetadataDiskCount += 1;
-        context.loadTimeSeriesMetadataDiskTime += time;
-      }
       SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
           loadFromMem
               ? LOAD_TIMESERIES_METADATA_NONALIGNED_MEM
@@ -261,19 +252,28 @@ public class FileLoaderUtils {
       }
       return alignedTimeSeriesMetadata;
     } finally {
-      long loadAlignedTimeSeriesMetadataTime = System.nanoTime() - t1;
-      LOGGER.warn(
-          "!!!!! loadAlignedTimeSeriesMetadataTime, path: {}, type: {}, time: {}ms",
-          alignedPath.getFullPath(),
-          loadFromMem
-              ? LOAD_TIMESERIES_METADATA_ALIGNED_MEM
-              : LOAD_TIMESERIES_METADATA_ALIGNED_DISK,
-          loadAlignedTimeSeriesMetadataTime / 1000000);
+      long costTime = System.nanoTime() - t1;
+      if (loadFromMem) {
+        context.loadTimeSeriesMetadataMemCount.getAndAdd(1);
+        context.loadTimeSeriesMetadataMemTime.getAndAdd(costTime);
+        //        LOGGER.warn(
+        //            "!!!!! loadAlignedTimeSeriesMetadataTime, Mem, path: {}, time: {}ns",
+        //            alignedPath.getFullPath(),
+        //            costTime);
+      } else {
+        context.loadTimeSeriesMetadataDiskCount.getAndAdd(1);
+        context.loadTimeSeriesMetadataDiskTime.getAndAdd(costTime);
+        //        LOGGER.warn(
+        //            "!!!!! loadAlignedTimeSeriesMetadataTime, Disk, path: {}, time: {}ns",
+        //            alignedPath.getFullPath(),
+        //            costTime);
+      }
+
       SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
           loadFromMem
-              ? LOAD_TIMESERIES_METADATA_ALIGNED_MEM
-              : LOAD_TIMESERIES_METADATA_ALIGNED_DISK,
-          loadAlignedTimeSeriesMetadataTime);
+              ? LOAD_TIMESERIES_METADATA_NONALIGNED_MEM
+              : LOAD_TIMESERIES_METADATA_NONALIGNED_DISK,
+          costTime);
     }
   }
 
