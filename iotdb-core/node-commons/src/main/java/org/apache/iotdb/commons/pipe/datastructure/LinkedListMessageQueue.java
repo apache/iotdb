@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.schema;
+package org.apache.iotdb.commons.pipe.datastructure;
 
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;

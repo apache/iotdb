@@ -17,9 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe;
+package org.apache.iotdb.commons.pipe.datastructure;
 
-import org.apache.iotdb.commons.pipe.schema.LinkedListMessageQueue;
+import org.apache.iotdb.commons.pipe.datastructure.LinkedListMessageQueue;
 
 import org.awaitility.Awaitility;
 import org.junit.Assert;

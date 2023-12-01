@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe;
+package org.apache.iotdb.commons.pipe.task.meta;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
