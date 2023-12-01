@@ -24,6 +24,12 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
+/**
+ * This class allows dynamic iterating over the elements, namely an iterator is able to read the
+ * incoming element.
+ *
+ * @param <E>
+ */
 public class LinkedListMessageQueue<E> {
   LinkedListNode<E> pilot = new LinkedListNode<>(null);
   LinkedListNode<E> first;
@@ -173,6 +179,14 @@ public class LinkedListMessageQueue<E> {
       }
     }
 
+    /**
+     * The getter of the iterator.
+     *
+     * @return
+     *     <p>1. Directly The next element if exists.
+     *     <p>2. Blocking until available iff the next element does not exist.
+     *     <p>3. Null iff the current element is null or the next element's data is null.
+     */
     public E next() {
       lock.lock();
       try {
@@ -200,8 +214,9 @@ public class LinkedListMessageQueue<E> {
     }
 
     /**
-     * Seek the offset to the closest position allowed to the given offset. Note that one can seek
-     * to "lastIndex + 1" to subscribe the next incoming element.
+     * Seek the {@link ConsumerItr#offset} to the closest position allowed to the given offset. Note
+     * that one can seek to {@link LinkedListMessageQueue#lastIndex} to subscribe the next incoming
+     * element.
      *
      * @param newOffset the attempt newOffset
      * @return the actual new offset
