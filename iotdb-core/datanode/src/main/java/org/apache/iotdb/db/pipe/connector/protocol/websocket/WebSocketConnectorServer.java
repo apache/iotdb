@@ -83,7 +83,10 @@ public class WebSocketConnectorServer extends WebSocketServer {
 
   public synchronized void unregister(WebSocketConnector connector) {
     final String pipeName = connector.getPipeName();
-
+    // close invoked in validation stage
+    if (pipeName == null) {
+      return;
+    }
     if (eventsWaitingForTransfer.containsKey(pipeName)) {
       final PriorityBlockingQueue<EventWaitingForTransfer> eventTransferQueue =
           eventsWaitingForTransfer.remove(pipeName);
@@ -141,14 +144,23 @@ public class WebSocketConnectorServer extends WebSocketServer {
 
   @Override
   public void onClose(WebSocket webSocket, int code, String reason, boolean remote) {
-    LOGGER.info(
-        "The websocket connection from client {}:{} has been closed! "
-            + "The code is {}. The reason is {}. Is it closed by remote? {}",
-        webSocket.getRemoteSocketAddress().getHostName(),
-        webSocket.getRemoteSocketAddress().getPort(),
-        code,
-        reason,
-        remote);
+    if (webSocket.getRemoteSocketAddress() != null) {
+      LOGGER.info(
+          "The websocket connection from client {}:{} has been closed! "
+              + "The code is {}. The reason is {}. Is it closed by remote? {}",
+          webSocket.getRemoteSocketAddress().getHostName(),
+          webSocket.getRemoteSocketAddress().getPort(),
+          code,
+          reason,
+          remote);
+    } else {
+      LOGGER.warn(
+          "The websocket connection from client has been closed!"
+              + "The code is {}. The reason is {}. Is it closed by remote? {}",
+          code,
+          reason,
+          remote);
+    }
     router.remove(router.getKey(webSocket));
   }
 

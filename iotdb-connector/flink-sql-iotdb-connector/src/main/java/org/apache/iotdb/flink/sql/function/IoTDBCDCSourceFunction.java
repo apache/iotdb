@@ -104,9 +104,11 @@ public class IoTDBCDCSourceFunction extends RichSourceFunction<RowData> {
                     + "'extractor.pattern' = '%s',\n"
                     + ") WITH CONNECTOR (\n"
                     + "'connector' = 'websocket-connector',\n"
-                    + "'connector.websocket.port' = '%d'"
+                    + "'connector.websocket.port' = '%d',\n"
+                    // avoid to reuse the pipe's connector
+                    + "'connector.websocket.id' = '%d'"
                     + ")",
-                pipeName, pattern, cdcPort);
+                pipeName, pattern, cdcPort, System.currentTimeMillis());
         session.executeNonQueryStatement(createPipeCommand);
         session.executeNonQueryStatement(String.format("start pipe %s", pipeName));
       } else {
