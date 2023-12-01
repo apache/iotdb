@@ -23,21 +23,168 @@ import org.apache.iotdb.commons.pipe.schema.LinkedListMessageQueue;
 
 import org.awaitility.Awaitility;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class LinkedListMessageQueueTest {
 
+  private LinkedListMessageQueue<Integer> queue;
+
+  @Before
+  public void setUp() {
+    queue = new LinkedListMessageQueue<>();
+  }
+
+  @Test
+  public void testAddAndRemove() {
+    Assert.assertTrue(queue.add(1));
+    Assert.assertTrue(queue.add(2));
+    Assert.assertEquals(2, queue.getLastIndex());
+
+    queue.removeBefore(1);
+    Assert.assertEquals(1, queue.getFirstIndex());
+  }
+
+  @Test
+  public void testClear() {
+    queue.add(1);
+    queue.add(2);
+    queue.clear();
+    Assert.assertEquals(0, queue.getSubscriptionNum());
+    Assert.assertEquals(0, queue.getFirstIndex());
+    Assert.assertEquals(0, queue.getLastIndex());
+  }
+
+  @Test
+  public void testSubscribeAndNext() {
+    queue.add(1);
+    queue.add(2);
+
+    LinkedListMessageQueue<Integer>.ConsumerItr itr = queue.subscribe(0);
+    Assert.assertNotNull(itr);
+    Assert.assertEquals(Integer.valueOf(1), itr.next());
+    Assert.assertEquals(Integer.valueOf(2), itr.next());
+  }
+
+  @Test
+  public void testSubscribeEarliestAndLatest() {
+    queue.add(1);
+    queue.add(2);
+
+    LinkedListMessageQueue<Integer>.ConsumerItr earliest = queue.subscribeEarliest();
+    LinkedListMessageQueue<Integer>.ConsumerItr latest = queue.subscribeLatest();
+
+    Assert.assertEquals(Integer.valueOf(1), earliest.next());
+    Assert.assertFalse(latest.hasNext());
+  }
+
+  @Test
+  public void testSeek() {
+    queue.add(1);
+    queue.add(2);
+    queue.add(3);
+
+    LinkedListMessageQueue<Integer>.ConsumerItr itr = queue.subscribe(0);
+    itr.seek(2);
+    Assert.assertEquals(Integer.valueOf(3), itr.next());
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testRemoveBeforeInvalidIndex() {
+    queue.add(1);
+    queue.removeBefore(0); // This should throw an IllegalArgumentException
+  }
+
+  @Test
+  public void testConcurrentAdd() throws InterruptedException {
+    int numberOfThreads = 10;
+    int numberOfAdds = 1000;
+    ExecutorService executor = Executors.newFixedThreadPool(numberOfThreads);
+    AtomicInteger counter = new AtomicInteger();
+
+    for (int i = 0; i < numberOfThreads; i++) {
+      executor.submit(
+          () -> {
+            for (int j = 0; j < numberOfAdds; j++) {
+              queue.add(counter.getAndIncrement());
+            }
+          });
+    }
+
+    executor.shutdown();
+    assertTrue(executor.awaitTermination(1, TimeUnit.MINUTES));
+
+    assertEquals(numberOfThreads * numberOfAdds, queue.getLastIndex());
+  }
+
+  @Test
+  public void testConcurrentSubscribeAndRead() throws InterruptedException {
+    int numberOfThreads = 5;
+    int numberOfAdds = 100;
+    ExecutorService executor = Executors.newFixedThreadPool(numberOfThreads);
+    for (int i = 0; i < numberOfAdds; i++) {
+      queue.add(i);
+    }
+
+    for (int i = 0; i < numberOfThreads; i++) {
+      executor.submit(
+          () -> {
+            LinkedListMessageQueue<Integer>.ConsumerItr itr = queue.subscribeEarliest();
+            while (itr.hasNext()) {
+              // Processing the element
+              itr.next();
+            }
+          });
+    }
+
+    executor.shutdown();
+    assertTrue(executor.awaitTermination(1, TimeUnit.MINUTES));
+  }
+
+  @Test
+  public void testConcurrentAddAndRemove() throws InterruptedException {
+    int numberOfAdds = 500;
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+
+    // Thread 1 adds elements to the queue
+    executor.submit(
+        () -> {
+          for (int i = 0; i < numberOfAdds; i++) {
+            queue.add(i);
+          }
+        });
+
+    // Thread 2 removes elements before a certain index
+    executor.submit(
+        () -> {
+          for (int i = 0; i < numberOfAdds; i += 10) {
+            queue.removeBefore(i);
+          }
+        });
+
+    executor.shutdown();
+    assertTrue(executor.awaitTermination(1, TimeUnit.MINUTES));
+
+    // Validate the state of the queue
+    // The actual state depends on the timing of add and remove operations
+    assertTrue(queue.getFirstIndex() <= numberOfAdds);
+    assertTrue(queue.getLastIndex() >= queue.getFirstIndex());
+  }
+
   @Test(timeout = 60000)
-  public void testRemoveAndSubscription() {
-    LinkedListMessageQueue<Integer> queue = new LinkedListMessageQueue<>();
+  public void testConcurrentRemoveAndSubscription() {
     queue.add(1);
     queue.add(2);
     queue.removeBefore(1);
@@ -62,7 +209,6 @@ public class LinkedListMessageQueueTest {
 
   @Test(timeout = 60000)
   public void testConcurrentReadWrite() {
-    LinkedListMessageQueue<Integer> queue = new LinkedListMessageQueue<>();
     AtomicBoolean failure = new AtomicBoolean(false);
     List<Thread> threadList = new ArrayList<>(102);
 

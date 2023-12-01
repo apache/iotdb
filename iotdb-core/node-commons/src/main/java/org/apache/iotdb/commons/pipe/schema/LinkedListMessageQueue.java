@@ -209,8 +209,13 @@ public class LinkedListMessageQueue<E> {
       return null;
     }
 
-    private boolean hasNext() {
-      return next.next != null;
+    public boolean hasNext() {
+      lock.lock();
+      try {
+        return next.next != null;
+      } finally {
+        lock.unlock();
+      }
     }
 
     /**
