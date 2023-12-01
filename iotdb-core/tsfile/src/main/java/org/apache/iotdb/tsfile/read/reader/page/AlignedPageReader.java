@@ -151,21 +151,19 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader, IStat
       return true;
     }
 
-    // For aligned series, When we only query some measurements under an aligned device, if any
-    // values of these queried measurements has the same value count as the time column, the
-    // timestamp will be selected.
+    // For aligned series, we can use statistics to skip OFFSET only when all times are selected.
     // NOTE: if we change the query semantic in the future for aligned series, we need to remove
     // this check here.
     long rowCount = getTimeStatistics().getCount();
     for (Statistics<? extends Serializable> statistics : getValueStatisticsList()) {
-      if (statistics != null && statistics.hasNullValue(rowCount)) {
-        return false;
+      if (statistics != null && !statistics.hasNullValue(rowCount)) {
+        // When there is any value page point number that is the same as the time page,
+        // it means that all timestamps in time page will be selected.
+        return true;
       }
     }
 
-    // When the number of points in all value pages is the same as that in the time page, it means
-    // that there is no null value, and all timestamps will be selected.
-    return true;
+    return false;
   }
 
   public IPointReader getLazyPointReader() throws IOException {
