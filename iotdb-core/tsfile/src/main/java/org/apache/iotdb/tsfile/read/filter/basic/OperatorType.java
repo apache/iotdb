@@ -21,8 +21,8 @@ package org.apache.iotdb.tsfile.read.filter.basic;
 
 public enum OperatorType {
   // comparison
-  TIME_EQ("=="),
-  VALUE_EQ("=="),
+  TIME_EQ("="),
+  VALUE_EQ("="),
   TIME_NEQ("!="),
   VALUE_NEQ("!="),
   TIME_GT(">"),
