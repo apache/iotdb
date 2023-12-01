@@ -190,11 +190,19 @@ public class FileLoaderUtils {
       }
       return timeSeriesMetadata;
     } finally {
+      long time = System.nanoTime() - t1;
+      if (loadFromMem) {
+        context.loadTimeSeriesMetadataMemCount += 1;
+        context.loadTimeSeriesMetadataMemTime += time;
+      } else {
+        context.loadTimeSeriesMetadataDiskCount += 1;
+        context.loadTimeSeriesMetadataDiskTime += time;
+      }
       SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
           loadFromMem
               ? LOAD_TIMESERIES_METADATA_NONALIGNED_MEM
               : LOAD_TIMESERIES_METADATA_NONALIGNED_DISK,
-          System.nanoTime() - t1);
+          time);
     }
   }
 

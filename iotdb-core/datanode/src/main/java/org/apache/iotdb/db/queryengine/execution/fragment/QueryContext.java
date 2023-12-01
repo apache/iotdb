@@ -40,6 +40,10 @@ import java.util.Set;
 
 /** QueryContext contains the shared information with in a query. */
 public class QueryContext {
+  public int loadTimeSeriesMetadataDiskCount = 0;
+  public long loadTimeSeriesMetadataDiskTime = 0;
+  public int loadTimeSeriesMetadataMemCount = 0;
+  public long loadTimeSeriesMetadataMemTime = 0;
 
   /**
    * The key is the path of a ModificationFile and the value is all Modifications in this file. We

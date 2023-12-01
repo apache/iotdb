@@ -420,6 +420,7 @@ public class FragmentInstanceContext extends QueryContext {
         allDriversClosed.await();
         break;
       } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
         LOGGER.warn(
             "Interrupted when await on allDriversClosed, FragmentInstance Id is {}", this.getId());
       }
@@ -451,11 +452,18 @@ public class FragmentInstanceContext extends QueryContext {
     releaseTime.set(endTime);
     durationTime.set(endTime - executionStartTime.get());
     LOGGER.warn(
-        " ===== FragmentInstanceContext released, id: {}, releaseTime: {}, startTime: {}, durationTime:{}ms",
+        " ===== FragmentInstanceContext released, id: {}, "
+            + "releaseTime: {}, "
+            + "startTime: {}, "
+            + "durationTime: {}ms, "
+            + "loadTimeseriesMetadataDiskCount: {}, "
+            + "loadTimeseriesMetadataDiskTime: {}",
         id,
         releaseTime.get(),
         executionStartTime.get(),
-        durationTime.get());
+        durationTime.get(),
+        loadTimeSeriesMetadataDiskCount,
+        loadTimeSeriesMetadataDiskCount);
 
     dataRegion = null;
     globalTimeFilter = null;

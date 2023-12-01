@@ -117,10 +117,6 @@ public abstract class Driver implements IDriver {
   /** release resource this driver used. */
   protected abstract void releaseResource();
 
-  public int getDependencyDriverIndex() {
-    return driverContext.getDependencyDriverIndex();
-  }
-
   @Override
   public ListenableFuture<?> processFor(Duration duration) {
 

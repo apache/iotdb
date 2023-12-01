@@ -2017,8 +2017,6 @@ public class DataRegion implements IDataRegionForQuery {
               // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
               // change after compaction
               deletion.setFileOffset(Long.MAX_VALUE);
-              // 如果这个时候正在执行清理，就写入到一个 compact 的文件里面
-              // 这里一次删除会写入到两个文件里面
               // write deletion into compaction modification file
               tsFileResource.getCompactionModFile().write(deletion);
               // write deletion into modification file to enable read during compaction
