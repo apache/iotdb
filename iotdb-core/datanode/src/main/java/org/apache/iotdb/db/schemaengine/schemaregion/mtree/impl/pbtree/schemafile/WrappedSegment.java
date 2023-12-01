@@ -57,7 +57,7 @@ public class WrappedSegment implements ISegment<ByteBuffer, ICachedMNode> {
   protected String penuKey = null, lastKey = null;
 
   /**
-   * <p><b>Segment Structure:</b>
+   * <b>Segment Structure:</b>
    * <li>(25 byte: header)
    * <li>1 short: length, segment length
    * <li>1 short: freeAddr, start offset of records
@@ -334,7 +334,6 @@ public class WrappedSegment implements ISegment<ByteBuffer, ICachedMNode> {
   public synchronized String splitByKey(
       String key, ByteBuffer recBuf, ByteBuffer dstBuffer, boolean inclineSplit)
       throws MetadataException {
-
 
     if (this.buffer.capacity() != dstBuffer.capacity()) {
       throw new MetadataException("Segments only splits with same capacity.");
