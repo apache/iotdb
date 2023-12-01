@@ -23,9 +23,11 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.pipe.execution.executor.PipeConfigSubtaskExecutor;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.task.subtask.PipeConfigSubtask;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
@@ -143,6 +145,21 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(response.getMessage());
     }
+
+    // Create subtask of schema pipe here
+    try {
+      PipeConfigSubtaskExecutor.getInstance()
+          .register(
+              new PipeConfigSubtask(
+                  pipeStaticMeta.getPipeName(),
+                  pipeStaticMeta.getExtractorParameters().getAttribute(),
+                  pipeStaticMeta.getConnectorParameters().getAttribute()));
+    } catch (Exception e) {
+      throw new PipeException(
+          String.format(
+              "Failed to create subtask for schema pipe %s.", pipeStaticMeta.getPipeName()),
+          e);
+    }
   }
 
   @Override
@@ -180,6 +197,15 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     LOGGER.info(
         "CreatePipeProcedureV2: rollbackFromWriteConfigNodeConsensus({})",
         createPipeRequest.getPipeName());
+
+    // Drop subtask of schema pipe here
+    try {
+      PipeConfigSubtaskExecutor.getInstance().deregister(pipeStaticMeta.getPipeName());
+    } catch (Exception e) {
+      throw new PipeException(
+          String.format("Failed to drop subtask for schema pipe %s.", pipeStaticMeta.getPipeName()),
+          e);
+    }
 
     TSStatus response;
     try {

@@ -22,12 +22,12 @@ package org.apache.iotdb.commons.pipe.plugin.builtin.connector.schema;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorClient;
+import org.apache.iotdb.commons.pipe.event.ddl.ISchemaEvent;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.event.ddl.ISchemaEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
@@ -218,7 +218,6 @@ public class IoTDBSchemaConnector extends IoTDBConnector {
         "IoTDBSchemaConnector can't transfer TsFileInsertionEvent.");
   }
 
-  @Override
   public void transfer(ISchemaEvent schemaEvent) throws Exception {
     if (!atLeastOneEnable) {
       return;

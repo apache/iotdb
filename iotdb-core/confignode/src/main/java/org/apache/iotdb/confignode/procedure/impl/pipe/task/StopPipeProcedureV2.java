@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.execution.executor.PipeConfigSubtaskExecutor;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -90,6 +91,8 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(response.getMessage());
     }
+
+    PipeConfigSubtaskExecutor.getInstance().stop(pipeName);
   }
 
   @Override
@@ -121,6 +124,8 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   @Override
   protected void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
     LOGGER.info("StopPipeProcedureV2: rollbackFromWriteConfigNodeConsensus({})", pipeName);
+
+    PipeConfigSubtaskExecutor.getInstance().start(pipeName);
 
     TSStatus response;
     try {

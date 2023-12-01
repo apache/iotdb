@@ -19,15 +19,13 @@
 
 package org.apache.iotdb.commons.pipe.task.subtask;
 
+import org.apache.iotdb.commons.pipe.event.ddl.ISchemaEvent;
 import org.apache.iotdb.commons.pipe.execution.scheduler.PipeConfigSubtaskScheduler;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.schema.IoTDBSchemaConnector;
 import org.apache.iotdb.commons.pipe.task.DecoratingLock;
-import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -66,7 +64,7 @@ public class PipeConfigSubtask
   private final AtomicInteger retryCount = new AtomicInteger(0);
   private Event lastEvent;
 
-  private final PipeConnector outputPipeConnector;
+  private final IoTDBSchemaConnector outputPipeConnector;
 
   // For thread pool to execute callbacks
   private final DecoratingLock callbackDecoratingLock = new DecoratingLock();
@@ -150,10 +148,8 @@ public class PipeConfigSubtask
         return false;
       }
 
-      if (event instanceof TabletInsertionEvent) {
-        outputPipeConnector.transfer((TabletInsertionEvent) event);
-      } else if (event instanceof TsFileInsertionEvent) {
-        outputPipeConnector.transfer((TsFileInsertionEvent) event);
+      if (event instanceof ISchemaEvent) {
+        outputPipeConnector.transfer((ISchemaEvent) event);
       } else {
         outputPipeConnector.transfer(event);
       }
@@ -168,11 +164,7 @@ public class PipeConfigSubtask
       }
     } catch (Exception e) {
       if (!isClosed.get()) {
-        throw new PipeException(
-            "Error occurred during executing PipeConnector#transfer, perhaps need to check "
-                + "whether the implementation of PipeConnector is correct "
-                + "according to the pipe-api description.",
-            e);
+        throw new PipeException("Error occurred during executing PipeConnector#transfer.", e);
       } else {
         LOGGER.info("Exception in pipe transfer, ignored because pipe is dropped.");
         releaseLastEvent(false);
@@ -243,10 +235,7 @@ public class PipeConfigSubtask
     try {
       outputPipeConnector.close();
     } catch (Exception e) {
-      LOGGER.info(
-          "Error occurred during closing PipeConnector, perhaps need to check whether the "
-              + "implementation of PipeConnector is correct according to the pipe-api description.",
-          e);
+      LOGGER.info("Error occurred during closing PipeConnector.", e);
     } finally {
       // Should be after outputPipeConnector.close()
       releaseLastEvent(false);

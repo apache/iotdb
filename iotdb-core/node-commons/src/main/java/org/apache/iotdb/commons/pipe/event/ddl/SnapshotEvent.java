@@ -17,6 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.event.ddl;
+package org.apache.iotdb.commons.pipe.event.ddl;
 
-public abstract class SchemaEvent implements ISchemaEvent {}
+public abstract class SnapshotEvent implements ISchemaEvent {}
