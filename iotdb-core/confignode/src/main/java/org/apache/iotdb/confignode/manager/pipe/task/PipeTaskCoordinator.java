@@ -100,23 +100,38 @@ public class PipeTaskCoordinator {
 
   /** Caller should ensure that the method is called in the lock {@link #tryLock()}. */
   public TSStatus createPipe(TCreatePipeReq req) {
-    return configManager.getProcedureManager().createPipe(req);
+    final TSStatus status = configManager.getProcedureManager().createPipe(req);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn("Failed to create pipe {}. Result status: {}.", req.getPipeName(), status);
+    }
+    return status;
   }
 
   /** Caller should ensure that the method is called in the lock {@link #tryLock()}. */
   public TSStatus startPipe(String pipeName) {
-    return configManager.getProcedureManager().startPipe(pipeName);
+    final TSStatus status = configManager.getProcedureManager().startPipe(pipeName);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn("Failed to start pipe {}. Result status: {}.", pipeName, status);
+    }
+    return status;
   }
 
   /** Caller should ensure that the method is called in the lock {@link #tryLock()}. */
   public TSStatus stopPipe(String pipeName) {
     final boolean isStoppedByRuntimeException = pipeTaskInfo.isStoppedByRuntimeException(pipeName);
     final TSStatus status = configManager.getProcedureManager().stopPipe(pipeName);
-    if (status == RpcUtils.SUCCESS_STATUS && isStoppedByRuntimeException) {
-      LOGGER.info(
-          "Pipe {} has stopped successfully manually, stop its auto restart process.", pipeName);
-      pipeTaskInfo.setIsStoppedByRuntimeExceptionToFalse(pipeName);
-      configManager.getProcedureManager().pipeHandleMetaChange(true, true);
+    if (status == RpcUtils.SUCCESS_STATUS) {
+      if (isStoppedByRuntimeException) {
+        // Even if the status is success, it doesn't imply the success of the
+        // `executeFromOperateOnDataNodes` phase of stopping pipe. However, we still need to set
+        // `isStoppedByRuntimeException` to false to avoid auto-restart. Meanwhile,
+        // `isStoppedByRuntimeException` does not need to be synchronized with the DN.
+        LOGGER.info("Pipe {} has stopped manually, stop its auto restart process.", pipeName);
+        pipeTaskInfo.setIsStoppedByRuntimeExceptionToFalse(pipeName);
+        configManager.getProcedureManager().pipeHandleMetaChange(true, false);
+      }
+    } else {
+      LOGGER.warn("Failed to stop pipe {}. Result status: {}.", pipeName, status);
     }
     return status;
   }
