@@ -2507,7 +2507,7 @@ public class REGERDoubleTest {
 //            System.out.println((data[i * block_size+1]));
 //            System.out.println(getTime(data[i * block_size+1]));
             for (int j = 0; j < block_size; j++) {
-                long tmp_j = data[j + i * block_size];// - min_time;
+                long tmp_j = data[j + i * block_size] - min_time;
 //                System.out.println(getTime(data[j + i * block_size]));
 //                System.out.println(getTime(data[i * block_size]));
                 ts_block[j] = tmp_j;
@@ -2558,7 +2558,7 @@ public class REGERDoubleTest {
 //            int min_value = Integer.MAX_VALUE;
 
             for (int j = 0; j < end; j++) {
-                long tmp_j = data[j + i * block_size];// - min_time;
+                long tmp_j = data[j + i * block_size] - min_time;
                 ts_block[j] = tmp_j;
                 ts_block_value[j] = combine2Int(getValue(tmp_j),getTime(tmp_j));
 
@@ -2593,7 +2593,8 @@ public class REGERDoubleTest {
         }
 
 
-
+        int2Bytes(getTime(min_time),encode_pos,cur_byte);
+        encode_pos += 4;
         int[] reorder_length = new int[5];
         double[] theta_reorder = new double[4];
         int[] time_length = new int[5];// length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
@@ -2608,28 +2609,33 @@ public class REGERDoubleTest {
 
 
         int pos_ts_block_partition = 0;
-        if(third_value.length>0){
-            for (long datum : ts_block) {
-                if (getValue(datum) > third_value[third_value.length - 1]) {
+        if (third_value.length > 0) {
+            for(int j=block_size-1;j>=0;j--){
+                long datum = ts_block[j];
+                if (getValue(datum) <= third_value[0]) {
                     ts_block_partition[pos_ts_block_partition] = datum;
                     pos_ts_block_partition++;
                 }
             }
-            for (int third_i = third_value.length - 1; third_i > 0; third_i--) {
-                for (long datum : ts_block) {
+            for (int third_i = 1; third_i <= third_value.length - 1; third_i++) {
+                for (int j = block_size - 1; j >= 0; j--) {
+                    long datum = ts_block[j];
                     if (getValue(datum) <= third_value[third_i] && getValue(datum) > third_value[third_i - 1]) {
                         ts_block_partition[pos_ts_block_partition] = datum;
                         pos_ts_block_partition++;
                     }
                 }
             }
-            for (long datum : ts_block) {
-                if (getValue(datum) <= third_value[0]) {
+            for (int j = block_size - 1; j >= 0; j--) {
+                long datum = ts_block[j];
+                if (getValue(datum) > third_value[third_value.length - 1]) {
                     ts_block_partition[pos_ts_block_partition] = datum;
                     pos_ts_block_partition++;
                 }
             }
+
         }
+
 
 
         trainParameter(ts_block_partition,block_size,theta_partition);
@@ -2767,9 +2773,12 @@ public class REGERDoubleTest {
 
     public static int REGERBlockDecoder(byte[] encoded, int decode_pos, int[][] value_list, int block_size, int segment_size, int[] value_pos_arr) {
 
+        int min_time_0 = bytes2Integer(encoded, decode_pos, 4);
+        decode_pos += 4;
+
         int time0 = bytes2Integer(encoded, decode_pos, 4);
         decode_pos += 4;
-        value_list[value_pos_arr[0]][0] = time0;
+        value_list[value_pos_arr[0]][0] = time0+min_time_0;
         int value0 = bytes2Integer(encoded, decode_pos, 4);
         decode_pos += 4;
         value_list[value_pos_arr[0]][1] = value0;
@@ -2842,7 +2851,7 @@ public class REGERDoubleTest {
             for(;pos_decode_time_result<length_decode_time_result;pos_decode_time_result++){
                 pre_time = (int) (theta_time0 + theta_time1 * (float)pre_time ) + decode_time_result[pos_decode_time_result] + min_time;
                 pre_value = (int) (theta_value0 + theta_value1 * (float)pre_value ) +  decode_value_result[pos_decode_time_result] + min_value;
-                value_list[value_pos_arr[0]][0] = pre_time;
+                value_list[value_pos_arr[0]][0] = pre_time + min_time_0;
                 value_list[value_pos_arr[0]][1] = pre_value;
                 value_pos_arr[0] ++;
             }
@@ -2854,12 +2863,14 @@ public class REGERDoubleTest {
 
     public static int REGERBlockDecoderValue(byte[] encoded, int decode_pos, int[][] value_list, int block_size, int segment_size, int[] value_pos_arr) {
 
+        int min_time_0 = bytes2Integer(encoded, decode_pos, 4);
+        decode_pos += 4;
         int time0 = bytes2Integer(encoded, decode_pos, 4);
         decode_pos += 4;
         value_list[value_pos_arr[0]][1] = time0;
         int value0 = bytes2Integer(encoded, decode_pos, 4);
         decode_pos += 4;
-        value_list[value_pos_arr[0]][0] = value0;
+        value_list[value_pos_arr[0]][0] = value0+min_time_0;
 
         value_pos_arr[0]++;
 
@@ -2930,7 +2941,7 @@ public class REGERDoubleTest {
                 pre_time = (int) (theta_time0 + theta_time1 * (float)pre_time ) + decode_time_result[pos_decode_time_result] + min_time;
                 pre_value = (int) (theta_value0 + theta_value1 * (float)pre_value ) +  decode_value_result[pos_decode_time_result] + min_value;
                 value_list[value_pos_arr[0]][1] = pre_time;
-                value_list[value_pos_arr[0]][0] = pre_value;
+                value_list[value_pos_arr[0]][0] = pre_value+min_time_0;
                 value_pos_arr[0] ++;
             }
         }

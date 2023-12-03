@@ -2525,7 +2525,7 @@ public class REGERFloatDecreaseTest {
 //            System.out.println((data[i * block_size+1]));
 //            System.out.println(getTime(data[i * block_size+1]));
             for (int j = 0; j < block_size; j++) {
-                long tmp_j = data[j + i * block_size]- min_time;
+                long tmp_j = data[j + i * block_size];//- min_time;
 //                System.out.println(getTime(data[j + i * block_size]));
 //                System.out.println(getTime(data[i * block_size]));
                 ts_block[j] = tmp_j;
@@ -2576,7 +2576,7 @@ public class REGERFloatDecreaseTest {
 //            int min_value = Integer.MAX_VALUE;
 
             for (int j = 0; j < end; j++) {
-                long tmp_j = data[j + i * block_size] - min_time;
+                long tmp_j = data[j + i * block_size];// - min_time;
                 ts_block[j] = tmp_j;
                 ts_block_value[j] = combine2Int(getValue(tmp_j), getTime(tmp_j));
 
@@ -2609,8 +2609,8 @@ public class REGERFloatDecreaseTest {
 //            third_value= findMinIndex(kernelDensity);
             block_size = supply_length;
         }
-        int2Bytes(getTime(min_time),encode_pos,cur_byte);
-        encode_pos += 4;
+//        int2Bytes(getTime(min_time),encode_pos,cur_byte);
+//        encode_pos += 4;
 //        printTSBlock(ts_block);
 //        printTSBlock(ts_block_value);
 

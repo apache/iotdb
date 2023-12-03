@@ -1680,7 +1680,8 @@ public class RegerPFloatTest {
       }
       block_size = supply_length;
     }
-
+    int2Bytes(min_time,encode_pos,cur_byte);
+    encode_pos += 4;
     //        System.out.println(Arrays.deepToString(data));
     //        System.out.println(Arrays.deepToString(ts_block));
 
@@ -1716,15 +1717,19 @@ public class RegerPFloatTest {
 //      System.out.println((Arrays.toString(time_length)));
 
     int pos_ts_block_partition = 0;
-    for (int[] datum : ts_block) {
-      if (datum[1] > third_value[third_value.length - 1]) {
-        ts_block_partition[pos_ts_block_partition][0] = datum[0];
-        ts_block_partition[pos_ts_block_partition][1] = datum[1];
-        pos_ts_block_partition++;
+    if (third_value.length > 0) {
+
+      for(int j=block_size-1;j>=0;j--){
+        int[] datum = ts_block[j];
+        if (datum[1] <= third_value[0]) {
+          ts_block_partition[pos_ts_block_partition][0] = datum[0];
+          ts_block_partition[pos_ts_block_partition][1] = datum[1];
+          pos_ts_block_partition++;
+        }
       }
-    }
-    for (int third_i = third_value.length - 1; third_i > 0; third_i--) {
-      for (int[] datum : ts_block) {
+    for (int third_i = 1; third_i <third_value.length ; third_i++) {
+      for(int j=block_size-1;j>=0;j--){
+        int[] datum = ts_block[j];
         if (datum[1] <= third_value[third_i] && datum[1] > third_value[third_i - 1]) {
           ts_block_partition[pos_ts_block_partition][0] = datum[0];
           ts_block_partition[pos_ts_block_partition][1] = datum[1];
@@ -1732,11 +1737,13 @@ public class RegerPFloatTest {
         }
       }
     }
-    for (int[] datum : ts_block) {
-      if (datum[1] <= third_value[0]) {
-        ts_block_partition[pos_ts_block_partition][0] = datum[0];
-        ts_block_partition[pos_ts_block_partition][1] = datum[1];
-        pos_ts_block_partition++;
+      for(int j=block_size-1;j>=0;j--){
+        int[] datum = ts_block[j];
+        if (datum[1] > third_value[third_value.length - 1]) {
+          ts_block_partition[pos_ts_block_partition][0] = datum[0];
+          ts_block_partition[pos_ts_block_partition][1] = datum[1];
+          pos_ts_block_partition++;
+        }
       }
     }
     terminate(ts_block_partition, theta, p);
@@ -2480,7 +2487,7 @@ public class RegerPFloatTest {
 
     for (int i = 0; i < dataset_name.size(); i++) {
       input_path_list.add(input_parent_dir + dataset_name.get(i));
-      dataset_block_size.add(1024);
+      dataset_block_size.add(512);
     }
 
     output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
@@ -2513,9 +2520,9 @@ public class RegerPFloatTest {
 
 
     // 0 2 6 7
-    int[] file_lists = {1,9};
-    for (int file_i : file_lists) {
-//    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+//    int[] file_lists = {1,9};
+//    for (int file_i : file_lists) {
+    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 //              for (int file_i = 12; file_i < 14; file_i++) {
 //
       String inputPath = input_path_list.get(file_i);
@@ -2593,7 +2600,7 @@ public class RegerPFloatTest {
                     data2_arr,
                     dataset_block_size.get(file_i),
                     dataset_third.get(file_i),
-                    8,
+                    16,
                     p,
                     1,
                     encoded_result);

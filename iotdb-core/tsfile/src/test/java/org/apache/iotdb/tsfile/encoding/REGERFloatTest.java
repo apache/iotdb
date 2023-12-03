@@ -2661,7 +2661,7 @@ public class REGERFloatTest {
     private static int REGERBlockEncoder(long[] data, int i, int block_size, int supply_length, int[] third_value, int segment_size, int encode_pos, byte[] cur_byte, int[] block_sort) {
 
 
-//        long min_time = (long) getTime(data[i * block_size]) << 32;
+        long min_time = (long) getTime(data[i * block_size]) << 32;
         long[] ts_block;
         long[] ts_block_value;
         long[] ts_block_partition;
@@ -2676,7 +2676,7 @@ public class REGERFloatTest {
 //            System.out.println((data[i * block_size+1]));
 //            System.out.println(getTime(data[i * block_size+1]));
             for (int j = 0; j < block_size; j++) {
-                long tmp_j = data[j + i * block_size];//- min_time;
+                long tmp_j = data[j + i * block_size] - min_time;
 //                System.out.println(getTime(data[j + i * block_size]));
 //                System.out.println(getTime(data[i * block_size]));
                 ts_block[j] = tmp_j;
@@ -2727,7 +2727,7 @@ public class REGERFloatTest {
 //            int min_value = Integer.MAX_VALUE;
 
             for (int j = 0; j < end; j++) {
-                long tmp_j = data[j + i * block_size];// - min_time;
+                long tmp_j = data[j + i * block_size] - min_time;
                 ts_block[j] = tmp_j;
                 ts_block_value[j] = combine2Int(getValue(tmp_j), getTime(tmp_j));
 
@@ -2761,8 +2761,6 @@ public class REGERFloatTest {
             block_size = supply_length;
         }
 
-//        printTSBlock(ts_block);
-//        printTSBlock(ts_block_value);
 
         int[] reorder_length = new int[5];
         float[] theta_reorder = new float[4];
@@ -2778,26 +2776,30 @@ public class REGERFloatTest {
 
         int pos_ts_block_partition = 0;
         if (third_value.length > 0) {
-            for (long datum : ts_block) {
-                if (getValue(datum) > third_value[third_value.length - 1]) {
+            for(int j=block_size-1;j>=0;j--){
+                long datum = ts_block[j];
+                if (getValue(datum) <= third_value[0]) {
                     ts_block_partition[pos_ts_block_partition] = datum;
                     pos_ts_block_partition++;
                 }
             }
-            for (int third_i = third_value.length - 1; third_i > 0; third_i--) {
-                for (long datum : ts_block) {
+            for (int third_i = 1; third_i <= third_value.length - 1; third_i++) {
+                for (int j = block_size - 1; j >= 0; j--) {
+                    long datum = ts_block[j];
                     if (getValue(datum) <= third_value[third_i] && getValue(datum) > third_value[third_i - 1]) {
                         ts_block_partition[pos_ts_block_partition] = datum;
                         pos_ts_block_partition++;
                     }
                 }
             }
-            for (long datum : ts_block) {
-                if (getValue(datum) <= third_value[0]) {
+            for (int j = block_size - 1; j >= 0; j--) {
+                long datum = ts_block[j];
+                if (getValue(datum) > third_value[third_value.length - 1]) {
                     ts_block_partition[pos_ts_block_partition] = datum;
                     pos_ts_block_partition++;
                 }
             }
+
         }
 
 
@@ -2809,41 +2811,32 @@ public class REGERFloatTest {
         long[] ts_block_delta_reorder = getEncodeBitsRegressionNoTrain(ts_block_value, block_size, reorder_length, theta_reorder, segment_size);
 
 
-//       ReorderingTimeSeries(ts_block_value, reorder_length,  theta_reorder, segment_size);
+        ReorderingTimeSeries(ts_block_value, reorder_length,  theta_reorder, segment_size);
 
         int segment_n = (block_size - 1) / segment_size;
         long[] bit_width_segments = new long[segment_n];
-
+        int2Bytes(getTime(min_time),encode_pos,cur_byte);
+        encode_pos += 4;
 
         int choose = min3(time_length[0], partition_length[0], reorder_length[0]);
         if (choose == 0) {
-//            System.out.println("time");
-//            System.out.println(Arrays.toString(time_length));
-//            intByte2Bytes(0, encode_pos, cur_byte);
-//            encode_pos ++;
+
             block_sort[i] = 0;
             ts_block_delta_time = ReorderingTimeSeries(ts_block, time_length, theta_time, segment_size);
             bit_width_segments = segmentBitPacking(ts_block_delta_time, block_size, segment_size);
-//            ts_block_delta_time[0] += min_time;
+
+
             encode_pos = encodeSegment2Bytes(ts_block_delta_time, bit_width_segments, time_length, segment_size, theta_time, encode_pos, cur_byte);
 //            System.out.println(Arrays.toString(time_length));
         } else if (choose == 1) {
-//            System.out.println("partition");
-//            System.out.println(Arrays.toString(partition_length));
-//            intByte2Bytes(0, encode_pos, cur_byte);
-//            encode_pos ++;
+
             block_sort[i] = 0;
             ts_block_delta_partition = ReorderingTimeSeries(ts_block_partition, partition_length, theta_partition, segment_size);
             bit_width_segments = segmentBitPacking(ts_block_delta_partition, block_size, segment_size);
-//            ts_block_delta_partition[0] += min_time;
+
             encode_pos = encodeSegment2Bytes(ts_block_delta_partition, bit_width_segments, partition_length, segment_size, theta_partition, encode_pos, cur_byte);
-//            System.out.println(Arrays.toString(partition_length));
         } else if (choose == 2) {
 
-//            System.out.println("value");
-//            System.out.println(Arrays.toString(reorder_length));
-//            intByte2Bytes(1, encode_pos, cur_byte);
-//            encode_pos ++;
             block_sort[i] = 1;
             ts_block_delta_reorder = ReorderingTimeSeries(ts_block_value, reorder_length, theta_reorder, segment_size);
 
@@ -2852,27 +2845,8 @@ public class REGERFloatTest {
         }
 
 
-//        int segment_n = (block_size - 1) / segment_size;
-//        long[] bit_width_segments = new long[segment_n];
-//
-//        if(time_length[0] > partition_length[0]){
-//
-//            ts_block_delta_partition = ReorderingTimeSeries(ts_block_partition, partition_length,  theta_partition, segment_size);
-//
-//            bit_width_segments = segmentBitPacking(ts_block_delta_partition, block_size, segment_size);
-//            encode_pos = encodeSegment2Bytes(ts_block_delta_partition, bit_width_segments, partition_length, segment_size, theta_partition, encode_pos, cur_byte);
-//
-//        }else{
-//            ts_block_delta_time = ReorderingTimeSeries(ts_block, time_length,  theta_time, segment_size);
-//
-//            bit_width_segments = segmentBitPacking(ts_block_delta_time, block_size, segment_size);
-//            encode_pos = encodeSegment2Bytes(ts_block_delta_time, bit_width_segments, time_length, segment_size, theta_time, encode_pos, cur_byte);
-//
-//        }
-
-//        System.out.println(encode_pos);
-
         return encode_pos;
+
     }
 
     public static int ReorderingRegressionEncoder(long[] data, int block_size, int[] third_value, int segment_size, byte[] encoded_result) {
@@ -2943,11 +2917,12 @@ public class REGERFloatTest {
 
     public static int REGERBlockDecoder(byte[] encoded, int decode_pos, int[][] value_list, int block_size, int segment_size, int[] value_pos_arr) {
 
-
+        int min_time_0 = bytes2Integer(encoded, decode_pos, 4);
+        decode_pos += 4;
 
         int time0 = bytes2Integer(encoded, decode_pos, 4);
         decode_pos += 4;
-        value_list[value_pos_arr[0]][0] = time0;
+        value_list[value_pos_arr[0]][0] = time0+min_time_0;
         int value0 = bytes2Integer(encoded, decode_pos, 4);
         decode_pos += 4;
         value_list[value_pos_arr[0]][1] = value0;
@@ -3021,7 +2996,7 @@ public class REGERFloatTest {
             for(;pos_decode_time_result<length_decode_time_result;pos_decode_time_result++){
                 pre_time = (int) (theta_time0 + theta_time1 * (float)pre_time ) + decode_time_result[pos_decode_time_result] + min_time;
                 pre_value = (int) (theta_value0 + theta_value1 * (float)pre_value ) +  decode_value_result[pos_decode_time_result] + min_value;
-                value_list[value_pos_arr[0]][0] = pre_time;
+                value_list[value_pos_arr[0]][0] = pre_time+min_time_0;
                 value_list[value_pos_arr[0]][1] = pre_value;
                 value_pos_arr[0] ++;
             }
@@ -3032,14 +3007,15 @@ public class REGERFloatTest {
 
     public static int REGERBlockDecoderValue(byte[] encoded, int decode_pos, int[][] value_list, int block_size, int segment_size, int[] value_pos_arr) {
 
-
+        int min_time_0 = bytes2Integer(encoded, decode_pos, 4);
+        decode_pos += 4;
 
         int time0 = bytes2Integer(encoded, decode_pos, 4);
         decode_pos += 4;
-        value_list[value_pos_arr[0]][1] = time0;
+        value_list[value_pos_arr[0]][1] = time0 ;
         int value0 = bytes2Integer(encoded, decode_pos, 4);
         decode_pos += 4;
-        value_list[value_pos_arr[0]][0] = value0;
+        value_list[value_pos_arr[0]][0] = value0+min_time_0;
 
 
 
@@ -3113,7 +3089,7 @@ public class REGERFloatTest {
                 pre_time = (int) (theta_time0 + theta_time1 * (float)pre_time ) + decode_time_result[pos_decode_time_result] + min_time;
                 pre_value = (int) (theta_value0 + theta_value1 * (float)pre_value ) +  decode_value_result[pos_decode_time_result] + min_value;
                 value_list[value_pos_arr[0]][1] = pre_time;
-                value_list[value_pos_arr[0]][0] = pre_value;
+                value_list[value_pos_arr[0]][0] = pre_value+min_time_0;
                 value_pos_arr[0] ++;
             }
         }
