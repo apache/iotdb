@@ -56,6 +56,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -397,10 +398,11 @@ public class SchemaEngine {
               consensusGroupId ->
                   tmp.put(
                       consensusGroupId.getId(),
-                      schemaRegionMap
-                          .get(consensusGroupId)
-                          .getSchemaRegionStatistics()
-                          .getDevicesNumber()));
+                      Optional.ofNullable(schemaRegionMap.get(consensusGroupId))
+                          .map(
+                              schemaRegion ->
+                                  schemaRegion.getSchemaRegionStatistics().getDevicesNumber())
+                          .orElse(0L)));
     }
     if (schemaQuotaManager.isSeriesLimit()) {
       if (resp.getRegionSeriesUsageMap() == null) {
@@ -415,10 +417,11 @@ public class SchemaEngine {
               consensusGroupId ->
                   tmp.put(
                       consensusGroupId.getId(),
-                      schemaRegionMap
-                          .get(consensusGroupId)
-                          .getSchemaRegionStatistics()
-                          .getSeriesNumber()));
+                      Optional.ofNullable(schemaRegionMap.get(consensusGroupId))
+                          .map(
+                              schemaRegion ->
+                                  schemaRegion.getSchemaRegionStatistics().getSeriesNumber())
+                          .orElse(0L)));
     }
   }
 
