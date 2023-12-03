@@ -2513,7 +2513,7 @@ public class RegerPFloatTest {
 
 
     // 0 2 6 7
-    int[] file_lists = {13};
+    int[] file_lists = {1,9};
     for (int file_i : file_lists) {
 //    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 //              for (int file_i = 12; file_i < 14; file_i++) {

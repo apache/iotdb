@@ -45,7 +45,7 @@ import java.io.IOException;
  */
 public abstract class DeltaBinaryEncoder extends Encoder {
 
-  protected static final int BLOCK_DEFAULT_SIZE = 1024;
+  protected static final int BLOCK_DEFAULT_SIZE = 512;
   private static final Logger logger = LoggerFactory.getLogger(DeltaBinaryEncoder.class);
   protected ByteArrayOutputStream out;
   protected int blockSize;

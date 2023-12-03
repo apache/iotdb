@@ -3015,12 +3015,13 @@ public class REGERDoubleTest {
         }
     }
 
-    @Test
-    public void REGER() throws IOException {
+//    @Test
+    public static void REGER() throws IOException {
 //        String parent_dir = "C:/Users/xiaoj/Desktop/test";
         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/iotdb/iotdb-core/tsfile/src/test/resources/";
         String output_parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-reorder/compression_ratio/reger_double";
-
+        int pack_size = 16;
+        int block_size = 512;
 
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
@@ -3077,7 +3078,7 @@ public class REGERDoubleTest {
         for (String value : dataset_name) {
             input_path_list.add(input_parent_dir + value);
             dataset_k.add(1);
-            dataset_block_size.add(1024);
+            dataset_block_size.add(block_size);
         }
 
         output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
@@ -3106,9 +3107,9 @@ public class REGERDoubleTest {
         output_path_list.add(output_parent_dir + "/FANYP-Sensors_ratio.csv"); // 12
         output_path_list.add(output_parent_dir + "/TRAJET-Transport_ratio.csv"); // 13
 
-        int[] file_lists = {5,6,8,10};
-        for (int file_i : file_lists) {
-//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+//        int[] file_lists = {5,6,8,10};
+//        for (int file_i : file_lists) {
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 //        for (int file_i = 12; file_i < 14; file_i++) {
             String inputPath = input_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
@@ -3170,12 +3171,12 @@ public class REGERDoubleTest {
                 long decodeTime = 0;
                 double ratio = 0;
                 double compressed_size = 0;
-                int repeatTime2 = 200;
+                int repeatTime2 = 100;
                 long s = System.nanoTime();
                 int[] best_order = new int[3];
                 int length = 0;
                 for (int repeat = 0; repeat < repeatTime2; repeat++)
-                    length = ReorderingRegressionEncoder(data2_arr, dataset_block_size.get(file_i), dataset_third.get(file_i), 8, encoded_result);
+                    length = ReorderingRegressionEncoder(data2_arr, dataset_block_size.get(file_i), dataset_third.get(file_i), pack_size, encoded_result);
                 long e = System.nanoTime();
                 encodeTime += ((e - s) / repeatTime2);
                 compressed_size += length;
@@ -3215,6 +3216,8 @@ public class REGERDoubleTest {
         //        String parent_dir = "C:/Users/xiaoj/Desktop/test";
         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/iotdb/iotdb-core/tsfile/src/test/resources/";
         String output_parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-reorder/compression_ratio/block_size_double";
+        int pack_size = 16;
+
 
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
@@ -3300,9 +3303,9 @@ public class REGERDoubleTest {
         output_path_list.add(output_parent_dir + "/FANYP-Sensors_ratio.csv"); // 12
         output_path_list.add(output_parent_dir + "/TRAJET-Transport_ratio.csv"); // 13
 
-        int[] file_lists = {5,6,8,10};
-        for (int file_i : file_lists) {
-//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+//        int[] file_lists = {5,6,8,10};
+//        for (int file_i : file_lists) {
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 //        for (int file_i = 12; file_i < 14; file_i++) {
             String inputPath = input_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
@@ -3387,7 +3390,7 @@ public class REGERDoubleTest {
                                         data2_arr,
                                         block_size,
                                         dataset_third.get(file_i),
-                                        8,
+                                        pack_size,
                                         encoded_result);
                     long e = System.nanoTime();
                     encodeTime += ((e - s) / repeatTime2);
@@ -3424,6 +3427,8 @@ public class REGERDoubleTest {
                 "/Users/xiaojinzhao/Documents/GitHub/iotdb/iotdb-core/tsfile/src/test/resources/";
         String output_parent_dir =
                 "/Users/xiaojinzhao/Documents/GitHub/encoding-reorder/compression_ratio/pack_size_double";
+        int pack_size = 16;
+        int block_size = 512;
 
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
@@ -3480,7 +3485,7 @@ public class REGERDoubleTest {
         for (String value : dataset_name) {
             input_path_list.add(input_parent_dir + value);
             dataset_k.add(1);
-            dataset_block_size.add(1024);
+            dataset_block_size.add(block_size);
         }
 
         output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
@@ -3511,9 +3516,9 @@ public class REGERDoubleTest {
         output_path_list.add(output_parent_dir + "/FANYP-Sensors_ratio.csv"); // 12
         output_path_list.add(output_parent_dir + "/TRAJET-Transport_ratio.csv"); // 13
 
-        int[] file_lists = {5,6,8,10};
-        for (int file_i : file_lists) {
-//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+//        int[] file_lists = {5,6,8,10};
+//        for (int file_i : file_lists) {
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 //        for (int file_i = 12; file_i < 14; file_i++) {
             String inputPath = input_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
@@ -3566,7 +3571,7 @@ public class REGERDoubleTest {
                 for (int i = 0; i < data.size(); i++) {
                     data2_arr[i] = data.get(i) ;
                 }
-                for (int segment_size_exp = 6; segment_size_exp > 2; segment_size_exp--) {
+                for (int segment_size_exp = 8; segment_size_exp > 2; segment_size_exp--) {
                     int segment_size = (int) Math.pow(2, segment_size_exp);
                     System.out.println(segment_size);
 

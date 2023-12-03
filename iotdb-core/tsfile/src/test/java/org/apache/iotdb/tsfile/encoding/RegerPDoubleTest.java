@@ -1340,7 +1340,6 @@ public class RegerPDoubleTest {
 //    pos_encode +=Math.ceil((double)(12+precision[pre])/(double)(4));
 
 
-
     for (int i = 2; i < theta.length; i++) {
       double2bytes(theta[i], pos_encode, encoded_result);
       pos_encode += 8;
@@ -2166,10 +2165,10 @@ public class RegerPDoubleTest {
 
     //        dataset_block_size.add(512);
 
-//    int[] file_lists = {0,2,6,7}; //
-//    for (int file_i : file_lists) {
+    int[] file_lists = {1,9}; //
+    for (int file_i : file_lists) {
 //    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
-              for (int file_i = 13; file_i < 14; file_i++) {
+//              for (int file_i = 13; file_i < 14; file_i++) {
 
       String inputPath = input_path_list.get(file_i);
       String Output = output_path_list.get(file_i);
