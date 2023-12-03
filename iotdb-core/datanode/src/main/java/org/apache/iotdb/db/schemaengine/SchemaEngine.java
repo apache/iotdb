@@ -389,26 +389,36 @@ public class SchemaEngine {
         resp.setRegionDeviceUsageMap(new HashMap<>());
       }
       Map<Integer, Long> tmp = resp.getRegionDeviceUsageMap();
-      schemaRegionMap.values().stream()
-          .filter(i -> SchemaRegionConsensusImpl.getInstance().isLeader(i.getSchemaRegionId()))
+      SchemaRegionConsensusImpl.getInstance().getAllConsensusGroupIds().stream()
+          .filter(
+              consensusGroupId ->
+                  SchemaRegionConsensusImpl.getInstance().isLeader(consensusGroupId))
           .forEach(
-              i ->
+              consensusGroupId ->
                   tmp.put(
-                      i.getSchemaRegionId().getId(),
-                      i.getSchemaRegionStatistics().getDevicesNumber()));
+                      consensusGroupId.getId(),
+                      schemaRegionMap
+                          .get(consensusGroupId)
+                          .getSchemaRegionStatistics()
+                          .getDevicesNumber()));
     }
     if (schemaQuotaManager.isSeriesLimit()) {
       if (resp.getRegionSeriesUsageMap() == null) {
         resp.setRegionSeriesUsageMap(new HashMap<>());
       }
       Map<Integer, Long> tmp = resp.getRegionSeriesUsageMap();
-      schemaRegionMap.values().stream()
-          .filter(i -> SchemaRegionConsensusImpl.getInstance().isLeader(i.getSchemaRegionId()))
+      SchemaRegionConsensusImpl.getInstance().getAllConsensusGroupIds().stream()
+          .filter(
+              consensusGroupId ->
+                  SchemaRegionConsensusImpl.getInstance().isLeader(consensusGroupId))
           .forEach(
-              i ->
+              consensusGroupId ->
                   tmp.put(
-                      i.getSchemaRegionId().getId(),
-                      i.getSchemaRegionStatistics().getSeriesNumber()));
+                      consensusGroupId.getId(),
+                      schemaRegionMap
+                          .get(consensusGroupId)
+                          .getSchemaRegionStatistics()
+                          .getSeriesNumber()));
     }
   }
 
