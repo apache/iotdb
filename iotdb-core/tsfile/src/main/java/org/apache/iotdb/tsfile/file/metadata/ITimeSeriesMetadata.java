@@ -24,9 +24,7 @@ import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
 
 import java.util.List;
 
-public interface ITimeSeriesMetadata {
-
-  Statistics getStatistics();
+public interface ITimeSeriesMetadata extends IMetadata {
 
   boolean isModified();
 

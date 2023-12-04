@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.tsfile.read.filter.operator;
 
-import org.apache.iotdb.tsfile.file.metadata.IStatisticsProvider;
+import org.apache.iotdb.tsfile.file.metadata.IMetadata;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -66,7 +66,7 @@ public class Not implements Filter {
   }
 
   @Override
-  public boolean canSkip(IStatisticsProvider statisticsProvider) {
+  public boolean canSkip(IMetadata metadata) {
     throw new IllegalArgumentException(CONTAIN_NOT_ERR_MSG + this);
   }
 
@@ -76,7 +76,7 @@ public class Not implements Filter {
   }
 
   @Override
-  public boolean allSatisfy(IStatisticsProvider statisticsProvider) {
+  public boolean allSatisfy(IMetadata metadata) {
     throw new IllegalArgumentException(CONTAIN_NOT_ERR_MSG + this);
   }
 

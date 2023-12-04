@@ -34,6 +34,7 @@ import org.junit.Test;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static org.apache.iotdb.tsfile.read.filter.operator.Not.CONTAIN_NOT_ERR_MSG;
 import static org.junit.Assert.fail;
@@ -277,8 +278,9 @@ public class StatisticsFilterTest {
     }
 
     @Override
-    public Statistics<? extends Serializable> getMeasurementStatistics(int measurementIndex) {
-      return statisticsList.get(measurementIndex);
+    public Optional<Statistics<? extends Serializable>> getMeasurementStatistics(
+        int measurementIndex) {
+      return Optional.ofNullable(statisticsList.get(measurementIndex));
     }
   }
 }

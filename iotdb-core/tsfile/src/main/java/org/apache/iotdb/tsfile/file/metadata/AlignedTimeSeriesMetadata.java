@@ -26,8 +26,9 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
-public class AlignedTimeSeriesMetadata implements ITimeSeriesMetadata, IStatisticsProvider {
+public class AlignedTimeSeriesMetadata implements ITimeSeriesMetadata {
 
   // TimeSeriesMetadata for time column
   private final TimeseriesMetadata timeseriesMetadata;
@@ -53,27 +54,21 @@ public class AlignedTimeSeriesMetadata implements ITimeSeriesMetadata, IStatisti
         : timeseriesMetadata.getStatistics();
   }
 
-  public Statistics<? extends Serializable> getStatistics(int index) {
-    TimeseriesMetadata v = valueTimeseriesMetadataList.get(index);
-    return v == null ? null : v.getStatistics();
-  }
-
-  public List<Statistics> getValueStatisticsList() {
-    List<Statistics> valueStatisticsList = new ArrayList<>();
-    for (TimeseriesMetadata v : valueTimeseriesMetadataList) {
-      valueStatisticsList.add(v == null ? null : v.getStatistics());
-    }
-    return valueStatisticsList;
-  }
-
   @Override
   public Statistics<? extends Serializable> getTimeStatistics() {
     return timeseriesMetadata.getStatistics();
   }
 
   @Override
-  public Statistics<? extends Serializable> getMeasurementStatistics(int measurementIndex) {
-    return getStatistics(measurementIndex);
+  public Optional<Statistics<? extends Serializable>> getMeasurementStatistics(
+      int measurementIndex) {
+    TimeseriesMetadata metadata = valueTimeseriesMetadataList.get(measurementIndex);
+    return Optional.ofNullable(metadata == null ? null : metadata.getStatistics());
+  }
+
+  @Override
+  public int getMeasurementCount() {
+    return valueTimeseriesMetadataList.size();
   }
 
   @Override

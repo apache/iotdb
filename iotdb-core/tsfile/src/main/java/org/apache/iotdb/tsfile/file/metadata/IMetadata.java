@@ -24,17 +24,19 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import java.io.Serializable;
 import java.util.Optional;
 
-public interface IStatisticsProvider {
+public interface IMetadata {
 
-  Statistics<? extends Serializable> getTimeStatistics();
+  <T extends Serializable> Statistics<T> getStatistics();
 
-  Optional<Statistics<? extends Serializable>> getMeasurementStatistics(int measurementIndex);
+  <T extends Serializable> Statistics<T> getTimeStatistics();
+
+  <T extends Serializable> Optional<Statistics<T>> getMeasurementStatistics(int measurementIndex);
 
   int getMeasurementCount();
 
   default boolean hasNullValue(int measurementIndex) {
     long rowCount = getTimeStatistics().getCount();
-    Optional<Statistics<? extends Serializable>> statistics =
+    Optional<Statistics<Serializable>> statistics =
         getMeasurementStatistics(measurementIndex);
     return statistics.map(stat -> stat.hasNullValue(rowCount)).orElse(true);
   }
@@ -46,6 +48,8 @@ public interface IStatisticsProvider {
   default boolean timeAllSelected() {
     for (int index = 0; index < getMeasurementCount(); index++) {
       if (!hasNullValue(index)) {
+        // When there is any value page point number that is the same as the time page,
+        // it means that all timestamps in time page will be selected.
         return true;
       }
     }

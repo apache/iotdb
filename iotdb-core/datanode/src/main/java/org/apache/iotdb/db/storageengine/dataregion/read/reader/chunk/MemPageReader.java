@@ -39,6 +39,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static org.apache.iotdb.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
 
@@ -350,5 +351,21 @@ public class MemPageReader implements IPageReader {
   @Override
   public void initTsBlockBuilder(List<TSDataType> dataTypes) {
     // non-aligned page reader don't need to init TsBlockBuilder at the very beginning
+  }
+
+  @Override
+  public Statistics<? extends Serializable> getTimeStatistics() {
+    return getStatistics();
+  }
+
+  @Override
+  public Optional<Statistics<? extends Serializable>> getMeasurementStatistics(
+      int measurementIndex) {
+    return Optional.ofNullable(getStatistics());
+  }
+
+  @Override
+  public int getMeasurementCount() {
+    return 1;
   }
 }

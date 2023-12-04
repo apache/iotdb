@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.tsfile.read.filter.basic;
 
-import org.apache.iotdb.tsfile.file.metadata.IStatisticsProvider;
+import org.apache.iotdb.tsfile.file.metadata.IMetadata;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 import java.util.List;
@@ -37,12 +37,12 @@ public interface IValueFilter extends Filter {
     return satisfy(time, values[getMeasurementIndex()]);
   }
 
-  default boolean canSkip(IStatisticsProvider statisticsProvider) {
-    return canSkip(statisticsProvider.getMeasurementStatistics(getMeasurementIndex()));
+  default boolean canSkip(IMetadata metadata) {
+    return canSkip(metadata.getMeasurementStatistics(getMeasurementIndex()));
   }
 
-  default boolean allSatisfy(IStatisticsProvider statisticsProvider) {
-    return allSatisfy(statisticsProvider.getMeasurementStatistics(getMeasurementIndex()));
+  default boolean allSatisfy(IMetadata metadata) {
+    return allSatisfy(metadata.getMeasurementStatistics(getMeasurementIndex()));
   }
 
   default boolean satisfyStartEndTime(long startTime, long endTime) {

@@ -43,6 +43,7 @@ import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static org.apache.iotdb.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
 
@@ -379,5 +380,21 @@ public class PageReader implements IPageReader {
       }
     }
     return false;
+  }
+
+  @Override
+  public Statistics<? extends Serializable> getTimeStatistics() {
+    return getStatistics();
+  }
+
+  @Override
+  public Optional<Statistics<? extends Serializable>> getMeasurementStatistics(
+      int measurementIndex) {
+    return Optional.ofNullable(getStatistics());
+  }
+
+  @Override
+  public int getMeasurementCount() {
+    return 1;
   }
 }

@@ -28,8 +28,9 @@ import java.io.OutputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
-public class AlignedChunkMetadata implements IChunkMetadata, IStatisticsProvider {
+public class AlignedChunkMetadata implements IChunkMetadata {
 
   // ChunkMetadata for time column
   private final IChunkMetadata timeChunkMetadata;
@@ -46,33 +47,27 @@ public class AlignedChunkMetadata implements IChunkMetadata, IStatisticsProvider
   }
 
   @Override
-  public Statistics<? extends Serializable> getStatistics() {
+  public <T extends Serializable> Statistics<T> getStatistics() {
     return valueChunkMetadataList.size() == 1 && valueChunkMetadataList.get(0) != null
         ? valueChunkMetadataList.get(0).getStatistics()
         : timeChunkMetadata.getStatistics();
   }
 
-  public Statistics<? extends Serializable> getStatistics(int index) {
-    IChunkMetadata v = valueChunkMetadataList.get(index);
-    return v == null ? null : v.getStatistics();
-  }
-
-  public List<Statistics<? extends Serializable>> getValueStatisticsList() {
-    List<Statistics<? extends Serializable>> valueStatisticsList = new ArrayList<>();
-    for (IChunkMetadata v : valueChunkMetadataList) {
-      valueStatisticsList.add(v == null ? null : v.getStatistics());
-    }
-    return valueStatisticsList;
-  }
-
   @Override
-  public Statistics<? extends Serializable> getTimeStatistics() {
+  public <T extends Serializable> Statistics<T> getTimeStatistics() {
     return timeChunkMetadata.getStatistics();
   }
 
   @Override
-  public Statistics<? extends Serializable> getMeasurementStatistics(int measurementIndex) {
-    return getStatistics(measurementIndex);
+  public <T extends Serializable> Optional< Statistics<T>> getMeasurementStatistics(
+      int measurementIndex) {
+    IChunkMetadata chunkMetadata = valueChunkMetadataList.get(measurementIndex);
+    return Optional.ofNullable(chunkMetadata == null ? null : chunkMetadata.getStatistics());
+  }
+
+  @Override
+  public int getMeasurementCount() {
+    return valueChunkMetadataList.size();
   }
 
   @Override

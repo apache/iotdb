@@ -85,7 +85,9 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
   @SuppressWarnings("squid:S3740")
   @Override
   protected Statistics currentFileStatistics(int index) {
-    return ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getStatistics(index);
+    return ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata)
+        .getMeasurementStatistics(index)
+        .orElse(null);
   }
 
   @SuppressWarnings("squid:S3740")
@@ -97,7 +99,7 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
   @SuppressWarnings("squid:S3740")
   @Override
   protected Statistics currentChunkStatistics(int index) {
-    return ((AlignedChunkMetadata) firstChunkMetadata).getStatistics(index);
+    return ((AlignedChunkMetadata) firstChunkMetadata).getMeasurementStatistics(index).orElse(null);
   }
 
   @SuppressWarnings("squid:S3740")
@@ -178,28 +180,21 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
     // timestamp will be selected.
     // NOTE: if we change the query semantic in the future for aligned series, we need to remove
     // this check here.
-    long rowCount =
-        ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getTimeStatistics().getCount();
     boolean canUse =
         queryAllSensors
-            || ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata)
-                .getValueStatisticsList()
-                .isEmpty();
-    if (!canUse) {
-      for (Statistics statistics :
-          ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getValueStatisticsList()) {
-        if (statistics != null && !statistics.hasNullValue(rowCount)) {
-          canUse = true;
-          break;
-        }
-      }
+            || ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getMeasurementCount() == 0;
+    if (!canUse && (((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).timeAllSelected())) {
+      canUse = true;
     }
 
     if (!canUse) {
       return;
     }
+
     // When the number of points in all value chunk groups is the same as that in the time chunk
     // group, it means that there is no null value, and all timestamps will be selected.
+    long rowCount =
+        ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getTimeStatistics().getCount();
     if (paginationController.hasCurOffset(rowCount)) {
       skipCurrentFile();
       paginationController.consumeOffset(rowCount);
@@ -228,16 +223,9 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
     // this check here.
     long rowCount = firstChunkMetadata.getStatistics().getCount();
     boolean canUse =
-        queryAllSensors
-            || ((AlignedChunkMetadata) firstChunkMetadata).getValueStatisticsList().isEmpty();
-    if (!canUse) {
-      for (Statistics statistics :
-          ((AlignedChunkMetadata) firstChunkMetadata).getValueStatisticsList()) {
-        if (statistics != null && !statistics.hasNullValue(rowCount)) {
-          canUse = true;
-          break;
-        }
-      }
+        queryAllSensors || ((AlignedChunkMetadata) firstChunkMetadata).getMeasurementCount() == 0;
+    if (!canUse && (((AlignedChunkMetadata) firstChunkMetadata).timeAllSelected())) {
+      canUse = true;
     }
     if (!canUse) {
       return;

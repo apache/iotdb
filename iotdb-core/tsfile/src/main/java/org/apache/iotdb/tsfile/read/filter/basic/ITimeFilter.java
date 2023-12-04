@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.tsfile.read.filter.basic;
 
-import org.apache.iotdb.tsfile.file.metadata.IStatisticsProvider;
+import org.apache.iotdb.tsfile.file.metadata.IMetadata;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 
 import java.io.Serializable;
@@ -35,15 +35,15 @@ public interface ITimeFilter extends Filter {
     return !satisfyStartEndTime(statistics.getStartTime(), statistics.getEndTime());
   }
 
-  default boolean canSkip(IStatisticsProvider statisticsProvider) {
-    return canSkip(statisticsProvider.getTimeStatistics());
+  default boolean canSkip(IMetadata metadata) {
+    return canSkip(metadata.getTimeStatistics());
   }
 
   default boolean allSatisfy(Statistics<? extends Serializable> statistics) {
     return containStartEndTime(statistics.getStartTime(), statistics.getEndTime());
   }
 
-  default boolean allSatisfy(IStatisticsProvider statisticsProvider) {
-    return allSatisfy(statisticsProvider.getTimeStatistics());
+  default boolean allSatisfy(IMetadata metadata) {
+    return allSatisfy(metadata.getTimeStatistics());
   }
 }

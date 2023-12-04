@@ -34,10 +34,12 @@ import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import static io.airlift.slice.SizeOf.sizeOfCharArray;
 import static io.airlift.slice.SizeOf.sizeOfObjectArray;
+import static org.apache.iotdb.tsfile.utils.Preconditions.checkArgument;
 
 public class TimeseriesMetadata implements ITimeSeriesMetadata {
 
@@ -226,6 +228,23 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
 
   public void setStatistics(Statistics<? extends Serializable> statistics) {
     this.statistics = statistics;
+  }
+
+  @Override
+  public Statistics<? extends Serializable> getTimeStatistics() {
+    return getStatistics();
+  }
+
+  @Override
+  public Optional<Statistics<? extends Serializable>> getMeasurementStatistics(
+      int measurementIndex) {
+    checkArgument(measurementIndex == 0);
+    return Optional.ofNullable(statistics);
+  }
+
+  @Override
+  public int getMeasurementCount() {
+    return 1;
   }
 
   public void setChunkMetadataLoader(IChunkMetadataLoader chunkMetadataLoader) {

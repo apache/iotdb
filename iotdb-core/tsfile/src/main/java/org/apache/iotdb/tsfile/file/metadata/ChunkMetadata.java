@@ -35,6 +35,9 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
+
+import static org.apache.iotdb.tsfile.utils.Preconditions.checkArgument;
 
 /** Metadata of one chunk. */
 public class ChunkMetadata implements IChunkMetadata {
@@ -343,5 +346,24 @@ public class ChunkMetadata implements IChunkMetadata {
         isSeq,
         isClosed,
         mask);
+  }
+
+  @Override
+  public Statistics<? extends Serializable> getTimeStatistics() {
+    return getStatistics();
+  }
+
+  @Override
+  public Optional<Statistics<? extends Serializable>> getMeasurementStatistics(
+      int measurementIndex) {
+    checkArgument(
+        measurementIndex == 0,
+        "ChunkMetadata only has one measurement, but measurementIndex is %s");
+    return Optional.ofNullable(statistics);
+  }
+
+  @Override
+  public int getMeasurementCount() {
+    return 1;
   }
 }

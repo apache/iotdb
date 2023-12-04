@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.IStatisticsProvider;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -31,7 +30,6 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.read.reader.IAlignedPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -39,10 +37,11 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.List;
+import java.util.Optional;
 
 import static org.apache.iotdb.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
 
-public class MemAlignedPageReader implements IPageReader, IAlignedPageReader, IStatisticsProvider {
+public class MemAlignedPageReader implements IPageReader {
 
   private final TsBlock tsBlock;
   private final AlignedChunkMetadata chunkMetadata;
@@ -126,23 +125,14 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader, IS
   }
 
   private boolean canSkipOffsetByStatistics() {
-    if (queryAllSensors || getValueStatisticsList().isEmpty()) {
+    if (queryAllSensors || getMeasurementCount() == 0) {
       return true;
     }
 
     // For aligned series, we can use statistics to skip OFFSET only when all times are selected.
     // NOTE: if we change the query semantic in the future for aligned series, we need to remove
     // this check here.
-    long rowCount = getTimeStatistics().getCount();
-    for (Statistics<? extends Serializable> statistics : getValueStatisticsList()) {
-      if (statistics != null && !statistics.hasNullValue(rowCount)) {
-        // When there is any value page point number that is the same as the time page,
-        // it means that all timestamps in time page will be selected.
-        return true;
-      }
-    }
-
-    return false;
+    return timeAllSelected();
   }
 
   @Override
@@ -242,22 +232,19 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader, IS
   }
 
   @Override
-  public Statistics<? extends Serializable> getStatistics(int index) {
-    return chunkMetadata.getStatistics(index);
-  }
-
-  @Override
   public Statistics<? extends Serializable> getTimeStatistics() {
     return chunkMetadata.getTimeStatistics();
   }
 
   @Override
-  public Statistics<? extends Serializable> getMeasurementStatistics(int measurementIndex) {
-    return getStatistics(measurementIndex);
+  public Optional<Statistics<? extends Serializable>> getMeasurementStatistics(
+      int measurementIndex) {
+    return chunkMetadata.getMeasurementStatistics(measurementIndex);
   }
 
-  private List<Statistics<? extends Serializable>> getValueStatisticsList() {
-    return chunkMetadata.getValueStatisticsList();
+  @Override
+  public int getMeasurementCount() {
+    return chunkMetadata.getMeasurementCount();
   }
 
   @Override

@@ -20,7 +20,7 @@
 package org.apache.iotdb.tsfile.read.filter.operator;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.IStatisticsProvider;
+import org.apache.iotdb.tsfile.file.metadata.IMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -39,6 +39,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -244,22 +245,22 @@ public final class ValueFilterOperators {
     }
 
     @Override
-    public boolean canSkip(IStatisticsProvider statisticsProvider) {
-      Statistics<? extends Serializable> statistics =
-          statisticsProvider.getMeasurementStatistics(measurementIndex);
+    public boolean canSkip(IMetadata metadata) {
+      Optional<Statistics<? extends Serializable>> statistics =
+          metadata.getMeasurementStatistics(measurementIndex);
 
-      if (statistics == null) {
+      if (!statistics.isPresent()) {
         // the measurement isn't in this block so all values are null.
         return BLOCK_MIGHT_MATCH;
       }
 
-      if (statisticsNotAvailable(statistics)) {
+      if (statisticsNotAvailable(statistics.get())) {
         return BLOCK_MIGHT_MATCH;
       }
 
       // we are looking for records where v eq(null)
       // so drop if there are no nulls in this chunk
-      if (!statisticsProvider.hasNullValue(measurementIndex)) {
+      if (!metadata.hasNullValue(measurementIndex)) {
         return BLOCK_CANNOT_MATCH;
       }
       return BLOCK_MIGHT_MATCH;
@@ -271,21 +272,21 @@ public final class ValueFilterOperators {
     }
 
     @Override
-    public boolean allSatisfy(IStatisticsProvider statisticsProvider) {
-      Statistics<? extends Serializable> statistics =
-          statisticsProvider.getMeasurementStatistics(measurementIndex);
+    public boolean allSatisfy(IMetadata metadata) {
+      Optional<Statistics<? extends Serializable>> statistics =
+          metadata.getMeasurementStatistics(measurementIndex);
 
-      if (statistics == null) {
+      if (statistics.isPresent()) {
         // the measurement isn't in this block so all values are null.
         // null is always equal to null
         return BLOCK_ALL_MATCH;
       }
 
-      if (statisticsNotAvailable(statistics)) {
+      if (statisticsNotAvailable(statistics.get())) {
         return BLOCK_MIGHT_MATCH;
       }
 
-      if (statisticsProvider.isAllNulls(measurementIndex)) {
+      if (metadata.isAllNulls(measurementIndex)) {
         return BLOCK_ALL_MATCH;
       }
       return BLOCK_MIGHT_MATCH;
@@ -330,9 +331,9 @@ public final class ValueFilterOperators {
     }
 
     @Override
-    public boolean canSkip(IStatisticsProvider statisticsProvider) {
+    public boolean canSkip(IMetadata metadata) {
       Statistics<? extends Serializable> statistics =
-          statisticsProvider.getMeasurementStatistics(measurementIndex);
+          metadata.getMeasurementStatistics(measurementIndex);
 
       if (statistics == null) {
         // null is always equal to null
@@ -345,7 +346,7 @@ public final class ValueFilterOperators {
 
       // we are looking for records where v notEq(null)
       // so, if this is a column of all nulls, we can drop it
-      if (statisticsProvider.isAllNulls(measurementIndex)) {
+      if (metadata.isAllNulls(measurementIndex)) {
         return BLOCK_CANNOT_MATCH;
       }
       return BLOCK_MIGHT_MATCH;
@@ -357,9 +358,9 @@ public final class ValueFilterOperators {
     }
 
     @Override
-    public boolean allSatisfy(IStatisticsProvider statisticsProvider) {
+    public boolean allSatisfy(IMetadata metadata) {
       Statistics<? extends Serializable> statistics =
-          statisticsProvider.getMeasurementStatistics(measurementIndex);
+          metadata.getMeasurementStatistics(measurementIndex);
 
       if (statistics == null) {
         return BLOCK_MIGHT_MATCH;
@@ -371,7 +372,7 @@ public final class ValueFilterOperators {
 
       // we are looking for records where v notEq(null)
       // so, if this is a column of all nulls, we can drop it
-      if (!statisticsProvider.hasNullValue(measurementIndex)) {
+      if (!metadata.hasNullValue(measurementIndex)) {
         return BLOCK_ALL_MATCH;
       }
       return BLOCK_MIGHT_MATCH;

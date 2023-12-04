@@ -21,7 +21,6 @@ package org.apache.iotdb.tsfile.read.reader.page;
 
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.IStatisticsProvider;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -31,7 +30,6 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.read.reader.IAlignedPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
@@ -43,18 +41,18 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 import static org.apache.iotdb.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
 
-public class AlignedPageReader implements IPageReader, IAlignedPageReader, IStatisticsProvider {
+public class AlignedPageReader implements IPageReader {
 
   private final TimePageReader timePageReader;
   private final List<ValuePageReader> valuePageReaderList;
   private final int valueCount;
 
   // only used for limit and offset push down optimizer, if we select all columns from aligned
-  // device, we
-  // can use statistics to skip.
+  // device, we can use statistics to skip.
   // it's only exact while using limit & offset push down
   private final boolean queryAllSensors;
 
@@ -130,7 +128,7 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader, IStat
   private boolean pageCanSkip() {
     Statistics<? extends Serializable> statistics = getStatistics();
     if (filter != null && !filter.allSatisfy(statistics)) {
-      return filter.canSkip(statistics);
+      return filter.canSkip(this);
     }
 
     if (!canSkipOffsetByStatistics()) {
@@ -147,23 +145,14 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader, IStat
   }
 
   private boolean canSkipOffsetByStatistics() {
-    if (queryAllSensors || getValueStatisticsList().isEmpty()) {
+    if (queryAllSensors || valueCount == 0) {
       return true;
     }
 
     // For aligned series, we can use statistics to skip OFFSET only when all times are selected.
     // NOTE: if we change the query semantic in the future for aligned series, we need to remove
     // this check here.
-    long rowCount = getTimeStatistics().getCount();
-    for (Statistics<? extends Serializable> statistics : getValueStatisticsList()) {
-      if (statistics != null && !statistics.hasNullValue(rowCount)) {
-        // When there is any value page point number that is the same as the time page,
-        // it means that all timestamps in time page will be selected.
-        return true;
-      }
-    }
-
-    return false;
+    return timeAllSelected();
   }
 
   public IPointReader getLazyPointReader() throws IOException {
@@ -386,19 +375,20 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader, IStat
   }
 
   @Override
-  public Statistics<? extends Serializable> getStatistics(int index) {
-    ValuePageReader valuePageReader = valuePageReaderList.get(index);
-    return valuePageReader == null ? null : valuePageReader.getStatistics();
-  }
-
-  @Override
   public Statistics<? extends Serializable> getTimeStatistics() {
     return timePageReader.getStatistics();
   }
 
   @Override
-  public Statistics<? extends Serializable> getMeasurementStatistics(int measurementIndex) {
-    return getStatistics(measurementIndex);
+  public Optional<Statistics<? extends Serializable>> getMeasurementStatistics(
+      int measurementIndex) {
+    ValuePageReader valuePageReader = valuePageReaderList.get(measurementIndex);
+    return Optional.ofNullable(valuePageReader == null ? null : valuePageReader.getStatistics());
+  }
+
+  @Override
+  public int getMeasurementCount() {
+    return valueCount;
   }
 
   private List<Statistics<? extends Serializable>> getValueStatisticsList() {
