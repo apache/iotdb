@@ -77,8 +77,6 @@ public class ConcurrentIterableLinkedQueueTest {
 
   @Test(timeout = 60000)
   public void testConcurrentAddAndRemove() throws InterruptedException {
-    ConcurrentIterableLinkedQueue<Integer> queue = new ConcurrentIterableLinkedQueue<>();
-
     int numberOfAdds = 500;
     ExecutorService executor = Executors.newFixedThreadPool(2);
 
