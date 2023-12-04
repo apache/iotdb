@@ -11,7 +11,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Objects;
 
 import static java.lang.Math.abs;
 
@@ -114,52 +113,6 @@ public class REGERFloatTest {
         return value % 256;
     }
 
-    public static void pack8Values(ArrayList<Integer> values, int offset, int width, int encode_pos, byte[] encoded_result) {
-        int bufIdx = 0;
-        int valueIdx = offset;
-        // remaining bits for the current unfinished Integer
-        int leftBit = 0;
-
-        while (valueIdx < 8 + offset) {
-            // buffer is used for saving 32 bits as a part of result
-            int buffer = 0;
-            // remaining size of bits in the 'buffer'
-            int leftSize = 32;
-
-            // encode the left bits of current Integer to 'buffer'
-            if (leftBit > 0) {
-                buffer |= (values.get(valueIdx) << (32 - leftBit));
-                leftSize -= leftBit;
-                leftBit = 0;
-                valueIdx++;
-            }
-
-            while (leftSize >= width && valueIdx < 8 + offset) {
-                // encode one Integer to the 'buffer'
-                buffer |= (values.get(valueIdx) << (leftSize - width));
-                leftSize -= width;
-                valueIdx++;
-            }
-            // If the remaining space of the buffer can not save the bits for one Integer,
-            if (leftSize > 0 && valueIdx < 8 + offset) {
-                // put the first 'leftSize' bits of the Integer into remaining space of the
-                // buffer
-                buffer |= (values.get(valueIdx) >>> (width - leftSize));
-                leftBit = width - leftSize;
-            }
-
-            // put the buffer into the final result
-            for (int j = 0; j < 4; j++) {
-                encoded_result[encode_pos] = (byte) ((buffer >>> ((3 - j) * 8)) & 0xFF);
-                encode_pos++;
-                bufIdx++;
-                if (bufIdx >= width) {
-                    return;
-                }
-            }
-        }
-//        return encode_pos;
-    }
 
     public static void pack8Values(long[] values, int index, int offset, int width, int encode_pos, byte[] encoded_result) {
         int bufIdx = 0;
@@ -294,66 +247,6 @@ public class REGERFloatTest {
         return Float.intBitsToFloat(l);
     }
 
-    public static int bytes2Integer(ArrayList<Byte> encoded, int start, int num) {
-        int value = 0;
-        if (num > 4) {
-            System.out.println("bytes2Integer error");
-            return 0;
-        }
-        for (int i = 0; i < num; i++) {
-            value <<= 8;
-            int b = encoded.get(i + start) & 0xFF;
-            value |= b;
-        }
-        return value;
-    }
-
-    public static int part(int[][] arr, int index, int low, int high) {
-        int[] tmp = arr[low];
-        while (low < high) {
-            while (low < high
-                    && (arr[high][index] > tmp[index]
-                    || (Objects.equals(arr[high][index], tmp[index])
-                    && arr[high][index ^ 1] >= tmp[index ^ 1]))) {
-                high--;
-            }
-            arr[low][0] = arr[high][0];
-            arr[low][1] = arr[high][1];
-            while (low < high
-                    && (arr[low][index] < tmp[index]
-                    || (Objects.equals(arr[low][index], tmp[index])
-                    && arr[low][index ^ 1] <= tmp[index ^ 1]))) {
-                low++;
-            }
-            arr[high][0] = arr[low][0];
-            arr[high][1] = arr[low][1];
-        }
-        arr[low][0] = tmp[0];
-        arr[low][1] = tmp[1];
-        return low;
-    }
-
-    public static int part(ArrayList<ArrayList<Integer>> arr, int index, int low, int high) {
-        ArrayList<Integer> tmp = arr.get(low);
-        while (low < high) {
-            while (low < high
-                    && (arr.get(high).get(index) > tmp.get(index)
-                    || (Objects.equals(arr.get(high).get(index), tmp.get(index))
-                    && arr.get(high).get(index ^ 1) >= tmp.get(index ^ 1)))) {
-                high--;
-            }
-            arr.set(low, arr.get(high));
-            while (low < high
-                    && (arr.get(low).get(index) < tmp.get(index)
-                    || (Objects.equals(arr.get(low).get(index), tmp.get(index))
-                    && arr.get(low).get(index ^ 1) <= tmp.get(index ^ 1)))) {
-                low++;
-            }
-            arr.set(high, arr.get(low));
-        }
-        arr.set(low, tmp);
-        return low;
-    }
 
     public static long combine2Int(int int1, int int2) {
         return ((long) int1 << 32) | (int2 & 0xFFFFFFFFL);
@@ -382,38 +275,6 @@ public class REGERFloatTest {
         return n;
     }
 
-    //    public static void splitTimeStamp3(
-//            ArrayList<ArrayList<Integer>> ts_block, ArrayList<Integer> result) {
-//        int td_common = 0;
-//        for (int i = 1; i < ts_block.size(); i++) {
-//            int time_diffi = ts_block.get(i).get(0) - ts_block.get(i - 1).get(0);
-//            if (td_common == 0) {
-//                if (time_diffi != 0) {
-//                    td_common = time_diffi;
-//                }
-//                continue;
-//            }
-//            if (time_diffi != 0) {
-//                td_common = getCommon(time_diffi, td_common);
-//                if (td_common == 1) {
-//                    break;
-//                }
-//            }
-//        }
-//        if (td_common == 0) {
-//            td_common = 1;
-//        }
-//
-//        int t0 = ts_block.get(0).get(0);
-//        for (int i = 0; i < ts_block.size(); i++) {
-//            ArrayList<Integer> tmp = new ArrayList<>();
-//            int interval_i = (ts_block.get(i).get(0) - t0) / td_common;
-//            tmp.add(t0 + interval_i);
-//            tmp.add(ts_block.get(i).get(1));
-//            ts_block.set(i, tmp);
-//        }
-//        result.add(td_common);
-//    }
     public static void splitTimeStamp3(
             ArrayList<Long> ts_block, ArrayList<Integer> result) {
         int td_common = 0;
@@ -442,13 +303,9 @@ public class REGERFloatTest {
 
         int t0 = getTime(ts_block.get(0));
         for (int i = 0; i < ts_block.size(); i++) {
-//            ArrayList<Integer> tmp = new ArrayList<>();
             int cur_value = getTime(ts_block.get(i));
             int interval_i = ((cur_value - t0) / td_common);
             ts_block.set(i, combine2Int(t0 + interval_i, getValue(ts_block.get(i))));
-//            tmp.add(t0 + interval_i);
-//            tmp.add(ts_block.get(i).get(1));
-//            ts_block.set(i, tmp);
         }
         result.add(td_common);
     }
@@ -482,13 +339,6 @@ public class REGERFloatTest {
             j++;
         }
 
-//        for (int j = 1; j < block_size; j++) {
-//            int timestamp_delta_i = getTime(ts_block[j]) - (int) (theta0_t + theta1_t * (float) getTime(ts_block[j - 1]));
-//            if (timestamp_delta_i < min_delta_time) {
-//                min_delta_time_index = j;
-//                min_delta_time = timestamp_delta_i;
-//            }
-//        }
         raw_length[0] += (getBitWith(min_delta_time_i - min_delta_time) * (block_size - 1));
         raw_length[3] = min_delta_time;
         min_index.set(0, min_delta_time_index);
@@ -524,13 +374,6 @@ public class REGERFloatTest {
         }
 
 
-//        for (int j = 1; j < block_size; j++) {
-//            int value_delta_i = getValue(ts_block[j]) - (int) (theta0_v + theta1_v * (float) getValue(ts_block[j - 1]));
-//            if (value_delta_i < min_delta_value) {
-//                min_delta_value_index = j;
-//                min_delta_value = value_delta_i;
-//            }
-//        }
         raw_length[0] += (getBitWith(min_delta_value_i - min_delta_value) * (block_size - 1));
         raw_length[3] = min_delta_value;
         min_index.set(0, min_delta_value_index);
@@ -730,8 +573,6 @@ public class REGERFloatTest {
             timestamp_delta_i = getTime(tmp_i) - (int) (theta0_t + theta1_t * (float) getTime(tmp_i_1));
             value_delta_i = getValue(tmp_i) - (int) (theta0_v + theta1_v * (float) getValue(tmp_i_1));
             ts_block_delta[pos_ts_block_delta] = combine2Int(timestamp_delta_i, value_delta_i);
-//            ts_block_delta[pos_ts_block_delta][0] = timestamp_delta_i;
-//            ts_block_delta[pos_ts_block_delta][1] = value_delta_i;
             pos_ts_block_delta++;
 
 
@@ -1624,35 +1465,13 @@ public class REGERFloatTest {
             j++;
         }
 
-//        // delta to Regression
-//        for (int j = 1; j < block_size; j++) {
-//            long tmp_j = ts_block[j];
-//            long tmp_j_1 = ts_block[j-1];
-//            int epsilon_r =
-//                    getTime(tmp_j) - (int) (theta0_r + theta1_r * (float) getTime(tmp_j_1));
-//            int epsilon_v =
-//                    getValue(tmp_j) - (int) (theta0_v + theta1_v * (float) getValue(tmp_j_1));
-//
-//
-//            if (epsilon_r < timestamp_delta_min) {
-//                timestamp_delta_min = epsilon_r;
-//            }
-//            if (epsilon_v < value_delta_min) {
-//                value_delta_min = epsilon_v;
-//            }
-//            ts_block_delta[j] = combine2Int(epsilon_r,epsilon_v);
-////            ts_block_delta[j][1] = epsilon_v;
-//        }
-
-//        printTSBlock(ts_block_delta);
 
         int max_interval = Integer.MIN_VALUE;
         int max_value = Integer.MIN_VALUE;
         int max_interval_segment = Integer.MIN_VALUE;
         int max_value_segment = Integer.MIN_VALUE;
         int length = 0;
-//        long delta_time = combine2Int(timestamp_delta_min, value_delta_min);
-//        for (int i = block_size - 1; i > 0; i--) {
+
         for (int i = 1; i < block_size; i++) {
             tmp_j = ts_block_delta[i];
             int epsilon_r = getTime(tmp_j) - timestamp_delta_min;
@@ -1684,7 +1503,6 @@ public class REGERFloatTest {
         int max_bit_width_interval = getBitWith(max_interval);
         int max_bit_width_value = getBitWith(max_value);
 
-//System.out.println("--------------------------------------------------");
 
         raw_length[0] = length;
         raw_length[1] = max_bit_width_interval;
@@ -1692,189 +1510,7 @@ public class REGERFloatTest {
         raw_length[3] = timestamp_delta_min;
         raw_length[4] = value_delta_min;
 
-//        printTSBlock(ts_block_delta);
         return ts_block_delta;
-
-//        int[][] ts_block_delta_segment = new int[block_size][2];
-//        int pos_ts_block_delta_segment = 0;
-//        int[] tmp_segment = new int[2];
-//        int max_interval_segment = Integer.MIN_VALUE;
-//        int max_value_segment = Integer.MIN_VALUE;
-//        tmp_segment[0] = max_interval_segment;
-//        tmp_segment[1] = max_value_segment;
-//
-//
-//            if (epsilon_r > max_interval_segment) {
-//                max_interval_segment = epsilon_r;
-//                tmp_segment[0] = max_interval_segment;
-//            }
-//            if (epsilon_v > max_value_segment) {
-//                max_value_segment = epsilon_v;
-//                tmp_segment[1] = max_value_segment;
-//            }
-//            if (j % segment_size == 0) {
-//                ts_block_delta_segment[pos_ts_block_delta_segment][0] = tmp_segment[0];
-//                ts_block_delta_segment[pos_ts_block_delta_segment][1] = tmp_segment[1];
-//                pos_ts_block_delta_segment++;
-//                tmp_segment = new int[2];
-//                max_interval_segment = Integer.MIN_VALUE;
-//                max_value_segment = Integer.MIN_VALUE;
-//                tmp_segment[0] = max_interval_segment;
-//                tmp_segment[1] = max_value_segment;
-//            }
-//
-//
-//        for (int j = 0; j < pos_ts_block_delta_segment; j++) {
-//            length += getBitWith(ts_block_delta_segment[j][0] - timestamp_delta_min);
-//            length += getBitWith(ts_block_delta_segment[j][1] - value_delta_min);
-//        }
-
-
-    }
-    public static long[] getEncodeBitsRegressionNoTrain1(
-            long[] ts_block,
-            int block_size,
-            int[] raw_length,
-            float[] theta,
-            int segment_size) {
-
-        long[] ts_block_delta = new long[ts_block.length];
-
-        float theta0_r = theta[0];
-        float theta1_r = theta[1];
-        float theta0_v = theta[2];
-        float theta1_v = theta[3];
-
-        ts_block_delta[0] = ts_block[0];
-        int timestamp_delta_min = Integer.MAX_VALUE;
-        int value_delta_min = Integer.MAX_VALUE;
-        int max_interval = Integer.MIN_VALUE;
-        int max_value = Integer.MIN_VALUE;
-        int max_interval_segment = Integer.MIN_VALUE;
-        int max_value_segment = Integer.MIN_VALUE;
-        int length = 0;
-
-        int j = 1;
-        long tmp_j_1 = ts_block[0];
-        long tmp_j;
-        while (j < block_size) {
-            tmp_j = ts_block[j];
-
-            int epsilon_r_j =
-                    zigzag( getTime(tmp_j)
-                            - (int) (theta0_r + theta1_r * (float) getTime(tmp_j_1)));
-            int epsilon_v_j =
-                    zigzag( getValue(tmp_j)
-                            - (int) (theta0_v + theta1_v * (float) getValue(tmp_j_1)));
-            if (epsilon_r_j > max_interval) {
-                max_interval = epsilon_r_j;
-            }
-            if (epsilon_v_j > max_value) {
-                max_value = epsilon_v_j;
-            }
-
-            if (epsilon_r_j > max_interval_segment) {
-                max_interval_segment = epsilon_r_j;
-            }
-            if (epsilon_v_j > max_value_segment) {
-                max_value_segment = epsilon_v_j;
-            }
-//            if (epsilon_r_j < timestamp_delta_min) {
-//                timestamp_delta_min = epsilon_r_j;
-//            }
-//            if (epsilon_v_j < value_delta_min) {
-//                value_delta_min = epsilon_v_j;
-//            }
-            ts_block_delta[j] = combine2Int(epsilon_r_j, epsilon_v_j);
-
-            if (j % segment_size == 0) {
-                length += getBitWith(max_interval_segment) * segment_size;
-                length += getBitWith(max_value_segment) * segment_size;
-                max_interval_segment = Integer.MIN_VALUE;
-                max_value_segment = Integer.MIN_VALUE;
-            }
-
-            tmp_j_1 = tmp_j;
-            j++;
-        }
-
-
-
-//        for (int i = 1; i < block_size; i++) {
-//            tmp_j = ts_block_delta[i];
-//            int epsilon_r = getTime(tmp_j) - timestamp_delta_min;
-//            int epsilon_v = getValue(tmp_j) - value_delta_min;
-//
-//            ts_block_delta[i] = combine2Int(epsilon_r, epsilon_v);
-//
-//            if (epsilon_r > max_interval) {
-//                max_interval = epsilon_r;
-//            }
-//            if (epsilon_v > max_value) {
-//                max_value = epsilon_v;
-//            }
-//
-//            if (epsilon_r > max_interval_segment) {
-//                max_interval_segment = epsilon_r;
-//            }
-//            if (epsilon_v > max_value_segment) {
-//                max_value_segment = epsilon_v;
-//            }
-//            if (i % segment_size == 0) {
-//                length += getBitWith(max_interval_segment) * segment_size;
-//                length += getBitWith(max_value_segment) * segment_size;
-//                max_interval_segment = Integer.MIN_VALUE;
-//                max_value_segment = Integer.MIN_VALUE;
-//            }
-//        }
-
-        int max_bit_width_interval = getBitWith(max_interval);
-        int max_bit_width_value = getBitWith(max_value);
-
-//System.out.println("--------------------------------------------------");
-
-        raw_length[0] = length;
-        raw_length[1] = max_bit_width_interval;
-        raw_length[2] = max_bit_width_value;
-        raw_length[3] = timestamp_delta_min;
-        raw_length[4] = value_delta_min;
-
-//        printTSBlock(ts_block_delta);
-        return ts_block_delta;
-
-//        int[][] ts_block_delta_segment = new int[block_size][2];
-//        int pos_ts_block_delta_segment = 0;
-//        int[] tmp_segment = new int[2];
-//        int max_interval_segment = Integer.MIN_VALUE;
-//        int max_value_segment = Integer.MIN_VALUE;
-//        tmp_segment[0] = max_interval_segment;
-//        tmp_segment[1] = max_value_segment;
-//
-//
-//            if (epsilon_r > max_interval_segment) {
-//                max_interval_segment = epsilon_r;
-//                tmp_segment[0] = max_interval_segment;
-//            }
-//            if (epsilon_v > max_value_segment) {
-//                max_value_segment = epsilon_v;
-//                tmp_segment[1] = max_value_segment;
-//            }
-//            if (j % segment_size == 0) {
-//                ts_block_delta_segment[pos_ts_block_delta_segment][0] = tmp_segment[0];
-//                ts_block_delta_segment[pos_ts_block_delta_segment][1] = tmp_segment[1];
-//                pos_ts_block_delta_segment++;
-//                tmp_segment = new int[2];
-//                max_interval_segment = Integer.MIN_VALUE;
-//                max_value_segment = Integer.MIN_VALUE;
-//                tmp_segment[0] = max_interval_segment;
-//                tmp_segment[1] = max_value_segment;
-//            }
-//
-//
-//        for (int j = 0; j < pos_ts_block_delta_segment; j++) {
-//            length += getBitWith(ts_block_delta_segment[j][0] - timestamp_delta_min);
-//            length += getBitWith(ts_block_delta_segment[j][1] - value_delta_min);
-//        }
 
 
     }
@@ -2135,11 +1771,7 @@ public class REGERFloatTest {
             tmp_j_1 = tmp_j;
             j++;
         }
-//        for (int j = 1; j < block_size; j++) {
-//            long tmp_j = ts_block[j];
-//            long tmp_j_1 = ts_block[j-1];
-//
-//        }
+
         min_index.add(timestamp_delta_min_index);
         min_index.add(value_delta_min_index);
 
@@ -2209,33 +1841,6 @@ public class REGERFloatTest {
             j++;
         }
 
-//        for (int j = 1; j < block_size; j++) {
-//            long tmp_j = ts_block[j];
-//            long tmp_j_1 = ts_block[j-1];
-//            int epsilon_r_j =
-//                    getTime(tmp_j)
-//                            - (int) (theta0_t + theta1_t * (float) getTime(tmp_j_1));
-//            int epsilon_v_j =
-//                    getValue(tmp_j)
-//                            - (int) (theta0_v + theta1_v * (float) getValue(tmp_j_1));
-//
-//            if (epsilon_v_j > value_delta_max) {
-//                value_delta_max = epsilon_v_j;
-//                value_delta_max_index = j;
-//            }
-//            if (epsilon_v_j < value_delta_min) {
-//                value_delta_min = epsilon_v_j;
-//                value_delta_min_index = j;
-//            }
-//            if (epsilon_r_j > timestamp_delta_max) {
-//                timestamp_delta_max = epsilon_r_j;
-//                timestamp_delta_max_index = j;
-//            }
-//            if (epsilon_r_j < timestamp_delta_min) {
-//                timestamp_delta_min = epsilon_r_j;
-//                timestamp_delta_min_index = j;
-//            }
-//        }
 
         min_index.add(timestamp_delta_min_index);
         alpha_list[0] = timestamp_delta_min_index;
@@ -2424,9 +2029,6 @@ public class REGERFloatTest {
 
             for (int data_i = segment_i * segment_size + 1; data_i < (segment_i + 1) * segment_size + 1; data_i++) {
                 long cur_data_i = ts_block_delta[data_i];
-//                System.out.println("cur_data_i: "+(cur_data_i));
-//                System.out.println("getTime(cur_data_i): "+getTime(cur_data_i));
-//                System.out.println("getValue(cur_data_i): "+getValue(cur_data_i));
                 int cur_bit_width_time = getBitWith(getTime(cur_data_i));
                 int cur_bit_width_value = getBitWith(getValue(cur_data_i));
                 if (cur_bit_width_time > bit_width_time) {
@@ -2456,25 +2058,6 @@ public class REGERFloatTest {
         ts_block[beta] = tmp_tv;
     }
 
-
-    private static int numberOfEncodeSegment2Bytes(long[] delta_segments, long[] bit_width_segments, int segment_size) {
-        int block_size = delta_segments.length;
-        int segment_n = block_size / segment_size;
-        int result = 0;
-        result += 8; // encode interval0 and value0
-        result += 16; // encode theta
-        result += encodeRLEBitWidth2Bytes(bit_width_segments);
-        for (int segment_i = 0; segment_i < segment_n; segment_i++) {
-            long cur_data_i = bit_width_segments[segment_i];
-            int bit_width_time = getTime(cur_data_i);
-            int bit_width_value = getValue(cur_data_i);
-            result += (segment_size * bit_width_time / 8);
-            result += (segment_size * bit_width_value / 8);
-        }
-
-        return result;
-    }
-
     private static int encodeSegment2Bytes(long[] delta_segments, long[] bit_width_segments, int[] raw_length, int segment_size, float[] theta, int pos_encode, byte[] encoded_result) {
 
         int block_size = delta_segments.length;
@@ -2498,15 +2081,10 @@ public class REGERFloatTest {
 
 
         pos_encode = encodeRLEBitWidth2Bytes(bit_width_segments, pos_encode, encoded_result);
-//        printTSBlock(bit_width_segments);
-//        System.out.println(pos_encode);
-//        System.out.println("theta:"+ Arrays.toString(theta));
         for (int segment_i = 0; segment_i < segment_n; segment_i++) {
             long tmp_bit_width_segments = bit_width_segments[segment_i];
             int bit_width_time = getTime(tmp_bit_width_segments);
             int bit_width_value = getValue(tmp_bit_width_segments);
-//            System.out.println(bit_width_time);
-//            System.out.println(bit_width_value);
             pos_encode = bitPacking(delta_segments, 0, segment_i * segment_size + 1, segment_size, bit_width_time, pos_encode, encoded_result);
             pos_encode = bitPacking(delta_segments, 1, segment_i * segment_size + 1, segment_size, bit_width_value, pos_encode, encoded_result);
         }
@@ -2530,10 +2108,8 @@ public class REGERFloatTest {
         int index_alpha_list = 0;
 
 
-//        trainParameter(ts_block,block_size,theta);
-//        System.out.println(Arrays.toString(theta));
         getEncodeBitsRegressionNoTrain(ts_block, block_size, raw_length, theta, segment_size);
-//        System.out.println(Arrays.toString(raw_length));
+
         int[] alpha_list = getIStar(ts_block, min_index, block_size, 0, theta);
         int[] beta_list = new int[alpha_list.length];
         int[][] new_length_list = new int[alpha_list.length][5];
@@ -2588,8 +2164,6 @@ public class REGERFloatTest {
                 } else {
                     break;
                 }
-//                  moveAlphaToBeta(ts_block, new_alpha_list[min_length_index], beta_list[min_length_index]);
-//                  System.arraycopy(new_length_list[min_length_index], 0, raw_length, 0, 5);
             } else {
                 break;
             }
@@ -2623,38 +2197,11 @@ public class REGERFloatTest {
 
         }
 
-//        System.out.println(adjust_count);
-//        printTSBlock(ts_block);
+
         ts_block_delta = getEncodeBitsRegressionNoTrain(ts_block, block_size, raw_length, theta, segment_size);
-//        printTSBlock(ts_block_delta);
 
         return ts_block_delta;
-//        int segment_n = (block_size - 1) / segment_size;
-//        int[][] bit_width_segments = new int[segment_n][2];
-//        for (int segment_i = 0; segment_i < segment_n; segment_i++) {
-//            int bit_width_time = Integer.MIN_VALUE;
-//            int bit_width_value = Integer.MIN_VALUE;
-//
-//            for (int data_i = segment_i * segment_size + 1; data_i < (segment_i + 1) * segment_size + 1; data_i++) {
-//                int cur_bit_width_time = getBitWith(ts_block_delta[data_i][0]);
-//                int cur_bit_width_value = getBitWith(ts_block_delta[data_i][1]);
-//                if (cur_bit_width_time > bit_width_time) {
-//                    bit_width_time = cur_bit_width_time;
-//                }
-//                if (cur_bit_width_value > bit_width_value) {
-//                    bit_width_value = cur_bit_width_value;
-//                }
-//            }
-//
-//            bit_width_segments[segment_i][0] = bit_width_time;
-//            bit_width_segments[segment_i][1] = bit_width_value;
-//        }
-//
-//
-//        encode_pos = encodeSegment2Bytes(ts_block_delta, bit_width_segments, raw_length, segment_size, theta, encode_pos, cur_byte);
 
-//        System.out.println("encode_pos="+encode_pos);
-//        return encode_pos;
     }
 
 
@@ -2670,94 +2217,29 @@ public class REGERFloatTest {
             ts_block = new long[block_size];
             ts_block_value = new long[block_size];
             ts_block_partition = new long[block_size];
-//            Map<Integer, Integer> data_map = new HashMap<>();
-//            int min_value = Integer.MAX_VALUE;
 
-//            System.out.println((data[i * block_size+1]));
-//            System.out.println(getTime(data[i * block_size+1]));
             for (int j = 0; j < block_size; j++) {
                 long tmp_j = data[j + i * block_size] - min_time;
-//                System.out.println(getTime(data[j + i * block_size]));
-//                System.out.println(getTime(data[i * block_size]));
                 ts_block[j] = tmp_j;
                 ts_block_value[j] = combine2Int(getValue(tmp_j), getTime(tmp_j));
 
-//                if(ts_block[j][1]<min_value){
-//                    min_value = ts_block[j][1];
-//                }
-//                if(data_map.containsKey(ts_block[j][1])){
-//                    int tmp = data_map.get(ts_block[j][1]);
-//                    tmp++;
-//                    data_map.put(ts_block[j][1],tmp);
-//                }else{
-//                    data_map.put(ts_block[j][1],1);
-//                }
-//                ts_block_value[j] = data[j + i * block_size] - (min_time);
             }
-//            for (int j = 0; j < block_size; j++) {
-//                ts_block[j][0] = (data[j + i * block_size][0] - min_time);
-//                ts_block[j][1] = data[j + i * block_size][1];
-//                if(ts_block[j][1]<min_value){
-//                    min_value = ts_block[j][1];
-//                }
-//                int tmp_value = ts_block[j][1]-min_value;
-//                if(data_map.containsKey(tmp_value)){
-//                    int tmp = data_map.get(tmp_value);
-//                    tmp++;
-//                    data_map.put(tmp_value,tmp);
-//                }else{
-//                    data_map.put(tmp_value,1);
-//                }
-//                ts_block_value[j][0] =ts_block[j][0];
-//                ts_block_value[j][1] =ts_block[j][1];
-//            }
-//            double[] kernelDensity = calculateKernelDensity(data_map);
-//
-//            third_value= findMinIndex(kernelDensity);
-//            for(int j=0;j<third_value.length;j++){
-//                third_value[j] += min_value;
-//            }
-//            System.out.println("Minimum point: x=" + (Arrays.toString(third_value)));
+
         } else {
             ts_block = new long[supply_length];
             ts_block_value = new long[supply_length];
             ts_block_partition = new long[supply_length];
             int end = data.length - i * block_size;
-//            Map<Integer, Integer> data_map = new HashMap<>();
-//            int min_value = Integer.MAX_VALUE;
-
             for (int j = 0; j < end; j++) {
                 long tmp_j = data[j + i * block_size] - min_time;
                 ts_block[j] = tmp_j;
                 ts_block_value[j] = combine2Int(getValue(tmp_j), getTime(tmp_j));
 
-//                if(ts_block[j][1]<min_value){
-//                    min_value = ts_block[j][1];
-//                }
-//                if(data_map.containsKey(ts_block[j][1])){
-//                    int tmp = data_map.get(ts_block[j][1]);
-//                    tmp++;
-//                    data_map.put(ts_block[j][1],tmp);
-//                }else{
-//                    data_map.put(ts_block[j][1],1);
-//                }
-//                ts_block_value[j] = data[j + i * block_size] - (min_time);
             }
             for (int j = end; j < supply_length; j++) {
                 ts_block[j] = 0;
                 ts_block_value[j] = 0;
-//                if(data_map.containsKey(ts_block[j][1])){
-//                    int tmp = data_map.get(ts_block[j][1]);
-//                    tmp++;
-//                    data_map.put(ts_block[j][1],tmp);
-//                }else{
-//                    data_map.put(ts_block[j][1],1);
-//                }
-//                ts_block_value[j] =0;
             }
-//            double[] kernelDensity = calculateKernelDensity(data_map);
-
-//            third_value= findMinIndex(kernelDensity);
             block_size = supply_length;
         }
 
@@ -3130,7 +2612,6 @@ public class REGERFloatTest {
             block_sort[8*length_block_sort-8+block_sort_end-j-1] = sort & 1;
             sort >>= 1;
         }
-//        System.out.println(Arrays.toString(block_sort));
 
         if (remain_length % segment_size == 0) {
             zero_number = 1;
@@ -3143,7 +2624,6 @@ public class REGERFloatTest {
 
         int[] value_pos_arr = new int[1];
 
-//        for (int k = 0; k < 2; k++) {
         for (int k = 0; k < block_num; k++) {
             int cur_block_sort = block_sort[k];
             if(cur_block_sort==0)
@@ -3177,7 +2657,7 @@ public class REGERFloatTest {
 
     @Test
     public void REGER() throws IOException {
-//        String parent_dir = "C:/Users/xiaoj/Desktop/test";
+
         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/iotdb/iotdb-core/tsfile/src/test/resources/";
         String output_parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-reorder/compression_ratio/reger_float";
         int pack_size = 16;
@@ -3189,7 +2669,7 @@ public class REGERFloatTest {
         ArrayList<String> dataset_name = new ArrayList<>();
         ArrayList<Integer> dataset_block_size = new ArrayList<>();
         ArrayList<int[]> dataset_third = new ArrayList<>();
-        ArrayList<Integer> dataset_k = new ArrayList<>();
+
         dataset_name.add("CS-Sensors");
         dataset_name.add("Metro-Traffic");
         dataset_name.add("USGS-Earthquakes");
@@ -3237,40 +2717,26 @@ public class REGERFloatTest {
 
         for (String value : dataset_name) {
             input_path_list.add(input_parent_dir + value);
-            dataset_k.add(1);
             dataset_block_size.add(block_size);
         }
 
         output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
-//        dataset_block_size.add(128);
-
         output_path_list.add(output_parent_dir + "/Metro-Traffic_ratio.csv");// 1
-//        dataset_block_size.add(4096);
         output_path_list.add(output_parent_dir + "/USGS-Earthquakes_ratio.csv");// 2
-//        dataset_block_size.add(8192);
         output_path_list.add(output_parent_dir + "/YZ-Electricity_ratio.csv"); // 3
         output_path_list.add(output_parent_dir + "/GW-Magnetic_ratio.csv"); //4
         output_path_list.add(output_parent_dir + "/TY-Fuel_ratio.csv");//5
-//        dataset_block_size.add(8192);
         output_path_list.add(output_parent_dir + "/Cyber-Vehicle_ratio.csv"); //6
-//        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/Vehicle-Charge_ratio.csv");//7
-//        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv");//8
-//        dataset_block_size.add(128);
         output_path_list.add(output_parent_dir + "/TH-Climate_ratio.csv");//9
-//        dataset_block_size.add(64);
         output_path_list.add(output_parent_dir + "/TY-Transport_ratio.csv");//10
-//        dataset_block_size.add(64);
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
-//        dataset_block_size.add(256);
         output_path_list.add(output_parent_dir + "/FANYP-Sensors_ratio.csv"); // 12
         output_path_list.add(output_parent_dir + "/TRAJET-Transport_ratio.csv"); // 13
 
-//        int[] file_lists = {4};
-//        for (int file_i : file_lists) {
+
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
-//        for (int file_i = 12; file_i < 14; file_i++) {
             String inputPath = input_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
 
@@ -3333,7 +2799,6 @@ public class REGERFloatTest {
                 double compressed_size = 0;
                 int repeatTime2 = 100;
                 long s = System.nanoTime();
-                int[] best_order = new int[3];
                 int length = 0;
                 for (int repeat = 0; repeat < repeatTime2; repeat++)
                     length = ReorderingRegressionEncoder(data2_arr, dataset_block_size.get(file_i), dataset_third.get(file_i), pack_size, encoded_result);
@@ -3568,7 +3033,6 @@ public class REGERFloatTest {
         ArrayList<String> dataset_name = new ArrayList<>();
         ArrayList<Integer> dataset_block_size = new ArrayList<>();
         ArrayList<int[]> dataset_third = new ArrayList<>();
-        ArrayList<Integer> dataset_k = new ArrayList<>();
         dataset_name.add("CS-Sensors");
         dataset_name.add("Metro-Traffic");
         dataset_name.add("USGS-Earthquakes");
@@ -3616,40 +3080,24 @@ public class REGERFloatTest {
 
         for (String value : dataset_name) {
             input_path_list.add(input_parent_dir + value);
-            dataset_k.add(1);
             dataset_block_size.add(block_size);
         }
 
         output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
-        //        dataset_block_size.add(1024);
-
         output_path_list.add(output_parent_dir + "/Metro-Traffic_ratio.csv"); // 1
-        //        dataset_block_size.add(512);
         output_path_list.add(output_parent_dir + "/USGS-Earthquakes_ratio.csv"); // 2
-        //        dataset_block_size.add(512);
         output_path_list.add(output_parent_dir + "/YZ-Electricity_ratio.csv"); // 3
-        //        dataset_block_size.add(256);
         output_path_list.add(output_parent_dir + "/GW-Magnetic_ratio.csv"); // 4
-        //        dataset_block_size.add(128);
         output_path_list.add(output_parent_dir + "/TY-Fuel_ratio.csv"); // 5
-        //        dataset_block_size.add(64);
         output_path_list.add(output_parent_dir + "/Cyber-Vehicle_ratio.csv"); // 6
-        //        dataset_block_size.add(128);
         output_path_list.add(output_parent_dir + "/Vehicle-Charge_ratio.csv"); // 7
-        //        dataset_block_size.add(512);
         output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv"); // 8
-        //        dataset_block_size.add(256);
         output_path_list.add(output_parent_dir + "/TH-Climate_ratio.csv"); // 9
-        //        dataset_block_size.add(512);
         output_path_list.add(output_parent_dir + "/TY-Transport_ratio.csv"); // 10
-        //        dataset_block_size.add(512);
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv"); // 11
-        //        dataset_block_size.add(512);
         output_path_list.add(output_parent_dir + "/FANYP-Sensors_ratio.csv"); // 12
         output_path_list.add(output_parent_dir + "/TRAJET-Transport_ratio.csv"); // 13
 
-//        int[] file_lists = {5,6,8,10};
-//        for (int file_i : file_lists) {
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 //        for (int file_i = 12; file_i < 14; file_i++) {
             String inputPath = input_path_list.get(file_i);
@@ -3751,140 +3199,5 @@ public class REGERFloatTest {
         }
     }
 
-
-    public static void REGERCorrect() throws IOException {
-
-        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/iotdb/iotdb-core/tsfile/src/test/resources/";
-
-        String input_parent_dir = parent_dir + "trans_data/";
-        ArrayList<String> input_path_list = new ArrayList<>();
-        ArrayList<String> dataset_name = new ArrayList<>();
-        ArrayList<Integer> dataset_block_size = new ArrayList<>();
-        ArrayList<int[]> dataset_third = new ArrayList<>();
-        dataset_name.add("CS-Sensors");
-        dataset_name.add("Metro-Traffic");
-        dataset_name.add("USGS-Earthquakes");
-        dataset_name.add("YZ-Electricity");
-        dataset_name.add("GW-Magnetic");
-        dataset_name.add("TY-Fuel");
-        dataset_name.add("Cyber-Vehicle");
-        dataset_name.add("Vehicle-Charge");
-        dataset_name.add("Nifty-Stocks");
-        dataset_name.add("TH-Climate");
-        dataset_name.add("TY-Transport");
-        dataset_name.add("EPM-Education");
-        dataset_name.add("FANYP-Sensors");
-        dataset_name.add("TRAJET-Transport");
-
-        int[] dataset_0 = {547, 2816};
-        int[] dataset_1 = {1719, 3731};
-        int[] dataset_2 = {-48, -11, 6, 25, 52};
-        int[] dataset_3 = {8681, 13584};
-        int[] dataset_4 = {79, 184, 274};
-        int[] dataset_5 = {17, 68};
-        int[] dataset_6 = {677};
-        int[] dataset_7 = {1047, 1725};
-        int[] dataset_8 = {227, 499, 614, 1013};
-        int[] dataset_9 = {474, 678};
-        int[] dataset_10 = {4, 30, 38, 49, 58};
-        int[] dataset_11 = {5182, 8206};
-        int[] dataset_12 = {0};
-        int[] dataset_13 = {0};
-
-        dataset_third.add(dataset_0);
-        dataset_third.add(dataset_1);
-        dataset_third.add(dataset_2);
-        dataset_third.add(dataset_3);
-        dataset_third.add(dataset_4);
-        dataset_third.add(dataset_5);
-        dataset_third.add(dataset_6);
-        dataset_third.add(dataset_7);
-        dataset_third.add(dataset_8);
-        dataset_third.add(dataset_9);
-        dataset_third.add(dataset_10);
-        dataset_third.add(dataset_11);
-        dataset_third.add(dataset_12);
-        dataset_third.add(dataset_13);
-
-        for (String value : dataset_name) {
-            input_path_list.add(input_parent_dir + value);
-            dataset_block_size.add(128);
-        }
-
-
-//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
-        for (int file_i = 3; file_i < 4; file_i++) {
-            String inputPath = input_path_list.get(file_i);
-
-            File file = new File(inputPath);
-            File[] tempList = file.listFiles();
-
-
-            assert tempList != null;
-
-            for (File f : tempList) {
-//                f = tempList[2];
-
-                System.out.println(f);
-                InputStream inputStream = Files.newInputStream(f.toPath());
-                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
-//                ArrayList<ArrayList<Integer>> data = new ArrayList<>();
-                ArrayList<Long> data = new ArrayList<>();
-
-                // add a column to "data"
-                loader.readHeaders();
-                loader.readRecord();
-                int time0 = Integer.parseInt(loader.getValues()[0]);
-                int value0 = Integer.parseInt(loader.getValues()[1]);
-                data.add(combine2Int(0, value0));
-                while (loader.readRecord()) {
-                    int time_tmp = Integer.parseInt(loader.getValues()[0]) - time0;
-                    int value_tmp = Integer.parseInt(loader.getValues()[1]);
-
-                    data.add(combine2Int(time_tmp, value_tmp));
-                }
-
-                inputStream.close();
-                ArrayList<Integer> result2 = new ArrayList<>();
-                splitTimeStamp3(data, result2);
-
-                int num_of_points = data.size();
-                int[][] correctness_test_data = new int[num_of_points][2];
-
-                long[] data2_arr = new long[num_of_points];
-
-                for (int i = 0; i < num_of_points; i++) {
-                    data2_arr[i] = data.get(i);
-                    correctness_test_data[i][0] = getTime(data2_arr[i]);
-                    correctness_test_data[i][1] = getValue(data2_arr[i]);
-//                    System.out.println(getValue(data2_arr[i]));
-                }
-
-                byte[] encoded_result = new byte[data2_arr.length * 8];
-                double ratio = 0;
-                double compressed_size = 0;
-                int repeatTime2 = 1;
-                int length = 0;
-//                System.out.println(Arrays.deepToString(correctness_test_data));
-                for (int repeat = 0; repeat < repeatTime2; repeat++)
-                    length = ReorderingRegressionEncoder(data2_arr, dataset_block_size.get(file_i), dataset_third.get(file_i), 8, encoded_result);
-                compressed_size += length;
-                double ratioTmp = compressed_size / (double) (data.size() * Integer.BYTES * 2);
-                ratio += ratioTmp;
-                int[][] decode_result = new int[num_of_points][2];
-                for (int repeat = 0; repeat < repeatTime2; repeat++)
-                    decode_result = REGERDecoder(encoded_result);
-                Arrays.sort(decode_result, (a, b) -> {
-                    if (a[0] == b[0]) return Integer.compare(a[1], b[1]);
-                    return Integer.compare(a[0], b[0]);
-                });
-//                System.out.println(Arrays.deepToString(decode_result));
-                System.out.println(ratio);
-
-//                break;
-            }
-
-        }
-    }
 
 }
