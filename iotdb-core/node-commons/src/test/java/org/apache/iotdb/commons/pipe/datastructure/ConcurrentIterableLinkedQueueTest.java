@@ -108,6 +108,16 @@ public class ConcurrentIterableLinkedQueueTest {
   }
 
   @Test(timeout = 60000)
+  public void iterateFromEmptyQueue() {
+    ConcurrentIterableLinkedQueue<Integer>.DynamicIterator itr = queue.iterateFrom(1);
+
+    AtomicInteger value = new AtomicInteger(-1);
+    new Thread(() -> value.set(itr.next())).start();
+    queue.add(3);
+    Awaitility.await().untilAsserted(() -> Assert.assertEquals(3, value.get()));
+  }
+
+  @Test(timeout = 60000)
   public void testIntegratedOperations() {
     queue.add(1);
     queue.add(2);
@@ -123,9 +133,7 @@ public class ConcurrentIterableLinkedQueueTest {
     AtomicInteger value = new AtomicInteger(-1);
     new Thread(() -> value.set(it2.next())).start();
     queue.add(3);
-    Awaitility.await()
-        .atMost(10, TimeUnit.SECONDS)
-        .untilAsserted(() -> Assert.assertEquals(3, value.get()));
+    Awaitility.await().untilAsserted(() -> Assert.assertEquals(3, value.get()));
 
     Assert.assertEquals(1, it.seek(Integer.MIN_VALUE));
     Assert.assertEquals(2, (int) it.next());

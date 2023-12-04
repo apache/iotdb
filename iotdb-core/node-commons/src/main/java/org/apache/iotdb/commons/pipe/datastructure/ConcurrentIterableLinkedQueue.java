@@ -42,7 +42,8 @@ public class ConcurrentIterableLinkedQueue<E> {
   int lastIndex = 0;
 
   public ConcurrentIterableLinkedQueue() {
-    // first == last == null
+    first = pilot;
+    last = pilot;
   }
 
   public void add(E e) {
@@ -55,11 +56,9 @@ public class ConcurrentIterableLinkedQueue<E> {
       final LinkedListNode<E> l = last;
       final LinkedListNode<E> newNode = new LinkedListNode<>(e);
       last = newNode;
-      if (l == null) {
+      l.next = newNode;
+      if (l == pilot) {
         first = newNode;
-        pilot.next = first;
-      } else {
-        l.next = newNode;
       }
       ++lastIndex;
       hasNext.signalAll();
@@ -84,7 +83,8 @@ public class ConcurrentIterableLinkedQueue<E> {
       first = x;
       pilot.next = first;
       if (first == null) {
-        last = null;
+        first = pilot;
+        last = pilot;
       }
       hasNext.signalAll();
     } finally {
@@ -156,7 +156,7 @@ public class ConcurrentIterableLinkedQueue<E> {
     DynamicIterator(int offset) {
       lock.lock();
       try {
-        if (last != null && offset >= lastIndex) {
+        if (offset >= lastIndex) {
           next = last;
           offset = lastIndex;
         } else {
@@ -240,12 +240,7 @@ public class ConcurrentIterableLinkedQueue<E> {
     public int seek(int newOffset) {
       lock.lock();
       try {
-        if (newOffset < firstIndex) {
-          newOffset = firstIndex;
-        }
-        if (newOffset > lastIndex) {
-          newOffset = lastIndex;
-        }
+        newOffset = Math.max(firstIndex, Math.min(lastIndex, newOffset));
         int oldOffset = offset;
         if (newOffset < oldOffset) {
           next = pilot;
