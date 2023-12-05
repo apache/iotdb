@@ -367,7 +367,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
                             if (newDataRegionLeader != -1) {
                               consensusGroupIdToTaskMetaMap
                                   .get(dataRegionGroupId)
-                                  .setLeaderDataNodeId(newDataRegionLeader);
+                                  .setLeaderNodeId(newDataRegionLeader);
                             } else {
                               consensusGroupIdToTaskMetaMap.remove(dataRegionGroupId);
                             }

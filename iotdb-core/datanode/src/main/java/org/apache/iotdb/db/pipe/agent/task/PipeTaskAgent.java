@@ -309,8 +309,8 @@ public class PipeTaskAgent {
       }
 
       // If task meta exists on data node, check if it has changed
-      final int dataNodeIdFromConfigNode = taskMetaFromConfigNode.getLeaderDataNodeId();
-      final int dataNodeIdOnDataNode = taskMetaOnDataNode.getLeaderDataNodeId();
+      final int dataNodeIdFromConfigNode = taskMetaFromConfigNode.getLeaderNodeId();
+      final int dataNodeIdOnDataNode = taskMetaOnDataNode.getLeaderNodeId();
 
       if (dataNodeIdFromConfigNode != dataNodeIdOnDataNode) {
         dropPipeTask(consensusGroupIdFromConfigNode, pipeStaticMeta);
@@ -426,7 +426,7 @@ public class PipeTaskAgent {
                   .values()
                   .forEach(
                       pipeTaskMeta -> {
-                        if (pipeTaskMeta.getLeaderDataNodeId() != currentDataNodeId) {
+                        if (pipeTaskMeta.getLeaderNodeId() != currentDataNodeId) {
                           return;
                         }
 
@@ -451,7 +451,7 @@ public class PipeTaskAgent {
                   .values()
                   .forEach(
                       pipeTaskMeta -> {
-                        if (pipeTaskMeta.getLeaderDataNodeId() == currentDataNodeId
+                        if (pipeTaskMeta.getLeaderNodeId() == currentDataNodeId
                             && reusedConnectorParameters2ExceptionMap.containsKey(
                                 staticMeta.getConnectorParameters())
                             && !pipeTaskMeta.containsExceptionMessage(
@@ -822,7 +822,7 @@ public class PipeTaskAgent {
       TConsensusGroupId consensusGroupId,
       PipeStaticMeta pipeStaticMeta,
       PipeTaskMeta pipeTaskMeta) {
-    if (pipeTaskMeta.getLeaderDataNodeId() == CONFIG.getDataNodeId()) {
+    if (pipeTaskMeta.getLeaderNodeId() == CONFIG.getDataNodeId()) {
       final PipeTask pipeTask =
           new PipeTaskBuilder(pipeStaticMeta, consensusGroupId, pipeTaskMeta).build();
       pipeTask.create();

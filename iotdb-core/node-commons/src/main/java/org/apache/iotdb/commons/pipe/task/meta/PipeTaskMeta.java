@@ -28,10 +28,10 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeExceptionType;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.DataOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Map;
@@ -43,7 +43,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public class PipeTaskMeta {
 
   private final AtomicReference<ProgressIndex> progressIndex = new AtomicReference<>();
-  private final AtomicInteger leaderDataNodeId = new AtomicInteger(0);
+  private final AtomicInteger leaderNodeId = new AtomicInteger(0);
 
   /**
    * Stores the exceptions encountered during run time of each pipe task.
@@ -57,9 +57,9 @@ public class PipeTaskMeta {
   private final Map<PipeRuntimeException, PipeRuntimeException> exceptionMessages =
       new ConcurrentHashMap<>();
 
-  public PipeTaskMeta(/* @NotNull */ ProgressIndex progressIndex, int leaderDataNodeId) {
+  public PipeTaskMeta(/* @NotNull */ ProgressIndex progressIndex, int leaderNodeId) {
     this.progressIndex.set(progressIndex);
-    this.leaderDataNodeId.set(leaderDataNodeId);
+    this.leaderNodeId.set(leaderNodeId);
   }
 
   public ProgressIndex getProgressIndex() {
@@ -71,12 +71,12 @@ public class PipeTaskMeta {
         index -> index.updateToMinimumIsAfterProgressIndex(updateIndex));
   }
 
-  public int getLeaderDataNodeId() {
-    return leaderDataNodeId.get();
+  public int getLeaderNodeId() {
+    return leaderNodeId.get();
   }
 
-  public void setLeaderDataNodeId(int leaderDataNodeId) {
-    this.leaderDataNodeId.set(leaderDataNodeId);
+  public void setLeaderNodeId(int leaderNodeId) {
+    this.leaderNodeId.set(leaderNodeId);
   }
 
   public synchronized Iterable<PipeRuntimeException> getExceptionMessages() {
@@ -95,10 +95,10 @@ public class PipeTaskMeta {
     exceptionMessages.clear();
   }
 
-  public synchronized void serialize(DataOutputStream outputStream) throws IOException {
+  public synchronized void serialize(OutputStream outputStream) throws IOException {
     progressIndex.get().serialize(outputStream);
 
-    ReadWriteIOUtils.write(leaderDataNodeId.get(), outputStream);
+    ReadWriteIOUtils.write(leaderNodeId.get(), outputStream);
 
     ReadWriteIOUtils.write(exceptionMessages.size(), outputStream);
     for (final PipeRuntimeException pipeRuntimeException : exceptionMessages.values()) {
@@ -109,7 +109,7 @@ public class PipeTaskMeta {
   public synchronized void serialize(FileOutputStream outputStream) throws IOException {
     progressIndex.get().serialize(outputStream);
 
-    ReadWriteIOUtils.write(leaderDataNodeId.get(), outputStream);
+    ReadWriteIOUtils.write(leaderNodeId.get(), outputStream);
 
     ReadWriteIOUtils.write(exceptionMessages.size(), outputStream);
     for (final PipeRuntimeException pipeRuntimeException : exceptionMessages.values()) {
@@ -120,9 +120,9 @@ public class PipeTaskMeta {
   public static PipeTaskMeta deserialize(PipeRuntimeMetaVersion version, ByteBuffer byteBuffer) {
     final ProgressIndex progressIndex = ProgressIndexType.deserializeFrom(byteBuffer);
 
-    final int leaderDataNodeId = ReadWriteIOUtils.readInt(byteBuffer);
+    final int leaderNodeId = ReadWriteIOUtils.readInt(byteBuffer);
 
-    final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(progressIndex, leaderDataNodeId);
+    final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(progressIndex, leaderNodeId);
     final int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
       final PipeRuntimeException pipeRuntimeException =
@@ -136,9 +136,9 @@ public class PipeTaskMeta {
       throws IOException {
     final ProgressIndex progressIndex = ProgressIndexType.deserializeFrom(inputStream);
 
-    final int leaderDataNodeId = ReadWriteIOUtils.readInt(inputStream);
+    final int leaderNodeId = ReadWriteIOUtils.readInt(inputStream);
 
-    final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(progressIndex, leaderDataNodeId);
+    final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(progressIndex, leaderNodeId);
     final int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; ++i) {
       final PipeRuntimeException pipeRuntimeException =
@@ -158,13 +158,13 @@ public class PipeTaskMeta {
     }
     PipeTaskMeta that = (PipeTaskMeta) obj;
     return progressIndex.get().equals(that.progressIndex.get())
-        && leaderDataNodeId.get() == that.leaderDataNodeId.get()
+        && leaderNodeId.get() == that.leaderNodeId.get()
         && exceptionMessages.equals(that.exceptionMessages);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(progressIndex.get(), leaderDataNodeId.get(), exceptionMessages);
+    return Objects.hash(progressIndex.get(), leaderNodeId.get(), exceptionMessages);
   }
 
   @Override
@@ -172,8 +172,8 @@ public class PipeTaskMeta {
     return "PipeTask{"
         + "progressIndex='"
         + progressIndex
-        + "', leaderDataNodeId="
-        + leaderDataNodeId
+        + "', leaderNodeId="
+        + leaderNodeId
         + ", exceptionMessages='"
         + exceptionMessages
         + "'}";

@@ -106,19 +106,18 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         .getRegionLeaderMap()
         .forEach(
             (regionGroupId, regionLeaderNodeId) -> {
-              if (regionGroupId.getType().equals(TConsensusGroupType.DataRegion)) {
-                final String databaseName =
-                    env.getConfigManager()
-                        .getPartitionManager()
-                        .getRegionStorageGroup(regionGroupId);
-                if (databaseName != null && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)) {
-                  // Pipe only collect user's data, filter metric database here.
-                  consensusGroupIdToTaskMetaMap.put(
-                      regionGroupId,
-                      new PipeTaskMeta(MinimumProgressIndex.INSTANCE, regionLeaderNodeId));
-                }
+              final String databaseName =
+                  env.getConfigManager().getPartitionManager().getRegionStorageGroup(regionGroupId);
+              if (databaseName != null && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)) {
+                // Pipe only collect user's data, filter metric database here.
+                consensusGroupIdToTaskMetaMap.put(
+                    regionGroupId,
+                    new PipeTaskMeta(MinimumProgressIndex.INSTANCE, regionLeaderNodeId));
               }
             });
+    consensusGroupIdToTaskMetaMap.put(
+        new TConsensusGroupId(TConsensusGroupType.ConfigRegion, 0),
+        new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 0));
     pipeRuntimeMeta = new PipeRuntimeMeta(consensusGroupIdToTaskMetaMap);
   }
 

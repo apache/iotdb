@@ -160,7 +160,7 @@ public class PipeHeartbeatParser {
           pipeMetaFromDataNode.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
       for (final Map.Entry<TConsensusGroupId, PipeTaskMeta> runtimeMetaOnConfigNode :
           pipeTaskMetaMapOnConfigNode.entrySet()) {
-        if (runtimeMetaOnConfigNode.getValue().getLeaderDataNodeId() != dataNodeId) {
+        if (runtimeMetaOnConfigNode.getValue().getLeaderNodeId() != dataNodeId) {
           continue;
         }
 

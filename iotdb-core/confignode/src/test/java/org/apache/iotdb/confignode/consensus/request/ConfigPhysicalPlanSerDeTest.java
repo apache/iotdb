@@ -1183,7 +1183,7 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void pipeHandleLeaderChangePlanTest() throws IOException {
     Map<TConsensusGroupId, Integer> newLeaderMap = new HashMap<>();
-    newLeaderMap.put(new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), 2);
+    newLeaderMap.put(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1), 2);
     newLeaderMap.put(new TConsensusGroupId(TConsensusGroupType.DataRegion, 2), 3);
     newLeaderMap.put(new TConsensusGroupId(TConsensusGroupType.DataRegion, 3), 5);
 
@@ -1204,24 +1204,24 @@ public class ConfigPhysicalPlanSerDeTest {
         new PipeStaticMeta(
             "pipeName",
             123L,
-            new HashMap() {
+            new HashMap<String, String>() {
               {
                 put("extractor-key", "extractor-value");
               }
             },
-            new HashMap() {
+            new HashMap<String, String>() {
               {
                 put("processor-key-1", "processor-value-1");
                 put("processor-key-2", "processor-value-2");
               }
             },
-            new HashMap() {});
+            new HashMap<String, String>() {});
     PipeRuntimeMeta pipeRuntimeMeta =
         new PipeRuntimeMeta(
-            new HashMap() {
+            new HashMap<TConsensusGroupId, PipeTaskMeta>() {
               {
                 put(
-                    new TConsensusGroupId(TConsensusGroupType.DataRegion, 456),
+                    new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 456),
                     new PipeTaskMeta(
                         MinimumProgressIndex.INSTANCE, 987)); // TODO: replace with IoTConsensus
                 put(
