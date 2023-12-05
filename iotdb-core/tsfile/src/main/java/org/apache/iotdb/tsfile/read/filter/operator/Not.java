@@ -45,7 +45,7 @@ public class Not extends Filter {
   }
 
   public Not(ByteBuffer buffer) {
-    this(Filter.deserialize(buffer));
+    this.filter = Objects.requireNonNull(Filter.deserialize(buffer), "filter cannot be null");
   }
 
   @Override
@@ -60,11 +60,15 @@ public class Not extends Filter {
 
   @Override
   public boolean canSkip(IMetadata metadata) {
+    // [not filter.canSkip(block)] is not equivalent to [notFilter.canSkip(block)]
+    // e.g. block min = 5, max = 15, filter = [value > 10], notFilter = [value <= 10)]
+    //  not filter.canSkip(block) = true (expected false), notFilter.canSkip(block) = false
     throw new IllegalArgumentException(CONTAIN_NOT_ERR_MSG + this);
   }
 
   @Override
   public boolean allSatisfy(IMetadata metadata) {
+    // same as canSkip
     throw new IllegalArgumentException(CONTAIN_NOT_ERR_MSG + this);
   }
 
