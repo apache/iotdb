@@ -34,7 +34,7 @@ public class CachedMeasurementMNode extends AbstractMeasurementMNode<ICachedMNod
   public CachedMeasurementMNode(
       IDeviceMNode<ICachedMNode> parent, String name, IMeasurementSchema schema, String alias) {
     super(
-        new CachedBasicMNode(parent == null ? null : parent.getAsMNode(), name),
+        new CachedBasicInternalMNode(parent == null ? null : parent.getAsMNode(), name),
         new MeasurementInfo(schema, alias));
   }
 

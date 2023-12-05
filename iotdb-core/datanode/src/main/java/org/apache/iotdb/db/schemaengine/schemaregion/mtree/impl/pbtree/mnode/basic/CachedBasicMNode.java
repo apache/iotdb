@@ -39,7 +39,7 @@ import java.util.List;
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
  * Metadata Tree
  */
-public class CachedBasicMNode implements ICachedMNode {
+public abstract class CachedBasicMNode implements ICachedMNode {
 
   private static final long serialVersionUID = -770028375899514063L;
 
