@@ -1392,6 +1392,10 @@ public class PartitionManager {
     partitionInfo.getDataRegionIds(databases, dataRegionIds);
   }
 
+  public Optional<TConsensusGroupType> getRegionType(int regionId) {
+    return partitionInfo.getRegionType(regionId);
+  }
+
   /**
    * Get the last DataAllotTable of the specified Database.
    *

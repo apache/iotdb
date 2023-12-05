@@ -1094,6 +1094,19 @@ public class PartitionInfo implements SnapshotProcessor {
     }
   }
 
+  public Optional<TConsensusGroupType> getRegionType(int regionId) {
+    if (databasePartitionTables.values().stream()
+        .flatMap(databasePartitionTable -> databasePartitionTable.getDataRegionIds().stream())
+        .anyMatch(o -> o == regionId)) {
+      return Optional.of(TConsensusGroupType.DataRegion);
+    } else if (databasePartitionTables.values().stream()
+        .flatMap(databasePartitionTable -> databasePartitionTable.getSchemaRegionIds().stream())
+        .anyMatch(o -> o == regionId)) {
+      return Optional.of(TConsensusGroupType.SchemaRegion);
+    }
+    return Optional.empty();
+  }
+
   public void clear() {
     nextRegionGroupId.set(-1);
     databasePartitionTables.clear();
