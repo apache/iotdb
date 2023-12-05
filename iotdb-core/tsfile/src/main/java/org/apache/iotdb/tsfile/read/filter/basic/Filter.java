@@ -20,11 +20,10 @@
 package org.apache.iotdb.tsfile.read.filter.basic;
 
 import org.apache.iotdb.tsfile.file.metadata.IMetadata;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.read.filter.factory.TimeFilter;
-import org.apache.iotdb.tsfile.read.filter.factory.ValueFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilterApi;
+import org.apache.iotdb.tsfile.read.filter.factory.ValueFilterApi;
 import org.apache.iotdb.tsfile.read.filter.operator.And;
 import org.apache.iotdb.tsfile.read.filter.operator.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.operator.GroupByMonthFilter;
@@ -37,7 +36,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.List;
 
@@ -52,10 +50,10 @@ import java.util.List;
  * <p>See {@link TimeFilterOperators}/{@link ValueFilterOperators} for the implementation of the
  * operator tokens,
  *
- * <p>and {@link TimeFilter}/{@link ValueFilter}/{@link FilterFactory} for the dsl functions for
- * constructing an expression tree.
+ * <p>and {@link TimeFilterApi}/{@link ValueFilterApi}/{@link FilterFactory} for the dsl functions
+ * for constructing an expression tree.
  */
-public interface Filter {
+public abstract class Filter {
 
   /**
    * To examine whether the single point(with time and value) is satisfied with the filter.
@@ -64,65 +62,68 @@ public interface Filter {
    * @param value single point value
    * @return true if the single point is satisfied with the filter, false otherwise
    */
-  boolean satisfy(long time, Object value);
-
-  boolean satisfyRow(long time, Object[] values);
+  public abstract boolean satisfy(long time, Object value);
 
   /**
-   * To examine whether there are data points satisfied with the filter.
+   * To examine whether the row(with time and values) is satisfied with the filter.
    *
-   * @param statistics statistics with min time, max time, min value, max value.
-   * @return false if there are no data points satisfied with the filter
+   * @param time row time
+   * @param values row values
+   * @return true if the row is satisfied with the filter, false otherwise
    */
-  boolean canSkip(Statistics<? extends Serializable> statistics);
-
-  boolean canSkip(IMetadata metadata);
+  public abstract boolean satisfyRow(long time, Object[] values);
 
   /**
-   * To examine whether all data points are satisfied with the filter.
+   * To examine whether the block can be skipped.
    *
-   * @param statistics statistics with min time, max time, min value, max value.
-   * @return true if all data points are satisfied with the filter
+   * @param metadata the metadata of the block (including the min-max statistics)
+   * @return true if the block can be skipped, false otherwise
    */
-  boolean allSatisfy(Statistics<? extends Serializable> statistics);
+  public abstract boolean canSkip(IMetadata metadata);
 
-  boolean allSatisfy(IMetadata metadata);
+  /**
+   * To examine whether the block all satisfied with the filter.
+   *
+   * @param metadata the metadata of the block (including the min-max statistics)
+   * @return true if the block all satisfied with the filter, false otherwise
+   */
+  public abstract boolean allSatisfy(IMetadata metadata);
 
   /**
    * To examine whether the min time and max time are satisfied with the filter.
    *
-   * <p>Note: only implemented by {@link ITimeFilter}
+   * <p>Note: only implemented by {@link TimeFilterApi}
    *
    * @param startTime start time of a page, series or device
    * @param endTime end time of a page, series or device
    * @return false if [startTime, endTime] is not satisfied with the filter
    */
-  boolean satisfyStartEndTime(long startTime, long endTime);
+  public abstract boolean satisfyStartEndTime(long startTime, long endTime);
 
   /**
    * To examine whether the partition [startTime, endTime] is subsets of filter.
    *
-   * <p>Note: only implemented by {@link ITimeFilter}
+   * <p>Note: only implemented by {@link TimeFilter}
    *
    * @param startTime start time of a partition
    * @param endTime end time of a partition
    * @return true if the partition [startTime, endTime] is subsets of filter
    */
-  boolean containStartEndTime(long startTime, long endTime);
+  public abstract boolean containStartEndTime(long startTime, long endTime);
 
   /**
    * Return the time ranges which satisfying the filter.
    *
-   * <p>Note: only implemented by {@link ITimeFilter}
+   * <p>Note: only implemented by {@link TimeFilter}
    */
-  List<TimeRange> getTimeRanges();
+  public abstract List<TimeRange> getTimeRanges();
 
   /**
    * Reverse the filter.
    *
    * @return the logical inverse filter
    */
-  Filter reverse();
+  public abstract Filter reverse();
 
   /**
    * Copy the filter.
@@ -131,7 +132,7 @@ public interface Filter {
    *
    * @return a copy of the filter
    */
-  default Filter copy() {
+  public Filter copy() {
     return this;
   }
 
@@ -139,18 +140,22 @@ public interface Filter {
   // serialize & deserialize related methods
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
-  OperatorType getOperatorType();
+  public abstract OperatorType getOperatorType();
 
-  void serialize(DataOutputStream outputStream) throws IOException;
+  public void serialize(DataOutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(getOperatorType().ordinal(), outputStream);
 
-  default void serialize(ByteBuffer buffer) throws IOException {
+    // serialize more fields in subclasses
+  }
+
+  public void serialize(ByteBuffer buffer) throws IOException {
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     this.serialize(dataOutputStream);
     buffer.put(byteArrayOutputStream.toByteArray());
   }
 
-  static Filter deserialize(ByteBuffer buffer) {
+  public static Filter deserialize(ByteBuffer buffer) {
     OperatorType type = OperatorType.values()[ReadWriteIOUtils.readInt(buffer)];
 
     switch (type) {
@@ -209,9 +214,9 @@ public interface Filter {
       case NOT:
         return new Not(buffer);
       case VALUE_IS_NULL:
-        return new ValueFilterOperators.ValueIsNull<>(buffer);
+        return new ValueFilterOperators.ValueIsNull(buffer);
       case VALUE_IS_NOT_NULL:
-        return new ValueFilterOperators.ValueIsNotNull<>(buffer);
+        return new ValueFilterOperators.ValueIsNotNull(buffer);
       default:
         throw new UnsupportedOperationException("Unsupported operator type:" + type);
     }

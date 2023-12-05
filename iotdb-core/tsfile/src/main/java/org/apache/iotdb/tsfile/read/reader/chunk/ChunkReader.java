@@ -161,7 +161,7 @@ public class ChunkReader implements IChunkReader {
         }
       }
     }
-    return filter != null && filter.canSkip(pageHeader.getStatistics());
+    return filter != null && filter.canSkip(pageHeader);
   }
 
   private PageReader constructPageReaderForNextPage(PageHeader pageHeader) throws IOException {

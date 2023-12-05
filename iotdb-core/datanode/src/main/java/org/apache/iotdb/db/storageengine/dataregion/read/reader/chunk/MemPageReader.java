@@ -97,9 +97,8 @@ public class MemPageReader implements IPageReader {
   }
 
   private boolean pageCanSkip() {
-    Statistics<? extends Serializable> statistics = getStatistics();
-    if (valueFilter == null || valueFilter.allSatisfy(statistics)) {
-      long rowCount = statistics.getCount();
+    if (valueFilter == null || valueFilter.allSatisfy(this)) {
+      long rowCount = getStatistics().getCount();
       if (paginationController.hasCurOffset(rowCount)) {
         paginationController.consumeOffset(rowCount);
         return true;
@@ -107,7 +106,7 @@ public class MemPageReader implements IPageReader {
         return false;
       }
     } else {
-      return valueFilter.canSkip(statistics);
+      return valueFilter.canSkip(this);
     }
   }
 

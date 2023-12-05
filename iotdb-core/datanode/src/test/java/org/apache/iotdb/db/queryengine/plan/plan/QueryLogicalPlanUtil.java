@@ -55,7 +55,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilterApi;
 
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -355,7 +355,7 @@ public class QueryLogicalPlanUtil {
 
     QueryId queryId = new QueryId("test");
     List<PlanNode> sourceNodeList = new ArrayList<>();
-    Filter timeFilter = TimeFilter.gt(100);
+    Filter timeFilter = TimeFilterApi.gt(100);
     try {
       sourceNodeList.add(
           new AlignedSeriesAggregationScanNode(
@@ -482,7 +482,7 @@ public class QueryLogicalPlanUtil {
 
     QueryId queryId = new QueryId("test");
     List<PlanNode> sourceNodeList = new ArrayList<>();
-    Filter timeFilter = TimeFilter.gt(100);
+    Filter timeFilter = TimeFilterApi.gt(100);
     try {
       sourceNodeList.add(
           new AlignedSeriesAggregationScanNode(
@@ -644,7 +644,7 @@ public class QueryLogicalPlanUtil {
             + "ORDER BY DEVICE,TIME DESC LIMIT 100 OFFSET 100 ALIGN BY DEVICE";
 
     QueryId queryId = new QueryId("test");
-    Filter timeFilter = TimeFilter.gt(100);
+    Filter timeFilter = TimeFilterApi.gt(100);
     List<PlanNode> sourceNodeList1 = new ArrayList<>();
     sourceNodeList1.add(
         new SeriesAggregationScanNode(

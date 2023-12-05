@@ -38,9 +38,9 @@ import org.apache.iotdb.tsfile.utils.RegexUtils;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-public class ValueFilter {
+public class ValueFilterApi {
 
-  private ValueFilter() {
+  private ValueFilterApi() {
     // forbidden construction
   }
 
@@ -94,20 +94,20 @@ public class ValueFilter {
     return new ValueNotEq<>(measurementIndex, value);
   }
 
-  public static <T extends Comparable<T>> ValueIsNull<T> isNull() {
-    return new ValueIsNull<>(DEFAULT_MEASUREMENT_INDEX);
+  public static ValueIsNull isNull() {
+    return new ValueIsNull(DEFAULT_MEASUREMENT_INDEX);
   }
 
-  public static <T extends Comparable<T>> ValueIsNull<T> isNull(int measurementIndex) {
-    return new ValueIsNull<>(measurementIndex);
+  public static ValueIsNull isNull(int measurementIndex) {
+    return new ValueIsNull(measurementIndex);
   }
 
-  public static <T extends Comparable<T>> ValueIsNotNull<T> isNotNull() {
-    return new ValueIsNotNull<>(DEFAULT_MEASUREMENT_INDEX);
+  public static ValueIsNotNull isNotNull() {
+    return new ValueIsNotNull(DEFAULT_MEASUREMENT_INDEX);
   }
 
-  public static <T extends Comparable<T>> ValueIsNotNull<T> isNotNull(int measurementIndex) {
-    return new ValueIsNotNull<>(measurementIndex);
+  public static ValueIsNotNull isNotNull(int measurementIndex) {
+    return new ValueIsNotNull(measurementIndex);
   }
 
   public static <T extends Comparable<T>> ValueBetweenAnd<T> between(T value1, T value2) {

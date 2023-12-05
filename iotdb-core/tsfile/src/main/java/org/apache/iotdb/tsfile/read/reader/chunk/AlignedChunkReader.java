@@ -212,7 +212,7 @@ public class AlignedChunkReader implements IChunkReader {
         }
       }
     }
-    return filter != null && filter.canSkip(pageHeader.getStatistics());
+    return filter != null && filter.canSkip(pageHeader);
   }
 
   private AlignedPageReader constructPageReaderForNextPage(

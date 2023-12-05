@@ -20,7 +20,6 @@
 package org.apache.iotdb.tsfile.read.filter.operator;
 
 import org.apache.iotdb.tsfile.file.metadata.IMetadata;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.OperatorType;
@@ -28,13 +27,12 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class Not implements Filter {
+public class Not extends Filter {
 
   private final Filter filter;
 
@@ -61,17 +59,7 @@ public class Not implements Filter {
   }
 
   @Override
-  public boolean canSkip(Statistics<? extends Serializable> statistics) {
-    throw new IllegalArgumentException(CONTAIN_NOT_ERR_MSG + this);
-  }
-
-  @Override
   public boolean canSkip(IMetadata metadata) {
-    throw new IllegalArgumentException(CONTAIN_NOT_ERR_MSG + this);
-  }
-
-  @Override
-  public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
     throw new IllegalArgumentException(CONTAIN_NOT_ERR_MSG + this);
   }
 

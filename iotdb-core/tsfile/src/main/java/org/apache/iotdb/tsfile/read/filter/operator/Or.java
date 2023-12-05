@@ -20,13 +20,11 @@
 package org.apache.iotdb.tsfile.read.filter.operator;
 
 import org.apache.iotdb.tsfile.file.metadata.IMetadata;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.filter.basic.BinaryLogicalFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.OperatorType;
-import org.apache.iotdb.tsfile.read.filter.operator.base.BinaryLogicalFilter;
 
-import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -52,20 +50,10 @@ public class Or extends BinaryLogicalFilter {
   }
 
   @Override
-  public boolean canSkip(Statistics<? extends Serializable> statistics) {
+  public boolean canSkip(IMetadata metadata) {
     // we can only drop a chunk of records if we know that both the left and right predicates agree
     // that no matter what we don't need this chunk.
-    return left.canSkip(statistics) && right.canSkip(statistics);
-  }
-
-  @Override
-  public boolean canSkip(IMetadata metadata) {
     return left.canSkip(metadata) && right.canSkip(metadata);
-  }
-
-  @Override
-  public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
-    return left.allSatisfy(statistics) || right.allSatisfy(statistics);
   }
 
   @Override

@@ -17,19 +17,37 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.read.filter.operator.base;
+package org.apache.iotdb.tsfile.read.filter.basic;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.util.Objects;
 
-/* base class for Eq, NotEq, Lt, Gt, LtEq, GtEq */
-public abstract class ColumnCompareFilter<T extends Comparable<T>> {
+/* base class for And, Or */
+public abstract class BinaryLogicalFilter extends Filter {
 
-  protected final T constant;
+  protected final Filter left;
+  protected final Filter right;
 
-  protected ColumnCompareFilter(T constant) {
-    // ValueEq and ValueNotEq allow constant to be null, TimeEq, TimeEq, Lt, Gt, LtEq, GtEq however
-    // do not, so they guard against null in their own constructors.
-    this.constant = constant;
+  protected BinaryLogicalFilter(Filter left, Filter right) {
+    this.left = Objects.requireNonNull(left, "left cannot be null");
+    this.right = Objects.requireNonNull(right, "right cannot be null");
+  }
+
+  public Filter getLeft() {
+    return left;
+  }
+
+  public Filter getRight() {
+    return right;
+  }
+
+  public void serialize(DataOutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(getOperatorType().ordinal(), outputStream);
+    left.serialize(outputStream);
+    right.serialize(outputStream);
   }
 
   @Override
@@ -40,12 +58,12 @@ public abstract class ColumnCompareFilter<T extends Comparable<T>> {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    ColumnCompareFilter<?> that = (ColumnCompareFilter<?>) o;
-    return Objects.equals(constant, that.constant);
+    BinaryLogicalFilter that = (BinaryLogicalFilter) o;
+    return left.equals(that.left) && right.equals(that.right);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(constant);
+    return Objects.hash(left, right);
   }
 }

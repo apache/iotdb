@@ -118,7 +118,7 @@ public class PageReader implements IPageReader {
   @Override
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
     BatchData pageData = BatchDataFactory.createBatchData(dataType, ascending, false);
-    if (filter == null || !filter.canSkip(getStatistics())) {
+    if (filter == null || !filter.canSkip(this)) {
       while (timeDecoder.hasNext(timeBuffer)) {
         long timestamp = timeDecoder.readLong(timeBuffer);
         switch (dataType) {
@@ -167,9 +167,8 @@ public class PageReader implements IPageReader {
   }
 
   private boolean pageCanSkip() {
-    Statistics statistics = getStatistics();
-    if (filter == null || filter.allSatisfy(statistics)) {
-      long rowCount = statistics.getCount();
+    if (filter == null || filter.allSatisfy(this)) {
+      long rowCount = getStatistics().getCount();
       if (paginationController.hasCurOffset(rowCount)) {
         paginationController.consumeOffset(rowCount);
         return true;
@@ -177,7 +176,7 @@ public class PageReader implements IPageReader {
         return false;
       }
     } else {
-      return filter.canSkip(statistics);
+      return filter.canSkip(this);
     }
   }
 

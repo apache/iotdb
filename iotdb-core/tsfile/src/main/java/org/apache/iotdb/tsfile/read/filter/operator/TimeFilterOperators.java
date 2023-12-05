@@ -20,13 +20,11 @@
 package org.apache.iotdb.tsfile.read.filter.operator;
 
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.filter.basic.DisableStatisticsTimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.basic.IDisableStatisticsTimeFilter;
-import org.apache.iotdb.tsfile.read.filter.basic.ITimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.OperatorType;
-import org.apache.iotdb.tsfile.read.filter.operator.base.ColumnCompareFilter;
-import org.apache.iotdb.tsfile.read.filter.operator.base.ColumnRangeFilter;
-import org.apache.iotdb.tsfile.read.filter.operator.base.ColumnSetFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilterApi;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -41,7 +39,7 @@ import java.util.Set;
 
 /**
  * These are the time column operators in a filter predicate expression tree. They are constructed
- * by using the methods in {@link org.apache.iotdb.tsfile.read.filter.factory.TimeFilter}
+ * by using the methods in {@link TimeFilterApi}
  */
 public final class TimeFilterOperators {
 
@@ -49,18 +47,25 @@ public final class TimeFilterOperators {
     // forbidden construction
   }
 
+  private static final String OPERATOR_TO_STRING_FORMAT = "time %s %s";
+
   // base class for TimeEq, TimeNotEq, TimeLt, TimeGt, TimeLtEq, TimeGtEq
-  abstract static class TimeColumnCompareFilter extends ColumnCompareFilter<Long>
-      implements ITimeFilter {
+  abstract static class TimeColumnCompareFilter extends TimeFilter {
+
+    protected final long constant;
 
     // constant cannot be null
-    protected TimeColumnCompareFilter(Long constant) {
-      super(Objects.requireNonNull(constant, "constant cannot be null"));
+    protected TimeColumnCompareFilter(long constant) {
+      this.constant = constant;
+    }
+
+    protected TimeColumnCompareFilter(ByteBuffer buffer) {
+      this.constant = ReadWriteIOUtils.readLong(buffer);
     }
 
     @Override
     public void serialize(DataOutputStream outputStream) throws IOException {
-      ReadWriteIOUtils.write(getOperatorType().ordinal(), outputStream);
+      super.serialize(outputStream);
       ReadWriteIOUtils.write(constant, outputStream);
     }
 
@@ -72,28 +77,34 @@ public final class TimeFilterOperators {
       if (o == null || getClass() != o.getClass()) {
         return false;
       }
-      return super.equals(o);
+      TimeColumnCompareFilter that = (TimeColumnCompareFilter) o;
+      return constant == that.constant;
     }
 
     @Override
     public int hashCode() {
-      return super.hashCode();
+      return Objects.hash(constant);
+    }
+
+    @Override
+    public String toString() {
+      return String.format(OPERATOR_TO_STRING_FORMAT, getOperatorType().getSymbol(), constant);
     }
   }
 
   public static final class TimeEq extends TimeColumnCompareFilter {
 
-    public TimeEq(Long constant) {
+    public TimeEq(long constant) {
       super(constant);
     }
 
     public TimeEq(ByteBuffer buffer) {
-      super(ReadWriteIOUtils.readLong(buffer));
+      super(buffer);
     }
 
     @Override
-    public boolean satisfy(long time, Object value) {
-      return constant.equals(time);
+    public boolean timeSatisfy(long time) {
+      return constant == time;
     }
 
     @Override
@@ -120,26 +131,21 @@ public final class TimeFilterOperators {
     public OperatorType getOperatorType() {
       return OperatorType.TIME_EQ;
     }
-
-    @Override
-    public String toString() {
-      return "time == " + constant;
-    }
   }
 
   public static final class TimeNotEq extends TimeColumnCompareFilter {
 
-    public TimeNotEq(Long constant) {
+    public TimeNotEq(long constant) {
       super(constant);
     }
 
     public TimeNotEq(ByteBuffer buffer) {
-      super(ReadWriteIOUtils.readLong(buffer));
+      super(buffer);
     }
 
     @Override
-    public boolean satisfy(long time, Object value) {
-      return !constant.equals(time);
+    public boolean timeSatisfy(long time) {
+      return constant != time;
     }
 
     @Override
@@ -174,25 +180,20 @@ public final class TimeFilterOperators {
     public OperatorType getOperatorType() {
       return OperatorType.TIME_NEQ;
     }
-
-    @Override
-    public String toString() {
-      return "time != " + constant;
-    }
   }
 
   public static final class TimeLt extends TimeColumnCompareFilter {
 
-    public TimeLt(Long constant) {
+    public TimeLt(long constant) {
       super(constant);
     }
 
     public TimeLt(ByteBuffer buffer) {
-      super(ReadWriteIOUtils.readLong(buffer));
+      super(buffer);
     }
 
     @Override
-    public boolean satisfy(long time, Object value) {
+    public boolean timeSatisfy(long time) {
       return time < constant;
     }
 
@@ -225,25 +226,20 @@ public final class TimeFilterOperators {
     public OperatorType getOperatorType() {
       return OperatorType.TIME_LT;
     }
-
-    @Override
-    public String toString() {
-      return "time < " + constant;
-    }
   }
 
   public static final class TimeLtEq extends TimeColumnCompareFilter {
 
-    public TimeLtEq(Long constant) {
+    public TimeLtEq(long constant) {
       super(constant);
     }
 
     public TimeLtEq(ByteBuffer buffer) {
-      super(ReadWriteIOUtils.readLong(buffer));
+      super(buffer);
     }
 
     @Override
-    public boolean satisfy(long time, Object value) {
+    public boolean timeSatisfy(long time) {
       return time <= constant;
     }
 
@@ -271,25 +267,20 @@ public final class TimeFilterOperators {
     public OperatorType getOperatorType() {
       return OperatorType.TIME_LTEQ;
     }
-
-    @Override
-    public String toString() {
-      return "time <= " + constant;
-    }
   }
 
   public static final class TimeGt extends TimeColumnCompareFilter {
 
-    public TimeGt(Long constant) {
+    public TimeGt(long constant) {
       super(constant);
     }
 
     public TimeGt(ByteBuffer buffer) {
-      super(ReadWriteIOUtils.readLong(buffer));
+      super(buffer);
     }
 
     @Override
-    public boolean satisfy(long time, Object value) {
+    public boolean timeSatisfy(long time) {
       return time > constant;
     }
 
@@ -322,25 +313,20 @@ public final class TimeFilterOperators {
     public OperatorType getOperatorType() {
       return OperatorType.TIME_GT;
     }
-
-    @Override
-    public String toString() {
-      return "time > " + constant;
-    }
   }
 
   public static final class TimeGtEq extends TimeColumnCompareFilter {
 
-    public TimeGtEq(Long constant) {
+    public TimeGtEq(long constant) {
       super(constant);
     }
 
     public TimeGtEq(ByteBuffer buffer) {
-      super(ReadWriteIOUtils.readLong(buffer));
+      super(buffer);
     }
 
     @Override
-    public boolean satisfy(long time, Object value) {
+    public boolean timeSatisfy(long time) {
       return time >= constant;
     }
 
@@ -368,57 +354,62 @@ public final class TimeFilterOperators {
     public OperatorType getOperatorType() {
       return OperatorType.TIME_GTEQ;
     }
-
-    @Override
-    public String toString() {
-      return "time >= " + constant;
-    }
   }
 
   // base class for TimeBetweenAnd, TimeNotBetweenAnd
-  abstract static class TimeColumnRangeFilter extends ColumnRangeFilter<Long>
-      implements ITimeFilter {
+  abstract static class TimeColumnRangeFilter extends TimeFilter {
 
-    protected TimeColumnRangeFilter(Long min, Long max) {
-      super(min, max);
+    protected final long min;
+    protected final long max;
+
+    protected TimeColumnRangeFilter(long min, long max) {
+      this.min = min;
+      this.max = max;
+    }
+
+    protected TimeColumnRangeFilter(ByteBuffer buffer) {
+      this.min = ReadWriteIOUtils.readLong(buffer);
+      this.max = ReadWriteIOUtils.readLong(buffer);
     }
 
     @Override
     public void serialize(DataOutputStream outputStream) throws IOException {
-      ReadWriteIOUtils.write(getOperatorType().ordinal(), outputStream);
+      super.serialize(outputStream);
       ReadWriteIOUtils.write(min, outputStream);
       ReadWriteIOUtils.write(max, outputStream);
     }
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) {
-        return true;
-      }
-      if (o == null || getClass() != o.getClass()) {
-        return false;
-      }
-      return super.equals(o);
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      TimeColumnRangeFilter that = (TimeColumnRangeFilter) o;
+      return min == that.min && max == that.max;
     }
 
     @Override
     public int hashCode() {
-      return super.hashCode();
+      return Objects.hash(min, max);
+    }
+
+    @Override
+    public String toString() {
+      return String.format("time %s %s AND %s", getOperatorType().getSymbol(), min, max);
     }
   }
 
   public static final class TimeBetweenAnd extends TimeColumnRangeFilter {
 
-    public TimeBetweenAnd(Long min, Long max) {
+    public TimeBetweenAnd(long min, long max) {
       super(min, max);
     }
 
     public TimeBetweenAnd(ByteBuffer buffer) {
-      super(ReadWriteIOUtils.readLong(buffer), ReadWriteIOUtils.readLong(buffer));
+      super(buffer);
     }
 
     @Override
-    public boolean satisfy(long time, Object value) {
+    public boolean timeSatisfy(long time) {
       return time >= min && time <= max;
     }
 
@@ -446,11 +437,6 @@ public final class TimeFilterOperators {
     public OperatorType getOperatorType() {
       return OperatorType.TIME_BETWEEN_AND;
     }
-
-    @Override
-    public String toString() {
-      return "time between " + min + " and " + max;
-    }
   }
 
   public static final class TimeNotBetweenAnd extends TimeColumnRangeFilter {
@@ -460,11 +446,11 @@ public final class TimeFilterOperators {
     }
 
     public TimeNotBetweenAnd(ByteBuffer buffer) {
-      super(ReadWriteIOUtils.readLong(buffer), ReadWriteIOUtils.readLong(buffer));
+      super(buffer);
     }
 
     @Override
-    public boolean satisfy(long time, Object value) {
+    public boolean timeSatisfy(long time) {
       return time < min || time > max;
     }
 
@@ -499,24 +485,24 @@ public final class TimeFilterOperators {
     public OperatorType getOperatorType() {
       return OperatorType.TIME_NOT_BETWEEN_AND;
     }
-
-    @Override
-    public String toString() {
-      return "time not between " + min + " and " + max;
-    }
   }
 
   // base class for TimeIn, TimeNotIn
-  abstract static class TimeColumnSetFilter extends ColumnSetFilter<Long>
-      implements IDisableStatisticsTimeFilter {
+  abstract static class TimeColumnSetFilter extends DisableStatisticsTimeFilter {
+
+    protected final Set<Long> candidates;
 
     protected TimeColumnSetFilter(Set<Long> candidates) {
-      super(candidates);
+      this.candidates = Objects.requireNonNull(candidates, "candidates cannot be null");
+    }
+
+    protected TimeColumnSetFilter(ByteBuffer buffer) {
+      this.candidates = ReadWriteIOUtils.readLongSet(buffer);
     }
 
     @Override
     public void serialize(DataOutputStream outputStream) throws IOException {
-      ReadWriteIOUtils.write(getOperatorType().ordinal(), outputStream);
+      super.serialize(outputStream);
       ReadWriteIOUtils.writeLongSet(candidates, outputStream);
     }
 
@@ -528,12 +514,18 @@ public final class TimeFilterOperators {
       if (o == null || getClass() != o.getClass()) {
         return false;
       }
-      return super.equals(o);
+      TimeColumnSetFilter that = (TimeColumnSetFilter) o;
+      return candidates.equals(that.candidates);
     }
 
     @Override
     public int hashCode() {
-      return super.hashCode();
+      return Objects.hash(candidates);
+    }
+
+    @Override
+    public String toString() {
+      return String.format(OPERATOR_TO_STRING_FORMAT, getOperatorType().getSymbol(), candidates);
     }
   }
 
@@ -544,11 +536,11 @@ public final class TimeFilterOperators {
     }
 
     public TimeIn(ByteBuffer buffer) {
-      super(ReadWriteIOUtils.readLongSet(buffer));
+      super(buffer);
     }
 
     @Override
-    public boolean satisfy(long time, Object value) {
+    public boolean timeSatisfy(long time) {
       return candidates.contains(time);
     }
 
@@ -570,11 +562,6 @@ public final class TimeFilterOperators {
     public OperatorType getOperatorType() {
       return OperatorType.TIME_IN;
     }
-
-    @Override
-    public String toString() {
-      return "time in " + candidates;
-    }
   }
 
   public static final class TimeNotIn extends TimeColumnSetFilter {
@@ -584,11 +571,11 @@ public final class TimeFilterOperators {
     }
 
     public TimeNotIn(ByteBuffer buffer) {
-      super(ReadWriteIOUtils.readLongSet(buffer));
+      super(buffer);
     }
 
     @Override
-    public boolean satisfy(long time, Object value) {
+    public boolean timeSatisfy(long time) {
       return !candidates.contains(time);
     }
 
@@ -605,11 +592,6 @@ public final class TimeFilterOperators {
     @Override
     public OperatorType getOperatorType() {
       return OperatorType.TIME_NOT_IN;
-    }
-
-    @Override
-    public String toString() {
-      return "time not in " + candidates;
     }
   }
 }

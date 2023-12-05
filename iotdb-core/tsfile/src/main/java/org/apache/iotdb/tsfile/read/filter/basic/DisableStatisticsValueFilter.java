@@ -17,34 +17,30 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.read.filter.operator.base;
+package org.apache.iotdb.tsfile.read.filter.basic;
 
-import java.util.Objects;
-import java.util.Set;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 
-/* base class for In, NotIn */
-public abstract class ColumnSetFilter<T> {
+import java.io.Serializable;
+import java.nio.ByteBuffer;
 
-  protected final Set<T> candidates;
+public abstract class DisableStatisticsValueFilter extends ValueFilter {
 
-  protected ColumnSetFilter(Set<T> candidates) {
-    this.candidates = Objects.requireNonNull(candidates, "candidates cannot be null");
+  protected DisableStatisticsValueFilter(int measurementIndex) {
+    super(measurementIndex);
+  }
+
+  protected DisableStatisticsValueFilter(ByteBuffer buffer) {
+    super(buffer);
   }
 
   @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    ColumnSetFilter<?> that = (ColumnSetFilter<?>) o;
-    return candidates.equals(that.candidates);
+  protected boolean canSkip(Statistics<? extends Serializable> statistics) {
+    return false;
   }
 
   @Override
-  public int hashCode() {
-    return Objects.hash(candidates);
+  protected boolean allSatisfy(Statistics<? extends Serializable> statistics) {
+    return false;
   }
 }

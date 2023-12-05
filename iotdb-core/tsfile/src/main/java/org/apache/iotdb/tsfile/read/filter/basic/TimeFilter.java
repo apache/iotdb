@@ -20,30 +20,37 @@
 package org.apache.iotdb.tsfile.read.filter.basic;
 
 import org.apache.iotdb.tsfile.file.metadata.IMetadata;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.file.metadata.statistics.TimeStatistics;
 
-import java.io.Serializable;
+public abstract class TimeFilter extends Filter {
 
-public interface ITimeFilter extends Filter {
+  protected TimeFilter() {
+    // do nothing
+  }
 
-  default boolean satisfyRow(long time, Object[] values) {
+  @Override
+  public boolean satisfy(long time, Object value) {
     // only use time to filter
-    return satisfy(time, values[0]);
+    return timeSatisfy(time);
   }
 
-  default boolean canSkip(Statistics<? extends Serializable> statistics) {
-    return !satisfyStartEndTime(statistics.getStartTime(), statistics.getEndTime());
+  @Override
+  public boolean satisfyRow(long time, Object[] values) {
+    // only use time to filter
+    return timeSatisfy(time);
   }
 
-  default boolean canSkip(IMetadata metadata) {
-    return canSkip(metadata.getTimeStatistics());
+  protected abstract boolean timeSatisfy(long time);
+
+  @Override
+  public boolean canSkip(IMetadata metadata) {
+    TimeStatistics timeStatistics = (TimeStatistics) metadata.getTimeStatistics();
+    return !satisfyStartEndTime(timeStatistics.getStartTime(), timeStatistics.getEndTime());
   }
 
-  default boolean allSatisfy(Statistics<? extends Serializable> statistics) {
-    return containStartEndTime(statistics.getStartTime(), statistics.getEndTime());
-  }
-
-  default boolean allSatisfy(IMetadata metadata) {
-    return allSatisfy(metadata.getTimeStatistics());
+  @Override
+  public boolean allSatisfy(IMetadata metadata) {
+    TimeStatistics timeStatistics = (TimeStatistics) metadata.getTimeStatistics();
+    return containStartEndTime(timeStatistics.getStartTime(), timeStatistics.getEndTime());
   }
 }

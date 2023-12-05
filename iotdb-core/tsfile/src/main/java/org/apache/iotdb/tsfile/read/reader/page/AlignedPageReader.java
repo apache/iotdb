@@ -126,8 +126,7 @@ public class AlignedPageReader implements IPageReader {
   }
 
   private boolean pageCanSkip() {
-    Statistics<? extends Serializable> statistics = getStatistics();
-    if (filter != null && !filter.allSatisfy(statistics)) {
+    if (filter != null && !filter.allSatisfy(this)) {
       return filter.canSkip(this);
     }
 
@@ -197,7 +196,7 @@ public class AlignedPageReader implements IPageReader {
 
     if (canGoFastWay()) {
       // all page data satisfy
-      if (filter == null || filter.allSatisfy(getTimeStatistics())) {
+      if (filter == null || filter.allSatisfy(this)) {
         // skip all the page
         if (paginationController.hasCurOffset(timeBatch.length)) {
           paginationController.consumeOffset(timeBatch.length);

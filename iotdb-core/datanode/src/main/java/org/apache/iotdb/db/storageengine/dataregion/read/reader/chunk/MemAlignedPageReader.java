@@ -106,9 +106,8 @@ public class MemAlignedPageReader implements IPageReader {
   }
 
   private boolean pageCanSkip() {
-    Statistics<? extends Serializable> statistics = getStatistics();
-    if (valueFilter != null && !valueFilter.allSatisfy(statistics)) {
-      return valueFilter.canSkip(statistics);
+    if (valueFilter != null && !valueFilter.allSatisfy(this)) {
+      return valueFilter.canSkip(this);
     }
 
     if (!canSkipOffsetByStatistics()) {

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.file.header;
 
+import org.apache.iotdb.tsfile.file.metadata.IMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
@@ -28,8 +29,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
+import java.util.Optional;
 
-public class PageHeader {
+public class PageHeader implements IMetadata {
 
   private int uncompressedSize;
   private int compressedSize;
@@ -105,8 +107,30 @@ public class PageHeader {
     return statistics.getCount();
   }
 
+  @Override
   public Statistics<? extends Serializable> getStatistics() {
     return statistics;
+  }
+
+  @Override
+  public Statistics<? extends Serializable> getTimeStatistics() {
+    return getStatistics();
+  }
+
+  @Override
+  public Optional<Statistics<? extends Serializable>> getMeasurementStatistics(
+      int measurementIndex) {
+    return Optional.ofNullable(getStatistics());
+  }
+
+  @Override
+  public boolean hasNullValue(int measurementIndex) {
+    return false;
+  }
+
+  @Override
+  public boolean isAllNulls(int measurementIndex) {
+    return false;
   }
 
   public long getEndTime() {

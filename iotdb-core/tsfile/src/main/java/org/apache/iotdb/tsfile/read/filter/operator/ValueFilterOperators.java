@@ -20,19 +20,16 @@
 package org.apache.iotdb.tsfile.read.filter.operator;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.IMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.filter.basic.DisableStatisticsValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.basic.IDisableStatisticsValueFilter;
-import org.apache.iotdb.tsfile.read.filter.basic.IValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.OperatorType;
-import org.apache.iotdb.tsfile.read.filter.operator.base.ColumnCompareFilter;
-import org.apache.iotdb.tsfile.read.filter.operator.base.ColumnPatternMatchFilter;
-import org.apache.iotdb.tsfile.read.filter.operator.base.ColumnRangeFilter;
-import org.apache.iotdb.tsfile.read.filter.operator.base.ColumnSetFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.ValueFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.ValueFilterApi;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.utils.RegexUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -45,7 +42,7 @@ import java.util.regex.Pattern;
 
 /**
  * These are the value column operators in a filter predicate expression tree. They are constructed
- * by using the methods in {@link org.apache.iotdb.tsfile.read.filter.factory.ValueFilter}
+ * by using the methods in {@link ValueFilterApi}
  */
 public final class ValueFilterOperators {
 
@@ -54,36 +51,31 @@ public final class ValueFilterOperators {
   }
 
   private static final String CONSTANT_CANNOT_BE_NULL_MSG = "constant cannot be null";
-
-  private static final boolean BLOCK_MIGHT_MATCH = false;
-  private static final boolean BLOCK_CANNOT_MATCH = true;
-  private static final boolean BLOCK_ALL_MATCH = true;
+  private static final String CANNOT_PUSH_DOWN_MSG = " operator can not be pushed down.";
 
   private static final String OPERATOR_TO_STRING_FORMAT = "measurements[%s] %s %s";
 
-  private static final String CANNOT_PUSH_DOWN_MSG =
-      " operator can not be pushed down for non-aligned timeseries";
-
   // base class for ValueEq, ValueNotEq, ValueLt, ValueGt, ValueLtEq, ValueGtEq
-  abstract static class ValueColumnCompareFilter<T extends Comparable<T>>
-      extends ColumnCompareFilter<T> implements IValueFilter {
+  abstract static class ValueColumnCompareFilter<T extends Comparable<T>> extends ValueFilter {
 
-    protected final int measurementIndex;
+    protected final T constant;
 
     protected ValueColumnCompareFilter(int measurementIndex, T constant) {
-      super(constant);
-      this.measurementIndex = measurementIndex;
+      super(measurementIndex);
+      this.constant = Objects.requireNonNull(constant, CONSTANT_CANNOT_BE_NULL_MSG);
     }
 
-    @Override
-    public int getMeasurementIndex() {
-      return measurementIndex;
+    @SuppressWarnings("unchecked")
+    protected ValueColumnCompareFilter(ByteBuffer buffer) {
+      super(buffer);
+      this.constant =
+          Objects.requireNonNull(
+              (T) ReadWriteIOUtils.readObject(buffer), CONSTANT_CANNOT_BE_NULL_MSG);
     }
 
     @Override
     public void serialize(DataOutputStream outputStream) throws IOException {
-      ReadWriteIOUtils.write(getOperatorType().ordinal(), outputStream);
-      ReadWriteIOUtils.write(measurementIndex, outputStream);
+      super.serialize(outputStream);
       ReadWriteIOUtils.writeObject(constant, outputStream);
     }
 
@@ -99,12 +91,12 @@ public final class ValueFilterOperators {
         return false;
       }
       ValueColumnCompareFilter<?> that = (ValueColumnCompareFilter<?>) o;
-      return measurementIndex == that.measurementIndex;
+      return Objects.equals(constant, that.constant);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(super.hashCode(), measurementIndex);
+      return Objects.hash(super.hashCode(), constant);
     }
 
     @Override
@@ -116,18 +108,16 @@ public final class ValueFilterOperators {
 
   public static final class ValueEq<T extends Comparable<T>> extends ValueColumnCompareFilter<T> {
 
-    // constant cannot be null
     public ValueEq(int measurementIndex, T constant) {
-      super(measurementIndex, Objects.requireNonNull(constant, CONSTANT_CANNOT_BE_NULL_MSG));
+      super(measurementIndex, constant);
     }
 
-    @SuppressWarnings("unchecked")
     public ValueEq(ByteBuffer buffer) {
-      this(ReadWriteIOUtils.readInt(buffer), (T) ReadWriteIOUtils.readObject(buffer));
+      super(buffer);
     }
 
     @Override
-    public boolean satisfy(long time, Object value) {
+    public boolean valueSatisfy(Object value) {
       return constant.equals(value);
     }
 
@@ -135,7 +125,7 @@ public final class ValueFilterOperators {
     @SuppressWarnings("unchecked")
     public boolean canSkip(Statistics<? extends Serializable> statistics) {
       if (statisticsNotAvailable(statistics)) {
-        return BLOCK_MIGHT_MATCH;
+        return false;
       }
 
       // drop if value < min || value > max
@@ -147,7 +137,7 @@ public final class ValueFilterOperators {
     @SuppressWarnings("unchecked")
     public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
       if (statisticsNotAvailable(statistics)) {
-        return BLOCK_MIGHT_MATCH;
+        return false;
       }
 
       return constant.compareTo((T) statistics.getMinValue()) == 0
@@ -168,18 +158,16 @@ public final class ValueFilterOperators {
   public static final class ValueNotEq<T extends Comparable<T>>
       extends ValueColumnCompareFilter<T> {
 
-    // constant cannot be null
     public ValueNotEq(int measurementIndex, T constant) {
-      super(measurementIndex, Objects.requireNonNull(constant, CONSTANT_CANNOT_BE_NULL_MSG));
+      super(measurementIndex, constant);
     }
 
-    @SuppressWarnings("unchecked")
     public ValueNotEq(ByteBuffer buffer) {
-      this(ReadWriteIOUtils.readInt(buffer), (T) ReadWriteIOUtils.readObject(buffer));
+      super(buffer);
     }
 
     @Override
-    public boolean satisfy(long time, Object value) {
+    public boolean valueSatisfy(Object value) {
       return !constant.equals(value);
     }
 
@@ -187,7 +175,7 @@ public final class ValueFilterOperators {
     @SuppressWarnings("unchecked")
     public boolean canSkip(Statistics<? extends Serializable> statistics) {
       if (statisticsNotAvailable(statistics)) {
-        return BLOCK_MIGHT_MATCH;
+        return false;
       }
 
       // drop if this is a column where min = max = value
@@ -199,7 +187,7 @@ public final class ValueFilterOperators {
     @SuppressWarnings("unchecked")
     public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
       if (statisticsNotAvailable(statistics)) {
-        return BLOCK_MIGHT_MATCH;
+        return false;
       }
 
       return constant.compareTo((T) statistics.getMinValue()) < 0
@@ -217,193 +205,19 @@ public final class ValueFilterOperators {
     }
   }
 
-  public static final class ValueIsNull<T extends Comparable<T>>
-      extends ValueColumnCompareFilter<T> {
-
-    // constant can be null
-    public ValueIsNull(int measurementIndex) {
-      super(measurementIndex, null);
-    }
-
-    public ValueIsNull(ByteBuffer buffer) {
-      this(ReadWriteIOUtils.readInt(buffer));
-    }
-
-    @Override
-    public boolean satisfy(long time, Object value) {
-      throw new IllegalArgumentException(getOperatorType().getSymbol() + CANNOT_PUSH_DOWN_MSG);
-    }
-
-    @Override
-    public boolean satisfyRow(long time, Object[] values) {
-      return values[measurementIndex] == null;
-    }
-
-    @Override
-    public boolean canSkip(Statistics<? extends Serializable> statistics) {
-      throw new IllegalArgumentException(getOperatorType().getSymbol() + CANNOT_PUSH_DOWN_MSG);
-    }
-
-    @Override
-    public boolean canSkip(IMetadata metadata) {
-      Optional<Statistics<? extends Serializable>> statistics =
-          metadata.getMeasurementStatistics(measurementIndex);
-
-      if (!statistics.isPresent()) {
-        // the measurement isn't in this block so all values are null.
-        return BLOCK_MIGHT_MATCH;
-      }
-
-      if (statisticsNotAvailable(statistics.get())) {
-        return BLOCK_MIGHT_MATCH;
-      }
-
-      // we are looking for records where v eq(null)
-      // so drop if there are no nulls in this chunk
-      if (!metadata.hasNullValue(measurementIndex)) {
-        return BLOCK_CANNOT_MATCH;
-      }
-      return BLOCK_MIGHT_MATCH;
-    }
-
-    @Override
-    public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
-      throw new IllegalArgumentException(getOperatorType().getSymbol() + CANNOT_PUSH_DOWN_MSG);
-    }
-
-    @Override
-    public boolean allSatisfy(IMetadata metadata) {
-      Optional<Statistics<? extends Serializable>> statistics =
-          metadata.getMeasurementStatistics(measurementIndex);
-
-      if (statistics.isPresent()) {
-        // the measurement isn't in this block so all values are null.
-        // null is always equal to null
-        return BLOCK_ALL_MATCH;
-      }
-
-      if (statisticsNotAvailable(statistics.get())) {
-        return BLOCK_MIGHT_MATCH;
-      }
-
-      if (metadata.isAllNulls(measurementIndex)) {
-        return BLOCK_ALL_MATCH;
-      }
-      return BLOCK_MIGHT_MATCH;
-    }
-
-    @Override
-    public Filter reverse() {
-      return new ValueIsNotNull<>(measurementIndex);
-    }
-
-    @Override
-    public OperatorType getOperatorType() {
-      return OperatorType.VALUE_IS_NULL;
-    }
-  }
-
-  public static final class ValueIsNotNull<T extends Comparable<T>>
-      extends ValueColumnCompareFilter<T> {
-
-    // constant can be null
-    public ValueIsNotNull(int measurementIndex) {
-      super(measurementIndex, null);
-    }
-
-    public ValueIsNotNull(ByteBuffer buffer) {
-      this(ReadWriteIOUtils.readInt(buffer));
-    }
-
-    @Override
-    public boolean satisfy(long time, Object value) {
-      throw new IllegalArgumentException(getOperatorType().getSymbol() + CANNOT_PUSH_DOWN_MSG);
-    }
-
-    @Override
-    public boolean satisfyRow(long time, Object[] values) {
-      return values[measurementIndex] != null;
-    }
-
-    @Override
-    public boolean canSkip(Statistics<? extends Serializable> statistics) {
-      throw new IllegalArgumentException(getOperatorType().getSymbol() + CANNOT_PUSH_DOWN_MSG);
-    }
-
-    @Override
-    public boolean canSkip(IMetadata metadata) {
-      Statistics<? extends Serializable> statistics =
-          metadata.getMeasurementStatistics(measurementIndex);
-
-      if (statistics == null) {
-        // null is always equal to null
-        return BLOCK_CANNOT_MATCH;
-      }
-
-      if (statisticsNotAvailable(statistics)) {
-        return BLOCK_MIGHT_MATCH;
-      }
-
-      // we are looking for records where v notEq(null)
-      // so, if this is a column of all nulls, we can drop it
-      if (metadata.isAllNulls(measurementIndex)) {
-        return BLOCK_CANNOT_MATCH;
-      }
-      return BLOCK_MIGHT_MATCH;
-    }
-
-    @Override
-    public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
-      throw new IllegalArgumentException(getOperatorType().getSymbol() + CANNOT_PUSH_DOWN_MSG);
-    }
-
-    @Override
-    public boolean allSatisfy(IMetadata metadata) {
-      Statistics<? extends Serializable> statistics =
-          metadata.getMeasurementStatistics(measurementIndex);
-
-      if (statistics == null) {
-        return BLOCK_MIGHT_MATCH;
-      }
-
-      if (statisticsNotAvailable(statistics)) {
-        return BLOCK_MIGHT_MATCH;
-      }
-
-      // we are looking for records where v notEq(null)
-      // so, if this is a column of all nulls, we can drop it
-      if (!metadata.hasNullValue(measurementIndex)) {
-        return BLOCK_ALL_MATCH;
-      }
-      return BLOCK_MIGHT_MATCH;
-    }
-
-    @Override
-    public Filter reverse() {
-      return new ValueIsNull<>(measurementIndex);
-    }
-
-    @Override
-    public OperatorType getOperatorType() {
-      return OperatorType.VALUE_IS_NOT_NULL;
-    }
-  }
-
   public static final class ValueLt<T extends Comparable<T>> extends ValueColumnCompareFilter<T> {
 
-    // constant cannot be null
     public ValueLt(int measurementIndex, T constant) {
-      super(measurementIndex, Objects.requireNonNull(constant, CONSTANT_CANNOT_BE_NULL_MSG));
+      super(measurementIndex, constant);
     }
 
-    @SuppressWarnings("unchecked")
     public ValueLt(ByteBuffer buffer) {
-      this(ReadWriteIOUtils.readInt(buffer), (T) ReadWriteIOUtils.readObject(buffer));
+      super(buffer);
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    public boolean satisfy(long time, Object value) {
+    public boolean valueSatisfy(Object value) {
       return constant.compareTo((T) value) > 0;
     }
 
@@ -411,7 +225,7 @@ public final class ValueFilterOperators {
     @SuppressWarnings("unchecked")
     public boolean canSkip(Statistics<? extends Serializable> statistics) {
       if (statisticsNotAvailable(statistics)) {
-        return BLOCK_MIGHT_MATCH;
+        return false;
       }
 
       // drop if value <= min
@@ -422,7 +236,7 @@ public final class ValueFilterOperators {
     @SuppressWarnings("unchecked")
     public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
       if (statisticsNotAvailable(statistics)) {
-        return BLOCK_MIGHT_MATCH;
+        return false;
       }
 
       return constant.compareTo((T) statistics.getMaxValue()) > 0;
@@ -441,19 +255,17 @@ public final class ValueFilterOperators {
 
   public static final class ValueLtEq<T extends Comparable<T>> extends ValueColumnCompareFilter<T> {
 
-    // constant cannot be null
     public ValueLtEq(int measurementIndex, T constant) {
-      super(measurementIndex, Objects.requireNonNull(constant, CONSTANT_CANNOT_BE_NULL_MSG));
+      super(measurementIndex, constant);
     }
 
-    @SuppressWarnings("unchecked")
     public ValueLtEq(ByteBuffer buffer) {
-      this(ReadWriteIOUtils.readInt(buffer), (T) ReadWriteIOUtils.readObject(buffer));
+      super(buffer);
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    public boolean satisfy(long time, Object value) {
+    public boolean valueSatisfy(Object value) {
       return constant.compareTo((T) value) >= 0;
     }
 
@@ -461,7 +273,7 @@ public final class ValueFilterOperators {
     @SuppressWarnings("unchecked")
     public boolean canSkip(Statistics<? extends Serializable> statistics) {
       if (statisticsNotAvailable(statistics)) {
-        return BLOCK_MIGHT_MATCH;
+        return false;
       }
 
       // drop if value < min
@@ -472,7 +284,7 @@ public final class ValueFilterOperators {
     @SuppressWarnings("unchecked")
     public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
       if (statisticsNotAvailable(statistics)) {
-        return BLOCK_MIGHT_MATCH;
+        return false;
       }
 
       return constant.compareTo((T) statistics.getMaxValue()) >= 0;
@@ -491,19 +303,17 @@ public final class ValueFilterOperators {
 
   public static final class ValueGt<T extends Comparable<T>> extends ValueColumnCompareFilter<T> {
 
-    // constant cannot be null
     public ValueGt(int measurementIndex, T constant) {
-      super(measurementIndex, Objects.requireNonNull(constant, CONSTANT_CANNOT_BE_NULL_MSG));
+      super(measurementIndex, constant);
     }
 
-    @SuppressWarnings("unchecked")
     public ValueGt(ByteBuffer buffer) {
-      this(ReadWriteIOUtils.readInt(buffer), (T) ReadWriteIOUtils.readObject(buffer));
+      super(buffer);
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    public boolean satisfy(long time, Object value) {
+    public boolean valueSatisfy(Object value) {
       return constant.compareTo((T) value) < 0;
     }
 
@@ -511,7 +321,7 @@ public final class ValueFilterOperators {
     @SuppressWarnings("unchecked")
     public boolean canSkip(Statistics<? extends Serializable> statistics) {
       if (statisticsNotAvailable(statistics)) {
-        return BLOCK_MIGHT_MATCH;
+        return false;
       }
 
       // drop if value >= max
@@ -522,7 +332,7 @@ public final class ValueFilterOperators {
     @SuppressWarnings("unchecked")
     public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
       if (statisticsNotAvailable(statistics)) {
-        return BLOCK_MIGHT_MATCH;
+        return false;
       }
 
       return constant.compareTo((T) statistics.getMinValue()) < 0;
@@ -541,19 +351,17 @@ public final class ValueFilterOperators {
 
   public static final class ValueGtEq<T extends Comparable<T>> extends ValueColumnCompareFilter<T> {
 
-    // constant cannot be null
     public ValueGtEq(int measurementIndex, T constant) {
-      super(measurementIndex, Objects.requireNonNull(constant, CONSTANT_CANNOT_BE_NULL_MSG));
+      super(measurementIndex, constant);
     }
 
-    @SuppressWarnings("unchecked")
     public ValueGtEq(ByteBuffer buffer) {
-      this(ReadWriteIOUtils.readInt(buffer), (T) ReadWriteIOUtils.readObject(buffer));
+      super(buffer);
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    public boolean satisfy(long time, Object value) {
+    public boolean valueSatisfy(Object value) {
       return constant.compareTo((T) value) <= 0;
     }
 
@@ -561,7 +369,7 @@ public final class ValueFilterOperators {
     @SuppressWarnings("unchecked")
     public boolean canSkip(Statistics<? extends Serializable> statistics) {
       if (statisticsNotAvailable(statistics)) {
-        return BLOCK_MIGHT_MATCH;
+        return false;
       }
 
       // drop if value > max
@@ -572,7 +380,7 @@ public final class ValueFilterOperators {
     @SuppressWarnings("unchecked")
     public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
       if (statisticsNotAvailable(statistics)) {
-        return BLOCK_MIGHT_MATCH;
+        return false;
       }
 
       return constant.compareTo((T) statistics.getMinValue()) <= 0;
@@ -590,25 +398,29 @@ public final class ValueFilterOperators {
   }
 
   // base class for ValueBetweenAnd, ValueNotBetweenAnd
-  abstract static class ValueColumnRangeFilter<T extends Comparable<T>> extends ColumnRangeFilter<T>
-      implements IValueFilter {
+  abstract static class ValueColumnRangeFilter<T extends Comparable<T>> extends ValueFilter {
 
-    protected final int measurementIndex;
+    protected final T min;
+    protected final T max;
 
     protected ValueColumnRangeFilter(int measurementIndex, T min, T max) {
-      super(min, max);
-      this.measurementIndex = measurementIndex;
+      super(measurementIndex);
+      this.min = Objects.requireNonNull(min, "min cannot be null");
+      this.max = Objects.requireNonNull(max, "max cannot be null");
     }
 
-    @Override
-    public int getMeasurementIndex() {
-      return measurementIndex;
+    @SuppressWarnings("unchecked")
+    protected ValueColumnRangeFilter(ByteBuffer buffer) {
+      super(buffer);
+      this.min =
+          Objects.requireNonNull((T) ReadWriteIOUtils.readObject(buffer), "min cannot be null");
+      this.max =
+          Objects.requireNonNull((T) ReadWriteIOUtils.readObject(buffer), "max cannot be null");
     }
 
     @Override
     public void serialize(DataOutputStream outputStream) throws IOException {
-      ReadWriteIOUtils.write(getOperatorType().ordinal(), outputStream);
-      ReadWriteIOUtils.write(measurementIndex, outputStream);
+      super.serialize(outputStream);
       ReadWriteIOUtils.writeObject(min, outputStream);
       ReadWriteIOUtils.writeObject(max, outputStream);
     }
@@ -625,12 +437,12 @@ public final class ValueFilterOperators {
         return false;
       }
       ValueColumnRangeFilter<?> that = (ValueColumnRangeFilter<?>) o;
-      return measurementIndex == that.measurementIndex;
+      return min.equals(that.min) && max.equals(that.max);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(super.hashCode(), measurementIndex);
+      return Objects.hash(super.hashCode(), min, max);
     }
 
     @Override
@@ -648,17 +460,13 @@ public final class ValueFilterOperators {
       super(measurementIndex, min, max);
     }
 
-    @SuppressWarnings("unchecked")
     public ValueBetweenAnd(ByteBuffer buffer) {
-      this(
-          ReadWriteIOUtils.readInt(buffer),
-          (T) ReadWriteIOUtils.readObject(buffer),
-          (T) ReadWriteIOUtils.readObject(buffer));
+      super(buffer);
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    public boolean satisfy(long time, Object value) {
+    public boolean valueSatisfy(Object value) {
       return min.compareTo((T) value) <= 0 && max.compareTo((T) value) >= 0;
     }
 
@@ -666,7 +474,7 @@ public final class ValueFilterOperators {
     @SuppressWarnings("unchecked")
     public boolean canSkip(Statistics<? extends Serializable> statistics) {
       if (statisticsNotAvailable(statistics)) {
-        return BLOCK_MIGHT_MATCH;
+        return false;
       }
 
       return ((T) statistics.getMaxValue()).compareTo(min) >= 0
@@ -677,7 +485,7 @@ public final class ValueFilterOperators {
     @SuppressWarnings("unchecked")
     public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
       if (statisticsNotAvailable(statistics)) {
-        return BLOCK_MIGHT_MATCH;
+        return false;
       }
 
       return ((T) statistics.getMinValue()).compareTo(min) >= 0
@@ -702,17 +510,13 @@ public final class ValueFilterOperators {
       super(measurementIndex, min, max);
     }
 
-    @SuppressWarnings("unchecked")
     public ValueNotBetweenAnd(ByteBuffer buffer) {
-      this(
-          ReadWriteIOUtils.readInt(buffer),
-          (T) ReadWriteIOUtils.readObject(buffer),
-          (T) ReadWriteIOUtils.readObject(buffer));
+      super(buffer);
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    public boolean satisfy(long time, Object value) {
+    public boolean valueSatisfy(Object value) {
       return min.compareTo((T) value) > 0 || max.compareTo((T) value) < 0;
     }
 
@@ -720,7 +524,7 @@ public final class ValueFilterOperators {
     @SuppressWarnings("unchecked")
     public boolean canSkip(Statistics<? extends Serializable> statistics) {
       if (statisticsNotAvailable(statistics)) {
-        return BLOCK_MIGHT_MATCH;
+        return false;
       }
 
       return ((T) statistics.getMinValue()).compareTo(min) >= 0
@@ -731,7 +535,7 @@ public final class ValueFilterOperators {
     @SuppressWarnings("unchecked")
     public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
       if (statisticsNotAvailable(statistics)) {
-        return BLOCK_MIGHT_MATCH;
+        return false;
       }
 
       return ((T) statistics.getMinValue()).compareTo(max) > 0
@@ -751,32 +555,169 @@ public final class ValueFilterOperators {
 
   // we have no statistics available, we cannot drop any blocks
   private static boolean statisticsNotAvailable(Statistics<?> statistics) {
-    return statistics == null
-        || statistics.getType() == TSDataType.TEXT
+    return statistics.getType() == TSDataType.TEXT
         || statistics.getType() == TSDataType.BOOLEAN
         || statistics.isEmpty();
   }
 
-  // base class for ValueIn, ValueNotIn
-  abstract static class ValueColumnSetFilter<T> extends ColumnSetFilter<T>
-      implements IDisableStatisticsValueFilter {
+  // base class for ValueIsNull and ValueIsNotNull
+  abstract static class ValueCompareNullFilter extends ValueFilter {
 
-    protected final int measurementIndex;
+    protected ValueCompareNullFilter(int measurementIndex) {
+      super(measurementIndex);
+    }
 
-    protected ValueColumnSetFilter(int measurementIndex, Set<T> candidates) {
-      super(candidates);
-      this.measurementIndex = measurementIndex;
+    protected ValueCompareNullFilter(ByteBuffer buffer) {
+      super(buffer);
     }
 
     @Override
-    public int getMeasurementIndex() {
-      return measurementIndex;
+    public String toString() {
+      return String.format("measurements[%s] %s", measurementIndex, getOperatorType().getSymbol());
+    }
+  }
+
+  // ValueIsNull can not be pushed down
+  public static final class ValueIsNull extends ValueCompareNullFilter {
+
+    public ValueIsNull(int measurementIndex) {
+      super(measurementIndex);
+    }
+
+    public ValueIsNull(ByteBuffer buffer) {
+      super(buffer);
+    }
+
+    @Override
+    public boolean satisfy(long time, Object value) {
+      throw new IllegalArgumentException(getOperatorType().getSymbol() + CANNOT_PUSH_DOWN_MSG);
+    }
+
+    @Override
+    public boolean satisfyRow(long time, Object[] values) {
+      throw new IllegalArgumentException(getOperatorType().getSymbol() + CANNOT_PUSH_DOWN_MSG);
+    }
+
+    @Override
+    public boolean valueSatisfy(Object value) {
+      throw new IllegalArgumentException(getOperatorType().getSymbol() + CANNOT_PUSH_DOWN_MSG);
+    }
+
+    @Override
+    public boolean canSkip(IMetadata metadata) {
+      throw new IllegalArgumentException(getOperatorType().getSymbol() + CANNOT_PUSH_DOWN_MSG);
+    }
+
+    @Override
+    public boolean canSkip(Statistics<? extends Serializable> statistics) {
+      throw new IllegalArgumentException(getOperatorType().getSymbol() + CANNOT_PUSH_DOWN_MSG);
+    }
+
+    @Override
+    public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
+      throw new IllegalArgumentException(getOperatorType().getSymbol() + CANNOT_PUSH_DOWN_MSG);
+    }
+
+    @Override
+    public boolean allSatisfy(IMetadata metadata) {
+      throw new IllegalArgumentException(getOperatorType().getSymbol() + CANNOT_PUSH_DOWN_MSG);
+    }
+
+    @Override
+    public Filter reverse() {
+      return new ValueIsNotNull(measurementIndex);
+    }
+
+    @Override
+    public OperatorType getOperatorType() {
+      return OperatorType.VALUE_IS_NULL;
+    }
+  }
+
+  // ValueIsNotNull are only used in ValueFilter
+  public static final class ValueIsNotNull extends ValueCompareNullFilter {
+
+    public ValueIsNotNull(int measurementIndex) {
+      super(measurementIndex);
+    }
+
+    public ValueIsNotNull(ByteBuffer buffer) {
+      super(buffer);
+    }
+
+    @Override
+    public boolean valueSatisfy(Object value) {
+      throw new NotImplementedException();
+    }
+
+    @Override
+    public boolean canSkip(IMetadata metadata) {
+      Optional<Statistics<? extends Serializable>> statistics =
+          metadata.getMeasurementStatistics(measurementIndex);
+
+      if (!statistics.isPresent()) {
+        // the measurement isn't in this block so all values are null.
+        // null is always equal to null
+        return true;
+      }
+
+      // we are looking for records where v notEq(null)
+      // so, if this is a column of all nulls, we can drop it
+      return metadata.isAllNulls(measurementIndex);
+    }
+
+    @Override
+    public boolean canSkip(Statistics<? extends Serializable> statistics) {
+      throw new NotImplementedException();
+    }
+
+    @Override
+    public boolean allSatisfy(IMetadata metadata) {
+      Optional<Statistics<? extends Serializable>> statistics =
+          metadata.getMeasurementStatistics(measurementIndex);
+
+      if (!statistics.isPresent()) {
+        // block cannot match
+        return false;
+      }
+
+      return !metadata.hasNullValue(measurementIndex);
+    }
+
+    @Override
+    public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
+      throw new NotImplementedException();
+    }
+
+    @Override
+    public Filter reverse() {
+      return new ValueIsNull(measurementIndex);
+    }
+
+    @Override
+    public OperatorType getOperatorType() {
+      return OperatorType.VALUE_IS_NOT_NULL;
+    }
+  }
+
+  // base class for ValueIn, ValueNotIn
+  abstract static class ValueColumnSetFilter<T> extends DisableStatisticsValueFilter {
+
+    protected final Set<T> candidates;
+
+    protected ValueColumnSetFilter(int measurementIndex, Set<T> candidates) {
+      super(measurementIndex);
+      this.candidates = Objects.requireNonNull(candidates, "candidates cannot be null");
+    }
+
+    protected ValueColumnSetFilter(ByteBuffer buffer) {
+      super(buffer);
+      candidates = ReadWriteIOUtils.readObjectSet(buffer);
     }
 
     @Override
     public void serialize(DataOutputStream outputStream) throws IOException {
-      ReadWriteIOUtils.write(getOperatorType().ordinal(), outputStream);
-      ReadWriteIOUtils.write(measurementIndex, outputStream);
+      super.serialize(outputStream);
       ReadWriteIOUtils.writeObjectSet(candidates, outputStream);
     }
 
@@ -792,12 +733,12 @@ public final class ValueFilterOperators {
         return false;
       }
       ValueColumnSetFilter<?> that = (ValueColumnSetFilter<?>) o;
-      return measurementIndex == that.measurementIndex;
+      return candidates.equals(that.candidates);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(super.hashCode(), measurementIndex);
+      return Objects.hash(super.hashCode(), candidates);
     }
 
     @Override
@@ -814,11 +755,11 @@ public final class ValueFilterOperators {
     }
 
     public ValueIn(ByteBuffer buffer) {
-      this(ReadWriteIOUtils.readInt(buffer), ReadWriteIOUtils.readObjectSet(buffer));
+      super(buffer);
     }
 
     @Override
-    public boolean satisfy(long time, Object value) {
+    public boolean valueSatisfy(Object value) {
       return candidates.contains(value);
     }
 
@@ -840,11 +781,11 @@ public final class ValueFilterOperators {
     }
 
     public ValueNotIn(ByteBuffer buffer) {
-      this(ReadWriteIOUtils.readInt(buffer), ReadWriteIOUtils.readObjectSet(buffer));
+      super(buffer);
     }
 
     @Override
-    public boolean satisfy(long time, Object value) {
+    public boolean valueSatisfy(Object value) {
       return !candidates.contains(value);
     }
 
@@ -860,25 +801,26 @@ public final class ValueFilterOperators {
   }
 
   // base class for ValueRegex, ValueNotRegex
-  abstract static class ValueColumnPatternMatchFilter extends ColumnPatternMatchFilter
-      implements IDisableStatisticsValueFilter {
+  abstract static class ValueColumnPatternMatchFilter extends DisableStatisticsValueFilter {
 
-    protected final int measurementIndex;
+    protected final Pattern pattern;
 
     protected ValueColumnPatternMatchFilter(int measurementIndex, Pattern pattern) {
-      super(pattern);
-      this.measurementIndex = measurementIndex;
+      super(measurementIndex);
+      this.pattern = Objects.requireNonNull(pattern, "pattern cannot be null");
     }
 
-    @Override
-    public int getMeasurementIndex() {
-      return measurementIndex;
+    protected ValueColumnPatternMatchFilter(ByteBuffer buffer) {
+      super(buffer);
+      this.pattern =
+          Pattern.compile(
+              Objects.requireNonNull(
+                  ReadWriteIOUtils.readString(buffer), "pattern cannot be null"));
     }
 
     @Override
     public void serialize(DataOutputStream outputStream) throws IOException {
-      ReadWriteIOUtils.write(getOperatorType().ordinal(), outputStream);
-      ReadWriteIOUtils.write(measurementIndex, outputStream);
+      super.serialize(outputStream);
       ReadWriteIOUtils.write(pattern.pattern(), outputStream);
     }
 
@@ -894,12 +836,12 @@ public final class ValueFilterOperators {
         return false;
       }
       ValueColumnPatternMatchFilter that = (ValueColumnPatternMatchFilter) o;
-      return measurementIndex == that.measurementIndex;
+      return pattern.pattern().equals(that.pattern.pattern());
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(super.hashCode(), measurementIndex);
+      return Objects.hash(super.hashCode(), pattern.pattern());
     }
 
     @Override
@@ -916,13 +858,11 @@ public final class ValueFilterOperators {
     }
 
     public ValueRegexp(ByteBuffer buffer) {
-      this(
-          ReadWriteIOUtils.readInt(buffer),
-          RegexUtils.compileRegex(ReadWriteIOUtils.readString(buffer)));
+      super(buffer);
     }
 
     @Override
-    public boolean satisfy(long time, Object value) {
+    public boolean valueSatisfy(Object value) {
       return pattern.matcher(new MatcherInput(value.toString(), new AccessCount())).find();
     }
 
@@ -944,13 +884,11 @@ public final class ValueFilterOperators {
     }
 
     public ValueNotRegexp(ByteBuffer buffer) {
-      this(
-          ReadWriteIOUtils.readInt(buffer),
-          RegexUtils.compileRegex(ReadWriteIOUtils.readString(buffer)));
+      super(buffer);
     }
 
     @Override
-    public boolean satisfy(long time, Object value) {
+    public boolean valueSatisfy(Object value) {
       return !pattern.matcher(new MatcherInput(value.toString(), new AccessCount())).find();
     }
 

@@ -37,7 +37,7 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
-import org.apache.iotdb.tsfile.read.filter.factory.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilterApi;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
@@ -90,8 +90,8 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
         (startTime == Long.MIN_VALUE && endTime == Long.MAX_VALUE)
             ? null
             : BinaryExpression.and(
-                new GlobalTimeExpression(TimeFilter.gtEq(startTime)),
-                new GlobalTimeExpression(TimeFilter.ltEq(endTime)));
+                new GlobalTimeExpression(TimeFilterApi.gtEq(startTime)),
+                new GlobalTimeExpression(TimeFilterApi.ltEq(endTime)));
 
     this.pipeTaskMeta = pipeTaskMeta;
     this.sourceEvent = sourceEvent;
