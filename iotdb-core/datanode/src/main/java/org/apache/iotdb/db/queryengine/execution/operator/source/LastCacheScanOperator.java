@@ -59,6 +59,11 @@ public class LastCacheScanOperator implements SourceOperator {
   }
 
   @Override
+  public void close() throws Exception {
+    // do nothing
+  }
+
+  @Override
   public long calculateMaxPeekMemory() {
     return tsBlock.getRetainedSizeInBytes();
   }

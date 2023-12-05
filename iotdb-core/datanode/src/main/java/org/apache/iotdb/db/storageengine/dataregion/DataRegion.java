@@ -1904,6 +1904,51 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
+  public void deleteDataDirectly(
+      PartialPath pathToDelete, long startTime, long endTime, long searchIndex) throws IOException {
+    logger.info(
+        "{} will delete data files directly for deleting data between {} and {}",
+        databaseName + "-" + dataRegionId,
+        startTime,
+        endTime);
+
+    writeLock("deleteDataDirect");
+    boolean releasedLock = false;
+    try {
+      // delete last cache record if necessary
+      DataNodeSchemaCache.getInstance().takeWriteLock();
+      try {
+        DataNodeSchemaCache.getInstance().invalidate(databaseName);
+      } finally {
+        DataNodeSchemaCache.getInstance().releaseWriteLock();
+      }
+
+      // write log to impacted working TsFileProcessors
+      List<WALFlushListener> walListeners =
+          logDeletionInWAL(startTime, endTime, searchIndex, pathToDelete);
+
+      for (WALFlushListener walFlushListener : walListeners) {
+        if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
+          logger.error("Fail to log delete to wal.", walFlushListener.getCause());
+          throw walFlushListener.getCause();
+        }
+      }
+      List<TsFileResource> sealedTsFileResource = new ArrayList<>();
+      List<TsFileResource> unsealedTsFileResource = new ArrayList<>();
+      separateTsFile(sealedTsFileResource, unsealedTsFileResource, startTime, endTime);
+      deleteDataDirectlyInFile(unsealedTsFileResource, pathToDelete, startTime, endTime);
+      writeUnlock();
+      releasedLock = true;
+      deleteDataDirectlyInFile(sealedTsFileResource, pathToDelete, startTime, endTime);
+    } catch (Exception e) {
+      throw new IOException(e);
+    } finally {
+      if (!releasedLock) {
+        writeUnlock();
+      }
+    }
+  }
+
   private List<WALFlushListener> logDeletionInWAL(
       long startTime, long endTime, long searchIndex, PartialPath path) {
     List<WALFlushListener> walFlushListeners = new ArrayList<>();
@@ -2017,8 +2062,6 @@ public class DataRegion implements IDataRegionForQuery {
               // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
               // change after compaction
               deletion.setFileOffset(Long.MAX_VALUE);
-              // 如果这个时候正在执行清理，就写入到一个 compact 的文件里面
-              // 这里一次删除会写入到两个文件里面
               // write deletion into compaction modification file
               tsFileResource.getCompactionModFile().write(deletion);
               // write deletion into modification file to enable read during compaction
@@ -2063,6 +2106,128 @@ public class DataRegion implements IDataRegionForQuery {
       } else {
         // delete data in memory of unsealed file
         tsFileResource.getProcessor().deleteDataInMemory(deletion, devicePaths);
+      }
+    }
+  }
+
+  private void deleteDataDirectlyInFile(
+      List<TsFileResource> tsfileResourceList,
+      PartialPath pathToDelete,
+      long startTime,
+      long endTime)
+      throws IOException {
+    List<TsFileResource> deletedByMods = new ArrayList<>();
+    List<TsFileResource> deletedByFiles = new ArrayList<>();
+    separateTsFileToDelete(
+        new HashSet<>(pathToDelete.getDevicePathPattern()),
+        tsfileResourceList,
+        deletedByMods,
+        deletedByFiles,
+        startTime,
+        endTime);
+    Deletion deletion = new Deletion(pathToDelete, MERGE_MOD_START_VERSION_NUM, startTime, endTime);
+    // can be deleted by mods.
+    for (TsFileResource tsFileResource : deletedByMods) {
+      ModificationFile modFile = tsFileResource.getModFile();
+      if (tsFileResource.isClosed()) {
+        long originSize = -1;
+        synchronized (modFile) {
+          try {
+            originSize = modFile.getSize();
+            // delete data in sealed file
+            if (tsFileResource.isCompacting()) {
+              // we have to set modification offset to MAX_VALUE, as the offset of source chunk
+              // may change after compaction
+              deletion.setFileOffset(Long.MAX_VALUE);
+              // write deletion into compaction modification file
+              tsFileResource.getCompactionModFile().write(deletion);
+              // write deletion into modification file to enable read during compaction
+              modFile.write(deletion);
+              // remember to close mod file
+              tsFileResource.getCompactionModFile().close();
+              modFile.close();
+            } else {
+              deletion.setFileOffset(tsFileResource.getTsFileSize());
+              // write deletion into modification file
+              boolean modFileExists = modFile.exists();
+
+              modFile.write(deletion);
+
+              // remember to close mod file
+              modFile.close();
+
+              // if file length greater than 1M,execute compact.
+              modFile.compact();
+
+              if (!modFileExists) {
+                FileMetrics.getInstance().increaseModFileNum(1);
+              }
+
+              // The file size may be smaller than the original file, so the increment here may be
+              // negative
+              FileMetrics.getInstance().increaseModFileSize(modFile.getSize() - originSize);
+            }
+          } catch (Throwable t) {
+            if (originSize != -1) {
+              modFile.truncate(originSize);
+            }
+            throw t;
+          }
+          logger.info(
+              "[Deletion] Deletion with path:{}, time:{}-{} written into mods file:{}.",
+              deletion.getPath(),
+              deletion.getStartTime(),
+              deletion.getEndTime(),
+              modFile.getFilePath());
+        }
+      } else {
+        // delete data in memory of unsealed file
+        tsFileResource
+            .getProcessor()
+            .deleteDataInMemory(deletion, new HashSet<>(pathToDelete.getDevicePathPattern()));
+      }
+    }
+
+    // can be deleted by files
+    for (TsFileResource tsFileResource : deletedByFiles) {
+      tsFileManager.remove(tsFileResource, tsFileResource.isSeq());
+      tsFileResource.writeLock();
+      try {
+        FileMetrics.getInstance()
+            .deleteTsFile(tsFileResource.isSeq(), Collections.singletonList(tsFileResource));
+        if (tsFileResource.getModFile().exists()) {
+          FileMetrics.getInstance().decreaseModFileNum(1);
+          FileMetrics.getInstance().decreaseModFileSize(tsFileResource.getModFile().getSize());
+        }
+        tsFileResource.remove();
+        logger.info("Remove tsfile {} directly when delete data", tsFileResource.getTsFilePath());
+      } finally {
+        tsFileResource.writeUnlock();
+      }
+    }
+  }
+
+  private void separateTsFileToDelete(
+      Set<PartialPath> pathToDelete,
+      List<TsFileResource> tsFileResourceList,
+      List<TsFileResource> deletedByMods,
+      List<TsFileResource> deletedByFiles,
+      long startTime,
+      long endTime) {
+    Set<String> deviceMatchInfo = new HashSet<>();
+    for (TsFileResource file : tsFileResourceList) {
+      long fileStartTime = file.getTimeIndex().getMinStartTime();
+      long fileEndTime = file.getTimeIndex().getMaxEndTime();
+
+      if (!canSkipDelete(file, pathToDelete, startTime, endTime, deviceMatchInfo)) {
+        if (startTime <= fileStartTime
+            && endTime >= fileEndTime
+            && file.isClosed()
+            && file.setStatus(TsFileResourceStatus.DELETED)) {
+          deletedByFiles.add(file);
+        } else {
+          deletedByMods.add(file);
+        }
       }
     }
   }
