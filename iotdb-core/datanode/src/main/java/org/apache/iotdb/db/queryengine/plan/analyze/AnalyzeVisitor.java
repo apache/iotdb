@@ -475,7 +475,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           }
           List<Expression> sourceExpressionsOfNonWritableView =
               searchSourceExpressions(lastQuerySourceExpression);
-          lastQueryNonWritableViewSourceExpressionMap.put(
+          lastQueryNonWritableViewSourceExpressionMap.putIfAbsent(
               lastQuerySourceExpression, sourceExpressionsOfNonWritableView);
           sourceExpressions.addAll(sourceExpressionsOfNonWritableView);
         }
