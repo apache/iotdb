@@ -663,7 +663,11 @@ public final class ValueFilterOperators {
 
       // we are looking for records where v notEq(null)
       // so, if this is a column of all nulls, we can drop it
-      return metadata.isAllNulls(measurementIndex);
+      return isAllNulls(statistics.get());
+    }
+
+    private boolean isAllNulls(Statistics<? extends Serializable> statistics) {
+      return statistics.getCount() == 0;
     }
 
     @Override

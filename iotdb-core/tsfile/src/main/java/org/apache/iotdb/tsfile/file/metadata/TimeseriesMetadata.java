@@ -250,11 +250,6 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
     return false;
   }
 
-  @Override
-  public boolean isAllNulls(int measurementIndex) {
-    return false;
-  }
-
   public void setChunkMetadataLoader(IChunkMetadataLoader chunkMetadataLoader) {
     this.chunkMetadataLoader = chunkMetadataLoader;
   }

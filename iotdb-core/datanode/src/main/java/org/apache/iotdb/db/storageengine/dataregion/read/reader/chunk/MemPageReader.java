@@ -345,11 +345,6 @@ public class MemPageReader implements IPageReader {
   }
 
   @Override
-  public boolean isAllNulls(int measurementIndex) {
-    return chunkMetadata.isAllNulls(measurementIndex);
-  }
-
-  @Override
   public void setFilter(Filter filter) {
     if (valueFilter == null) {
       this.valueFilter = filter;

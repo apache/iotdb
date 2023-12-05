@@ -366,9 +366,4 @@ public class ChunkMetadata implements IChunkMetadata {
   public boolean hasNullValue(int measurementIndex) {
     return false;
   }
-
-  @Override
-  public boolean isAllNulls(int measurementIndex) {
-    return false;
-  }
 }

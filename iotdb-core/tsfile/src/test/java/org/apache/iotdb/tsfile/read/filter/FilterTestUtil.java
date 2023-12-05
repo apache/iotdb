@@ -56,11 +56,6 @@ public class FilterTestUtil {
       public boolean hasNullValue(int measurementIndex) {
         return false;
       }
-
-      @Override
-      public boolean isAllNulls(int measurementIndex) {
-        return false;
-      }
     };
   }
 
@@ -105,13 +100,6 @@ public class FilterTestUtil {
       Optional<Statistics<? extends Serializable>> statistics =
           getMeasurementStatistics(measurementIndex);
       return statistics.map(stat -> stat.hasNullValue(rowCount)).orElse(true);
-    }
-
-    @Override
-    public boolean isAllNulls(int measurementIndex) {
-      Optional<Statistics<? extends Serializable>> statistics =
-          getMeasurementStatistics(measurementIndex);
-      return statistics.map(stat -> stat.getCount() == 0).orElse(true);
     }
   }
 }

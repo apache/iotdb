@@ -33,6 +33,4 @@ public interface IMetadata {
   Optional<Statistics<? extends Serializable>> getMeasurementStatistics(int measurementIndex);
 
   boolean hasNullValue(int measurementIndex);
-
-  boolean isAllNulls(int measurementIndex);
 }

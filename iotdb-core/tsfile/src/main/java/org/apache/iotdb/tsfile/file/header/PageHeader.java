@@ -128,11 +128,6 @@ public class PageHeader implements IMetadata {
     return false;
   }
 
-  @Override
-  public boolean isAllNulls(int measurementIndex) {
-    return false;
-  }
-
   public long getEndTime() {
     return statistics.getEndTime();
   }

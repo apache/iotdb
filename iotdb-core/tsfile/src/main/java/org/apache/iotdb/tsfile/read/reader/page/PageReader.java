@@ -357,11 +357,6 @@ public class PageReader implements IPageReader {
   }
 
   @Override
-  public boolean isAllNulls(int measurementIndex) {
-    return false;
-  }
-
-  @Override
   public void setFilter(Filter filter) {
     if (this.filter == null) {
       this.filter = filter;
