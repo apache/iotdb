@@ -238,13 +238,21 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
   @Override
   public Optional<Statistics<? extends Serializable>> getMeasurementStatistics(
       int measurementIndex) {
-    checkArgument(measurementIndex == 0);
+    checkArgument(
+        measurementIndex == 0,
+        "Non-aligned timeseries only has one measurement, but measurementIndex is "
+            + measurementIndex);
     return Optional.ofNullable(statistics);
   }
 
   @Override
-  public int getMeasurementCount() {
-    return 1;
+  public boolean hasNullValue(int measurementIndex) {
+    return false;
+  }
+
+  @Override
+  public boolean isAllNulls(int measurementIndex) {
+    return false;
   }
 
   public void setChunkMetadataLoader(IChunkMetadataLoader chunkMetadataLoader) {

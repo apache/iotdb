@@ -358,12 +358,17 @@ public class ChunkMetadata implements IChunkMetadata {
       int measurementIndex) {
     checkArgument(
         measurementIndex == 0,
-        "ChunkMetadata only has one measurement, but measurementIndex is %s");
+        "Non-aligned chunk only has one measurement, but measurementIndex is " + measurementIndex);
     return Optional.ofNullable(statistics);
   }
 
   @Override
-  public int getMeasurementCount() {
-    return 1;
+  public boolean hasNullValue(int measurementIndex) {
+    return false;
+  }
+
+  @Override
+  public boolean isAllNulls(int measurementIndex) {
+    return false;
   }
 }

@@ -46,10 +46,11 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.apache.iotdb.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
+import static org.apache.iotdb.tsfile.utils.Preconditions.checkArgument;
 
 public class PageReader implements IPageReader {
 
-  private PageHeader pageHeader;
+  private final PageHeader pageHeader;
 
   protected TSDataType dataType;
 
@@ -338,6 +339,30 @@ public class PageReader implements IPageReader {
   }
 
   @Override
+  public Statistics<? extends Serializable> getTimeStatistics() {
+    return getStatistics();
+  }
+
+  @Override
+  public Optional<Statistics<? extends Serializable>> getMeasurementStatistics(
+      int measurementIndex) {
+    checkArgument(
+        measurementIndex == 0,
+        "Non-aligned page only has one measurement, but measurementIndex is " + measurementIndex);
+    return Optional.ofNullable(getStatistics());
+  }
+
+  @Override
+  public boolean hasNullValue(int measurementIndex) {
+    return false;
+  }
+
+  @Override
+  public boolean isAllNulls(int measurementIndex) {
+    return false;
+  }
+
+  @Override
   public void setFilter(Filter filter) {
     if (this.filter == null) {
       this.filter = filter;
@@ -380,21 +405,5 @@ public class PageReader implements IPageReader {
       }
     }
     return false;
-  }
-
-  @Override
-  public Statistics<? extends Serializable> getTimeStatistics() {
-    return getStatistics();
-  }
-
-  @Override
-  public Optional<Statistics<? extends Serializable>> getMeasurementStatistics(
-      int measurementIndex) {
-    return Optional.ofNullable(getStatistics());
-  }
-
-  @Override
-  public int getMeasurementCount() {
-    return 1;
   }
 }

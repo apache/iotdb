@@ -67,8 +67,33 @@ public class AlignedTimeSeriesMetadata implements ITimeSeriesMetadata {
   }
 
   @Override
+  public boolean hasNullValue(int measurementIndex) {
+    long rowCount = getTimeStatistics().getCount();
+    Optional<Statistics<? extends Serializable>> statistics =
+        getMeasurementStatistics(measurementIndex);
+    return statistics.map(stat -> stat.hasNullValue(rowCount)).orElse(true);
+  }
+
+  @Override
+  public boolean isAllNulls(int measurementIndex) {
+    Optional<Statistics<? extends Serializable>> statistics =
+        getMeasurementStatistics(measurementIndex);
+    return statistics.map(stat -> stat.getCount() == 0).orElse(true);
+  }
+
   public int getMeasurementCount() {
     return valueTimeseriesMetadataList.size();
+  }
+
+  public boolean timeAllSelected() {
+    for (int index = 0; index < getMeasurementCount(); index++) {
+      if (!hasNullValue(index)) {
+        // When there is any value page point number that is the same as the time page,
+        // it means that all timestamps in time page will be selected.
+        return true;
+      }
+    }
+    return false;
   }
 
   @Override

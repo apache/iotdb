@@ -26,7 +26,6 @@ import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 
 import java.io.OutputStream;
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -47,27 +46,52 @@ public class AlignedChunkMetadata implements IChunkMetadata {
   }
 
   @Override
-  public <T extends Serializable> Statistics<T> getStatistics() {
+  public Statistics<? extends Serializable> getStatistics() {
     return valueChunkMetadataList.size() == 1 && valueChunkMetadataList.get(0) != null
         ? valueChunkMetadataList.get(0).getStatistics()
         : timeChunkMetadata.getStatistics();
   }
 
   @Override
-  public <T extends Serializable> Statistics<T> getTimeStatistics() {
+  public Statistics<? extends Serializable> getTimeStatistics() {
     return timeChunkMetadata.getStatistics();
   }
 
   @Override
-  public <T extends Serializable> Optional< Statistics<T>> getMeasurementStatistics(
+  public Optional<Statistics<? extends Serializable>> getMeasurementStatistics(
       int measurementIndex) {
     IChunkMetadata chunkMetadata = valueChunkMetadataList.get(measurementIndex);
     return Optional.ofNullable(chunkMetadata == null ? null : chunkMetadata.getStatistics());
   }
 
   @Override
+  public boolean hasNullValue(int measurementIndex) {
+    long rowCount = getTimeStatistics().getCount();
+    Optional<Statistics<? extends Serializable>> statistics =
+        getMeasurementStatistics(measurementIndex);
+    return statistics.map(stat -> stat.hasNullValue(rowCount)).orElse(true);
+  }
+
+  @Override
+  public boolean isAllNulls(int measurementIndex) {
+    Optional<Statistics<? extends Serializable>> statistics =
+        getMeasurementStatistics(measurementIndex);
+    return statistics.map(stat -> stat.getCount() == 0).orElse(true);
+  }
+
   public int getMeasurementCount() {
     return valueChunkMetadataList.size();
+  }
+
+  public boolean timeAllSelected() {
+    for (int index = 0; index < getMeasurementCount(); index++) {
+      if (!hasNullValue(index)) {
+        // When there is any value page point number that is the same as the time page,
+        // it means that all timestamps in time page will be selected.
+        return true;
+      }
+    }
+    return false;
   }
 
   @Override

@@ -125,14 +125,14 @@ public class MemAlignedPageReader implements IPageReader {
   }
 
   private boolean canSkipOffsetByStatistics() {
-    if (queryAllSensors || getMeasurementCount() == 0) {
+    if (queryAllSensors || chunkMetadata.getMeasurementCount() == 0) {
       return true;
     }
 
     // For aligned series, we can use statistics to skip OFFSET only when all times are selected.
     // NOTE: if we change the query semantic in the future for aligned series, we need to remove
     // this check here.
-    return timeAllSelected();
+    return chunkMetadata.timeAllSelected();
   }
 
   @Override
@@ -243,8 +243,13 @@ public class MemAlignedPageReader implements IPageReader {
   }
 
   @Override
-  public int getMeasurementCount() {
-    return chunkMetadata.getMeasurementCount();
+  public boolean hasNullValue(int measurementIndex) {
+    return chunkMetadata.hasNullValue(measurementIndex);
+  }
+
+  @Override
+  public boolean isAllNulls(int measurementIndex) {
+    return chunkMetadata.isAllNulls(measurementIndex);
   }
 
   @Override

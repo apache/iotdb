@@ -26,33 +26,13 @@ import java.util.Optional;
 
 public interface IMetadata {
 
-  <T extends Serializable> Statistics<T> getStatistics();
+  Statistics<? extends Serializable> getStatistics();
 
-  <T extends Serializable> Statistics<T> getTimeStatistics();
+  Statistics<? extends Serializable> getTimeStatistics();
 
-  <T extends Serializable> Optional<Statistics<T>> getMeasurementStatistics(int measurementIndex);
+  Optional<Statistics<? extends Serializable>> getMeasurementStatistics(int measurementIndex);
 
-  int getMeasurementCount();
+  boolean hasNullValue(int measurementIndex);
 
-  default boolean hasNullValue(int measurementIndex) {
-    long rowCount = getTimeStatistics().getCount();
-    Optional<Statistics<Serializable>> statistics =
-        getMeasurementStatistics(measurementIndex);
-    return statistics.map(stat -> stat.hasNullValue(rowCount)).orElse(true);
-  }
-
-  default boolean isAllNulls(int measurementIndex) {
-    return false;
-  }
-
-  default boolean timeAllSelected() {
-    for (int index = 0; index < getMeasurementCount(); index++) {
-      if (!hasNullValue(index)) {
-        // When there is any value page point number that is the same as the time page,
-        // it means that all timestamps in time page will be selected.
-        return true;
-      }
-    }
-    return false;
-  }
+  boolean isAllNulls(int measurementIndex);
 }

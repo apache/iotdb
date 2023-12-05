@@ -173,32 +173,28 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
     }
   }
 
-  @SuppressWarnings("squid:S3740")
   private void skipOffsetByTimeSeriesMetadata() {
-    // For aligned series, When we only query some measurements under an aligned device, if any
-    // values of these queried measurements has the same value count as the time column, the
-    // timestamp will be selected.
-    // NOTE: if we change the query semantic in the future for aligned series, we need to remove
-    // this check here.
-    boolean canUse =
-        queryAllSensors
-            || ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getMeasurementCount() == 0;
-    if (!canUse && (((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).timeAllSelected())) {
-      canUse = true;
-    }
-
-    if (!canUse) {
+    if (!canSkipOffsetByTimeSeriesMetadata((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata)) {
       return;
     }
 
-    // When the number of points in all value chunk groups is the same as that in the time chunk
-    // group, it means that there is no null value, and all timestamps will be selected.
-    long rowCount =
-        ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getTimeStatistics().getCount();
+    long rowCount = firstTimeSeriesMetadata.getTimeStatistics().getCount();
     if (paginationController.hasCurOffset(rowCount)) {
       skipCurrentFile();
       paginationController.consumeOffset(rowCount);
     }
+  }
+
+  private boolean canSkipOffsetByTimeSeriesMetadata(
+      AlignedTimeSeriesMetadata alignedTimeSeriesMetadata) {
+    if (queryAllSensors || alignedTimeSeriesMetadata.getMeasurementCount() == 0) {
+      return true;
+    }
+
+    // For aligned series, we can use statistics to skip OFFSET only when all times are selected.
+    // NOTE: if we change the query semantic in the future for aligned series, we need to remove
+    // this check here.
+    return alignedTimeSeriesMetadata.timeAllSelected();
   }
 
   @Override
@@ -214,27 +210,26 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
     }
   }
 
-  @SuppressWarnings("squid:S3740")
   private void skipOffsetByChunkMetadata() {
-    // For aligned series, When we only query some measurements under an aligned device, if any
-    // values of these queried measurements has the same value count as the time column, the
-    // timestamp will be selected.
-    // NOTE: if we change the query semantic in the future for aligned series, we need to remove
-    // this check here.
-    long rowCount = firstChunkMetadata.getStatistics().getCount();
-    boolean canUse =
-        queryAllSensors || ((AlignedChunkMetadata) firstChunkMetadata).getMeasurementCount() == 0;
-    if (!canUse && (((AlignedChunkMetadata) firstChunkMetadata).timeAllSelected())) {
-      canUse = true;
-    }
-    if (!canUse) {
+    if (!canSkipOffsetByChunkMetadata((AlignedChunkMetadata) firstChunkMetadata)) {
       return;
     }
-    // When the number of points in all value chunks is the same as that in the time chunk, it
-    // means that there is no null value, and all timestamps will be selected.
+
+    long rowCount = firstChunkMetadata.getStatistics().getCount();
     if (paginationController.hasCurOffset(rowCount)) {
       skipCurrentChunk();
       paginationController.consumeOffset(rowCount);
     }
+  }
+
+  private boolean canSkipOffsetByChunkMetadata(AlignedChunkMetadata alignedChunkMetadata) {
+    if (queryAllSensors || alignedChunkMetadata.getMeasurementCount() == 0) {
+      return true;
+    }
+
+    // For aligned series, we can use statistics to skip OFFSET only when all times are selected.
+    // NOTE: if we change the query semantic in the future for aligned series, we need to remove
+    // this check here.
+    return alignedChunkMetadata.timeAllSelected();
   }
 }

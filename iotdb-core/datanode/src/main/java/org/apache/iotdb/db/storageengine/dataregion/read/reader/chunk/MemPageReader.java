@@ -330,6 +330,27 @@ public class MemPageReader implements IPageReader {
   }
 
   @Override
+  public Statistics<? extends Serializable> getTimeStatistics() {
+    return chunkMetadata.getTimeStatistics();
+  }
+
+  @Override
+  public Optional<Statistics<? extends Serializable>> getMeasurementStatistics(
+      int measurementIndex) {
+    return chunkMetadata.getMeasurementStatistics(measurementIndex);
+  }
+
+  @Override
+  public boolean hasNullValue(int measurementIndex) {
+    return chunkMetadata.hasNullValue(measurementIndex);
+  }
+
+  @Override
+  public boolean isAllNulls(int measurementIndex) {
+    return chunkMetadata.isAllNulls(measurementIndex);
+  }
+
+  @Override
   public void setFilter(Filter filter) {
     if (valueFilter == null) {
       this.valueFilter = filter;
@@ -351,21 +372,5 @@ public class MemPageReader implements IPageReader {
   @Override
   public void initTsBlockBuilder(List<TSDataType> dataTypes) {
     // non-aligned page reader don't need to init TsBlockBuilder at the very beginning
-  }
-
-  @Override
-  public Statistics<? extends Serializable> getTimeStatistics() {
-    return getStatistics();
-  }
-
-  @Override
-  public Optional<Statistics<? extends Serializable>> getMeasurementStatistics(
-      int measurementIndex) {
-    return Optional.ofNullable(getStatistics());
-  }
-
-  @Override
-  public int getMeasurementCount() {
-    return 1;
   }
 }
