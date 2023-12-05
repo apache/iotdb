@@ -30,8 +30,6 @@ import org.apache.iotdb.commons.cluster.RegionRoleType;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
@@ -124,8 +122,6 @@ public class PartitionManager {
       CONF.getSchemaRegionGroupExtensionPolicy();
   private static final RegionGroupExtensionPolicy DATA_REGION_GROUP_EXTENSION_POLICY =
       CONF.getDataRegionGroupExtensionPolicy();
-
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   private final IManager configManager;
   private final PartitionInfo partitionInfo;

@@ -55,6 +55,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class DatabasePartitionTable {
   private static final Logger LOGGER = LoggerFactory.getLogger(DatabasePartitionTable.class);
@@ -591,6 +592,12 @@ public class DatabasePartitionTable {
       }
     }
     return dataRegionIds;
+  }
+
+  public Stream<TConsensusGroupType> getRegionType(int regionId) {
+    return regionGroupMap.keySet().stream()
+        .filter(tConsensusGroupId -> tConsensusGroupId.getId() == regionId)
+        .map(TConsensusGroupId::getType);
   }
 
   /**
