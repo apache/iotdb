@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl;
 
+import org.apache.iotdb.commons.schema.node.MNodeType;
 import org.apache.iotdb.commons.schema.node.info.IDeviceInfo;
 import org.apache.iotdb.commons.schema.node.role.IInternalMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
@@ -40,7 +41,8 @@ public class BasicInternalMNode extends BasicMNode implements IInternalMNode<IMe
   @SuppressWarnings("squid:S3077")
   private transient volatile IMNodeContainer<IMemMNode> children = null;
 
-  private IDeviceInfo<IMemMNode> deviceInfo = null;
+  @SuppressWarnings("squid:S3077")
+  private volatile IDeviceInfo<IMemMNode> deviceInfo = null;
 
   /** Constructor of MNode. */
   public BasicInternalMNode(IMemMNode parent, String name) {
@@ -50,7 +52,11 @@ public class BasicInternalMNode extends BasicMNode implements IInternalMNode<IMe
   /** Check whether the MNode has a child with the name. */
   @Override
   public boolean hasChild(String name) {
-    return (children != null && children.containsKey(name));
+    return (children != null && children.containsKey(name)) || hasChildInDeviceInfo(name);
+  }
+
+  private boolean hasChildInDeviceInfo(String name) {
+    return deviceInfo != null && deviceInfo.hasAliasChild(name);
   }
 
   /** Get the child with the name. */
@@ -59,6 +65,9 @@ public class BasicInternalMNode extends BasicMNode implements IInternalMNode<IMe
     IMemMNode child = null;
     if (children != null) {
       child = children.get(name);
+    }
+    if (child == null && deviceInfo != null) {
+      child = deviceInfo.getAliasChild(name);
     }
     return child;
   }
@@ -146,6 +155,11 @@ public class BasicInternalMNode extends BasicMNode implements IInternalMNode<IMe
   @Override
   public int estimateSize() {
     return 8 + 80 + super.estimateSize() + (deviceInfo == null ? 0 : deviceInfo.estimateSize());
+  }
+
+  @Override
+  public MNodeType getMNodeType(Boolean isConfig) {
+    return deviceInfo == null ? super.getMNodeType(isConfig) : MNodeType.DEVICE;
   }
 
   @Override

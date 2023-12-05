@@ -84,34 +84,22 @@ public class DeviceMNodeWrapper<N extends IMNode<N>, BasicNode extends IInternal
 
   @Override
   public boolean hasChild(String name) {
-    return basicMNode.hasChild(name) || deviceInfo.hasAliasChild(name);
+    return basicMNode.hasChild(name);
   }
 
   @Override
   public N getChild(String name) {
-    N res = basicMNode.getChild(name);
-    if (res == null) {
-      res = deviceInfo.getAliasChild(name);
-    }
-    return res;
+    return basicMNode.getChild(name);
   }
 
   @Override
   public N addChild(String name, N child) {
-    N res = basicMNode.addChild(name, child);
-    if (res == child) {
-      child.setParent(this.getAsMNode());
-    }
-    return res;
+    return basicMNode.addChild(name, child);
   }
 
   @Override
   public N addChild(N child) {
-    N res = basicMNode.addChild(child);
-    if (res == child) {
-      child.setParent(this.getAsMNode());
-    }
-    return res;
+    return basicMNode.addChild(child);
   }
 
   @Override
@@ -152,11 +140,6 @@ public class DeviceMNodeWrapper<N extends IMNode<N>, BasicNode extends IInternal
   @Override
   public boolean isDevice() {
     return true;
-  }
-
-  @Override
-  public boolean isMeasurement() {
-    return false;
   }
 
   @Override

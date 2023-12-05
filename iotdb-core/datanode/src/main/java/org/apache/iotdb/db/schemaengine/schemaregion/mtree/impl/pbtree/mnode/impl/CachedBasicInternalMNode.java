@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.impl;
 
+import org.apache.iotdb.commons.schema.node.MNodeType;
 import org.apache.iotdb.commons.schema.node.info.IDeviceInfo;
 import org.apache.iotdb.commons.schema.node.role.IInternalMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
@@ -40,7 +41,8 @@ public class CachedBasicInternalMNode extends CachedBasicMNode
   @SuppressWarnings("squid:S3077")
   private transient volatile IMNodeContainer<ICachedMNode> children = null;
 
-  private IDeviceInfo<ICachedMNode> deviceInfo = null;
+  @SuppressWarnings("squid:S3077")
+  private volatile IDeviceInfo<ICachedMNode> deviceInfo = null;
 
   /** Constructor of MNode. */
   public CachedBasicInternalMNode(ICachedMNode parent, String name) {
@@ -50,7 +52,11 @@ public class CachedBasicInternalMNode extends CachedBasicMNode
   /** check whether the MNode has a child with the name */
   @Override
   public boolean hasChild(String name) {
-    return (children != null && children.containsKey(name));
+    return (children != null && children.containsKey(name)) || hasChildInDeviceInfo(name);
+  }
+
+  private boolean hasChildInDeviceInfo(String name) {
+    return deviceInfo != null && deviceInfo.hasAliasChild(name);
   }
 
   /** get the child with the name */
@@ -59,6 +65,9 @@ public class CachedBasicInternalMNode extends CachedBasicMNode
     ICachedMNode child = null;
     if (children != null) {
       child = children.get(name);
+    }
+    if (child == null && deviceInfo != null) {
+      child = deviceInfo.getAliasChild(name);
     }
     return child;
   }
@@ -160,6 +169,11 @@ public class CachedBasicInternalMNode extends CachedBasicMNode
         + 192
         + super.estimateSize()
         + (deviceInfo == null ? 0 : deviceInfo.estimateSize());
+  }
+
+  @Override
+  public MNodeType getMNodeType(Boolean isConfig) {
+    return deviceInfo == null ? super.getMNodeType(isConfig) : MNodeType.DEVICE;
   }
 
   @Override
