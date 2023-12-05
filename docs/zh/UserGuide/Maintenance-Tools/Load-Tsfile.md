@@ -108,3 +108,43 @@ ONSUCCESS选项表示对于成功载入的tsfile的处置方式，默认为delet
   - 输入命令缺少待-f字段（加载文件或文件夹路径），请添加之后重新执行
 - 执行到中途崩溃了想重新加载怎么办
   - 重新执行刚才的命令，重新加载数据不会影响加载之后的正确性
+
+## 如何使用加载升级IoTDB
+
+若您希望使用加载TsFile功能升级至1.0版本，您可以按照以下步骤升级
+
+- 停止对老版本IoTDB的写入操作，执行命令`flush`
+- 停止老版本IoTDB的运行
+- 拷贝文件夹`$IOTDB_HOME/data`至任意备份文件夹（例：`/tmp/iotdb/data/`)
+- 启动新版本IoTDB
+- 使用上述SQL语句或者脚本将备份文件夹加载至新版本IoTDB
+
+**注意：**若您老版本IoTDB中包含以下路径，请使用`$IOTDB_HOME/tools/load-with-upgrade.sh（load-with-upgrade.bat如果是Windows）`脚本加载。
+
+- 时间序列路径中有除了中文字符（\u2E80至\u9FFF），英文字符和数字之外的字符，例如`root.sg-1.device`，`root.sg"."1.device`
+- 时间序列路径中包含纯数字节点名字，例如`root.123.device`，`root.sg.16`
+
+其中load-with-upgrade.bat（load-with-upgrade.sh）的使用方法与加载的脚本类似
+
+```
+./load-with-upgrade.bat -f filePath [-h host] [-p port] [-u username] [-pw password] [--sgLevel int] [--verify true/false] [--onSuccess none/delete]
+-f 			待加载的文件或文件夹路径，必要字段
+-h 			IoTDB的Host地址，可选，默认127.0.0.1
+-p 			IoTDB的端口，可选，默认6667
+-u 			IoTDb登录用户名，可选，默认root
+-pw 		IoTDB登录密码，可选，默认root
+--sgLevel 	加载TsFile自动创建Database的路径层级，可选，默认值为iotdb-common.properties指定值
+--verify 	是否对加载TsFile进行元数据校验，可选，默认为True
+--onSuccess 对成功加载的TsFile的处理方法，可选，默认为delete，成功加载之后删除源TsFile，设为none时会				保留源TsFile
+```
+
+上述脚本在加载的同时将修改原有的路径名字，使用反引号`修饰不符合1.0语法规范的节点名字，例如
+
+```
+root.sg-1.device被修改为root.`sg-1`.device
+root.sg"."1.device被修改为root.`sg"."1`.device
+root.123.device被修改为root.`123`.device
+root.sg.16被修改为root.sg.`16`
+```
+
+请注意，由于需要重新注册新时间序列路径，因此使用此脚本加载速度将慢于使用load-tsfile.bat。请耐心等待。

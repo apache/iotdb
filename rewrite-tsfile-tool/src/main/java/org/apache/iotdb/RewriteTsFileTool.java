@@ -27,6 +27,7 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.VerifyMetadataException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
@@ -42,6 +43,7 @@ import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -76,6 +78,7 @@ import org.apache.commons.cli.ParseException;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -89,6 +92,7 @@ import java.util.Set;
 
 public class RewriteTsFileTool {
   private static final int MAX_TABLET_LENGTH = 1024 * 64;
+  private static final boolean SHOW_TIME = true;
 
   private static String host = "localhost";
   private static String port = "6667";
@@ -98,14 +102,26 @@ public class RewriteTsFileTool {
   private static String readMode = "s";
   private static boolean ignoreBrokenChunk = false;
 
+  private static boolean needUpgrade = false;
+
+  private static int sgLevel = 1;
+  private static boolean deleteAfterLoad = false;
+
+  private static PathUpgradeCache upgradeCache;
+  private static Set<String> createdSgSet = new HashSet<>();
+
   public static void main(String[] args) {
     Session session = null;
     try {
+      long startTime = System.currentTimeMillis();
       parseArgs(args);
       session = new Session(host, port, user, password);
       session.open();
       System.out.printf("Connect to IoTDB %s:%s successfully.%n", host, port);
       writeToIoTDB(collectTsFiles(new File(filePath)), session);
+      if (SHOW_TIME) {
+        System.out.println("cost time: " + (System.currentTimeMillis() - startTime));
+      }
     } catch (IoTDBConnectionException e) {
       System.out.printf("Can not connect to IoTDB. %s%n", e.getMessage());
       e.printStackTrace();
@@ -135,6 +151,9 @@ public class RewriteTsFileTool {
       filePath = getArgOrDefault(commandLine, "f", filePath);
       readMode = getArgOrDefault(commandLine, "rm", readMode);
       ignoreBrokenChunk = commandLine.hasOption("ig");
+      needUpgrade = commandLine.hasOption("ug");
+      sgLevel = Integer.parseInt(getArgOrDefault(commandLine, "sl", "1")) + 1;
+      deleteAfterLoad = commandLine.hasOption("delete");
     } catch (ParseException e) {
       System.out.printf("Parse Args Error. %s%n", e.getMessage());
       priHelp(options);
@@ -202,6 +221,18 @@ public class RewriteTsFileTool {
     options.addOption(readModeOpt);
 
     options.addOption("ig", "ignore-broken chunks");
+
+    options.addOption("ug", "upgrade for older version partial path");
+
+    Option sgLevelOpt =
+        Option.builder("sl")
+            .argName("sgLevel")
+            .hasArg()
+            .desc("storage group level (optional, default 1)")
+            .build();
+    options.addOption(sgLevelOpt);
+
+    options.addOption("delete", "delete loaded tsfiles");
     return options;
   }
 
@@ -249,10 +280,11 @@ public class RewriteTsFileTool {
             "------------------------------End Message------------------------------");
       }
     }
-    System.out.println("Finish Loading TsFiles");
   }
 
   private static void writeTsFileSequentially(List<File> files, Session session) {
+    upgradeCache = new PathUpgradeCache(needUpgrade);
+
     int size = files.size();
     List<File> unloadTsFiles = new ArrayList<>();
     for (int i = 0; i < files.size(); i++) {
@@ -261,6 +293,14 @@ public class RewriteTsFileTool {
       try {
         seqWriteSingleTsFile(file.getPath(), session);
         session.executeNonQueryStatement("FLUSH");
+        System.out.println("Done");
+        if (deleteAfterLoad) {
+          Files.deleteIfExists(file.toPath());
+          Files.deleteIfExists(
+              new File(file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).toPath());
+          Files.deleteIfExists(
+              new File(file.getAbsolutePath() + ModificationFile.FILE_SUFFIX).toPath());
+        }
       } catch (Exception e) {
         System.out.println(
             "------------------------------Error Message------------------------------");
@@ -270,7 +310,6 @@ public class RewriteTsFileTool {
         unloadTsFiles.add(file);
         continue;
       }
-      System.out.println("Done");
     }
     System.out.printf(
         "Load %d TsFiles successfully, %d TsFiles not loaded.%n",
@@ -312,9 +351,11 @@ public class RewriteTsFileTool {
    */
   public static void seqWriteSingleTsFile(String filename, Session session)
       throws IOException, IllegalPathException, IoTDBConnectionException,
-          StatementExecutionException, NoMeasurementException {
+          StatementExecutionException, NoMeasurementException, VerifyMetadataException {
 
     try (TsFileSequenceReader reader = new TsFileSequenceReader(filename)) {
+      createSg(reader, session);
+
       if (!ignoreBrokenChunk) {
         long status = reader.selfCheck(new HashMap<>(), new ArrayList<>(), true);
         if (status == TsFileCheckStatus.INCOMPATIBLE_FILE
@@ -409,7 +450,11 @@ public class RewriteTsFileTool {
           case MetaMarker.CHUNK_GROUP_HEADER:
             // get the next chunk group
             if (isAlignedChunk) {
-              Tablet tablet = new Tablet(currentDevice, schemaForAlignedSeries, MAX_TABLET_LENGTH);
+              Tablet tablet =
+                  new Tablet(
+                      upgradeCache.getPath(currentDevice),
+                      schemaForAlignedSeries,
+                      MAX_TABLET_LENGTH);
               for (int i = 0; i < timeForAlignedSeries.size(); ++i) {
                 tablet.addTimestamp(tablet.rowSize, timeForAlignedSeries.get(i));
                 for (int j = 0; j < valueForAlignedSeries.size(); ++j) {
@@ -549,6 +594,31 @@ public class RewriteTsFileTool {
     writeModification(filename, session);
   }
 
+  private static void createSg(TsFileSequenceReader reader, Session session)
+      throws IOException, VerifyMetadataException, IoTDBConnectionException,
+          StatementExecutionException {
+    Set<String> sgSet = new HashSet<>();
+    Map<String, List<TimeseriesMetadata>> device2Metadata = reader.getAllTimeseriesMetadata(true);
+    for (Map.Entry<String, List<TimeseriesMetadata>> entry : device2Metadata.entrySet()) {
+      String[] nodes = upgradeCache.getNodes(entry.getKey());
+      String[] sgNodes = new String[sgLevel];
+      if (nodes.length < sgLevel) {
+        throw new VerifyMetadataException(
+            String.format("Sg level %d is longer than device %s.", sgLevel, entry.getKey()));
+      }
+      System.arraycopy(nodes, 0, sgNodes, 0, sgLevel);
+      String sgName = String.join(".", sgNodes);
+      if (!createdSgSet.contains(sgName)) {
+        sgSet.add(sgName);
+      }
+    }
+
+    for (String sgName : sgSet) {
+      session.createDatabase(sgName);
+    }
+    createdSgSet.addAll(sgSet);
+  }
+
   private static void readAndSendValuePage(
       boolean addSchema,
       List<MeasurementSchema> schemaForAlignedSeries,
@@ -587,7 +657,7 @@ public class RewriteTsFileTool {
     if (!addSchema && header.getDataType() != TSDataType.VECTOR) {
       schemaForAlignedSeries.add(
           new MeasurementSchema(
-              header.getMeasurementID(),
+              upgradeCache.getMeasurement(header.getMeasurementID()),
               header.getDataType(),
               header.getEncodingType(),
               header.getCompressionType()));
@@ -607,10 +677,10 @@ public class RewriteTsFileTool {
       Decoder defaultTimeDecoder,
       Session session)
       throws IOException, IoTDBConnectionException, StatementExecutionException {
-    String measurementId = header.getMeasurementID();
+    String measurementId = upgradeCache.getMeasurement(header.getMeasurementID());
     Tablet tablet =
         new Tablet(
-            currentDevice,
+            upgradeCache.getPath(currentDevice),
             Collections.singletonList(
                 new MeasurementSchema(
                     measurementId,
@@ -649,8 +719,8 @@ public class RewriteTsFileTool {
         session.executeNonQueryStatement(
             String.format(
                 "delete from %s.%s where time >= %d and time <= %d",
-                modification.getDevice(),
-                modification.getMeasurement(),
+                upgradeCache.getPath(modification.getDevice()),
+                upgradeCache.getMeasurement(modification.getMeasurement()),
                 ((Deletion) modification).getStartTime(),
                 ((Deletion) modification).getEndTime()));
       }
