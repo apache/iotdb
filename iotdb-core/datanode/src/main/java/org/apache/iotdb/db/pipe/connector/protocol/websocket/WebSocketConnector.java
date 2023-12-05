@@ -30,66 +30,67 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
-import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nullable;
-
-import java.net.InetSocketAddress;
 import java.util.Arrays;
-import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class WebSocketConnector implements PipeConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketConnector.class);
 
-  private static final Map<Integer, Pair<AtomicInteger, WebSocketConnectorServer>>
-      PORT_TO_REFERENCE_COUNT_AND_SERVER_MAP = new ConcurrentHashMap<>();
-
   private Integer port;
   private WebSocketConnectorServer server;
+  private String pipeName;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
-    // Do nothing
-  }
+    final PipeParameters parameters = validator.getParameters();
 
-  @Override
-  public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
-      throws Exception {
     port =
         parameters.getIntOrDefault(
             Arrays.asList(
                 PipeConnectorConstant.CONNECTOR_WEBSOCKET_PORT_KEY,
                 PipeConnectorConstant.SINK_WEBSOCKET_PORT_KEY),
             PipeConnectorConstant.CONNECTOR_WEBSOCKET_PORT_DEFAULT_VALUE);
-  }
 
-  @Override
-  public void handshake() throws Exception {
-    synchronized (PORT_TO_REFERENCE_COUNT_AND_SERVER_MAP) {
-      server =
-          PORT_TO_REFERENCE_COUNT_AND_SERVER_MAP
-              .computeIfAbsent(
-                  port,
-                  key -> {
-                    final WebSocketConnectorServer newServer =
-                        new WebSocketConnectorServer(new InetSocketAddress(port), this);
-                    newServer.start();
-                    return new Pair<>(new AtomicInteger(0), newServer);
-                  })
-              .getRight();
-      PORT_TO_REFERENCE_COUNT_AND_SERVER_MAP.get(port).getLeft().incrementAndGet();
+    server = WebSocketConnectorServer.getOrCreateInstance(port);
+    if (server.getPort() != port) {
+      throw new PipeException(
+          String.format(
+              "The websocket server has already been created with port = %d. "
+                  + "Please set the option cdc.port = %d.",
+              server.getPort(), server.getPort()));
     }
   }
 
   @Override
-  public void heartbeat() throws Exception {}
+  public void customize(
+      PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration) {
+    pipeName = configuration.getRuntimeEnvironment().getPipeName();
+  }
+
+  @Override
+  public void handshake() {
+    server = WebSocketConnectorServer.getOrCreateInstance(port);
+    server.register(this);
+
+    if (!server.isStarted()) {
+      synchronized (WebSocketConnectorServer.class) {
+        if (!server.isStarted()) {
+          server.start();
+        }
+      }
+    }
+  }
+
+  @Override
+  public void heartbeat() throws Exception {
+    // Do nothing
+  }
 
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) {
@@ -105,7 +106,7 @@ public class WebSocketConnector implements PipeConnector {
     ((EnrichedEvent) tabletInsertionEvent)
         .increaseReferenceCount(WebSocketConnector.class.getName());
 
-    server.addEvent(tabletInsertionEvent);
+    server.addEvent(tabletInsertionEvent, this);
   }
 
   @Override
@@ -121,7 +122,7 @@ public class WebSocketConnector implements PipeConnector {
       for (TabletInsertionEvent event : tsFileInsertionEvent.toTabletInsertionEvents()) {
         ((EnrichedEvent) event).increaseReferenceCount(WebSocketConnector.class.getName());
 
-        server.addEvent(event);
+        server.addEvent(event, this);
       }
     } finally {
       tsFileInsertionEvent.close();
@@ -129,33 +130,23 @@ public class WebSocketConnector implements PipeConnector {
   }
 
   @Override
-  public void transfer(Event event) throws Exception {}
+  public void transfer(Event event) throws Exception {
+    // Do nothing
+  }
 
   @Override
   public void close() throws Exception {
-    if (port == null) {
-      return;
-    }
-
-    synchronized (PORT_TO_REFERENCE_COUNT_AND_SERVER_MAP) {
-      final Pair<AtomicInteger, WebSocketConnectorServer> pair =
-          PORT_TO_REFERENCE_COUNT_AND_SERVER_MAP.get(port);
-      if (pair == null) {
-        return;
-      }
-
-      if (pair.getLeft().decrementAndGet() <= 0) {
-        try {
-          pair.getRight().stop();
-        } finally {
-          PORT_TO_REFERENCE_COUNT_AND_SERVER_MAP.remove(port);
-        }
-      }
+    if (server != null) {
+      server.unregister(this);
     }
   }
 
-  public synchronized void commit(@Nullable EnrichedEvent enrichedEvent) {
+  public void commit(EnrichedEvent enrichedEvent) {
     Optional.ofNullable(enrichedEvent)
         .ifPresent(event -> event.decreaseReferenceCount(WebSocketConnector.class.getName(), true));
+  }
+
+  public String getPipeName() {
+    return pipeName;
   }
 }
