@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.tsfile.read.filter.basic;
 
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Objects;
@@ -44,8 +42,9 @@ public abstract class BinaryLogicalFilter extends Filter {
     return right;
   }
 
+  @Override
   public void serialize(DataOutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(getOperatorType().ordinal(), outputStream);
+    super.serialize(outputStream);
     left.serialize(outputStream);
     right.serialize(outputStream);
   }

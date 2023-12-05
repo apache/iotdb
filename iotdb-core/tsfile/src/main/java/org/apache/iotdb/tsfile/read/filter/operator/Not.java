@@ -23,7 +23,6 @@ import org.apache.iotdb.tsfile.file.metadata.IMetadata;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.OperatorType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -122,7 +121,7 @@ public class Not extends Filter {
 
   @Override
   public void serialize(DataOutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(getOperatorType().ordinal(), outputStream);
+    super.serialize(outputStream);
     filter.serialize(outputStream);
   }
 
