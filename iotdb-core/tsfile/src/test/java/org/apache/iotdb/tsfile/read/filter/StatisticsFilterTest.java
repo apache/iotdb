@@ -213,7 +213,7 @@ public class StatisticsFilterTest {
 
   @Test
   public void testBetweenAnd() {
-    Filter timeBetweenAnd = TimeFilterApi.between(0, 20);
+    Filter timeBetweenAnd = TimeFilterApi.between(0L, 20L);
     Assert.assertFalse(timeBetweenAnd.canSkip(metadata1));
     Assert.assertTrue(timeBetweenAnd.canSkip(metadata2));
     Assert.assertFalse(timeBetweenAnd.canSkip(metadata3));
@@ -221,13 +221,32 @@ public class StatisticsFilterTest {
     Assert.assertFalse(timeBetweenAnd.allSatisfy(metadata2));
     Assert.assertTrue(timeBetweenAnd.allSatisfy(metadata3));
 
-    Filter timeNotBetweenAnd = TimeFilterApi.notBetween(0, 20);
+    Filter valueBetweenAnd = ValueFilterApi.between(0L, 20L);
+    Assert.assertFalse(valueBetweenAnd.canSkip(metadata1));
+    Assert.assertTrue(valueBetweenAnd.canSkip(metadata2));
+    Assert.assertFalse(valueBetweenAnd.canSkip(metadata3));
+    Assert.assertFalse(valueBetweenAnd.allSatisfy(metadata1));
+    Assert.assertFalse(valueBetweenAnd.allSatisfy(metadata2));
+    Assert.assertTrue(valueBetweenAnd.allSatisfy(metadata3));
+  }
+
+  @Test
+  public void testNotBetweenAnd() {
+    Filter timeNotBetweenAnd = TimeFilterApi.notBetween(0L, 20L);
     Assert.assertFalse(timeNotBetweenAnd.canSkip(metadata1));
     Assert.assertFalse(timeNotBetweenAnd.canSkip(metadata2));
     Assert.assertTrue(timeNotBetweenAnd.canSkip(metadata3));
     Assert.assertFalse(timeNotBetweenAnd.allSatisfy(metadata1));
     Assert.assertTrue(timeNotBetweenAnd.allSatisfy(metadata2));
     Assert.assertFalse(timeNotBetweenAnd.allSatisfy(metadata3));
+
+    Filter valueNotBetweenAnd = ValueFilterApi.notBetween(0L, 20L);
+    Assert.assertFalse(valueNotBetweenAnd.canSkip(metadata1));
+    Assert.assertFalse(valueNotBetweenAnd.canSkip(metadata2));
+    Assert.assertTrue(valueNotBetweenAnd.canSkip(metadata3));
+    Assert.assertFalse(valueNotBetweenAnd.allSatisfy(metadata1));
+    Assert.assertTrue(valueNotBetweenAnd.allSatisfy(metadata2));
+    Assert.assertFalse(valueNotBetweenAnd.allSatisfy(metadata3));
   }
 
   @Test

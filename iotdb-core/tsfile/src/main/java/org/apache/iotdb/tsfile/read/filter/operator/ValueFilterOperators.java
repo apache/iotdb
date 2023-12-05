@@ -477,8 +477,8 @@ public final class ValueFilterOperators {
         return false;
       }
 
-      return ((T) statistics.getMaxValue()).compareTo(min) >= 0
-          && ((T) statistics.getMinValue()).compareTo(max) <= 0;
+      return ((T) statistics.getMaxValue()).compareTo(min) < 0
+          || ((T) statistics.getMinValue()).compareTo(max) > 0;
     }
 
     @Override
