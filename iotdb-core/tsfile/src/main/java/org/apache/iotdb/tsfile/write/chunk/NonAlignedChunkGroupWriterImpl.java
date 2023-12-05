@@ -106,12 +106,81 @@ public class NonAlignedChunkGroupWriterImpl implements IChunkGroupWriter {
         try {
           checkIsHistoryData(measurementId, time);
         } catch (WriteProcessException e) {
-          if ("root.bw.baoshan.398726I02.`00`.COKE4_LOAD_FURNACE_QTY6".equals(deviceId)
-              && "value".equals(measurementId)) {
-            break;
-          } else {
-            throw e;
+          if (row > 0 && tablet.timestamps[row] == tablet.timestamps[row - 1]) {
+            continue;
           }
+          switch (tsDataType) {
+            case INT32:
+              System.out.println(
+                  "failed points: "
+                      + deviceId
+                      + "."
+                      + measurementId
+                      + ", time: "
+                      + time
+                      + ", value: "
+                      + ((int[]) tablet.values[column])[row]);
+              break;
+            case INT64:
+              System.out.println(
+                  "failed points: "
+                      + deviceId
+                      + "."
+                      + measurementId
+                      + ", time: "
+                      + time
+                      + ", value: "
+                      + ((long[]) tablet.values[column])[row]);
+              break;
+            case FLOAT:
+              System.out.println(
+                  "failed points: "
+                      + deviceId
+                      + "."
+                      + measurementId
+                      + ", time: "
+                      + time
+                      + ", value: "
+                      + ((float[]) tablet.values[column])[row]);
+              break;
+            case DOUBLE:
+              System.out.println(
+                  "failed points: "
+                      + deviceId
+                      + "."
+                      + measurementId
+                      + ", time: "
+                      + time
+                      + ", value: "
+                      + ((double[]) tablet.values[column])[row]);
+              break;
+            case BOOLEAN:
+              System.out.println(
+                  "failed points: "
+                      + deviceId
+                      + "."
+                      + measurementId
+                      + ", time: "
+                      + time
+                      + ", value: "
+                      + ((boolean[]) tablet.values[column])[row]);
+              break;
+            case TEXT:
+              System.out.println(
+                  "failed points: "
+                      + deviceId
+                      + "."
+                      + measurementId
+                      + ", time: "
+                      + time
+                      + ", value: "
+                      + ((Binary[]) tablet.values[column])[row].getStringValue());
+              break;
+            default:
+              throw new UnSupportedDataTypeException(
+                  String.format("Data type %s is not supported.", tsDataType));
+          }
+          continue;
         }
         pointCount++;
         switch (tsDataType) {

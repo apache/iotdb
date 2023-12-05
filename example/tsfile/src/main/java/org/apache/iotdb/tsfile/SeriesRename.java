@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
@@ -40,9 +41,12 @@ import org.apache.iotdb.tsfile.read.common.block.column.FloatColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.LongColumn;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.Tablet;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.File;
@@ -52,7 +56,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -356,6 +362,122 @@ public class SeriesRename {
       throw new IllegalArgumentException(
           "data type should not be: " + valueColumn.getClass().getName());
     }
+    sortTablet(tablet);
     tsFileWriter.write(tablet);
+  }
+
+  @SuppressWarnings({
+    "squid:S3776"
+  }) // ignore Cognitive Complexity of methods should not be too high
+  public static void sortTablet(Tablet tablet) {
+    /*
+     * following part of code sort the batch data by time,
+     * so we can insert continuous data in value list to get a better performance
+     */
+    // sort to get index, and use index to sort value list
+    Integer[] index = new Integer[tablet.rowSize];
+    for (int i = 0; i < tablet.rowSize; i++) {
+      index[i] = i;
+    }
+    Arrays.sort(index, Comparator.comparingLong(o -> tablet.timestamps[o]));
+    Arrays.sort(tablet.timestamps, 0, tablet.rowSize);
+    int columnIndex = 0;
+    for (int i = 0; i < tablet.getSchemas().size(); i++) {
+      IMeasurementSchema schema = tablet.getSchemas().get(i);
+      if (schema instanceof MeasurementSchema) {
+        tablet.values[columnIndex] = sortList(tablet.values[columnIndex], schema.getType(), index);
+        if (tablet.bitMaps != null && tablet.bitMaps[columnIndex] != null) {
+          tablet.bitMaps[columnIndex] = sortBitMap(tablet.bitMaps[columnIndex], index);
+        }
+        columnIndex++;
+      } else {
+        int measurementSize = schema.getSubMeasurementsList().size();
+        for (int j = 0; j < measurementSize; j++) {
+          tablet.values[columnIndex] =
+              sortList(
+                  tablet.values[columnIndex],
+                  schema.getSubMeasurementsTSDataTypeList().get(j),
+                  index);
+          if (tablet.bitMaps != null && tablet.bitMaps[columnIndex] != null) {
+            tablet.bitMaps[columnIndex] = sortBitMap(tablet.bitMaps[columnIndex], index);
+          }
+          columnIndex++;
+        }
+      }
+    }
+  }
+
+  /**
+   * sort value list by index
+   *
+   * @param valueList value list
+   * @param dataType data type
+   * @param index index
+   * @return sorted list
+   */
+  private static Object sortList(Object valueList, TSDataType dataType, Integer[] index) {
+    switch (dataType) {
+      case BOOLEAN:
+        boolean[] boolValues = (boolean[]) valueList;
+        boolean[] sortedValues = new boolean[boolValues.length];
+        for (int i = 0; i < index.length; i++) {
+          sortedValues[i] = boolValues[index[i]];
+        }
+        return sortedValues;
+      case INT32:
+        int[] intValues = (int[]) valueList;
+        int[] sortedIntValues = new int[intValues.length];
+        for (int i = 0; i < index.length; i++) {
+          sortedIntValues[i] = intValues[index[i]];
+        }
+        return sortedIntValues;
+      case INT64:
+        long[] longValues = (long[]) valueList;
+        long[] sortedLongValues = new long[longValues.length];
+        for (int i = 0; i < index.length; i++) {
+          sortedLongValues[i] = longValues[index[i]];
+        }
+        return sortedLongValues;
+      case FLOAT:
+        float[] floatValues = (float[]) valueList;
+        float[] sortedFloatValues = new float[floatValues.length];
+        for (int i = 0; i < index.length; i++) {
+          sortedFloatValues[i] = floatValues[index[i]];
+        }
+        return sortedFloatValues;
+      case DOUBLE:
+        double[] doubleValues = (double[]) valueList;
+        double[] sortedDoubleValues = new double[doubleValues.length];
+        for (int i = 0; i < index.length; i++) {
+          sortedDoubleValues[i] = doubleValues[index[i]];
+        }
+        return sortedDoubleValues;
+      case TEXT:
+        Binary[] binaryValues = (Binary[]) valueList;
+        Binary[] sortedBinaryValues = new Binary[binaryValues.length];
+        for (int i = 0; i < index.length; i++) {
+          sortedBinaryValues[i] = binaryValues[index[i]];
+        }
+        return sortedBinaryValues;
+      default:
+        throw new UnSupportedDataTypeException(dataType.toString());
+    }
+  }
+
+  /**
+   * sort BitMap by index
+   *
+   * @param bitMap BitMap to be sorted
+   * @param index index
+   * @return sorted bitMap
+   */
+  private static BitMap sortBitMap(BitMap bitMap, Integer[] index) {
+    BitMap sortedBitMap = new BitMap(bitMap.getSize());
+    for (int i = 0; i < index.length; i++) {
+      if (bitMap.isMarked(index[i])) {
+        sortedBitMap.mark(i);
+      }
+    }
+    return sortedBitMap;
   }
 }
