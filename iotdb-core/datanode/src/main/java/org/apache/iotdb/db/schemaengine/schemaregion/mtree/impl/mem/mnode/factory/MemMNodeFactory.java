@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.schema.node.utils.MNodeFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl.AboveDatabaseMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl.BasicInternalMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl.DatabaseDeviceMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl.DatabaseMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl.MeasurementMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.DeviceInfo;
@@ -61,7 +60,9 @@ public class MemMNodeFactory implements IMNodeFactory<IMemMNode> {
 
   @Override
   public IMemMNode createDatabaseDeviceMNode(IMemMNode parent, String name, long dataTTL) {
-    return new DatabaseDeviceMNode(parent, name, dataTTL);
+    DatabaseMNode databaseMNode = new DatabaseMNode(parent, name, dataTTL);
+    databaseMNode.setDeviceInfo(new DeviceInfo<>());
+    return databaseMNode.getAsMNode();
   }
 
   @Override

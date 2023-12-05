@@ -27,7 +27,6 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.D
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.impl.CachedAboveDatabaseMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.impl.CachedBasicInternalMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.impl.CachedDatabaseDeviceMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.impl.CachedDatabaseMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.impl.CachedMeasurementMNode;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -61,7 +60,9 @@ public class CacheMNodeFactory implements IMNodeFactory<ICachedMNode> {
 
   @Override
   public ICachedMNode createDatabaseDeviceMNode(ICachedMNode parent, String name, long dataTTL) {
-    return new CachedDatabaseDeviceMNode(parent, name, dataTTL);
+    CachedDatabaseMNode databaseMNode = new CachedDatabaseMNode(parent, name, dataTTL);
+    databaseMNode.setDeviceInfo(new DeviceInfo<>());
+    return databaseMNode;
   }
 
   @Override
