@@ -49,23 +49,23 @@ public class StatisticsFilterTest {
   @Before
   public void before() {
     LongStatistics statistic1 = new LongStatistics();
-    LongStatistics statistic2 = new LongStatistics();
-    LongStatistics statistic3 = new LongStatistics();
-
-    TimeStatistics timeStatistics1 = new TimeStatistics();
-    TimeStatistics timeStatistics2 = new TimeStatistics();
-
     statistic1.update(1L, 1L);
     statistic1.update(100L, 100L);
+
+    TimeStatistics timeStatistics1 = new TimeStatistics();
     timeStatistics1.update(1L);
     timeStatistics1.update(100L);
 
+    LongStatistics statistic2 = new LongStatistics();
     statistic2.update(101L, 101L);
     statistic2.update(200L, 200L);
+
+    TimeStatistics timeStatistics2 = new TimeStatistics();
     timeStatistics2.update(101L);
     timeStatistics2.update(200L);
     timeStatistics2.update(201L);
 
+    LongStatistics statistic3 = new LongStatistics();
     statistic3.update(10L, 10L);
 
     metadata1 = newMetadata(statistic1);

@@ -666,10 +666,6 @@ public final class ValueFilterOperators {
       return isAllNulls(statistics.get());
     }
 
-    private boolean isAllNulls(Statistics<? extends Serializable> statistics) {
-      return statistics.getCount() == 0;
-    }
-
     @Override
     public boolean canSkip(Statistics<? extends Serializable> statistics) {
       throw new NotImplementedException();
@@ -701,6 +697,10 @@ public final class ValueFilterOperators {
     @Override
     public OperatorType getOperatorType() {
       return OperatorType.VALUE_IS_NOT_NULL;
+    }
+
+    private boolean isAllNulls(Statistics<? extends Serializable> statistics) {
+      return statistics.getCount() == 0;
     }
   }
 
