@@ -22,8 +22,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.MNodeType;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
-import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
-import org.apache.iotdb.commons.schema.node.role.IInternalMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
@@ -190,11 +188,6 @@ public abstract class CachedBasicMNode implements ICachedMNode {
   }
 
   @Override
-  public boolean isDevice() {
-    return false;
-  }
-
-  @Override
   public boolean isMeasurement() {
     return false;
   }
@@ -206,16 +199,6 @@ public abstract class CachedBasicMNode implements ICachedMNode {
 
   @Override
   public IDatabaseMNode<ICachedMNode> getAsDatabaseMNode() {
-    throw new UnsupportedOperationException("Wrong MNode Type");
-  }
-
-  @Override
-  public IDeviceMNode<ICachedMNode> getAsDeviceMNode() {
-    throw new UnsupportedOperationException("Wrong MNode Type");
-  }
-
-  @Override
-  public IInternalMNode<ICachedMNode> getAsInternalMNode() {
     throw new UnsupportedOperationException("Wrong MNode Type");
   }
 

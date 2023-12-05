@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl;
 
 import org.apache.iotdb.commons.schema.node.info.IDeviceInfo;
-import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IInternalMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
@@ -193,15 +192,5 @@ public class BasicInternalMNode extends BasicMNode implements IInternalMNode<IMe
   @Override
   public void setDeviceInfo(IDeviceInfo<IMemMNode> deviceInfo) {
     this.deviceInfo = deviceInfo;
-  }
-
-  @Override
-  public boolean isDevice() {
-    return deviceInfo != null;
-  }
-
-  @Override
-  public IDeviceMNode<IMemMNode> getAsDeviceMNode() {
-    return super.getAsDeviceMNode();
   }
 }

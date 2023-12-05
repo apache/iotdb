@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.MNodeType;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
-import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
@@ -190,11 +189,6 @@ public abstract class BasicMNode implements IMemMNode {
   }
 
   @Override
-  public boolean isDevice() {
-    return false;
-  }
-
-  @Override
   public boolean isMeasurement() {
     return false;
   }
@@ -206,11 +200,6 @@ public abstract class BasicMNode implements IMemMNode {
 
   @Override
   public IDatabaseMNode<IMemMNode> getAsDatabaseMNode() {
-    throw new UnsupportedOperationException("Wrong MNode Type");
-  }
-
-  @Override
-  public IDeviceMNode<IMemMNode> getAsDeviceMNode() {
     throw new UnsupportedOperationException("Wrong MNode Type");
   }
 

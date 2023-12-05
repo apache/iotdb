@@ -179,12 +179,17 @@ public class DeviceMNodeWrapper<N extends IMNode<N>, BasicNode extends IInternal
 
   @Override
   public IDatabaseMNode<N> getAsDatabaseMNode() {
-    throw new UnsupportedOperationException("Wrong MNode Type");
+    return basicMNode.getAsDatabaseMNode();
   }
 
   @Override
   public IDeviceMNode<N> getAsDeviceMNode() {
     return this;
+  }
+
+  @Override
+  public IInternalMNode<N> getAsInternalMNode() {
+    return basicMNode;
   }
 
   @Override
