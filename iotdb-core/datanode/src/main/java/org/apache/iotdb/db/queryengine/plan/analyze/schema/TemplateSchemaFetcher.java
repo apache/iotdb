@@ -80,26 +80,25 @@ class TemplateSchemaFetcher {
       }
     }
 
-    // check the write_schema of missing measurements
-    long startTime = System.nanoTime();
-    try {
-      String userName = context.getSession().getUserName();
-      if (!AuthorityChecker.SUPER_USER.equals(userName)) {
-        TSStatus status =
-            AuthorityChecker.getTSStatus(
-                AuthorityChecker.checkFullPathListPermission(
-                    userName, checkedPaths, PrivilegeType.WRITE_SCHEMA.ordinal()),
-                checkedPaths,
-                PrivilegeType.WRITE_SCHEMA);
-        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
-        }
-      }
-    } finally {
-      PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
-    }
-
     if (!extensionMeasurementList.isEmpty() && config.isAutoCreateSchemaEnabled()) {
+      // check the write_schema of missing measurements
+      long startTime = System.nanoTime();
+      try {
+        String userName = context.getSession().getUserName();
+        if (!AuthorityChecker.SUPER_USER.equals(userName)) {
+          TSStatus status =
+              AuthorityChecker.getTSStatus(
+                  AuthorityChecker.checkFullPathListPermission(
+                      userName, checkedPaths, PrivilegeType.WRITE_SCHEMA.ordinal()),
+                  checkedPaths,
+                  PrivilegeType.WRITE_SCHEMA);
+          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+          }
+        }
+      } finally {
+        PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
+      }
       autoCreateSchemaExecutor.autoExtendTemplate(
           template.getName(), extensionMeasurementList, extensionDataTypeList, context);
     }
