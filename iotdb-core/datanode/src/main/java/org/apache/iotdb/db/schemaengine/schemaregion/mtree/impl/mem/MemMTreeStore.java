@@ -140,27 +140,22 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
   @Override
   public IDeviceMNode<IMemMNode> setToEntity(IMemMNode node) {
     IDeviceMNode<IMemMNode> result = MNodeUtils.setToEntity(node);
-    if (result != node) {
+    if (result.getAsMNode() != node) {
       regionStatistics.addDevice();
       requestMemory(result.estimateSize() - node.estimateSize());
     }
 
-    if (result.isDatabase()) {
-      root = result.getAsMNode();
-    }
     return result;
   }
 
   @Override
   public IMemMNode setToInternal(IDeviceMNode<IMemMNode> entityMNode) {
     IMemMNode result = MNodeUtils.setToInternal(entityMNode);
-    if (result != entityMNode) {
+    if (result != entityMNode.getAsMNode()) {
       regionStatistics.deleteDevice();
       releaseMemory(entityMNode.estimateSize() - result.estimateSize());
     }
-    if (result.isDatabase()) {
-      root = result;
-    }
+
     return result;
   }
 

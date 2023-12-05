@@ -154,21 +154,6 @@ public abstract class CachedBasicMNode implements ICachedMNode {
     return null;
   }
 
-  /**
-   * Replace a child of this mnode. New child's name must be the same as old child's name.
-   *
-   * @param oldChildName measurement name
-   * @param newChildNode new child node
-   */
-  @Override
-  public synchronized void replaceChild(String oldChildName, ICachedMNode newChildNode) {}
-
-  @Override
-  public void moveDataToNewMNode(ICachedMNode newMNode) {
-    newMNode.setParent(parent);
-    newMNode.setCacheEntry(getCacheEntry());
-  }
-
   @Override
   public IMNodeContainer<ICachedMNode> getChildren() {
     return CachedMNodeContainer.emptyMNodeContainer();

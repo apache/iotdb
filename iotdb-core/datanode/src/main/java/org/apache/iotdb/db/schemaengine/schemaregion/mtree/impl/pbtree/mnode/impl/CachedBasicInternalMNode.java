@@ -129,37 +129,6 @@ public class CachedBasicInternalMNode extends CachedBasicMNode
     return null;
   }
 
-  /**
-   * Replace a child of this mnode. New child's name must be the same as old child's name.
-   *
-   * @param oldChildName measurement name
-   * @param newChildNode new child node
-   */
-  @Override
-  public synchronized void replaceChild(String oldChildName, ICachedMNode newChildNode) {
-    if (!oldChildName.equals(newChildNode.getName())) {
-      throw new RuntimeException("New child's name must be the same as old child's name!");
-    }
-    ICachedMNode oldChildNode = this.getChild(oldChildName);
-    if (oldChildNode == null) {
-      return;
-    }
-
-    oldChildNode.moveDataToNewMNode(newChildNode);
-
-    children.replace(newChildNode.getName(), newChildNode);
-  }
-
-  @Override
-  public void moveDataToNewMNode(ICachedMNode newMNode) {
-    super.moveDataToNewMNode(newMNode);
-
-    if (children != null) {
-      newMNode.setChildren(children);
-      children.forEach((childName, childNode) -> childNode.setParent(newMNode));
-    }
-  }
-
   @Override
   public IMNodeContainer<ICachedMNode> getChildren() {
     if (children == null) {
@@ -186,7 +155,11 @@ public class CachedBasicInternalMNode extends CachedBasicMNode
    */
   @Override
   public int estimateSize() {
-    return 8 + 80 + 192 + super.estimateSize();
+    return 8
+        + 80
+        + 192
+        + super.estimateSize()
+        + (deviceInfo == null ? 0 : deviceInfo.estimateSize());
   }
 
   @Override

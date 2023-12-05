@@ -120,19 +120,6 @@ public class DeviceMNodeWrapper<N extends IMNode<N>, BasicNode extends IInternal
   }
 
   @Override
-  public void replaceChild(String oldChildName, N newChildNode) {
-    basicMNode.replaceChild(oldChildName, newChildNode);
-  }
-
-  @Override
-  public void moveDataToNewMNode(N newMNode) {
-    basicMNode.moveDataToNewMNode(newMNode);
-    if (newMNode.isDevice()) {
-      deviceInfo.moveDataToNewMNode(newMNode.getAsDeviceMNode());
-    }
-  }
-
-  @Override
   public IMNodeContainer<N> getChildren() {
     return basicMNode.getChildren();
   }
@@ -286,22 +273,9 @@ public class DeviceMNodeWrapper<N extends IMNode<N>, BasicNode extends IInternal
     deviceInfo.setAligned(isAligned);
   }
 
-  /**
-   * The basic memory occupied by any AbstractDeviceMNode object
-   *
-   * <ol>
-   *   <li>object header, 8B
-   *   <li>node attributes
-   *       <ol>
-   *         <li>deviceInfo reference, 8B
-   *         <li>basicMNode reference, 8B
-   *       </ol>
-   *   <li>MapEntry in parent
-   * </ol>
-   */
   @Override
   public int estimateSize() {
-    return 8 + 8 + deviceInfo.estimateSize() + basicMNode.estimateSize();
+    return basicMNode.estimateSize();
   }
 
   @Override

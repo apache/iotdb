@@ -347,7 +347,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
         });
 
     IDeviceMNode<ICachedMNode> result = resultReference.get();
-    if (result != node) {
+    if (result.getAsMNode() != node) {
       regionStatistics.addDevice();
       memManager.updatePinnedSize(result.estimateSize() - node.estimateSize());
     }
@@ -366,7 +366,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
         });
 
     ICachedMNode result = resultReference.get();
-    if (result != entityMNode) {
+    if (result != entityMNode.getAsMNode()) {
       regionStatistics.deleteDevice();
       memManager.updatePinnedSize(result.estimateSize() - entityMNode.estimateSize());
     }

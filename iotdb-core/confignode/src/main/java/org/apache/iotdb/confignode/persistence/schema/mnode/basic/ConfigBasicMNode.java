@@ -150,21 +150,6 @@ public class ConfigBasicMNode implements IConfigMNode {
     return null;
   }
 
-  /**
-   * Replace a child of this mnode. New child's name must be the same as old child's name.
-   *
-   * @param oldChildName measurement name
-   * @param newChildNode new child node
-   */
-  @Override
-  public synchronized void replaceChild(String oldChildName, IConfigMNode newChildNode) {}
-
-  @Override
-  public void moveDataToNewMNode(IConfigMNode newMNode) {
-    newMNode.setParent(parent);
-    newMNode.setSchemaTemplateId(configMNodeInfo.getSchemaTemplateIdWithState());
-  }
-
   @Override
   public IMNodeContainer<IConfigMNode> getChildren() {
     return ConfigMNodeContainer.emptyMNodeContainer();

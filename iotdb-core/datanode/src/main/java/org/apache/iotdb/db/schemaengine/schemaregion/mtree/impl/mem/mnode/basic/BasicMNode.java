@@ -154,22 +154,6 @@ public abstract class BasicMNode implements IMemMNode {
     return null;
   }
 
-  /**
-   * Replace a child of this mnode. New child's name must be the same as old child's name.
-   *
-   * @param oldChildName measurement name
-   * @param newChildNode new child node
-   */
-  @Override
-  public synchronized void replaceChild(String oldChildName, IMemMNode newChildNode) {
-    // Do nothing
-  }
-
-  @Override
-  public void moveDataToNewMNode(IMemMNode newMNode) {
-    newMNode.setParent(parent);
-  }
-
   @Override
   public IMNodeContainer<IMemMNode> getChildren() {
     return MemMNodeContainer.emptyMNodeContainer();

@@ -113,19 +113,6 @@ public abstract class AbstractDatabaseMNode<N extends IMNode<N>, BasicNode exten
   }
 
   @Override
-  public void replaceChild(String oldChildName, N newChildNode) {
-    basicMNode.replaceChild(oldChildName, newChildNode);
-  }
-
-  @Override
-  public void moveDataToNewMNode(N newMNode) {
-    basicMNode.moveDataToNewMNode(newMNode);
-    if (newMNode.isDatabase()) {
-      databaseInfo.moveDataToNewMNode(newMNode.getAsDatabaseMNode());
-    }
-  }
-
-  @Override
   public IMNodeContainer<N> getChildren() {
     return basicMNode.getChildren();
   }

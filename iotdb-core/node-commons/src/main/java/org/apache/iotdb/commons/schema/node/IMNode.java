@@ -54,13 +54,6 @@ public interface IMNode<N extends IMNode<N>> extends ITreeNode {
 
   N deleteChild(String name);
 
-  // this method will replace the oldChild with the newChild, the data of oldChild will be moved to
-  // newChild
-  void replaceChild(String oldChildName, N newChildNode);
-
-  // this method will move all the reference or value of current node's attributes to newMNode
-  void moveDataToNewMNode(N newMNode);
-
   IMNodeContainer<N> getChildren();
 
   void setChildren(IMNodeContainer<N> children);

@@ -124,37 +124,6 @@ public class ConfigBasicInternalMNode extends ConfigBasicMNode {
     return null;
   }
 
-  /**
-   * Replace a child of this mnode. New child's name must be the same as old child's name.
-   *
-   * @param oldChildName measurement name
-   * @param newChildNode new child node
-   */
-  @Override
-  public synchronized void replaceChild(String oldChildName, IConfigMNode newChildNode) {
-    if (!oldChildName.equals(newChildNode.getName())) {
-      throw new RuntimeException("New child's name must be the same as old child's name!");
-    }
-    IConfigMNode oldChildNode = this.getChild(oldChildName);
-    if (oldChildNode == null) {
-      return;
-    }
-
-    oldChildNode.moveDataToNewMNode(newChildNode);
-
-    children.replace(newChildNode.getName(), newChildNode);
-  }
-
-  @Override
-  public void moveDataToNewMNode(IConfigMNode newMNode) {
-    super.moveDataToNewMNode(newMNode);
-
-    if (children != null) {
-      newMNode.setChildren(children);
-      children.forEach((childName, childNode) -> childNode.setParent(newMNode));
-    }
-  }
-
   @Override
   public IMNodeContainer<IConfigMNode> getChildren() {
     if (children == null) {

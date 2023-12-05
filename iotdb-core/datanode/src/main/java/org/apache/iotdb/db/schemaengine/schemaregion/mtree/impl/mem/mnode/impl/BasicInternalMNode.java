@@ -129,37 +129,6 @@ public class BasicInternalMNode extends BasicMNode implements IInternalMNode<IMe
     return null;
   }
 
-  /**
-   * Replace a child of this mnode. New child's name must be the same as old child's name.
-   *
-   * @param oldChildName measurement name
-   * @param newChildNode new child node
-   */
-  @Override
-  public synchronized void replaceChild(String oldChildName, IMemMNode newChildNode) {
-    if (!oldChildName.equals(newChildNode.getName())) {
-      throw new RuntimeException("New child's name must be the same as old child's name!");
-    }
-    IMemMNode oldChildNode = this.getChild(oldChildName);
-    if (oldChildNode == null) {
-      return;
-    }
-
-    oldChildNode.moveDataToNewMNode(newChildNode);
-
-    children.replace(newChildNode.getName(), newChildNode);
-  }
-
-  @Override
-  public void moveDataToNewMNode(IMemMNode newMNode) {
-    super.moveDataToNewMNode(newMNode);
-
-    if (children != null) {
-      newMNode.setChildren(children);
-      children.forEach((childName, childNode) -> childNode.setParent(newMNode));
-    }
-  }
-
   @Override
   public IMNodeContainer<IMemMNode> getChildren() {
     if (children == null) {
@@ -176,7 +145,7 @@ public class BasicInternalMNode extends BasicMNode implements IInternalMNode<IMe
   /** MNodeContainer reference and basic occupation, 8 + 80B. */
   @Override
   public int estimateSize() {
-    return 8 + 80 + super.estimateSize();
+    return 8 + 80 + super.estimateSize() + (deviceInfo == null ? 0 : deviceInfo.estimateSize());
   }
 
   @Override
