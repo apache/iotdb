@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.persistence.schema.mnode;
 
 import org.apache.iotdb.commons.schema.node.IMNode;
+import org.apache.iotdb.commons.schema.node.role.IInternalMNode;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
 public interface IConfigMNode extends IMNode<IConfigMNode> {
@@ -41,5 +42,10 @@ public interface IConfigMNode extends IMNode<IConfigMNode> {
 
   default TDatabaseSchema getDatabaseSchema() {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  default IInternalMNode<IConfigMNode> getAsInternalMNode() {
+    throw new UnsupportedOperationException("Wrong node type");
   }
 }

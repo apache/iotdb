@@ -20,11 +20,12 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl;
 
 import org.apache.iotdb.commons.schema.node.common.AbstractDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.info.IDeviceInfo;
+import org.apache.iotdb.commons.schema.node.role.IInternalMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.DatabaseInfo;
 
 public class DatabaseMNode extends AbstractDatabaseMNode<IMemMNode, BasicInternalMNode>
-    implements IMemMNode {
+    implements IMemMNode, IInternalMNode<IMemMNode> {
 
   public DatabaseMNode(IMemMNode parent, String name) {
     super(new BasicInternalMNode(parent, name), new DatabaseInfo<>());

@@ -21,7 +21,7 @@ package org.apache.iotdb.commons.schema.node.role;
 import org.apache.iotdb.commons.schema.node.IMNode;
 
 /** This interface defines a DatabaseMNode's operation interfaces. */
-public interface IDatabaseMNode<N extends IMNode<N>> extends IInternalMNode<N> {
+public interface IDatabaseMNode<N extends IMNode<N>> extends IMNode<N> {
   long getDataTTL();
 
   void setDataTTL(long dataTTL);

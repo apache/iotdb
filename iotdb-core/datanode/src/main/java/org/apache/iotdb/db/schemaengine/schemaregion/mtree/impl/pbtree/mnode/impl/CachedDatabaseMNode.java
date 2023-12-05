@@ -20,12 +20,14 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.im
 
 import org.apache.iotdb.commons.schema.node.common.AbstractDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.info.IDeviceInfo;
+import org.apache.iotdb.commons.schema.node.role.IInternalMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.DatabaseInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.CacheEntry;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
 public class CachedDatabaseMNode
-    extends AbstractDatabaseMNode<ICachedMNode, CachedBasicInternalMNode> implements ICachedMNode {
+    extends AbstractDatabaseMNode<ICachedMNode, CachedBasicInternalMNode>
+    implements ICachedMNode, IInternalMNode<ICachedMNode> {
 
   public CachedDatabaseMNode(ICachedMNode parent, String name) {
     super(new CachedBasicInternalMNode(parent, name), new DatabaseInfo<>());
