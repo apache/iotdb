@@ -20,7 +20,6 @@
 package org.apache.iotdb.commons.schema.node.visitor;
 
 import org.apache.iotdb.commons.schema.node.IMNode;
-import org.apache.iotdb.commons.schema.node.common.AbstractDatabaseDeviceMNode;
 import org.apache.iotdb.commons.schema.node.common.AbstractDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.common.AbstractMeasurementMNode;
 
@@ -30,9 +29,6 @@ public abstract class MNodeVisitor<R, C> {
 
   public abstract R visitDatabaseMNode(
       AbstractDatabaseMNode<?, ? extends IMNode<?>> node, C context);
-
-  public abstract R visitDatabaseDeviceMNode(
-      AbstractDatabaseDeviceMNode<?, ? extends IMNode<?>> node, C context);
 
   public abstract R visitMeasurementMNode(
       AbstractMeasurementMNode<?, ? extends IMNode<?>> node, C context);
