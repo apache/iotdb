@@ -19,7 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.schema;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -27,6 +32,7 @@ import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -65,11 +71,32 @@ class TemplateSchemaFetcher {
     Template template = templateSetInfo.getLeft();
     List<String> extensionMeasurementList = new ArrayList<>();
     List<TSDataType> extensionDataTypeList = new ArrayList<>();
+    List<PartialPath> checkedPaths = new ArrayList<>();
     for (int i = 0; i < measurements.length; i++) {
       if (!template.hasSchema(measurements[i])) {
         extensionMeasurementList.add(measurements[i]);
+        checkedPaths.add(devicePath.concatNode(measurements[i]));
         extensionDataTypeList.add(schemaComputationWithAutoCreation.getDataType(i));
       }
+    }
+
+    // check the write_schema of missing measurements
+    long startTime = System.nanoTime();
+    try {
+      String userName = context.getSession().getUserName();
+      if (!AuthorityChecker.SUPER_USER.equals(userName)) {
+        TSStatus status =
+            AuthorityChecker.getTSStatus(
+                AuthorityChecker.checkFullPathListPermission(
+                    userName, checkedPaths, PrivilegeType.WRITE_SCHEMA.ordinal()),
+                checkedPaths,
+                PrivilegeType.WRITE_SCHEMA);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+        }
+      }
+    } finally {
+      PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
     }
 
     if (!extensionMeasurementList.isEmpty() && config.isAutoCreateSchemaEnabled()) {

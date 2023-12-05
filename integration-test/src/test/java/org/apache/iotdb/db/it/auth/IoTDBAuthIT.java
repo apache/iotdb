@@ -1183,16 +1183,28 @@ public class IoTDBAuthIT {
         adminStmt.execute("GRANT EXTEND_TEMPLATE ON root.** TO USER tempuser");
         adminStmt.execute("GRANT WRITE_DATA ON root.a.** TO USER tempuser");
         adminStmt.execute("set schema template t1 to root.a");
+        adminStmt.execute("create timeseries of schema template on root.a.d2");
 
         // grant privilege to insert
         Assert.assertThrows(
             SQLException.class,
             () ->
                 userStmt.execute(
-                    "INSERT INTO root.a.d1(timestamp, s_name, s_value) VALUES (1,'IoTDB', 2)"));
+                    "INSERT INTO root.a.d1(timestamp, s_name, s_value_1) VALUES (1,'IoTDB', 2)"));
+
+        Assert.assertThrows(
+            SQLException.class,
+            () ->
+                userStmt.execute(
+                    "INSERT INTO root.a.d2(timestamp, s_name, s_value_2) VALUES (1,'IoTDB', 2)"));
 
         adminStmt.execute("GRANT WRITE_SCHEMA ON root.a.d1.** TO USER tempuser");
-        userStmt.execute("INSERT INTO root.a.d1(timestamp, s_name, s_value) VALUES (1,'IoTDB', 2)");
+        userStmt.execute(
+            "INSERT INTO root.a.d1(timestamp, s_name, s_value_1) VALUES (1,'IoTDB', 2)");
+        adminStmt.execute("GRANT WRITE_SCHEMA ON root.a.d2.** TO USER tempuser");
+        userStmt.execute(
+            "INSERT INTO root.a.d2(timestamp, s_name, s_value_2) VALUES (1,'IoTDB', 2)");
+
         adminStmt.execute("REVOKE EXTEND_TEMPLATE ON root.** FROM USER tempuser");
 
         Assert.assertThrows(
