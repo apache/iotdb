@@ -42,7 +42,7 @@ public abstract class SchemaPage implements ISchemaPage {
   protected short spareSize; // traces spare space size simultaneously
   protected short memberNum; // amount of the member, definition depends on implementation
 
-  protected volatile boolean dirtyFlag = false; // any modification turns it true
+  protected boolean dirtyFlag = false; // any modification turns it true
 
   protected SchemaPage(ByteBuffer pageBuffer) {
     this.pageBuffer = pageBuffer;
