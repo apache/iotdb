@@ -36,14 +36,15 @@ public class MNodeUtils {
    * part first.
    *
    * @param node node to be transformed
-   * @return generated entityMNode
    */
-  public static <N extends IMNode<N>> IDeviceMNode<N> setToEntity(IMNode<N> node) {
+  public static <N extends IMNode<N>> boolean setToEntity(IMNode<N> node) {
     IInternalMNode<N> internalMNode = node.getAsInternalMNode();
     if (!internalMNode.isDevice()) {
       internalMNode.setDeviceInfo(new DeviceInfo<>());
+      return true;
+    } else {
+      return false;
     }
-    return internalMNode.getAsDeviceMNode();
   }
 
   /**
@@ -52,14 +53,15 @@ public class MNodeUtils {
    * MTree structure first.
    *
    * @param entityMNode node to be transformed
-   * @return generated NoEntity node
    */
-  public static <N extends IMNode<N>> N setToInternal(IDeviceMNode<N> entityMNode) {
+  public static <N extends IMNode<N>> boolean setToInternal(IDeviceMNode<N> entityMNode) {
     IInternalMNode<N> internalMNode = entityMNode.getAsInternalMNode();
     if (internalMNode.isDevice()) {
       internalMNode.setDeviceInfo(null);
+      return true;
+    } else {
+      return false;
     }
-    return internalMNode.getAsMNode();
   }
 
   public static <N extends IMNode<N>> N getChild(

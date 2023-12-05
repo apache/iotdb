@@ -883,7 +883,7 @@ public class SchemaFileTest {
     }
 
     ICachedMNode d010 = sgNode.getChildren().get("d_010");
-    d010 = MNodeUtils.setToEntity(d010).getAsMNode();
+    MNodeUtils.setToEntity(d010);
     ICachedMNode ano = getMeasurementNode(d010, "splitover", "aliaslasialsai");
 
     d010.addChild(ano);

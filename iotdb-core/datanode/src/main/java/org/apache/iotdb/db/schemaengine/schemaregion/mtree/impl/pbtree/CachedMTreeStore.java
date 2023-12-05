@@ -338,40 +338,34 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
   @Override
   public IDeviceMNode<ICachedMNode> setToEntity(ICachedMNode node) {
-    AtomicReference<IDeviceMNode<ICachedMNode>> resultReference = new AtomicReference<>(null);
-    updateMNode(
-        node,
-        o -> {
-          IDeviceMNode<ICachedMNode> result = MNodeUtils.setToEntity(node);
-          resultReference.getAndSet(result);
-        });
+    int rawSize = node.estimateSize();
+    AtomicReference<Boolean> resultReference = new AtomicReference<>(false);
+    updateMNode(node, o -> resultReference.getAndSet(MNodeUtils.setToEntity(node)));
 
-    IDeviceMNode<ICachedMNode> result = resultReference.get();
-    if (result.getAsMNode() != node) {
+    boolean isSuccess = resultReference.get();
+    if (isSuccess) {
       regionStatistics.addDevice();
-      memManager.updatePinnedSize(result.estimateSize() - node.estimateSize());
+      memManager.updatePinnedSize(node.estimateSize() - rawSize);
     }
 
-    return result;
+    return node.getAsDeviceMNode();
   }
 
   @Override
   public ICachedMNode setToInternal(IDeviceMNode<ICachedMNode> entityMNode) {
-    AtomicReference<ICachedMNode> resultReference = new AtomicReference<>(null);
+    int rawSize = entityMNode.estimateSize();
+    AtomicReference<Boolean> resultReference = new AtomicReference<>(false);
     updateMNode(
         entityMNode.getAsMNode(),
-        o -> {
-          ICachedMNode result = MNodeUtils.setToInternal(entityMNode);
-          resultReference.getAndSet(result);
-        });
+        o -> resultReference.getAndSet(MNodeUtils.setToInternal(entityMNode)));
 
-    ICachedMNode result = resultReference.get();
-    if (result != entityMNode.getAsMNode()) {
+    boolean isSuccess = resultReference.get();
+    if (isSuccess) {
       regionStatistics.deleteDevice();
-      memManager.updatePinnedSize(result.estimateSize() - entityMNode.estimateSize());
+      memManager.updatePinnedSize(entityMNode.estimateSize() - rawSize);
     }
 
-    return result;
+    return entityMNode.getAsMNode();
   }
 
   @Override
