@@ -20,7 +20,9 @@
 package org.apache.iotdb.tsfile.read.filter.basic;
 
 import org.apache.iotdb.tsfile.file.metadata.IMetadata;
-import org.apache.iotdb.tsfile.file.metadata.statistics.TimeStatistics;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+
+import java.io.Serializable;
 
 public abstract class TimeFilter extends Filter {
 
@@ -44,13 +46,13 @@ public abstract class TimeFilter extends Filter {
 
   @Override
   public boolean canSkip(IMetadata metadata) {
-    TimeStatistics timeStatistics = (TimeStatistics) metadata.getTimeStatistics();
+    Statistics<? extends Serializable> timeStatistics = metadata.getTimeStatistics();
     return !satisfyStartEndTime(timeStatistics.getStartTime(), timeStatistics.getEndTime());
   }
 
   @Override
   public boolean allSatisfy(IMetadata metadata) {
-    TimeStatistics timeStatistics = (TimeStatistics) metadata.getTimeStatistics();
+    Statistics<? extends Serializable> timeStatistics = metadata.getTimeStatistics();
     return containStartEndTime(timeStatistics.getStartTime(), timeStatistics.getEndTime());
   }
 }

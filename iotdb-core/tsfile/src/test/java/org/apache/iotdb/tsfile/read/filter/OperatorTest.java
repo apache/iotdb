@@ -28,6 +28,8 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.junit.Assert;
 import org.junit.Test;
 
+import static org.apache.iotdb.tsfile.read.filter.operator.ValueFilterOperators.CANNOT_PUSH_DOWN_MSG;
+
 public class OperatorTest {
 
   private static final long TESTED_TIMESTAMP = 1513585371L;
@@ -50,8 +52,12 @@ public class OperatorTest {
   @Test
   public void testIsNull() {
     Filter isNullFilter = ValueFilterApi.isNull(0);
-    Assert.assertTrue(isNullFilter.satisfyRow(100, new Object[] {null}));
-    Assert.assertFalse(isNullFilter.satisfyRow(100, new Object[] {1}));
+    try {
+      isNullFilter.satisfyRow(100, new Object[] {null});
+      Assert.fail();
+    } catch (IllegalArgumentException e) {
+      Assert.assertTrue(e.getMessage().contains(CANNOT_PUSH_DOWN_MSG));
+    }
   }
 
   @Test

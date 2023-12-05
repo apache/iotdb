@@ -51,7 +51,7 @@ public final class ValueFilterOperators {
   }
 
   private static final String CONSTANT_CANNOT_BE_NULL_MSG = "constant cannot be null";
-  private static final String CANNOT_PUSH_DOWN_MSG = " operator can not be pushed down.";
+  public static final String CANNOT_PUSH_DOWN_MSG = " operator can not be pushed down.";
 
   private static final String OPERATOR_TO_STRING_FORMAT = "measurements[%s] %s %s";
 
@@ -647,7 +647,7 @@ public final class ValueFilterOperators {
 
     @Override
     public boolean valueSatisfy(Object value) {
-      throw new NotImplementedException();
+      return value != null;
     }
 
     @Override

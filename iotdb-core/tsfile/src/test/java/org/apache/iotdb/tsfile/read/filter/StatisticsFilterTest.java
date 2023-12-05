@@ -33,6 +33,7 @@ import org.junit.Test;
 import static org.apache.iotdb.tsfile.read.filter.FilterTestUtil.newAlignedMetadata;
 import static org.apache.iotdb.tsfile.read.filter.FilterTestUtil.newMetadata;
 import static org.apache.iotdb.tsfile.read.filter.operator.Not.CONTAIN_NOT_ERR_MSG;
+import static org.apache.iotdb.tsfile.read.filter.operator.ValueFilterOperators.CANNOT_PUSH_DOWN_MSG;
 import static org.junit.Assert.fail;
 
 public class StatisticsFilterTest {
@@ -233,13 +234,19 @@ public class StatisticsFilterTest {
   public void testIsNull() {
     Filter valueIsNull = ValueFilterApi.isNull(0);
 
-    Assert.assertTrue(valueIsNull.canSkip(alignedMetadata1));
-    Assert.assertFalse(valueIsNull.canSkip(alignedMetadata2));
-    Assert.assertFalse(valueIsNull.canSkip(alignedMetadata3));
+    try {
+      valueIsNull.canSkip(alignedMetadata1);
+      fail();
+    } catch (IllegalArgumentException e) {
+      Assert.assertTrue(e.getMessage().contains(CANNOT_PUSH_DOWN_MSG));
+    }
 
-    Assert.assertFalse(valueIsNull.allSatisfy(alignedMetadata1));
-    Assert.assertFalse(valueIsNull.allSatisfy(alignedMetadata2));
-    Assert.assertTrue(valueIsNull.allSatisfy(alignedMetadata3));
+    try {
+      valueIsNull.allSatisfy(alignedMetadata1);
+      fail();
+    } catch (IllegalArgumentException e) {
+      Assert.assertTrue(e.getMessage().contains(CANNOT_PUSH_DOWN_MSG));
+    }
   }
 
   @Test

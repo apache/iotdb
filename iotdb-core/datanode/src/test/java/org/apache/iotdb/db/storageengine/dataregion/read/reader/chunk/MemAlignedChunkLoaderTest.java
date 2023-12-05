@@ -37,6 +37,7 @@ import org.mockito.Mockito;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 import static org.apache.iotdb.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
 import static org.junit.Assert.assertEquals;
@@ -83,7 +84,7 @@ public class MemAlignedChunkLoaderTest {
 
     Mockito.when(chunkMetadata1.getStatistics()).thenReturn(timeStatistics);
     Mockito.when(chunkMetadata1.getTimeStatistics()).thenReturn(timeStatistics);
-    Mockito.when(chunkMetadata1.getMeasurementStatistics(0).orElse(null)).thenReturn(statistics1);
+    Mockito.when(chunkMetadata1.getMeasurementStatistics(0)).thenReturn(Optional.of(statistics1));
 
     MemAlignedChunkReader chunkReader =
         (MemAlignedChunkReader) memAlignedChunkLoader.getChunkReader(chunkMetadata1, null);
