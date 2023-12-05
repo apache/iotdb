@@ -106,7 +106,7 @@ public class ConcurrentIterableLinkedQueueTest {
   }
 
   @Test(timeout = 60000)
-  public void iterateFromEmptyQueue() {
+  public void testIterateFromEmptyQueue() {
     ConcurrentIterableLinkedQueue<Integer>.DynamicIterator itr = queue.iterateFrom(1);
 
     AtomicInteger value = new AtomicInteger(-1);
@@ -116,10 +116,38 @@ public class ConcurrentIterableLinkedQueueTest {
   }
 
   @Test(timeout = 60000)
+  public void testRemove() {
+    queue.add(1);
+    queue.add(2);
+    ConcurrentIterableLinkedQueue<Integer>.DynamicIterator itr = queue.iterateFrom(1);
+
+    Assert.assertEquals(1, queue.removeBefore(2));
+    Assert.assertEquals(2, (int) itr.next());
+  }
+
+  @Test(timeout = 60000)
+  public void testClear() {
+    queue.add(1);
+    queue.add(2);
+    ConcurrentIterableLinkedQueue<Integer>.DynamicIterator itr = queue.iterateFrom(1);
+    queue.clear();
+
+    Assert.assertTrue(queue.getIteratorSet().isEmpty());
+    Assert.assertEquals(2, queue.getFirstIndex());
+    Assert.assertEquals(2, queue.getLastIndex());
+
+    Assert.assertFalse(itr.getIsClosed());
+    Assert.assertNull(itr.next());
+    Assert.assertFalse(itr.hasNext());
+    Assert.assertEquals(-1, itr.seek(2));
+    Assert.assertEquals(-1, itr.getOffset());
+  }
+
+  @Test(timeout = 60000)
   public void testIntegratedOperations() {
     queue.add(1);
     queue.add(2);
-    queue.removeBefore(1);
+    Assert.assertEquals(1, queue.removeBefore(1));
     Assert.assertEquals(1, queue.getFirstIndex());
     Assert.assertEquals(2, queue.getLastIndex());
 

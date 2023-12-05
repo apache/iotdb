@@ -19,9 +19,15 @@
 
 package org.apache.iotdb.commons.pipe.datastructure;
 
+import java.io.Closeable;
+import java.util.Comparator;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * This class allows dynamic iterating over the elements, namely an iterator is able to read the
@@ -30,16 +36,18 @@ import java.util.concurrent.locks.ReentrantLock;
  * @param <E> Element type
  */
 public class ConcurrentIterableLinkedQueue<E> {
-  LinkedListNode<E> pilot = new LinkedListNode<>(null);
-  LinkedListNode<E> first;
-  LinkedListNode<E> last;
-  ReentrantLock lock = new ReentrantLock();
+  private final LinkedListNode<E> pilot = new LinkedListNode<>(null);
+  private LinkedListNode<E> first;
+  private LinkedListNode<E> last;
+  private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
-  Condition hasNext = lock.newCondition();
+  private final Condition hasNext = lock.writeLock().newCondition();
+
+  private final Map<DynamicIterator, DynamicIterator> iteratorSet = new ConcurrentHashMap<>();
 
   // The index of elements are [firstIndex, firstIndex + 1, ....,lastIndex - 1]
-  int firstIndex = 0;
-  int lastIndex = 0;
+  private int firstIndex = 0;
+  private int lastIndex = 0;
 
   public ConcurrentIterableLinkedQueue() {
     first = pilot;
@@ -47,7 +55,7 @@ public class ConcurrentIterableLinkedQueue<E> {
   }
 
   public void add(E e) {
-    lock.lock();
+    lock.writeLock().lock();
     try {
       if (e == null) {
         throw new IllegalArgumentException(
@@ -63,15 +71,21 @@ public class ConcurrentIterableLinkedQueue<E> {
       ++lastIndex;
       hasNext.signalAll();
     } finally {
-      lock.unlock();
+      lock.writeLock().unlock();
     }
   }
 
-  public void removeBefore(int newFirst) {
-    lock.lock();
+  public int removeBefore(int newFirst) {
+    lock.writeLock().lock();
     try {
+      AtomicInteger tempFirst = new AtomicInteger(newFirst);
+      iteratorSet.keySet().stream()
+          .min(Comparator.comparing(DynamicIterator::getOffset))
+          .ifPresent(e -> tempFirst.set(Math.min(tempFirst.get(), e.getOffset())));
+      newFirst = tempFirst.get();
+
       if (newFirst <= firstIndex) {
-        return;
+        return firstIndex;
       }
       LinkedListNode<E> next;
       LinkedListNode<E> x;
@@ -86,43 +100,57 @@ public class ConcurrentIterableLinkedQueue<E> {
         first = pilot;
         last = pilot;
       }
-      hasNext.signalAll();
+      iteratorSet
+          .keySet()
+          .forEach(
+              e -> {
+                if (e.offset == firstIndex) {
+                  e.next = pilot;
+                }
+              });
+      return firstIndex;
     } finally {
-      lock.unlock();
+      lock.writeLock().unlock();
     }
   }
 
   public void clear() {
-    lock.lock();
+    lock.writeLock().lock();
     try {
+      iteratorSet.keySet().forEach(DynamicIterator::close);
       removeBefore(lastIndex);
-      firstIndex = 0;
-      lastIndex = 0;
+      hasNext.signalAll();
     } finally {
-      lock.unlock();
+      lock.writeLock().unlock();
     }
   }
 
   public DynamicIterator iterateFrom(int offset) {
-    return new DynamicIterator(offset);
+    DynamicIterator itr = new DynamicIterator(offset);
+    iteratorSet.put(itr, itr);
+    return itr;
   }
 
   public int getFirstIndex() {
-    lock.lock();
+    lock.readLock().lock();
     try {
       return firstIndex;
     } finally {
-      lock.unlock();
+      lock.readLock().unlock();
     }
   }
 
   public int getLastIndex() {
-    lock.lock();
+    lock.readLock().lock();
     try {
       return lastIndex;
     } finally {
-      lock.unlock();
+      lock.readLock().unlock();
     }
+  }
+
+  public Set<DynamicIterator> getIteratorSet() {
+    return iteratorSet.keySet();
   }
 
   public DynamicIterator iterateFromEarliest() {
@@ -146,15 +174,16 @@ public class ConcurrentIterableLinkedQueue<E> {
   // Temporarily, we do not use read lock because read lock in java does not
   // support condition. Besides, The pure park and un-park method is fairly slow,
   // thus we use Reentrant lock here.
-  public class DynamicIterator {
+  public class DynamicIterator implements Closeable {
 
     private LinkedListNode<E> next;
 
     // Offset is the position of the next element to read
     private int offset;
+    private volatile boolean isClosed = false;
 
-    DynamicIterator(int offset) {
-      lock.lock();
+    public DynamicIterator(int offset) {
+      lock.writeLock().lock();
       try {
         if (offset >= lastIndex) {
           next = last;
@@ -171,7 +200,7 @@ public class ConcurrentIterableLinkedQueue<E> {
         }
         this.offset = offset;
       } finally {
-        lock.unlock();
+        lock.writeLock().unlock();
       }
     }
 
@@ -197,10 +226,14 @@ public class ConcurrentIterableLinkedQueue<E> {
      *     <p>3. Null iff the current element is null or the next element's data is null.
      */
     public E next(long waitTimeMillis) {
-      lock.lock();
+      lock.writeLock().lock();
       try {
+        if (isClosed) {
+          return null;
+        }
+
         while (!hasNext()) {
-          if (!hasNext.await(waitTimeMillis, TimeUnit.MILLISECONDS)) {
+          if (!hasNext.await(waitTimeMillis, TimeUnit.MILLISECONDS) || isClosed) {
             return null;
           }
         }
@@ -210,22 +243,21 @@ public class ConcurrentIterableLinkedQueue<E> {
         return next.data;
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-      } catch (NullPointerException ignore) {
-        // NullPointerException means the "next" node is null, typically because the
-        // element is cleared. Though we don't except a linked queue to be cleared
-        // when there are subscriptions alive, still we simply return null to notify the subscriber.
       } finally {
-        lock.unlock();
+        lock.writeLock().unlock();
       }
       return null;
     }
 
     public boolean hasNext() {
-      lock.lock();
+      lock.readLock().lock();
       try {
+        if (isClosed) {
+          return false;
+        }
         return next.next != null;
       } finally {
-        lock.unlock();
+        lock.readLock().unlock();
       }
     }
 
@@ -238,8 +270,11 @@ public class ConcurrentIterableLinkedQueue<E> {
      * @return the actual new offset
      */
     public int seek(int newOffset) {
-      lock.lock();
+      lock.writeLock().lock();
       try {
+        if (isClosed) {
+          return -1;
+        }
         newOffset = Math.max(firstIndex, Math.min(lastIndex, newOffset));
         int oldOffset = offset;
         if (newOffset < oldOffset) {
@@ -255,17 +290,27 @@ public class ConcurrentIterableLinkedQueue<E> {
         }
         return offset;
       } finally {
-        lock.unlock();
+        lock.writeLock().unlock();
       }
     }
 
+    public boolean getIsClosed() {
+      return isClosed;
+    }
+
     public int getOffset() {
-      lock.lock();
+      lock.readLock().lock();
       try {
-        return offset;
+        return !isClosed ? offset : -1;
       } finally {
-        lock.unlock();
+        lock.readLock().unlock();
       }
+    }
+
+    @Override
+    public void close() {
+      isClosed = true;
+      iteratorSet.remove(this);
     }
   }
 }
