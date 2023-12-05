@@ -1388,6 +1388,13 @@ public class PartitionManager {
     partitionInfo.getDataRegionIds(databases, dataRegionIds);
   }
 
+  /**
+   * Get the {@link TConsensusGroupType} of the given integer regionId.
+   *
+   * @param regionId The specified integer regionId
+   * @return {@link Optional#of(Object tConsensusGroupType)} of the given integer regionId, or
+   *     {@link Optional#empty()} if the integer regionId does not match any of the regionGroups.
+   */
   public Optional<TConsensusGroupType> getRegionType(int regionId) {
     return partitionInfo.getRegionType(regionId);
   }

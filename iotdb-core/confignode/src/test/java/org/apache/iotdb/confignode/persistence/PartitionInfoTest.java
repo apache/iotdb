@@ -176,13 +176,9 @@ public class PartitionInfoTest {
     // Create a DataRegion
     createRegionGroupsPlan = new CreateRegionGroupsPlan();
     TConsensusGroupId dataRegionId =
-        generateTConsensusGroupId(
-            testFlag.SchemaPartition.getFlag(), TConsensusGroupType.DataRegion);
+        generateTConsensusGroupId(testFlag.DataPartition.getFlag(), TConsensusGroupType.DataRegion);
     TRegionReplicaSet dataRegionReplicaSet =
-        generateTRegionReplicaSet(
-            testFlag.DataPartition.getFlag(),
-            generateTConsensusGroupId(
-                testFlag.DataPartition.getFlag(), TConsensusGroupType.DataRegion));
+        generateTRegionReplicaSet(testFlag.DataPartition.getFlag(), dataRegionId);
     createRegionGroupsPlan.addRegionGroup("root.test", dataRegionReplicaSet);
     partitionInfo.createRegionGroups(createRegionGroupsPlan);
 
