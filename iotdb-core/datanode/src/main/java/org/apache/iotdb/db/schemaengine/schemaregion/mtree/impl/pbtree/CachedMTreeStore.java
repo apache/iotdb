@@ -342,7 +342,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     updateMNode(
         node,
         o -> {
-          IDeviceMNode<ICachedMNode> result = MNodeUtils.setToEntity(node, nodeFactory);
+          IDeviceMNode<ICachedMNode> result = MNodeUtils.setToEntity(node);
           resultReference.getAndSet(result);
         });
 
@@ -361,7 +361,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     updateMNode(
         entityMNode.getAsMNode(),
         o -> {
-          ICachedMNode result = MNodeUtils.setToInternal(entityMNode, nodeFactory);
+          ICachedMNode result = MNodeUtils.setToInternal(entityMNode);
           resultReference.getAndSet(result);
         });
 

@@ -23,12 +23,12 @@ import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.MNodeFactory;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.DeviceInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.impl.CachedAboveDatabaseMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.impl.CachedBasicInternalMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.impl.CachedDatabaseDeviceMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.impl.CachedDatabaseMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.impl.CachedDeviceMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.impl.CachedMeasurementMNode;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
@@ -43,7 +43,9 @@ public class CacheMNodeFactory implements IMNodeFactory<ICachedMNode> {
 
   @Override
   public IDeviceMNode<ICachedMNode> createDeviceMNode(ICachedMNode parent, String name) {
-    return new CachedDeviceMNode(parent, name);
+    CachedBasicInternalMNode internalMNode = new CachedBasicInternalMNode(parent, name);
+    internalMNode.setDeviceInfo(new DeviceInfo<>());
+    return internalMNode.getAsDeviceMNode();
   }
 
   @Override

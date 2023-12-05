@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.schema.node.common;
 
 import org.apache.iotdb.commons.path.PartialPath;
@@ -24,21 +25,22 @@ import org.apache.iotdb.commons.schema.node.MNodeType;
 import org.apache.iotdb.commons.schema.node.info.IDeviceInfo;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
+import org.apache.iotdb.commons.schema.node.role.IInternalMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
 
 import java.util.Map;
 
-public abstract class AbstractDeviceMNode<N extends IMNode<N>, BasicNode extends IMNode<N>>
+public class DeviceMNodeWrapper<N extends IMNode<N>, BasicNode extends IInternalMNode<N>>
     implements IDeviceMNode<N> {
 
   private final IDeviceInfo<N> deviceInfo;
   protected final BasicNode basicMNode;
 
-  public AbstractDeviceMNode(BasicNode basicMNode, IDeviceInfo<N> deviceInfo) {
+  public DeviceMNodeWrapper(BasicNode basicMNode) {
     this.basicMNode = basicMNode;
-    this.deviceInfo = deviceInfo;
+    this.deviceInfo = basicMNode.getDeviceInfo();
   }
 
   public BasicNode getBasicMNode() {
@@ -142,12 +144,22 @@ public abstract class AbstractDeviceMNode<N extends IMNode<N>, BasicNode extends
 
   @Override
   public boolean isAboveDatabase() {
-    return false;
+    return basicMNode.isAboveDatabase();
   }
 
   @Override
   public boolean isDatabase() {
-    return false;
+    return basicMNode.isDatabase();
+  }
+
+  @Override
+  public IDeviceInfo<N> getDeviceInfo() {
+    return deviceInfo;
+  }
+
+  @Override
+  public void setDeviceInfo(IDeviceInfo<N> deviceInfo) {
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -182,7 +194,7 @@ public abstract class AbstractDeviceMNode<N extends IMNode<N>, BasicNode extends
 
   @Override
   public <R, C> R accept(MNodeVisitor<R, C> visitor, C context) {
-    return visitor.visitDeviceMNode(this, context);
+    return visitor.visitBasicMNode(this, context);
   }
 
   @Override
@@ -285,5 +297,10 @@ public abstract class AbstractDeviceMNode<N extends IMNode<N>, BasicNode extends
   @Override
   public int estimateSize() {
     return 8 + 8 + deviceInfo.estimateSize() + basicMNode.estimateSize();
+  }
+
+  @Override
+  public N getAsMNode() {
+    return basicMNode.getAsMNode();
   }
 }

@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl;
 
+import org.apache.iotdb.commons.schema.node.info.IDeviceInfo;
+import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
+import org.apache.iotdb.commons.schema.node.role.IInternalMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.basic.BasicMNode;
@@ -28,7 +31,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.contai
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
  * Metadata Tree
  */
-public class BasicInternalMNode extends BasicMNode {
+public class BasicInternalMNode extends BasicMNode implements IInternalMNode<IMemMNode> {
 
   /**
    * Suppress warnings reason: volatile for double synchronized check.
@@ -37,6 +40,8 @@ public class BasicInternalMNode extends BasicMNode {
    */
   @SuppressWarnings("squid:S3077")
   private transient volatile IMNodeContainer<IMemMNode> children = null;
+
+  private IDeviceInfo<IMemMNode> deviceInfo = null;
 
   /** Constructor of MNode. */
   public BasicInternalMNode(IMemMNode parent, String name) {
@@ -178,5 +183,25 @@ public class BasicInternalMNode extends BasicMNode {
   @Override
   public IMemMNode getAsMNode() {
     return this;
+  }
+
+  @Override
+  public IDeviceInfo<IMemMNode> getDeviceInfo() {
+    return deviceInfo;
+  }
+
+  @Override
+  public void setDeviceInfo(IDeviceInfo<IMemMNode> deviceInfo) {
+    this.deviceInfo = deviceInfo;
+  }
+
+  @Override
+  public boolean isDevice() {
+    return deviceInfo != null;
+  }
+
+  @Override
+  public IDeviceMNode<IMemMNode> getAsDeviceMNode() {
+    return super.getAsDeviceMNode();
   }
 }

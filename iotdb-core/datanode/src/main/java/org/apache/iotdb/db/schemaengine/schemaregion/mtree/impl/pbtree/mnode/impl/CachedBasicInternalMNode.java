@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.impl;
 
+import org.apache.iotdb.commons.schema.node.info.IDeviceInfo;
+import org.apache.iotdb.commons.schema.node.role.IInternalMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.basic.CachedBasicMNode;
@@ -27,7 +29,8 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.con
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
  * Metadata Tree
  */
-public class CachedBasicInternalMNode extends CachedBasicMNode {
+public class CachedBasicInternalMNode extends CachedBasicMNode
+    implements IInternalMNode<ICachedMNode> {
 
   /**
    * suppress warnings reason: volatile for double synchronized check
@@ -36,6 +39,8 @@ public class CachedBasicInternalMNode extends CachedBasicMNode {
    */
   @SuppressWarnings("squid:S3077")
   private transient volatile IMNodeContainer<ICachedMNode> children = null;
+
+  private IDeviceInfo<ICachedMNode> deviceInfo = null;
 
   /** Constructor of MNode. */
   public CachedBasicInternalMNode(ICachedMNode parent, String name) {
@@ -187,5 +192,15 @@ public class CachedBasicInternalMNode extends CachedBasicMNode {
   @Override
   public ICachedMNode getAsMNode() {
     return this;
+  }
+
+  @Override
+  public IDeviceInfo<ICachedMNode> getDeviceInfo() {
+    return deviceInfo;
+  }
+
+  @Override
+  public void setDeviceInfo(IDeviceInfo<ICachedMNode> deviceInfo) {
+    this.deviceInfo = deviceInfo;
   }
 }

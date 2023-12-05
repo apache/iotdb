@@ -139,7 +139,7 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
 
   @Override
   public IDeviceMNode<IMemMNode> setToEntity(IMemMNode node) {
-    IDeviceMNode<IMemMNode> result = MNodeUtils.setToEntity(node, nodeFactory);
+    IDeviceMNode<IMemMNode> result = MNodeUtils.setToEntity(node);
     if (result != node) {
       regionStatistics.addDevice();
       requestMemory(result.estimateSize() - node.estimateSize());
@@ -153,7 +153,7 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
 
   @Override
   public IMemMNode setToInternal(IDeviceMNode<IMemMNode> entityMNode) {
-    IMemMNode result = MNodeUtils.setToInternal(entityMNode, nodeFactory);
+    IMemMNode result = MNodeUtils.setToInternal(entityMNode);
     if (result != entityMNode) {
       regionStatistics.deleteDevice();
       releaseMemory(entityMNode.estimateSize() - result.estimateSize());
