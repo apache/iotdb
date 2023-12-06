@@ -16,21 +16,40 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl;
 
-import org.apache.iotdb.commons.schema.node.common.AbstractDeviceMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.basic.BasicMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.DeviceInfo;
+package org.apache.iotdb.commons.schema.node.role;
 
-public class DeviceMNode extends AbstractDeviceMNode<IMemMNode, BasicMNode> implements IMemMNode {
+import org.apache.iotdb.commons.schema.node.IMNode;
+import org.apache.iotdb.commons.schema.node.common.DeviceMNodeWrapper;
+import org.apache.iotdb.commons.schema.node.info.IDeviceInfo;
 
-  public DeviceMNode(IMemMNode parent, String name) {
-    super(new BasicInternalMNode(parent, name), new DeviceInfo<>());
+public interface IInternalMNode<N extends IMNode<N>> extends IMNode<N> {
+
+  IDeviceInfo<N> getDeviceInfo();
+
+  void setDeviceInfo(IDeviceInfo<N> deviceInfo);
+
+  @Override
+  default boolean isDevice() {
+    return getDeviceInfo() != null;
   }
 
   @Override
-  public IMemMNode getAsMNode() {
+  default boolean isMeasurement() {
+    return false;
+  }
+
+  @Override
+  default IInternalMNode<N> getAsInternalMNode() {
     return this;
+  }
+
+  @Override
+  default IDeviceMNode<N> getAsDeviceMNode() {
+    if (isDevice()) {
+      return new DeviceMNodeWrapper<>(this);
+    } else {
+      throw new UnsupportedOperationException("Wrong node type");
+    }
   }
 }
