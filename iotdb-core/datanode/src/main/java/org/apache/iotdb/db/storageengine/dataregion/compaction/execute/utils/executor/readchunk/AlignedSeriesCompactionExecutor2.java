@@ -31,6 +31,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.LazyAlignedChunkWriterImpl;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
@@ -112,7 +113,7 @@ public class AlignedSeriesCompactionExecutor2 {
     this.targetPageSize = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
     this.targetPagePointNum =
         TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
-    this.rateLimiter = RateLimiter.create(1000000);
+    this.rateLimiter = CompactionTaskManager.getInstance().getProcessPointRateLimiter();
   }
 
   private List<IMeasurementSchema> collectValueColumnSchemaList(
@@ -225,6 +226,7 @@ public class AlignedSeriesCompactionExecutor2 {
       throws IOException {
     writer.markStartingWritingAligned();
     writer.writeChunk(timeChunk.getChunk(), timeChunk.getChunkMetadata());
+    int nonEmptyChunkNum = 1;
     for (int i = 0; i < valueChunks.size(); i++) {
       ChunkLoader valueChunk = valueChunks.get(i);
       if (valueChunk.isEmpty()) {
@@ -237,9 +239,11 @@ public class AlignedSeriesCompactionExecutor2 {
             Statistics.getStatsByType(schema.getType()));
         continue;
       }
+      nonEmptyChunkNum++;
       writer.writeChunk(valueChunk.getChunk(), valueChunk.getChunkMetadata());
       valueChunk.clear();
     }
+    summary.increaseDirectlyFlushChunkNum(nonEmptyChunkNum);
     writer.markEndingWritingAligned();
   }
 
@@ -247,17 +251,23 @@ public class AlignedSeriesCompactionExecutor2 {
       ChunkLoader timeChunk, List<ChunkLoader> valueChunks) throws PageException, IOException {
     List<PageLoader> timeColumnPageList = timeChunk.getPages();
     List<List<PageLoader>> pageListOfAllValueColumns = new ArrayList<>(valueChunks.size());
+    int nonEmptyChunkNum = 1;
     for (ChunkLoader valueChunk : valueChunks) {
+      if (!valueChunk.isEmpty()) {
+        nonEmptyChunkNum++;
+      }
       List<PageLoader> valueColumnPageList = valueChunk.getPages();
       pageListOfAllValueColumns.add(valueColumnPageList);
       valueChunk.clear();
     }
+    summary.increaseDeserializedChunkNum(nonEmptyChunkNum);
 
     for (int i = 0; i < timeColumnPageList.size(); i++) {
       PageLoader timePage = timeColumnPageList.get(i);
       List<PageLoader> valuePages = new ArrayList<>(valueChunks.size());
       for (List<PageLoader> pageListOfValueColumn : pageListOfAllValueColumns) {
-        valuePages.add(pageListOfValueColumn.isEmpty() ? getEmptyPage() : pageListOfValueColumn.get(i));
+        valuePages.add(
+            pageListOfValueColumn.isEmpty() ? getEmptyPage() : pageListOfValueColumn.get(i));
       }
 
       if (canSealCurrentPageWriter() && canFlushPage(timePage, valuePages)) {
@@ -281,6 +291,7 @@ public class AlignedSeriesCompactionExecutor2 {
     boolean largeEnough =
         timePage.getHeader().getUncompressedSize() > targetPageSize
             || timePage.getHeader().getStatistics().getCount() > targetPagePointNum;
+
     for (int i = 0; i < valuePages.size(); i++) {
       PageLoader valuePage = valuePages.get(i);
       if (valuePage.isEmpty()) {
@@ -303,11 +314,16 @@ public class AlignedSeriesCompactionExecutor2 {
 
   private void compactAlignedPageByFlush(PageLoader timePage, List<PageLoader> valuePageLoaders)
       throws PageException, IOException {
+    int nonEmptyPage = 1;
     timePage.flushToTimeChunkWriter(chunkWriter);
     for (int i = 0; i < valuePageLoaders.size(); i++) {
       PageLoader valuePage = valuePageLoaders.get(i);
+      if (!valuePage.isEmpty()) {
+        nonEmptyPage++;
+      }
       valuePage.flushToValueChunkWriter(chunkWriter, i);
     }
+    summary.increaseDirectlyFlushPageNum(nonEmptyPage);
   }
 
   private void compactAlignedPageByDeserialize(PageLoader timePage, List<PageLoader> valuePages)
@@ -322,6 +338,7 @@ public class AlignedSeriesCompactionExecutor2 {
     List<TSDataType> valueDataTypes = new ArrayList<>(valuePages.size());
     List<Decoder> valueDecoders = new ArrayList<>(valuePages.size());
     List<List<TimeRange>> deleteIntervalLists = new ArrayList<>(valuePages.size());
+    int nonEmptyPageNum = 1;
     for (int i = 0; i < valuePages.size(); i++) {
       PageLoader valuePage = valuePages.get(i);
       if (valuePage.isEmpty()) {
@@ -340,8 +357,10 @@ public class AlignedSeriesCompactionExecutor2 {
             Decoder.getDecoderByType(valuePage.getEncoding(), valuePage.getDataType()));
         deleteIntervalLists.add(valuePage.getDeleteIntervalList());
         valuePage.clear();
+        nonEmptyPageNum++;
       }
     }
+    summary.increaseDeserializedPageNum(nonEmptyPageNum);
 
     AlignedPageReader alignedPageReader =
         new AlignedPageReader(
@@ -355,13 +374,13 @@ public class AlignedSeriesCompactionExecutor2 {
             null,
             true);
     alignedPageReader.setDeleteIntervalList(deleteIntervalLists);
-    int count = 0;
+    int processedPointNum = 0;
     if (saveMemory) {
       IPointReader lazyPointReader = alignedPageReader.getLazyPointReader();
       while (lazyPointReader.hasNextTimeValuePair()) {
         TimeValuePair timeValuePair = lazyPointReader.nextTimeValuePair();
         chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getVector());
-        count++;
+        processedPointNum++;
       }
     } else {
       BatchData batchData = alignedPageReader.getAllSatisfiedPageData();
@@ -369,8 +388,9 @@ public class AlignedSeriesCompactionExecutor2 {
         chunkWriter.write(batchData.currentTime(), (TsPrimitiveType[]) batchData.currentValue());
         batchData.next();
       }
-      count = batchData.length();
+      processedPointNum = batchData.length();
     }
-    rateLimiter.acquire(count);
+    summary.increaseProcessPointNum(processedPointNum);
+    rateLimiter.acquire(processedPointNum);
   }
 }

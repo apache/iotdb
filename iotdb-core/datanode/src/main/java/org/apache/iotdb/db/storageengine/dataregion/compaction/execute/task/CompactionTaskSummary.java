@@ -92,6 +92,10 @@ public class CompactionTaskSummary {
     directlyFlushPageCount += increment;
   }
 
+  public void increaseDeserializedPageNum(int increment) {
+    deserializePageCount += increment;
+  }
+
   public void increaseProcessPointNum(long increment) {
     processPointNum += increment;
   }
@@ -112,6 +116,10 @@ public class CompactionTaskSummary {
     this.directlyFlushPageCount = directlyFlushPageCount;
   }
 
+  public void setDeserializePageCount(int deserializePageCount) {
+    this.deserializePageCount = deserializePageCount;
+  }
+
   public void setProcessPointNum(int processPointNum) {
     this.processPointNum = processPointNum;
   }
@@ -130,6 +138,10 @@ public class CompactionTaskSummary {
 
   public int getDirectlyFlushPageCount() {
     return directlyFlushPageCount;
+  }
+
+  public int getDeserializePageCount() {
+    return deserializePageCount;
   }
 
   public int getMergedChunkNum() {

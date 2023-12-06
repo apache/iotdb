@@ -44,8 +44,7 @@ public class InstantPageLoader implements PageLoader {
   private List<TimeRange> deleteIntervalList;
   private ModifiedStatus modifiedStatus;
 
-  public InstantPageLoader() {
-  }
+  public InstantPageLoader() {}
 
   public InstantPageLoader(
       PageHeader pageHeader,

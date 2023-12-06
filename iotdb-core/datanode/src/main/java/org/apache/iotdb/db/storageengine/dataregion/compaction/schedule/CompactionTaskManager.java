@@ -83,6 +83,7 @@ public class CompactionTaskManager implements IService {
   private final AtomicInteger finishedTaskNum = new AtomicInteger(0);
 
   private final RateLimiter mergeWriteRateLimiter = RateLimiter.create(Double.MAX_VALUE);
+  private final RateLimiter processPointRateLimiter = RateLimiter.create(Double.MAX_VALUE);
 
   private volatile boolean init = false;
 
@@ -246,6 +247,11 @@ public class CompactionTaskManager implements IService {
     return mergeWriteRateLimiter;
   }
 
+  public RateLimiter getProcessPointRateLimiter() {
+    setProcessPointRate();
+    return processPointRateLimiter;
+  }
+
   private void setWriteMergeRate(final double throughoutMbPerSec) {
     double throughout = throughoutMbPerSec * 1024.0 * 1024.0;
     // if throughout = 0, disable rate limiting
@@ -254,6 +260,13 @@ public class CompactionTaskManager implements IService {
     }
     if (mergeWriteRateLimiter.getRate() != throughout) {
       mergeWriteRateLimiter.setRate(throughout);
+    }
+  }
+
+  private void setProcessPointRate(final double processPointPerSec) {
+    double rate = processPointPerSec <= 0 ? Double.MAX_VALUE : processPointPerSec;
+    if (processPointRateLimiter.getRate() != rate) {
+      processPointRateLimiter.setRate(rate);
     }
   }
 
