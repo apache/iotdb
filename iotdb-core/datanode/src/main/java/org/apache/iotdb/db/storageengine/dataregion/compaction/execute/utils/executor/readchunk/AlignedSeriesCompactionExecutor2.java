@@ -60,7 +60,10 @@ import com.google.common.util.concurrent.RateLimiter;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -76,7 +79,8 @@ public class AlignedSeriesCompactionExecutor2 {
 
   protected final AlignedChunkWriterImpl chunkWriter;
   protected final Map<String, MeasurementSchema> schemaMap;
-  protected final List<IMeasurementSchema> schemaList;
+  protected List<IMeasurementSchema> schemaList;
+  protected Map<String, Integer> measurementSchemaListIndexMap;
   protected final CompactionTaskSummary summary;
   protected final RateLimiter rateLimiter;
 
@@ -101,7 +105,7 @@ public class AlignedSeriesCompactionExecutor2 {
     this.targetResource = targetResource;
     this.schemaMap = schemaMap;
     this.summary = summary;
-    this.schemaList = collectValueColumnSchemaList(schemaMap);
+    collectValueColumnSchemaList(schemaMap);
     this.saveMemory = saveMemory;
     if (saveMemory) {
       this.chunkWriter = new LazyAlignedChunkWriterImpl(schemaList);
@@ -116,12 +120,16 @@ public class AlignedSeriesCompactionExecutor2 {
     this.rateLimiter = CompactionTaskManager.getInstance().getProcessPointRateLimiter();
   }
 
-  private List<IMeasurementSchema> collectValueColumnSchemaList(
-      Map<String, MeasurementSchema> schemaMap) throws IOException {
-    return schemaMap.values().stream()
-        .filter(schema -> !"".equals(schema.getMeasurementId()))
-        .sorted(Comparator.comparing(IMeasurementSchema::getMeasurementId))
-        .collect(Collectors.toList());
+  private void collectValueColumnSchemaList(Map<String, MeasurementSchema> schemaMap) {
+    this.schemaList =
+        schemaMap.values().stream()
+            .filter(schema -> !"".equals(schema.getMeasurementId()))
+            .sorted(Comparator.comparing(IMeasurementSchema::getMeasurementId))
+            .collect(Collectors.toList());
+    this.measurementSchemaListIndexMap = new HashMap<>();
+    for (int i = 0; i < schemaList.size(); i++) {
+      this.measurementSchemaListIndexMap.put(schemaList.get(i).getMeasurementId(), i);
+    }
   }
 
   public void execute() throws IOException {
@@ -157,12 +165,15 @@ public class AlignedSeriesCompactionExecutor2 {
       throws IOException, PageException {
     ChunkLoader timeChunk =
         getChunkLoader(reader, (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata());
-    List<ChunkLoader> valueChunks =
-        new ArrayList<>(alignedChunkMetadata.getValueChunkMetadataList().size());
+    List<ChunkLoader> valueChunks = Arrays.asList(new ChunkLoader[schemaList.size()]);
+    Collections.fill(valueChunks, getChunkLoader(reader, null));
     for (IChunkMetadata chunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
-      ChunkLoader valueChunk =
-          getChunkLoader(reader, chunkMetadata == null ? null : (ChunkMetadata) chunkMetadata);
-      valueChunks.add(valueChunk);
+      if (chunkMetadata == null) {
+        continue;
+      }
+      ChunkLoader valueChunk = getChunkLoader(reader, (ChunkMetadata) chunkMetadata);
+      int idx = measurementSchemaListIndexMap.get(chunkMetadata.getMeasurementUid());
+      valueChunks.set(idx, valueChunk);
     }
     if (canFlushCurrentChunkWriter() && canFlushChunk(timeChunk, valueChunks)) {
       flushCurrentChunkWriter();
@@ -375,7 +386,7 @@ public class AlignedSeriesCompactionExecutor2 {
             true);
     alignedPageReader.setDeleteIntervalList(deleteIntervalLists);
     int processedPointNum = 0;
-    if (saveMemory) {
+    if (true) {
       IPointReader lazyPointReader = alignedPageReader.getLazyPointReader();
       while (lazyPointReader.hasNextTimeValuePair()) {
         TimeValuePair timeValuePair = lazyPointReader.nextTimeValuePair();

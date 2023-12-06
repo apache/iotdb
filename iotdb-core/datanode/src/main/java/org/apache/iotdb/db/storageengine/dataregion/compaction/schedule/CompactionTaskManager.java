@@ -248,7 +248,8 @@ public class CompactionTaskManager implements IService {
   }
 
   public RateLimiter getProcessPointRateLimiter() {
-    setProcessPointRate();
+    setProcessPointRate(
+        IoTDBDescriptor.getInstance().getConfig().getCompactionProcessPointNumPerSec());
     return processPointRateLimiter;
   }
 

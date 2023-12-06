@@ -35,11 +35,20 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
+import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -360,6 +369,34 @@ public class ReadChunkCompactionPerformerAlignedTest {
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
+    try (TsFileSequenceReader reader =
+        new TsFileSequenceReader(targetResource.getTsFile().getAbsolutePath())) {
+      TsFileDeviceIterator allDevicesIteratorWithIsAligned =
+          reader.getAllDevicesIteratorWithIsAligned();
+      while (allDevicesIteratorWithIsAligned.hasNext()) {
+        Pair<String, Boolean> next = allDevicesIteratorWithIsAligned.next();
+        List<AlignedChunkMetadata> chunkMetadataList = reader.getAlignedChunkMetadata(next.left);
+        for (AlignedChunkMetadata alignedChunkMetadata : chunkMetadataList) {
+          IChunkMetadata timeChunkMetadata = alignedChunkMetadata.getTimeChunkMetadata();
+          Chunk timeChunk = reader.readMemChunk((ChunkMetadata) timeChunkMetadata);
+          List<IChunkMetadata> valueChunkMetadataList =
+              alignedChunkMetadata.getValueChunkMetadataList();
+          List<Chunk> valueChunks = new ArrayList<>();
+          for (IChunkMetadata chunkMetadata : valueChunkMetadataList) {
+            valueChunks.add(reader.readMemChunk((ChunkMetadata) chunkMetadata));
+          }
+          AlignedChunkReader alignedChunkReader =
+              new AlignedChunkReader(timeChunk, valueChunks, null, true);
+          while (alignedChunkReader.hasNextSatisfiedPage()) {
+            BatchData batchData = alignedChunkReader.nextPageData();
+            while (batchData.hasCurrent()) {
+              batchData.next();
+            }
+          }
+        }
+      }
+    }
+    TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
     CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
