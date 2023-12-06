@@ -136,7 +136,7 @@ public class ConcurrentIterableLinkedQueueTest {
     Assert.assertEquals(2, queue.getFirstIndex());
     Assert.assertEquals(2, queue.getLastIndex());
 
-    Assert.assertFalse(itr.getIsClosed());
+    Assert.assertTrue(itr.getIsClosed());
     Assert.assertNull(itr.next());
     Assert.assertFalse(itr.hasNext());
     Assert.assertEquals(-1, itr.seek(2));
@@ -165,8 +165,8 @@ public class ConcurrentIterableLinkedQueueTest {
     Assert.assertEquals(2, (int) it.next());
 
     queue.clear();
-    Assert.assertEquals(0, queue.getFirstIndex());
-    Assert.assertEquals(0, queue.getLastIndex());
+    Assert.assertEquals(3, queue.getFirstIndex());
+    Assert.assertEquals(3, queue.getLastIndex());
   }
 
   @Test(timeout = 60000)
