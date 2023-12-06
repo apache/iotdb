@@ -115,8 +115,10 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                     new PipeTaskMeta(MinimumProgressIndex.INSTANCE, regionLeaderNodeId));
               }
             });
+    // Though the configRegion's id is 0, here we still use Integer.MIN_VALUE to tell from
+    // SchemaRegion and DataRegion's Ids since their ids start from 0 together.
     consensusGroupIdToTaskMetaMap.put(
-        new TConsensusGroupId(TConsensusGroupType.ConfigRegion, 0),
+        new TConsensusGroupId(TConsensusGroupType.ConfigRegion, Integer.MIN_VALUE),
         new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 0));
     pipeRuntimeMeta = new PipeRuntimeMeta(consensusGroupIdToTaskMetaMap);
   }

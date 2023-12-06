@@ -54,7 +54,6 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.CreatePipePluginPr
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.DropPipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleLeaderChangeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleMetaChangeProcedure;
-import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeMetaSyncProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.CreatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.DropPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.StartPipeProcedureV2;
@@ -846,23 +845,6 @@ public class ProcedureManager {
           executor.submitProcedure(
               new PipeHandleMetaChangeProcedure(
                   needWriteConsensusOnConfigNodes, needPushPipeMetaToDataNodes));
-      final List<TSStatus> statusList = new ArrayList<>();
-      final boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return RpcUtils.SUCCESS_STATUS;
-      } else {
-        return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(statusList.get(0).getMessage());
-      }
-    } catch (Exception e) {
-      return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
-    }
-  }
-
-  public TSStatus pipeMetaSync() {
-    try {
-      final long procedureId = executor.submitProcedure(new PipeMetaSyncProcedure());
       final List<TSStatus> statusList = new ArrayList<>();
       final boolean isSucceed =
           waitingProcedureFinished(Collections.singletonList(procedureId), statusList);

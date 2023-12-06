@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.consensus.index.impl.HybridProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.SchemaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
@@ -49,18 +50,18 @@ public class PipeMetaDeSerTest {
         new PipeStaticMeta(
             "pipeName",
             123L,
-            new HashMap() {
+            new HashMap<String, String>() {
               {
                 put("extractor-key", "extractor-value");
               }
             },
-            new HashMap() {
+            new HashMap<String, String>() {
               {
                 put("processor-key-1", "processor-value-1");
                 put("processor-key-2", "processor-value-2");
               }
             },
-            new HashMap() {});
+            new HashMap<String, String>() {});
     ByteBuffer staticByteBuffer = pipeStaticMeta.serialize();
     PipeStaticMeta pipeStaticMeta1 = PipeStaticMeta.deserialize(staticByteBuffer);
     Assert.assertEquals(pipeStaticMeta, pipeStaticMeta1);
@@ -72,8 +73,14 @@ public class PipeMetaDeSerTest {
 
     PipeRuntimeMeta pipeRuntimeMeta =
         new PipeRuntimeMeta(
-            new HashMap() {
+            new HashMap<TConsensusGroupId, PipeTaskMeta>() {
               {
+                put(
+                    new TConsensusGroupId(TConsensusGroupType.ConfigRegion, Integer.MIN_VALUE),
+                    new PipeTaskMeta(new SchemaProgressIndex(333), 987));
+                put(
+                    new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 321),
+                    new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 987));
                 put(
                     new TConsensusGroupId(TConsensusGroupType.DataRegion, 123),
                     new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 987));
