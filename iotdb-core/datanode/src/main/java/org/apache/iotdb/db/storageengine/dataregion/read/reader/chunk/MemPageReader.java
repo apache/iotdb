@@ -30,7 +30,6 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -48,13 +47,15 @@ public class MemPageReader implements IPageReader {
   private final TsBlock tsBlock;
   private final IChunkMetadata chunkMetadata;
 
-  private Filter valueFilter;
+  private final Filter globalTimeFilter;
+  private Filter pushDownFilter;
+
   private PaginationController paginationController = UNLIMITED_PAGINATION_CONTROLLER;
 
-  public MemPageReader(TsBlock tsBlock, IChunkMetadata chunkMetadata, Filter filter) {
+  public MemPageReader(TsBlock tsBlock, IChunkMetadata chunkMetadata, Filter globalTimeFilter) {
     this.tsBlock = tsBlock;
     this.chunkMetadata = chunkMetadata;
-    this.valueFilter = filter;
+    this.globalTimeFilter = globalTimeFilter;
   }
 
   @Override
@@ -62,8 +63,8 @@ public class MemPageReader implements IPageReader {
     TSDataType dataType = chunkMetadata.getDataType();
     BatchData batchData = BatchDataFactory.createBatchData(dataType, ascending, false);
     for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-      if (valueFilter == null
-          || valueFilter.satisfy(
+      if (globalTimeFilter == null
+          || globalTimeFilter.satisfy(
               tsBlock.getTimeColumn().getLong(i), tsBlock.getColumn(0).getObject(i))) {
         switch (dataType) {
           case BOOLEAN:
@@ -97,17 +98,7 @@ public class MemPageReader implements IPageReader {
   }
 
   private boolean pageCanSkip() {
-    if (valueFilter == null || valueFilter.allSatisfy(this)) {
-      long rowCount = getStatistics().getCount();
-      if (paginationController.hasCurOffset(rowCount)) {
-        paginationController.consumeOffset(rowCount);
-        return true;
-      } else {
-        return false;
-      }
-    } else {
-      return valueFilter.canSkip(this);
-    }
+    return globalTimeFilter != null && globalTimeFilter.canSkip(this);
   }
 
   @Override
@@ -163,7 +154,10 @@ public class MemPageReader implements IPageReader {
   }
 
   private boolean needCurrentBooleanRow(long time, boolean value) {
-    if (valueFilter != null && !valueFilter.satisfy(time, value)) {
+    if (globalTimeFilter != null && !globalTimeFilter.satisfy(time, value)) {
+      return false;
+    }
+    if (pushDownFilter != null && !pushDownFilter.satisfy(time, value)) {
       return false;
     }
     if (paginationController.hasCurOffset()) {
@@ -193,7 +187,10 @@ public class MemPageReader implements IPageReader {
   }
 
   private boolean needCurrentInt32Row(long time, int value) {
-    if (valueFilter != null && !valueFilter.satisfy(time, value)) {
+    if (globalTimeFilter != null && !globalTimeFilter.satisfy(time, value)) {
+      return false;
+    }
+    if (pushDownFilter != null && !pushDownFilter.satisfy(time, value)) {
       return false;
     }
     if (paginationController.hasCurOffset()) {
@@ -223,7 +220,10 @@ public class MemPageReader implements IPageReader {
   }
 
   private boolean needCurrentInt64Row(long time, long value) {
-    if (valueFilter != null && !valueFilter.satisfy(time, value)) {
+    if (globalTimeFilter != null && !globalTimeFilter.satisfy(time, value)) {
+      return false;
+    }
+    if (pushDownFilter != null && !pushDownFilter.satisfy(time, value)) {
       return false;
     }
     if (paginationController.hasCurOffset()) {
@@ -253,7 +253,10 @@ public class MemPageReader implements IPageReader {
   }
 
   private boolean needCurrentFloatRow(long time, float value) {
-    if (valueFilter != null && !valueFilter.satisfy(time, value)) {
+    if (globalTimeFilter != null && !globalTimeFilter.satisfy(time, value)) {
+      return false;
+    }
+    if (pushDownFilter != null && !pushDownFilter.satisfy(time, value)) {
       return false;
     }
     if (paginationController.hasCurOffset()) {
@@ -283,7 +286,10 @@ public class MemPageReader implements IPageReader {
   }
 
   private boolean needCurrentDoubleRow(long time, double value) {
-    if (valueFilter != null && !valueFilter.satisfy(time, value)) {
+    if (globalTimeFilter != null && !globalTimeFilter.satisfy(time, value)) {
+      return false;
+    }
+    if (pushDownFilter != null && !pushDownFilter.satisfy(time, value)) {
       return false;
     }
     if (paginationController.hasCurOffset()) {
@@ -313,7 +319,10 @@ public class MemPageReader implements IPageReader {
   }
 
   private boolean needCurrentTextRow(long time, Binary value) {
-    if (valueFilter != null && !valueFilter.satisfy(time, value)) {
+    if (globalTimeFilter != null && !globalTimeFilter.satisfy(time, value)) {
+      return false;
+    }
+    if (pushDownFilter != null && !pushDownFilter.satisfy(time, value)) {
       return false;
     }
     if (paginationController.hasCurOffset()) {
@@ -346,11 +355,7 @@ public class MemPageReader implements IPageReader {
 
   @Override
   public void setFilter(Filter filter) {
-    if (valueFilter == null) {
-      this.valueFilter = filter;
-    } else {
-      valueFilter = FilterFactory.and(this.valueFilter, filter);
-    }
+    this.pushDownFilter = filter;
   }
 
   @Override

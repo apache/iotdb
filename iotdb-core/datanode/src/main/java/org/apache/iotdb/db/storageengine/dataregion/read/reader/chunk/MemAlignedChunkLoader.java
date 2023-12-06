@@ -61,10 +61,10 @@ public class MemAlignedChunkLoader implements IChunkLoader {
   }
 
   @Override
-  public IChunkReader getChunkReader(IChunkMetadata chunkMetaData, Filter timeFilter) {
+  public IChunkReader getChunkReader(IChunkMetadata chunkMetaData, Filter globalTimeFilter) {
     long startTime = System.nanoTime();
     try {
-      return new MemAlignedChunkReader(chunk, timeFilter, queryAllSensors);
+      return new MemAlignedChunkReader(chunk, globalTimeFilter, queryAllSensors);
     } finally {
       long duration = System.nanoTime() - startTime;
       SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(

@@ -58,7 +58,7 @@ public class AlignedChunkReader implements IChunkReader {
       Decoder.getDecoderByType(
           TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
           TSDataType.INT64);
-  private long currentTimestamp;
+  private final long currentTimestamp;
 
   protected Filter filter;
 

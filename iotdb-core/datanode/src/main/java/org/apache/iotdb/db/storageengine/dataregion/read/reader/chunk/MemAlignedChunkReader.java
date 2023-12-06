@@ -36,14 +36,14 @@ public class MemAlignedChunkReader implements IChunkReader {
   private final List<IPageReader> pageReaderList;
 
   public MemAlignedChunkReader(
-      AlignedReadOnlyMemChunk readableChunk, Filter filter, boolean queryAllSensors) {
+      AlignedReadOnlyMemChunk readableChunk, Filter globalTimeFilter, boolean queryAllSensors) {
     // we treat one ReadOnlyMemChunk as one Page
     this.pageReaderList =
         Collections.singletonList(
             new MemAlignedPageReader(
                 readableChunk.getTsBlock(),
                 (AlignedChunkMetadata) readableChunk.getChunkMetaData(),
-                filter,
+                globalTimeFilter,
                 queryAllSensors));
   }
 

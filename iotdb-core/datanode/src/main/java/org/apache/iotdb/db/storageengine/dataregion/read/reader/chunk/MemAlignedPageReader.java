@@ -51,16 +51,20 @@ public class MemAlignedPageReader implements IPageReader {
   // it's only exact while using limit & offset push down
   private final boolean queryAllSensors;
 
-  private Filter valueFilter;
+  private Filter globalTimeFilter;
+  private Filter pushDownFilter;
   private PaginationController paginationController = UNLIMITED_PAGINATION_CONTROLLER;
 
   private TsBlockBuilder builder;
 
   public MemAlignedPageReader(
-      TsBlock tsBlock, AlignedChunkMetadata chunkMetadata, Filter filter, boolean queryAllSensors) {
+      TsBlock tsBlock,
+      AlignedChunkMetadata chunkMetadata,
+      Filter globalTimeFilter,
+      boolean queryAllSensors) {
     this.tsBlock = tsBlock;
     this.chunkMetadata = chunkMetadata;
-    this.valueFilter = filter;
+    this.globalTimeFilter = globalTimeFilter;
     this.queryAllSensors = queryAllSensors;
   }
 
@@ -94,7 +98,8 @@ public class MemAlignedPageReader implements IPageReader {
   }
 
   private void doFilter(Object row, int rowIndex, BatchData batchData) {
-    if (valueFilter == null || valueFilter.satisfy(tsBlock.getTimeByIndex(rowIndex), row)) {
+    if (globalTimeFilter == null
+        || globalTimeFilter.satisfy(tsBlock.getTimeByIndex(rowIndex), row)) {
       TsPrimitiveType[] values = new TsPrimitiveType[tsBlock.getValueColumnCount()];
       for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
         if (tsBlock.getColumn(column) != null && !tsBlock.getColumn(column).isNull(rowIndex)) {
@@ -106,32 +111,7 @@ public class MemAlignedPageReader implements IPageReader {
   }
 
   private boolean pageCanSkip() {
-    if (valueFilter != null && !valueFilter.allSatisfy(this)) {
-      return valueFilter.canSkip(this);
-    }
-
-    if (!canSkipOffsetByStatistics()) {
-      return false;
-    }
-
-    long rowCount = getTimeStatistics().getCount();
-    if (paginationController.hasCurOffset(rowCount)) {
-      paginationController.consumeOffset(rowCount);
-      return true;
-    } else {
-      return false;
-    }
-  }
-
-  private boolean canSkipOffsetByStatistics() {
-    if (queryAllSensors || chunkMetadata.getMeasurementCount() == 0) {
-      return true;
-    }
-
-    // For aligned series, we can use statistics to skip OFFSET only when all times are selected.
-    // NOTE: if we change the query semantic in the future for aligned series, we need to remove
-    // this check here.
-    return chunkMetadata.timeAllSelected();
+    return globalTimeFilter != null && globalTimeFilter.canSkip(this);
   }
 
   @Override
@@ -158,8 +138,14 @@ public class MemAlignedPageReader implements IPageReader {
     boolean[] satisfyInfo = new boolean[tsBlock.getPositionCount()];
     for (int row = 0; row < tsBlock.getPositionCount(); row++) {
       long time = tsBlock.getTimeByIndex(row);
-      // ValueFilter in MPP will only contain time filter now.
-      if ((valueFilter == null || valueFilter.satisfy(time, null))) {
+      Object[] values = new Object[tsBlock.getValueColumnCount()];
+      for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
+        if (!tsBlock.getColumn(column).isNull(row)) {
+          values[column] = tsBlock.getColumn(column).getObject(row);
+        }
+      }
+      if ((globalTimeFilter == null || globalTimeFilter.satisfy(time, null))
+          && (pushDownFilter == null || pushDownFilter.satisfy(time, values))) {
         satisfyInfo[row] = true;
       }
     }
@@ -248,10 +234,10 @@ public class MemAlignedPageReader implements IPageReader {
 
   @Override
   public void setFilter(Filter filter) {
-    if (valueFilter == null) {
-      this.valueFilter = filter;
+    if (globalTimeFilter == null) {
+      this.globalTimeFilter = filter;
     } else {
-      valueFilter = FilterFactory.and(this.valueFilter, filter);
+      globalTimeFilter = FilterFactory.and(this.globalTimeFilter, filter);
     }
   }
 

@@ -29,7 +29,6 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
@@ -56,7 +55,8 @@ public class AlignedPageReader implements IPageReader {
   // it's only exact while using limit & offset push down
   private final boolean queryAllSensors;
 
-  private Filter filter;
+  private final Filter globalTimeFilter;
+  private Filter pushDownFilter;
   private PaginationController paginationController = UNLIMITED_PAGINATION_CONTROLLER;
 
   private boolean isModified;
@@ -73,7 +73,7 @@ public class AlignedPageReader implements IPageReader {
       List<ByteBuffer> valuePageDataList,
       List<TSDataType> valueDataTypeList,
       List<Decoder> valueDecoderList,
-      Filter filter,
+      Filter globalTimeFilter,
       boolean queryAllSensors) {
     timePageReader = new TimePageReader(timePageHeader, timePageData, timeDecoder);
     isModified = timePageReader.isModified();
@@ -92,7 +92,7 @@ public class AlignedPageReader implements IPageReader {
         valuePageReaderList.add(null);
       }
     }
-    this.filter = filter;
+    this.globalTimeFilter = globalTimeFilter;
     this.valueCount = valuePageReaderList.size();
     this.queryAllSensors = queryAllSensors;
   }
@@ -118,7 +118,8 @@ public class AlignedPageReader implements IPageReader {
       }
       // Currently, if it's a value filter, it will only accept AlignedPath with only one sub
       // sensor
-      if (!isNull && (filter == null || filter.satisfy(timestamp, notNullObject))) {
+      if (!isNull
+          && (globalTimeFilter == null || globalTimeFilter.satisfy(timestamp, notNullObject))) {
         pageData.putVector(timestamp, v);
       }
     }
@@ -126,32 +127,7 @@ public class AlignedPageReader implements IPageReader {
   }
 
   private boolean pageCanSkip() {
-    if (filter != null && !filter.allSatisfy(this)) {
-      return filter.canSkip(this);
-    }
-
-    if (!canSkipOffsetByStatistics()) {
-      return false;
-    }
-
-    long rowCount = getTimeStatistics().getCount();
-    if (paginationController.hasCurOffset(rowCount)) {
-      paginationController.consumeOffset(rowCount);
-      return true;
-    } else {
-      return false;
-    }
-  }
-
-  private boolean canSkipOffsetByStatistics() {
-    if (queryAllSensors || valueCount == 0) {
-      return true;
-    }
-
-    // For aligned series, we can use statistics to skip OFFSET only when all times are selected.
-    // NOTE: if we change the query semantic in the future for aligned series, we need to remove
-    // this check here.
-    return timeAllSelected();
+    return globalTimeFilter != null && globalTimeFilter.canSkip(this);
   }
 
   @Override
@@ -202,7 +178,7 @@ public class AlignedPageReader implements IPageReader {
 
     if (canGoFastWay()) {
       // all page data satisfy
-      if (filter == null || filter.allSatisfy(this)) {
+      if (globalTimeFilter == null || globalTimeFilter.allSatisfy(this)) {
         // skip all the page
         if (paginationController.hasCurOffset(timeBatch.length)) {
           paginationController.consumeOffset(timeBatch.length);
@@ -244,12 +220,8 @@ public class AlignedPageReader implements IPageReader {
         // if all the sub sensors' value are null in current row, just discard it
         // if !filter.satisfy, discard this row
         boolean[] keepCurrentRow = new boolean[timeBatch.length];
-        if (filter == null) {
-          Arrays.fill(keepCurrentRow, true);
-        } else {
-          for (int i = 0, n = timeBatch.length; i < n; i++) {
-            keepCurrentRow[i] = filter.satisfy(timeBatch[i], null);
-          }
+        for (int i = 0, n = timeBatch.length; i < n; i++) {
+          keepCurrentRow[i] = globalTimeFilter.satisfy(timeBatch[i], null);
         }
 
         // construct time column
@@ -290,11 +262,11 @@ public class AlignedPageReader implements IPageReader {
       // if all the sub sensors' value are null in current row, just discard it
       // if !filter.satisfy, discard this row
       boolean[] keepCurrentRow = new boolean[timeBatch.length];
-      if (filter == null) {
+      if (globalTimeFilter == null) {
         Arrays.fill(keepCurrentRow, true);
       } else {
         for (int i = 0, n = timeBatch.length; i < n; i++) {
-          keepCurrentRow[i] = filter.satisfy(timeBatch[i], null);
+          keepCurrentRow[i] = globalTimeFilter.satisfy(timeBatch[i], null);
         }
       }
 
@@ -372,6 +344,25 @@ public class AlignedPageReader implements IPageReader {
         }
       }
     }
+
+    if (pushDownFilter == null) {
+      return builder.build();
+    }
+
+    TsBlock unFilteredBlock = builder.build();
+    Object[] values = new Object[valueCount];
+    for (int i = 0, size = unFilteredBlock.getPositionCount(); i < size; i++) {
+      long time = unFilteredBlock.getTimeByIndex(i);
+      for (int j = 0; j < valueCount; j++) {
+        values[j] = unFilteredBlock.getValueColumns()[j].getObject(i);
+      }
+      if (pushDownFilter.satisfy(time, values)) {
+        builder.getTimeColumnBuilder().writeLong(time);
+        for (int j = 0; j < valueCount; j++) {
+          builder.getColumnBuilder(j).writeObject(values[j]);
+        }
+      }
+    }
     return builder.build();
   }
 
@@ -420,11 +411,7 @@ public class AlignedPageReader implements IPageReader {
 
   @Override
   public void setFilter(Filter filter) {
-    if (this.filter == null) {
-      this.filter = filter;
-    } else {
-      this.filter = FilterFactory.and(this.filter, filter);
-    }
+    this.pushDownFilter = filter;
   }
 
   @Override

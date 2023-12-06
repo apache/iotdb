@@ -42,6 +42,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.page.AlignedPageReader;
@@ -440,13 +441,19 @@ public class SeriesScanUtil {
       hasCachedNextOverlappedPage = false;
       TsBlock res = cachedTsBlock;
       cachedTsBlock = null;
+
+      // cached tsblock has handled by pagination controller & push down filter, return directly
       return res;
     } else {
-      // next page is not overlapped, push down value filter & limit offset
-      Filter queryFilter = scanOptions.getPushDownFilter();
-      if (queryFilter != null) {
-        firstPageReader.setFilter(queryFilter);
+      // next page is not overlapped, push down filter & limit offset
+      filterFirstPageReader();
+      if (firstPageReader == null) {
+        return null;
       }
+
+      Filter recordFilter =
+          FilterFactory.and(scanOptions.getGlobalTimeFilter(), scanOptions.getPushDownFilter());
+      firstPageReader.setRecordFilter(recordFilter);
       TsBlock tsBlock;
       if (orderUtils.getAscending()) {
         firstPageReader.setLimitOffset(paginationController);
@@ -524,6 +531,35 @@ public class SeriesScanUtil {
       long rowCount = firstChunkMetadata.getStatistics().getCount();
       if (paginationController.hasCurOffset(rowCount)) {
         skipCurrentChunk();
+        paginationController.consumeOffset(rowCount);
+      }
+    }
+  }
+
+  private void filterFirstPageReader() {
+    if (firstPageReader == null) {
+      return;
+    }
+
+    IPageReader pageReader = firstPageReader.data;
+    if (pageReader.isModified()) {
+      return;
+    }
+
+    // globalTimeFilter.canSkip() must be FALSE
+    Filter pushDownFilter = scanOptions.getPushDownFilter();
+    if (pushDownFilter != null && pushDownFilter.canSkip(pageReader)) {
+      skipCurrentPage();
+      return;
+    }
+
+    Filter globalTimeFilter = scanOptions.getGlobalTimeFilter();
+    if (filterAllSatisfy(globalTimeFilter, pageReader)
+        && filterAllSatisfy(pushDownFilter, pageReader)
+        && timeAllSelected(pageReader)) {
+      long rowCount = pageReader.getStatistics().getCount();
+      if (paginationController.hasCurOffset(rowCount)) {
+        skipCurrentPage();
         paginationController.consumeOffset(rowCount);
       }
     }
@@ -905,22 +941,11 @@ public class SeriesScanUtil {
              */
             timeValuePair = mergeReader.nextTimeValuePair();
 
-            Object valueForFilter = timeValuePair.getValue().getValue();
-
-            // TODO fix value filter firstNotNullObject, currently, if it's a value filter, it will
-            // only accept AlignedPath with only one sub sensor
-            if (timeValuePair.getValue().getDataType() == TSDataType.VECTOR) {
-              for (TsPrimitiveType tsPrimitiveType : timeValuePair.getValue().getVector()) {
-                if (tsPrimitiveType != null) {
-                  valueForFilter = tsPrimitiveType.getValue();
-                  break;
-                }
-              }
-            }
-
-            Filter queryFilter = scanOptions.getPushDownFilter();
-            if (queryFilter != null
-                && !queryFilter.satisfy(timeValuePair.getTimestamp(), valueForFilter)) {
+            Filter recordFilter =
+                FilterFactory.and(
+                    scanOptions.getGlobalTimeFilter(), scanOptions.getPushDownFilter());
+            if (recordFilter != null
+                && !recordFilter.satisfy(timeValuePair.getTimestamp(), timeValuePair.getValues())) {
               continue;
             }
             if (paginationController.hasCurOffset()) {
@@ -1215,8 +1240,8 @@ public class SeriesScanUtil {
       }
     }
 
-    void setFilter(Filter filter) {
-      data.setFilter(filter);
+    void setRecordFilter(Filter recordFilter) {
+      data.setFilter(recordFilter);
     }
 
     boolean isModified() {

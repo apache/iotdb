@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.read;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.Serializable;
@@ -47,6 +48,21 @@ public class TimeValuePair implements Serializable, Comparable<TimeValuePair> {
 
   public void setValue(TsPrimitiveType value) {
     this.value = value;
+  }
+
+  public Object[] getValues() {
+    if (value.getDataType() == TSDataType.VECTOR) {
+      TsPrimitiveType[] vector = value.getVector();
+      Object[] values = new Object[vector.length];
+      for (int i = 0; i < vector.length; i++) {
+        values[i] = vector[i].getValue();
+      }
+      return values;
+    } else {
+      Object[] values = new Object[1];
+      values[0] = value.getValue();
+      return values;
+    }
   }
 
   @Override

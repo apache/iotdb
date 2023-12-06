@@ -35,20 +35,20 @@ import java.util.List;
 public class MemChunkReader implements IChunkReader, IPointReader {
 
   private final IPointReader timeValuePairIterator;
-  private final Filter filter;
+  private final Filter globalTimeFilter;
   private final List<IPageReader> pageReaderList;
 
   private boolean hasCachedTimeValuePair;
   private TimeValuePair cachedTimeValuePair;
 
-  public MemChunkReader(ReadOnlyMemChunk readableChunk, Filter filter) {
+  public MemChunkReader(ReadOnlyMemChunk readableChunk, Filter globalTimeFilter) {
     timeValuePairIterator = readableChunk.getPointReader();
-    this.filter = filter;
+    this.globalTimeFilter = globalTimeFilter;
     // we treat one ReadOnlyMemChunk as one Page
     this.pageReaderList =
         Collections.singletonList(
             new MemPageReader(
-                readableChunk.getTsBlock(), readableChunk.getChunkMetaData(), filter));
+                readableChunk.getTsBlock(), readableChunk.getChunkMetaData(), globalTimeFilter));
   }
 
   @Override
@@ -58,8 +58,9 @@ public class MemChunkReader implements IChunkReader, IPointReader {
     }
     while (timeValuePairIterator.hasNextTimeValuePair()) {
       TimeValuePair timeValuePair = timeValuePairIterator.nextTimeValuePair();
-      if (filter == null
-          || filter.satisfy(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
+      if (globalTimeFilter == null
+          || globalTimeFilter.satisfy(
+              timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
         hasCachedTimeValuePair = true;
         cachedTimeValuePair = timeValuePair;
         break;
