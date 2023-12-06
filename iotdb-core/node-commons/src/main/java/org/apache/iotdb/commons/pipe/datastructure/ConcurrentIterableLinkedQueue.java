@@ -19,95 +19,123 @@
 
 package org.apache.iotdb.commons.pipe.datastructure;
 
+import com.google.common.collect.ImmutableSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.Closeable;
-import java.util.Comparator;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-/**
- * This class allows dynamic iterating over the elements, namely an iterator is able to read the
- * incoming element.
- *
- * @param <E> Element type
- */
 public class ConcurrentIterableLinkedQueue<E> {
-  private final LinkedListNode<E> pilot = new LinkedListNode<>(null);
-  private LinkedListNode<E> first;
-  private LinkedListNode<E> last;
-  private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
-  private final Condition hasNext = lock.writeLock().newCondition();
+  private static final Logger LOGGER = LoggerFactory.getLogger(ConcurrentIterableLinkedQueue.class);
+
+  private static class LinkedListNode<E> {
+
+    private E data;
+    private LinkedListNode<E> next;
+
+    private LinkedListNode(E data) {
+      this.data = data;
+      this.next = null;
+    }
+  }
+
+  private final LinkedListNode<E> pilotNode = new LinkedListNode<>(null);
+  private LinkedListNode<E> firstNode = pilotNode;
+  private LinkedListNode<E> lastNode = pilotNode;
+
+  // The indexes of elements are [firstIndex, firstIndex + 1, ...., tailIndex - 1]
+  private long firstIndex = 0;
+  private long tailIndex = 0;
+
+  private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+  private final Condition hasNextCondition = lock.writeLock().newCondition();
 
   private final Map<DynamicIterator, DynamicIterator> iteratorSet = new ConcurrentHashMap<>();
 
-  // The index of elements are [firstIndex, firstIndex + 1, ....,lastIndex - 1]
-  private int firstIndex = 0;
-  private int lastIndex = 0;
-
-  public ConcurrentIterableLinkedQueue() {
-    first = pilot;
-    last = pilot;
-  }
-
+  /**
+   * Add an element to the tail of the queue.
+   *
+   * @param e the element to be added, which cannot be null
+   */
   public void add(E e) {
+    if (e == null) {
+      throw new IllegalArgumentException("Null element is not allowed.");
+    }
+
+    final LinkedListNode<E> newNode = new LinkedListNode<>(e);
     lock.writeLock().lock();
     try {
-      if (e == null) {
-        throw new IllegalArgumentException(
-            "Null is reserved as the signal to imply a get operation failure. Please use another element to imply null.");
+      if (firstNode == pilotNode) {
+        firstIndex = tailIndex;
+        firstNode = newNode;
       }
-      final LinkedListNode<E> l = last;
-      final LinkedListNode<E> newNode = new LinkedListNode<>(e);
-      last = newNode;
-      l.next = newNode;
-      if (l == pilot) {
-        first = newNode;
-      }
-      ++lastIndex;
-      hasNext.signalAll();
+
+      ++tailIndex;
+      lastNode.next = newNode;
+      lastNode = newNode;
+
+      hasNextCondition.signalAll();
     } finally {
       lock.writeLock().unlock();
     }
   }
 
-  public int removeBefore(int newFirst) {
+  /**
+   * Try to remove all elements whose index is less than the given index.
+   *
+   * <p>Note that the actual removed index may be larger than the given index if the given index is
+   * smaller than {@link ConcurrentIterableLinkedQueue#firstIndex}.
+   *
+   * <p>Note that the actual removed index may be smaller than the given index if the given index is
+   * larger than {@link ConcurrentIterableLinkedQueue#tailIndex}.
+   *
+   * @param newFirstIndex the given index
+   * @return the actual first index that is not removed
+   */
+  public long removeBefore(long newFirstIndex) {
     lock.writeLock().lock();
     try {
-      AtomicInteger tempFirst = new AtomicInteger(newFirst);
-      iteratorSet.keySet().stream()
-          .min(Comparator.comparing(DynamicIterator::getOffset))
-          .ifPresent(e -> tempFirst.set(Math.min(tempFirst.get(), e.getOffset())));
-      newFirst = tempFirst.get();
+      for (final DynamicIterator iterator : iteratorSet.keySet()) {
+        newFirstIndex = Math.min(newFirstIndex, iterator.getNextIndex());
+      }
+      newFirstIndex = Math.max(newFirstIndex, firstIndex);
+      newFirstIndex = Math.min(newFirstIndex, tailIndex);
 
-      if (newFirst <= firstIndex) {
-        return firstIndex;
+      LinkedListNode<E> currentNode = firstNode;
+      for (; firstIndex < newFirstIndex; ++firstIndex) {
+        final LinkedListNode<E> nextNode = currentNode.next;
+        currentNode.data = null;
+        currentNode.next = null;
+        currentNode = nextNode;
       }
-      LinkedListNode<E> next;
-      LinkedListNode<E> x;
-      for (x = first; x != null && firstIndex < newFirst; ++firstIndex, x = next) {
-        next = x.next;
-        x.data = null;
-        x.next = null;
+
+      firstNode = currentNode;
+      pilotNode.next = firstNode;
+
+      if (firstNode == null) {
+        firstNode = pilotNode;
+        lastNode = pilotNode;
       }
-      first = x;
-      pilot.next = first;
-      if (first == null) {
-        first = pilot;
-        last = pilot;
-      }
+
       iteratorSet
           .keySet()
           .forEach(
-              e -> {
-                if (e.offset == firstIndex) {
-                  e.next = pilot;
+              iterator -> {
+                if (iterator.nextIndex == firstIndex) {
+                  iterator.currentNode = pilotNode;
                 }
               });
+
+      hasNextCondition.signalAll();
+
       return firstIndex;
     } finally {
       lock.writeLock().unlock();
@@ -117,21 +145,16 @@ public class ConcurrentIterableLinkedQueue<E> {
   public void clear() {
     lock.writeLock().lock();
     try {
-      iteratorSet.keySet().forEach(DynamicIterator::close);
-      removeBefore(lastIndex);
-      hasNext.signalAll();
+      // Use a new set to avoid ConcurrentModificationException
+      ImmutableSet.copyOf(iteratorSet.keySet()).forEach(DynamicIterator::close);
+
+      removeBefore(tailIndex);
     } finally {
       lock.writeLock().unlock();
     }
   }
 
-  public DynamicIterator iterateFrom(int offset) {
-    DynamicIterator itr = new DynamicIterator(offset);
-    iteratorSet.put(itr, itr);
-    return itr;
-  }
-
-  public int getFirstIndex() {
+  public long getFirstIndex() {
     lock.readLock().lock();
     try {
       return firstIndex;
@@ -140,10 +163,10 @@ public class ConcurrentIterableLinkedQueue<E> {
     }
   }
 
-  public int getLastIndex() {
+  public long getTailIndex() {
     lock.readLock().lock();
     try {
-      return lastIndex;
+      return tailIndex;
     } finally {
       lock.readLock().unlock();
     }
@@ -153,164 +176,159 @@ public class ConcurrentIterableLinkedQueue<E> {
     return iteratorSet.keySet();
   }
 
+  public DynamicIterator iterateFrom(long offset) {
+    final DynamicIterator iterator = new DynamicIterator(offset);
+    iteratorSet.put(iterator, iterator);
+    return iterator;
+  }
+
   public DynamicIterator iterateFromEarliest() {
-    return iterateFrom(Integer.MIN_VALUE);
+    return iterateFrom(Long.MIN_VALUE);
   }
 
   public DynamicIterator iterateFromLatest() {
-    return iterateFrom(Integer.MAX_VALUE);
+    return iterateFrom(Long.MAX_VALUE);
   }
 
-  private static class LinkedListNode<E> {
-    E data;
-    LinkedListNode<E> next;
+  public class DynamicIterator implements Iterator<E>, Closeable {
 
-    public LinkedListNode(E data) {
-      this.data = data;
-      this.next = null;
-    }
-  }
+    private LinkedListNode<E> currentNode;
+    private long nextIndex;
 
-  // Temporarily, we do not use read lock because read lock in java does not
-  // support condition. Besides, The pure park and un-park method is fairly slow,
-  // thus we use Reentrant lock here.
-  public class DynamicIterator implements Closeable {
-
-    private LinkedListNode<E> next;
-
-    // Offset is the position of the next element to read
-    private int offset;
     private volatile boolean isClosed = false;
 
-    public DynamicIterator(int offset) {
+    public DynamicIterator(long nextIndex) {
       lock.writeLock().lock();
       try {
-        if (offset >= lastIndex) {
-          next = last;
-          offset = lastIndex;
-        } else {
-          next = pilot;
-          if (firstIndex < offset) {
-            for (int i = 0; i < offset - firstIndex; ++i) {
-              next();
-            }
-          } else {
-            offset = firstIndex;
-          }
+        if (tailIndex <= nextIndex) {
+          this.currentNode = lastNode;
+          this.nextIndex = tailIndex;
+          return;
         }
-        this.offset = offset;
+
+        this.currentNode = pilotNode;
+        if (firstIndex < nextIndex) {
+          final long step = nextIndex - firstIndex;
+          for (long i = 0; i < step; ++i) {
+            next();
+          }
+        } else {
+          nextIndex = firstIndex;
+        }
+        this.nextIndex = nextIndex;
       } finally {
         lock.writeLock().unlock();
       }
     }
 
-    /**
-     * The getter of the iterator. Never timeOut.
-     *
-     * @return
-     *     <p>1. Directly The next element if exists.
-     *     <p>2. Blocking until available iff the next element does not exist.
-     *     <p>3. Null iff the current element is null or the next element's data is null.
-     */
+    @Override
     public E next() {
       return next(Long.MAX_VALUE);
     }
 
     /**
-     * The getter of the iterator with the given timeOut.
+     * Get the next element in the queue. If the queue is empty, wait for the next element to be
+     * added.
      *
-     * @param waitTimeMillis the timeOut of the get operation
-     * @return
-     *     <p>1. Directly The next element if exists.
-     *     <p>2. Blocking until available iff the next element does not exist.
-     *     <p>3. Null iff the current element is null or the next element's data is null.
+     * @param waitTimeMillis the maximum time to wait in milliseconds
+     * @return the next element in the queue. null if the queue is closed, or if the waiting time
+     *     elapsed, or the thread is interrupted
      */
     public E next(long waitTimeMillis) {
       lock.writeLock().lock();
       try {
-        if (isClosed) {
-          return null;
-        }
-
         while (!hasNext()) {
-          if (!hasNext.await(waitTimeMillis, TimeUnit.MILLISECONDS) || isClosed) {
+          if (isClosed || !hasNextCondition.await(waitTimeMillis, TimeUnit.MILLISECONDS)) {
             return null;
           }
         }
 
-        next = next.next;
-        ++offset;
-        return next.data;
+        currentNode = currentNode.next;
+        ++nextIndex;
+
+        return currentNode.data;
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
+        LOGGER.warn("Interrupted while waiting for next element.", e);
+        return null;
       } finally {
         lock.writeLock().unlock();
       }
-      return null;
     }
 
+    @Override
     public boolean hasNext() {
       lock.readLock().lock();
       try {
-        if (isClosed) {
-          return false;
-        }
-        return next.next != null;
+        return !isClosed && currentNode.next != null;
       } finally {
         lock.readLock().unlock();
       }
     }
 
     /**
-     * Seek the {@link DynamicIterator#offset} to the closest position allowed to the given offset.
-     * Note that one can seek to {@link ConcurrentIterableLinkedQueue#lastIndex} to subscribe the
-     * next incoming element.
+     * Seek the {@link DynamicIterator#nextIndex} to the closest position allowed to the given
+     * offset. Note that one can seek to {@link ConcurrentIterableLinkedQueue#tailIndex} to
+     * subscribe the next incoming element.
      *
-     * @param newOffset the attempt newOffset
+     * @param newNextIndex the attempt newOffset
      * @return the actual new offset
      */
-    public int seek(int newOffset) {
+    public long seek(long newNextIndex) {
       lock.writeLock().lock();
       try {
         if (isClosed) {
           return -1;
         }
-        newOffset = Math.max(firstIndex, Math.min(lastIndex, newOffset));
-        int oldOffset = offset;
-        if (newOffset < oldOffset) {
-          next = pilot;
-          offset = firstIndex;
-          for (int i = 0; i < newOffset - firstIndex; ++i) {
+
+        newNextIndex = Math.max(firstIndex, Math.min(tailIndex, newNextIndex));
+        final long oldNextIndex = nextIndex;
+
+        if (newNextIndex < oldNextIndex) {
+          currentNode = pilotNode;
+          nextIndex = firstIndex;
+
+          final long step = newNextIndex - firstIndex;
+          for (long i = 0; i < step; ++i) {
             next();
           }
         } else {
-          for (int i = 0; i < newOffset - oldOffset; ++i) {
+          final long step = newNextIndex - oldNextIndex;
+          for (long i = 0; i < step; ++i) {
             next();
           }
         }
-        return offset;
+
+        return nextIndex;
       } finally {
         lock.writeLock().unlock();
       }
     }
 
-    public boolean getIsClosed() {
-      return isClosed;
-    }
-
-    public int getOffset() {
+    @Override
+    public void close() {
       lock.readLock().lock();
       try {
-        return !isClosed ? offset : -1;
+        isClosed = true;
+        iteratorSet.remove(this);
+
+        hasNextCondition.signalAll();
       } finally {
         lock.readLock().unlock();
       }
     }
 
-    @Override
-    public void close() {
-      isClosed = true;
-      iteratorSet.remove(this);
+    public boolean isClosed() {
+      return isClosed;
+    }
+
+    public long getNextIndex() {
+      lock.readLock().lock();
+      try {
+        return isClosed ? -1 : nextIndex;
+      } finally {
+        lock.readLock().unlock();
+      }
     }
   }
 }

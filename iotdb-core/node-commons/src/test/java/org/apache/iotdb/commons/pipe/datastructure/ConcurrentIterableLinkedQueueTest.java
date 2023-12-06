@@ -102,7 +102,7 @@ public class ConcurrentIterableLinkedQueueTest {
     // Validate the state of the queue
     // The actual state depends on the timing of add and remove operations
     Assert.assertTrue(queue.getFirstIndex() <= numberOfAdds);
-    Assert.assertTrue(queue.getLastIndex() >= queue.getFirstIndex());
+    Assert.assertTrue(queue.getTailIndex() >= queue.getFirstIndex());
   }
 
   @Test(timeout = 60000)
@@ -134,13 +134,13 @@ public class ConcurrentIterableLinkedQueueTest {
 
     Assert.assertTrue(queue.getIteratorSet().isEmpty());
     Assert.assertEquals(2, queue.getFirstIndex());
-    Assert.assertEquals(2, queue.getLastIndex());
+    Assert.assertEquals(2, queue.getTailIndex());
 
-    Assert.assertTrue(itr.getIsClosed());
+    Assert.assertTrue(itr.isClosed());
     Assert.assertNull(itr.next());
     Assert.assertFalse(itr.hasNext());
     Assert.assertEquals(-1, itr.seek(2));
-    Assert.assertEquals(-1, itr.getOffset());
+    Assert.assertEquals(-1, itr.getNextIndex());
   }
 
   @Test(timeout = 60000)
@@ -149,13 +149,13 @@ public class ConcurrentIterableLinkedQueueTest {
     queue.add(2);
     Assert.assertEquals(1, queue.removeBefore(1));
     Assert.assertEquals(1, queue.getFirstIndex());
-    Assert.assertEquals(2, queue.getLastIndex());
+    Assert.assertEquals(2, queue.getTailIndex());
 
     ConcurrentIterableLinkedQueue<Integer>.DynamicIterator it = queue.iterateFromEarliest();
     Assert.assertEquals(2, (int) it.next());
 
     ConcurrentIterableLinkedQueue<Integer>.DynamicIterator it2 = queue.iterateFromLatest();
-    Assert.assertEquals(2, it2.getOffset());
+    Assert.assertEquals(2, it2.getNextIndex());
     AtomicInteger value = new AtomicInteger(-1);
     new Thread(() -> value.set(it2.next())).start();
     queue.add(3);
@@ -166,7 +166,7 @@ public class ConcurrentIterableLinkedQueueTest {
 
     queue.clear();
     Assert.assertEquals(3, queue.getFirstIndex());
-    Assert.assertEquals(3, queue.getLastIndex());
+    Assert.assertEquals(3, queue.getTailIndex());
   }
 
   @Test(timeout = 60000)
