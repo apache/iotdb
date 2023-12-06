@@ -28,7 +28,6 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeExceptionType;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -106,17 +105,6 @@ public class PipeTaskMeta {
     }
   }
 
-  public synchronized void serialize(FileOutputStream outputStream) throws IOException {
-    progressIndex.get().serialize(outputStream);
-
-    ReadWriteIOUtils.write(leaderNodeId.get(), outputStream);
-
-    ReadWriteIOUtils.write(exceptionMessages.size(), outputStream);
-    for (final PipeRuntimeException pipeRuntimeException : exceptionMessages.values()) {
-      pipeRuntimeException.serialize(outputStream);
-    }
-  }
-
   public static PipeTaskMeta deserialize(PipeRuntimeMetaVersion version, ByteBuffer byteBuffer) {
     final ProgressIndex progressIndex = ProgressIndexType.deserializeFrom(byteBuffer);
 
@@ -171,9 +159,9 @@ public class PipeTaskMeta {
   public String toString() {
     return "PipeTask{"
         + "progressIndex='"
-        + progressIndex
+        + progressIndex.get()
         + "', leaderNodeId="
-        + leaderNodeId
+        + leaderNodeId.get()
         + ", exceptionMessages='"
         + exceptionMessages
         + "'}";
