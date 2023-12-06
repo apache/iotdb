@@ -1094,7 +1094,7 @@ public class MTreeBelowSGMemoryImpl {
 
           protected INodeSchemaInfo collectMNode(IMemMNode node) {
             return new ShowNodesResult(
-                getPartialPathFromRootToNode(node).getFullPath(), node.getMNodeType(false));
+                getPartialPathFromRootToNode(node).getFullPath(), node.getMNodeType());
           }
         };
     collector.setTargetLevel(showNodesPlan.getLevel());

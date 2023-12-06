@@ -144,7 +144,7 @@ public abstract class AbstractAboveDatabaseMNode<N extends IMNode<N>, BasicNode 
   }
 
   @Override
-  public MNodeType getMNodeType(Boolean isConfig) {
+  public MNodeType getMNodeType() {
     return MNodeType.INTERNAL;
   }
 

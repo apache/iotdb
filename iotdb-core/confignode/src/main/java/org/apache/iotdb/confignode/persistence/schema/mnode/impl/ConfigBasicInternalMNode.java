@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.persistence.schema.mnode.impl;
 
+import org.apache.iotdb.commons.schema.node.MNodeType;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
 import org.apache.iotdb.confignode.persistence.schema.mnode.basic.ConfigBasicMNode;
@@ -141,6 +142,11 @@ public class ConfigBasicInternalMNode extends ConfigBasicMNode {
   @Override
   public int estimateSize() {
     return 8 + 80 + super.estimateSize();
+  }
+
+  @Override
+  public MNodeType getMNodeType() {
+    return MNodeType.SG_INTERNAL;
   }
 
   @Override

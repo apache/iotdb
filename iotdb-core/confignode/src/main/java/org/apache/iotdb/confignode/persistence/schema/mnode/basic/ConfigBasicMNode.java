@@ -20,10 +20,7 @@ package org.apache.iotdb.confignode.persistence.schema.mnode.basic;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.schema.node.MNodeType;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
-import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
-import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
@@ -33,7 +30,7 @@ import org.apache.iotdb.confignode.persistence.schema.mnode.info.ConfigMNodeInfo
 import java.util.ArrayList;
 import java.util.List;
 
-public class ConfigBasicMNode implements IConfigMNode {
+public abstract class ConfigBasicMNode implements IConfigMNode {
 
   private static final long serialVersionUID = -770028375899514063L;
 
@@ -169,32 +166,7 @@ public class ConfigBasicMNode implements IConfigMNode {
   }
 
   @Override
-  public boolean isDevice() {
-    return false;
-  }
-
-  @Override
-  public boolean isMeasurement() {
-    return false;
-  }
-
-  @Override
-  public MNodeType getMNodeType(Boolean isConfig) {
-    return isConfig ? MNodeType.SG_INTERNAL : MNodeType.INTERNAL;
-  }
-
-  @Override
   public IDatabaseMNode<IConfigMNode> getAsDatabaseMNode() {
-    throw new UnsupportedOperationException("Wrong MNode Type");
-  }
-
-  @Override
-  public IDeviceMNode<IConfigMNode> getAsDeviceMNode() {
-    throw new UnsupportedOperationException("Wrong MNode Type");
-  }
-
-  @Override
-  public IMeasurementMNode<IConfigMNode> getAsMeasurementMNode() {
     throw new UnsupportedOperationException("Wrong MNode Type");
   }
 
@@ -255,10 +227,5 @@ public class ConfigBasicMNode implements IConfigMNode {
   @Override
   public int estimateSize() {
     return 8 + 8 + 8 + 8 + 8 + 8 + 28 + configMNodeInfo.estimateSize();
-  }
-
-  @Override
-  public IConfigMNode getAsMNode() {
-    return this;
   }
 }

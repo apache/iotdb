@@ -21,7 +21,6 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.basic
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.schema.node.MNodeType;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
@@ -178,11 +177,6 @@ public abstract class BasicMNode implements IMemMNode {
   }
 
   @Override
-  public MNodeType getMNodeType(Boolean isConfig) {
-    return isConfig ? MNodeType.SG_INTERNAL : MNodeType.INTERNAL;
-  }
-
-  @Override
   public IDatabaseMNode<IMemMNode> getAsDatabaseMNode() {
     throw new UnsupportedOperationException("Wrong MNode Type");
   }
@@ -219,10 +213,5 @@ public abstract class BasicMNode implements IMemMNode {
   @Override
   public int estimateSize() {
     return 8 + 8 + 8 + 8 + 8 + 8 + 28 + basicMNodeInfo.estimateSize();
-  }
-
-  @Override
-  public IMemMNode getAsMNode() {
-    return this;
   }
 }

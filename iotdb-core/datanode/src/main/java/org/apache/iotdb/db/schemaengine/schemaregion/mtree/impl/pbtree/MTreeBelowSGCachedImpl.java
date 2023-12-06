@@ -1412,7 +1412,7 @@ public class MTreeBelowSGCachedImpl {
 
           protected INodeSchemaInfo collectMNode(ICachedMNode node) {
             return new ShowNodesResult(
-                getPartialPathFromRootToNode(node).getFullPath(), node.getMNodeType(false));
+                getPartialPathFromRootToNode(node).getFullPath(), node.getMNodeType());
           }
         };
     collector.setTargetLevel(showNodesPlan.getLevel());

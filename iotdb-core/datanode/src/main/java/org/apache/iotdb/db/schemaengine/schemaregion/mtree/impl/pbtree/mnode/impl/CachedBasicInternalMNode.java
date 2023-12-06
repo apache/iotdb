@@ -173,8 +173,8 @@ public class CachedBasicInternalMNode extends CachedBasicMNode
   }
 
   @Override
-  public MNodeType getMNodeType(Boolean isConfig) {
-    return deviceInfo == null ? super.getMNodeType(isConfig) : MNodeType.DEVICE;
+  public MNodeType getMNodeType() {
+    return deviceInfo == null ? MNodeType.INTERNAL : MNodeType.DEVICE;
   }
 
   @Override

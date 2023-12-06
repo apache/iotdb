@@ -66,7 +66,7 @@ public interface IMNode<N extends IMNode<N>> extends ITreeNode {
 
   boolean isMeasurement();
 
-  MNodeType getMNodeType(Boolean isConfig);
+  MNodeType getMNodeType();
 
   IDatabaseMNode<N> getAsDatabaseMNode();
 

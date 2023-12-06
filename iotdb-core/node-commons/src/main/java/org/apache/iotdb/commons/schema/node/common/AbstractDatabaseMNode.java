@@ -138,7 +138,7 @@ public abstract class AbstractDatabaseMNode<N extends IMNode<N>, BasicNode exten
   }
 
   @Override
-  public MNodeType getMNodeType(Boolean isConfig) {
+  public MNodeType getMNodeType() {
     return MNodeType.STORAGE_GROUP;
   }
 

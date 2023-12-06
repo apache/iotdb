@@ -138,7 +138,7 @@ public class DeviceMNodeWrapper<N extends IMNode<N>, BasicNode extends IInternal
   }
 
   @Override
-  public MNodeType getMNodeType(Boolean isConfig) {
+  public MNodeType getMNodeType() {
     return MNodeType.DEVICE;
   }
 
