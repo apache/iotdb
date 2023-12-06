@@ -50,7 +50,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 public class FragmentInstanceContext extends QueryContext {
-
+  private static final long TIME_UNIT = 1000000;
   private static final Logger LOGGER = LoggerFactory.getLogger(FragmentInstanceContext.class);
   private static final long END_TIME_INITIAL_VALUE = -1L;
   private final FragmentInstanceId id;
@@ -433,6 +433,13 @@ public class FragmentInstanceContext extends QueryContext {
    * be decreased.
    */
   public synchronized void releaseResource() {
+    LOGGER.warn(
+        " ------------\r\nFragmentInstance release resouce, id: {}, "
+            + "closedFilePath size: {}, unClosedFilePath size: {}",
+        id,
+        closedFilePaths != null ? closedFilePaths.toArray() : "[]",
+        unClosedFilePaths != null ? unClosedFilePaths.toArray() : "[]");
+
     // For schema related query FI, closedFilePaths and unClosedFilePaths will be null
     if (closedFilePaths != null) {
       for (TsFileResource tsFile : closedFilePaths) {
@@ -452,31 +459,30 @@ public class FragmentInstanceContext extends QueryContext {
     releaseTime.set(endTime);
     durationTime.set(endTime - executionStartTime.get());
     LOGGER.warn(
-        " ========== \r\n "
+        " ==========\r\n"
             + "FragmentInstanceContext released, id: {}, "
-            + "releaseTime: {}, "
-            + "startTime: {}, "
-            + "durationTime: {}ms, \r\n"
-            + "loadTimeseriesMetadataCount: [Disk: {}, Mem: {}], \r\n"
-            + "loadTimeseriesMetadataTime: [Disk: {}, Mem: {}]ns, \r\n"
-            + "constructChunkReaderDisk - Count: {}, Time:{}ns,  constructChunkReaderDiskDeserializationTime: {}ns\r\n"
-            + "buildTsBlockFromPageReaderCount: [Disk: {}, Mem: {}], \r\n"
-            + "buildTsBlockFromPageReaderTime: [Disk: {}, Mem: {}]ns",
+            + "releaseTime: {}, startTime: {}, durationTime: {}ms, \r\n"
+            + "loadTimeseriesMetadata Count: [Disk: {}, Mem: {}], \r\n"
+            + "loadTimeseriesMetadata Time: [Disk: {}ms, Mem: {}ms], \r\n"
+            + "constructChunkReaderDiskIOAndDeserialization - Count: {}, AllTime: {}ms,\r\n"
+            + "pageReadersDiskDeserializationTime: {}ms\r\n"
+            + "pageReaderDecode Count: [Disk: {}, Mem: {}], \r\n"
+            + "pageReaderDecode Time: [Disk: {}ms, Mem: {}ms]",
         id,
         releaseTime.get(),
         executionStartTime.get(),
         durationTime.get(),
         loadTimeSeriesMetadataDiskCount,
         loadTimeSeriesMetadataMemCount,
-        loadTimeSeriesMetadataDiskTime,
-        loadTimeSeriesMetadataMemTime,
-        constructChunkReaderDiskCount,
-        constructChunkReaderDiskTime,
-        constructChunkReaderDiskDeserializationTime,
-        buildTsBlockFromPageReaderDiskCount,
-        buildTsBlockFromPageReaderMemCount,
-        buildTsBlockFromPageReaderDiskTime,
-        buildTsBlockFromPageReaderMemTime);
+        loadTimeSeriesMetadataDiskTime.get() / TIME_UNIT,
+        loadTimeSeriesMetadataMemTime.get() / TIME_UNIT,
+        constructChunkReaderCountFromDisk,
+        constructChunkReaderTimeFromDisk.get() / TIME_UNIT,
+        pageReadersDiskDeserializationTime.get() / TIME_UNIT,
+        pageReaderDecodeCountFromDisk,
+        pageReaderDecodeCountFromMem,
+        pageReaderDecodeTimeFromDisk.get() / TIME_UNIT,
+        pageReaderDecodeTimeFromMem.get() / TIME_UNIT);
 
     dataRegion = null;
     globalTimeFilter = null;

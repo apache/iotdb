@@ -115,15 +115,15 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
       IChunkReader chunkReader =
           new AlignedChunkReader(timeChunk, valueChunkList, timeFilter, queryAllSensors);
       long time = System.nanoTime() - t2;
-      LOGGER.warn("~~~~~ construct chunk reader deserialization time: {}", time);
-      context.constructChunkReaderDiskDeserializationTime.getAndAdd(time);
+      // LOGGER.warn("~~~~~ chunk reader deserialization time: {}ms", time / 1000000);
+      context.pageReadersDiskDeserializationTime.getAndAdd(time);
       SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(INIT_CHUNK_READER_ALIGNED_DISK, time);
 
       return chunkReader;
     } finally {
       long time = System.nanoTime() - t1;
-      context.constructChunkReaderDiskCount.getAndAdd(1);
-      context.constructChunkReaderDiskTime.getAndAdd(time);
+      context.constructChunkReaderCountFromDisk.getAndAdd(1);
+      context.constructChunkReaderTimeFromDisk.getAndAdd(time);
 
       SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(CONSTRUCT_CHUNK_READER_ALIGNED_DISK, time);
     }

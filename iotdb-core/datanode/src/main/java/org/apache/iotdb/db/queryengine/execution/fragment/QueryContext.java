@@ -45,13 +45,13 @@ public class QueryContext {
   public AtomicLong loadTimeSeriesMetadataDiskTime = new AtomicLong(0);
   public AtomicLong loadTimeSeriesMetadataMemCount = new AtomicLong(0);
   public AtomicLong loadTimeSeriesMetadataMemTime = new AtomicLong(0);
-  public AtomicLong constructChunkReaderDiskCount = new AtomicLong(0);
-  public AtomicLong constructChunkReaderDiskTime = new AtomicLong(0);
-  public AtomicLong constructChunkReaderDiskDeserializationTime = new AtomicLong(0);
-  public AtomicLong buildTsBlockFromPageReaderDiskCount = new AtomicLong(0);
-  public AtomicLong buildTsBlockFromPageReaderDiskTime = new AtomicLong(0);
-  public AtomicLong buildTsBlockFromPageReaderMemCount = new AtomicLong(0);
-  public AtomicLong buildTsBlockFromPageReaderMemTime = new AtomicLong(0);
+  public AtomicLong constructChunkReaderCountFromDisk = new AtomicLong(0);
+  public AtomicLong constructChunkReaderTimeFromDisk = new AtomicLong(0);
+  public AtomicLong pageReadersDiskDeserializationTime = new AtomicLong(0);
+  public AtomicLong pageReaderDecodeCountFromDisk = new AtomicLong(0);
+  public AtomicLong pageReaderDecodeTimeFromDisk = new AtomicLong(0);
+  public AtomicLong pageReaderDecodeCountFromMem = new AtomicLong(0);
+  public AtomicLong pageReaderDecodeTimeFromMem = new AtomicLong(0);
 
   /**
    * The key is the path of a ModificationFile and the value is all Modifications in this file. We

@@ -1184,11 +1184,11 @@ public class SeriesScanUtil {
         long time = System.nanoTime() - startTime;
         if (isAligned) {
           if (isMem) {
-            queryContext.buildTsBlockFromPageReaderMemCount.getAndAdd(1);
-            queryContext.buildTsBlockFromPageReaderMemTime.getAndAdd(time);
+            queryContext.pageReaderDecodeCountFromMem.getAndAdd(1);
+            queryContext.pageReaderDecodeTimeFromMem.getAndAdd(time);
           } else {
-            queryContext.buildTsBlockFromPageReaderDiskCount.getAndAdd(1);
-            queryContext.buildTsBlockFromPageReaderDiskTime.getAndAdd(time);
+            queryContext.pageReaderDecodeCountFromDisk.getAndAdd(1);
+            queryContext.pageReaderDecodeTimeFromDisk.getAndAdd(time);
           }
         }
         SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
