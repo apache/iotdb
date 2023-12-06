@@ -84,15 +84,15 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
   protected void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleLeaderChangeProcedure: executeFromHandleOnConfigNodes");
 
-    final Map<TConsensusGroupId, Integer> newDataRegionGroupIdToLeaderDataRegionIdMap =
+    final Map<TConsensusGroupId, Integer> newConsensusGroupIdToLeaderConsensusIdMap =
         new HashMap<>();
     dataRegionGroupToOldAndNewLeaderPairMap.forEach(
         (regionGroupId, oldNewLeaderPair) ->
-            newDataRegionGroupIdToLeaderDataRegionIdMap.put(
+            newConsensusGroupIdToLeaderConsensusIdMap.put(
                 regionGroupId, oldNewLeaderPair.getRight()));
 
     final PipeHandleLeaderChangePlan pipeHandleLeaderChangePlan =
-        new PipeHandleLeaderChangePlan(newDataRegionGroupIdToLeaderDataRegionIdMap);
+        new PipeHandleLeaderChangePlan(newConsensusGroupIdToLeaderConsensusIdMap);
     TSStatus response;
     try {
       response = env.getConfigManager().getConsensusManager().write(pipeHandleLeaderChangePlan);

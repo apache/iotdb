@@ -35,6 +35,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimedQuota;
 import org.apache.iotdb.common.rpc.thrift.ThrottleType;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.SchemaProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
@@ -1193,8 +1194,8 @@ public class ConfigPhysicalPlanSerDeTest {
         (PipeHandleLeaderChangePlan)
             ConfigPhysicalPlan.Factory.create(pipeHandleLeaderChangePlan.serializeToByteBuffer());
     Assert.assertEquals(
-        pipeHandleLeaderChangePlan.getConsensusGroupId2NewDataRegionLeaderIdMap(),
-        pipeHandleLeaderChangePlan1.getConsensusGroupId2NewDataRegionLeaderIdMap());
+        pipeHandleLeaderChangePlan.getConsensusGroupId2NewLeaderIdMap(),
+        pipeHandleLeaderChangePlan1.getConsensusGroupId2NewLeaderIdMap());
   }
 
   @Test
@@ -1221,9 +1222,11 @@ public class ConfigPhysicalPlanSerDeTest {
             new HashMap<TConsensusGroupId, PipeTaskMeta>() {
               {
                 put(
+                    new TConsensusGroupId(TConsensusGroupType.ConfigRegion, -1),
+                    new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 777));
+                put(
                     new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 456),
-                    new PipeTaskMeta(
-                        MinimumProgressIndex.INSTANCE, 987)); // TODO: replace with IoTConsensus
+                    new PipeTaskMeta(new SchemaProgressIndex(444), 987));
                 put(
                     new TConsensusGroupId(TConsensusGroupType.DataRegion, 123),
                     new PipeTaskMeta(

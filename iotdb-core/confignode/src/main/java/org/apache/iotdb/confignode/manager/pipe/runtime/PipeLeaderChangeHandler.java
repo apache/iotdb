@@ -20,7 +20,6 @@
 package org.apache.iotdb.confignode.manager.pipe.runtime;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
@@ -58,19 +57,17 @@ public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
         .getLeaderMap()
         .forEach(
             (regionGroupId, pair) -> {
-              if (regionGroupId.getType().equals(TConsensusGroupType.DataRegion)) {
-                final String databaseName =
-                    configManager.getPartitionManager().getRegionStorageGroup(regionGroupId);
-                // pipe only collect user's data, filter metric database here.
-                if (databaseName != null && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)) {
-                  // null or -1 means empty origin leader
-                  final int oldLeaderDataNodeId = (pair.left == null ? -1 : pair.left);
-                  final int newLeaderDataNodeId = (pair.right == null ? -1 : pair.right);
+              final String databaseName =
+                  configManager.getPartitionManager().getRegionStorageGroup(regionGroupId);
+              // pipe only collect user's data, filter metric database here.
+              if (databaseName != null && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)) {
+                // null or -1 means empty origin leader
+                final int oldLeaderDataNodeId = (pair.left == null ? -1 : pair.left);
+                final int newLeaderDataNodeId = (pair.right == null ? -1 : pair.right);
 
-                  if (oldLeaderDataNodeId != newLeaderDataNodeId) {
-                    dataRegionGroupToOldAndNewLeaderPairMap.put(
-                        regionGroupId, new Pair<>(oldLeaderDataNodeId, newLeaderDataNodeId));
-                  }
+                if (oldLeaderDataNodeId != newLeaderDataNodeId) {
+                  dataRegionGroupToOldAndNewLeaderPairMap.put(
+                      regionGroupId, new Pair<>(oldLeaderDataNodeId, newLeaderDataNodeId));
                 }
               }
             });

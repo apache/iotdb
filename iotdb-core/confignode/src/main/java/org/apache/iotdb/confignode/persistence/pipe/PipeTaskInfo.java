@@ -351,9 +351,9 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   private TSStatus handleLeaderChangeInternal(PipeHandleLeaderChangePlan plan) {
-    plan.getConsensusGroupId2NewDataRegionLeaderIdMap()
+    plan.getConsensusGroupId2NewLeaderIdMap()
         .forEach(
-            (dataRegionGroupId, newDataRegionLeader) ->
+            (consensusGroupId, newLeader) ->
                 pipeMetaKeeper
                     .getPipeMetaList()
                     .forEach(
@@ -361,24 +361,23 @@ public class PipeTaskInfo implements SnapshotProcessor {
                           final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMap =
                               pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
 
-                          if (consensusGroupIdToTaskMetaMap.containsKey(dataRegionGroupId)) {
+                          if (consensusGroupIdToTaskMetaMap.containsKey(consensusGroupId)) {
                             // If the data region leader is -1, it means the data region is
                             // removed
-                            if (newDataRegionLeader != -1) {
+                            if (newLeader != -1) {
                               consensusGroupIdToTaskMetaMap
-                                  .get(dataRegionGroupId)
-                                  .setLeaderNodeId(newDataRegionLeader);
+                                  .get(consensusGroupId)
+                                  .setLeaderNodeId(newLeader);
                             } else {
-                              consensusGroupIdToTaskMetaMap.remove(dataRegionGroupId);
+                              consensusGroupIdToTaskMetaMap.remove(consensusGroupId);
                             }
                           } else {
                             // If CN does not contain the data region group, it means the data
                             // region group is newly added.
-                            if (newDataRegionLeader != -1) {
+                            if (newLeader != -1) {
                               consensusGroupIdToTaskMetaMap.put(
-                                  dataRegionGroupId,
-                                  new PipeTaskMeta(
-                                      MinimumProgressIndex.INSTANCE, newDataRegionLeader));
+                                  consensusGroupId,
+                                  new PipeTaskMeta(MinimumProgressIndex.INSTANCE, newLeader));
                             }
                             // else:
                             // "The pipe task meta does not contain the data region group {} or
