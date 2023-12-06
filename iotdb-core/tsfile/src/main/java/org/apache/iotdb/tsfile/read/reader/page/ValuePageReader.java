@@ -19,15 +19,15 @@
 
 package org.apache.iotdb.tsfile.read.reader.page;
 
-import org.apache.iotdb.tsfile.access.ColumnBuilder;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
-import org.apache.iotdb.tsfile.enums.TSDataType;
-import org.apache.iotdb.tsfile.exception.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -330,13 +330,69 @@ public class ValuePageReader {
   }
 
   public void writeColumnBuilderWithNextBatch(
-      int readStartIndex, int readEndIndex, ColumnBuilder columnBuilder, boolean[] satisfied) {
+      int readEndIndex, ColumnBuilder columnBuilder, boolean[] keepCurrentRow) {
     if (valueBuffer == null) {
-      for (int i = readStartIndex; i < readEndIndex; i++) {
-        if (satisfied[i - readStartIndex]) {
+      for (int i = 0; i < readEndIndex; i++) {
+        if (keepCurrentRow[i]) {
           columnBuilder.appendNull();
         }
       }
+      return;
+    }
+    for (int i = 0; i < readEndIndex; i++) {
+      if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
+        if (keepCurrentRow[i]) {
+          columnBuilder.appendNull();
+        }
+        continue;
+      }
+      switch (dataType) {
+        case BOOLEAN:
+          boolean aBoolean = valueDecoder.readBoolean(valueBuffer);
+          if (keepCurrentRow[i]) {
+            columnBuilder.writeBoolean(aBoolean);
+          }
+          break;
+        case INT32:
+          int anInt = valueDecoder.readInt(valueBuffer);
+          if (keepCurrentRow[i]) {
+            columnBuilder.writeInt(anInt);
+          }
+          break;
+        case INT64:
+          long aLong = valueDecoder.readLong(valueBuffer);
+          if (keepCurrentRow[i]) {
+            columnBuilder.writeLong(aLong);
+          }
+          break;
+        case FLOAT:
+          float aFloat = valueDecoder.readFloat(valueBuffer);
+          if (keepCurrentRow[i]) {
+            columnBuilder.writeFloat(aFloat);
+          }
+          break;
+        case DOUBLE:
+          double aDouble = valueDecoder.readDouble(valueBuffer);
+          if (keepCurrentRow[i]) {
+            columnBuilder.writeDouble(aDouble);
+          }
+          break;
+        case TEXT:
+          Binary aBinary = valueDecoder.readBinary(valueBuffer);
+          if (keepCurrentRow[i]) {
+            columnBuilder.writeBinary(aBinary);
+          }
+          break;
+        default:
+          throw new UnSupportedDataTypeException(String.valueOf(dataType));
+      }
+    }
+  }
+
+  public void writeColumnBuilderWithNextBatch(
+      int readStartIndex, int readEndIndex, ColumnBuilder columnBuilder) {
+    if (valueBuffer == null) {
+      columnBuilder.appendNull(readEndIndex - readStartIndex);
       return;
     }
 
@@ -344,115 +400,109 @@ public class ValuePageReader {
       case BOOLEAN:
         // skip useless data
         for (int i = 0; i < readStartIndex; i++) {
+          if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
+            continue;
+          }
           valueDecoder.readBoolean(valueBuffer);
         }
 
         for (int i = readStartIndex; i < readEndIndex; i++) {
           if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
-            if (satisfied[i - readStartIndex]) {
-              columnBuilder.appendNull();
-            }
+            columnBuilder.appendNull();
             continue;
           }
           boolean aBoolean = valueDecoder.readBoolean(valueBuffer);
-          if (satisfied[i - readStartIndex]) {
-            columnBuilder.writeBoolean(aBoolean);
-          }
+          columnBuilder.writeBoolean(aBoolean);
         }
         break;
       case INT32:
         // skip useless data
         for (int i = 0; i < readStartIndex; i++) {
+          if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
+            continue;
+          }
           valueDecoder.readInt(valueBuffer);
         }
 
         for (int i = readStartIndex; i < readEndIndex; i++) {
           if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
-            if (satisfied[i - readStartIndex]) {
-              columnBuilder.appendNull();
-            }
+            columnBuilder.appendNull();
             continue;
           }
           int aInt = valueDecoder.readInt(valueBuffer);
-          if (satisfied[i - readStartIndex]) {
-            columnBuilder.writeInt(aInt);
-          }
+          columnBuilder.writeInt(aInt);
         }
         break;
       case INT64:
         // skip useless data
         for (int i = 0; i < readStartIndex; i++) {
+          if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
+            continue;
+          }
           valueDecoder.readLong(valueBuffer);
         }
 
         for (int i = readStartIndex; i < readEndIndex; i++) {
           if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
-            if (satisfied[i - readStartIndex]) {
-              columnBuilder.appendNull();
-            }
+            columnBuilder.appendNull();
             continue;
           }
           long aLong = valueDecoder.readLong(valueBuffer);
-          if (satisfied[i - readStartIndex]) {
-            columnBuilder.writeLong(aLong);
-          }
+          columnBuilder.writeLong(aLong);
         }
         break;
       case FLOAT:
         // skip useless data
         for (int i = 0; i < readStartIndex; i++) {
+          if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
+            continue;
+          }
           valueDecoder.readFloat(valueBuffer);
         }
 
         for (int i = readStartIndex; i < readEndIndex; i++) {
           if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
-            if (satisfied[i - readStartIndex]) {
-              columnBuilder.appendNull();
-            }
+            columnBuilder.appendNull();
             continue;
           }
           float aFloat = valueDecoder.readFloat(valueBuffer);
-          if (satisfied[i - readStartIndex]) {
-            columnBuilder.writeFloat(aFloat);
-          }
+          columnBuilder.writeFloat(aFloat);
         }
         break;
       case DOUBLE:
         // skip useless data
         for (int i = 0; i < readStartIndex; i++) {
+          if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
+            continue;
+          }
           valueDecoder.readDouble(valueBuffer);
         }
 
         for (int i = readStartIndex; i < readEndIndex; i++) {
           if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
-            if (satisfied[i - readStartIndex]) {
-              columnBuilder.appendNull();
-            }
+            columnBuilder.appendNull();
             continue;
           }
           double aDouble = valueDecoder.readDouble(valueBuffer);
-          if (satisfied[i - readStartIndex]) {
-            columnBuilder.writeDouble(aDouble);
-          }
+          columnBuilder.writeDouble(aDouble);
         }
         break;
       case TEXT:
         // skip useless data
         for (int i = 0; i < readStartIndex; i++) {
+          if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
+            continue;
+          }
           valueDecoder.readBinary(valueBuffer);
         }
 
         for (int i = readStartIndex; i < readEndIndex; i++) {
           if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
-            if (satisfied[i - readStartIndex]) {
-              columnBuilder.appendNull();
-            }
+            columnBuilder.appendNull();
             continue;
           }
           Binary aBinary = valueDecoder.readBinary(valueBuffer);
-          if (satisfied[i - readStartIndex]) {
-            columnBuilder.writeBinary(aBinary);
-          }
+          columnBuilder.writeBinary(aBinary);
         }
         break;
       default:

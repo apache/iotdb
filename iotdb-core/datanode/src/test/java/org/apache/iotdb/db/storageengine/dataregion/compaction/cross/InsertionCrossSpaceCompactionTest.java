@@ -59,16 +59,22 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
       new FixedPriorityBlockingQueue<>(50, new DefaultCompactionTaskComparatorImpl());
   private final CompactionWorker worker = new CompactionWorker(0, candidateCompactionTaskQueue);
 
+  private boolean enableInsertionCrossSpaceCompaction;
+
   @Before
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
+    enableInsertionCrossSpaceCompaction =
+        IoTDBDescriptor.getInstance().getConfig().isEnableInsertionCrossSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableInsertionCrossSpaceCompaction(true);
   }
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    IoTDBDescriptor.getInstance().getConfig().setEnableInsertionCrossSpaceCompaction(false);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setEnableInsertionCrossSpaceCompaction(enableInsertionCrossSpaceCompaction);
     super.tearDown();
   }
 
@@ -419,11 +425,13 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
         generateSingleNonAlignedSeriesFileWithDevices(
             "3-3-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(6, 9)}, false);
     unseqResource2.setStatusForTest(TsFileResourceStatus.NORMAL);
+    createTimePartitionDirIfNotExist(2808L);
     TsFileResource unseqResource3 =
-        generateSingleNonAlignedSeriesFileWithDevices(
+        generateSingleNonAlignedSeriesFileWithDevicesWithTimePartition(
             "4-4-0-0.tsfile",
             new String[] {"d1"},
             new TimeRange[] {new TimeRange(1698301490306L, 1698301490406L)},
+            2808L,
             false);
     unseqResource3.setStatusForTest(TsFileResourceStatus.NORMAL);
     unseqResources.add(unseqResource1);
@@ -458,6 +466,24 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
   public TsFileResource generateSingleNonAlignedSeriesFileWithDevices(
       String fileName, String[] devices, TimeRange[] timeRanges, boolean seq) throws IOException {
     TsFileResource seqResource1 = createEmptyFileAndResourceWithName(fileName, seq, 0);
+    CompactionTestFileWriter writer1 = new CompactionTestFileWriter(seqResource1);
+    for (int i = 0; i < devices.length; i++) {
+      String device = devices[i];
+      TimeRange timeRange = timeRanges[i];
+      writer1.startChunkGroup(device);
+      writer1.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s1", new TimeRange[] {timeRange}, TSEncoding.PLAIN, CompressionType.LZ4);
+      writer1.endChunkGroup();
+    }
+    writer1.endFile();
+    writer1.close();
+    return seqResource1;
+  }
+
+  public TsFileResource generateSingleNonAlignedSeriesFileWithDevicesWithTimePartition(
+      String fileName, String[] devices, TimeRange[] timeRanges, long timePartition, boolean seq)
+      throws IOException {
+    TsFileResource seqResource1 = createEmptyFileAndResourceWithName(fileName, timePartition, seq);
     CompactionTestFileWriter writer1 = new CompactionTestFileWriter(seqResource1);
     for (int i = 0; i < devices.length; i++) {
       String device = devices[i];

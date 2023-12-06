@@ -20,8 +20,9 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint;
 
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
-import org.apache.iotdb.db.utils.SerializedSize;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
@@ -33,7 +34,7 @@ import java.util.Objects;
  * MemTableInfo records brief info of one memTable, including memTable id, tsFile path, and .wal
  * file version id of its first {@link WALEntry}.
  */
-public class MemTableInfo implements SerializedSize {
+public class MemTableInfo implements WALEntryValue {
   // memTable id 8 bytes, first version id 8 bytes
   private static final int FIXED_SERIALIZED_SIZE = Long.BYTES * 2;
 
@@ -65,6 +66,11 @@ public class MemTableInfo implements SerializedSize {
   @Override
   public int serializedSize() {
     return FIXED_SERIALIZED_SIZE + ReadWriteIOUtils.sizeToWrite(tsFilePath);
+  }
+
+  @Override
+  public void serializeToWAL(IWALByteBufferView buffer) {
+    throw new UnsupportedOperationException();
   }
 
   public void serialize(ByteBuffer buffer) {

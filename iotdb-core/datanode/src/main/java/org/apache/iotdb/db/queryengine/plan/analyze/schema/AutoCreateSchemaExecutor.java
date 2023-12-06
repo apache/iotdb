@@ -50,11 +50,10 @@ import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
@@ -83,6 +82,7 @@ class AutoCreateSchemaExecutor {
   }
 
   private ExecutionResult executeStatement(Statement statement, MPPQueryContext context) {
+
     return coordinator.execute(
         statement,
         SessionManager.getInstance().requestQueryId(),
@@ -254,14 +254,7 @@ class AutoCreateSchemaExecutor {
       MPPQueryContext context) {
     internalActivateTemplate(devicePath, context);
     Template template = templateManager.getTemplate(templateId);
-    for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
-      schemaTree.appendSingleMeasurement(
-          devicePath.concatNode(entry.getKey()),
-          entry.getValue(),
-          null,
-          null,
-          template.isDirectAligned());
-    }
+    schemaTree.appendTemplateDevice(devicePath, template.isDirectAligned(), templateId, template);
   }
 
   void autoActivateTemplate(
@@ -285,15 +278,8 @@ class AutoCreateSchemaExecutor {
       devicePath = entry.getKey();
       // Take the latest template
       template = templateManager.getTemplate(entry.getValue().left.getId());
-      for (Map.Entry<String, IMeasurementSchema> measurementEntry :
-          template.getSchemaMap().entrySet()) {
-        schemaTree.appendSingleMeasurement(
-            devicePath.concatNode(measurementEntry.getKey()),
-            measurementEntry.getValue(),
-            null,
-            null,
-            template.isDirectAligned());
-      }
+      schemaTree.appendTemplateDevice(
+          devicePath, template.isDirectAligned(), template.getId(), template);
     }
   }
 
@@ -438,15 +424,8 @@ class AutoCreateSchemaExecutor {
         devicePath = entry.getKey();
         // Take the latest template
         template = templateManager.getTemplate(entry.getValue().left.getId());
-        for (Map.Entry<String, IMeasurementSchema> measurementEntry :
-            template.getSchemaMap().entrySet()) {
-          schemaTree.appendSingleMeasurement(
-              devicePath.concatNode(measurementEntry.getKey()),
-              measurementEntry.getValue(),
-              null,
-              null,
-              template.isDirectAligned());
-        }
+        schemaTree.appendTemplateDevice(
+            devicePath, template.isDirectAligned(), template.getId(), template);
       }
     }
 
@@ -557,9 +536,14 @@ class AutoCreateSchemaExecutor {
   }
 
   private void internalActivateTemplate(PartialPath devicePath, MPPQueryContext context) {
-    ExecutionResult executionResult =
-        executeStatement(new ActivateTemplateStatement(devicePath), context);
-    TSStatus status = executionResult.status;
+    ActivateTemplateStatement statement = new ActivateTemplateStatement(devicePath);
+    TSStatus status =
+        AuthorityChecker.checkAuthority(statement, context.getSession().getUserName());
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+    }
+    ExecutionResult executionResult = executeStatement(statement, context);
+    status = executionResult.status;
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && status.getCode() != TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode()) {
       throw new SemanticException(new IoTDBException(status.getMessage(), status.getCode()));
@@ -569,10 +553,15 @@ class AutoCreateSchemaExecutor {
   private void internalActivateTemplate(
       Map<PartialPath, Pair<Template, PartialPath>> devicesNeedActivateTemplate,
       MPPQueryContext context) {
-    ExecutionResult executionResult =
-        executeStatement(
-            new InternalBatchActivateTemplateStatement(devicesNeedActivateTemplate), context);
-    TSStatus status = executionResult.status;
+    InternalBatchActivateTemplateStatement statement =
+        new InternalBatchActivateTemplateStatement(devicesNeedActivateTemplate);
+    TSStatus status =
+        AuthorityChecker.checkAuthority(statement, context.getSession().getUserName());
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+    }
+    ExecutionResult executionResult = executeStatement(statement, context);
+    status = executionResult.status;
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         || status.getCode() == TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode()) {
       return;

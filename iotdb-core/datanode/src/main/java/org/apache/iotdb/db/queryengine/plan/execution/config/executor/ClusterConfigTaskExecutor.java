@@ -95,7 +95,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -176,6 +178,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaSta
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
+import org.apache.iotdb.db.schemaengine.SchemaEngine;
+import org.apache.iotdb.db.schemaengine.rescon.DataNodeSchemaQuotaManager;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
@@ -1425,6 +1429,21 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                     duplicateMeasurement)));
         return future;
       }
+      // check schema quota
+      long localNeedQuota =
+          (long) templateExtendInfo.getMeasurements().size()
+              * SchemaEngine.getInstance()
+                  .getSchemaEngineStatistics()
+                  .getTemplateUsingNumber(templateExtendInfo.getTemplateName());
+      if (localNeedQuota != 0) {
+        try {
+
+          DataNodeSchemaQuotaManager.getInstance().check(localNeedQuota, 0);
+        } catch (SchemaQuotaExceededException e) {
+          future.setException(e);
+          return future;
+        }
+      }
     }
 
     TAlterSchemaTemplateReq req = new TAlterSchemaTemplateReq();
@@ -1527,6 +1546,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> createPipe(CreatePipeStatement createPipeStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    // Validate before creation
+    try {
+      PipeAgent.plugin().validate(createPipeStatement);
+    } catch (Exception e) {
+      future.setException(
+          new IoTDBException(e.getMessage(), TSStatusCode.PIPE_ERROR.getStatusCode()));
+      return future;
+    }
+
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TCreatePipeReq req =
@@ -1728,7 +1757,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendFullPath(oldName);
     patternTree.constructTree();
-    ISchemaTree schemaTree = ClusterSchemaFetcher.getInstance().fetchSchema(patternTree, null);
+    ISchemaTree schemaTree =
+        ClusterSchemaFetcher.getInstance().fetchSchema(patternTree, true, null);
     List<MeasurementPath> measurementPathList = schemaTree.searchMeasurementPaths(oldName).left;
     if (measurementPathList.isEmpty()) {
       future.setException(new PathNotExistException(oldName.getFullPath()));

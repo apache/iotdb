@@ -23,13 +23,15 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import javax.annotation.Nonnull;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class SimpleProgressIndex implements ProgressIndex {
+public class SimpleProgressIndex extends ProgressIndex {
 
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
@@ -68,7 +70,7 @@ public class SimpleProgressIndex implements ProgressIndex {
   }
 
   @Override
-  public boolean isAfter(ProgressIndex progressIndex) {
+  public boolean isAfter(@Nonnull ProgressIndex progressIndex) {
     lock.readLock().lock();
     try {
       if (progressIndex instanceof MinimumProgressIndex) {
@@ -171,6 +173,11 @@ public class SimpleProgressIndex implements ProgressIndex {
 
   public ProgressIndexType getType() {
     return ProgressIndexType.SIMPLE_PROGRESS_INDEX;
+  }
+
+  @Override
+  public TotalOrderSumTuple getTotalOrderSumTuple() {
+    return new TotalOrderSumTuple(memtableFlushOrderId, (long) rebootTimes);
   }
 
   public static SimpleProgressIndex deserializeFrom(ByteBuffer byteBuffer) {

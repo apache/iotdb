@@ -275,7 +275,11 @@ public class ConfigManager implements IManager {
     // Build the manager module
     this.nodeManager = new NodeManager(this, nodeInfo);
     this.clusterSchemaManager =
-        new ClusterSchemaManager(this, clusterSchemaInfo, new ClusterSchemaQuotaStatistics());
+        new ClusterSchemaManager(
+            this,
+            clusterSchemaInfo,
+            new ClusterSchemaQuotaStatistics(
+                COMMON_CONF.getSeriesLimitThreshold(), COMMON_CONF.getDeviceLimitThreshold()));
     this.partitionManager = new PartitionManager(this, partitionInfo);
     this.permissionManager = new PermissionManager(this, authorInfo);
     this.procedureManager = new ProcedureManager(this, procedureInfo);
@@ -424,25 +428,23 @@ public class ConfigManager implements IManager {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       List<TConfigNodeLocation> configNodeLocations = getNodeManager().getRegisteredConfigNodes();
       configNodeLocations.sort(Comparator.comparingInt(TConfigNodeLocation::getConfigNodeId));
-      List<TDataNodeLocation> dataNodeInfoLocations =
+      List<TDataNodeLocation> dataNodeLocations =
           getNodeManager().getRegisteredDataNodes().stream()
               .map(TDataNodeConfiguration::getLocation)
               .sorted(Comparator.comparingInt(TDataNodeLocation::getDataNodeId))
               .collect(Collectors.toList());
       Map<Integer, TNodeVersionInfo> nodeVersionInfo = getNodeManager().getNodeVersionInfo();
       Map<Integer, String> nodeStatus = getLoadManager().getNodeStatusWithReason();
-      for (TConfigNodeLocation configNodeLocation : configNodeLocations) {
-        if (!nodeStatus.containsKey(configNodeLocation.getConfigNodeId())) {
-          nodeStatus.put(configNodeLocation.getConfigNodeId(), NodeStatus.Unknown.toString());
-        }
-      }
-      for (TDataNodeLocation dataNodeLocation : dataNodeInfoLocations) {
-        if (!nodeStatus.containsKey(dataNodeLocation.getDataNodeId())) {
-          nodeStatus.put(dataNodeLocation.getDataNodeId(), NodeStatus.Unknown.toString());
-        }
-      }
+      configNodeLocations.forEach(
+          configNodeLocation ->
+              nodeStatus.putIfAbsent(
+                  configNodeLocation.getConfigNodeId(), NodeStatus.Unknown.toString()));
+      dataNodeLocations.forEach(
+          dataNodeLocation ->
+              nodeStatus.putIfAbsent(
+                  dataNodeLocation.getDataNodeId(), NodeStatus.Unknown.toString()));
       return new TShowClusterResp(
-          status, configNodeLocations, dataNodeInfoLocations, nodeStatus, nodeVersionInfo);
+          status, configNodeLocations, dataNodeLocations, nodeStatus, nodeVersionInfo);
     } else {
       return new TShowClusterResp(
           status, new ArrayList<>(), new ArrayList<>(), new HashMap<>(), new HashMap<>());
@@ -1087,7 +1089,7 @@ public class ConfigManager implements IManager {
     }
 
     if (clusterParameters.getSeriesPartitionSlotNum() != CONF.getSeriesSlotNum()) {
-      return errorStatus.setMessage(errorPrefix + "series_partition_slot_num" + errorSuffix);
+      return errorStatus.setMessage(errorPrefix + "series_slot_num" + errorSuffix);
     }
     if (!clusterParameters
         .getSeriesPartitionExecutorClass()

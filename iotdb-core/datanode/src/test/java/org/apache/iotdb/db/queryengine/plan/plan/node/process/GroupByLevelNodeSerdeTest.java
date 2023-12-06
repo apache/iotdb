@@ -32,9 +32,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationSt
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
-import org.apache.iotdb.tsfile.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
-import org.apache.iotdb.tsfile.read.filter.ValueFilter;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 import org.junit.Test;
 
@@ -45,6 +44,9 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
 
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.gt;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.longValue;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.time;
 import static org.junit.Assert.assertEquals;
 
 public class GroupByLevelNodeSerdeTest {
@@ -52,7 +54,7 @@ public class GroupByLevelNodeSerdeTest {
   @Test
   public void testSerializeAndDeserialize() throws IllegalPathException, IOException {
     GroupByTimeParameter groupByTimeParameter =
-        new GroupByTimeParameter(1, 100, 1, 1, true, true, true);
+        new GroupByTimeParameter(1, 100, new TimeDuration(1, 0), new TimeDuration(1, 0), true);
     SeriesAggregationScanNode seriesAggregationScanNode1 =
         new SeriesAggregationScanNode(
             new PlanNodeId("TestSeriesAggregateScanNode"),
@@ -64,8 +66,7 @@ public class GroupByLevelNodeSerdeTest {
                     Collections.singletonList(
                         new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))))),
             Ordering.ASC,
-            TimeFilter.gt(100L),
-            ValueFilter.gt(100),
+            gt(time(), longValue(100)),
             groupByTimeParameter,
             null);
     SeriesAggregationScanNode seriesAggregationScanNode2 =
@@ -79,8 +80,7 @@ public class GroupByLevelNodeSerdeTest {
                     Collections.singletonList(
                         new TimeSeriesOperand(new PartialPath("root.sg.d2.s1"))))),
             Ordering.ASC,
-            TimeFilter.gt(100L),
-            ValueFilter.gt(100),
+            gt(time(), longValue(100)),
             groupByTimeParameter,
             null);
 

@@ -50,7 +50,7 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
     } else {
       throw new UnsupportedOperationException(
           String.format(
-              "Unsupported event type %s for hybrid realtime extractor %s",
+              "Unsupported event type %s for log realtime extractor %s",
               eventToExtract.getClass(), this));
     }
   }

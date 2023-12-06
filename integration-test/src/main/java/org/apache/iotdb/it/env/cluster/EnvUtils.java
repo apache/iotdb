@@ -60,9 +60,10 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.USER_DIR;
 public class EnvUtils {
 
   public static int[] searchAvailablePorts() {
+    int length = 10;
     while (true) {
       int randomPortStart = 1000 + (int) (Math.random() * (1999 - 1000));
-      randomPortStart = randomPortStart * 10 + 1;
+      randomPortStart = randomPortStart * (length + 1) + 1;
       String lockFilePath = getLockFilePath(randomPortStart);
       File lockFile = new File(lockFilePath);
       try {
@@ -72,7 +73,7 @@ public class EnvUtils {
           continue;
         }
         List<Integer> requiredPorts =
-            IntStream.rangeClosed(randomPortStart, randomPortStart + 10)
+            IntStream.rangeClosed(randomPortStart, randomPortStart + length)
                 .boxed()
                 .collect(Collectors.toList());
         if (checkPortsAvailable(requiredPorts)) {

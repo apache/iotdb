@@ -53,8 +53,8 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameG
 import org.apache.iotdb.db.storageengine.rescon.memory.MemTableManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
@@ -385,6 +385,86 @@ public class DataRegionTest {
   }
 
   @Test
+  public void testAllMeasurementsFailedTabletWriteAndSyncClose()
+      throws QueryProcessException, IllegalPathException, WriteProcessException {
+    String[] measurements = new String[2];
+    measurements[0] = "s0";
+    measurements[1] = "s1";
+    TSDataType[] dataTypes = new TSDataType[2];
+    dataTypes[0] = TSDataType.INT32;
+    dataTypes[1] = TSDataType.INT64;
+
+    MeasurementSchema[] measurementSchemas = new MeasurementSchema[2];
+    measurementSchemas[0] = new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN);
+    measurementSchemas[1] = new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN);
+
+    long[] times = new long[100];
+    Object[] columns = new Object[2];
+    columns[0] = new int[100];
+    columns[1] = new long[100];
+
+    for (int r = 0; r < 100; r++) {
+      times[r] = r;
+      ((int[]) columns[0])[r] = 1;
+      ((long[]) columns[1])[r] = 1;
+    }
+
+    InsertTabletNode insertTabletNode1 =
+        new InsertTabletNode(
+            new QueryId("test_write").genPlanNodeId(),
+            new PartialPath("root.vehicle.d0"),
+            false,
+            measurements,
+            dataTypes,
+            measurementSchemas,
+            times,
+            null,
+            columns,
+            times.length);
+    insertTabletNode1.setFailedMeasurementNumber(2);
+
+    dataRegion.insertTablet(insertTabletNode1);
+    dataRegion.asyncCloseAllWorkingTsFileProcessors();
+
+    for (int r = 50; r < 149; r++) {
+      times[r - 50] = r;
+      ((int[]) columns[0])[r - 50] = 1;
+      ((long[]) columns[1])[r - 50] = 1;
+    }
+
+    InsertTabletNode insertTabletNode2 =
+        new InsertTabletNode(
+            new QueryId("test_write").genPlanNodeId(),
+            new PartialPath("root.vehicle.d0"),
+            false,
+            measurements,
+            dataTypes,
+            measurementSchemas,
+            times,
+            null,
+            columns,
+            times.length);
+    insertTabletNode2.setFailedMeasurementNumber(2);
+
+    dataRegion.insertTablet(insertTabletNode2);
+    dataRegion.asyncCloseAllWorkingTsFileProcessors();
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    QueryDataSource queryDataSource =
+        dataRegion.query(
+            Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            deviceId,
+            context,
+            null);
+
+    Assert.assertEquals(0, queryDataSource.getSeqResources().size());
+    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
+    for (TsFileResource resource : queryDataSource.getSeqResources()) {
+      Assert.assertTrue(resource.isClosed());
+    }
+  }
+
+  @Test
   public void testSeqAndUnSeqSyncClose()
       throws WriteProcessException, QueryProcessException, IllegalPathException {
     for (int j = 21; j <= 30; j++) {
@@ -412,6 +492,46 @@ public class DataRegionTest {
             null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     Assert.assertEquals(10, queryDataSource.getUnseqResources().size());
+    for (TsFileResource resource : queryDataSource.getSeqResources()) {
+      Assert.assertTrue(resource.isClosed());
+    }
+    for (TsFileResource resource : queryDataSource.getUnseqResources()) {
+      Assert.assertTrue(resource.isClosed());
+    }
+  }
+
+  @Test
+  public void testAllMeasurementsFailedRecordSeqAndUnSeqSyncClose()
+      throws WriteProcessException, QueryProcessException, IllegalPathException {
+    for (int j = 21; j <= 30; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      InsertRowNode rowNode = buildInsertRowNodeByTSRecord(record);
+      rowNode.setFailedMeasurementNumber(1);
+      dataRegion.insert(rowNode);
+      dataRegion.asyncCloseAllWorkingTsFileProcessors();
+    }
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    for (int j = 10; j >= 1; j--) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      InsertRowNode rowNode = buildInsertRowNodeByTSRecord(record);
+      rowNode.setFailedMeasurementNumber(1);
+      dataRegion.insert(rowNode);
+      dataRegion.asyncCloseAllWorkingTsFileProcessors();
+    }
+
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    QueryDataSource queryDataSource =
+        dataRegion.query(
+            Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            deviceId,
+            context,
+            null);
+    Assert.assertEquals(0, queryDataSource.getSeqResources().size());
+    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
@@ -1225,5 +1345,91 @@ public class DataRegionTest {
         throws DataRegionException {
       super(systemInfoDir, "0", new TsFileFlushPolicy.DirectFlushPolicy(), storageGroupName);
     }
+  }
+
+  // -- test for deleting data directly
+  // -- delete data and file only when:
+  // 1. tsfile is closed
+  // 2. tsfile is not compating
+  // 3. tsfile's start time and end time must be a subinterval
+  // of the given time range.
+
+  @Test
+  public void testDeleteDataDirectlySeqWriteModsOrDeleteFiles()
+      throws IllegalPathException, WriteProcessException, IOException {
+    for (int j = 100; j < 200; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+    }
+
+    TsFileResource tsFileResource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+    // delete data in work mem, no mods.
+    dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 50, 100, 0);
+    Assert.assertTrue(tsFileResource.getTsFile().exists());
+    Assert.assertFalse(tsFileResource.getModFile().exists());
+
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    // delete data in closed file, but time not match
+    dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 100, 120, 0);
+    Assert.assertTrue(tsFileResource.getTsFile().exists());
+    Assert.assertTrue(tsFileResource.getModFile().exists());
+
+    // delete data in closed file, and time all match
+    dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 100, 199, 0);
+    Assert.assertFalse(tsFileResource.getTsFile().exists());
+    Assert.assertFalse(tsFileResource.getModFile().exists());
+  }
+
+  @Test
+  public void testDeleteDataDirectlyUnseqWriteModsOrDeleteFiles()
+      throws IllegalPathException, WriteProcessException, IOException {
+    for (int j = 100; j < 200; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+    }
+    TsFileResource tsFileResourceSeq = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+    for (int j = 30; j < 100; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+    }
+
+    for (TsFileProcessor processor : dataRegion.getWorkSequenceTsFileProcessors()) {
+      processor.syncFlush();
+    }
+    TsFileResource tsFileResourceUnSeq = dataRegion.getTsFileManager().getTsFileList(false).get(0);
+
+    Assert.assertTrue(tsFileResourceSeq.getTsFile().exists());
+    Assert.assertTrue(tsFileResourceUnSeq.getTsFile().exists());
+
+    // already closed, will have a mods file.
+    dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 40, 60, 0);
+    // not close yet, just delete in memory.
+    dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 140, 160, 0);
+
+    // delete data in mem table, there is no mods
+    Assert.assertTrue(tsFileResourceSeq.getTsFile().exists());
+    Assert.assertTrue(tsFileResourceUnSeq.getTsFile().exists());
+    Assert.assertTrue(tsFileResourceSeq.getModFile().exists());
+    Assert.assertFalse(tsFileResourceUnSeq.getModFile().exists());
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 40, 80, 0);
+    Assert.assertTrue(tsFileResourceUnSeq.getTsFile().exists());
+    Assert.assertTrue(tsFileResourceUnSeq.getModFile().exists());
+
+    // seq file and unseq file have data file and mod file now,
+    // this deletion will remove data file and mod file.
+    dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 30, 100, 0);
+    dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 100, 199, 0);
+
+    Assert.assertFalse(tsFileResourceSeq.getTsFile().exists());
+    Assert.assertFalse(tsFileResourceUnSeq.getTsFile().exists());
+    Assert.assertFalse(tsFileResourceSeq.getModFile().exists());
+    Assert.assertFalse(tsFileResourceUnSeq.getModFile().exists());
   }
 }

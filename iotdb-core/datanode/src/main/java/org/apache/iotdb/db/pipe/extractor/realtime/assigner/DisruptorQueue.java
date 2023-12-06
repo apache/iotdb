@@ -54,7 +54,9 @@ public class DisruptorQueue {
         config.getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes();
 
     allocatedMemoryBlock =
-        PipeResourceManager.memory().tryAllocate(ringBufferSize * ringBufferEntrySizeInBytes);
+        PipeResourceManager.memory()
+            .tryAllocate(
+                ringBufferSize * ringBufferEntrySizeInBytes, currentSize -> currentSize / 2);
 
     disruptor =
         new Disruptor<>(

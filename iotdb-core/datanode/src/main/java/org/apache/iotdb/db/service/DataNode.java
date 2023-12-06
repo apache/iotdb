@@ -211,11 +211,13 @@ public class DataNode implements DataNodeMBean {
         SYSTEM_PROPERTIES.deleteOnExit();
       }
       stop();
+      System.exit(-1);
     }
   }
 
   /** Prepare cluster IoTDB-DataNode */
   private boolean prepareDataNode() throws StartupException, IOException {
+    long startTime = System.currentTimeMillis();
     // Set cluster mode
     config.setClusterMode(true);
 
@@ -230,6 +232,8 @@ public class DataNode implements DataNodeMBean {
     // Startup checks
     DataNodeStartupCheck checks = new DataNodeStartupCheck(IoTDBConstant.DN_ROLE, config);
     checks.startUpCheck();
+    long endTime = System.currentTimeMillis();
+    logger.info("The DataNode is prepared successfully, which takes {} ms", (endTime - startTime));
     return isFirstStart;
   }
 
@@ -246,7 +250,7 @@ public class DataNode implements DataNodeMBean {
    */
   private void pullAndCheckSystemConfigurations() throws StartupException {
     logger.info("Pulling system configurations from the ConfigNode-leader...");
-
+    long startTime = System.currentTimeMillis();
     /* Pull system configurations */
     int retry = DEFAULT_RETRY;
     TSystemConfigurationResp configurationResp = null;
@@ -311,8 +315,10 @@ public class DataNode implements DataNodeMBean {
     } catch (Exception e) {
       throw new StartupException(e.getMessage());
     }
-
-    logger.info("Successfully pull system configurations from ConfigNode-leader.");
+    long endTime = System.currentTimeMillis();
+    logger.info(
+        "Successfully pull system configurations from ConfigNode-leader, which takes {} ms",
+        (endTime - startTime));
   }
 
   /**
@@ -364,7 +370,7 @@ public class DataNode implements DataNodeMBean {
    */
   private void sendRegisterRequestToConfigNode() throws StartupException, IOException {
     logger.info("Sending register request to ConfigNode-leader...");
-
+    long startTime = System.currentTimeMillis();
     /* Send register request */
     int retry = DEFAULT_RETRY;
     TDataNodeRegisterReq req = new TDataNodeRegisterReq();
@@ -410,8 +416,11 @@ public class DataNode implements DataNodeMBean {
 
       storeRuntimeConfigurations(
           dataNodeRegisterResp.getConfigNodeList(), dataNodeRegisterResp.getRuntimeConfiguration());
-
-      logger.info("Successfully register to the cluster: {}", config.getClusterName());
+      long endTime = System.currentTimeMillis();
+      logger.info(
+          "Successfully register to the cluster: {} , which takes {} ms.",
+          config.getClusterName(),
+          (endTime - startTime));
     } else {
       /* Throw exception when register failed */
       logger.error(dataNodeRegisterResp.getStatus().getMessage());
@@ -421,7 +430,7 @@ public class DataNode implements DataNodeMBean {
 
   private void sendRestartRequestToConfigNode() throws StartupException {
     logger.info("Sending restart request to ConfigNode-leader...");
-
+    long startTime = System.currentTimeMillis();
     /* Send restart request */
     int retry = DEFAULT_RETRY;
     TDataNodeRestartReq req = new TDataNodeRestartReq();
@@ -463,7 +472,11 @@ public class DataNode implements DataNodeMBean {
       /* Store runtime configurations when restart request is accepted */
       storeRuntimeConfigurations(
           dataNodeRestartResp.getConfigNodeList(), dataNodeRestartResp.getRuntimeConfiguration());
-      logger.info("Restart request to cluster: {} is accepted.", config.getClusterName());
+      long endTime = System.currentTimeMillis();
+      logger.info(
+          "Restart request to cluster: {} is accepted, which takes {} ms.",
+          config.getClusterName(),
+          (endTime - startTime));
     } else {
       /* Throw exception when restart is rejected */
       throw new StartupException(dataNodeRestartResp.getStatus().getMessage());
@@ -492,9 +505,18 @@ public class DataNode implements DataNodeMBean {
     logger.info("IoTDB DataNode has started.");
 
     try {
+      long startTime = System.currentTimeMillis();
       SchemaRegionConsensusImpl.getInstance().start();
+      long schemaRegionEndTime = System.currentTimeMillis();
+      logger.info(
+          "SchemaRegion consensus start successfully, which takes {} ms.",
+          (schemaRegionEndTime - startTime));
       schemaRegionConsensusStarted = true;
       DataRegionConsensusImpl.getInstance().start();
+      long dataRegionEndTime = System.currentTimeMillis();
+      logger.info(
+          "DataRegion consensus start successfully, which takes {} ms.",
+          (dataRegionEndTime - schemaRegionEndTime));
       dataRegionConsensusStarted = true;
     } catch (IOException e) {
       throw new StartupException(e);
@@ -540,7 +562,7 @@ public class DataNode implements DataNodeMBean {
 
     logger.info(
         "IoTDB DataNode is setting up, some databases may not be ready now, please wait several seconds...");
-
+    long startTime = System.currentTimeMillis();
     while (!StorageEngine.getInstance().isAllSgReady()) {
       try {
         TimeUnit.MILLISECONDS.sleep(1000);
@@ -550,7 +572,8 @@ public class DataNode implements DataNodeMBean {
         return;
       }
     }
-
+    long endTime = System.currentTimeMillis();
+    logger.info("Wait for all databases ready, which takes {} ms.", (endTime - startTime));
     // Must init after SchemaEngine and StorageEngine prepared well
     DataNodeRegionManager.getInstance().init();
 
@@ -614,11 +637,11 @@ public class DataNode implements DataNodeMBean {
   }
 
   /**
-   * Generate dataNodeConfiguration.
+   * Generate dataNodeConfiguration. Warning: Don't private this method !!!
    *
    * @return TDataNodeConfiguration
    */
-  private TDataNodeConfiguration generateDataNodeConfiguration() {
+  public TDataNodeConfiguration generateDataNodeConfiguration() {
     // Set DataNodeLocation
     TDataNodeLocation location = generateDataNodeLocation();
 
@@ -645,6 +668,7 @@ public class DataNode implements DataNodeMBean {
   }
 
   private void prepareUDFResources() throws StartupException {
+    long startTime = System.currentTimeMillis();
     initUDFRelatedInstance();
     if (resourcesInformationHolder.getUDFInformationList() == null
         || resourcesInformationHolder.getUDFInformationList().isEmpty()) {
@@ -674,8 +698,8 @@ public class DataNode implements DataNodeMBean {
     } catch (Exception e) {
       throw new StartupException(e);
     }
-
-    logger.debug("successfully registered all the UDFs");
+    long endTime = System.currentTimeMillis();
+    logger.debug("successfully registered all the UDFs, which takes {} ms.", (endTime - startTime));
     if (logger.isDebugEnabled()) {
       for (UDFInformation udfInformation :
           UDFManagementService.getInstance().getAllUDFInformation()) {
@@ -748,6 +772,7 @@ public class DataNode implements DataNodeMBean {
   }
 
   private void prepareTriggerResources() throws StartupException {
+    long startTime = System.currentTimeMillis();
     initTriggerRelatedInstance();
     if (resourcesInformationHolder.getTriggerInformationList() == null
         || resourcesInformationHolder.getTriggerInformationList().isEmpty()) {
@@ -778,7 +803,7 @@ public class DataNode implements DataNodeMBean {
     } catch (Exception e) {
       throw new StartupException(e);
     }
-    logger.debug("successfully registered all the triggers");
+
     if (logger.isDebugEnabled()) {
       for (TriggerInformation triggerInformation :
           TriggerManagementService.getInstance().getAllTriggerInformationInTriggerTable()) {
@@ -792,6 +817,9 @@ public class DataNode implements DataNodeMBean {
     }
     // Start TriggerInformationUpdater
     triggerInformationUpdater.startTriggerInformationUpdater();
+    long endTime = System.currentTimeMillis();
+    logger.info(
+        "successfully registered all the triggers, which takes {} ms.", (endTime - startTime));
   }
 
   private void getJarOfTriggers(List<TriggerInformation> triggerInformationList)
@@ -853,7 +881,10 @@ public class DataNode implements DataNodeMBean {
   }
 
   private void preparePipeResources() throws StartupException {
+    long startTime = System.currentTimeMillis();
     PipeAgent.runtime().preparePipeResources(resourcesInformationHolder);
+    long endTime = System.currentTimeMillis();
+    logger.info("Prepare pipe resources successfully, which takes {} ms.", (endTime - startTime));
   }
 
   private void getPipeInformationList(List<ByteBuffer> allPipeInformation) {
@@ -867,10 +898,10 @@ public class DataNode implements DataNodeMBean {
   }
 
   private void initSchemaEngine() {
-    long time = System.currentTimeMillis();
+    long startTime = System.currentTimeMillis();
     SchemaEngine.getInstance().init();
-    long end = System.currentTimeMillis() - time;
-    logger.info("Spent {}ms to recover schema.", end);
+    long endTime = System.currentTimeMillis();
+    logger.info("Recover schema successfully, which takes {} ms.", (endTime - startTime));
   }
 
   public void stop() {

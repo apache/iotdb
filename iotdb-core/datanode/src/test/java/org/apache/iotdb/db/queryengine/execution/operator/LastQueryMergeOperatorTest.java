@@ -129,6 +129,11 @@ public class LastQueryMergeOperatorTest {
           }
 
           @Override
+          public void close() throws Exception {
+            // do nothing
+          }
+
+          @Override
           public long calculateMaxPeekMemory() {
             return 0;
           }
@@ -190,6 +195,11 @@ public class LastQueryMergeOperatorTest {
           @Override
           public boolean isFinished() throws Exception {
             return !hasNext();
+          }
+
+          @Override
+          public void close() throws Exception {
+            // do nothing
           }
 
           @Override
@@ -334,6 +344,11 @@ public class LastQueryMergeOperatorTest {
           }
 
           @Override
+          public void close() throws Exception {
+            // do nothing
+          }
+
+          @Override
           public long calculateMaxPeekMemory() {
             return 0;
           }
@@ -396,6 +411,11 @@ public class LastQueryMergeOperatorTest {
           public boolean isFinished() throws Exception {
 
             return !hasNext();
+          }
+
+          @Override
+          public void close() throws Exception {
+            // do nothing
           }
 
           @Override

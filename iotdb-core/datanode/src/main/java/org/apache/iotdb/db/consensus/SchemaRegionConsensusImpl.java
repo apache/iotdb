@@ -132,6 +132,8 @@ public class SchemaRegionConsensusImpl {
                                     .setRaftLogSizeMaxThreshold(CONF.getSchemaRatisLogMax())
                                     .setForceSnapshotInterval(
                                         CONF.getSchemaRatisPeriodicSnapshotInterval())
+                                    .setRetryTimesMax(10)
+                                    .setRetryWaitMillis(CONF.getConnectionTimeoutInMS() / 10)
                                     .build())
                             .setLeaderLogAppender(
                                 RatisConfig.LeaderLogAppender.newBuilder()
@@ -140,6 +142,7 @@ public class SchemaRegionConsensusImpl {
                                     .build())
                             .setRead(
                                 RatisConfig.Read.newBuilder()
+                                    .setReadOption(RatisConfig.Read.Option.LINEARIZABLE)
                                     // use thrift connection timeout to unify read timeout
                                     .setReadTimeout(
                                         TimeDuration.valueOf(

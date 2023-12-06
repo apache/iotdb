@@ -191,9 +191,9 @@ public class PartitionCache {
   private void fetchStorageGroupAndUpdateCache(
       StorageGroupCacheResult<?> result, List<String> devicePaths)
       throws ClientManagerException, TException {
+    storageGroupCacheLock.writeLock().lock();
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      storageGroupCacheLock.writeLock().lock();
       result.reset();
       getStorageGroupMap(result, devicePaths, true);
       if (!result.isSuccess()) {
@@ -204,6 +204,7 @@ public class PartitionCache {
           Set<String> storageGroupNames = storageGroupSchemaResp.getDatabaseSchemaMap().keySet();
           // update all database into cache
           updateStorageCache(storageGroupNames);
+          getStorageGroupMap(result, devicePaths, true);
         }
       }
     } finally {
@@ -222,9 +223,9 @@ public class PartitionCache {
   private void createStorageGroupAndUpdateCache(
       StorageGroupCacheResult<?> result, List<String> devicePaths, String userName)
       throws ClientManagerException, MetadataException, TException {
+    storageGroupCacheLock.writeLock().lock();
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      storageGroupCacheLock.writeLock().lock();
       // try to check whether database need to be created
       result.reset();
       // try to hit database with all missed devices
@@ -275,6 +276,7 @@ public class PartitionCache {
         }
         // try to update database cache when all databases has already been created
         updateStorageCache(storageGroupNamesNeedCreated);
+        getStorageGroupMap(result, devicePaths, false);
       }
     } finally {
       storageGroupCacheLock.writeLock().unlock();
@@ -355,15 +357,11 @@ public class PartitionCache {
       try {
         // try to fetch database from config node when miss
         fetchStorageGroupAndUpdateCache(result, devicePaths);
-        // second try to hit database in fast-fail way
-        getStorageGroupMap(result, devicePaths, true);
         if (!result.isSuccess() && isAutoCreate) {
           // try to auto create database of failed device
           createStorageGroupAndUpdateCache(result, devicePaths, userName);
-          // third try to hit database in fast-fail way
-          getStorageGroupMap(result, devicePaths, true);
           if (!result.isSuccess()) {
-            throw new StatementAnalyzeException("Failed to get database Map in three attempts.");
+            throw new StatementAnalyzeException("Failed to get database Map");
           }
         }
       } catch (TException | MetadataException | ClientManagerException e) {

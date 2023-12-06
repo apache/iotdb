@@ -20,12 +20,9 @@
 package org.apache.iotdb.db.pipe.task.stage;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
-import org.apache.iotdb.commons.pipe.plugin.builtin.processor.DoNothingProcessor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
-import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
+import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.execution.executor.PipeProcessorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutorManager;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
@@ -63,15 +60,9 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
       EventSupplier pipeExtractorInputEventSupplier,
       BoundedBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue) {
     final PipeProcessor pipeProcessor =
-        pipeProcessorParameters
-                .getStringOrDefault(
-                    PipeProcessorConstant.PROCESSOR_KEY,
-                    BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName())
-                .equals(BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName())
-            ? new DoNothingProcessor()
-            : PipeAgent.plugin().reflectProcessor(pipeProcessorParameters);
+        PipeAgent.plugin().reflectProcessor(pipeProcessorParameters);
 
-    // validate and customize should be called before createSubtask. this allows extractor exposing
+    // Validate and customize should be called before createSubtask. this allows extractor exposing
     // exceptions in advance.
     try {
       // 1. validate processor parameters
@@ -79,7 +70,9 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
 
       // 2. customize processor
       final PipeProcessorRuntimeConfiguration runtimeConfiguration =
-          new PipeTaskRuntimeConfiguration(new PipeTaskRuntimeEnvironment(pipeName, creationTime));
+          new PipeTaskRuntimeConfiguration(
+              new PipeTaskProcessorRuntimeEnvironment(
+                  pipeName, creationTime, dataRegionId.getId()));
       pipeProcessor.customize(pipeProcessorParameters, runtimeConfiguration);
     } catch (Exception e) {
       throw new PipeException(e.getMessage(), e);
@@ -92,10 +85,13 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
     // old one, so we need creationTime to make their hash code different in the map.
     final String taskId = pipeName + "_" + dataRegionId.getId() + "_" + creationTime;
     final PipeEventCollector pipeConnectorOutputEventCollector =
-        new PipeEventCollector(pipeConnectorOutputPendingQueue);
+        new PipeEventCollector(pipeConnectorOutputPendingQueue, dataRegionId.getId());
     this.pipeProcessorSubtask =
         new PipeProcessorSubtask(
             taskId,
+            creationTime,
+            pipeName,
+            dataRegionId.getId(),
             pipeExtractorInputEventSupplier,
             pipeProcessor,
             pipeConnectorOutputEventCollector);

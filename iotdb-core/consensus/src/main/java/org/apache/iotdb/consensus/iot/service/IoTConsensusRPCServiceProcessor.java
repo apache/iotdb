@@ -61,7 +61,8 @@ import java.util.stream.Collectors;
 
 public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.AsyncIface {
 
-  private final Logger logger = LoggerFactory.getLogger(IoTConsensusRPCServiceProcessor.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(IoTConsensusRPCServiceProcessor.class);
 
   private final IoTConsensus consensus;
 
@@ -81,7 +82,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
             String.format(
                 "unexpected consensusGroupId %s for TSyncLogEntriesReq which size is %s",
                 groupId, req.getLogEntries().size());
-        logger.error(message);
+        LOGGER.error(message);
         TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
         status.setMessage(message);
         resultHandler.onComplete(new TSyncLogEntriesRes(Collections.singletonList(status)));
@@ -89,7 +90,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
       }
       if (impl.isReadOnly()) {
         String message = "fail to sync logEntries because system is read-only.";
-        logger.error(message);
+        LOGGER.error(message);
         TSStatus status = new TSStatus(TSStatusCode.SYSTEM_READ_ONLY.getStatusCode());
         status.setMessage(message);
         resultHandler.onComplete(new TSyncLogEntriesRes(Collections.singletonList(status)));
@@ -122,7 +123,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
           .recordDeserializeCost(System.nanoTime() - buildRequestTime);
       TSStatus writeStatus =
           impl.syncLog(logEntriesInThisBatch.getSourcePeerId(), deserializedRequest);
-      logger.debug(
+      LOGGER.debug(
           "execute TSyncLogEntriesReq for {} with result {}",
           req.consensusGroupId,
           writeStatus.subStatus);
@@ -142,7 +143,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
     if (impl == null) {
       String message =
           String.format("unexpected consensusGroupId %s for inactivatePeer request", groupId);
-      logger.error(message);
+      LOGGER.error(message);
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);
       resultHandler.onComplete(new TInactivatePeerRes(status));
@@ -162,7 +163,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
     if (impl == null) {
       String message =
           String.format("unexpected consensusGroupId %s for inactivatePeer request", groupId);
-      logger.error(message);
+      LOGGER.error(message);
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);
       resultHandler.onComplete(new TActivatePeerRes(status));
@@ -183,7 +184,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
     if (impl == null) {
       String message =
           String.format("unexpected consensusGroupId %s for buildSyncLogChannel request", groupId);
-      logger.error(message);
+      LOGGER.error(message);
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);
       resultHandler.onComplete(new TBuildSyncLogChannelRes(status));
@@ -210,7 +211,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
     if (impl == null) {
       String message =
           String.format("unexpected consensusGroupId %s for buildSyncLogChannel request", groupId);
-      logger.error(message);
+      LOGGER.error(message);
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);
       resultHandler.onComplete(new TRemoveSyncLogChannelRes(status));
@@ -237,14 +238,14 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
     if (impl == null) {
       String message =
           String.format("unexpected consensusGroupId %s for waitSyncLogComplete request", groupId);
-      logger.error(message);
+      LOGGER.error(message);
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);
       resultHandler.onComplete(new TWaitSyncLogCompleteRes(true, 0, 0));
       return;
     }
     long searchIndex = impl.getSearchIndex();
-    long safeIndex = impl.getCurrentSafelyDeletedSearchIndex();
+    long safeIndex = impl.getMinSyncIndex();
     resultHandler.onComplete(
         new TWaitSyncLogCompleteRes(searchIndex == safeIndex, searchIndex, safeIndex));
   }
@@ -259,7 +260,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
     if (impl == null) {
       String message =
           String.format("unexpected consensusGroupId %s for buildSyncLogChannel request", groupId);
-      logger.error(message);
+      LOGGER.error(message);
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);
       resultHandler.onComplete(new TSendSnapshotFragmentRes(status));
@@ -286,7 +287,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
     if (impl == null) {
       String message =
           String.format("unexpected consensusGroupId %s for buildSyncLogChannel request", groupId);
-      logger.error(message);
+      LOGGER.error(message);
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);
       resultHandler.onComplete(new TTriggerSnapshotLoadRes(status));
@@ -308,7 +309,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
     if (impl == null) {
       String message =
           String.format("unexpected consensusGroupId %s for buildSyncLogChannel request", groupId);
-      logger.error(message);
+      LOGGER.error(message);
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);
       resultHandler.onComplete(new TCleanupTransferredSnapshotRes(status));
@@ -319,7 +320,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
       impl.cleanupTransferredSnapshot(req.snapshotId);
       responseStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (ConsensusGroupModifyPeerException e) {
-      logger.error(String.format("failed to cleanup transferred snapshot %s", req.snapshotId), e);
+      LOGGER.error("failed to cleanup transferred snapshot {}", req.snapshotId, e);
       responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       responseStatus.setMessage(e.getMessage());
     }

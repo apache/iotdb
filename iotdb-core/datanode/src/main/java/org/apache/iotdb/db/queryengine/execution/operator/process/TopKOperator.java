@@ -24,15 +24,15 @@ import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.utils.datastructure.MergeSortHeap;
 import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
-import org.apache.iotdb.tsfile.access.Column;
-import org.apache.iotdb.tsfile.access.ColumnBuilder;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.enums.TSDataType;
-import org.apache.iotdb.tsfile.exception.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.DoubleColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.FloatColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
@@ -80,6 +80,8 @@ public class TopKOperator implements ProcessOperator {
   // the data of every childOperator is in order
   private final boolean childrenDataInOrder;
 
+  public static int operatorBatchUpperBound = 100000;
+
   public TopKOperator(
       OperatorContext operatorContext,
       List<Operator> deviceOperators,
@@ -98,7 +100,10 @@ public class TopKOperator implements ProcessOperator {
 
     initResultTsBlock();
 
-    deviceBatchStep = 10000 % topValue == 0 ? 10000 / topValue : 10000 / topValue + 1;
+    deviceBatchStep =
+        operatorBatchUpperBound % topValue == 0
+            ? operatorBatchUpperBound / topValue
+            : operatorBatchUpperBound / topValue + 1;
     canCallNext = new boolean[deviceOperators.size()];
   }
 
@@ -137,7 +142,14 @@ public class TopKOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() throws Exception {
-    return !(deviceIndex >= deviceOperators.size() && resultReturnSize >= topKResult.length);
+    if (deviceIndex >= deviceOperators.size()) {
+      if (topKResult == null) {
+        return false;
+      }
+
+      return resultReturnSize < topKResult.length;
+    }
+    return true;
   }
 
   @Override
@@ -207,6 +219,16 @@ public class TopKOperator implements ProcessOperator {
     }
 
     return null;
+  }
+
+  @Override
+  public void close() throws Exception {
+    for (int i = deviceIndex; i < deviceOperators.size(); i++) {
+      final Operator operator = deviceOperators.get(i);
+      if (operator != null) {
+        operator.close();
+      }
+    }
   }
 
   @Override
@@ -289,6 +311,11 @@ public class TopKOperator implements ProcessOperator {
     }
 
     tsBlockBuilder.reset();
+
+    if (topKResult == null || topKResult.length == 0) {
+      return tsBlockBuilder.build();
+    }
+
     ColumnBuilder[] valueColumnBuilders = tsBlockBuilder.getValueColumnBuilders();
     for (int i = resultReturnSize; i < topKResult.length; i++) {
       MergeSortKey mergeSortKey = topKResult[i];

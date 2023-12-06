@@ -119,6 +119,30 @@ public class TestConstant {
     return String.format("mode(%s)", path);
   }
 
+  public static String stddev(String path) {
+    return String.format("stddev(%s)", path);
+  }
+
+  public static String stddevPop(String path) {
+    return String.format("stddev_pop(%s)", path);
+  }
+
+  public static String stddevSamp(String path) {
+    return String.format("stddev_samp(%s)", path);
+  }
+
+  public static String variance(String path) {
+    return String.format("variance(%s)", path);
+  }
+
+  public static String varPop(String path) {
+    return String.format("var_pop(%s)", path);
+  }
+
+  public static String varSamp(String path) {
+    return String.format("var_samp(%s)", path);
+  }
+
   public static String recordToInsert(TSRecord record) {
     StringBuilder measurements = new StringBuilder();
     StringBuilder values = new StringBuilder();

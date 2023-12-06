@@ -71,6 +71,8 @@ public abstract class AbstractResultListener {
         } catch (InterruptedException e) {
           logger.warn("Interrupted when waiting for result.", e);
           Thread.currentThread().interrupt();
+          status = Status.FAILURE;
+          break;
         }
       }
     }

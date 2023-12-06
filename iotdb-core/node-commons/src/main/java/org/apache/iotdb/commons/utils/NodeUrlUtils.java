@@ -22,19 +22,27 @@ package org.apache.iotdb.commons.utils;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.rpc.UrlUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.StringJoiner;
+import java.util.stream.Collectors;
 
 public class NodeUrlUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(NodeUrlUtils.class);
 
+  public static final String WILD_CARD_ADDRESS = "0.0.0.0";
+  public static final String LOOPBACK_HOST_NAME = "localhost";
   /**
    * Convert TEndPoint to TEndPointUrl
    *
@@ -70,21 +78,7 @@ public class NodeUrlUtils {
    * @throws BadNodeUrlException Throw when unable to parse
    */
   public static TEndPoint parseTEndPointUrl(String endPointUrl) throws BadNodeUrlException {
-    String[] split = endPointUrl.split(":");
-    if (split.length != 2) {
-      logger.warn("Illegal endpoint url format: {}", endPointUrl);
-      throw new BadNodeUrlException(String.format("Bad endpoint url: %s", endPointUrl));
-    }
-    String ip = split[0];
-    TEndPoint result;
-    try {
-      int port = Integer.parseInt(split[1]);
-      result = new TEndPoint(ip, port);
-    } catch (NumberFormatException e) {
-      logger.warn("Illegal endpoint url format: {}", endPointUrl);
-      throw new BadNodeUrlException(String.format("Bad node url: %s", endPointUrl));
-    }
-    return result;
+    return UrlUtils.parseTEndPointIpv4AndIpv6Url(endPointUrl);
   }
 
   /**
@@ -98,7 +92,7 @@ public class NodeUrlUtils {
       throws BadNodeUrlException {
     List<TEndPoint> result = new ArrayList<>();
     for (String url : endPointUrls) {
-      result.add(parseTEndPointUrl(url));
+      result.add(UrlUtils.parseTEndPointIpv4AndIpv6Url(url));
     }
     return result;
   }
@@ -157,7 +151,9 @@ public class NodeUrlUtils {
       throw new BadNodeUrlException(String.format("Bad node url: %s", configNodeUrl));
     }
     return new TConfigNodeLocation(
-        Integer.parseInt(split[0]), parseTEndPointUrl(split[1]), parseTEndPointUrl(split[2]));
+        Integer.parseInt(split[0]),
+        UrlUtils.parseTEndPointIpv4AndIpv6Url(split[1]),
+        UrlUtils.parseTEndPointIpv4AndIpv6Url(split[2]));
   }
 
   /**
@@ -188,10 +184,62 @@ public class NodeUrlUtils {
     return parseTConfigNodeUrls(Arrays.asList(configNodeUrls.split(";")));
   }
 
-  public static boolean isLocalAddress(String ip) {
-    if (ip == null) {
+  /**
+   * Detect whether the given addresses or host names(may contain both) point to the node itself.
+   *
+   * @param addressesOrHostNames List of the addresses or host name to check
+   * @return true if one of the given strings point to the node itself
+   * @throws UnknownHostException Throw when unable to parse the given addresses or host names
+   */
+  public static boolean containsLocalAddress(List<String> addressesOrHostNames)
+      throws UnknownHostException {
+    if (addressesOrHostNames == null) {
       return false;
     }
-    return ip.equals("0.0.0.0") || ip.equals("127.0.0.1") || ip.equals("localhost");
+
+    Set<String> selfAddresses = getAllLocalAddresses();
+
+    for (String addressOrHostName : addressesOrHostNames) {
+      if (addressOrHostName == null) {
+        continue;
+      }
+      // Unify address or hostName, converting them to addresses
+      Set<String> translatedAddresses =
+          Arrays.stream(InetAddress.getAllByName(addressOrHostName))
+              .map(InetAddress::getHostAddress)
+              .collect(Collectors.toCollection(HashSet::new));
+      translatedAddresses.retainAll(selfAddresses);
+
+      if (!translatedAddresses.isEmpty()) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Return all the internal, external, IPv4, IPv6 and loopback addresses(without hostname) of the
+   * node
+   *
+   * @return the local addresses set
+   * @throws UnknownHostException Throw when unable to self addresses or host names (Normally not
+   *     thrown)
+   */
+  public static Set<String> getAllLocalAddresses() throws UnknownHostException {
+    // Check internal and external, IPv4 and IPv6 network addresses
+    Set<String> selfAddresses =
+        Arrays.stream(InetAddress.getAllByName(InetAddress.getLocalHost().getHostName()))
+            .map(InetAddress::getHostAddress)
+            .collect(Collectors.toCollection(HashSet::new));
+    // Check IPv4 and IPv6 loopback addresses 127.0.0.1 and 0.0.0.0.0.0.0.1
+    selfAddresses.addAll(
+        Arrays.stream(InetAddress.getAllByName(LOOPBACK_HOST_NAME))
+            .map(InetAddress::getHostAddress)
+            .collect(Collectors.toCollection(HashSet::new)));
+    // Check general address 0.0.0.0
+    selfAddresses.add(WILD_CARD_ADDRESS);
+
+    return selfAddresses;
   }
 }

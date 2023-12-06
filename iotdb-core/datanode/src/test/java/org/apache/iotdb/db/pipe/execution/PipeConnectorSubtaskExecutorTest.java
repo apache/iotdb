@@ -39,6 +39,9 @@ public class PipeConnectorSubtaskExecutorTest extends PipeSubtaskExecutorTest {
         Mockito.spy(
             new PipeConnectorSubtask(
                 "PipeConnectorSubtaskExecutorTest",
+                System.currentTimeMillis(),
+                "TestAttributeSortedString",
+                0,
                 mock(BoundedBlockingPendingQueue.class),
                 mock(PipeConnector.class)));
   }

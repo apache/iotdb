@@ -18,14 +18,21 @@
  */
 package org.apache.iotdb.commons.udf.builtin.String;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.customizer.strategy.MappableRowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
+
+import java.io.IOException;
 
 /*This function Returns the concat string by input series and targets.
 startsEnd: Indicates whether series behind targets. The default value is false.*/
@@ -52,7 +59,9 @@ public class UDTFConcat implements UDTF {
               if (key.startsWith("target") && value != null) concatTargets.append(value);
             });
     seriesBehind = parameters.getBooleanOrDefault("series_behind", false);
-    configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.TEXT);
+    configurations
+        .setAccessStrategy(new MappableRowByRowAccessStrategy())
+        .setOutputDataType(Type.TEXT);
   }
 
   @Override
@@ -70,5 +79,55 @@ public class UDTFConcat implements UDTF {
         seriesBehind
             ? concatSeries.insert(0, concatTargets).toString()
             : concatSeries.append(concatTargets).toString());
+  }
+
+  @Override
+  public Object transform(Row row) throws IOException {
+    StringBuilder concatSeries = new StringBuilder();
+    for (int i = 0; i < row.size(); i++) {
+      if (row.isNull(i)) {
+        continue;
+      }
+      concatSeries.append(row.getString(i));
+    }
+
+    String res =
+        seriesBehind
+            ? concatSeries.insert(0, concatTargets).toString()
+            : concatSeries.append(concatTargets).toString();
+    return BytesUtils.valueOf(res);
+  }
+
+  @Override
+  public void transform(Column[] columns, ColumnBuilder builder) throws Exception {
+    int colCount = columns.length;
+    int rowCount = columns[0].getPositionCount();
+
+    Binary[][] inputFrame = new Binary[colCount][rowCount];
+    for (int i = 0; i < colCount; i++) {
+      inputFrame[i] = columns[i].getBinaries();
+    }
+
+    boolean[][] isNullFrame = new boolean[colCount][rowCount];
+    for (int i = 0; i < colCount; i++) {
+      isNullFrame[i] = columns[i].isNull();
+    }
+
+    for (int row = 0; row < rowCount; row++) {
+      StringBuilder concatSeries = new StringBuilder();
+      for (int col = 0; col < colCount; col++) {
+        if (isNullFrame[col][row]) {
+          continue;
+        }
+        String str = inputFrame[col][row].getStringValue(TSFileConfig.STRING_CHARSET);
+        concatSeries.append(str);
+      }
+
+      String res =
+          seriesBehind
+              ? concatSeries.insert(0, concatTargets).toString()
+              : concatSeries.append(concatTargets).toString();
+      builder.writeBinary(BytesUtils.valueOf(res));
+    }
   }
 }

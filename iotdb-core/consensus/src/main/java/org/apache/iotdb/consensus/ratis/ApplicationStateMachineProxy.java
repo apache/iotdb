@@ -21,13 +21,13 @@ package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.ratis.metrics.RatisMetricsManager;
+import org.apache.iotdb.consensus.ratis.utils.Retriable;
 import org.apache.iotdb.consensus.ratis.utils.Utils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -46,6 +46,7 @@ import org.apache.ratis.statemachine.TransactionContext;
 import org.apache.ratis.statemachine.impl.BaseStateMachine;
 import org.apache.ratis.util.FileUtils;
 import org.apache.ratis.util.LifeCycle;
+import org.apache.ratis.util.TimeDuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,11 +54,8 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
 
 public class ApplicationStateMachineProxy extends BaseStateMachine {
 
@@ -65,12 +63,10 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
   private final IStateMachine applicationStateMachine;
-  private final IStateMachine.RetryPolicy retryPolicy;
   private final SnapshotStorage snapshotStorage;
   private final RaftGroupId groupId;
-  private final ConsensusGroupId consensusGroupId;
   private final TConsensusGroupType consensusGroupType;
-  private final ConcurrentHashMap<ConsensusGroupId, AtomicBoolean> canStaleRead;
+  private final BiConsumer<RaftGroupMemberId, RaftPeerId> leaderChangeListener;
 
   ApplicationStateMachineProxy(IStateMachine stateMachine, RaftGroupId id) {
     this(stateMachine, id, null);
@@ -79,15 +75,10 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
   ApplicationStateMachineProxy(
       IStateMachine stateMachine,
       RaftGroupId id,
-      ConcurrentHashMap<ConsensusGroupId, AtomicBoolean> canStaleRead) {
+      BiConsumer<RaftGroupMemberId, RaftPeerId> onLeaderChanged) {
     this.applicationStateMachine = stateMachine;
-    this.canStaleRead = canStaleRead;
+    this.leaderChangeListener = onLeaderChanged;
     this.groupId = id;
-    this.consensusGroupId = Utils.fromRaftGroupIdToConsensusGroupId(id);
-    retryPolicy =
-        applicationStateMachine instanceof IStateMachine.RetryPolicy
-            ? (IStateMachine.RetryPolicy) applicationStateMachine
-            : new IStateMachine.RetryPolicy() {};
     snapshotStorage = new SnapshotStorage(applicationStateMachine, groupId);
     consensusGroupType = Utils.getConsensusGroupTypeFromPrefix(groupId.toString());
     applicationStateMachine.start();
@@ -134,7 +125,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     RaftProtos.LogEntryProto log = trx.getLogEntry();
     updateLastAppliedTermIndex(log.getTerm(), log.getIndex());
 
-    IConsensusRequest applicationRequest;
+    final IConsensusRequest applicationRequest;
 
     // if this server is leader
     // it will first try to obtain applicationRequest from transaction context
@@ -148,37 +139,16 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
           new ByteBufferConsensusRequest(
               log.getStateMachineLogEntry().getLogData().asReadOnlyByteBuffer());
     }
+    final IConsensusRequest deserializedRequest =
+        applicationStateMachine.deserializeRequest(applicationRequest);
 
-    Message ret = null;
+    Message ret;
     waitUntilSystemAllowApply();
-    TSStatus finalStatus = null;
-    boolean shouldRetry = false;
-    boolean firstTry = true;
     do {
       try {
-        if (!firstTry) {
-          Thread.sleep(retryPolicy.getSleepTime());
-        }
-        IConsensusRequest deserializedRequest =
-            applicationStateMachine.deserializeRequest(applicationRequest);
-
-        TSStatus result = applicationStateMachine.write(deserializedRequest);
-
-        if (firstTry) {
-          finalStatus = result;
-          firstTry = false;
-        } else {
-          finalStatus = retryPolicy.updateResult(finalStatus, result);
-        }
-
-        shouldRetry = retryPolicy.shouldRetry(finalStatus);
-        if (!shouldRetry) {
-          ret = new ResponseMessage(finalStatus);
-          break;
-        }
-      } catch (InterruptedException i) {
-        logger.warn("{} interrupted when retry sleep", this);
-        Thread.currentThread().interrupt();
+        final TSStatus result = applicationStateMachine.write(deserializedRequest);
+        ret = new ResponseMessage(result);
+        break;
       } catch (Throwable rte) {
         logger.error("application statemachine throws a runtime exception: ", rte);
         ret =
@@ -187,12 +157,12 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
                     .setMessage("internal error. statemachine throws a runtime exception: " + rte));
         if (Utils.stallApply()) {
           waitUntilSystemAllowApply();
-          shouldRetry = true;
         } else {
           break;
         }
       }
-    } while (shouldRetry);
+    } while (Utils.stallApply());
+
     if (isLeader) {
       // only record time cost for data region in Performance Overview Dashboard
       if (consensusGroupType == TConsensusGroupType.DataRegion) {
@@ -208,13 +178,12 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
   }
 
   private void waitUntilSystemAllowApply() {
-    while (Utils.stallApply()) {
-      try {
-        TimeUnit.SECONDS.sleep(60);
-      } catch (InterruptedException e) {
-        logger.warn("{}: interrupted when waiting until system ready: ", this, e);
-        Thread.currentThread().interrupt();
-      }
+    try {
+      Retriable.attemptUntilTrue(
+          () -> !Utils.stallApply(), TimeDuration.ONE_MINUTE, "waitUntilSystemAllowApply", logger);
+    } catch (InterruptedException e) {
+      logger.warn("{}: interrupted when waiting until system ready: ", this, e);
+      Thread.currentThread().interrupt();
     }
   }
 
@@ -308,9 +277,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
 
   @Override
   public void notifyLeaderChanged(RaftGroupMemberId groupMemberId, RaftPeerId newLeaderId) {
-    Optional.ofNullable(canStaleRead)
-        .ifPresent(
-            m -> m.computeIfAbsent(consensusGroupId, id -> new AtomicBoolean(false)).set(false));
+    leaderChangeListener.accept(groupMemberId, newLeaderId);
     applicationStateMachine
         .event()
         .notifyLeaderChanged(

@@ -27,8 +27,15 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBThriftConnect
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBThriftSyncConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.OpcUaConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.WebSocketConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.WriteBackConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.IoTDBExtractor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.DoNothingProcessor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.DownSamplingProcessor;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 public enum BuiltinPipePlugin {
 
@@ -39,6 +46,7 @@ public enum BuiltinPipePlugin {
 
   // processors
   DO_NOTHING_PROCESSOR("do-nothing-processor", DoNothingProcessor.class),
+  DOWN_SAMPLING_PROCESSOR("down-sampling-processor", DownSamplingProcessor.class),
 
   // connectors
   DO_NOTHING_CONNECTOR("do-nothing-connector", DoNothingConnector.class),
@@ -49,6 +57,7 @@ public enum BuiltinPipePlugin {
   IOTDB_AIR_GAP_CONNECTOR("iotdb-air-gap-connector", IoTDBAirGapConnector.class),
   WEBSOCKET_CONNECTOR("websocket-connector", WebSocketConnector.class),
   OPC_UA_CONNECTOR("opc-ua-connector", OpcUaConnector.class),
+  WRITE_BACK_CONNECTOR("write-back-connector", WriteBackConnector.class),
 
   DO_NOTHING_SINK("do-nothing-sink", DoNothingConnector.class),
   IOTDB_THRIFT_SINK("iotdb-thrift-sink", IoTDBThriftConnector.class),
@@ -58,6 +67,7 @@ public enum BuiltinPipePlugin {
   IOTDB_AIR_GAP_SINK("iotdb-air-gap-sink", IoTDBAirGapConnector.class),
   WEBSOCKET_SINK("websocket-sink", WebSocketConnector.class),
   OPC_UA_SINK("opc-ua-sink", OpcUaConnector.class),
+  WRITE_BACK_SINK("write-back-sink", WriteBackConnector.class),
   ;
 
   private final String pipePluginName;
@@ -81,4 +91,28 @@ public enum BuiltinPipePlugin {
   public String getClassName() {
     return className;
   }
+
+  public static final Set<String> SHOW_PIPE_PLUGINS_BLACKLIST =
+      Collections.unmodifiableSet(
+          new HashSet<>(
+              Arrays.asList(
+                  // Extractors
+                  IOTDB_EXTRACTOR.getPipePluginName().toUpperCase(),
+                  // Processors
+                  DOWN_SAMPLING_PROCESSOR.getPipePluginName().toUpperCase(),
+                  // Connectors
+                  DO_NOTHING_CONNECTOR.getPipePluginName().toUpperCase(),
+                  IOTDB_THRIFT_CONNECTOR.getPipePluginName().toUpperCase(),
+                  IOTDB_THRIFT_SYNC_CONNECTOR.getPipePluginName().toUpperCase(),
+                  IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName().toUpperCase(),
+                  IOTDB_LEGACY_PIPE_CONNECTOR.getPipePluginName().toUpperCase(),
+                  IOTDB_AIR_GAP_CONNECTOR.getPipePluginName().toUpperCase(),
+                  WEBSOCKET_CONNECTOR.getPipePluginName().toUpperCase(),
+                  OPC_UA_CONNECTOR.getPipePluginName().toUpperCase(),
+                  WRITE_BACK_CONNECTOR.getPipePluginName().toUpperCase(),
+                  // Sinks
+                  IOTDB_THRIFT_SYNC_SINK.getPipePluginName().toUpperCase(),
+                  IOTDB_THRIFT_ASYNC_SINK.getPipePluginName().toUpperCase(),
+                  IOTDB_LEGACY_PIPE_SINK.getPipePluginName().toUpperCase(),
+                  WEBSOCKET_SINK.getPipePluginName().toUpperCase())));
 }

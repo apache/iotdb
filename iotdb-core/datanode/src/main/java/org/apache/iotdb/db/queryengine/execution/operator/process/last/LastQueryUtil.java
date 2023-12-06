@@ -26,13 +26,13 @@ import org.apache.iotdb.db.queryengine.execution.aggregation.MaxTimeDescAccumula
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.operator.Gt;
-import org.apache.iotdb.tsfile.read.filter.operator.GtEq;
+import org.apache.iotdb.tsfile.read.filter.operator.TimeFilterOperators.TimeGt;
+import org.apache.iotdb.tsfile.read.filter.operator.TimeFilterOperators.TimeGtEq;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.collect.ImmutableList;
@@ -166,8 +166,8 @@ public class LastQueryUtil {
 
   public static boolean needUpdateCache(Filter timeFilter) {
     // Update the cache only when, the filter is gt (greater than) or ge (greater than or equal to)
-    return CACHE_ENABLED && (timeFilter == null || timeFilter instanceof GtEq)
-        || (timeFilter instanceof Gt);
+    return CACHE_ENABLED && (timeFilter == null || timeFilter instanceof TimeGtEq)
+        || (timeFilter instanceof TimeGt);
   }
 
   public static boolean needUpdateNullEntry(Filter timeFilter) {

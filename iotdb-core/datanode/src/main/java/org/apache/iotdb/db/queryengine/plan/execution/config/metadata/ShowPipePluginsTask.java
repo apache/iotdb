@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata;
 
+import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
@@ -27,7 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
@@ -70,6 +71,11 @@ public class ShowPipePluginsTask implements IConfigTask {
             .collect(Collectors.toList());
     final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     for (final PipePluginMeta pipePluginMeta : pipePluginMetaList) {
+      // some pipe plugins are not for user's direct use
+      if (BuiltinPipePlugin.SHOW_PIPE_PLUGINS_BLACKLIST.contains(pipePluginMeta.getPluginName())) {
+        continue;
+      }
+
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.getColumnBuilder(0).writeBinary(BytesUtils.valueOf(pipePluginMeta.getPluginName()));
       builder

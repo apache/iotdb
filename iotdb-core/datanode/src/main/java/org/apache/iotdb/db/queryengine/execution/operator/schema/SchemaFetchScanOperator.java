@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.execution.operator.schema;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
@@ -38,7 +37,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -51,7 +49,7 @@ public class SchemaFetchScanOperator implements SourceOperator {
 
   private final ISchemaRegion schemaRegion;
   private final boolean withTags;
-
+  private final boolean withTemplate;
   private boolean isFinished = false;
 
   private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
@@ -63,13 +61,15 @@ public class SchemaFetchScanOperator implements SourceOperator {
       PathPatternTree patternTree,
       Map<Integer, Template> templateMap,
       ISchemaRegion schemaRegion,
-      boolean withTags) {
+      boolean withTags,
+      boolean withTemplate) {
     this.sourceId = planNodeId;
     this.operatorContext = context;
     this.patternTree = patternTree;
     this.schemaRegion = schemaRegion;
     this.templateMap = templateMap;
     this.withTags = withTags;
+    this.withTemplate = withTemplate;
   }
 
   @Override
@@ -101,16 +101,18 @@ public class SchemaFetchScanOperator implements SourceOperator {
   }
 
   @Override
+  public void close() throws Exception {
+    // do nothing
+  }
+
+  @Override
   public PlanNodeId getSourceId() {
     return sourceId;
   }
 
   private TsBlock fetchSchema() throws MetadataException {
-    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
-    List<PartialPath> partialPathList = patternTree.getAllPathPatterns();
-    for (PartialPath path : partialPathList) {
-      schemaTree.appendMeasurementPaths(schemaRegion.fetchSchema(path, templateMap, withTags));
-    }
+    ClusterSchemaTree schemaTree =
+        schemaRegion.fetchSchema(patternTree, templateMap, withTags, withTemplate);
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {

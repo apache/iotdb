@@ -21,10 +21,10 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.parameter;
 
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.utils.DateTimeUtils;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilter;
 import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
 
 import java.util.Collections;
@@ -35,23 +35,23 @@ public class SeriesScanOptions {
 
   private Filter globalTimeFilter;
 
-  private Filter queryFilter;
+  private Filter pushDownFilter;
 
-  private final long limit;
-  private final long offset;
+  private final long pushDownLimit;
+  private final long pushDownOffset;
 
   private final Set<String> allSensors;
 
   public SeriesScanOptions(
       Filter globalTimeFilter,
-      Filter queryFilter,
-      long limit,
-      long offset,
+      Filter pushDownFilter,
+      long pushDownLimit,
+      long pushDownOffset,
       Set<String> allSensors) {
     this.globalTimeFilter = globalTimeFilter;
-    this.queryFilter = queryFilter;
-    this.limit = limit;
-    this.offset = offset;
+    this.pushDownFilter = pushDownFilter;
+    this.pushDownLimit = pushDownLimit;
+    this.pushDownOffset = pushDownOffset;
     this.allSensors = allSensors;
   }
 
@@ -69,16 +69,8 @@ public class SeriesScanOptions {
     return globalTimeFilter;
   }
 
-  public Filter getQueryFilter() {
-    return queryFilter;
-  }
-
-  public long getLimit() {
-    return limit;
-  }
-
-  public long getOffset() {
-    return offset;
+  public Filter getPushDownFilter() {
+    return pushDownFilter;
   }
 
   public Set<String> getAllSensors() {
@@ -86,13 +78,13 @@ public class SeriesScanOptions {
   }
 
   public PaginationController getPaginationController() {
-    return new PaginationController(limit, offset);
+    return new PaginationController(pushDownLimit, pushDownOffset);
   }
 
   public void setTTL(long dataTTL) {
     this.globalTimeFilter = updateFilterUsingTTL(globalTimeFilter, dataTTL);
-    if (this.queryFilter != null) {
-      this.queryFilter = updateFilterUsingTTL(queryFilter, dataTTL);
+    if (this.pushDownFilter != null) {
+      this.pushDownFilter = updateFilterUsingTTL(pushDownFilter, dataTTL);
     }
   }
 
@@ -100,9 +92,10 @@ public class SeriesScanOptions {
   public static Filter updateFilterUsingTTL(Filter filter, long dataTTL) {
     if (dataTTL != Long.MAX_VALUE) {
       if (filter != null) {
-        filter = new AndFilter(filter, TimeFilter.gtEq(DateTimeUtils.currentTime() - dataTTL));
+        filter =
+            FilterFactory.and(filter, TimeFilter.gtEq(CommonDateTimeUtils.currentTime() - dataTTL));
       } else {
-        filter = TimeFilter.gtEq(DateTimeUtils.currentTime() - dataTTL);
+        filter = TimeFilter.gtEq(CommonDateTimeUtils.currentTime() - dataTTL);
       }
     }
     return filter;
@@ -111,9 +104,9 @@ public class SeriesScanOptions {
   public static class Builder {
 
     private Filter globalTimeFilter = null;
-    private Filter queryFilter = null;
-    private long limit = 0L;
-    private long offset = 0L;
+    private Filter pushDownFilter = null;
+    private long pushDownLimit = 0L;
+    private long pushDownOffset = 0L;
 
     private Set<String> allSensors;
 
@@ -122,18 +115,18 @@ public class SeriesScanOptions {
       return this;
     }
 
-    public Builder withQueryFilter(Filter queryFilter) {
-      this.queryFilter = queryFilter;
+    public Builder withPushDownFilter(Filter pushDownFilter) {
+      this.pushDownFilter = pushDownFilter;
       return this;
     }
 
-    public Builder withLimit(long limit) {
-      this.limit = limit;
+    public Builder withPushDownLimit(long pushDownLimit) {
+      this.pushDownLimit = pushDownLimit;
       return this;
     }
 
-    public Builder withOffset(long offset) {
-      this.offset = offset;
+    public Builder withPushDownOffset(long pushDownOffset) {
+      this.pushDownOffset = pushDownOffset;
       return this;
     }
 
@@ -142,7 +135,8 @@ public class SeriesScanOptions {
     }
 
     public SeriesScanOptions build() {
-      return new SeriesScanOptions(globalTimeFilter, queryFilter, limit, offset, allSensors);
+      return new SeriesScanOptions(
+          globalTimeFilter, pushDownFilter, pushDownLimit, pushDownOffset, allSensors);
     }
   }
 }

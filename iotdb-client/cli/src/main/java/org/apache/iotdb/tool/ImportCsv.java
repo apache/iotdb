@@ -31,7 +31,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
@@ -66,12 +66,12 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.apache.iotdb.tsfile.enums.TSDataType.BOOLEAN;
-import static org.apache.iotdb.tsfile.enums.TSDataType.DOUBLE;
-import static org.apache.iotdb.tsfile.enums.TSDataType.FLOAT;
-import static org.apache.iotdb.tsfile.enums.TSDataType.INT32;
-import static org.apache.iotdb.tsfile.enums.TSDataType.INT64;
-import static org.apache.iotdb.tsfile.enums.TSDataType.TEXT;
+import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.BOOLEAN;
+import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.DOUBLE;
+import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.FLOAT;
+import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.INT32;
+import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.INT64;
+import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.TEXT;
 
 public class ImportCsv extends AbstractCsvTool {
 

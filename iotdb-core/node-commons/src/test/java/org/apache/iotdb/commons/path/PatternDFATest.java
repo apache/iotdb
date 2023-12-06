@@ -120,6 +120,33 @@ public class PatternDFATest {
   }
 
   @Test
+  @Ignore
+  public void printFASketch3() throws IllegalPathException {
+    // Map<AcceptEvent, IFATransition>
+    Map<String, IFATransition> transitionMap = new HashMap<>();
+    PathPatternTree patternTree = new PathPatternTree();
+    List<PartialPath> partialPathList =
+        Arrays.asList(
+            new PartialPath("root.sg2.d1"),
+            new PartialPath("root.sg2.d1.s1"),
+            new PartialPath("root.sg1.d2.s1"),
+            new PartialPath("root.sg1.d2.s2"),
+            new PartialPath("root.sg1.d2"));
+    AtomicInteger transitionIndex = new AtomicInteger();
+    for (PartialPath pathPattern : partialPathList) {
+      patternTree.appendFullPath(pathPattern);
+      for (String node : pathPattern.getNodes()) {
+        transitionMap.computeIfAbsent(
+            node, i -> new DFAPreciseTransition(transitionIndex.getAndIncrement(), node));
+      }
+    }
+    patternTree.constructTree();
+    //     build DFA directly
+    DFAGraph dfaGraph = new DFAGraph(patternTree, transitionMap);
+    dfaGraph.print(transitionMap);
+  }
+
+  @Test
   public void testMatchFullPath() throws IllegalPathException {
     PartialPath p1 = new PartialPath("root.sg1.d1.*");
 

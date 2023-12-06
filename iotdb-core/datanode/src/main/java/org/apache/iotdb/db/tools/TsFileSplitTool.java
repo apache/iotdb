@@ -27,13 +27,13 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
-import org.apache.iotdb.tsfile.enums.TSDataType;
-import org.apache.iotdb.tsfile.exception.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
@@ -59,7 +59,7 @@ import java.util.Set;
 
 public class TsFileSplitTool {
 
-  private static final Logger logger = LoggerFactory.getLogger(TsFileSplitTool.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileSplitTool.class);
 
   private final String filename;
 
@@ -90,7 +90,7 @@ public class TsFileSplitTool {
   public static void main(String[] args) throws IOException {
     checkArgs(args);
     String fileName = args[0];
-    logger.info("Splitting TsFile {} ...", fileName);
+    LOGGER.info("Splitting TsFile {} ...", fileName);
     new TsFileSplitTool(fileName).run();
   }
 

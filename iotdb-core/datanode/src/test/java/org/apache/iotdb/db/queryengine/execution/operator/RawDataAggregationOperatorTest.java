@@ -53,12 +53,12 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
-import org.apache.iotdb.tsfile.read.filter.operator.Gt;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilter;
+import org.apache.iotdb.tsfile.utils.TimeDuration;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
@@ -244,7 +244,8 @@ public class RawDataAggregationOperatorTest {
         inputLocations.add(inputLocationForOneAggregator);
       }
     }
-    GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 399, 100, 100, true);
+    GroupByTimeParameter groupByTimeParameter =
+        new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
 
     WindowParameter windowParameter = new TimeWindowParameter(false);
 
@@ -304,7 +305,8 @@ public class RawDataAggregationOperatorTest {
       inputLocationForOneAggregator.add(new InputLocation[] {new InputLocation(0, i)});
       inputLocations.add(inputLocationForOneAggregator);
     }
-    GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 399, 100, 100, true);
+    GroupByTimeParameter groupByTimeParameter =
+        new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
 
     WindowParameter windowParameter = new TimeWindowParameter(false);
 
@@ -368,7 +370,8 @@ public class RawDataAggregationOperatorTest {
         inputLocations.add(inputLocationForOneAggregator);
       }
     }
-    GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 399, 100, 100, true);
+    GroupByTimeParameter groupByTimeParameter =
+        new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
 
     WindowParameter windowParameter = new TimeWindowParameter(true);
 
@@ -433,7 +436,8 @@ public class RawDataAggregationOperatorTest {
         inputLocations.add(inputLocationForOneAggregator);
       }
     }
-    GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 600, 100, 100, true);
+    GroupByTimeParameter groupByTimeParameter =
+        new GroupByTimeParameter(0, 600, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
 
     WindowParameter windowParameter = new TimeWindowParameter(true);
 
@@ -501,7 +505,8 @@ public class RawDataAggregationOperatorTest {
         inputLocations.add(inputLocationForOneAggregator);
       }
     }
-    GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 600, 100, 100, false);
+    GroupByTimeParameter groupByTimeParameter =
+        new GroupByTimeParameter(0, 600, new TimeDuration(0, 100), new TimeDuration(0, 100), false);
 
     WindowParameter windowParameter = new TimeWindowParameter(false);
 
@@ -943,7 +948,7 @@ public class RawDataAggregationOperatorTest {
 
     Filter timeFilter = null;
     if (groupByTimeParameter != null && !groupByTimeParameter.isLeftCRightO()) {
-      timeFilter = new Gt<>(0L, FilterType.TIME_FILTER);
+      timeFilter = TimeFilter.gt(0L);
     }
 
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();

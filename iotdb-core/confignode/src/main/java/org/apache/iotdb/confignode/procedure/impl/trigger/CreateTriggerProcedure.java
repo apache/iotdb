@@ -160,8 +160,8 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
       }
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
-        LOG.error("Fail in CreateTriggerProcedure", e);
-        setFailure(new ProcedureException(e.getMessage()));
+        LOG.warn("Create trigger {} failed.", triggerInformation.getTriggerName(), e);
+        setFailure(new ProcedureException(e));
       } else {
         LOG.error(
             "Retrievable error trying to create trigger [{}], state [{}]",

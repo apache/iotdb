@@ -31,9 +31,9 @@ import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.DescPrior
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.PriorityMergeReader;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -60,7 +60,7 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
       Ordering scanOrder,
       SeriesScanOptions scanOptions,
       FragmentInstanceContext context) {
-    this(seriesPath, scanOrder, scanOptions, context, false);
+    this(seriesPath, scanOrder, scanOptions, context, false, null);
   }
 
   public AlignedSeriesScanUtil(
@@ -68,11 +68,16 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
       Ordering scanOrder,
       SeriesScanOptions scanOptions,
       FragmentInstanceContext context,
-      boolean queryAllSensors) {
+      boolean queryAllSensors,
+      List<TSDataType> givenDataTypes) {
     super(seriesPath, scanOrder, scanOptions, context);
     dataTypes =
-        ((AlignedPath) seriesPath)
-            .getSchemaList().stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
+        givenDataTypes != null
+            ? givenDataTypes
+            : ((AlignedPath) seriesPath)
+                .getSchemaList().stream()
+                    .map(IMeasurementSchema::getType)
+                    .collect(Collectors.toList());
     isAligned = true;
     this.queryAllSensors = queryAllSensors;
   }
@@ -156,7 +161,7 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
     if (firstTimeSeriesMetadata != null
         && !isFileOverlapped()
         && !firstTimeSeriesMetadata.isModified()) {
-      Filter queryFilter = scanOptions.getQueryFilter();
+      Filter queryFilter = scanOptions.getPushDownFilter();
       Statistics statistics = firstTimeSeriesMetadata.getStatistics();
       if (queryFilter == null || queryFilter.allSatisfy(statistics)) {
         skipOffsetByTimeSeriesMetadata();
@@ -204,7 +209,7 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
   @Override
   protected void filterFirstChunkMetadata() throws IOException {
     if (firstChunkMetadata != null && !isChunkOverlapped() && !firstChunkMetadata.isModified()) {
-      Filter queryFilter = scanOptions.getQueryFilter();
+      Filter queryFilter = scanOptions.getPushDownFilter();
       Statistics statistics = firstChunkMetadata.getStatistics();
       if (queryFilter == null || queryFilter.allSatisfy(statistics)) {
         skipOffsetByChunkMetadata();

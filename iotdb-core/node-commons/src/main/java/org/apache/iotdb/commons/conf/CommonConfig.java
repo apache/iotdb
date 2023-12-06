@@ -156,6 +156,7 @@ public class CommonConfig {
   private int pipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount = 10_000;
   private long pipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration = 10 * 1000L;
   private long pipeSubtaskExecutorPendingQueueMaxBlockingTimeMs = 1000;
+  private long pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds = 20;
 
   private int pipeExtractorAssignerDisruptorRingBufferSize = 65536;
   private long pipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes = 50; // 50B
@@ -184,12 +185,14 @@ public class CommonConfig {
   private int pipeAirGapReceiverPort = 9780;
 
   private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 2;
+  private int pipeMaxAllowedPinnedMemTableCount = 50;
 
   private boolean pipeMemoryManagementEnabled = true;
   private long pipeMemoryAllocateRetryIntervalMs = 1000;
   private int pipeMemoryAllocateMaxRetries = 10;
   private long pipeMemoryAllocateMinSizeInBytes = 32;
   private long pipeMemoryAllocateForTsFileSequenceReaderInBytes = 2 * 1024 * 1024; // 2MB
+  private long pipeMemoryExpanderIntervalSeconds = 3 * 60; // 3Min
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -204,6 +207,13 @@ public class CommonConfig {
   private int databaseLimitThreshold = -1;
 
   private long datanodeTokenTimeoutMS = 180 * 1000; // 3 minutes
+
+  // timeseries and device limit
+  private long seriesLimitThreshold = -1;
+  private long deviceLimitThreshold = -1;
+
+  // time in nanosecond precision when starting up
+  private final long startUpNanosecond = System.nanoTime();
 
   CommonConfig() {
     // Empty constructor
@@ -709,6 +719,16 @@ public class CommonConfig {
         pipeSubtaskExecutorPendingQueueMaxBlockingTimeMs;
   }
 
+  public long getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds() {
+    return pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds;
+  }
+
+  public void setPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds(
+      long pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds) {
+    this.pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds =
+        pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds;
+  }
+
   public void setPipeAirGapReceiverEnabled(boolean pipeAirGapReceiverEnabled) {
     this.pipeAirGapReceiverEnabled = pipeAirGapReceiverEnabled;
   }
@@ -734,6 +754,14 @@ public class CommonConfig {
     this.pipeMaxAllowedPendingTsFileEpochPerDataRegion = pipeExtractorPendingQueueTsfileLimit;
   }
 
+  public int getPipeMaxAllowedPinnedMemTableCount() {
+    return pipeMaxAllowedPinnedMemTableCount;
+  }
+
+  public void setPipeMaxAllowedPinnedMemTableCount(int pipeMaxAllowedPinnedMemTableCount) {
+    this.pipeMaxAllowedPinnedMemTableCount = pipeMaxAllowedPinnedMemTableCount;
+  }
+
   public boolean getPipeMemoryManagementEnabled() {
     return pipeMemoryManagementEnabled;
   }
@@ -750,6 +778,14 @@ public class CommonConfig {
       long pipeMemoryAllocateForTsFileSequenceReaderInBytes) {
     this.pipeMemoryAllocateForTsFileSequenceReaderInBytes =
         pipeMemoryAllocateForTsFileSequenceReaderInBytes;
+  }
+
+  public long getPipeMemoryExpanderIntervalSeconds() {
+    return pipeMemoryExpanderIntervalSeconds;
+  }
+
+  public void setPipeMemoryExpanderIntervalSeconds(long pipeMemoryExpanderIntervalSeconds) {
+    this.pipeMemoryExpanderIntervalSeconds = pipeMemoryExpanderIntervalSeconds;
   }
 
   public int getPipeMemoryAllocateMaxRetries() {
@@ -814,5 +850,25 @@ public class CommonConfig {
 
   public void setDatanodeTokenTimeoutMS(long timeoutMS) {
     this.datanodeTokenTimeoutMS = timeoutMS;
+  }
+
+  public long getSeriesLimitThreshold() {
+    return seriesLimitThreshold;
+  }
+
+  public void setSeriesLimitThreshold(long seriesLimitThreshold) {
+    this.seriesLimitThreshold = seriesLimitThreshold;
+  }
+
+  public long getDeviceLimitThreshold() {
+    return deviceLimitThreshold;
+  }
+
+  public void setDeviceLimitThreshold(long deviceLimitThreshold) {
+    this.deviceLimitThreshold = deviceLimitThreshold;
+  }
+
+  public long getStartUpNanosecond() {
+    return startUpNanosecond;
   }
 }
