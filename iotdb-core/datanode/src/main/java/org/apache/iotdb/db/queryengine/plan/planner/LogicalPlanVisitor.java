@@ -311,6 +311,13 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                   analysis.getGroupByTimeParameter(),
                   curStep,
                   queryStatement.getResultTimeOrder());
+
+          if (queryStatement.isOutputEndTime()) {
+            planBuilder =
+                planBuilder.planEndTimeColumnInject(
+                    analysis.getGroupByTimeParameter(),
+                    queryStatement.getResultTimeOrder().isAscending());
+          }
         }
 
         if (queryStatement.isGroupByLevel()) {
@@ -347,6 +354,13 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                     sourceTransformExpressions,
                     analysis.getCrossGroupByExpressions(),
                     deviceViewInputIndexes);
+
+        if (queryStatement.isOutputEndTime() && analysis.getGroupByTimeParameter() != null) {
+          planBuilder =
+              planBuilder.planEndTimeColumnInject(
+                  analysis.getGroupByTimeParameter(),
+                  queryStatement.getResultTimeOrder().isAscending());
+        }
       }
     }
 

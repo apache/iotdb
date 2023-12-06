@@ -49,6 +49,7 @@ import static org.apache.iotdb.db.utils.constant.TestConstant.maxValue;
 import static org.apache.iotdb.db.utils.constant.TestConstant.minTime;
 import static org.apache.iotdb.db.utils.constant.TestConstant.minValue;
 import static org.apache.iotdb.db.utils.constant.TestConstant.sum;
+import static org.apache.iotdb.itbase.constant.TestConstant.END_TIMESTAMP_STR;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.fail;
 
@@ -534,6 +535,145 @@ public class IOTDBGroupByIT {
     String[] retArray = new String[] {"1,0,null,", "2,0,null,"};
     resultSetEqualWithDescOrderTest(
         "select count(s1), sum(s1) from root.test.noDataRegion GROUP BY ([1, 3), 1ms)",
+        expectedHeader,
+        retArray);
+  }
+
+  // RawDataOperator as the top operator
+  @Test
+  public void endTimeGroupByTimeTest() {
+    String[] expectedHeader =
+        new String[] {
+          TIMESTAMP_STR,
+          END_TIMESTAMP_STR,
+          count("root.ln.wf01.wt01.temperature"),
+          sum("root.ln.wf01.wt01.temperature"),
+          avg("root.ln.wf01.wt01.temperature")
+        };
+    String[] retArray =
+        new String[] {
+          "90,94,0,null,null,",
+          "120,124,0,null,null,",
+          "150,154,1,200.2,200.2,",
+          "180,184,0,null,null,",
+          "210,214,0,null,null,"
+        };
+    resultSetEqualTest(
+        "select __endTime,count(temperature), sum(temperature), avg(temperature) from "
+            + "root.ln.wf01.wt01 where temperature > 3 "
+            + "GROUP BY ([0, 600), 5ms, 30ms) "
+            + "limit 5 offset 3",
+        expectedHeader,
+        retArray);
+  }
+
+  // SeriesScanOperator as the top operator
+  @Test
+  public void endTimeGroupByTimeTest2() {
+    String[] expectedHeader =
+        new String[] {
+          TIMESTAMP_STR,
+          END_TIMESTAMP_STR,
+          count("root.ln.wf01.wt01.temperature"),
+          sum("root.ln.wf01.wt01.temperature"),
+          avg("root.ln.wf01.wt01.temperature")
+        };
+    String[] retArray =
+        new String[] {
+          "90,94,0,null,null,",
+          "120,124,0,null,null,",
+          "150,154,1,200.2,200.2,",
+          "180,184,0,null,null,",
+          "210,214,0,null,null,"
+        };
+    resultSetEqualTest(
+        "select __endTime,count(temperature), sum(temperature), avg(temperature) from "
+            + "root.ln.wf01.wt01 "
+            + "GROUP BY ([0, 600), 5ms, 30ms) "
+            + "limit 5 offset 3",
+        expectedHeader,
+        retArray);
+  }
+
+  // SeriesScanOperator as the top operator
+  @Test
+  public void endTimeGroupByTimeTest3() {
+    String[] expectedHeader =
+        new String[] {
+          TIMESTAMP_STR,
+          END_TIMESTAMP_STR,
+          count("root.ln.wf01.wt01.temperature"),
+          sum("root.ln.wf01.wt01.temperature"),
+          avg("root.ln.wf01.wt01.temperature")
+        };
+    String[] retArray =
+        new String[] {
+          "15,19,0,null,null,",
+          "20,24,1,20.2,20.2,",
+          "25,29,0,null,null,",
+          "30,34,1,30.3,30.3,",
+          "35,39,0,null,null,"
+        };
+    resultSetEqualTest(
+        "select __endTime,count(temperature), sum(temperature), avg(temperature) from "
+            + "root.ln.wf01.wt01 "
+            + "GROUP BY ([0, 600), 5ms) "
+            + "limit 5 offset 3",
+        expectedHeader,
+        retArray);
+  }
+
+  // SlidingWindowOperator as top operator
+  @Test
+  public void endTimeGroupByTimeTest4() {
+    String[] expectedHeader =
+        new String[] {
+          TIMESTAMP_STR,
+          END_TIMESTAMP_STR,
+          count("root.ln.wf01.wt01.temperature"),
+          sum("root.ln.wf01.wt01.temperature"),
+          avg("root.ln.wf01.wt01.temperature")
+        };
+    String[] retArray =
+        new String[] {
+          "15,44,3,90.9,30.3,",
+          "20,49,3,90.9,30.3,",
+          "25,54,3,121.2,40.4,",
+          "30,59,3,121.2,40.4,",
+          "35,64,2,90.9,45.45,"
+        };
+    resultSetEqualTest(
+        "select __endTime,count(temperature), sum(temperature), avg(temperature) from "
+            + "root.ln.wf01.wt01 "
+            + "GROUP BY ([0, 600), 30ms, 5ms) "
+            + "limit 5 offset 3",
+        expectedHeader,
+        retArray);
+  }
+
+  @Test
+  public void endTimeGroupByTimeTest5() {
+    String[] expectedHeader =
+        new String[] {
+          TIMESTAMP_STR,
+          END_TIMESTAMP_STR,
+          count("root.ln.wf01.wt01.temperature"),
+          sum("root.ln.wf01.wt01.temperature"),
+          avg("root.ln.wf01.wt01.temperature")
+        };
+    String[] retArray =
+        new String[] {
+          "45,45,3,90.9,30.3,",
+          "50,50,3,121.2,40.4,",
+          "55,55,3,121.2,40.4,",
+          "60,60,2,90.9,45.45,",
+          "65,65,2,90.9,45.45,"
+        };
+    resultSetEqualTest(
+        "select __endTime,count(temperature), sum(temperature), avg(temperature) from "
+            + "root.ln.wf01.wt01 "
+            + "GROUP BY ((0, 600], 30ms, 5ms) "
+            + "limit 5 offset 3",
         expectedHeader,
         retArray);
   }
