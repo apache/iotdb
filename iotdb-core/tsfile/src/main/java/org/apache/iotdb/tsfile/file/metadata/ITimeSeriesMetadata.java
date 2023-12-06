@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
 
@@ -44,4 +45,7 @@ public interface ITimeSeriesMetadata {
   List<IChunkMetadata> loadChunkMetadataList();
 
   void setChunkMetadataLoader(IChunkMetadataLoader chunkMetadataLoader);
+
+  /** @return true if data type is matched, otherwise false */
+  boolean typeMatch(List<TSDataType> dataTypes);
 }
