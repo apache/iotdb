@@ -21,11 +21,13 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.ex
 
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
+import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -42,11 +44,7 @@ public class InstantPageLoader implements PageLoader {
   private List<TimeRange> deleteIntervalList;
   private ModifiedStatus modifiedStatus;
 
-  public InstantPageLoader(
-      CompressionType compressionType, TSDataType dataType, TSEncoding encoding) {
-    this.compressionType = compressionType;
-    this.dataType = dataType;
-    this.encoding = encoding;
+  public InstantPageLoader() {
   }
 
   public InstantPageLoader(
@@ -114,6 +112,27 @@ public class InstantPageLoader implements PageLoader {
           new TimeRange(pageHeader.getStartTime(), pageHeader.getEndTime()));
     } else {
       return null;
+    }
+  }
+
+  @Override
+  public void flushToTimeChunkWriter(AlignedChunkWriterImpl alignedChunkWriter)
+      throws PageException {
+    alignedChunkWriter.writePageHeaderAndDataIntoTimeBuff(pageData, pageHeader);
+    clear();
+  }
+
+  @Override
+  public void flushToValueChunkWriter(
+      AlignedChunkWriterImpl alignedChunkWriter, int valueColumnIndex)
+      throws IOException, PageException {
+    if (isEmpty()) {
+      alignedChunkWriter.getValueChunkWriterByIndex(valueColumnIndex).writeEmptyPageToPageBuffer();
+    } else {
+      alignedChunkWriter
+          .getValueChunkWriterByIndex(valueColumnIndex)
+          .writePageHeaderAndDataIntoBuff(pageData, pageHeader);
+      clear();
     }
   }
 

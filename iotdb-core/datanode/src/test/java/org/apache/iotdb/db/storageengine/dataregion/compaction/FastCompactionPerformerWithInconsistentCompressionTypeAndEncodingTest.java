@@ -90,7 +90,7 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
       }
       TsFileResource resource = new TsFileResource();
       resource.setFile(file);
-      //      resource.setStatusForTest(TsFileResourceStatus.COMPACTING);
+      //            resource.setStatusForTest(TsFileResourceStatus.COMPACTING);
       resource.deserialize();
       resources.add(resource);
     }

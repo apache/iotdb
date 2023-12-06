@@ -20,11 +20,13 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.loader;
 
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
+import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -46,6 +48,11 @@ public interface PageLoader {
   ModifiedStatus getModifiedStatus();
 
   List<TimeRange> getDeleteIntervalList();
+
+  void flushToTimeChunkWriter(AlignedChunkWriterImpl alignedChunkWriter) throws PageException;
+
+  void flushToValueChunkWriter(AlignedChunkWriterImpl alignedChunkWriter, int valueColumnIndex)
+      throws IOException, PageException;
 
   boolean isEmpty();
 

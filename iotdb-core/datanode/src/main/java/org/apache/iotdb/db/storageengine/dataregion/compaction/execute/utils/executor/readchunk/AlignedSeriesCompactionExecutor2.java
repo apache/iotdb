@@ -24,6 +24,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.Comp
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.loader.ChunkLoader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.loader.InstantChunkLoader;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.loader.InstantPageLoader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.loader.LazyChunkLoader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.loader.LazyPageLoader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.loader.PageLoader;
@@ -100,14 +101,18 @@ public class AlignedSeriesCompactionExecutor2 {
     this.schemaMap = schemaMap;
     this.summary = summary;
     this.schemaList = collectValueColumnSchemaList(schemaMap);
-    this.chunkWriter = new AlignedChunkWriterImpl(schemaList);
     this.saveMemory = saveMemory;
+    if (saveMemory) {
+      this.chunkWriter = new LazyAlignedChunkWriterImpl(schemaList);
+    } else {
+      this.chunkWriter = new AlignedChunkWriterImpl(schemaList);
+    }
     this.targetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
     this.targetChunkPointNum = IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
     this.targetPageSize = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
     this.targetPagePointNum =
         TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
-    this.rateLimiter = RateLimiter.create(500000);
+    this.rateLimiter = RateLimiter.create(1000000);
   }
 
   private List<IMeasurementSchema> collectValueColumnSchemaList(
@@ -169,6 +174,9 @@ public class AlignedSeriesCompactionExecutor2 {
   private ChunkLoader getChunkLoader(TsFileSequenceReader reader, ChunkMetadata chunkMetadata)
       throws IOException {
     if (saveMemory) {
+      if (chunkMetadata == null || chunkMetadata.getStatistics().getCount() == 0) {
+        return new LazyChunkLoader();
+      }
       return new LazyChunkLoader((CompactionTsFileReader) reader, chunkMetadata);
     } else {
       if (chunkMetadata == null || chunkMetadata.getStatistics().getCount() == 0) {
@@ -230,6 +238,7 @@ public class AlignedSeriesCompactionExecutor2 {
         continue;
       }
       writer.writeChunk(valueChunk.getChunk(), valueChunk.getChunkMetadata());
+      valueChunk.clear();
     }
     writer.markEndingWritingAligned();
   }
@@ -241,13 +250,14 @@ public class AlignedSeriesCompactionExecutor2 {
     for (ChunkLoader valueChunk : valueChunks) {
       List<PageLoader> valueColumnPageList = valueChunk.getPages();
       pageListOfAllValueColumns.add(valueColumnPageList);
+      valueChunk.clear();
     }
 
     for (int i = 0; i < timeColumnPageList.size(); i++) {
       PageLoader timePage = timeColumnPageList.get(i);
       List<PageLoader> valuePages = new ArrayList<>(valueChunks.size());
       for (List<PageLoader> pageListOfValueColumn : pageListOfAllValueColumns) {
-        valuePages.add(pageListOfValueColumn.isEmpty() ? null : pageListOfValueColumn.get(i));
+        valuePages.add(pageListOfValueColumn.isEmpty() ? getEmptyPage() : pageListOfValueColumn.get(i));
       }
 
       if (canSealCurrentPageWriter() && canFlushPage(timePage, valuePages)) {
@@ -257,6 +267,10 @@ public class AlignedSeriesCompactionExecutor2 {
         compactAlignedPageByDeserialize(timePage, valuePages);
       }
     }
+  }
+
+  private PageLoader getEmptyPage() {
+    return saveMemory ? new LazyPageLoader() : new InstantPageLoader();
   }
 
   private boolean canSealCurrentPageWriter() {
@@ -289,29 +303,10 @@ public class AlignedSeriesCompactionExecutor2 {
 
   private void compactAlignedPageByFlush(PageLoader timePage, List<PageLoader> valuePageLoaders)
       throws PageException, IOException {
-    if (saveMemory) {
-      LazyAlignedChunkWriterImpl lazyChunkWriter = (LazyAlignedChunkWriterImpl) chunkWriter;
-      lazyChunkWriter.writePageLoaderIntoTimeBuff((LazyPageLoader) timePage);
-      for (int i = 0; i < valuePageLoaders.size(); i++) {
-        LazyPageLoader valuePage = (LazyPageLoader) valuePageLoaders.get(i);
-        if (valuePage.isEmpty()) {
-          chunkWriter.getValueChunkWriterByIndex(i).writeEmptyPageToPageBuffer();
-        } else {
-          ((LazyAlignedChunkWriterImpl) chunkWriter).writePageLoaderIntoValueBuff(valuePage, i);
-        }
-      }
-    } else {
-      chunkWriter.writePageHeaderAndDataIntoTimeBuff(
-          timePage.getCompressedData(), timePage.getHeader());
-      for (int i = 0; i < valuePageLoaders.size(); i++) {
-        PageLoader valuePage = valuePageLoaders.get(i);
-        if (valuePage.isEmpty()) {
-          chunkWriter.getValueChunkWriterByIndex(i).writeEmptyPageToPageBuffer();
-        } else {
-          chunkWriter.writePageHeaderAndDataIntoValueBuff(
-              valuePage.getCompressedData(), valuePage.getHeader(), i);
-        }
-      }
+    timePage.flushToTimeChunkWriter(chunkWriter);
+    for (int i = 0; i < valuePageLoaders.size(); i++) {
+      PageLoader valuePage = valuePageLoaders.get(i);
+      valuePage.flushToValueChunkWriter(chunkWriter, i);
     }
   }
 
@@ -329,7 +324,7 @@ public class AlignedSeriesCompactionExecutor2 {
     List<List<TimeRange>> deleteIntervalLists = new ArrayList<>(valuePages.size());
     for (int i = 0; i < valuePages.size(); i++) {
       PageLoader valuePage = valuePages.get(i);
-      if (valuePage == null) {
+      if (valuePage.isEmpty()) {
         valuePageHeaders.add(null);
         uncompressedValuePageDatas.add(null);
         valueDataTypes.add(schemaList.get(i).getType());

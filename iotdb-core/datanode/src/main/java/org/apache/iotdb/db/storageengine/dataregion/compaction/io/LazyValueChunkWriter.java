@@ -250,7 +250,8 @@ public class LazyValueChunkWriter extends ValueChunkWriter {
               + dataSize
               + " !="
               + " "
-              + pageBuffer.size());
+              + pageBuffer.size()
+              + sizeOfUnLoadPage);
     }
     writer.endCurrentChunk();
   }

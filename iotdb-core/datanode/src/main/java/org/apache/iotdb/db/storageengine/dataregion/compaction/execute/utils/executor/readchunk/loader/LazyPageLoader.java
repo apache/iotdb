@@ -21,12 +21,15 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.ex
 
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.io.LazyAlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
+import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -43,6 +46,8 @@ public class LazyPageLoader implements PageLoader {
   private TSEncoding encoding;
   private List<TimeRange> deleteIntervalList;
   private ModifiedStatus modifiedStatus;
+
+  public LazyPageLoader() {}
 
   public LazyPageLoader(
       CompactionTsFileReader reader,
@@ -113,13 +118,32 @@ public class LazyPageLoader implements PageLoader {
   }
 
   @Override
+  public void flushToTimeChunkWriter(AlignedChunkWriterImpl alignedChunkWriter)
+      throws PageException {
+    ((LazyAlignedChunkWriterImpl) alignedChunkWriter).writePageLoaderIntoTimeBuff(this);
+    clear();
+  }
+
+  @Override
+  public void flushToValueChunkWriter(
+      AlignedChunkWriterImpl alignedChunkWriter, int valueColumnIndex)
+      throws PageException, IOException {
+    if (isEmpty()) {
+      alignedChunkWriter.getValueChunkWriterByIndex(valueColumnIndex).writeEmptyPageToPageBuffer();
+    } else {
+      ((LazyAlignedChunkWriterImpl) alignedChunkWriter)
+          .writePageLoaderIntoValueBuff(this, valueColumnIndex);
+    }
+    clear();
+  }
+
+  @Override
   public boolean isEmpty() {
-    return pageHeader == null;
+    return pageHeader == null || pageHeader.getStatistics().getCount() == 0;
   }
 
   @Override
   public void clear() {
-    this.pageHeader = null;
     this.pageData = null;
   }
 }

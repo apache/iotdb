@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class LazyChunkLoader implements ChunkLoader {
@@ -101,7 +102,7 @@ public class LazyChunkLoader implements ChunkLoader {
 
   @Override
   public boolean isEmpty() {
-    return reader == null;
+    return reader == null || chunkMetadata == null || chunkMetadata.getStatistics().getCount() == 0;
   }
 
   @Override
@@ -123,6 +124,9 @@ public class LazyChunkLoader implements ChunkLoader {
 
   @Override
   public List<PageLoader> getPages() throws IOException {
+    if (getChunk() == null) {
+      return Collections.emptyList();
+    }
     long chunkDataStartOffset =
         chunkMetadata.getOffsetOfChunkHeader() + chunkHeader.getSerializedSize();
     long chunkEndOffset = chunkDataStartOffset + chunkHeader.getDataSize();
