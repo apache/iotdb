@@ -985,19 +985,61 @@ public class SeriesScanUtil {
    * approach is likely to be ubiquitous, but it keeps the system running smoothly
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  protected void tryToUnpackAllOverlappedFilesToTimeSeriesMetadata() throws IOException {
-    /*
-     * Fill sequence TimeSeriesMetadata List until it is not empty
-     */
-    while (seqTimeSeriesMetadata.isEmpty() && orderUtils.hasNextSeqResource()) {
-      unpackSeqTsFileResource();
-    }
+  private void tryToUnpackAllOverlappedFilesToTimeSeriesMetadata() throws IOException {
 
-    /*
-     * Fill unSequence TimeSeriesMetadata Priority Queue until it is not empty
-     */
-    while (unSeqTimeSeriesMetadata.isEmpty() && orderUtils.hasNextUnseqResource()) {
-      unpackUnseqTsFileResource();
+    // we try to unpack tsfile which we really need instead of unpacking at least one seq and one
+    // unseq timeseries metadata each time
+    // in some case that has limit clasue, if the seq and unseq timeseries metadata are not
+    // overlapped, we can save one disk IO(if cache missed).
+    while (seqTimeSeriesMetadata.isEmpty() || unSeqTimeSeriesMetadata.isEmpty()) {
+
+      if (!seqTimeSeriesMetadata
+          .isEmpty()) { // already unpack one seq tsfile, we need to judge whether we still need to
+        // unpack the unseq tsfile
+        if (!orderUtils.hasNextUnseqResource()
+            || orderUtils.isOverlapped(
+                seqTimeSeriesMetadata.get(0).getStatistics(),
+                orderUtils.getNextUnseqFileResource(false))) {
+          break;
+        } else {
+          // unpack the unseq tsfile only if it's overlapped with the first seqTimeSeriesMetadata
+          unpackUnseqTsFileResource();
+        }
+      } else if (!unSeqTimeSeriesMetadata
+          .isEmpty()) { // already unpack one unseq tsfile, we need to judge whether we still need
+        // to unpack the seq tsfile
+        if (!orderUtils.hasNextSeqResource()
+            || orderUtils.isOverlapped(
+                unSeqTimeSeriesMetadata.peek().getStatistics(),
+                orderUtils.getNextSeqFileResource(false))) {
+          break;
+        } else {
+          // unpack the seq tsfile only if it's overlapped with the first unseqTimeSeriesMetadata
+          unpackSeqTsFileResource();
+        }
+      } else { // we haven't got one seqTimeSeriesMetadata or unseqTimeSeriesMetadata
+        if (!orderUtils.hasNextSeqResource() && !orderUtils.hasNextUnseqResource()) {
+          // if there are no more tsfiles, we just break
+          break;
+        } else if (!orderUtils.hasNextUnseqResource()) {
+          // only has seq tsfiles
+          unpackSeqTsFileResource();
+        } else if (!orderUtils.hasNextSeqResource()) {
+          // only has unseq tsfiles
+          unpackUnseqTsFileResource();
+        } else {
+          // we have both seq and unseq tsfiles, we need to decide which to firstly unpack
+          // if it's asc, we unpack tsfile which has the minimum start time
+          // if it's desc. we unpack tsfile which has the maximum end time
+          if (orderUtils.isTakeSeqAsFirst(
+              orderUtils.getNextSeqFileResource(false),
+              orderUtils.getNextUnseqFileResource(false))) {
+            unpackSeqTsFileResource();
+          } else {
+            unpackUnseqTsFileResource();
+          }
+        }
+      }
     }
 
     /*
@@ -1219,6 +1261,8 @@ public class SeriesScanUtil {
 
     boolean isOverlapped(long time, TsFileResource right);
 
+    boolean isOverlapped(Statistics<? extends Object> left, TsFileResource right);
+
     <T> Comparator<T> comparingLong(ToLongFunction<? super T> keyExtractor);
 
     long getCurrentEndPoint(long time, Statistics<? extends Object> statistics);
@@ -1231,6 +1275,8 @@ public class SeriesScanUtil {
     /** Return true if taking first page reader from seq readers */
     boolean isTakeSeqAsFirst(
         Statistics<? extends Object> seqStatistics, Statistics<? extends Object> unseqStatistics);
+
+    boolean isTakeSeqAsFirst(TsFileResource seqTsFileResource, TsFileResource unseqTsFileResource);
 
     boolean getAscending();
 
@@ -1283,6 +1329,11 @@ public class SeriesScanUtil {
     }
 
     @Override
+    public boolean isOverlapped(Statistics<?> left, TsFileResource right) {
+      return left.getStartTime() <= right.getEndTime(seriesPath.getDevice());
+    }
+
+    @Override
     public <T> Comparator<T> comparingLong(ToLongFunction<? super T> keyExtractor) {
       Objects.requireNonNull(keyExtractor);
       return (Comparator<T> & Serializable)
@@ -1309,6 +1360,13 @@ public class SeriesScanUtil {
     public boolean isTakeSeqAsFirst(
         Statistics<? extends Object> seqStatistics, Statistics<? extends Object> unseqStatistics) {
       return seqStatistics.getEndTime() > unseqStatistics.getEndTime();
+    }
+
+    @Override
+    public boolean isTakeSeqAsFirst(
+        TsFileResource seqTsFileResource, TsFileResource unseqTsFileResource) {
+      String deviceId = seriesPath.getDevice();
+      return seqTsFileResource.getEndTime(deviceId) > unseqTsFileResource.getEndTime(deviceId);
     }
 
     @Override
@@ -1406,6 +1464,11 @@ public class SeriesScanUtil {
     }
 
     @Override
+    public boolean isOverlapped(Statistics<?> left, TsFileResource right) {
+      return left.getEndTime() >= right.getStartTime(seriesPath.getDevice());
+    }
+
+    @Override
     public <T> Comparator<T> comparingLong(ToLongFunction<? super T> keyExtractor) {
       Objects.requireNonNull(keyExtractor);
       return (Comparator<T> & Serializable)
@@ -1432,6 +1495,13 @@ public class SeriesScanUtil {
     public boolean isTakeSeqAsFirst(
         Statistics<? extends Object> seqStatistics, Statistics<? extends Object> unseqStatistics) {
       return seqStatistics.getStartTime() < unseqStatistics.getStartTime();
+    }
+
+    @Override
+    public boolean isTakeSeqAsFirst(
+        TsFileResource seqTsFileResource, TsFileResource unseqTsFileResource) {
+      String deviceId = seriesPath.getDevice();
+      return seqTsFileResource.getStartTime(deviceId) < unseqTsFileResource.getStartTime(deviceId);
     }
 
     @Override
