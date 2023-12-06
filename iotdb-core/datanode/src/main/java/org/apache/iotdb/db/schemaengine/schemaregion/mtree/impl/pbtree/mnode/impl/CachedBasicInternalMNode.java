@@ -19,7 +19,9 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.impl;
 
 import org.apache.iotdb.commons.schema.node.MNodeType;
+import org.apache.iotdb.commons.schema.node.common.DeviceMNodeWrapper;
 import org.apache.iotdb.commons.schema.node.info.IDeviceInfo;
+import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IInternalMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
@@ -160,6 +162,8 @@ public class CachedBasicInternalMNode extends CachedBasicMNode
    *   <li>three map reference (1 cache and 2 buffer), 8 * 3 = 24B
    *   <li>estimate occupation of map implementation, minus the basic container occupation, 80 * 3 -
    *       80 = 160B
+   *   <li>reference for deviceInfo
+   *   <li>deviceInfo's size
    * </ol>
    */
   @Override
@@ -173,13 +177,27 @@ public class CachedBasicInternalMNode extends CachedBasicMNode
   }
 
   @Override
+  public boolean isDevice() {
+    return getDeviceInfo() != null;
+  }
+
+  @Override
   public MNodeType getMNodeType() {
     return deviceInfo == null ? MNodeType.INTERNAL : MNodeType.DEVICE;
   }
 
   @Override
-  public ICachedMNode getAsMNode() {
+  public IInternalMNode<ICachedMNode> getAsInternalMNode() {
     return this;
+  }
+
+  @Override
+  public IDeviceMNode<ICachedMNode> getAsDeviceMNode() {
+    if (isDevice()) {
+      return new DeviceMNodeWrapper<>(this);
+    } else {
+      throw new UnsupportedOperationException("Wrong node type");
+    }
   }
 
   @Override

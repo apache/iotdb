@@ -33,7 +33,7 @@ public class MeasurementMNode extends AbstractMeasurementMNode<IMemMNode, BasicM
   public MeasurementMNode(
       IDeviceMNode<IMemMNode> parent, String name, IMeasurementSchema schema, String alias) {
     super(
-        new BasicInternalMNode(parent == null ? null : parent.getAsMNode(), name),
+        new BasicMNode(parent == null ? null : parent.getAsMNode(), name),
         new MeasurementInfo(schema, alias));
   }
 

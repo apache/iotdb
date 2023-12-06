@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl;
 
 import org.apache.iotdb.commons.schema.node.MNodeType;
+import org.apache.iotdb.commons.schema.node.common.DeviceMNodeWrapper;
 import org.apache.iotdb.commons.schema.node.info.IDeviceInfo;
+import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IInternalMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
@@ -151,7 +153,7 @@ public class BasicInternalMNode extends BasicMNode implements IInternalMNode<IMe
     this.children = children;
   }
 
-  /** MNodeContainer reference and basic occupation, 8 + 80B. */
+  /** MNodeContainer reference and basic occupation, 8 + 80B. DeviceInfo reference and size. */
   @Override
   public int estimateSize() {
     return 8 + 80 + super.estimateSize() + 8 + (deviceInfo == null ? 0 : deviceInfo.estimateSize());
@@ -163,8 +165,22 @@ public class BasicInternalMNode extends BasicMNode implements IInternalMNode<IMe
   }
 
   @Override
-  public IMemMNode getAsMNode() {
+  public boolean isDevice() {
+    return getDeviceInfo() != null;
+  }
+
+  @Override
+  public IInternalMNode<IMemMNode> getAsInternalMNode() {
     return this;
+  }
+
+  @Override
+  public IDeviceMNode<IMemMNode> getAsDeviceMNode() {
+    if (isDevice()) {
+      return new DeviceMNodeWrapper<>(this);
+    } else {
+      throw new UnsupportedOperationException("Wrong node type");
+    }
   }
 
   @Override

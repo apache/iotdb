@@ -21,7 +21,10 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.basic
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.node.MNodeType;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
+import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
+import org.apache.iotdb.commons.schema.node.role.IInternalMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
@@ -36,7 +39,7 @@ import java.util.List;
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
  * Metadata Tree
  */
-public abstract class BasicMNode implements IMemMNode {
+public class BasicMNode implements IMemMNode {
 
   private static final long serialVersionUID = -770028375899514063L;
 
@@ -172,12 +175,32 @@ public abstract class BasicMNode implements IMemMNode {
   }
 
   @Override
+  public boolean isDevice() {
+    return false;
+  }
+
+  @Override
   public boolean isMeasurement() {
     return false;
   }
 
   @Override
+  public MNodeType getMNodeType() {
+    return MNodeType.UNIMPLEMENT;
+  }
+
+  @Override
   public IDatabaseMNode<IMemMNode> getAsDatabaseMNode() {
+    throw new UnsupportedOperationException("Wrong MNode Type");
+  }
+
+  @Override
+  public IDeviceMNode<IMemMNode> getAsDeviceMNode() {
+    throw new UnsupportedOperationException("Wrong MNode Type");
+  }
+
+  @Override
+  public IInternalMNode<IMemMNode> getAsInternalMNode() {
     throw new UnsupportedOperationException("Wrong MNode Type");
   }
 
@@ -213,5 +236,10 @@ public abstract class BasicMNode implements IMemMNode {
   @Override
   public int estimateSize() {
     return 8 + 8 + 8 + 8 + 8 + 8 + 28 + basicMNodeInfo.estimateSize();
+  }
+
+  @Override
+  public IMemMNode getAsMNode() {
+    return this;
   }
 }
