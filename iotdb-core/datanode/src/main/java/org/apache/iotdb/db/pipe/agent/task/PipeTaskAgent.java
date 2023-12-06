@@ -823,6 +823,12 @@ public class PipeTaskAgent {
       TConsensusGroupId consensusGroupId,
       PipeStaticMeta pipeStaticMeta,
       PipeTaskMeta pipeTaskMeta) {
+    pipeMetaKeeper
+        .getPipeMeta(pipeStaticMeta.getPipeName())
+        .getRuntimeMeta()
+        .getConsensusGroupId2TaskMetaMap()
+        .put(consensusGroupId, pipeTaskMeta);
+
     // Currently disable schemaRegion tasks
     if (StorageEngine.getInstance().getAllDataRegionIds().stream()
         .noneMatch(dataRegionId -> dataRegionId.getId() == consensusGroupId.getId())) {
@@ -834,24 +840,20 @@ public class PipeTaskAgent {
       pipeTask.create();
       pipeTaskManager.addPipeTask(pipeStaticMeta, consensusGroupId, pipeTask);
     }
-    pipeMetaKeeper
-        .getPipeMeta(pipeStaticMeta.getPipeName())
-        .getRuntimeMeta()
-        .getConsensusGroupId2TaskMetaMap()
-        .put(consensusGroupId, pipeTaskMeta);
   }
 
   private void dropPipeTask(TConsensusGroupId dataRegionGroupId, PipeStaticMeta pipeStaticMeta) {
-    // Currently disable schemaRegion tasks
-    if (StorageEngine.getInstance().getAllDataRegionIds().stream()
-        .noneMatch(dataRegionId -> dataRegionId.getId() == dataRegionGroupId.getId())) {
-      return;
-    }
     pipeMetaKeeper
         .getPipeMeta(pipeStaticMeta.getPipeName())
         .getRuntimeMeta()
         .getConsensusGroupId2TaskMetaMap()
         .remove(dataRegionGroupId);
+
+    // Currently disable schemaRegion tasks
+    if (StorageEngine.getInstance().getAllDataRegionIds().stream()
+        .noneMatch(dataRegionId -> dataRegionId.getId() == dataRegionGroupId.getId())) {
+      return;
+    }
     final PipeTask pipeTask = pipeTaskManager.removePipeTask(pipeStaticMeta, dataRegionGroupId);
     if (pipeTask != null) {
       pipeTask.drop();
