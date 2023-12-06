@@ -70,12 +70,10 @@ public class ColumnInjectOperator implements ProcessOperator {
     Column[] columnsToBeInjected = columnGenerator.generate(tsBlock.getPositionCount());
 
     // If targetIndex is the tail of array, we can use append() to improve performance
-    // todo insert more than one column at a time, currently we can only insert one column due to
-    // the method of TsBlock
     tsBlock =
         targetInjectIndex == tsBlock.getValueColumnCount()
             ? tsBlock.appendValueColumns(columnsToBeInjected)
-            : tsBlock.insertValueColumn(targetInjectIndex, columnsToBeInjected[0]);
+            : tsBlock.insertValueColumn(targetInjectIndex, columnsToBeInjected);
 
     return tsBlock;
   }
