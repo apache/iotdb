@@ -68,8 +68,9 @@ public class PipeRuntimeMeta {
    *
    * <p>Notes:
    *
-   * <p>- Only {@link TConsensusGroupId#getId()} will be flushed to disk with snapshot since the
-   * {@link TConsensusGroupId#getType()} can be inspected.
+   * <p>- Only {@link TConsensusGroupId#getId()} will be serialized with snapshot or RPC due to
+   * compatibility concerns, thus only the id is believable while judging. The {@link
+   * TConsensusGroupId#getType()} may always be {@link DataRegionId#getType()} after deserializing.
    *
    * <p>- The {@link ConfigRegionId#getId()} is always {@link Integer#MIN_VALUE} since the original
    * id 0 clashes with the start of {@link SchemaRegionId#getId()} and {@link DataRegionId#getId()}

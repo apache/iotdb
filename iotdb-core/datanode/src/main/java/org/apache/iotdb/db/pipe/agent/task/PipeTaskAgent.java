@@ -37,6 +37,7 @@ import org.apache.iotdb.db.pipe.task.PipeBuilder;
 import org.apache.iotdb.db.pipe.task.PipeTask;
 import org.apache.iotdb.db.pipe.task.PipeTaskBuilder;
 import org.apache.iotdb.db.pipe.task.PipeTaskManager;
+import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
@@ -822,6 +823,11 @@ public class PipeTaskAgent {
       TConsensusGroupId consensusGroupId,
       PipeStaticMeta pipeStaticMeta,
       PipeTaskMeta pipeTaskMeta) {
+    // Currently disable schemaRegion tasks
+    if (StorageEngine.getInstance().getAllDataRegionIds().stream()
+        .noneMatch(dataRegionId -> dataRegionId.getId() == consensusGroupId.getId())) {
+      return;
+    }
     if (pipeTaskMeta.getLeaderNodeId() == CONFIG.getDataNodeId()) {
       final PipeTask pipeTask =
           new PipeTaskBuilder(pipeStaticMeta, consensusGroupId, pipeTaskMeta).build();
@@ -836,6 +842,11 @@ public class PipeTaskAgent {
   }
 
   private void dropPipeTask(TConsensusGroupId dataRegionGroupId, PipeStaticMeta pipeStaticMeta) {
+    // Currently disable schemaRegion tasks
+    if (StorageEngine.getInstance().getAllDataRegionIds().stream()
+        .noneMatch(dataRegionId -> dataRegionId.getId() == dataRegionGroupId.getId())) {
+      return;
+    }
     pipeMetaKeeper
         .getPipeMeta(pipeStaticMeta.getPipeName())
         .getRuntimeMeta()
@@ -848,6 +859,11 @@ public class PipeTaskAgent {
   }
 
   private void startPipeTask(TConsensusGroupId dataRegionGroupId, PipeStaticMeta pipeStaticMeta) {
+    // Currently disable schemaRegion tasks
+    if (StorageEngine.getInstance().getAllDataRegionIds().stream()
+        .noneMatch(dataRegionId -> dataRegionId.getId() == dataRegionGroupId.getId())) {
+      return;
+    }
     final PipeTask pipeTask = pipeTaskManager.getPipeTask(pipeStaticMeta, dataRegionGroupId);
     if (pipeTask != null) {
       pipeTask.start();
