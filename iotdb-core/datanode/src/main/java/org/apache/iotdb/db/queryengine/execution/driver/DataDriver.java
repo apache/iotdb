@@ -103,8 +103,10 @@ public class DataDriver extends Driver {
 
       this.init = true;
     } finally {
-      QUERY_EXECUTION_METRICS.recordExecutionCost(
-          QUERY_RESOURCE_INIT, System.nanoTime() - startTime);
+      long time = System.nanoTime() - startTime;
+      driverContext.getFragmentInstanceContext().initQueryDataSourceCount.getAndAdd(1);
+      driverContext.getFragmentInstanceContext().initQueryDataSourceTime.getAndAdd(time);
+      QUERY_EXECUTION_METRICS.recordExecutionCost(QUERY_RESOURCE_INIT, time);
     }
   }
 

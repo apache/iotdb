@@ -140,10 +140,11 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
       PartialPath seriesPath,
       QueryContext context,
       Filter filter,
-      Set<String> allSensors)
+      Set<String> allSensors,
+      boolean isSeq)
       throws IOException {
     return FileLoaderUtils.loadTimeSeriesMetadata(
-        resource, (AlignedPath) seriesPath, context, filter, queryAllSensors);
+        resource, (AlignedPath) seriesPath, context, filter, queryAllSensors, isSeq);
   }
 
   @Override

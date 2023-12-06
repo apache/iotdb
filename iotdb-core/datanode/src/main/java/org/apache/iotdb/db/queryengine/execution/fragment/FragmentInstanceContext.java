@@ -350,6 +350,7 @@ public class FragmentInstanceContext extends QueryContext {
         addUsedFilesForQuery(sharedQueryDataSource);
       }
     } finally {
+      LOGGER.warn("");
       dataRegion.readUnlock();
     }
   }
@@ -433,13 +434,6 @@ public class FragmentInstanceContext extends QueryContext {
    * be decreased.
    */
   public synchronized void releaseResource() {
-    LOGGER.warn(
-        " ------------\r\nFragmentInstance release resouce, id: {}, "
-            + "closedFilePath size: {}, unClosedFilePath size: {}",
-        id,
-        closedFilePaths != null ? closedFilePaths.toArray() : "[]",
-        unClosedFilePaths != null ? unClosedFilePaths.toArray() : "[]");
-
     // For schema related query FI, closedFilePaths and unClosedFilePaths will be null
     if (closedFilePaths != null) {
       for (TsFileResource tsFile : closedFilePaths) {
@@ -462,27 +456,38 @@ public class FragmentInstanceContext extends QueryContext {
         " ==========\r\n"
             + "FragmentInstanceContext released, id: {}, "
             + "releaseTime: {}, startTime: {}, durationTime: {}ms, \r\n"
-            + "loadTimeseriesMetadata Count: [Disk: {}, Mem: {}], \r\n"
-            + "loadTimeseriesMetadata Time: [Disk: {}ms, Mem: {}ms], \r\n"
+            + "loadTimeseriesMetadataCount-Seq: [Disk: {}, Mem: {}], \r\n"
+            + "loadTimeseriesMetadataCount-UnSeq: [Disk: {}, Mem: {}], \r\n"
+            + "timeSeriesMetadata uncache count: {},\r\n"
+            + "loadTimeseriesMetadataTime-Seq: [Disk: {}ms, Mem: {}ms], \r\n"
+            + "loadTimeseriesMetadataTime-UnSeq: [Disk: {}ms, Mem: {}ms], \r\n"
             + "constructChunkReaderDiskIOAndDeserialization - Count: {}, AllTime: {}ms,\r\n"
             + "pageReadersDiskDeserializationTime: {}ms\r\n"
             + "pageReaderDecode Count: [Disk: {}, Mem: {}], \r\n"
-            + "pageReaderDecode Time: [Disk: {}ms, Mem: {}ms]",
+            + "pageReaderDecode Time: [Disk: {}ms, Mem: {}ms],\r\n"
+            + "initQueryDataSource count: {}, time: {}ms",
         id,
         releaseTime.get(),
         executionStartTime.get(),
         durationTime.get(),
-        loadTimeSeriesMetadataDiskCount,
-        loadTimeSeriesMetadataMemCount,
-        loadTimeSeriesMetadataDiskTime.get() / TIME_UNIT,
-        loadTimeSeriesMetadataMemTime.get() / TIME_UNIT,
+        loadTimeSeriesMetadataDiskSeqCount,
+        loadTimeSeriesMetadataMemSeqCount,
+        loadTimeSeriesMetadataDiskUnSeqCount,
+        loadTimeSeriesMetadataMemUnSeqCount,
+        timeSeriesMetadataUnCacheCount,
+        loadTimeSeriesMetadataDiskSeqTime.get() / TIME_UNIT,
+        loadTimeSeriesMetadataMemSeqTime.get() / TIME_UNIT,
+        loadTimeSeriesMetadataDiskUnSeqTime.get() / TIME_UNIT,
+        loadTimeSeriesMetadataMemUnSeqTime.get() / TIME_UNIT,
         constructChunkReaderCountFromDisk,
         constructChunkReaderTimeFromDisk.get() / TIME_UNIT,
         pageReadersDiskDeserializationTime.get() / TIME_UNIT,
         pageReaderDecodeCountFromDisk,
         pageReaderDecodeCountFromMem,
         pageReaderDecodeTimeFromDisk.get() / TIME_UNIT,
-        pageReaderDecodeTimeFromMem.get() / TIME_UNIT);
+        pageReaderDecodeTimeFromMem.get() / TIME_UNIT,
+        initQueryDataSourceCount,
+        initQueryDataSourceTime.get() / TIME_UNIT);
 
     dataRegion = null;
     globalTimeFilter = null;

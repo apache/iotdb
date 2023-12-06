@@ -1087,7 +1087,8 @@ public class SeriesScanUtil {
             seriesPath,
             context,
             getGlobalTimeFilter(),
-            scanOptions.getAllSensors());
+            scanOptions.getAllSensors(),
+            true);
     if (timeseriesMetadata != null) {
       timeseriesMetadata.setSeq(true);
       seqTimeSeriesMetadata.add(timeseriesMetadata);
@@ -1101,7 +1102,8 @@ public class SeriesScanUtil {
             seriesPath,
             context,
             getGlobalTimeFilter(),
-            scanOptions.getAllSensors());
+            scanOptions.getAllSensors(),
+            false);
     if (timeseriesMetadata != null) {
       timeseriesMetadata.setModified(true);
       timeseriesMetadata.setSeq(false);
@@ -1114,7 +1116,8 @@ public class SeriesScanUtil {
       PartialPath seriesPath,
       QueryContext context,
       Filter filter,
-      Set<String> allSensors)
+      Set<String> allSensors,
+      boolean isSeq)
       throws IOException {
     return FileLoaderUtils.loadTimeSeriesMetadata(
         resource, seriesPath, context, filter, allSensors);

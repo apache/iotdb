@@ -41,10 +41,16 @@ import java.util.concurrent.atomic.AtomicLong;
 
 /** QueryContext contains the shared information with in a query. */
 public class QueryContext {
-  public AtomicLong loadTimeSeriesMetadataDiskCount = new AtomicLong(0);
-  public AtomicLong loadTimeSeriesMetadataDiskTime = new AtomicLong(0);
-  public AtomicLong loadTimeSeriesMetadataMemCount = new AtomicLong(0);
-  public AtomicLong loadTimeSeriesMetadataMemTime = new AtomicLong(0);
+  public AtomicLong loadTimeSeriesMetadataDiskSeqCount = new AtomicLong(0);
+  public AtomicLong loadTimeSeriesMetadataDiskUnSeqCount = new AtomicLong(0);
+  public AtomicLong loadTimeSeriesMetadataDiskSeqTime = new AtomicLong(0);
+  public AtomicLong loadTimeSeriesMetadataDiskUnSeqTime = new AtomicLong(0);
+  public AtomicLong loadTimeSeriesMetadataMemSeqCount = new AtomicLong(0);
+  public AtomicLong loadTimeSeriesMetadataMemUnSeqCount = new AtomicLong(0);
+  public AtomicLong loadTimeSeriesMetadataMemSeqTime = new AtomicLong(0);
+  public AtomicLong loadTimeSeriesMetadataMemUnSeqTime = new AtomicLong(0);
+  public AtomicLong timeSeriesMetadataUnCacheCount = new AtomicLong(0);
+
   public AtomicLong constructChunkReaderCountFromDisk = new AtomicLong(0);
   public AtomicLong constructChunkReaderTimeFromDisk = new AtomicLong(0);
   public AtomicLong pageReadersDiskDeserializationTime = new AtomicLong(0);
@@ -52,6 +58,8 @@ public class QueryContext {
   public AtomicLong pageReaderDecodeTimeFromDisk = new AtomicLong(0);
   public AtomicLong pageReaderDecodeCountFromMem = new AtomicLong(0);
   public AtomicLong pageReaderDecodeTimeFromMem = new AtomicLong(0);
+  public AtomicLong initQueryDataSourceCount = new AtomicLong(0);
+  public AtomicLong initQueryDataSourceTime = new AtomicLong(0);
 
   /**
    * The key is the path of a ModificationFile and the value is all Modifications in this file. We

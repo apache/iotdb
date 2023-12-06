@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.TimeSeriesMetadataCacheMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
@@ -107,7 +108,8 @@ public class TimeSeriesMetadataCache {
       TimeSeriesMetadataCacheKey key,
       Set<String> allSensors,
       boolean ignoreNotExists,
-      boolean debug)
+      boolean debug,
+      QueryContext context)
       throws IOException {
     long startTime = System.nanoTime();
     boolean cacheHit = true;
@@ -132,6 +134,7 @@ public class TimeSeriesMetadataCache {
       TimeseriesMetadata timeseriesMetadata = lruCache.getIfPresent(key);
 
       if (timeseriesMetadata == null) {
+
         if (debug) {
           DEBUG_LOGGER.info("Cache miss: {}.{} in file: {}", key.device, key.measurement, filePath);
           DEBUG_LOGGER.info("Device: {}, all sensors: {}", key.device, allSensors);
@@ -203,6 +206,9 @@ public class TimeSeriesMetadataCache {
         return new TimeseriesMetadata(timeseriesMetadata);
       }
     } finally {
+      if (!cacheHit) {
+        context.timeSeriesMetadataUnCacheCount.getAndAdd(1);
+      }
       SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
           cacheHit ? READ_TIMESERIES_METADATA_CACHE : READ_TIMESERIES_METADATA_FILE,
           System.nanoTime() - startTime);

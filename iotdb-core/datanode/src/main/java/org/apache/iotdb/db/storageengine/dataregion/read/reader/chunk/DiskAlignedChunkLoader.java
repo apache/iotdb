@@ -115,7 +115,6 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
       IChunkReader chunkReader =
           new AlignedChunkReader(timeChunk, valueChunkList, timeFilter, queryAllSensors);
       long time = System.nanoTime() - t2;
-      // LOGGER.warn("~~~~~ chunk reader deserialization time: {}ms", time / 1000000);
       context.pageReadersDiskDeserializationTime.getAndAdd(time);
       SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(INIT_CHUNK_READER_ALIGNED_DISK, time);
 

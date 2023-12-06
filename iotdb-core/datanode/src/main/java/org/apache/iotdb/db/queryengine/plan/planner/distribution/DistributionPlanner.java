@@ -51,6 +51,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode.LIMIT_USE_TOP_K_FOR_ALIGN_BY_DEVICE;
+
 public class DistributionPlanner {
   private final Analysis analysis;
   private final MPPQueryContext context;
@@ -155,10 +157,21 @@ public class DistributionPlanner {
   private boolean needShuffleSinkNode(
       QueryStatement queryStatement, NodeGroupContext nodeGroupContext) {
     OrderByComponent orderByComponent = queryStatement.getOrderByComponent();
-    return nodeGroupContext.isAlignByDevice()
-        && orderByComponent != null
-        && (!orderByComponent.getSortItemList().isEmpty()
-            && (orderByComponent.isBasedOnTime() && !queryStatement.hasOrderByExpression()));
+
+    if (nodeGroupContext.isAlignByDevice() && orderByComponent != null) {
+
+      // user TopKNode + IdentityNode
+      if (queryStatement.hasLimit()
+          && !queryStatement.isOrderByBasedOnDevice()
+          && queryStatement.getRowLimit() <= LIMIT_USE_TOP_K_FOR_ALIGN_BY_DEVICE) {
+        return false;
+      }
+
+      return !orderByComponent.getSortItemList().isEmpty()
+          && (orderByComponent.isBasedOnTime() && !queryStatement.hasOrderByExpression());
+    }
+
+    return false;
   }
 
   public PlanNode optimize(PlanNode rootWithExchange) {

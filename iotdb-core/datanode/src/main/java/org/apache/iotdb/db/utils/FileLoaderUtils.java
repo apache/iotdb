@@ -151,7 +151,8 @@ public class FileLoaderUtils {
                         seriesPath.getMeasurement()),
                     allSensors,
                     resource.getTimeIndexType() != 1,
-                    context.isDebug());
+                    context.isDebug(),
+                    context);
         if (timeSeriesMetadata != null) {
           List<Modification> pathModifications = context.getPathModifications(resource, seriesPath);
           timeSeriesMetadata.setModified(!pathModifications.isEmpty());
@@ -210,7 +211,8 @@ public class FileLoaderUtils {
       AlignedPath alignedPath,
       QueryContext context,
       Filter filter,
-      boolean queryAllSensors)
+      boolean queryAllSensors,
+      boolean isSeq)
       throws IOException {
     final long t1 = System.nanoTime();
     boolean loadFromMem = false;
@@ -254,19 +256,21 @@ public class FileLoaderUtils {
     } finally {
       long costTime = System.nanoTime() - t1;
       if (loadFromMem) {
-        context.loadTimeSeriesMetadataMemCount.getAndAdd(1);
-        context.loadTimeSeriesMetadataMemTime.getAndAdd(costTime);
-        //        LOGGER.warn(
-        //            "!!!!! loadAlignedTimeSeriesMetadataTime, Mem, path: {}, time: {}ns",
-        //            alignedPath.getFullPath(),
-        //            costTime);
+        if (isSeq) {
+          context.loadTimeSeriesMetadataMemSeqCount.getAndAdd(1);
+          context.loadTimeSeriesMetadataMemSeqTime.getAndAdd(costTime);
+        } else {
+          context.loadTimeSeriesMetadataMemUnSeqCount.getAndAdd(1);
+          context.loadTimeSeriesMetadataMemUnSeqTime.getAndAdd(costTime);
+        }
       } else {
-        context.loadTimeSeriesMetadataDiskCount.getAndAdd(1);
-        context.loadTimeSeriesMetadataDiskTime.getAndAdd(costTime);
-        //        LOGGER.warn(
-        //            "!!!!! loadAlignedTimeSeriesMetadataTime, Disk, path: {}, time: {}ns",
-        //            alignedPath.getFullPath(),
-        //            costTime);
+        if (isSeq) {
+          context.loadTimeSeriesMetadataDiskSeqCount.getAndAdd(1);
+          context.loadTimeSeriesMetadataDiskSeqTime.getAndAdd(costTime);
+        } else {
+          context.loadTimeSeriesMetadataDiskUnSeqCount.getAndAdd(1);
+          context.loadTimeSeriesMetadataDiskUnSeqTime.getAndAdd(costTime);
+        }
       }
 
       SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
@@ -304,7 +308,8 @@ public class FileLoaderUtils {
             new TimeSeriesMetadataCacheKey(resource.getTsFileID(), deviceId, ""),
             allSensors,
             resource.getTimeIndexType() != 1,
-            isDebug);
+            isDebug,
+            context);
     if (timeColumn != null) {
       // only need time column, like count_time aggregation
       if (valueMeasurementList.isEmpty()) {
@@ -326,7 +331,8 @@ public class FileLoaderUtils {
                       resource.getTsFileID(), deviceId, valueMeasurement),
                   allSensors,
                   resource.getTimeIndexType() != 1,
-                  isDebug);
+                  isDebug,
+                  context);
           exist = (exist || (valueColumn != null));
           valueTimeSeriesMetadataList.add(valueColumn);
         }
