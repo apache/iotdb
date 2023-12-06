@@ -165,7 +165,8 @@ public class FragmentInstanceExecution {
           } catch (Throwable t) {
             try (SetThreadName threadName = new SetThreadName(instanceId.getFullId())) {
               LOGGER.error(
-                  "Errors happened while trying to finish FI, resource may already leak!", t);
+                  "Errors occurred while attempting to finish the FI process, potentially leading to resource leakage.",
+                  t);
             }
           }
         });

@@ -123,7 +123,7 @@ public class MemoryPool {
       new ConcurrentLinkedQueue<>();
 
   public MemoryPool(String id, long maxBytes, long maxBytesPerFragmentInstance) {
-    this.id = Validate.notNull(id);
+    this.id = Validate.notNull(id, "id can not be null.");
     Validate.isTrue(maxBytes > 0L, "max bytes should be greater than zero: %d", maxBytes);
     this.maxBytes = maxBytes;
     Validate.isTrue(
@@ -291,7 +291,7 @@ public class MemoryPool {
     // add synchronized on the future to avoid that the future is concurrently completed by
     // MemoryPool.free() which may lead to memory leak.
     synchronized (future) {
-      Validate.notNull(future);
+      Validate.notNull(future, "The future to be cancelled can not be null.");
       // If the future is not a MemoryReservationFuture, it must have been completed.
       if (future.isDone()) {
         return 0L;
@@ -305,7 +305,7 @@ public class MemoryPool {
   }
 
   public void free(String queryId, String fragmentInstanceId, String planNodeId, long bytes) {
-    Validate.notNull(queryId);
+    Validate.notNull(queryId, "queryId can not be null.");
     Validate.isTrue(bytes > 0L);
 
     try {

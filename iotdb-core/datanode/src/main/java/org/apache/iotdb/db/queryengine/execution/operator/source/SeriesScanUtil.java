@@ -1047,6 +1047,12 @@ public class SeriesScanUtil {
 
   @SuppressWarnings("squid:S3740")
   protected void filterFirstTimeSeriesMetadata() throws IOException {
+    // skip if data type is mismatched which may be caused by delete
+    if (firstTimeSeriesMetadata != null
+        && !firstTimeSeriesMetadata.typeMatch(getTsDataTypeList())) {
+      skipCurrentFile();
+    }
+
     if (firstTimeSeriesMetadata != null
         && !isFileOverlapped()
         && !firstTimeSeriesMetadata.isModified()) {

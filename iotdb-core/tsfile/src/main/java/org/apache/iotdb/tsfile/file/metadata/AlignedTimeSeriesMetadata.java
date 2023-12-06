@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
 
@@ -183,6 +184,20 @@ public class AlignedTimeSeriesMetadata implements ITimeSeriesMetadata {
   @Override
   public void setChunkMetadataLoader(IChunkMetadataLoader chunkMetadataLoader) {
     this.chunkMetadataLoader = chunkMetadataLoader;
+  }
+
+  @Override
+  public boolean typeMatch(List<TSDataType> dataTypes) {
+    if (valueTimeseriesMetadataList != null) {
+      for (int i = 0, size = dataTypes.size(); i < size; i++) {
+        TimeseriesMetadata valueTimeSeriesMetadata = valueTimeseriesMetadataList.get(i);
+        if (valueTimeSeriesMetadata != null
+            && !valueTimeSeriesMetadata.typeMatch(dataTypes.get(i))) {
+          return false;
+        }
+      }
+    }
+    return true;
   }
 
   public List<TimeseriesMetadata> getValueTimeseriesMetadataList() {

@@ -361,7 +361,7 @@ public class AlignedChunkReader implements IChunkReader {
     pageInfo.dataType = chunkHeader.getDataType();
     int compressedPageBodyLength = pageHeader.getCompressedSize();
     byte[] compressedPageBody = new byte[compressedPageBodyLength];
-    // doesn't has a complete page body
+    // doesn't have a complete page body
     if (compressedPageBodyLength > chunkBuffer.remaining()) {
       throw new IOException(
           "do not has a complete page body. Expected:"

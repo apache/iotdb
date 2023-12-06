@@ -82,7 +82,8 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
                   new ChunkCache.ChunkCacheKey(
                       resource.getTsFilePath(),
                       resource.getTsFileID(),
-                      timeChunkMetadata.getOffsetOfChunkHeader()),
+                      timeChunkMetadata.getOffsetOfChunkHeader(),
+                      resource.isClosed()),
                   timeChunkMetadata.getDeleteIntervalList(),
                   timeChunkMetadata.getStatistics(),
                   debug);
@@ -96,7 +97,8 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
                         new ChunkCache.ChunkCacheKey(
                             resource.getTsFilePath(),
                             resource.getTsFileID(),
-                            valueChunkMetadata.getOffsetOfChunkHeader()),
+                            valueChunkMetadata.getOffsetOfChunkHeader(),
+                            resource.isClosed()),
                         valueChunkMetadata.getDeleteIntervalList(),
                         valueChunkMetadata.getStatistics(),
                         debug));

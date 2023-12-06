@@ -255,6 +255,15 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
   }
 
   @Override
+  public boolean typeMatch(List<TSDataType> dataTypes) {
+    return typeMatch(dataTypes.get(0));
+  }
+
+  public boolean typeMatch(TSDataType dataType) {
+    return this.dataType == dataType;
+  }
+
+  @Override
   public List<IChunkMetadata> loadChunkMetadataList() {
     return chunkMetadataLoader.loadChunkMetadataList(this);
   }
