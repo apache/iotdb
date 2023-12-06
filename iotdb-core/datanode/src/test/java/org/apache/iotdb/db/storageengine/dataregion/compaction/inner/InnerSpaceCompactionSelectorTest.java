@@ -688,6 +688,30 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
     mockModiFicationFile.remove();
   }
 
+  @Test
+  public void testSelectWhenModsFileGreaterThan50MWithTsFileResourceStatusIsNotNormal()
+      throws IOException, MetadataException, WriteProcessException {
+    createFiles(2, 2, 3, 50, 0, 10000, 50, 50, false, true);
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    // mock modification file size must greater than 50M
+    MockModiFicationFile mockModiFicationFile =
+        new MockModiFicationFile(
+            seqResources.get(0).getTsFilePath() + ModificationFile.FILE_SUFFIX);
+    mockModiFicationFile.write(new Deletion(new PartialPath("root.a.b"), 1, 1));
+    seqResources.get(0).setModFile(mockModiFicationFile);
+    seqResources.get(0).setStatusForTest(TsFileResourceStatus.COMPACTING);
+    SizeTieredCompactionSelector selector =
+        new SizeTieredCompactionSelector("", "", 0, true, tsFileManager);
+    // copy candidate source file list
+    List<TsFileResource> resources = tsFileManager.getOrCreateSequenceListByTimePartition(0);
+    List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
+        selector.selectInnerSpaceTask(resources);
+    Assert.assertEquals(0, innerSpaceCompactionTasks.size());
+    mockModiFicationFile.remove();
+  }
+
   class MockModiFicationFile extends ModificationFile {
 
     /**
