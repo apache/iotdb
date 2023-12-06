@@ -40,17 +40,20 @@ public class MemChunkMetadataLoader implements IChunkMetadataLoader {
   private final TsFileResource resource;
   private final PartialPath seriesPath;
   private final QueryContext context;
-  private final Filter timeFilter;
+  private final Filter globalTimeFilter;
 
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
 
   public MemChunkMetadataLoader(
-      TsFileResource resource, PartialPath seriesPath, QueryContext context, Filter timeFilter) {
+      TsFileResource resource,
+      PartialPath seriesPath,
+      QueryContext context,
+      Filter globalTimeFilter) {
     this.resource = resource;
     this.seriesPath = seriesPath;
     this.context = context;
-    this.timeFilter = timeFilter;
+    this.globalTimeFilter = globalTimeFilter;
   }
 
   @Override
@@ -85,9 +88,7 @@ public class MemChunkMetadataLoader implements IChunkMetadataLoader {
       long t2 = System.nanoTime();
       chunkMetadataList.removeIf(
           chunkMetaData ->
-              (timeFilter != null
-                      && !timeFilter.satisfyStartEndTime(
-                          chunkMetaData.getStartTime(), chunkMetaData.getEndTime()))
+              (globalTimeFilter != null && globalTimeFilter.canSkip(chunkMetaData))
                   || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
       SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
           CHUNK_METADATA_FILTER_NONALIGNED_MEM, System.nanoTime() - t2);

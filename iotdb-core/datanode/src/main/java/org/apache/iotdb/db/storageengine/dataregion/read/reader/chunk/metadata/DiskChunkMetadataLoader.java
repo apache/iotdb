@@ -44,8 +44,9 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
 
   private final TsFileResource resource;
   private final QueryContext context;
-  // time filter or value filter, only used to check time range
-  private final Filter filter;
+
+  // global time filter, only used to check time range
+  private final Filter globalTimeFilter;
 
   private final List<Modification> pathModifications;
 
@@ -56,11 +57,11 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
   public DiskChunkMetadataLoader(
       TsFileResource resource,
       QueryContext context,
-      Filter filter,
+      Filter globalTimeFilter,
       List<Modification> pathModifications) {
     this.resource = resource;
     this.context = context;
-    this.filter = filter;
+    this.globalTimeFilter = globalTimeFilter;
     this.pathModifications = pathModifications;
   }
 
@@ -108,9 +109,7 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
       final long t3 = System.nanoTime();
       chunkMetadataList.removeIf(
           chunkMetaData ->
-              (filter != null
-                      && !filter.satisfyStartEndTime(
-                          chunkMetaData.getStartTime(), chunkMetaData.getEndTime()))
+              (globalTimeFilter != null && globalTimeFilter.canSkip(chunkMetaData))
                   || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
       SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
           CHUNK_METADATA_FILTER_NONALIGNED_DISK, System.nanoTime() - t3);

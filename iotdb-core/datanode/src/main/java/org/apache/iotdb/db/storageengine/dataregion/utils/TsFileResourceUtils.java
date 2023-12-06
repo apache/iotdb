@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.utils;
 
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -29,6 +31,8 @@ import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -39,6 +43,7 @@ import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.read.reader.page.TimePageReader;
 import org.apache.iotdb.tsfile.read.reader.page.ValuePageReader;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,6 +60,10 @@ import java.util.Set;
 public class TsFileResourceUtils {
   private static final Logger logger = LoggerFactory.getLogger(TsFileResourceUtils.class);
   private static final String VALIDATE_FAILED = "validate failed,";
+
+  private TsFileResourceUtils() {
+    // util class
+  }
 
   public static boolean validateTsFileResourceCorrectness(TsFileResource resource) {
     DeviceTimeIndex timeIndex;
@@ -374,5 +383,46 @@ public class TsFileResourceUtils {
     } catch (IOException e) {
       return true;
     }
+  }
+
+  public static void updateTsFileResource(
+      TsFileSequenceReader reader, TsFileResource tsFileResource) throws IOException {
+    updateTsFileResource(reader.getAllTimeseriesMetadata(false), tsFileResource);
+    tsFileResource.updatePlanIndexes(reader.getMinPlanIndex());
+    tsFileResource.updatePlanIndexes(reader.getMaxPlanIndex());
+  }
+
+  public static void updateTsFileResource(
+      Map<String, List<TimeseriesMetadata>> device2Metadata, TsFileResource tsFileResource) {
+    for (Map.Entry<String, List<TimeseriesMetadata>> entry : device2Metadata.entrySet()) {
+      for (TimeseriesMetadata timeseriesMetaData : entry.getValue()) {
+        tsFileResource.updateStartTime(
+            entry.getKey(), timeseriesMetaData.getStatistics().getStartTime());
+        tsFileResource.updateEndTime(
+            entry.getKey(), timeseriesMetaData.getStatistics().getEndTime());
+      }
+    }
+  }
+
+  /**
+   * Generate {@link TsFileResource} from a closed {@link TsFileIOWriter}. Notice that the writer
+   * should have executed {@link TsFileIOWriter#endFile()}. And this method will not record plan
+   * Index of this writer.
+   *
+   * @param writer a {@link TsFileIOWriter}
+   * @return a updated {@link TsFileResource}
+   */
+  public static TsFileResource generateTsFileResource(TsFileIOWriter writer) {
+    TsFileResource resource = new TsFileResource(writer.getFile());
+    for (ChunkGroupMetadata chunkGroupMetadata : writer.getChunkGroupMetadataList()) {
+      String device = chunkGroupMetadata.getDevice();
+      for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
+        resource.updateStartTime(device, chunkMetadata.getStartTime());
+        resource.updateEndTime(device, chunkMetadata.getEndTime());
+      }
+    }
+    resource.setStatus(TsFileResourceStatus.NORMAL);
+    PipeAgent.runtime().assignProgressIndexForTsFileLoad(resource);
+    return resource;
   }
 }

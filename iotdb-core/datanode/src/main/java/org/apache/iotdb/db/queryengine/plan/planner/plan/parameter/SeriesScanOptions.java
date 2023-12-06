@@ -83,9 +83,6 @@ public class SeriesScanOptions {
 
   public void setTTL(long dataTTL) {
     this.globalTimeFilter = updateFilterUsingTTL(globalTimeFilter, dataTTL);
-    if (this.pushDownFilter != null) {
-      this.pushDownFilter = updateFilterUsingTTL(pushDownFilter, dataTTL);
-    }
   }
 
   /** @return an updated filter concerning TTL */

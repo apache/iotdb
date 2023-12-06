@@ -17,11 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.utils;
+package org.apache.iotdb.db.queryengine.execution.scan;
 
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
@@ -32,27 +31,20 @@ import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata.D
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata.MemAlignedChunkMetadataLoader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata.MemChunkMetadataLoader;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
-import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.LOAD_TIMESERIES_METADATA_ALIGNED_DISK;
@@ -71,62 +63,20 @@ public class FileLoaderUtils {
     // empty constructor
   }
 
-  public static void updateTsFileResource(
-      TsFileSequenceReader reader, TsFileResource tsFileResource) throws IOException {
-    updateTsFileResource(reader.getAllTimeseriesMetadata(false), tsFileResource);
-    tsFileResource.updatePlanIndexes(reader.getMinPlanIndex());
-    tsFileResource.updatePlanIndexes(reader.getMaxPlanIndex());
-  }
-
-  public static void updateTsFileResource(
-      Map<String, List<TimeseriesMetadata>> device2Metadata, TsFileResource tsFileResource) {
-    for (Entry<String, List<TimeseriesMetadata>> entry : device2Metadata.entrySet()) {
-      for (TimeseriesMetadata timeseriesMetaData : entry.getValue()) {
-        tsFileResource.updateStartTime(
-            entry.getKey(), timeseriesMetaData.getStatistics().getStartTime());
-        tsFileResource.updateEndTime(
-            entry.getKey(), timeseriesMetaData.getStatistics().getEndTime());
-      }
-    }
-  }
-
-  /**
-   * Generate {@link TsFileResource} from a closed {@link TsFileIOWriter}. Notice that the writer
-   * should have executed {@link TsFileIOWriter#endFile()}. And this method will not record plan
-   * Index of this writer.
-   *
-   * @param writer a {@link TsFileIOWriter}
-   * @return a updated {@link TsFileResource}
-   */
-  public static TsFileResource generateTsFileResource(TsFileIOWriter writer) {
-    TsFileResource resource = new TsFileResource(writer.getFile());
-    for (ChunkGroupMetadata chunkGroupMetadata : writer.getChunkGroupMetadataList()) {
-      String device = chunkGroupMetadata.getDevice();
-      for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
-        resource.updateStartTime(device, chunkMetadata.getStartTime());
-        resource.updateEndTime(device, chunkMetadata.getEndTime());
-      }
-    }
-    resource.setStatus(TsFileResourceStatus.NORMAL);
-    PipeAgent.runtime().assignProgressIndexForTsFileLoad(resource);
-    return resource;
-  }
-
   /**
    * Load TimeSeriesMetadata for non-aligned time series
    *
    * @param resource TsFile
    * @param seriesPath Timeseries path
    * @param allSensors measurements queried at the same time of this device
-   * @param filter any filter, only used to check time range
+   * @param globalTimeFilter global time filter, only used to check time range
    * @throws IOException IOException may be thrown while reading it from disk.
    */
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static TimeseriesMetadata loadTimeSeriesMetadata(
       TsFileResource resource,
       PartialPath seriesPath,
       QueryContext context,
-      Filter filter,
+      Filter globalTimeFilter,
       Set<String> allSensors)
       throws IOException {
     long t1 = System.nanoTime();
@@ -153,7 +103,7 @@ public class FileLoaderUtils {
           List<Modification> pathModifications = context.getPathModifications(resource, seriesPath);
           timeSeriesMetadata.setModified(!pathModifications.isEmpty());
           timeSeriesMetadata.setChunkMetadataLoader(
-              new DiskChunkMetadataLoader(resource, context, filter, pathModifications));
+              new DiskChunkMetadataLoader(resource, context, globalTimeFilter, pathModifications));
         }
       } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
         loadFromMem = true;
@@ -161,7 +111,7 @@ public class FileLoaderUtils {
         timeSeriesMetadata = (TimeseriesMetadata) resource.getTimeSeriesMetadata(seriesPath);
         if (timeSeriesMetadata != null) {
           timeSeriesMetadata.setChunkMetadataLoader(
-              new MemChunkMetadataLoader(resource, seriesPath, context, filter));
+              new MemChunkMetadataLoader(resource, seriesPath, context, globalTimeFilter));
         }
       }
 
@@ -172,10 +122,7 @@ public class FileLoaderUtils {
               > timeSeriesMetadata.getStatistics().getEndTime()) {
             return null;
           }
-          if (filter != null
-              && !filter.satisfyStartEndTime(
-                  timeSeriesMetadata.getStatistics().getStartTime(),
-                  timeSeriesMetadata.getStatistics().getEndTime())) {
+          if (globalTimeFilter != null && globalTimeFilter.canSkip(timeSeriesMetadata)) {
             return null;
           }
         } finally {
@@ -205,7 +152,7 @@ public class FileLoaderUtils {
       TsFileResource resource,
       AlignedPath alignedPath,
       QueryContext context,
-      Filter filter,
+      Filter globalTimeFilter,
       boolean queryAllSensors)
       throws IOException {
     final long t1 = System.nanoTime();
@@ -215,7 +162,7 @@ public class FileLoaderUtils {
       // If the tsfile is closed, we need to load from tsfile
       if (resource.isClosed()) {
         alignedTimeSeriesMetadata =
-            loadFromDisk(resource, alignedPath, context, filter, queryAllSensors);
+            loadFromDisk(resource, alignedPath, context, globalTimeFilter, queryAllSensors);
       } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
         loadFromMem = true;
         alignedTimeSeriesMetadata =
@@ -223,7 +170,7 @@ public class FileLoaderUtils {
         if (alignedTimeSeriesMetadata != null) {
           alignedTimeSeriesMetadata.setChunkMetadataLoader(
               new MemAlignedChunkMetadataLoader(
-                  resource, alignedPath, context, filter, queryAllSensors));
+                  resource, alignedPath, context, globalTimeFilter, queryAllSensors));
           // mem's modification already done in generating chunkmetadata
         }
       }
@@ -235,8 +182,8 @@ public class FileLoaderUtils {
               > alignedTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getEndTime()) {
             return null;
           }
-          if (filter != null
-              && !filter.satisfyStartEndTime(
+          if (globalTimeFilter != null
+              && !globalTimeFilter.satisfyStartEndTime(
                   alignedTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getStartTime(),
                   alignedTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getEndTime())) {
             return null;
@@ -260,7 +207,7 @@ public class FileLoaderUtils {
       TsFileResource resource,
       AlignedPath alignedPath,
       QueryContext context,
-      Filter filter,
+      Filter globalTimeFilter,
       boolean queryAllSensors)
       throws IOException {
     AlignedTimeSeriesMetadata alignedTimeSeriesMetadata = null;
@@ -291,7 +238,7 @@ public class FileLoaderUtils {
             new AlignedTimeSeriesMetadata(timeColumn, Collections.emptyList());
         alignedTimeSeriesMetadata.setChunkMetadataLoader(
             new DiskAlignedChunkMetadataLoader(
-                resource, context, filter, queryAllSensors, Collections.emptyList()));
+                resource, context, globalTimeFilter, queryAllSensors, Collections.emptyList()));
       } else {
         List<TimeseriesMetadata> valueTimeSeriesMetadataList =
             new ArrayList<>(valueMeasurementList.size());
@@ -318,7 +265,7 @@ public class FileLoaderUtils {
 
           alignedTimeSeriesMetadata.setChunkMetadataLoader(
               new DiskAlignedChunkMetadataLoader(
-                  resource, context, filter, queryAllSensors, pathModifications));
+                  resource, context, globalTimeFilter, queryAllSensors, pathModifications));
         }
       }
     }
@@ -359,20 +306,20 @@ public class FileLoaderUtils {
   }
 
   /**
-   * load all page readers in one chunk that satisfying the timeFilter.
+   * load all page readers in one chunk that satisfying the globalTimeFilter.
    *
    * @param chunkMetaData the corresponding chunk metadata
-   * @param timeFilter it should be a TimeFilter instead of a ValueFilter
+   * @param globalTimeFilter it should be a TimeFilter instead of a ValueFilter
    * @throws IOException if chunkMetaData is null or errors happened while loading page readers,
    *     IOException will be thrown
    */
   public static List<IPageReader> loadPageReaderList(
-      IChunkMetadata chunkMetaData, Filter timeFilter) throws IOException {
+      IChunkMetadata chunkMetaData, Filter globalTimeFilter) throws IOException {
     if (chunkMetaData == null) {
       throw new IOException("Can't init null chunkMeta");
     }
     IChunkLoader chunkLoader = chunkMetaData.getChunkLoader();
-    IChunkReader chunkReader = chunkLoader.getChunkReader(chunkMetaData, timeFilter);
+    IChunkReader chunkReader = chunkLoader.getChunkReader(chunkMetaData, globalTimeFilter);
     return chunkReader.loadPageReaderList();
   }
 }

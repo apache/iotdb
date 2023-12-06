@@ -46,12 +46,12 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
 
   private final TsFileResource resource;
   private final QueryContext context;
-  // time filter or value filter, only used to check time range
-  private final Filter filter;
+
+  // global time filter, only used to check time range
+  private final Filter globalTimeFilter;
 
   // only used for limit and offset push down optimizer, if we select all columns from aligned
-  // device, we
-  // can use statistics to skip.
+  // device, we can use statistics to skip.
   // it's only exact while using limit & offset push down
   private final boolean queryAllSensors;
 
@@ -65,12 +65,12 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
   public DiskAlignedChunkMetadataLoader(
       TsFileResource resource,
       QueryContext context,
-      Filter filter,
+      Filter globalTimeFilter,
       boolean queryAllSensors,
       List<List<Modification>> pathModifications) {
     this.resource = resource;
     this.context = context;
-    this.filter = filter;
+    this.globalTimeFilter = globalTimeFilter;
     this.queryAllSensors = queryAllSensors;
     this.pathModifications = pathModifications;
   }
@@ -106,9 +106,7 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
       final long t3 = System.nanoTime();
       alignedChunkMetadataList.removeIf(
           alignedChunkMetaData ->
-              (filter != null
-                      && !filter.satisfyStartEndTime(
-                          alignedChunkMetaData.getStartTime(), alignedChunkMetaData.getEndTime()))
+              (globalTimeFilter != null && globalTimeFilter.canSkip(alignedChunkMetaData))
                   || alignedChunkMetaData.getStartTime() > alignedChunkMetaData.getEndTime());
       SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
           CHUNK_METADATA_FILTER_ALIGNED_DISK, System.nanoTime() - t3);

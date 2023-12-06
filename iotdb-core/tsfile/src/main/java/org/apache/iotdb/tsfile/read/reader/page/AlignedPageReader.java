@@ -154,8 +154,9 @@ public class AlignedPageReader implements IPageReader {
     return timeAllSelected();
   }
 
-  private boolean timeAllSelected() {
-    for (int index = 0; index < valueCount; index++) {
+  @Override
+  public boolean timeAllSelected() {
+    for (int index = 0; index < getMeasurementCount(); index++) {
       if (!hasNullValue(index)) {
         // When there is any value page point number that is the same as the time page,
         // it means that all timestamps in time page will be selected.
@@ -163,6 +164,11 @@ public class AlignedPageReader implements IPageReader {
       }
     }
     return false;
+  }
+
+  @Override
+  public int getMeasurementCount() {
+    return valueCount;
   }
 
   public IPointReader getLazyPointReader() throws IOException {
