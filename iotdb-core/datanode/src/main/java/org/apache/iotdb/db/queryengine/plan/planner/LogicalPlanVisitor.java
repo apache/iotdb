@@ -252,7 +252,6 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
               .planRawDataSource(
                   sourceExpressions,
                   queryStatement.getResultTimeOrder(),
-                  analysis.getGlobalTimeFilter(),
                   0,
                   pushDownLimitToScanNode(queryStatement, analysis),
                   analysis.isLastLevelUseWildcard())
@@ -276,7 +275,6 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 .planRawDataSource(
                     sourceExpressions,
                     queryStatement.getResultTimeOrder(),
-                    analysis.getGlobalTimeFilter(),
                     0,
                     0,
                     analysis.isLastLevelUseWildcard())
@@ -335,7 +333,6 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 ? planBuilder.planAggregationSource(
                     curStep,
                     queryStatement.getResultTimeOrder(),
-                    analysis.getGlobalTimeFilter(),
                     analysis.getGroupByTimeParameter(),
                     aggregationExpressions,
                     sourceTransformExpressions,
@@ -345,7 +342,6 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 : planBuilder.planAggregationSourceWithIndexAdjust(
                     curStep,
                     queryStatement.getResultTimeOrder(),
-                    analysis.getGlobalTimeFilter(),
                     analysis.getGroupByTimeParameter(),
                     aggregationExpressions,
                     sourceTransformExpressions,
@@ -845,7 +841,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             storageGroupList,
             schemaFetchStatement.getPatternTree(),
             schemaFetchStatement.getTemplateMap(),
-            schemaFetchStatement.isWithTags())
+            schemaFetchStatement.isWithTags(),
+            schemaFetchStatement.isWithTemplate())
         .getRoot();
   }
 

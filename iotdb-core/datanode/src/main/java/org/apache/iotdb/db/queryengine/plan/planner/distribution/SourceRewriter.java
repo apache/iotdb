@@ -120,7 +120,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
 
     String device = node.getDevice();
     List<TRegionReplicaSet> regionReplicaSets =
-        analysis.getPartitionInfo(device, analysis.getGlobalTimeFilter());
+        analysis.getPartitionInfo(device, context.getPartitionTimeFilter());
 
     List<PlanNode> singleDeviceViewList = new ArrayList<>();
     for (TRegionReplicaSet tRegionReplicaSet : regionReplicaSets) {
@@ -172,11 +172,11 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       List<TRegionReplicaSet> regionReplicaSets =
           analysis.isAllDevicesInOneTemplate()
               ? new ArrayList<>(
-                  analysis.getPartitionInfo(outputDevice, analysis.getGlobalTimeFilter()))
+                  analysis.getPartitionInfo(outputDevice, context.getPartitionTimeFilter()))
               : new ArrayList<>(
                   analysis.getPartitionInfo(
                       outputDeviceToQueriedDevicesMap.get(outputDevice),
-                      analysis.getGlobalTimeFilter()));
+                      context.getPartitionTimeFilter()));
       deviceViewSplits.add(new DeviceViewSplit(outputDevice, child, regionReplicaSets));
       relatedDataRegions.addAll(regionReplicaSets);
     }
@@ -479,11 +479,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   public List<PlanNode> visitLastQueryScan(
       LastQueryScanNode node, DistributionPlanContext context) {
     LastQueryNode mergeNode =
-        new LastQueryNode(
-            context.queryContext.getQueryId().genPlanNodeId(),
-            node.getPartitionTimeFilter(),
-            null,
-            false);
+        new LastQueryNode(context.queryContext.getQueryId().genPlanNodeId(), null, false);
     return processRawSeriesScan(node, context, mergeNode);
   }
 
@@ -491,11 +487,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   public List<PlanNode> visitAlignedLastQueryScan(
       AlignedLastQueryScanNode node, DistributionPlanContext context) {
     LastQueryNode mergeNode =
-        new LastQueryNode(
-            context.queryContext.getQueryId().genPlanNodeId(),
-            node.getPartitionTimeFilter(),
-            null,
-            false);
+        new LastQueryNode(context.queryContext.getQueryId().genPlanNodeId(), null, false);
     return processRawSeriesScan(node, context, mergeNode);
   }
 
@@ -513,7 +505,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       SeriesSourceNode node, DistributionPlanContext context) {
     List<PlanNode> ret = new ArrayList<>();
     List<TRegionReplicaSet> dataDistribution =
-        analysis.getPartitionInfo(node.getPartitionPath(), node.getPartitionTimeFilter());
+        analysis.getPartitionInfo(node.getPartitionPath(), context.getPartitionTimeFilter());
     if (dataDistribution.size() == 1) {
       node.setRegionReplicaSet(dataDistribution.get(0));
       ret.add(node);
@@ -544,7 +536,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   private List<PlanNode> processSeriesAggregationSource(
       SeriesAggregationSourceNode node, DistributionPlanContext context) {
     List<TRegionReplicaSet> dataDistribution =
-        analysis.getPartitionInfo(node.getPartitionPath(), node.getPartitionTimeFilter());
+        analysis.getPartitionInfo(node.getPartitionPath(), context.getPartitionTimeFilter());
     if (dataDistribution.size() == 1) {
       node.setRegionReplicaSet(dataDistribution.get(0));
       return Collections.singletonList(node);
@@ -767,7 +759,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
         SeriesSourceNode sourceNode = (SeriesSourceNode) child;
         List<TRegionReplicaSet> dataDistribution =
             analysis.getPartitionInfo(
-                sourceNode.getPartitionPath(), sourceNode.getPartitionTimeFilter());
+                sourceNode.getPartitionPath(), context.getPartitionTimeFilter());
         if (dataDistribution.size() > 1) {
           // If there is some series which is distributed in multi DataRegions
           context.setOneSeriesInMultiRegion(true);
@@ -1278,7 +1270,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       List<SeriesAggregationSourceNode> sources,
       SeriesAggregationSourceNode child) {
     List<TRegionReplicaSet> dataDistribution =
-        analysis.getPartitionInfo(child.getPartitionPath(), child.getPartitionTimeFilter());
+        analysis.getPartitionInfo(child.getPartitionPath(), context.getPartitionTimeFilter());
     for (TRegionReplicaSet dataRegion : dataDistribution) {
       SeriesAggregationSourceNode split = (SeriesAggregationSourceNode) child.clone();
       split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());

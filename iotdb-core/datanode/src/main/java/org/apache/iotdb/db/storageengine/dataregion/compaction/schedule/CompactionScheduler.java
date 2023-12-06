@@ -40,6 +40,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.concurrent.Phaser;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 /**
@@ -58,6 +60,17 @@ public class CompactionScheduler {
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private CompactionScheduler() {}
+
+  /** avoid timed compaction schedule conflict with manually triggered schedule */
+  private static final Lock compactionTaskSelectionLock = new ReentrantLock();
+
+  public static void lockCompactionSelection() {
+    compactionTaskSelectionLock.lock();
+  }
+
+  public static void unlockCompactionSelection() {
+    compactionTaskSelectionLock.unlock();
+  }
 
   /**
    * Select compaction task and submit them to CompactionTaskManager.

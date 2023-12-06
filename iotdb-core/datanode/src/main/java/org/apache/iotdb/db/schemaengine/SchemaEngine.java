@@ -44,8 +44,8 @@ import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionParams;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionLoader;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionParams;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
-import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
-import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
+import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,6 +56,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -379,7 +380,7 @@ public class SchemaEngine {
    * @param req heartbeat request
    * @param resp heartbeat response
    */
-  public void updateAndFillSchemaCountMap(THeartbeatReq req, THeartbeatResp resp) {
+  public void updateAndFillSchemaCountMap(TDataNodeHeartbeatReq req, TDataNodeHeartbeatResp resp) {
     // update DataNodeSchemaQuotaManager
     schemaQuotaManager.updateRemain(
         req.getTimeSeriesQuotaRemain(),
@@ -389,26 +390,38 @@ public class SchemaEngine {
         resp.setRegionDeviceUsageMap(new HashMap<>());
       }
       Map<Integer, Long> tmp = resp.getRegionDeviceUsageMap();
-      schemaRegionMap.values().stream()
-          .filter(i -> SchemaRegionConsensusImpl.getInstance().isLeader(i.getSchemaRegionId()))
+      SchemaRegionConsensusImpl.getInstance().getAllConsensusGroupIds().stream()
+          .filter(
+              consensusGroupId ->
+                  SchemaRegionConsensusImpl.getInstance().isLeader(consensusGroupId))
           .forEach(
-              i ->
+              consensusGroupId ->
                   tmp.put(
-                      i.getSchemaRegionId().getId(),
-                      i.getSchemaRegionStatistics().getDevicesNumber()));
+                      consensusGroupId.getId(),
+                      Optional.ofNullable(schemaRegionMap.get(consensusGroupId))
+                          .map(
+                              schemaRegion ->
+                                  schemaRegion.getSchemaRegionStatistics().getDevicesNumber())
+                          .orElse(0L)));
     }
     if (schemaQuotaManager.isSeriesLimit()) {
       if (resp.getRegionSeriesUsageMap() == null) {
         resp.setRegionSeriesUsageMap(new HashMap<>());
       }
       Map<Integer, Long> tmp = resp.getRegionSeriesUsageMap();
-      schemaRegionMap.values().stream()
-          .filter(i -> SchemaRegionConsensusImpl.getInstance().isLeader(i.getSchemaRegionId()))
+      SchemaRegionConsensusImpl.getInstance().getAllConsensusGroupIds().stream()
+          .filter(
+              consensusGroupId ->
+                  SchemaRegionConsensusImpl.getInstance().isLeader(consensusGroupId))
           .forEach(
-              i ->
+              consensusGroupId ->
                   tmp.put(
-                      i.getSchemaRegionId().getId(),
-                      i.getSchemaRegionStatistics().getSeriesNumber()));
+                      consensusGroupId.getId(),
+                      Optional.ofNullable(schemaRegionMap.get(consensusGroupId))
+                          .map(
+                              schemaRegion ->
+                                  schemaRegion.getSchemaRegionStatistics().getSeriesNumber())
+                          .orElse(0L)));
     }
   }
 

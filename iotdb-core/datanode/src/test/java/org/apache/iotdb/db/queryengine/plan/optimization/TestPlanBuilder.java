@@ -76,16 +76,16 @@ public class TestPlanBuilder {
 
   public TestPlanBuilder scan(String id, PartialPath path, int limit, int offset) {
     SeriesScanNode node = new SeriesScanNode(new PlanNodeId(id), (MeasurementPath) path);
-    node.setLimit(limit);
-    node.setOffset(offset);
+    node.setPushDownLimit(limit);
+    node.setPushDownOffset(offset);
     this.root = node;
     return this;
   }
 
   public TestPlanBuilder scanAligned(String id, PartialPath path, int limit, int offset) {
     AlignedSeriesScanNode node = new AlignedSeriesScanNode(new PlanNodeId(id), (AlignedPath) path);
-    node.setLimit(limit);
-    node.setOffset(offset);
+    node.setPushDownLimit(limit);
+    node.setPushDownOffset(offset);
     this.root = node;
     return this;
   }

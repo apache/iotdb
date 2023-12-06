@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.resource.memory;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
@@ -58,6 +59,14 @@ public class PipeMemoryManager {
 
   private final Set<PipeMemoryBlock> allocatedBlocks = new HashSet<>();
 
+  public PipeMemoryManager() {
+    PipeAgent.runtime()
+        .registerPeriodicalJob(
+            "PipeMemoryManager#tryExpandAll()",
+            this::tryExpandAll,
+            PipeConfig.getInstance().getPipeMemoryExpanderIntervalSeconds());
+  }
+
   public synchronized PipeMemoryBlock forceAllocate(long sizeInBytes)
       throws PipeRuntimeOutOfMemoryCriticalException {
     if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
@@ -92,6 +101,34 @@ public class PipeMemoryManager {
   public synchronized PipeMemoryBlock forceAllocate(Tablet tablet)
       throws PipeRuntimeOutOfMemoryCriticalException {
     return forceAllocate(calculateTabletSizeInBytes(tablet));
+  }
+
+  /**
+   * Allocate a memory block for pipe only if memory already used is less than specified threshold.
+   *
+   * @param sizeInBytes size of memory needed to allocate
+   * @param usedThreshold proportion of memory used, ranged from 0.0 to 1.0
+   * @return {@code null} if the proportion of memory already used exceeds {@code usedThreshold}.
+   *     Will return a memory block otherwise.
+   */
+  public synchronized PipeMemoryBlock forceAllocateIfSufficient(
+      long sizeInBytes, float usedThreshold) {
+    if (usedThreshold < 0.0f || usedThreshold > 1.0f) {
+      return null;
+    }
+    if (TOTAL_MEMORY_SIZE_IN_BYTES - usedMemorySizeInBytes >= sizeInBytes
+        && (float) usedMemorySizeInBytes / TOTAL_MEMORY_SIZE_IN_BYTES < usedThreshold) {
+      return forceAllocate(sizeInBytes);
+    } else {
+      long memoryToShrink =
+          Math.max(
+              usedMemorySizeInBytes - (long) (TOTAL_MEMORY_SIZE_IN_BYTES * usedThreshold),
+              sizeInBytes);
+      if (tryShrink4Allocate(memoryToShrink)) {
+        return forceAllocate(sizeInBytes);
+      }
+    }
+    return null;
   }
 
   private long calculateTabletSizeInBytes(Tablet tablet) {

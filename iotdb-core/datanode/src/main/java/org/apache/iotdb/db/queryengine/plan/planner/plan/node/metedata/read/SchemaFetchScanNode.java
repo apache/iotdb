@@ -49,6 +49,7 @@ public class SchemaFetchScanNode extends SourceNode {
   private final PathPatternTree patternTree;
   private final Map<Integer, Template> templateMap;
   private final boolean withTags;
+  private final boolean withTemplate;
   private TRegionReplicaSet schemaRegionReplicaSet;
 
   public SchemaFetchScanNode(
@@ -56,13 +57,15 @@ public class SchemaFetchScanNode extends SourceNode {
       PartialPath storageGroup,
       PathPatternTree patternTree,
       Map<Integer, Template> templateMap,
-      boolean withTags) {
+      boolean withTags,
+      boolean withTemplate) {
     super(id);
     this.storageGroup = storageGroup;
     this.patternTree = patternTree;
     this.patternTree.constructTree();
     this.templateMap = templateMap;
     this.withTags = withTags;
+    this.withTemplate = withTemplate;
   }
 
   public PartialPath getStorageGroup() {
@@ -88,7 +91,7 @@ public class SchemaFetchScanNode extends SourceNode {
   @Override
   public PlanNode clone() {
     return new SchemaFetchScanNode(
-        getPlanNodeId(), storageGroup, patternTree, templateMap, withTags);
+        getPlanNodeId(), storageGroup, patternTree, templateMap, withTags, withTemplate);
   }
 
   @Override
@@ -121,6 +124,7 @@ public class SchemaFetchScanNode extends SourceNode {
       template.serialize(byteBuffer);
     }
     ReadWriteIOUtils.write(withTags, byteBuffer);
+    ReadWriteIOUtils.write(withTemplate, byteBuffer);
   }
 
   @Override
@@ -133,6 +137,7 @@ public class SchemaFetchScanNode extends SourceNode {
       template.serialize(stream);
     }
     ReadWriteIOUtils.write(withTags, stream);
+    ReadWriteIOUtils.write(withTemplate, stream);
   }
 
   public static SchemaFetchScanNode deserialize(ByteBuffer byteBuffer) {
@@ -148,8 +153,10 @@ public class SchemaFetchScanNode extends SourceNode {
       templateMap.put(template.getId(), template);
     }
     boolean withTags = ReadWriteIOUtils.readBool(byteBuffer);
+    boolean withTemplate = ReadWriteIOUtils.readBool(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new SchemaFetchScanNode(planNodeId, storageGroup, patternTree, templateMap, withTags);
+    return new SchemaFetchScanNode(
+        planNodeId, storageGroup, patternTree, templateMap, withTags, withTemplate);
   }
 
   @Override
@@ -175,5 +182,9 @@ public class SchemaFetchScanNode extends SourceNode {
 
   public boolean isWithTags() {
     return withTags;
+  }
+
+  public boolean isWithTemplate() {
+    return withTemplate;
   }
 }

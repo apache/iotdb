@@ -83,7 +83,7 @@ public class ChunkCache {
                   long startTime = System.nanoTime();
                   try {
                     TsFileSequenceReader reader =
-                        FileReaderManager.getInstance().get(key.getFilePath(), true);
+                        FileReaderManager.getInstance().get(key.getFilePath(), key.closed);
                     Chunk chunk = reader.readMemChunk(key.offsetOfChunkHeader);
                     // to save memory footprint, we don't save measurementId in ChunkHeader of Chunk
                     chunk.getHeader().setMeasurementID(null);
@@ -180,13 +180,19 @@ public class ChunkCache {
 
     private final long offsetOfChunkHeader;
 
-    public ChunkCacheKey(String filePath, TsFileID tsfileId, long offsetOfChunkHeader) {
+    // we don't need to compare this field, it's just used to correctly get TsFileSequenceReader
+    // from FileReaderManager
+    private final boolean closed;
+
+    public ChunkCacheKey(
+        String filePath, TsFileID tsfileId, long offsetOfChunkHeader, boolean closed) {
       this.filePath = filePath;
       this.regionId = tsfileId.regionId;
       this.timePartitionId = tsfileId.timePartitionId;
       this.tsFileVersion = tsfileId.fileVersion;
       this.compactionVersion = tsfileId.compactionVersion;
       this.offsetOfChunkHeader = offsetOfChunkHeader;
+      this.closed = closed;
     }
 
     public long getRetainedSizeInBytes() {

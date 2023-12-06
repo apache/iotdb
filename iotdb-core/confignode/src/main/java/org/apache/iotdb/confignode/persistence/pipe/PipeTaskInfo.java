@@ -722,4 +722,22 @@ public class PipeTaskInfo implements SnapshotProcessor {
   public String toString() {
     return pipeMetaKeeper.toString();
   }
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  public long runningPipeCount() {
+    return pipeMetaKeeper.runningPipeCount();
+  }
+
+  public long droppedPipeCount() {
+    return pipeMetaKeeper.droppedPipeCount();
+  }
+
+  public long userStoppedPipeCount() {
+    return pipeMetaKeeper.userStoppedPipeCount();
+  }
+
+  public long exceptionStoppedPipeCount() {
+    return pipeMetaKeeper.exceptionStoppedPipeCount();
+  }
 }

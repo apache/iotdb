@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.commit;
 
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.metric.PipeEventCommitMetrics;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,13 +47,16 @@ public class PipeEventCommitManager {
           "Pipe with same name is already registered on this data region, overwriting: {}",
           committerKey);
     }
-    eventCommitterMap.put(committerKey, new PipeEventCommitter());
+    PipeEventCommitter eventCommitter = new PipeEventCommitter(pipeName, dataRegionId);
+    eventCommitterMap.put(committerKey, eventCommitter);
+    PipeEventCommitMetrics.getInstance().register(eventCommitter, committerKey);
     LOGGER.info("Pipe committer registered for pipe on data region: {}", committerKey);
   }
 
   public void deregister(String pipeName, int dataRegionId) {
     final String committerKey = generateCommitterKey(pipeName, dataRegionId);
     eventCommitterMap.remove(committerKey);
+    PipeEventCommitMetrics.getInstance().deregister(committerKey);
     LOGGER.info("Pipe committer deregistered for pipe on data region: {}", committerKey);
   }
 

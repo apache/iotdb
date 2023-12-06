@@ -57,8 +57,8 @@ public class LocalSinkChannel implements ISinkChannel {
       DataExchangeCostMetricSet.getInstance();
 
   public LocalSinkChannel(SharedTsBlockQueue queue, SinkListener sinkListener) {
-    this.sinkListener = Validate.notNull(sinkListener);
-    this.queue = Validate.notNull(queue);
+    this.sinkListener = Validate.notNull(sinkListener, "sinkListener can not be null.");
+    this.queue = Validate.notNull(queue, "queue can not be null.");
     this.queue.setSinkChannel(this);
     blocked = queue.getCanAddTsBlock();
   }
@@ -67,9 +67,10 @@ public class LocalSinkChannel implements ISinkChannel {
       TFragmentInstanceId localFragmentInstanceId,
       SharedTsBlockQueue queue,
       SinkListener sinkListener) {
-    this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
-    this.sinkListener = Validate.notNull(sinkListener);
-    this.queue = Validate.notNull(queue);
+    this.localFragmentInstanceId =
+        Validate.notNull(localFragmentInstanceId, "localFragmentInstanceId can not be null.");
+    this.sinkListener = Validate.notNull(sinkListener, "sinkListener can not be null.");
+    this.queue = Validate.notNull(queue, "queue can not be null.");
     this.queue.setSinkChannel(this);
     // SinkChannel can send data after SourceHandle asks it to
     blocked = queue.getCanAddTsBlock();
@@ -140,7 +141,9 @@ public class LocalSinkChannel implements ISinkChannel {
         if (queue.hasNoMoreTsBlocks()) {
           return;
         }
-        LOGGER.debug("[StartSendTsBlockOnLocal]");
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug("[StartSendTsBlockOnLocal]");
+        }
         synchronized (this) {
           blocked = queue.add(tsBlock);
         }
@@ -155,7 +158,9 @@ public class LocalSinkChannel implements ISinkChannel {
   public void setNoMoreTsBlocks() {
     synchronized (queue) {
       synchronized (this) {
-        LOGGER.debug("[StartSetNoMoreTsBlocksOnLocal]");
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug("[StartSetNoMoreTsBlocksOnLocal]");
+        }
         if (aborted || closed) {
           return;
         }
@@ -164,12 +169,16 @@ public class LocalSinkChannel implements ISinkChannel {
       }
     }
     checkAndInvokeOnFinished();
-    LOGGER.debug("[EndSetNoMoreTsBlocksOnLocal]");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("[EndSetNoMoreTsBlocksOnLocal]");
+    }
   }
 
   @Override
   public void abort() {
-    LOGGER.debug("[StartAbortLocalSinkChannel]");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("[StartAbortLocalSinkChannel]");
+    }
     synchronized (queue) {
       synchronized (this) {
         if (aborted || closed) {
@@ -184,12 +193,16 @@ public class LocalSinkChannel implements ISinkChannel {
         }
       }
     }
-    LOGGER.debug("[EndAbortLocalSinkChannel]");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("[EndAbortLocalSinkChannel]");
+    }
   }
 
   @Override
   public void close() {
-    LOGGER.debug("[StartCloseLocalSinkChannel]");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("[StartCloseLocalSinkChannel]");
+    }
     synchronized (queue) {
       synchronized (this) {
         if (aborted || closed) {
@@ -203,7 +216,9 @@ public class LocalSinkChannel implements ISinkChannel {
         }
       }
     }
-    LOGGER.debug("[EndCloseLocalSinkChannel]");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("[EndCloseLocalSinkChannel]");
+    }
   }
 
   public SharedTsBlockQueue getSharedTsBlockQueue() {

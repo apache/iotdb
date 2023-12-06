@@ -30,12 +30,12 @@ import java.util.function.BiConsumer;
 
 public class RatisMetricsManager {
 
-  static class TimeKeeper implements AutoCloseable {
+  public static class TimeReporter implements AutoCloseable {
     private final long startMoment;
     private final TConsensusGroupType groupType;
     private final BiConsumer<Long, TConsensusGroupType> reporter;
 
-    private TimeKeeper(
+    private TimeReporter(
         BiConsumer<Long, TConsensusGroupType> reporter, TConsensusGroupType groupType) {
       this.reporter = reporter;
       this.groupType = groupType;
@@ -55,16 +55,16 @@ public class RatisMetricsManager {
 
   private final MetricService metricService = MetricService.getInstance();
 
-  public TimeKeeper startWriteLocallyTimer(TConsensusGroupType consensusGroupType) {
-    return new TimeKeeper(this::recordWriteLocallyCost, consensusGroupType);
+  public TimeReporter startWriteLocallyTimer(TConsensusGroupType consensusGroupType) {
+    return new TimeReporter(this::recordWriteLocallyCost, consensusGroupType);
   }
 
-  public TimeKeeper startWriteRemotelyTimer(TConsensusGroupType consensusGroupType) {
-    return new TimeKeeper(this::recordWriteRemotelyCost, consensusGroupType);
+  public TimeReporter startWriteRemotelyTimer(TConsensusGroupType consensusGroupType) {
+    return new TimeReporter(this::recordWriteRemotelyCost, consensusGroupType);
   }
 
-  public TimeKeeper startReadTimer(TConsensusGroupType consensusGroupType) {
-    return new TimeKeeper(this::recordReadRequestCost, consensusGroupType);
+  public TimeReporter startReadTimer(TConsensusGroupType consensusGroupType) {
+    return new TimeReporter(this::recordReadRequestCost, consensusGroupType);
   }
 
   /** Record the time cost in write locally stage. */
@@ -112,6 +112,10 @@ public class RatisMetricsManager {
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
         RatisMetricSet.WRITE_STATE_MACHINE);
+  }
+
+  private RatisMetricsManager() {
+    // empty constructor
   }
 
   public static RatisMetricsManager getInstance() {

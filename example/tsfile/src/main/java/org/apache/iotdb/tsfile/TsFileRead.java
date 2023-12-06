@@ -27,8 +27,8 @@ import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
-import org.apache.iotdb.tsfile.read.filter.ValueFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.ValueFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import org.slf4j.Logger;
@@ -49,7 +49,7 @@ import static org.apache.iotdb.tsfile.Constant.SENSOR_3;
  */
 public class TsFileRead {
 
-  private static Logger logger = LoggerFactory.getLogger(TsFileRead.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileRead.class);
 
   private static void queryAndPrint(
       ArrayList<Path> paths, TsFileReader readTsFile, IExpression statement) throws IOException {
@@ -57,9 +57,9 @@ public class TsFileRead {
     QueryDataSet queryDataSet = readTsFile.query(queryExpression);
     while (queryDataSet.hasNext()) {
       String next = queryDataSet.next().toString();
-      logger.info(next);
+      LOGGER.info(next);
     }
-    logger.info("----------------");
+    LOGGER.info("----------------");
   }
 
   public static void main(String[] args) throws IOException {

@@ -282,7 +282,9 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
   public void close() throws Exception {
     historicalExtractor.close();
     realtimeExtractor.close();
-    PipeExtractorMetrics.getInstance().deregister(taskID);
+    if (Objects.nonNull(taskID)) {
+      PipeExtractorMetrics.getInstance().deregister(taskID);
+    }
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////

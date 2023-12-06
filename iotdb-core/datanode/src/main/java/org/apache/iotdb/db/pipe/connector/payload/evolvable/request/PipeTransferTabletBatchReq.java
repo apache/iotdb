@@ -162,7 +162,7 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
     for (int i = 0; i < size; ++i) {
       batchReq.insertNodeReqs.add(
           PipeTransferTabletInsertNodeReq.toTPipeTransferReq(
-              (InsertNode) PlanFragment.deserializeHelper(transferReq.body)));
+              (InsertNode) PlanFragment.deserializeHelper(transferReq.body, null)));
     }
 
     size = ReadWriteIOUtils.readInt(transferReq.body);

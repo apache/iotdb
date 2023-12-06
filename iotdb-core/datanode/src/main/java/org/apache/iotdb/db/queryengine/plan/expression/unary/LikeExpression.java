@@ -29,27 +29,36 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.regex.Pattern;
 
+import static org.apache.iotdb.tsfile.utils.RegexUtils.compileRegex;
+import static org.apache.iotdb.tsfile.utils.RegexUtils.parseLikePatternToRegex;
+
 public class LikeExpression extends UnaryExpression {
 
   private final String patternString;
   private final Pattern pattern;
 
-  public LikeExpression(Expression expression, String patternString) {
+  private final boolean isNot;
+
+  public LikeExpression(Expression expression, String patternString, boolean isNot) {
     super(expression);
     this.patternString = patternString;
-    pattern = compile();
+    this.isNot = isNot;
+    pattern = compileRegex(parseLikePatternToRegex(patternString));
   }
 
-  public LikeExpression(Expression expression, String patternString, Pattern pattern) {
+  public LikeExpression(
+      Expression expression, String patternString, Pattern pattern, boolean isNot) {
     super(expression);
     this.patternString = patternString;
     this.pattern = pattern;
+    this.isNot = isNot;
   }
 
   public LikeExpression(ByteBuffer byteBuffer) {
     super(Expression.deserialize(byteBuffer));
     patternString = ReadWriteIOUtils.readString(byteBuffer);
-    pattern = compile();
+    isNot = ReadWriteIOUtils.readBool(byteBuffer);
+    pattern = compileRegex(parseLikePatternToRegex(patternString));
   }
 
   public String getPatternString() {
@@ -60,65 +69,13 @@ public class LikeExpression extends UnaryExpression {
     return pattern;
   }
 
-  /**
-   * The main idea of this part comes from
-   * https://codereview.stackexchange.com/questions/36861/convert-sql-like-to-regex/36864
-   */
-  private Pattern compile() {
-    String unescapeValue = unescapeString(patternString);
-    String specialRegexString = ".^$*+?{}[]|()";
-    StringBuilder patternBuilder = new StringBuilder();
-    patternBuilder.append("^");
-    for (int i = 0; i < unescapeValue.length(); i++) {
-      String ch = String.valueOf(unescapeValue.charAt(i));
-      if (specialRegexString.contains(ch)) {
-        ch = "\\" + unescapeValue.charAt(i);
-      }
-      if (i == 0
-          || !"\\".equals(String.valueOf(unescapeValue.charAt(i - 1)))
-          || i >= 2
-              && "\\\\"
-                  .equals(
-                      patternBuilder.substring(
-                          patternBuilder.length() - 2, patternBuilder.length()))) {
-        patternBuilder.append(ch.replace("%", ".*?").replace("_", "."));
-      } else {
-        patternBuilder.append(ch);
-      }
-    }
-    patternBuilder.append("$");
-    return Pattern.compile(patternBuilder.toString());
-  }
-
-  /**
-   * This Method is for un-escaping strings except '\' before special string '%', '_', '\', because
-   * we need to use '\' to judge whether to replace this to regexp string
-   */
-  private String unescapeString(String value) {
-    StringBuilder stringBuilder = new StringBuilder();
-    int curIndex = 0;
-    for (; curIndex < value.length(); curIndex++) {
-      String ch = String.valueOf(value.charAt(curIndex));
-      if ("\\".equals(ch)) {
-        if (curIndex < value.length() - 1) {
-          String nextChar = String.valueOf(value.charAt(curIndex + 1));
-          if ("%".equals(nextChar) || "_".equals(nextChar) || "\\".equals(nextChar)) {
-            stringBuilder.append(ch);
-          }
-          if ("\\".equals(nextChar)) {
-            curIndex++;
-          }
-        }
-      } else {
-        stringBuilder.append(ch);
-      }
-    }
-    return stringBuilder.toString();
+  public boolean isNot() {
+    return isNot;
   }
 
   @Override
   protected String getExpressionStringInternal() {
-    return expression.getExpressionString() + " LIKE '" + pattern + "'";
+    return expression.getExpressionString() + (isNot ? " NOT" : "") + " LIKE '" + pattern + "'";
   }
 
   @Override
@@ -127,25 +84,22 @@ public class LikeExpression extends UnaryExpression {
   }
 
   @Override
-  protected Expression constructExpression(Expression childExpression) {
-    return new LikeExpression(childExpression, patternString, pattern);
-  }
-
-  @Override
   protected void serialize(ByteBuffer byteBuffer) {
     super.serialize(byteBuffer);
     ReadWriteIOUtils.write(patternString, byteBuffer);
+    ReadWriteIOUtils.write(isNot, byteBuffer);
   }
 
   @Override
   protected void serialize(DataOutputStream stream) throws IOException {
     super.serialize(stream);
     ReadWriteIOUtils.write(patternString, stream);
+    ReadWriteIOUtils.write(isNot, stream);
   }
 
   @Override
   public String getOutputSymbolInternal() {
-    return expression.getOutputSymbol() + " LIKE '" + pattern + "'";
+    return expression.getOutputSymbol() + (isNot ? " NOT" : "") + " LIKE '" + pattern + "'";
   }
 
   @Override
