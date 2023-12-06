@@ -154,7 +154,7 @@ public class BasicInternalMNode extends BasicMNode implements IInternalMNode<IMe
   /** MNodeContainer reference and basic occupation, 8 + 80B. */
   @Override
   public int estimateSize() {
-    return 8 + 80 + super.estimateSize() + (deviceInfo == null ? 0 : deviceInfo.estimateSize());
+    return 8 + 80 + super.estimateSize() + 8 + (deviceInfo == null ? 0 : deviceInfo.estimateSize());
   }
 
   @Override

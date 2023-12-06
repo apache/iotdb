@@ -168,6 +168,7 @@ public class CachedBasicInternalMNode extends CachedBasicMNode
         + 80
         + 192
         + super.estimateSize()
+        + 8
         + (deviceInfo == null ? 0 : deviceInfo.estimateSize());
   }
 

@@ -32,19 +32,14 @@ import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
 
 import java.util.Map;
 
+// This class provides a device view for an internal node with deviceInfo.
 public class DeviceMNodeWrapper<N extends IMNode<N>, BasicNode extends IInternalMNode<N>>
     implements IDeviceMNode<N> {
 
-  private final IDeviceInfo<N> deviceInfo;
   protected final BasicNode basicMNode;
 
   public DeviceMNodeWrapper(BasicNode basicMNode) {
     this.basicMNode = basicMNode;
-    this.deviceInfo = basicMNode.getDeviceInfo();
-  }
-
-  public BasicNode getBasicMNode() {
-    return basicMNode;
   }
 
   @Override
@@ -129,7 +124,7 @@ public class DeviceMNodeWrapper<N extends IMNode<N>, BasicNode extends IInternal
 
   @Override
   public IDeviceInfo<N> getDeviceInfo() {
-    return deviceInfo;
+    return basicMNode.getDeviceInfo();
   }
 
   @Override
@@ -174,72 +169,72 @@ public class DeviceMNodeWrapper<N extends IMNode<N>, BasicNode extends IInternal
 
   @Override
   public boolean addAlias(String alias, IMeasurementMNode<N> child) {
-    return deviceInfo.addAlias(alias, child);
+    return basicMNode.getDeviceInfo().addAlias(alias, child);
   }
 
   @Override
   public void deleteAliasChild(String alias) {
-    deviceInfo.deleteAliasChild(alias);
+    basicMNode.getDeviceInfo().deleteAliasChild(alias);
   }
 
   @Override
   public Map<String, IMeasurementMNode<N>> getAliasChildren() {
-    return deviceInfo.getAliasChildren();
+    return basicMNode.getDeviceInfo().getAliasChildren();
   }
 
   @Override
   public void setAliasChildren(Map<String, IMeasurementMNode<N>> aliasChildren) {
-    deviceInfo.setAliasChildren(aliasChildren);
+    basicMNode.getDeviceInfo().setAliasChildren(aliasChildren);
   }
 
   @Override
   public boolean isUseTemplate() {
-    return deviceInfo.isUseTemplate();
+    return basicMNode.getDeviceInfo().isUseTemplate();
   }
 
   @Override
   public void setUseTemplate(boolean useTemplate) {
-    deviceInfo.setUseTemplate(useTemplate);
+    basicMNode.getDeviceInfo().setUseTemplate(useTemplate);
   }
 
   @Override
   public void setSchemaTemplateId(int schemaTemplateId) {
-    deviceInfo.setSchemaTemplateId(schemaTemplateId);
+    basicMNode.getDeviceInfo().setSchemaTemplateId(schemaTemplateId);
   }
 
   @Override
   public int getSchemaTemplateId() {
-    return deviceInfo.getSchemaTemplateId();
+    return basicMNode.getDeviceInfo().getSchemaTemplateId();
   }
 
   @Override
   public int getSchemaTemplateIdWithState() {
-    return deviceInfo.getSchemaTemplateIdWithState();
+    return basicMNode.getDeviceInfo().getSchemaTemplateIdWithState();
   }
 
   @Override
   public boolean isPreDeactivateTemplate() {
-    return deviceInfo.isPreDeactivateTemplate();
+    return basicMNode.getDeviceInfo().isPreDeactivateTemplate();
   }
 
   @Override
   public void preDeactivateTemplate() {
-    deviceInfo.preDeactivateTemplate();
+    basicMNode.getDeviceInfo().preDeactivateTemplate();
   }
 
   @Override
   public void rollbackPreDeactivateTemplate() {
-    deviceInfo.rollbackPreDeactivateTemplate();
+    basicMNode.getDeviceInfo().rollbackPreDeactivateTemplate();
   }
 
   @Override
   public void deactivateTemplate() {
-    deviceInfo.deactivateTemplate();
+    basicMNode.getDeviceInfo().deactivateTemplate();
   }
 
   @Override
   public boolean isAligned() {
-    Boolean align = deviceInfo.isAligned();
+    Boolean align = basicMNode.getDeviceInfo().isAligned();
     if (align == null) {
       return false;
     }
@@ -248,12 +243,12 @@ public class DeviceMNodeWrapper<N extends IMNode<N>, BasicNode extends IInternal
 
   @Override
   public Boolean isAlignedNullable() {
-    return deviceInfo.isAligned();
+    return basicMNode.getDeviceInfo().isAligned();
   }
 
   @Override
   public void setAligned(Boolean isAligned) {
-    deviceInfo.setAligned(isAligned);
+    basicMNode.getDeviceInfo().setAligned(isAligned);
   }
 
   @Override

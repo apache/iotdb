@@ -355,17 +355,20 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   public ICachedMNode setToInternal(IDeviceMNode<ICachedMNode> entityMNode) {
     int rawSize = entityMNode.estimateSize();
     AtomicReference<Boolean> resultReference = new AtomicReference<>(false);
+    // the entityMNode is just a wrapper, the actual CachedMNode instance shall be the same before
+    // and after
+    // setToInternal
+    ICachedMNode internalMNode = entityMNode.getAsMNode();
     updateMNode(
-        entityMNode.getAsMNode(),
-        o -> resultReference.getAndSet(MNodeUtils.setToInternal(entityMNode)));
+        internalMNode, o -> resultReference.getAndSet(MNodeUtils.setToInternal(entityMNode)));
 
     boolean isSuccess = resultReference.get();
     if (isSuccess) {
       regionStatistics.deleteDevice();
-      memManager.updatePinnedSize(entityMNode.estimateSize() - rawSize);
+      memManager.updatePinnedSize(internalMNode.estimateSize() - rawSize);
     }
 
-    return entityMNode.getAsMNode();
+    return internalMNode;
   }
 
   @Override
