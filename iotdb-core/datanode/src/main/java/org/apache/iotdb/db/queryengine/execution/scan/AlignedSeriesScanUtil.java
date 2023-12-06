@@ -78,7 +78,7 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
-  // construction related methods (need override)
+  // methods which need override
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
   @Override
@@ -95,11 +95,7 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
   protected AlignedTimeSeriesMetadata loadTimeSeriesMetadata(
       TsFileResource resource, PartialPath seriesPath, QueryContext context) throws IOException {
     return FileLoaderUtils.loadTimeSeriesMetadata(
-        resource,
-        (AlignedPath) seriesPath,
-        context,
-        scanOptions.getGlobalTimeFilter(),
-        queryAllSensors);
+        resource, (AlignedPath) seriesPath, context, scanOptions.getGlobalTimeFilter());
   }
 
   @Override

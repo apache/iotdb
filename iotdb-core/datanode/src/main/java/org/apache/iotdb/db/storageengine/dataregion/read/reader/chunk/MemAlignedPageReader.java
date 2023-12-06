@@ -46,11 +46,6 @@ public class MemAlignedPageReader implements IPageReader {
   private final TsBlock tsBlock;
   private final AlignedChunkMetadata chunkMetadata;
 
-  // only used for limit and offset push down optimizer, if we select all columns from aligned
-  // device, we can use statistics to skip.
-  // it's only exact while using limit & offset push down
-  private final boolean queryAllSensors;
-
   private Filter globalTimeFilter;
   private Filter pushDownFilter;
   private PaginationController paginationController = UNLIMITED_PAGINATION_CONTROLLER;
@@ -58,14 +53,10 @@ public class MemAlignedPageReader implements IPageReader {
   private TsBlockBuilder builder;
 
   public MemAlignedPageReader(
-      TsBlock tsBlock,
-      AlignedChunkMetadata chunkMetadata,
-      Filter globalTimeFilter,
-      boolean queryAllSensors) {
+      TsBlock tsBlock, AlignedChunkMetadata chunkMetadata, Filter globalTimeFilter) {
     this.tsBlock = tsBlock;
     this.chunkMetadata = chunkMetadata;
     this.globalTimeFilter = globalTimeFilter;
-    this.queryAllSensors = queryAllSensors;
   }
 
   @Override

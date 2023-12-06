@@ -152,8 +152,7 @@ public class FileLoaderUtils {
       TsFileResource resource,
       AlignedPath alignedPath,
       QueryContext context,
-      Filter globalTimeFilter,
-      boolean queryAllSensors)
+      Filter globalTimeFilter)
       throws IOException {
     final long t1 = System.nanoTime();
     boolean loadFromMem = false;
@@ -161,16 +160,14 @@ public class FileLoaderUtils {
       AlignedTimeSeriesMetadata alignedTimeSeriesMetadata;
       // If the tsfile is closed, we need to load from tsfile
       if (resource.isClosed()) {
-        alignedTimeSeriesMetadata =
-            loadFromDisk(resource, alignedPath, context, globalTimeFilter, queryAllSensors);
+        alignedTimeSeriesMetadata = loadFromDisk(resource, alignedPath, context, globalTimeFilter);
       } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
         loadFromMem = true;
         alignedTimeSeriesMetadata =
             (AlignedTimeSeriesMetadata) resource.getTimeSeriesMetadata(alignedPath);
         if (alignedTimeSeriesMetadata != null) {
           alignedTimeSeriesMetadata.setChunkMetadataLoader(
-              new MemAlignedChunkMetadataLoader(
-                  resource, alignedPath, context, globalTimeFilter, queryAllSensors));
+              new MemAlignedChunkMetadataLoader(resource, alignedPath, context, globalTimeFilter));
           // mem's modification already done in generating chunkmetadata
         }
       }
@@ -207,8 +204,7 @@ public class FileLoaderUtils {
       TsFileResource resource,
       AlignedPath alignedPath,
       QueryContext context,
-      Filter globalTimeFilter,
-      boolean queryAllSensors)
+      Filter globalTimeFilter)
       throws IOException {
     AlignedTimeSeriesMetadata alignedTimeSeriesMetadata = null;
     // load all the TimeseriesMetadata of vector, the first one is for time column and the
@@ -238,7 +234,7 @@ public class FileLoaderUtils {
             new AlignedTimeSeriesMetadata(timeColumn, Collections.emptyList());
         alignedTimeSeriesMetadata.setChunkMetadataLoader(
             new DiskAlignedChunkMetadataLoader(
-                resource, context, globalTimeFilter, queryAllSensors, Collections.emptyList()));
+                resource, context, globalTimeFilter, Collections.emptyList()));
       } else {
         List<TimeseriesMetadata> valueTimeSeriesMetadataList =
             new ArrayList<>(valueMeasurementList.size());
@@ -265,7 +261,7 @@ public class FileLoaderUtils {
 
           alignedTimeSeriesMetadata.setChunkMetadataLoader(
               new DiskAlignedChunkMetadataLoader(
-                  resource, context, globalTimeFilter, queryAllSensors, pathModifications));
+                  resource, context, globalTimeFilter, pathModifications));
         }
       }
     }

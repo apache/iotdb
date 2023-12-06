@@ -403,7 +403,7 @@ public class SeriesScanUtil {
 
   @SuppressWarnings("unchecked")
   public boolean canUseCurrentPageStatistics() throws IOException {
-    Statistics<? extends Serializable> currentPageStatistics = currentPageTimeStatistics();
+    Statistics<? extends Serializable> currentPageStatistics = getCurrentPageTimeStatistics();
     if (currentPageStatistics == null) {
       return false;
     }
@@ -416,19 +416,19 @@ public class SeriesScanUtil {
   }
 
   @SuppressWarnings("squid:S3740")
-  public Statistics currentPageStatistics(int index) throws IOException {
-    if (firstPageReader == null) {
-      return null;
-    }
-    return firstPageReader.getStatistics(index);
-  }
-
-  @SuppressWarnings("squid:S3740")
-  public Statistics currentPageTimeStatistics() throws IOException {
+  public Statistics getCurrentPageTimeStatistics() throws IOException {
     if (firstPageReader == null) {
       return null;
     }
     return firstPageReader.getTimeStatistics();
+  }
+
+  @SuppressWarnings("squid:S3740")
+  public Statistics getCurrentPageMeasurementStatistics(int index) throws IOException {
+    if (firstPageReader == null) {
+      return null;
+    }
+    return firstPageReader.getStatistics(index);
   }
 
   public void skipCurrentPage() {
@@ -451,9 +451,7 @@ public class SeriesScanUtil {
         return null;
       }
 
-      Filter recordFilter =
-          FilterFactory.and(scanOptions.getGlobalTimeFilter(), scanOptions.getPushDownFilter());
-      firstPageReader.setRecordFilter(recordFilter);
+      firstPageReader.setPushDownFilter(scanOptions.getPushDownFilter());
       TsBlock tsBlock;
       if (orderUtils.getAscending()) {
         firstPageReader.setLimitOffset(paginationController);
@@ -1240,8 +1238,8 @@ public class SeriesScanUtil {
       }
     }
 
-    void setRecordFilter(Filter recordFilter) {
-      data.setFilter(recordFilter);
+    void setPushDownFilter(Filter pushDownFilter) {
+      data.setFilter(pushDownFilter);
     }
 
     boolean isModified() {

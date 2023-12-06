@@ -50,11 +50,6 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
   // global time filter, only used to check time range
   private final Filter globalTimeFilter;
 
-  // only used for limit and offset push down optimizer, if we select all columns from aligned
-  // device, we can use statistics to skip.
-  // it's only exact while using limit & offset push down
-  private final boolean queryAllSensors;
-
   // all sub sensors' modifications
   private final List<List<Modification>> pathModifications;
 
@@ -66,12 +61,10 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
       TsFileResource resource,
       QueryContext context,
       Filter globalTimeFilter,
-      boolean queryAllSensors,
       List<List<Modification>> pathModifications) {
     this.resource = resource;
     this.context = context;
     this.globalTimeFilter = globalTimeFilter;
-    this.queryAllSensors = queryAllSensors;
     this.pathModifications = pathModifications;
   }
 
@@ -118,8 +111,7 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
             if (chunkMetadata.needSetChunkLoader()) {
               chunkMetadata.setVersion(resource.getVersion());
               chunkMetadata.setClosed(resource.isClosed());
-              chunkMetadata.setChunkLoader(
-                  new DiskAlignedChunkLoader(context.isDebug(), queryAllSensors, resource));
+              chunkMetadata.setChunkLoader(new DiskAlignedChunkLoader(context.isDebug(), resource));
             }
           });
 

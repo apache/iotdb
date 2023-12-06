@@ -310,7 +310,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
     try {
       while (System.nanoTime() - start < leftRuntimeOfOneNextCall && seriesScanUtil.hasNextPage()) {
         if (seriesScanUtil.canUseCurrentPageStatistics()) {
-          Statistics pageTimeStatistics = seriesScanUtil.currentPageTimeStatistics();
+          Statistics pageTimeStatistics = seriesScanUtil.getCurrentPageTimeStatistics();
           // There is no more eligible points in current time range
           if (pageTimeStatistics.getStartTime() > curTimeRange.getMax()) {
             if (ascending) {
@@ -325,7 +325,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
               pageTimeStatistics.getStartTime(), pageTimeStatistics.getEndTime())) {
             Statistics[] statisticsList = new Statistics[subSensorSize];
             for (int i = 0; i < subSensorSize; i++) {
-              statisticsList[i] = seriesScanUtil.currentPageStatistics(i);
+              statisticsList[i] = seriesScanUtil.getCurrentPageMeasurementStatistics(i);
             }
             calcFromStatistics(pageTimeStatistics, statisticsList);
             seriesScanUtil.skipCurrentPage();

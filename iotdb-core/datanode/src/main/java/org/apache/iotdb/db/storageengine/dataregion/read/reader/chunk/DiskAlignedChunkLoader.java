@@ -42,20 +42,13 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
 
   private final boolean debug;
 
-  // only used for limit and offset push down optimizer, if we select all columns from aligned
-  // device, we
-  // can use statistics to skip.
-  // it's only exact while using limit & offset push down
-  private final boolean queryAllSensors;
-
   private final TsFileResource resource;
 
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
 
-  public DiskAlignedChunkLoader(boolean debug, boolean queryAllSensors, TsFileResource resource) {
+  public DiskAlignedChunkLoader(boolean debug, TsFileResource resource) {
     this.debug = debug;
-    this.queryAllSensors = queryAllSensors;
     this.resource = resource;
   }
 
@@ -105,8 +98,7 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
       }
 
       long t2 = System.nanoTime();
-      IChunkReader chunkReader =
-          new AlignedChunkReader(timeChunk, valueChunkList, timeFilter, queryAllSensors);
+      IChunkReader chunkReader = new AlignedChunkReader(timeChunk, valueChunkList, timeFilter);
       SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
           INIT_CHUNK_READER_ALIGNED_DISK, System.nanoTime() - t2);
 

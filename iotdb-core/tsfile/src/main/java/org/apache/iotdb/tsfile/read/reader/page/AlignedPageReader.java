@@ -50,11 +50,6 @@ public class AlignedPageReader implements IPageReader {
   private final List<ValuePageReader> valuePageReaderList;
   private final int valueCount;
 
-  // only used for limit and offset push down optimizer, if we select all columns from aligned
-  // device, we can use statistics to skip.
-  // it's only exact while using limit & offset push down
-  private final boolean queryAllSensors;
-
   private final Filter globalTimeFilter;
   private Filter pushDownFilter;
   private PaginationController paginationController = UNLIMITED_PAGINATION_CONTROLLER;
@@ -73,8 +68,7 @@ public class AlignedPageReader implements IPageReader {
       List<ByteBuffer> valuePageDataList,
       List<TSDataType> valueDataTypeList,
       List<Decoder> valueDecoderList,
-      Filter globalTimeFilter,
-      boolean queryAllSensors) {
+      Filter globalTimeFilter) {
     timePageReader = new TimePageReader(timePageHeader, timePageData, timeDecoder);
     isModified = timePageReader.isModified();
     valuePageReaderList = new ArrayList<>(valuePageHeaderList.size());
@@ -94,7 +88,6 @@ public class AlignedPageReader implements IPageReader {
     }
     this.globalTimeFilter = globalTimeFilter;
     this.valueCount = valuePageReaderList.size();
-    this.queryAllSensors = queryAllSensors;
   }
 
   @Override
