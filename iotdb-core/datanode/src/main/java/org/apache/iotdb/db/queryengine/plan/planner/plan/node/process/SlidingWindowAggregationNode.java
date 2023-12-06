@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.process;
 
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.queryengine.plan.optimization.base.ColumnInjectionPushDown;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -36,7 +38,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class SlidingWindowAggregationNode extends SingleChildProcessNode {
+public class SlidingWindowAggregationNode extends SingleChildProcessNode
+    implements ColumnInjectionPushDown {
 
   // The list of aggregate functions, each AggregateDescriptor will be output as one column of
   // result TsBlock
@@ -47,15 +50,19 @@ public class SlidingWindowAggregationNode extends SingleChildProcessNode {
 
   protected Ordering scanOrder;
 
+  private boolean outputEndTime = false;
+
   public SlidingWindowAggregationNode(
       PlanNodeId id,
       List<AggregationDescriptor> aggregationDescriptorList,
       GroupByTimeParameter groupByTimeParameter,
-      Ordering scanOrder) {
+      Ordering scanOrder,
+      boolean outputEndTime) {
     super(id);
     this.aggregationDescriptorList = aggregationDescriptorList;
     this.groupByTimeParameter = groupByTimeParameter;
     this.scanOrder = scanOrder;
+    this.outputEndTime = outputEndTime;
   }
 
   public SlidingWindowAggregationNode(
@@ -68,6 +75,14 @@ public class SlidingWindowAggregationNode extends SingleChildProcessNode {
     this.aggregationDescriptorList = aggregationDescriptorList;
     this.groupByTimeParameter = groupByTimeParameter;
     this.scanOrder = scanOrder;
+  }
+
+  public boolean isOutputEndTime() {
+    return outputEndTime;
+  }
+
+  public void setOutputEndTime(boolean outputEndTime) {
+    this.outputEndTime = outputEndTime;
   }
 
   public List<AggregationDescriptor> getAggregationDescriptorList() {
@@ -89,15 +104,25 @@ public class SlidingWindowAggregationNode extends SingleChildProcessNode {
   @Override
   public PlanNode clone() {
     return new SlidingWindowAggregationNode(
-        getPlanNodeId(), getAggregationDescriptorList(), getGroupByTimeParameter(), getScanOrder());
+        getPlanNodeId(),
+        getAggregationDescriptorList(),
+        getGroupByTimeParameter(),
+        getScanOrder(),
+        isOutputEndTime());
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return aggregationDescriptorList.stream()
-        .map(AggregationDescriptor::getOutputColumnNames)
-        .flatMap(List::stream)
-        .collect(Collectors.toList());
+    List<String> outputColumnNames = new ArrayList<>();
+    if (outputEndTime) {
+      outputColumnNames.add(ColumnHeaderConstant.ENDTIME);
+    }
+    outputColumnNames.addAll(
+        aggregationDescriptorList.stream()
+            .map(AggregationDescriptor::getOutputColumnNames)
+            .flatMap(List::stream)
+            .collect(Collectors.toList()));
+    return outputColumnNames;
   }
 
   @Override
@@ -119,6 +144,7 @@ public class SlidingWindowAggregationNode extends SingleChildProcessNode {
       groupByTimeParameter.serialize(byteBuffer);
     }
     ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
+    ReadWriteIOUtils.write(outputEndTime, byteBuffer);
   }
 
   @Override
@@ -135,6 +161,7 @@ public class SlidingWindowAggregationNode extends SingleChildProcessNode {
       groupByTimeParameter.serialize(stream);
     }
     ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
+    ReadWriteIOUtils.write(outputEndTime, stream);
   }
 
   public static SlidingWindowAggregationNode deserialize(ByteBuffer byteBuffer) {
@@ -150,9 +177,10 @@ public class SlidingWindowAggregationNode extends SingleChildProcessNode {
       groupByTimeParameter = GroupByTimeParameter.deserialize(byteBuffer);
     }
     Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    boolean outputEndTime = ReadWriteIOUtils.readBool(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new SlidingWindowAggregationNode(
-        planNodeId, aggregationDescriptorList, groupByTimeParameter, scanOrder);
+        planNodeId, aggregationDescriptorList, groupByTimeParameter, scanOrder, outputEndTime);
   }
 
   @Override
@@ -168,12 +196,19 @@ public class SlidingWindowAggregationNode extends SingleChildProcessNode {
     }
     SlidingWindowAggregationNode that = (SlidingWindowAggregationNode) o;
     return Objects.equals(aggregationDescriptorList, that.aggregationDescriptorList)
-        && Objects.equals(groupByTimeParameter, that.groupByTimeParameter);
+        && Objects.equals(groupByTimeParameter, that.groupByTimeParameter)
+        && scanOrder == that.scanOrder
+        && outputEndTime == that.outputEndTime;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), aggregationDescriptorList, groupByTimeParameter);
+    return Objects.hash(
+        super.hashCode(),
+        aggregationDescriptorList,
+        groupByTimeParameter,
+        scanOrder,
+        outputEndTime);
   }
 
   public String toString() {

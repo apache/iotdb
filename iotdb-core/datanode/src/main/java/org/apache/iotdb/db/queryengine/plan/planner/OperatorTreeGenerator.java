@@ -411,6 +411,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.getPlanNodeId(),
             seriesPath,
             node.getScanOrder(),
+            node.isOutputEndTime(),
             scanOptionsBuilder.build(),
             operatorContext,
             aggregators,
@@ -494,6 +495,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.getPlanNodeId(),
             seriesPath,
             node.getScanOrder(),
+            node.isOutputEndTime(),
             scanOptionsBuilder.build(),
             operatorContext,
             aggregators,
@@ -1343,7 +1345,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             aggregationDescriptors, timeRangeIterator, context.getTypeProvider());
 
     return new AggregationOperator(
-        operatorContext, aggregators, timeRangeIterator, children, maxReturnSize);
+        operatorContext, aggregators, timeRangeIterator, children, false, maxReturnSize);
   }
 
   @Override
@@ -1459,6 +1461,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         timeRangeIterator,
         child,
         ascending,
+        node.isOutputEndTime(),
         groupByTimeParameter,
         maxReturnSize);
   }
@@ -1632,7 +1635,12 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               aggregationDescriptors, timeRangeIterator, context.getTypeProvider());
 
       return new AggregationOperator(
-          operatorContext, aggregators, timeRangeIterator, children, maxReturnSize);
+          operatorContext,
+          aggregators,
+          timeRangeIterator,
+          children,
+          node.isOutputEndTime(),
+          maxReturnSize);
     }
   }
 

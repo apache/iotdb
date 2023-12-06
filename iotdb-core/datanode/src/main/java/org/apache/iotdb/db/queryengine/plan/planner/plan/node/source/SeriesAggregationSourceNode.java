@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.source;
 
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.optimization.base.ColumnInjectionPushDown;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
@@ -30,7 +31,8 @@ import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Objects;
 
-public abstract class SeriesAggregationSourceNode extends SeriesSourceNode {
+public abstract class SeriesAggregationSourceNode extends SeriesSourceNode
+    implements ColumnInjectionPushDown {
 
   // The list of aggregate functions, each AggregateDescriptor will be output as one column in
   // result TsBlock
@@ -47,6 +49,9 @@ public abstract class SeriesAggregationSourceNode extends SeriesSourceNode {
   // The parameter of `group by time`
   // Its value will be null if there is no `group by time` clause,
   @Nullable protected GroupByTimeParameter groupByTimeParameter;
+
+  // If the resultSet should contain 'endTime' column in GROUP BY TIME query.
+  private boolean outputEndTime = false;
 
   protected SeriesAggregationSourceNode(
       PlanNodeId id, List<AggregationDescriptor> aggregationDescriptorList) {
@@ -76,6 +81,14 @@ public abstract class SeriesAggregationSourceNode extends SeriesSourceNode {
     this.pushDownPredicate = pushDownPredicate;
   }
 
+  public boolean isOutputEndTime() {
+    return outputEndTime;
+  }
+
+  public void setOutputEndTime(boolean outputEndTime) {
+    this.outputEndTime = outputEndTime;
+  }
+
   @Nullable
   public GroupByTimeParameter getGroupByTimeParameter() {
     return groupByTimeParameter;
@@ -96,7 +109,8 @@ public abstract class SeriesAggregationSourceNode extends SeriesSourceNode {
     return aggregationDescriptorList.equals(that.aggregationDescriptorList)
         && scanOrder == that.scanOrder
         && Objects.equals(pushDownPredicate, that.pushDownPredicate)
-        && Objects.equals(groupByTimeParameter, that.groupByTimeParameter);
+        && Objects.equals(groupByTimeParameter, that.groupByTimeParameter)
+        && outputEndTime == that.outputEndTime;
   }
 
   @Override
@@ -105,6 +119,7 @@ public abstract class SeriesAggregationSourceNode extends SeriesSourceNode {
         super.hashCode(),
         aggregationDescriptorList,
         scanOrder,
+        outputEndTime,
         pushDownPredicate,
         groupByTimeParameter);
   }

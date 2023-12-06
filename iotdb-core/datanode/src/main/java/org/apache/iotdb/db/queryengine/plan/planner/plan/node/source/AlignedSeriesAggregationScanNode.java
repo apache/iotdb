@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -89,6 +90,26 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
     this.regionReplicaSet = dataRegionReplicaSet;
   }
 
+  public AlignedSeriesAggregationScanNode(
+      PlanNodeId id,
+      AlignedPath alignedPath,
+      List<AggregationDescriptor> aggregationDescriptorList,
+      Ordering scanOrder,
+      boolean outputEndTime,
+      @Nullable Expression pushDownPredicate,
+      @Nullable GroupByTimeParameter groupByTimeParameter,
+      TRegionReplicaSet dataRegionReplicaSet) {
+    this(
+        id,
+        alignedPath,
+        aggregationDescriptorList,
+        scanOrder,
+        pushDownPredicate,
+        groupByTimeParameter,
+        dataRegionReplicaSet);
+    setOutputEndTime(outputEndTime);
+  }
+
   public AlignedPath getAlignedPath() {
     return alignedPath;
   }
@@ -141,6 +162,7 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
         getAlignedPath(),
         getAggregationDescriptorList(),
         getScanOrder(),
+        isOutputEndTime(),
         getPushDownPredicate(),
         getGroupByTimeParameter(),
         getRegionReplicaSet());
@@ -148,10 +170,16 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
 
   @Override
   public List<String> getOutputColumnNames() {
-    return aggregationDescriptorList.stream()
-        .map(AggregationDescriptor::getOutputColumnNames)
-        .flatMap(List::stream)
-        .collect(Collectors.toList());
+    List<String> outputColumnNames = new ArrayList<>();
+    if (isOutputEndTime()) {
+      outputColumnNames.add(ColumnHeaderConstant.ENDTIME);
+    }
+    outputColumnNames.addAll(
+        aggregationDescriptorList.stream()
+            .map(AggregationDescriptor::getOutputColumnNames)
+            .flatMap(List::stream)
+            .collect(Collectors.toList()));
+    return outputColumnNames;
   }
 
   @Override
@@ -168,6 +196,7 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
       aggregationDescriptor.serialize(byteBuffer);
     }
     ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
+    ReadWriteIOUtils.write(isOutputEndTime(), byteBuffer);
     if (pushDownPredicate == null) {
       ReadWriteIOUtils.write((byte) 0, byteBuffer);
     } else {
@@ -191,6 +220,7 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
       aggregationDescriptor.serialize(stream);
     }
     ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
+    ReadWriteIOUtils.write(isOutputEndTime(), stream);
     if (pushDownPredicate == null) {
       ReadWriteIOUtils.write((byte) 0, stream);
     } else {
@@ -213,6 +243,7 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
       aggregationDescriptorList.add(AggregationDescriptor.deserialize(byteBuffer));
     }
     Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    boolean outputEndTime = ReadWriteIOUtils.readBool(byteBuffer);
     byte isNull = ReadWriteIOUtils.readByte(byteBuffer);
     Expression pushDownPredicate = null;
     if (isNull == 1) {
@@ -229,6 +260,7 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
         alignedPath,
         aggregationDescriptorList,
         scanOrder,
+        outputEndTime,
         pushDownPredicate,
         groupByTimeParameter,
         null);
