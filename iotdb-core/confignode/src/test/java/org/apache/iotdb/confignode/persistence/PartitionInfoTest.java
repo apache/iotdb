@@ -45,9 +45,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
-import org.junit.AfterClass;
+import org.junit.After;
 import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
@@ -81,16 +81,16 @@ public class PartitionInfoTest {
     }
   }
 
-  @BeforeClass
-  public static void setup() {
+  @Before
+  public void setup() {
     partitionInfo = new PartitionInfo();
     if (!snapshotDir.exists()) {
       snapshotDir.mkdirs();
     }
   }
 
-  @AfterClass
-  public static void cleanup() throws IOException {
+  @After
+  public void cleanup() throws IOException {
     partitionInfo.clear();
     if (snapshotDir.exists()) {
       FileUtils.deleteDirectory(snapshotDir);
