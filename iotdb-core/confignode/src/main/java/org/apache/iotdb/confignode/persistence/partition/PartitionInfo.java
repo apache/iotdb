@@ -1096,8 +1096,10 @@ public class PartitionInfo implements SnapshotProcessor {
 
   public Optional<TConsensusGroupType> getRegionType(int regionId) {
     return databasePartitionTables.values().stream()
-        .flatMap(databasePartitionTable -> databasePartitionTable.getRegionType(regionId))
-        .findAny();
+        .map(databasePartitionTable -> databasePartitionTable.getRegionType(regionId))
+        .filter(Optional::isPresent)
+        .map(Optional::get)
+        .findFirst();
   }
 
   public void clear() {
