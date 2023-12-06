@@ -19,21 +19,27 @@
 
 package org.apache.iotdb.consensus.ratis.metrics;
 
-import java.util.function.Supplier;
+import com.codahale.metrics.Gauge;
+import com.codahale.metrics.MetricRegistry;
 
 /** AutoGauge supplier holder class. */
-public class GaugeProxy<T> {
+public class GaugeProxy implements Gauge {
 
-  private final Supplier<T> gaugeSupplier;
+  private final Gauge gauge;
 
-  public GaugeProxy(Supplier<Supplier<T>> supplier) {
-    this.gaugeSupplier = supplier.get();
+  public GaugeProxy(MetricRegistry.MetricSupplier<Gauge> metricSupplier) {
+    this.gauge = metricSupplier.newMetric();
   }
 
-  double getDoubleValue() {
-    Object latestValue = gaugeSupplier.get();
-    if (latestValue instanceof Number) {
-      return ((Number) latestValue).doubleValue();
+  @Override
+  public Object getValue() {
+    return gauge.getValue();
+  }
+
+  double getValueAsDouble() {
+    Object value = getValue();
+    if (value instanceof Number) {
+      return ((Number) value).doubleValue();
     }
     return 0.0;
   }

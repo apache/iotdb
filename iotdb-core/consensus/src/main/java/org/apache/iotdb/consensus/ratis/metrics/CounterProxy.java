@@ -21,10 +21,8 @@ package org.apache.iotdb.consensus.ratis.metrics;
 
 import org.apache.iotdb.metrics.type.Counter;
 
-import org.apache.ratis.metrics.LongCounter;
-
-/** CounterProxy will route Ratis' internal counter metrics to our IoTDB {@link Counter} */
-public class CounterProxy implements LongCounter {
+/** A Proxy class using IoTDB Counter to replace the dropwizard Counter. */
+public class CounterProxy extends com.codahale.metrics.Counter {
 
   /** IoTDB Counter. */
   private final Counter counter;
