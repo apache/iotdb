@@ -47,11 +47,11 @@ public class ConcurrentIterableLinkedQueue<E> {
     }
   }
 
+  // nodes:   [firstNode,  firstNode.next, firstNode.next.next, ..., lastNode     ]
+  // indexes: [firstIndex, firstIndex + 1, firstIndex + 1,      ..., tailIndex - 1]
   private final LinkedListNode<E> pilotNode = new LinkedListNode<>(null);
   private LinkedListNode<E> firstNode = pilotNode;
   private LinkedListNode<E> lastNode = pilotNode;
-
-  // The indexes of elements are [firstIndex, firstIndex + 1, ...., tailIndex - 1]
   private long firstIndex = 0;
   private long tailIndex = 0;
 
@@ -142,6 +142,7 @@ public class ConcurrentIterableLinkedQueue<E> {
     }
   }
 
+  /** Clear the queue. All elements will be removed. All iterators will be closed. */
   public void clear() {
     lock.writeLock().lock();
     try {
@@ -267,12 +268,14 @@ public class ConcurrentIterableLinkedQueue<E> {
     }
 
     /**
-     * Seek the {@link DynamicIterator#nextIndex} to the closest position allowed to the given
-     * offset. Note that one can seek to {@link ConcurrentIterableLinkedQueue#tailIndex} to
-     * subscribe the next incoming element.
+     * Seek to the given index, which represents the index of the next element to be returned. If
+     * the given index is smaller than {@link ConcurrentIterableLinkedQueue#firstIndex}, the
+     * iterator will be reset to the earliest element. If the given index is larger than {@link
+     * ConcurrentIterableLinkedQueue#tailIndex}, the iterator will be reset to the latest element.
+     * Otherwise, the iterator will be reset to the element whose index is the given index.
      *
-     * @param newNextIndex the attempt newOffset
-     * @return the actual new offset
+     * @param newNextIndex the given index
+     * @return the actual index of the next element to be returned
      */
     public long seek(long newNextIndex) {
       lock.writeLock().lock();
