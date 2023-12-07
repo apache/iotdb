@@ -188,7 +188,9 @@ public enum PlanNodeType {
 
   LAST_QUERY_TRANSFORM((short) 81),
   TOP_K((short) 82),
-  PIPE_ENRICHED_SCHEMA_WRITE((short) 83),
+  PIPE_ENRICHED_DELETE_DATA((short) 83),
+  PIPE_ENRICHED_WRITE_SCHEMA((short) 84),
+  PIPE_ENRICHED_DELETE_SCHEMA((short) 85),
   ;
 
   public static final int BYTES = Short.BYTES;
