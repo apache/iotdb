@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.optimization.base.ColumnInjectionPus
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInjectNode;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 
 import java.util.ArrayList;
@@ -33,8 +34,10 @@ import java.util.List;
 public class PlanNodePushDown implements PlanOptimizer {
   @Override
   public PlanNode optimize(PlanNode plan, Analysis analysis, MPPQueryContext context) {
+    if (analysis.getStatement().getType() != StatementType.QUERY) {
+      return plan;
+    }
     QueryStatement queryStatement = (QueryStatement) analysis.getStatement();
-
     if (queryStatement.isGroupByTime() && queryStatement.isOutputEndTime()) {
       // When the aggregation with GROUP BY TIME isn't rawDataQuery, there are AggregationNode and
       // SeriesAggregationNode,
