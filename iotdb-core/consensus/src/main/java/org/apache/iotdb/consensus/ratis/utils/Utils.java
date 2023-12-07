@@ -38,6 +38,8 @@ import org.apache.ratis.protocol.RaftPeer;
 import org.apache.ratis.protocol.RaftPeerId;
 import org.apache.ratis.server.RaftServerConfigKeys;
 import org.apache.ratis.server.protocol.TermIndex;
+import org.apache.ratis.thirdparty.com.google.common.cache.Cache;
+import org.apache.ratis.thirdparty.com.google.common.cache.CacheBuilder;
 import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
 import org.apache.ratis.util.TimeDuration;
 import org.apache.thrift.TException;
@@ -47,6 +49,7 @@ import org.apache.thrift.transport.TByteBuffer;
 import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
@@ -57,6 +60,8 @@ public class Utils {
   private static final String DATA_REGION_GROUP = "group-0001";
   private static final String SCHEMA_REGION_GROUP = "group-0002";
   private static final CommonConfig config = CommonDescriptor.getInstance().getConfig();
+  private static final Cache<ConsensusGroupId, RaftGroupId> cache =
+      CacheBuilder.newBuilder().weakValues().expireAfterAccess(5, TimeUnit.MINUTES).build();
 
   private Utils() {}
 
@@ -134,9 +139,17 @@ public class Utils {
 
   /** Given ConsensusGroupId, generate a deterministic RaftGroupId current scheme. */
   public static RaftGroupId fromConsensusGroupIdToRaftGroupId(ConsensusGroupId consensusGroupId) {
-    long groupCode = groupEncode(consensusGroupId);
-    byte[] byteGroupCode = ByteBuffer.allocate(Long.BYTES).putLong(groupCode).array();
-    byte[] bytePaddedGroupName = new byte[16];
+    try {
+      return cache.get(consensusGroupId, () -> valueOf(consensusGroupId));
+    } catch (ExecutionException e) {
+      return valueOf(consensusGroupId);
+    }
+  }
+
+  private static RaftGroupId valueOf(ConsensusGroupId consensusGroupId) {
+    final long groupCode = groupEncode(consensusGroupId);
+    final byte[] byteGroupCode = ByteBuffer.allocate(Long.BYTES).putLong(groupCode).array();
+    final byte[] bytePaddedGroupName = new byte[16];
     for (int i = 0; i < 10; i++) {
       bytePaddedGroupName[i] = PADDING_MAGIC;
     }
@@ -307,11 +320,9 @@ public class Utils {
     RaftServerConfigKeys.Rpc.setFirstElectionTimeoutMax(
         properties, config.getRpc().getFirstElectionTimeoutMax());
 
-    RaftServerConfigKeys.Read.Option option =
-        config.getRead().getReadOption() == RatisConfig.Read.Option.DEFAULT
-            ? RaftServerConfigKeys.Read.Option.DEFAULT
-            : RaftServerConfigKeys.Read.Option.LINEARIZABLE;
-    RaftServerConfigKeys.Read.setOption(properties, option);
+    /* linearizable means we can obtain consistent data from followers.
+    If we prefer latency, we can directly use staleRead */
+    RaftServerConfigKeys.Read.setOption(properties, RaftServerConfigKeys.Read.Option.LINEARIZABLE);
     RaftServerConfigKeys.Read.setTimeout(properties, config.getRead().getReadTimeout());
 
     RaftServerConfigKeys.setSleepDeviationThreshold(

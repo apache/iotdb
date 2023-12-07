@@ -37,8 +37,8 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -5814,7 +5814,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     Map<String, Long> measurementMaxTime = new HashMap<>();
 
     for (int i = 0; i < 4; i++) {
-      TSDataType tsDataType = i < 2 ? TSDataType.TEXT : TSDataType.INT64;
+      TSDataType tsDataType = (i < 2 || i == 3) ? TSDataType.TEXT : TSDataType.INT64;
       for (int j = 0; j < 7; j++) {
         measurementMaxTime.putIfAbsent(
             COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,

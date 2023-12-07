@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -79,47 +78,23 @@ public class DeviceUsingTemplateSchemaCache {
     ClusterSchemaTree schemaTree = new ClusterSchemaTree();
     if (deviceCacheEntry != null) {
       Template template = templateManager.getTemplate(deviceCacheEntry.getTemplateId());
-      IMeasurementSchema measurementSchema = template.getSchema(fullPath.getMeasurement());
-      if (measurementSchema != null) {
-        schemaTree.appendSingleMeasurement(
-            fullPath,
-            (MeasurementSchema) measurementSchema,
-            null,
-            null,
-            template.isDirectAligned());
+      if (template.getSchema(fullPath.getMeasurement()) != null) {
+        schemaTree.appendTemplateDevice(
+            fullPath.getDevicePath(), template.isDirectAligned(), template.getId(), template);
         schemaTree.setDatabases(Collections.singleton(deviceCacheEntry.getDatabase()));
       }
     }
     return schemaTree;
   }
 
-  public ClusterSchemaTree getMatchedSchemaWithTemplate(PartialPath path) {
-    PartialPath devicePath = path.getDevicePath();
+  public ClusterSchemaTree getMatchedSchemaWithTemplate(PartialPath devicePath) {
     DeviceCacheEntry deviceCacheEntry = cache.getIfPresent(devicePath);
     ClusterSchemaTree schemaTree = new ClusterSchemaTree();
     if (deviceCacheEntry != null) {
       Template template = templateManager.getTemplate(deviceCacheEntry.getTemplateId());
-      String measurement = path.getMeasurement();
-      if (PathPatternUtil.hasWildcard(measurement)) {
-        for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
-          if (PathPatternUtil.isNodeMatch(measurement, entry.getKey())) {
-            schemaTree.appendSingleMeasurement(
-                devicePath.concatNode(entry.getKey()),
-                entry.getValue(),
-                null,
-                null,
-                template.isDirectAligned());
-            schemaTree.setDatabases(Collections.singleton(deviceCacheEntry.getDatabase()));
-          }
-        }
-      } else {
-        IMeasurementSchema measurementSchema = template.getSchema(measurement);
-        if (measurementSchema != null) {
-          schemaTree.appendSingleMeasurement(
-              path, measurementSchema, null, null, template.isDirectAligned());
-          schemaTree.setDatabases(Collections.singleton(deviceCacheEntry.getDatabase()));
-        }
-      }
+      schemaTree.appendTemplateDevice(
+          devicePath, template.isDirectAligned(), template.getId(), template);
+      schemaTree.setDatabases(Collections.singleton(deviceCacheEntry.getDatabase()));
     }
     return schemaTree;
   }
@@ -186,6 +161,11 @@ public class DeviceUsingTemplateSchemaCache {
               throw new RuntimeException(
                   new UnsupportedOperationException(
                       "Function getSchemaAsLogicalViewSchema is not supported in DeviceUsingTemplateSchemaCache."));
+            }
+
+            @Override
+            public Map<String, String> getTagMap() {
+              return null;
             }
 
             @Override

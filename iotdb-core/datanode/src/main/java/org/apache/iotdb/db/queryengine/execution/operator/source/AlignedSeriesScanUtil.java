@@ -31,9 +31,9 @@ import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.DescPrior
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.PriorityMergeReader;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -60,7 +60,7 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
       Ordering scanOrder,
       SeriesScanOptions scanOptions,
       FragmentInstanceContext context) {
-    this(seriesPath, scanOrder, scanOptions, context, false);
+    this(seriesPath, scanOrder, scanOptions, context, false, null);
   }
 
   public AlignedSeriesScanUtil(
@@ -68,11 +68,16 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
       Ordering scanOrder,
       SeriesScanOptions scanOptions,
       FragmentInstanceContext context,
-      boolean queryAllSensors) {
+      boolean queryAllSensors,
+      List<TSDataType> givenDataTypes) {
     super(seriesPath, scanOrder, scanOptions, context);
     dataTypes =
-        ((AlignedPath) seriesPath)
-            .getSchemaList().stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
+        givenDataTypes != null
+            ? givenDataTypes
+            : ((AlignedPath) seriesPath)
+                .getSchemaList().stream()
+                    .map(IMeasurementSchema::getType)
+                    .collect(Collectors.toList());
     isAligned = true;
     this.queryAllSensors = queryAllSensors;
   }
@@ -80,7 +85,9 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
   @SuppressWarnings("squid:S3740")
   @Override
   protected Statistics currentFileStatistics(int index) {
-    return ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getStatistics(index);
+    return ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata)
+        .getMeasurementStatistics(index)
+        .orElse(null);
   }
 
   @SuppressWarnings("squid:S3740")
@@ -92,7 +99,7 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
   @SuppressWarnings("squid:S3740")
   @Override
   protected Statistics currentChunkStatistics(int index) {
-    return ((AlignedChunkMetadata) firstChunkMetadata).getStatistics(index);
+    return ((AlignedChunkMetadata) firstChunkMetadata).getMeasurementStatistics(index).orElse(null);
   }
 
   @SuppressWarnings("squid:S3740")
@@ -153,95 +160,80 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
 
   @Override
   protected void filterFirstTimeSeriesMetadata() throws IOException {
+    // skip if data type is mismatched which may be caused by delete
+    if (firstTimeSeriesMetadata != null
+        && !firstTimeSeriesMetadata.typeMatch(getTsDataTypeList())) {
+      skipCurrentFile();
+    }
+
     if (firstTimeSeriesMetadata != null
         && !isFileOverlapped()
         && !firstTimeSeriesMetadata.isModified()) {
-      Filter queryFilter = scanOptions.getQueryFilter();
-      Statistics statistics = firstTimeSeriesMetadata.getStatistics();
-      if (queryFilter == null || queryFilter.allSatisfy(statistics)) {
+      Filter queryFilter = scanOptions.getPushDownFilter();
+      if (queryFilter == null || queryFilter.allSatisfy(firstTimeSeriesMetadata)) {
         skipOffsetByTimeSeriesMetadata();
-      } else if (!queryFilter.satisfy(statistics)) {
+      } else if (queryFilter.canSkip(firstTimeSeriesMetadata)) {
         skipCurrentFile();
       }
     }
   }
 
-  @SuppressWarnings("squid:S3740")
   private void skipOffsetByTimeSeriesMetadata() {
-    // For aligned series, When we only query some measurements under an aligned device, if any
-    // values of these queried measurements has the same value count as the time column, the
-    // timestamp will be selected.
-    // NOTE: if we change the query semantic in the future for aligned series, we need to remove
-    // this check here.
-    long rowCount =
-        ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getTimeStatistics().getCount();
-    boolean canUse =
-        queryAllSensors
-            || ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata)
-                .getValueStatisticsList()
-                .isEmpty();
-    if (!canUse) {
-      for (Statistics statistics :
-          ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getValueStatisticsList()) {
-        if (statistics != null && !statistics.hasNullValue(rowCount)) {
-          canUse = true;
-          break;
-        }
-      }
-    }
-
-    if (!canUse) {
+    if (!canSkipOffsetByTimeSeriesMetadata((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata)) {
       return;
     }
-    // When the number of points in all value chunk groups is the same as that in the time chunk
-    // group, it means that there is no null value, and all timestamps will be selected.
+
+    long rowCount = firstTimeSeriesMetadata.getTimeStatistics().getCount();
     if (paginationController.hasCurOffset(rowCount)) {
       skipCurrentFile();
       paginationController.consumeOffset(rowCount);
     }
   }
 
+  private boolean canSkipOffsetByTimeSeriesMetadata(
+      AlignedTimeSeriesMetadata alignedTimeSeriesMetadata) {
+    if (queryAllSensors || alignedTimeSeriesMetadata.getMeasurementCount() == 0) {
+      return true;
+    }
+
+    // For aligned series, we can use statistics to skip OFFSET only when all times are selected.
+    // NOTE: if we change the query semantic in the future for aligned series, we need to remove
+    // this check here.
+    return alignedTimeSeriesMetadata.timeAllSelected();
+  }
+
   @Override
   protected void filterFirstChunkMetadata() throws IOException {
     if (firstChunkMetadata != null && !isChunkOverlapped() && !firstChunkMetadata.isModified()) {
-      Filter queryFilter = scanOptions.getQueryFilter();
-      Statistics statistics = firstChunkMetadata.getStatistics();
-      if (queryFilter == null || queryFilter.allSatisfy(statistics)) {
+      Filter queryFilter = scanOptions.getPushDownFilter();
+      if (queryFilter == null || queryFilter.allSatisfy(firstChunkMetadata)) {
         skipOffsetByChunkMetadata();
-      } else if (!queryFilter.satisfy(statistics)) {
+      } else if (queryFilter.canSkip(firstChunkMetadata)) {
         skipCurrentChunk();
       }
     }
   }
 
-  @SuppressWarnings("squid:S3740")
   private void skipOffsetByChunkMetadata() {
-    // For aligned series, When we only query some measurements under an aligned device, if any
-    // values of these queried measurements has the same value count as the time column, the
-    // timestamp will be selected.
-    // NOTE: if we change the query semantic in the future for aligned series, we need to remove
-    // this check here.
-    long rowCount = firstChunkMetadata.getStatistics().getCount();
-    boolean canUse =
-        queryAllSensors
-            || ((AlignedChunkMetadata) firstChunkMetadata).getValueStatisticsList().isEmpty();
-    if (!canUse) {
-      for (Statistics statistics :
-          ((AlignedChunkMetadata) firstChunkMetadata).getValueStatisticsList()) {
-        if (statistics != null && !statistics.hasNullValue(rowCount)) {
-          canUse = true;
-          break;
-        }
-      }
-    }
-    if (!canUse) {
+    if (!canSkipOffsetByChunkMetadata((AlignedChunkMetadata) firstChunkMetadata)) {
       return;
     }
-    // When the number of points in all value chunks is the same as that in the time chunk, it
-    // means that there is no null value, and all timestamps will be selected.
+
+    long rowCount = firstChunkMetadata.getStatistics().getCount();
     if (paginationController.hasCurOffset(rowCount)) {
       skipCurrentChunk();
       paginationController.consumeOffset(rowCount);
     }
+  }
+
+  private boolean canSkipOffsetByChunkMetadata(AlignedChunkMetadata alignedChunkMetadata) {
+    if (queryAllSensors || alignedChunkMetadata.getMeasurementCount() == 0) {
+      return true;
+    }
+
+    // For aligned series, we can use statistics to skip OFFSET only when all times are selected.
+    // NOTE: if we change the query semantic in the future for aligned series, we need to remove
+    // this check here.
+    return alignedChunkMetadata.timeAllSelected();
   }
 }

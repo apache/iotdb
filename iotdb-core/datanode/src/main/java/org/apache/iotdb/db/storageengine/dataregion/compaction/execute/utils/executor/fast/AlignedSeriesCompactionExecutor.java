@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.FileElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.PageElement;
@@ -31,7 +31,6 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFi
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -201,13 +200,17 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
             .getValueChunkMetadataList()
             .forEach(
                 x -> {
-                  if (x == null) {
-                    valueModifications.add(null);
-                  } else {
-                    String pathStr =
-                        deviceId + TsFileConstant.PATH_SEPARATOR + x.getMeasurementUid();
-                    valueModifications.add(
-                        getModificationsFromCache(resource, new PartialPath(pathStr.split("\\."))));
+                  try {
+                    if (x == null) {
+                      valueModifications.add(null);
+                    } else {
+                      valueModifications.add(
+                          getModificationsFromCache(
+                              resource,
+                              CompactionPathUtils.getPath(deviceId, x.getMeasurementUid())));
+                    }
+                  } catch (IllegalPathException e) {
+                    throw new RuntimeException(e);
                   }
                 });
 

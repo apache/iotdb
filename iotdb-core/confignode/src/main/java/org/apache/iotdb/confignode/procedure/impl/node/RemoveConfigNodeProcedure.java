@@ -76,7 +76,8 @@ public class RemoveConfigNodeProcedure extends AbstractNodeProcedure<RemoveConfi
       }
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
-        setFailure(new ProcedureException("Remove Config Node failed " + state));
+        setFailure(
+            new ProcedureException("Remove Config Node" + removedConfigNode + " failed " + state));
       } else {
         LOG.error(
             "Retrievable error trying to remove config node {}, state {}",

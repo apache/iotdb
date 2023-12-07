@@ -787,7 +787,7 @@ public class DataRegion implements IDataRegionForQuery {
           for (Map<String, List<ChunkMetadata>> metaMap : writer.getMetadatasForQuery().values()) {
             for (List<ChunkMetadata> metadatas : metaMap.values()) {
               for (ChunkMetadata chunkMetadata : metadatas) {
-                chunkMetadataSize += chunkMetadata.calculateRamSize();
+                chunkMetadataSize += chunkMetadata.getRetainedSizeInBytes();
               }
             }
           }
@@ -1624,33 +1624,36 @@ public class DataRegion implements IDataRegionForQuery {
 
   /** This method will be blocked until all tsfile processors are closed. */
   public void syncCloseAllWorkingTsFileProcessors() {
-    synchronized (closeStorageGroupCondition) {
-      try {
-        List<Future<?>> tsFileProcessorsClosingFutures = asyncCloseAllWorkingTsFileProcessors();
-        long startTime = System.currentTimeMillis();
-        while (!closingSequenceTsFileProcessor.isEmpty()
-            || !closingUnSequenceTsFileProcessor.isEmpty()) {
-          closeStorageGroupCondition.wait(60_000);
-          if (System.currentTimeMillis() - startTime > 60_000) {
-            logger.warn(
-                "{} has spent {}s to wait for closing all TsFiles.",
-                databaseName + "-" + this.dataRegionId,
-                (System.currentTimeMillis() - startTime) / 1000);
+    try {
+      List<Future<?>> tsFileProcessorsClosingFutures = asyncCloseAllWorkingTsFileProcessors();
+      long startTime = System.currentTimeMillis();
+      while (!closingSequenceTsFileProcessor.isEmpty()
+          || !closingUnSequenceTsFileProcessor.isEmpty()) {
+        synchronized (closeStorageGroupCondition) {
+          // double check to avoid unnecessary waiting
+          if (!closingSequenceTsFileProcessor.isEmpty()
+              || !closingUnSequenceTsFileProcessor.isEmpty()) {
+            closeStorageGroupCondition.wait(60_000);
           }
         }
-        for (Future<?> f : tsFileProcessorsClosingFutures) {
-          if (f != null) {
-            f.get();
-          }
+        if (System.currentTimeMillis() - startTime > 60_000) {
+          logger.warn(
+              "{} has spent {}s to wait for closing all TsFiles.",
+              databaseName + "-" + this.dataRegionId,
+              (System.currentTimeMillis() - startTime) / 1000);
         }
-      } catch (InterruptedException | ExecutionException e) {
-        logger.error(
-            "CloseFileNodeCondition error occurs while waiting for closing the storage "
-                + "group {}",
-            databaseName + "-" + dataRegionId,
-            e);
-        Thread.currentThread().interrupt();
       }
+      for (Future<?> f : tsFileProcessorsClosingFutures) {
+        if (f != null) {
+          f.get();
+        }
+      }
+    } catch (InterruptedException | ExecutionException e) {
+      logger.error(
+          "CloseFileNodeCondition error occurs while waiting for closing the storage " + "group {}",
+          databaseName + "-" + dataRegionId,
+          e);
+      Thread.currentThread().interrupt();
     }
   }
 
@@ -1901,6 +1904,51 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
+  public void deleteDataDirectly(
+      PartialPath pathToDelete, long startTime, long endTime, long searchIndex) throws IOException {
+    logger.info(
+        "{} will delete data files directly for deleting data between {} and {}",
+        databaseName + "-" + dataRegionId,
+        startTime,
+        endTime);
+
+    writeLock("deleteDataDirect");
+    boolean releasedLock = false;
+    try {
+      // delete last cache record if necessary
+      DataNodeSchemaCache.getInstance().takeWriteLock();
+      try {
+        DataNodeSchemaCache.getInstance().invalidate(databaseName);
+      } finally {
+        DataNodeSchemaCache.getInstance().releaseWriteLock();
+      }
+
+      // write log to impacted working TsFileProcessors
+      List<WALFlushListener> walListeners =
+          logDeletionInWAL(startTime, endTime, searchIndex, pathToDelete);
+
+      for (WALFlushListener walFlushListener : walListeners) {
+        if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
+          logger.error("Fail to log delete to wal.", walFlushListener.getCause());
+          throw walFlushListener.getCause();
+        }
+      }
+      List<TsFileResource> sealedTsFileResource = new ArrayList<>();
+      List<TsFileResource> unsealedTsFileResource = new ArrayList<>();
+      separateTsFile(sealedTsFileResource, unsealedTsFileResource, startTime, endTime);
+      deleteDataDirectlyInFile(unsealedTsFileResource, pathToDelete, startTime, endTime);
+      writeUnlock();
+      releasedLock = true;
+      deleteDataDirectlyInFile(sealedTsFileResource, pathToDelete, startTime, endTime);
+    } catch (Exception e) {
+      throw new IOException(e);
+    } finally {
+      if (!releasedLock) {
+        writeUnlock();
+      }
+    }
+  }
+
   private List<WALFlushListener> logDeletionInWAL(
       long startTime, long endTime, long searchIndex, PartialPath path) {
     List<WALFlushListener> walFlushListeners = new ArrayList<>();
@@ -2062,6 +2110,128 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
+  private void deleteDataDirectlyInFile(
+      List<TsFileResource> tsfileResourceList,
+      PartialPath pathToDelete,
+      long startTime,
+      long endTime)
+      throws IOException {
+    List<TsFileResource> deletedByMods = new ArrayList<>();
+    List<TsFileResource> deletedByFiles = new ArrayList<>();
+    separateTsFileToDelete(
+        new HashSet<>(pathToDelete.getDevicePathPattern()),
+        tsfileResourceList,
+        deletedByMods,
+        deletedByFiles,
+        startTime,
+        endTime);
+    Deletion deletion = new Deletion(pathToDelete, MERGE_MOD_START_VERSION_NUM, startTime, endTime);
+    // can be deleted by mods.
+    for (TsFileResource tsFileResource : deletedByMods) {
+      ModificationFile modFile = tsFileResource.getModFile();
+      if (tsFileResource.isClosed()) {
+        long originSize = -1;
+        synchronized (modFile) {
+          try {
+            originSize = modFile.getSize();
+            // delete data in sealed file
+            if (tsFileResource.isCompacting()) {
+              // we have to set modification offset to MAX_VALUE, as the offset of source chunk
+              // may change after compaction
+              deletion.setFileOffset(Long.MAX_VALUE);
+              // write deletion into compaction modification file
+              tsFileResource.getCompactionModFile().write(deletion);
+              // write deletion into modification file to enable read during compaction
+              modFile.write(deletion);
+              // remember to close mod file
+              tsFileResource.getCompactionModFile().close();
+              modFile.close();
+            } else {
+              deletion.setFileOffset(tsFileResource.getTsFileSize());
+              // write deletion into modification file
+              boolean modFileExists = modFile.exists();
+
+              modFile.write(deletion);
+
+              // remember to close mod file
+              modFile.close();
+
+              // if file length greater than 1M,execute compact.
+              modFile.compact();
+
+              if (!modFileExists) {
+                FileMetrics.getInstance().increaseModFileNum(1);
+              }
+
+              // The file size may be smaller than the original file, so the increment here may be
+              // negative
+              FileMetrics.getInstance().increaseModFileSize(modFile.getSize() - originSize);
+            }
+          } catch (Throwable t) {
+            if (originSize != -1) {
+              modFile.truncate(originSize);
+            }
+            throw t;
+          }
+          logger.info(
+              "[Deletion] Deletion with path:{}, time:{}-{} written into mods file:{}.",
+              deletion.getPath(),
+              deletion.getStartTime(),
+              deletion.getEndTime(),
+              modFile.getFilePath());
+        }
+      } else {
+        // delete data in memory of unsealed file
+        tsFileResource
+            .getProcessor()
+            .deleteDataInMemory(deletion, new HashSet<>(pathToDelete.getDevicePathPattern()));
+      }
+    }
+
+    // can be deleted by files
+    for (TsFileResource tsFileResource : deletedByFiles) {
+      tsFileManager.remove(tsFileResource, tsFileResource.isSeq());
+      tsFileResource.writeLock();
+      try {
+        FileMetrics.getInstance()
+            .deleteTsFile(tsFileResource.isSeq(), Collections.singletonList(tsFileResource));
+        if (tsFileResource.getModFile().exists()) {
+          FileMetrics.getInstance().decreaseModFileNum(1);
+          FileMetrics.getInstance().decreaseModFileSize(tsFileResource.getModFile().getSize());
+        }
+        tsFileResource.remove();
+        logger.info("Remove tsfile {} directly when delete data", tsFileResource.getTsFilePath());
+      } finally {
+        tsFileResource.writeUnlock();
+      }
+    }
+  }
+
+  private void separateTsFileToDelete(
+      Set<PartialPath> pathToDelete,
+      List<TsFileResource> tsFileResourceList,
+      List<TsFileResource> deletedByMods,
+      List<TsFileResource> deletedByFiles,
+      long startTime,
+      long endTime) {
+    Set<String> deviceMatchInfo = new HashSet<>();
+    for (TsFileResource file : tsFileResourceList) {
+      long fileStartTime = file.getTimeIndex().getMinStartTime();
+      long fileEndTime = file.getTimeIndex().getMaxEndTime();
+
+      if (!canSkipDelete(file, pathToDelete, startTime, endTime, deviceMatchInfo)) {
+        if (startTime <= fileStartTime
+            && endTime >= fileEndTime
+            && file.isClosed()
+            && file.setStatus(TsFileResourceStatus.DELETED)) {
+          deletedByFiles.add(file);
+        } else {
+          deletedByMods.add(file);
+        }
+      }
+    }
+  }
+
   private void unsequenceFlushCallback(
       TsFileProcessor processor, Map<String, Long> updateMap, long systemFlushTime) {
     TimePartitionManager.getInstance()
@@ -2115,12 +2285,13 @@ public class DataRegion implements IDataRegionForQuery {
       closeQueryLock.writeLock().unlock();
     }
     // closingSequenceTsFileProcessor is a thread safety class.
-    if (closingSequenceTsFileProcessor.contains(tsFileProcessor)) {
-      closingSequenceTsFileProcessor.remove(tsFileProcessor);
-    } else {
-      closingUnSequenceTsFileProcessor.remove(tsFileProcessor);
-    }
+
     synchronized (closeStorageGroupCondition) {
+      if (closingSequenceTsFileProcessor.contains(tsFileProcessor)) {
+        closingSequenceTsFileProcessor.remove(tsFileProcessor);
+      } else {
+        closingUnSequenceTsFileProcessor.remove(tsFileProcessor);
+      }
       closeStorageGroupCondition.notifyAll();
     }
     if (!isValidateTsFileFailed) {
@@ -2147,19 +2318,28 @@ public class DataRegion implements IDataRegionForQuery {
       trySubmitCount += executeInsertionCompaction(timePartitions);
       summary.incrementSubmitTaskNum(CompactionTaskType.INSERTION, trySubmitCount);
     }
-    // the name of this variable is trySubmitCount, because the task submitted to the queue could be
-    // evicted due to the low priority of the task
-    try {
-      for (long timePartition : timePartitions) {
-        trySubmitCount +=
-            CompactionScheduler.scheduleCompaction(tsFileManager, timePartition, summary);
+    if (summary.getSubmitInsertionCrossSpaceCompactionTaskNum() == 0) {
+      // the name of this variable is trySubmitCount, because the task submitted to the queue could
+      // be
+      // evicted due to the low priority of the task
+      CompactionScheduler.lockCompactionSelection();
+      try {
+        for (long timePartition : timePartitions) {
+          trySubmitCount +=
+              CompactionScheduler.scheduleCompaction(tsFileManager, timePartition, summary);
+        }
+      } catch (Throwable e) {
+        logger.error("Meet error in compaction schedule.", e);
+      } finally {
+        CompactionScheduler.unlockCompactionSelection();
       }
-    } catch (Throwable e) {
-      logger.error("Meet error in compaction schedule.", e);
     }
     if (summary.hasSubmitTask()) {
       logger.info(
-          "[CompactionScheduler][{}] selected sequence InnerSpaceCompactionTask num is {}, selected unsequence InnerSpaceCompactionTask num is {}, selected CrossSpaceCompactionTask num is {}, selected InsertionCrossSpaceCompactionTask num is {}",
+          "[CompactionScheduler][{}] selected sequence InnerSpaceCompactionTask num is {},"
+              + " selected unsequence InnerSpaceCompactionTask num is {},"
+              + " selected CrossSpaceCompactionTask num is {},"
+              + " selected InsertionCrossSpaceCompactionTask num is {}",
           dataRegionId,
           summary.getSubmitSeqInnerSpaceCompactionTaskNum(),
           summary.getSubmitUnseqInnerSpaceCompactionTaskNum(),
@@ -2172,6 +2352,7 @@ public class DataRegion implements IDataRegionForQuery {
 
   protected int executeInsertionCompaction(List<Long> timePartitions) {
     int trySubmitCount = 0;
+    CompactionScheduler.lockCompactionSelection();
     try {
       while (true) {
         int currentSubmitCount = 0;
@@ -2190,6 +2371,8 @@ public class DataRegion implements IDataRegionForQuery {
       }
     } catch (Throwable e) {
       logger.error("Meet error in compaction schedule.", e);
+    } finally {
+      CompactionScheduler.unlockCompactionSelection();
     }
     return trySubmitCount;
   }

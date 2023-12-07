@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl;
 
+import org.apache.iotdb.commons.schema.node.MNodeType;
+import org.apache.iotdb.commons.schema.node.common.DeviceMNodeWrapper;
+import org.apache.iotdb.commons.schema.node.info.IDeviceInfo;
+import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
+import org.apache.iotdb.commons.schema.node.role.IInternalMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.basic.BasicMNode;
@@ -28,7 +33,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.contai
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
  * Metadata Tree
  */
-public class BasicInternalMNode extends BasicMNode {
+public class BasicInternalMNode extends BasicMNode implements IInternalMNode<IMemMNode> {
 
   /**
    * Suppress warnings reason: volatile for double synchronized check.
@@ -38,6 +43,9 @@ public class BasicInternalMNode extends BasicMNode {
   @SuppressWarnings("squid:S3077")
   private transient volatile IMNodeContainer<IMemMNode> children = null;
 
+  @SuppressWarnings("squid:S3077")
+  private volatile IDeviceInfo<IMemMNode> deviceInfo = null;
+
   /** Constructor of MNode. */
   public BasicInternalMNode(IMemMNode parent, String name) {
     super(parent, name);
@@ -46,7 +54,11 @@ public class BasicInternalMNode extends BasicMNode {
   /** Check whether the MNode has a child with the name. */
   @Override
   public boolean hasChild(String name) {
-    return (children != null && children.containsKey(name));
+    return (children != null && children.containsKey(name)) || hasChildInDeviceInfo(name);
+  }
+
+  private boolean hasChildInDeviceInfo(String name) {
+    return deviceInfo != null && deviceInfo.hasAliasChild(name);
   }
 
   /** Get the child with the name. */
@@ -55,6 +67,9 @@ public class BasicInternalMNode extends BasicMNode {
     IMemMNode child = null;
     if (children != null) {
       child = children.get(name);
+    }
+    if (child == null && deviceInfo != null) {
+      child = deviceInfo.getAliasChild(name);
     }
     return child;
   }
@@ -125,37 +140,6 @@ public class BasicInternalMNode extends BasicMNode {
     return null;
   }
 
-  /**
-   * Replace a child of this mnode. New child's name must be the same as old child's name.
-   *
-   * @param oldChildName measurement name
-   * @param newChildNode new child node
-   */
-  @Override
-  public synchronized void replaceChild(String oldChildName, IMemMNode newChildNode) {
-    if (!oldChildName.equals(newChildNode.getName())) {
-      throw new RuntimeException("New child's name must be the same as old child's name!");
-    }
-    IMemMNode oldChildNode = this.getChild(oldChildName);
-    if (oldChildNode == null) {
-      return;
-    }
-
-    oldChildNode.moveDataToNewMNode(newChildNode);
-
-    children.replace(newChildNode.getName(), newChildNode);
-  }
-
-  @Override
-  public void moveDataToNewMNode(IMemMNode newMNode) {
-    super.moveDataToNewMNode(newMNode);
-
-    if (children != null) {
-      newMNode.setChildren(children);
-      children.forEach((childName, childNode) -> childNode.setParent(newMNode));
-    }
-  }
-
   @Override
   public IMNodeContainer<IMemMNode> getChildren() {
     if (children == null) {
@@ -169,14 +153,43 @@ public class BasicInternalMNode extends BasicMNode {
     this.children = children;
   }
 
-  /** MNodeContainer reference and basic occupation, 8 + 80B. */
+  /** MNodeContainer reference and basic occupation, 8 + 80B. DeviceInfo reference and size. */
   @Override
   public int estimateSize() {
-    return 8 + 80 + super.estimateSize();
+    return 8 + 80 + super.estimateSize() + 8 + (deviceInfo == null ? 0 : deviceInfo.estimateSize());
   }
 
   @Override
-  public IMemMNode getAsMNode() {
+  public MNodeType getMNodeType() {
+    return deviceInfo == null ? MNodeType.INTERNAL : MNodeType.DEVICE;
+  }
+
+  @Override
+  public boolean isDevice() {
+    return getDeviceInfo() != null;
+  }
+
+  @Override
+  public IInternalMNode<IMemMNode> getAsInternalMNode() {
     return this;
+  }
+
+  @Override
+  public IDeviceMNode<IMemMNode> getAsDeviceMNode() {
+    if (isDevice()) {
+      return new DeviceMNodeWrapper<>(this);
+    } else {
+      throw new UnsupportedOperationException("Wrong node type");
+    }
+  }
+
+  @Override
+  public IDeviceInfo<IMemMNode> getDeviceInfo() {
+    return deviceInfo;
+  }
+
+  @Override
+  public void setDeviceInfo(IDeviceInfo<IMemMNode> deviceInfo) {
+    this.deviceInfo = deviceInfo;
   }
 }

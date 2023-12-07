@@ -38,7 +38,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushL
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -108,6 +108,7 @@ public class WALEntryHandlerTest {
         walNode1.log(
             memTable.getMemTableId(), getInsertRowNode(devicePath, System.currentTimeMillis()));
     walNode1.onMemTableFlushed(memTable);
+    Awaitility.await().until(() -> walNode1.isAllWALEntriesConsumed());
     // pin flushed memTable
     WALEntryHandler handler = flushListener.getWalEntryHandler();
     handler.pinMemTable();
@@ -168,6 +169,7 @@ public class WALEntryHandlerTest {
     handler.pinMemTable();
     handler.pinMemTable();
     walNode1.onMemTableFlushed(memTable);
+    Awaitility.await().until(() -> walNode1.isAllWALEntriesConsumed());
     // unpin 1
     CheckpointManager checkpointManager = walNode1.getCheckpointManager();
     handler.unpinMemTable();

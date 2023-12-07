@@ -45,7 +45,7 @@ import java.util.List;
 import java.util.concurrent.Future;
 
 public class CompactionTaskManagerTest extends InnerCompactionTest {
-  static final Logger logger = LoggerFactory.getLogger(CompactionTaskManagerTest.class);
+  static final Logger LOGGER = LoggerFactory.getLogger(CompactionTaskManagerTest.class);
   File tempSGDir;
   final long MAX_WAITING_TIME = 120_000;
 
@@ -72,7 +72,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
 
   @Test
   public void testRepeatedSubmitBeforeExecution() throws Exception {
-    logger.warn("testRepeatedSubmitBeforeExecution");
+    LOGGER.warn("testRepeatedSubmitBeforeExecution");
     TsFileManager tsFileManager =
         new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
@@ -114,7 +114,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
 
   @Test
   public void testRepeatedSubmitWhenExecuting() throws Exception {
-    logger.warn("testRepeatedSubmitWhenExecuting");
+    LOGGER.warn("testRepeatedSubmitWhenExecuting");
     TsFileManager tsFileManager =
         new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
@@ -154,7 +154,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
 
   @Test
   public void testRepeatedSubmitAfterExecution() throws Exception {
-    logger.warn("testRepeatedSubmitAfterExecution");
+    LOGGER.warn("testRepeatedSubmitAfterExecution");
     TsFileManager tsFileManager =
         new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
@@ -180,7 +180,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
 
   @Test
   public void testRemoveSelfFromRunningList() throws Exception {
-    logger.warn("testRemoveSelfFromRunningList");
+    LOGGER.warn("testRemoveSelfFromRunningList");
     TsFileManager tsFileManager =
         new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);

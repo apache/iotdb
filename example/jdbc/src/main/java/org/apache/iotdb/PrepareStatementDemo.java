@@ -32,7 +32,7 @@ import java.sql.Timestamp;
 
 public class PrepareStatementDemo {
 
-  private static Logger logger = LoggerFactory.getLogger(PrepareStatementDemo.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PrepareStatementDemo.class);
 
   public static void main(String[] args) throws ClassNotFoundException, SQLException {
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
@@ -74,12 +74,12 @@ public class PrepareStatementDemo {
             builder.append(resultSet.getString(i)).append(",");
           }
           String result = builder.toString();
-          logger.info(result);
+          LOGGER.info(result);
         }
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           String data =
               resultSetMetaData.getColumnType(i) + "-" + resultSetMetaData.getColumnName(i);
-          logger.info(data);
+          LOGGER.info(data);
         }
       }
     }

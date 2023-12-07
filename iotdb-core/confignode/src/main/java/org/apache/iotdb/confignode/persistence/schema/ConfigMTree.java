@@ -427,7 +427,7 @@ public class ConfigMTree {
             result.add(
                 new TSchemaNode(
                     getPartialPathFromRootToNode(node).getFullPath(),
-                    node.getMNodeType(true).getNodeType()));
+                    node.getMNodeType().getNodeType()));
             return null;
           }
         }) {

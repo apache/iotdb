@@ -28,7 +28,6 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFil
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
@@ -358,9 +357,6 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       TsFileSequenceReader reader = readerMap.get(tsFileResource);
       List<AlignedChunkMetadata> alignedChunkMetadataList =
           reader.getAlignedChunkMetadata(currentDevice.left);
-      if (!alignedChunkMetadataList.isEmpty()) {
-        alignedChunkMetadataList.forEach(x -> x.setFilePath(tsFileResource.getTsFilePath()));
-      }
       applyModificationForAlignedChunkMetadataList(tsFileResource, alignedChunkMetadataList);
       readerAndChunkMetadataList.add(new Pair<>(reader, alignedChunkMetadataList));
     }
@@ -396,16 +392,15 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       valueSeriesPaths.add(
           valueChunkMetadata == null
               ? null
-              : new PartialPath(currentDevice.left, valueChunkMetadata.getMeasurementUid()));
+              : CompactionPathUtils.getPath(
+                  currentDevice.left, valueChunkMetadata.getMeasurementUid()));
     }
 
     for (Modification modification : modifications) {
-      if (modification.getDevice().equals(currentDevice.left)) {
-        for (int i = 0; i < valueChunkMetadataList.size(); ++i) {
-          PartialPath path = valueSeriesPaths.get(i);
-          if (path != null && modification.getPath().matchFullPath(path)) {
-            modificationForCurDevice.get(i).add(modification);
-          }
+      for (int i = 0; i < valueChunkMetadataList.size(); ++i) {
+        PartialPath path = valueSeriesPaths.get(i);
+        if (path != null && modification.getPath().matchFullPath(path)) {
+          modificationForCurDevice.get(i).add(modification);
         }
       }
     }
@@ -553,8 +548,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
 
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>>
           readerAndChunkMetadataForThisSeries = new LinkedList<>();
-      String pathStr = device + TsFileConstant.PATH_SEPARATOR + currentCompactingSeries;
-      PartialPath path = new PartialPath(pathStr.split("\\."));
+      PartialPath path = CompactionPathUtils.getPath(device, currentCompactingSeries);
 
       for (TsFileResource resource : tsFileResourcesSortedByAsc) {
         TsFileSequenceReader reader = readerMap.get(resource);

@@ -40,7 +40,7 @@ public class DistributionPlannerCycleTest {
   // Query sql: `select * from root.sg.d1,root.sg.d2`
   // root.sg.d1 has 2 SeriesScanNodes, root.sg.d2 has 3 SeriesScanNodes.
   //
-  // ------------------------------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------------------
   // Note: d1.s1[1] means a SeriesScanNode with target series d1.s1 and its data region is 1
   //
   //                                       IdentityNode
@@ -51,7 +51,7 @@ public class DistributionPlannerCycleTest {
   //                                                          TimeJoinNode
   //                                                         /      \      \
   //                                                    d2.s1[2]  d2.s2[2] d2.s3[2]
-  // ------------------------------------------------------------------------------------------------
+  // ------------------------------------------------------------------------------------------
   @Test
   public void timeJoinNodeTest() {
     QueryId queryId = new QueryId("test");
@@ -67,12 +67,13 @@ public class DistributionPlannerCycleTest {
     assertEquals(2, plan.getInstances().size());
     PlanNode firstNode =
         plan.getInstances().get(0).getFragment().getPlanNodeTree().getChildren().get(0);
-    PlanNode secondNode =
-        plan.getInstances().get(1).getFragment().getPlanNodeTree().getChildren().get(0);
     assertEquals(3, firstNode.getChildren().size());
     assertTrue(firstNode.getChildren().get(0) instanceof SeriesScanNode);
     assertTrue(firstNode.getChildren().get(1) instanceof SeriesScanNode);
     assertTrue(firstNode.getChildren().get(2) instanceof ExchangeNode);
+
+    PlanNode secondNode =
+        plan.getInstances().get(1).getFragment().getPlanNodeTree().getChildren().get(0);
     assertEquals(3, secondNode.getChildren().size());
     assertTrue(secondNode.getChildren().get(0) instanceof SeriesScanNode);
     assertTrue(secondNode.getChildren().get(1) instanceof SeriesScanNode);

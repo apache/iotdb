@@ -64,9 +64,10 @@ public class LocalSourceHandle implements ISourceHandle {
 
   public LocalSourceHandle(
       SharedTsBlockQueue queue, SourceHandleListener sourceHandleListener, String threadName) {
-    this.queue = Validate.notNull(queue);
+    this.queue = Validate.notNull(queue, "queue can not be null.");
     this.queue.setSourceHandle(this);
-    this.sourceHandleListener = Validate.notNull(sourceHandleListener);
+    this.sourceHandleListener =
+        Validate.notNull(sourceHandleListener, "sourceHandleListener can not be null.");
     this.threadName = threadName;
   }
 
@@ -76,11 +77,13 @@ public class LocalSourceHandle implements ISourceHandle {
       String localPlanNodeId,
       SharedTsBlockQueue queue,
       SourceHandleListener sourceHandleListener) {
-    this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
-    this.localPlanNodeId = Validate.notNull(localPlanNodeId);
-    this.queue = Validate.notNull(queue);
+    this.localFragmentInstanceId =
+        Validate.notNull(localFragmentInstanceId, "localFragmentInstanceId can not be null.");
+    this.localPlanNodeId = Validate.notNull(localPlanNodeId, "localPlanNodeId can not be null.");
+    this.queue = Validate.notNull(queue, "queue can not be null.");
     this.queue.setSourceHandle(this);
-    this.sourceHandleListener = Validate.notNull(sourceHandleListener);
+    this.sourceHandleListener =
+        Validate.notNull(sourceHandleListener, "sourceHandleListener can not be null.");
     this.threadName = createFullIdFrom(localFragmentInstanceId, localPlanNodeId);
   }
 
@@ -113,10 +116,12 @@ public class LocalSourceHandle implements ISourceHandle {
         tsBlock = queue.remove();
       }
       if (tsBlock != null) {
-        LOGGER.debug(
-            "[GetTsBlockFromQueue] TsBlock:{} size:{}",
-            currSequenceId,
-            tsBlock.getRetainedSizeInBytes());
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
+              "[GetTsBlockFromQueue] TsBlock:{} size:{}",
+              currSequenceId,
+              tsBlock.getRetainedSizeInBytes());
+        }
         currSequenceId++;
       }
       checkAndInvokeOnFinished();
@@ -182,7 +187,9 @@ public class LocalSourceHandle implements ISourceHandle {
       return;
     }
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-      LOGGER.debug("[StartAbortLocalSourceHandle]");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("[StartAbortLocalSourceHandle]");
+      }
       synchronized (queue) {
         synchronized (this) {
           if (aborted || closed) {
@@ -193,7 +200,9 @@ public class LocalSourceHandle implements ISourceHandle {
           sourceHandleListener.onAborted(this);
         }
       }
-      LOGGER.debug("[EndAbortLocalSourceHandle]");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("[EndAbortLocalSourceHandle]");
+      }
     }
   }
 
@@ -203,7 +212,9 @@ public class LocalSourceHandle implements ISourceHandle {
       return;
     }
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-      LOGGER.debug("[StartAbortLocalSourceHandle]");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("[StartAbortLocalSourceHandle]");
+      }
       synchronized (queue) {
         synchronized (this) {
           if (aborted || closed) {
@@ -214,7 +225,9 @@ public class LocalSourceHandle implements ISourceHandle {
           sourceHandleListener.onAborted(this);
         }
       }
-      LOGGER.debug("[EndAbortLocalSourceHandle]");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("[EndAbortLocalSourceHandle]");
+      }
     }
   }
 
@@ -224,7 +237,9 @@ public class LocalSourceHandle implements ISourceHandle {
       return;
     }
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-      LOGGER.debug("[StartCloseLocalSourceHandle]");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("[StartCloseLocalSourceHandle]");
+      }
       synchronized (queue) {
         synchronized (this) {
           if (aborted || closed) {
@@ -235,7 +250,9 @@ public class LocalSourceHandle implements ISourceHandle {
           sourceHandleListener.onFinished(this);
         }
       }
-      LOGGER.debug("[EndCloseLocalSourceHandle]");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("[EndCloseLocalSourceHandle]");
+      }
     }
   }
 

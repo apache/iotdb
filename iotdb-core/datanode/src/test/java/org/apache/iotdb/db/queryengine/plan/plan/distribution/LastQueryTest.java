@@ -209,7 +209,7 @@ public class LastQueryTest {
     }
 
     PlanNode root =
-        new LastQueryNode(context.getQueryId().genPlanNodeId(), sourceNodeList, null, null, false);
+        new LastQueryNode(context.getQueryId().genPlanNodeId(), sourceNodeList, null, false);
     return new LogicalQueryPlan(context, root);
   }
 }

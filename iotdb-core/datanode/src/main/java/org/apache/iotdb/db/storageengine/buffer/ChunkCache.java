@@ -26,19 +26,22 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.metric.ChunkCacheMetrics;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.github.benmanes.caffeine.cache.Weigher;
+import org.openjdk.jol.info.ClassLayout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.List;
+import java.util.Objects;
 
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.READ_CHUNK_ALL;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.READ_CHUNK_FILE;
@@ -50,41 +53,41 @@ import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.REA
 @SuppressWarnings("squid:S6548")
 public class ChunkCache {
 
-  private static final Logger logger = LoggerFactory.getLogger(ChunkCache.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ChunkCache.class);
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final long MEMORY_THRESHOLD_IN_CHUNK_CACHE =
-      config.getAllocateMemoryForChunkCache();
-  private static final boolean CACHE_ENABLE = config.isMetaDataCacheEnable();
+      CONFIG.getAllocateMemoryForChunkCache();
+  private static final boolean CACHE_ENABLE = CONFIG.isMetaDataCacheEnable();
 
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
-  private final LoadingCache<ChunkMetadata, Chunk> lruCache;
 
-  private final AtomicLong entryAverageSize = new AtomicLong(0);
+  // to save memory footprint, we don't save measurementId in ChunkHeader of Chunk
+  private final LoadingCache<ChunkCacheKey, Chunk> lruCache;
 
   private ChunkCache() {
     if (CACHE_ENABLE) {
-      logger.info("ChunkCache size = {}", MEMORY_THRESHOLD_IN_CHUNK_CACHE);
+      LOGGER.info("ChunkCache size = {}", MEMORY_THRESHOLD_IN_CHUNK_CACHE);
     }
     lruCache =
         Caffeine.newBuilder()
             .maximumWeight(MEMORY_THRESHOLD_IN_CHUNK_CACHE)
             .weigher(
-                (Weigher<ChunkMetadata, Chunk>)
-                    (chunkMetadata, chunk) ->
-                        (int)
-                            (RamUsageEstimator.NUM_BYTES_OBJECT_REF
-                                + RamUsageEstimator.sizeOf(chunk)))
+                (Weigher<ChunkCacheKey, Chunk>)
+                    (key, chunk) ->
+                        (int) (key.getRetainedSizeInBytes() + chunk.getRetainedSizeInBytes()))
             .recordStats()
             .build(
-                chunkMetadata -> {
+                key -> {
                   long startTime = System.nanoTime();
                   try {
                     TsFileSequenceReader reader =
-                        FileReaderManager.getInstance()
-                            .get(chunkMetadata.getFilePath(), chunkMetadata.isClosed());
-                    return reader.readMemChunk(chunkMetadata);
+                        FileReaderManager.getInstance().get(key.getFilePath(), key.closed);
+                    Chunk chunk = reader.readMemChunk(key.offsetOfChunkHeader);
+                    // to save memory footprint, we don't save measurementId in ChunkHeader of Chunk
+                    chunk.getHeader().setMeasurementID(null);
+                    return chunk;
                   } finally {
                     SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
                         READ_CHUNK_FILE, System.nanoTime() - startTime);
@@ -103,36 +106,30 @@ public class ChunkCache {
     return ChunkCacheHolder.INSTANCE;
   }
 
-  public Chunk get(ChunkMetadata chunkMetaData) throws IOException {
-    return get(chunkMetaData, false);
-  }
-
-  public Chunk get(ChunkMetadata chunkMetaData, boolean debug) throws IOException {
+  public Chunk get(
+      ChunkCacheKey chunkCacheKey,
+      List<TimeRange> timeRangeList,
+      Statistics chunkStatistic,
+      boolean debug)
+      throws IOException {
     long startTime = System.nanoTime();
     try {
       if (!CACHE_ENABLE) {
         TsFileSequenceReader reader =
-            FileReaderManager.getInstance()
-                .get(chunkMetaData.getFilePath(), chunkMetaData.isClosed());
-        Chunk chunk = reader.readMemChunk(chunkMetaData);
+            FileReaderManager.getInstance().get(chunkCacheKey.getFilePath(), true);
+        Chunk chunk = reader.readMemChunk(chunkCacheKey.offsetOfChunkHeader);
         return new Chunk(
-            chunk.getHeader(),
-            chunk.getData().duplicate(),
-            chunkMetaData.getDeleteIntervalList(),
-            chunkMetaData.getStatistics());
+            chunk.getHeader(), chunk.getData().duplicate(), timeRangeList, chunkStatistic);
       }
 
-      Chunk chunk = lruCache.get(chunkMetaData);
+      Chunk chunk = lruCache.get(chunkCacheKey);
 
       if (debug) {
-        DEBUG_LOGGER.info("get chunk from cache whose meta data is: {}", chunkMetaData);
+        DEBUG_LOGGER.info("get chunk from cache whose key is: {}", chunkCacheKey);
       }
 
       return new Chunk(
-          chunk.getHeader(),
-          chunk.getData().duplicate(),
-          chunkMetaData.getDeleteIntervalList(),
-          chunkMetaData.getStatistics());
+          chunk.getHeader(), chunk.getData().duplicate(), timeRangeList, chunkStatistic);
     } finally {
       SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
           READ_CHUNK_ALL, System.nanoTime() - startTime);
@@ -155,23 +152,97 @@ public class ChunkCache {
     return lruCache.stats().averageLoadPenalty();
   }
 
-  public long getAverageSize() {
-    return entryAverageSize.get();
-  }
-
   /** clear LRUCache. */
   public void clear() {
     lruCache.invalidateAll();
     lruCache.cleanUp();
   }
 
-  public void remove(ChunkMetadata chunkMetaData) {
-    lruCache.invalidate(chunkMetaData);
-  }
-
   @TestOnly
   public boolean isEmpty() {
     return lruCache.asMap().isEmpty();
+  }
+
+  public static class ChunkCacheKey {
+
+    private static final int INSTANCE_SIZE =
+        ClassLayout.parseClass(ChunkCacheKey.class).instanceSize();
+
+    // There is no need to add this field size while calculating the size of ChunkCacheKey,
+    // because filePath is get from TsFileResource, different ChunkCacheKey of the same file
+    // share this String.
+    private final String filePath;
+    private final int regionId;
+    private final long timePartitionId;
+    private final long tsFileVersion;
+    // high 32 bit is compaction level, low 32 bit is merge count
+    private final long compactionVersion;
+
+    private final long offsetOfChunkHeader;
+
+    // we don't need to compare this field, it's just used to correctly get TsFileSequenceReader
+    // from FileReaderManager
+    private final boolean closed;
+
+    public ChunkCacheKey(
+        String filePath, TsFileID tsfileId, long offsetOfChunkHeader, boolean closed) {
+      this.filePath = filePath;
+      this.regionId = tsfileId.regionId;
+      this.timePartitionId = tsfileId.timePartitionId;
+      this.tsFileVersion = tsfileId.fileVersion;
+      this.compactionVersion = tsfileId.compactionVersion;
+      this.offsetOfChunkHeader = offsetOfChunkHeader;
+      this.closed = closed;
+    }
+
+    public long getRetainedSizeInBytes() {
+      return INSTANCE_SIZE;
+    }
+
+    public String getFilePath() {
+      return filePath;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      ChunkCacheKey that = (ChunkCacheKey) o;
+      return regionId == that.regionId
+          && timePartitionId == that.timePartitionId
+          && tsFileVersion == that.tsFileVersion
+          && compactionVersion == that.compactionVersion
+          && offsetOfChunkHeader == that.offsetOfChunkHeader;
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(
+          regionId, timePartitionId, tsFileVersion, compactionVersion, offsetOfChunkHeader);
+    }
+
+    @Override
+    public String toString() {
+      return "ChunkCacheKey{"
+          + "filePath='"
+          + filePath
+          + '\''
+          + ", regionId="
+          + regionId
+          + ", timePartitionId="
+          + timePartitionId
+          + ", tsFileVersion="
+          + tsFileVersion
+          + ", compactionVersion="
+          + compactionVersion
+          + ", offsetOfChunkHeader="
+          + offsetOfChunkHeader
+          + '}';
+    }
   }
 
   /** singleton pattern. */

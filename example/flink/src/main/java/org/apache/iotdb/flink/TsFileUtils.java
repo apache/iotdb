@@ -18,7 +18,7 @@
 
 package org.apache.iotdb.flink;
 
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileReader;
@@ -47,7 +47,7 @@ import java.util.stream.Collectors;
 /** Utils used to prepare source TsFiles for the examples. */
 public class TsFileUtils {
 
-  private static final Logger logger = LoggerFactory.getLogger(TsFileUtils.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileUtils.class);
   private static final String DEFAULT_TEMPLATE = "template";
 
   private TsFileUtils() {}
@@ -84,7 +84,7 @@ public class TsFileUtils {
       }
 
     } catch (Exception e) {
-      logger.error("Write {} failed. ", path, e);
+      LOGGER.error("Write {} failed. ", path, e);
     }
   }
 

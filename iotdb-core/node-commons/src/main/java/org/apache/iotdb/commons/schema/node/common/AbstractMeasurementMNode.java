@@ -25,10 +25,11 @@ import org.apache.iotdb.commons.schema.node.MNodeType;
 import org.apache.iotdb.commons.schema.node.info.IMeasurementInfo;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
+import org.apache.iotdb.commons.schema.node.role.IInternalMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.slf4j.Logger;
@@ -181,17 +182,6 @@ public abstract class AbstractMeasurementMNode<N extends IMNode<N>, BasicNode ex
   }
 
   @Override
-  public void replaceChild(String oldChildName, N newChildNode) {}
-
-  @Override
-  public void moveDataToNewMNode(N newMNode) {
-    basicMNode.moveDataToNewMNode(newMNode);
-    if (newMNode.isMeasurement()) {
-      measurementInfo.moveDataToNewMNode(newMNode.getAsMeasurementMNode());
-    }
-  }
-
-  @Override
   public void setChildren(IMNodeContainer<N> children) {
     // Do nothing
   }
@@ -217,7 +207,7 @@ public abstract class AbstractMeasurementMNode<N extends IMNode<N>, BasicNode ex
   }
 
   @Override
-  public MNodeType getMNodeType(Boolean isConfig) {
+  public MNodeType getMNodeType() {
     return MNodeType.MEASUREMENT;
   }
 
@@ -228,6 +218,11 @@ public abstract class AbstractMeasurementMNode<N extends IMNode<N>, BasicNode ex
 
   @Override
   public IDeviceMNode<N> getAsDeviceMNode() {
+    throw new UnsupportedOperationException("Wrong MNode Type");
+  }
+
+  @Override
+  public IInternalMNode<N> getAsInternalMNode() {
     throw new UnsupportedOperationException("Wrong MNode Type");
   }
 

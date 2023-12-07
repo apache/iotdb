@@ -30,9 +30,8 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
-import org.apache.iotdb.tsfile.enums.TSDataType;
-import org.apache.iotdb.tsfile.exception.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.exception.write.PageException;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
@@ -40,6 +39,7 @@ import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -68,7 +68,7 @@ import java.util.Map.Entry;
 
 public class TsFileSplitByPartitionTool implements AutoCloseable {
 
-  private static final Logger logger = LoggerFactory.getLogger(TsFileSplitByPartitionTool.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileSplitByPartitionTool.class);
 
   protected TsFileSequenceReader reader;
   protected File oldTsFile;
@@ -337,16 +337,16 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
                   .getFile(partitionDir + File.separator + upgradeTsFileName(oldTsFile.getName()));
           try {
             if (newFile.exists()) {
-              logger.debug("delete uncomplated file {}", newFile);
+              LOGGER.debug("delete uncomplated file {}", newFile);
               Files.delete(newFile.toPath());
             }
             if (!newFile.createNewFile()) {
-              logger.error("Create new TsFile {} failed because it exists", newFile);
+              LOGGER.error("Create new TsFile {} failed because it exists", newFile);
             }
             TsFileIOWriter writer = new TsFileIOWriter(newFile);
             return writer;
           } catch (IOException e) {
-            logger.error("Create new TsFile {} failed ", newFile, e);
+            LOGGER.error("Create new TsFile {} failed ", newFile, e);
             return null;
           }
         });
@@ -455,18 +455,18 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
   protected boolean fileCheck() throws IOException {
     String magic = reader.readHeadMagic();
     if (!magic.equals(TSFileConfig.MAGIC_STRING)) {
-      logger.error("the file's MAGIC STRING is incorrect, file path: {}", reader.getFileName());
+      LOGGER.error("the file's MAGIC STRING is incorrect, file path: {}", reader.getFileName());
       return false;
     }
 
     byte versionNumber = reader.readVersionNumber();
     if (versionNumber != TSFileConfig.VERSION_NUMBER) {
-      logger.error("the file's Version Number is incorrect, file path: {}", reader.getFileName());
+      LOGGER.error("the file's Version Number is incorrect, file path: {}", reader.getFileName());
       return false;
     }
 
     if (!reader.readTailMagic().equals(TSFileConfig.MAGIC_STRING)) {
-      logger.error("the file is not closed correctly, file path: {}", reader.getFileName());
+      LOGGER.error("the file is not closed correctly, file path: {}", reader.getFileName());
       return false;
     }
     return true;

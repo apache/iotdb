@@ -31,7 +31,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.fill.identity.
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear.FloatLinearFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear.LinearFill;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
@@ -162,6 +162,11 @@ public class LinearFillOperatorTest {
                 @Override
                 public boolean isFinished() throws Exception {
                   return index >= 3;
+                }
+
+                @Override
+                public void close() throws Exception {
+                  // do nothing
                 }
 
                 @Override
@@ -378,6 +383,11 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
+                public void close() throws Exception {
+                  // do nothing
+                }
+
+                @Override
                 public long calculateMaxPeekMemory() {
                   return 0;
                 }
@@ -588,6 +598,11 @@ public class LinearFillOperatorTest {
                 @Override
                 public boolean isFinished() throws Exception {
                   return index >= 3;
+                }
+
+                @Override
+                public void close() throws Exception {
+                  // do nothing
                 }
 
                 @Override
@@ -804,6 +819,11 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
+                public void close() throws Exception {
+                  // do nothing
+                }
+
+                @Override
                 public long calculateMaxPeekMemory() {
                   return 0;
                 }
@@ -965,6 +985,11 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
+                public void close() throws Exception {
+                  // do nothing
+                }
+
+                @Override
                 public long calculateMaxPeekMemory() {
                   return 0;
                 }
@@ -1085,6 +1110,11 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
+                public void close() throws Exception {
+                  // do nothing
+                }
+
+                @Override
                 public long calculateMaxPeekMemory() {
                   return 0;
                 }
@@ -1202,6 +1232,11 @@ public class LinearFillOperatorTest {
                 @Override
                 public boolean isFinished() throws Exception {
                   return index >= 7;
+                }
+
+                @Override
+                public void close() throws Exception {
+                  // do nothing
                 }
 
                 @Override

@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.source;
 
+import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import javax.annotation.Nullable;
 
@@ -41,11 +41,8 @@ public abstract class SeriesAggregationSourceNode extends SeriesSourceNode {
   // The default order is TIMESTAMP_ASC, which means "order by timestamp asc"
   protected Ordering scanOrder = Ordering.ASC;
 
-  // time filter for current series, could be null if it doesn't exist
-  @Nullable protected Filter timeFilter;
-
   // push-downing query filter for current series, could be null if it doesn't exist
-  @Nullable protected Filter valueFilter;
+  @Nullable protected Expression pushDownPredicate;
 
   // The parameter of `group by time`
   // Its value will be null if there is no `group by time` clause,
@@ -70,21 +67,13 @@ public abstract class SeriesAggregationSourceNode extends SeriesSourceNode {
   }
 
   @Nullable
-  public Filter getTimeFilter() {
-    return timeFilter;
+  @Override
+  public Expression getPushDownPredicate() {
+    return pushDownPredicate;
   }
 
-  public void setTimeFilter(@Nullable Filter timeFilter) {
-    this.timeFilter = timeFilter;
-  }
-
-  @Nullable
-  public Filter getValueFilter() {
-    return valueFilter;
-  }
-
-  public void setValueFilter(@Nullable Filter valueFilter) {
-    this.valueFilter = valueFilter;
+  public void setPushDownPredicate(@Nullable Expression pushDownPredicate) {
+    this.pushDownPredicate = pushDownPredicate;
   }
 
   @Nullable
@@ -106,8 +95,7 @@ public abstract class SeriesAggregationSourceNode extends SeriesSourceNode {
     SeriesAggregationSourceNode that = (SeriesAggregationSourceNode) o;
     return aggregationDescriptorList.equals(that.aggregationDescriptorList)
         && scanOrder == that.scanOrder
-        && Objects.equals(timeFilter, that.timeFilter)
-        && Objects.equals(valueFilter, that.valueFilter)
+        && Objects.equals(pushDownPredicate, that.pushDownPredicate)
         && Objects.equals(groupByTimeParameter, that.groupByTimeParameter);
   }
 
@@ -117,8 +105,7 @@ public abstract class SeriesAggregationSourceNode extends SeriesSourceNode {
         super.hashCode(),
         aggregationDescriptorList,
         scanOrder,
-        timeFilter,
-        valueFilter,
+        pushDownPredicate,
         groupByTimeParameter);
   }
 }

@@ -58,7 +58,7 @@ import java.util.function.UnaryOperator;
 
 public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
-  private static final Logger logger = LoggerFactory.getLogger(CachedMTreeStore.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(CachedMTreeStore.class);
 
   private final int schemaRegionId;
 
@@ -367,86 +367,37 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
   @Override
   public IDeviceMNode<ICachedMNode> setToEntity(ICachedMNode node) {
-    lockManager.globalReadLock();
-    if (!node.isDatabase()) {
-      lockManager.threadReadLock(node.getParent(), true);
-    }
-    // This process may result in a new node instance hold the lock.
-    // The write lock operation here ensures that the old instance and the new one won't hold
-    // the same lock.
-    lockManager.writeLock(node);
-    IDeviceMNode<ICachedMNode> result = null;
-    try {
-      result = MNodeUtils.setToEntity(node, nodeFactory);
-      if (node.isDatabase()) {
-        root = result.getAsMNode();
-      }
-      cacheManager.updateCacheStatusAfterUpdate(result.getAsMNode());
-    } finally {
-      // If the lock is not unlocked or returned by the up-to-date instance, it may be
-      // returned to lock pool
-      // but hold by the up-to-date instance, and it is possible that the lock pool will
-      // allocate the lock to a new
-      // node instance. Such circumstance is terrible.
-      if (result == null) {
-        lockManager.writeUnlock(node);
-      } else {
-        lockManager.writeUnlock(result.getAsMNode());
-      }
-      if (!node.isDatabase()) {
-        lockManager.threadReadUnlock(node.getParent());
-      }
-      lockManager.globalReadUnlock();
-    }
+      int rawSize = node.estimateSize();
+    AtomicReference<Boolean> resultReference = new AtomicReference<>(false);
+    updateMNode(node, o -> resultReference.getAndSet(MNodeUtils.setToEntity(node)));
 
-    if (result != node) {
+    boolean isSuccess = resultReference.get();
+    if (isSuccess) {
       regionStatistics.addDevice();
-      memManager.updatePinnedSize(result.estimateSize() - node.estimateSize());
+      memManager.updatePinnedSize(node.estimateSize() - rawSize);
     }
 
-    return result;
+    return node.getAsDeviceMNode();
   }
 
   @Override
   public ICachedMNode setToInternal(IDeviceMNode<ICachedMNode> entityMNode) {
-    lockManager.globalReadLock();
-    if (!entityMNode.isDatabase()) {
-      lockManager.threadReadLock(entityMNode.getParent(), true);
-    }
-    // This process may result in a new node instance hold the lock.
-    // The write lock operation here ensures that the old instance and the new one won't hold
-    // the same lock.
-    lockManager.writeLock(entityMNode.getAsMNode());
-    ICachedMNode result = null;
-    try {
-      result = MNodeUtils.setToInternal(entityMNode, nodeFactory);
-      if (entityMNode.isDatabase()) {
-        root = result;
-      }
-      cacheManager.updateCacheStatusAfterUpdate(result);
-    } finally {
-      // If the lock is not unlocked or returned by the up-to-date instance, it may be
-      // returned to lock pool
-      // but hold by the up-to-date instance, and it is possible that the lock pool will
-      // allocate the lock to a new
-      // node instance. Such circumstance is terrible.
-      if (result == null) {
-        lockManager.writeUnlock(entityMNode.getAsMNode());
-      } else {
-        lockManager.writeUnlock(result);
-      }
-      if (!entityMNode.isDatabase()) {
-        lockManager.threadReadUnlock(entityMNode.getParent());
-      }
-      lockManager.globalReadUnlock();
-    }
+    int rawSize = entityMNode.estimateSize();
+    AtomicReference<Boolean> resultReference = new AtomicReference<>(false);
+    // the entityMNode is just a wrapper, the actual CachedMNode instance shall be the same before
+    // and after
+    // setToInternal
+    ICachedMNode internalMNode = entityMNode.getAsMNode();
+    updateMNode(
+        internalMNode, o -> resultReference.getAndSet(MNodeUtils.setToInternal(entityMNode)));
 
-    if (result != entityMNode) {
+    boolean isSuccess = resultReference.get();
+    if (isSuccess) {
       regionStatistics.deleteDevice();
-      memManager.updatePinnedSize(result.estimateSize() - entityMNode.estimateSize());
+      memManager.updatePinnedSize(internalMNode.estimateSize() - rawSize);
     }
 
-    return result;
+    return internalMNode;
   }
 
   @Override
@@ -587,7 +538,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
           file.clear();
           file.close();
         } catch (MetadataException | IOException e) {
-          logger.error(String.format("Error occurred during PBTree clear, %s", e.getMessage()));
+          LOGGER.error("Error occurred during PBTree clear, {}", e.getMessage());
         }
       }
       file = null;
@@ -684,9 +635,9 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
         long time = System.currentTimeMillis() - startTime;
         if (time > 10_000) {
-          logger.info("It takes {}ms to flush MTree in SchemaRegion {}", time, schemaRegionId);
+          LOGGER.info("It takes {}ms to flush MTree in SchemaRegion {}", time, schemaRegionId);
         } else {
-          logger.debug("It takes {}ms to flush MTree in SchemaRegion {}", time, schemaRegionId);
+          LOGGER.debug("It takes {}ms to flush MTree in SchemaRegion {}", time, schemaRegionId);
         }
       }
 
@@ -694,10 +645,10 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
         flushCallback.run();
       }
     } catch (MetadataException | IOException e) {
-      logger.warn(
+      LOGGER.warn(
           "Exception occurred during MTree flush, current SchemaRegionId is {}", schemaRegionId, e);
     } catch (Throwable e) {
-      logger.error(
+      LOGGER.error(
           "Error occurred during MTree flush, current SchemaRegionId is {}", schemaRegionId, e);
       e.printStackTrace();
     } finally {
@@ -718,7 +669,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       file.updateDatabaseNode(updatedStorageGroupMNode);
       return true;
     } catch (IOException e) {
-      logger.warn(
+      LOGGER.warn(
           "IOException occurred during updating StorageGroupMNode {}",
           updatedStorageGroupMNode.getFullPath(),
           e);
@@ -780,7 +731,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
         try {
           readNext();
         } catch (MetadataException e) {
-          logger.error(String.format("Error occurred during readNext, %s", e.getMessage()));
+          LOGGER.error("Error occurred during readNext, {}", e.getMessage());
           return false;
         }
         return nextNode != null;
@@ -845,6 +796,11 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     private void startIteratingBuffer() {
       iterator = bufferIterator;
       isIteratingDisk = false;
+    }
+
+    @Override
+    public void skipTemplateChildren() {
+      // do nothing
     }
 
     @Override

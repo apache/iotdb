@@ -35,7 +35,7 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.consensus.exception.RatisUnderRecoveryException;
+import org.apache.iotdb.consensus.exception.RatisReadUnavailableException;
 
 import org.apache.ratis.thirdparty.com.google.common.base.Preconditions;
 import org.apache.ratis.util.FileUtils;
@@ -406,7 +406,7 @@ public class TestUtils {
         try {
           readResp = readThrough(serverIndex);
           break;
-        } catch (RatisUnderRecoveryException e) {
+        } catch (RatisReadUnavailableException e) {
           logger.warn("ratis is redoing raft log, shall wait some time: ", e);
           waitDuration.sleep();
         } catch (ConsensusException e) {
