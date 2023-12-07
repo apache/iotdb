@@ -43,28 +43,25 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.Int
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.MeasurementGroup;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
+import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.PipeEnrichedInsertBaseStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.PipeEnrichedLoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalBatchActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
@@ -87,6 +84,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchAct
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.ShowLogicalViewStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -546,49 +544,39 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   }
 
   @Override
-  public PlanNode visitPipeEnrichedInsert(
-      PipeEnrichedInsertBaseStatement pipeEnrichedInsertBaseStatement, MPPQueryContext context) {
-    InsertNode insertNode;
+  public PlanNode visitPipeEnrichedStatement(
+      PipeEnrichedStatement pipeEnrichedStatement, MPPQueryContext context) {
+    final Statement innerStatement = pipeEnrichedStatement.getInnerStatement();
 
-    final InsertBaseStatement insertBaseStatement =
-        pipeEnrichedInsertBaseStatement.getInsertBaseStatement();
-    if (insertBaseStatement instanceof InsertRowStatement) {
-      insertNode =
-          (InsertRowNode) visitInsertRow((InsertRowStatement) insertBaseStatement, context);
-    } else if (insertBaseStatement instanceof InsertRowsStatement) {
-      insertNode =
-          (InsertRowsNode) visitInsertRows((InsertRowsStatement) insertBaseStatement, context);
-    } else if (insertBaseStatement instanceof InsertRowsOfOneDeviceStatement) {
-      insertNode =
+    if (innerStatement instanceof InsertRowStatement) {
+      return new PipeEnrichedWritePlanNode(
+          (InsertRowNode) visitInsertRow((InsertRowStatement) innerStatement, context));
+    } else if (innerStatement instanceof InsertRowsStatement) {
+      return new PipeEnrichedWritePlanNode(
+          (InsertRowsNode) visitInsertRows((InsertRowsStatement) innerStatement, context));
+    } else if (innerStatement instanceof InsertRowsOfOneDeviceStatement) {
+      return new PipeEnrichedWritePlanNode(
           (InsertRowsOfOneDeviceNode)
-              visitInsertRowsOfOneDevice(
-                  (InsertRowsOfOneDeviceStatement) insertBaseStatement, context);
-    } else if (insertBaseStatement instanceof InsertTabletStatement) {
-      insertNode =
-          (InsertTabletNode)
-              visitInsertTablet((InsertTabletStatement) insertBaseStatement, context);
-    } else if (insertBaseStatement instanceof InsertMultiTabletsStatement) {
-      insertNode =
+              visitInsertRowsOfOneDevice((InsertRowsOfOneDeviceStatement) innerStatement, context));
+    } else if (innerStatement instanceof InsertTabletStatement) {
+      return new PipeEnrichedWritePlanNode(
+          (InsertTabletNode) visitInsertTablet((InsertTabletStatement) innerStatement, context));
+    } else if (innerStatement instanceof InsertMultiTabletsStatement) {
+      return new PipeEnrichedWritePlanNode(
           (InsertMultiTabletsNode)
-              visitInsertMultiTablets((InsertMultiTabletsStatement) insertBaseStatement, context);
+              visitInsertMultiTablets((InsertMultiTabletsStatement) innerStatement, context));
+    } else if (innerStatement instanceof LoadTsFileStatement) {
+      return visitLoadFile((LoadTsFileStatement) innerStatement, context);
     } else {
       throw new UnsupportedOperationException(
-          "Unsupported insert statement type: " + insertBaseStatement.getClass().getName());
+          "Unsupported insert statement type: " + innerStatement.getClass().getName());
     }
-
-    return new PipeEnrichedInsertNode(insertNode);
   }
 
   @Override
   public PlanNode visitLoadFile(LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
     return new LoadTsFileNode(
         context.getQueryId().genPlanNodeId(), loadTsFileStatement.getResources());
-  }
-
-  @Override
-  public PlanNode visitPipeEnrichedLoadFile(
-      PipeEnrichedLoadTsFileStatement pipeEnrichedLoadTsFileStatement, MPPQueryContext context) {
-    return visitLoadFile(pipeEnrichedLoadTsFileStatement.getLoadTsFileStatement(), context);
   }
 
   @Override

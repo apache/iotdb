@@ -65,7 +65,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.PipeEnrichedLoadTsFileStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -318,7 +318,9 @@ public class QueryExecution implements IQueryExecution {
 
   private void schedule() {
     final long startTime = System.nanoTime();
-    if (rawStatement instanceof LoadTsFileStatement) {
+    if (rawStatement instanceof PipeEnrichedStatement
+        && ((PipeEnrichedStatement) rawStatement).getInnerStatement()
+            instanceof LoadTsFileStatement) {
       this.scheduler =
           new LoadTsFileScheduler(
               distributedPlan,
@@ -326,7 +328,7 @@ public class QueryExecution implements IQueryExecution {
               stateMachine,
               syncInternalServiceClientManager,
               partitionFetcher,
-              rawStatement instanceof PipeEnrichedLoadTsFileStatement);
+              true);
       this.scheduler.start();
       return;
     }
