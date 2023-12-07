@@ -59,8 +59,8 @@ import java.util.stream.Collectors;
  *
  * <p>Notes: The content varies in all the {@link WritePlanNode}s of schema writing nodes:
  *
- * <p>- Timeseries(Manual): {@link CreateTimeSeriesNode}, {@link AlterTimeSeriesNode}, {@link
- * CreateAlignedTimeSeriesNode}, {@link CreateMultiTimeSeriesNode}
+ * <p>- Timeseries(Manual): {@link CreateTimeSeriesNode}, {@link CreateAlignedTimeSeriesNode},
+ * {@link CreateMultiTimeSeriesNode}, {@link AlterTimeSeriesNode}
  *
  * <p>- Timeseries(Auto): {@link InternalCreateTimeSeriesNode}, {@link
  * InternalCreateMultiTimeSeriesNode}

@@ -2587,6 +2587,37 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           visitInsertRowsOfOneDevice((InsertRowsOfOneDeviceStatement) innerStatement, context);
     } else if (innerStatement instanceof LoadTsFileStatement) {
       analysis = visitLoadFile((LoadTsFileStatement) innerStatement, context);
+    } else if (innerStatement instanceof DeleteDataStatement) {
+      analysis = visitDeleteData((DeleteDataStatement) innerStatement, context);
+    } else if (innerStatement instanceof CreateTimeSeriesStatement) {
+      analysis = visitCreateTimeseries((CreateTimeSeriesStatement) innerStatement, context);
+    } else if (innerStatement instanceof CreateAlignedTimeSeriesStatement) {
+      analysis =
+          visitCreateAlignedTimeseries((CreateAlignedTimeSeriesStatement) innerStatement, context);
+    } else if (innerStatement instanceof CreateMultiTimeSeriesStatement) {
+      analysis =
+          visitCreateMultiTimeseries((CreateMultiTimeSeriesStatement) innerStatement, context);
+    } else if (innerStatement instanceof AlterTimeSeriesStatement) {
+      analysis = visitAlterTimeseries((AlterTimeSeriesStatement) innerStatement, context);
+    } else if (innerStatement instanceof InternalCreateTimeSeriesStatement) {
+      analysis =
+          visitInternalCreateTimeseries(
+              (InternalCreateTimeSeriesStatement) innerStatement, context);
+    } else if (innerStatement instanceof InternalCreateMultiTimeSeriesStatement) {
+      analysis =
+          visitInternalCreateMultiTimeSeries(
+              (InternalCreateMultiTimeSeriesStatement) innerStatement, context);
+    } else if (innerStatement instanceof ActivateTemplateStatement) {
+      analysis = visitActivateTemplate((ActivateTemplateStatement) innerStatement, context);
+    } else if (innerStatement instanceof BatchActivateTemplateStatement) {
+      analysis =
+          visitBatchActivateTemplate((BatchActivateTemplateStatement) innerStatement, context);
+    } else if (innerStatement instanceof InternalBatchActivateTemplateStatement) {
+      analysis =
+          visitInternalBatchActivateTemplate(
+              (InternalBatchActivateTemplateStatement) innerStatement, context);
+    } else if (innerStatement instanceof CreateLogicalViewStatement) {
+      analysis = visitCreateLogicalView((CreateLogicalViewStatement) innerStatement, context);
     } else {
       throw new UnsupportedOperationException(
           "Unsupported insert statement type: " + innerStatement.getClass().getName());
