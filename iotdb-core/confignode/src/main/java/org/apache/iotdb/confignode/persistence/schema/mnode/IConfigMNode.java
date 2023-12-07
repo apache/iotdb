@@ -19,6 +19,9 @@
 package org.apache.iotdb.confignode.persistence.schema.mnode;
 
 import org.apache.iotdb.commons.schema.node.IMNode;
+import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
+import org.apache.iotdb.commons.schema.node.role.IInternalMNode;
+import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
 public interface IConfigMNode extends IMNode<IConfigMNode> {
@@ -41,5 +44,30 @@ public interface IConfigMNode extends IMNode<IConfigMNode> {
 
   default TDatabaseSchema getDatabaseSchema() {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  default boolean isDevice() {
+    return false;
+  }
+
+  @Override
+  default boolean isMeasurement() {
+    return false;
+  }
+
+  @Override
+  default IInternalMNode<IConfigMNode> getAsInternalMNode() {
+    throw new UnsupportedOperationException("Wrong node type");
+  }
+
+  @Override
+  default IDeviceMNode<IConfigMNode> getAsDeviceMNode() {
+    throw new UnsupportedOperationException("Wrong node type");
+  }
+
+  @Override
+  default IMeasurementMNode<IConfigMNode> getAsMeasurementMNode() {
+    throw new UnsupportedOperationException("Wrong node type");
   }
 }

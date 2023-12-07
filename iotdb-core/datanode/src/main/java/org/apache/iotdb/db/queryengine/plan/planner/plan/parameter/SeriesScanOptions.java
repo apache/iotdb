@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.read.filter.factory.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilterApi;
 import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
 
 import java.util.Collections;
@@ -93,9 +93,10 @@ public class SeriesScanOptions {
     if (dataTTL != Long.MAX_VALUE) {
       if (filter != null) {
         filter =
-            FilterFactory.and(filter, TimeFilter.gtEq(CommonDateTimeUtils.currentTime() - dataTTL));
+            FilterFactory.and(
+                filter, TimeFilterApi.gtEq(CommonDateTimeUtils.currentTime() - dataTTL));
       } else {
-        filter = TimeFilter.gtEq(CommonDateTimeUtils.currentTime() - dataTTL);
+        filter = TimeFilterApi.gtEq(CommonDateTimeUtils.currentTime() - dataTTL);
       }
     }
     return filter;

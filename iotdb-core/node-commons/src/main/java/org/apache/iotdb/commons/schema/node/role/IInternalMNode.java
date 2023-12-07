@@ -17,24 +17,39 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.read.filter.basic;
+package org.apache.iotdb.commons.schema.node.role;
 
-import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.commons.schema.node.IMNode;
+import org.apache.iotdb.commons.schema.node.common.DeviceMNodeWrapper;
+import org.apache.iotdb.commons.schema.node.info.IDeviceInfo;
 
-import java.util.List;
+public interface IInternalMNode<N extends IMNode<N>> extends IMNode<N> {
 
-public interface IValueFilter extends Filter {
+  IDeviceInfo<N> getDeviceInfo();
 
-  default boolean satisfyStartEndTime(long startTime, long endTime) {
-    return true;
+  void setDeviceInfo(IDeviceInfo<N> deviceInfo);
+
+  @Override
+  default boolean isDevice() {
+    return getDeviceInfo() != null;
   }
 
-  default boolean containStartEndTime(long startTime, long endTime) {
+  @Override
+  default boolean isMeasurement() {
     return false;
   }
 
   @Override
-  default List<TimeRange> getTimeRanges() {
-    throw new UnsupportedOperationException("Value filter does not support getTimeRanges()");
+  default IInternalMNode<N> getAsInternalMNode() {
+    return this;
+  }
+
+  @Override
+  default IDeviceMNode<N> getAsDeviceMNode() {
+    if (isDevice()) {
+      return new DeviceMNodeWrapper<>(this);
+    } else {
+      throw new UnsupportedOperationException("Wrong node type");
+    }
   }
 }
