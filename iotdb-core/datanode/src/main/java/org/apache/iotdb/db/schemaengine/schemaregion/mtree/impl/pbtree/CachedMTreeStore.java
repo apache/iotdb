@@ -54,7 +54,8 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.function.UnaryOperator;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
@@ -337,12 +338,11 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
    * @param node the modified node
    */
   @Override
-  public void updateMNode(ICachedMNode node, UnaryOperator<ICachedMNode> operation) {
+  public void updateMNode(ICachedMNode node, Consumer<ICachedMNode> operation) {
     updateMNode(node, operation, true);
   }
 
-  final void updateMNode(
-      ICachedMNode node, UnaryOperator<ICachedMNode> operation, boolean needLock) {
+  final void updateMNode(ICachedMNode node, Consumer<ICachedMNode> operation, boolean needLock) {
     if (needLock) {
       lockManager.globalReadLock();
     }
@@ -350,10 +350,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       lockManager.threadReadLock(node.getParent(), true);
     }
     try {
-      node = operation.apply(node);
-      if (node.isDatabase()) {
-        root = node;
-      }
+      operation.accept(node);
       cacheManager.updateCacheStatusAfterUpdate(node);
     } finally {
       if (!node.isDatabase()) {
@@ -367,7 +364,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
   @Override
   public IDeviceMNode<ICachedMNode> setToEntity(ICachedMNode node) {
-      int rawSize = node.estimateSize();
+    int rawSize = node.estimateSize();
     AtomicReference<Boolean> resultReference = new AtomicReference<>(false);
     updateMNode(node, o -> resultReference.getAndSet(MNodeUtils.setToEntity(node)));
 
@@ -408,12 +405,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       return;
     }
 
-    updateMNode(
-        measurementMNode.getAsMNode(),
-        o -> {
-          o.getAsMeasurementMNode().setAlias(alias);
-          return o;
-        });
+    updateMNode(measurementMNode.getAsMNode(), o -> o.getAsMeasurementMNode().setAlias(alias));
 
     if (existingAlias != null && alias != null) {
       memManager.updatePinnedSize(alias.length() - existingAlias.length());

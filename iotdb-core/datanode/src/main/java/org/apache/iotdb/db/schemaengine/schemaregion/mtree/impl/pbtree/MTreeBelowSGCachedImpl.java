@@ -632,12 +632,7 @@ public class MTreeBelowSGCachedImpl {
           curNode = store.setToInternal(entityMNode);
         } else if (!hasNonViewMeasurement) {
           // has some measurement but they are all logical view
-          store.updateMNode(
-              entityMNode.getAsMNode(),
-              o -> {
-                o.getAsDeviceMNode().setAligned(null);
-                return o;
-              });
+          store.updateMNode(entityMNode.getAsMNode(), o -> o.getAsDeviceMNode().setAligned(null));
         }
       }
     }
@@ -682,11 +677,7 @@ public class MTreeBelowSGCachedImpl {
           protected void updateMeasurement(IMeasurementMNode<ICachedMNode> node)
               throws MetadataException {
             store.updateMNode(
-                node.getAsMNode(),
-                o -> {
-                  o.getAsMeasurementMNode().setPreDeleted(true);
-                  return o;
-                });
+                node.getAsMNode(), o -> o.getAsMeasurementMNode().setPreDeleted(true));
             result.add(getPartialPathFromRootToNode(node.getAsMNode()));
           }
         }) {
@@ -705,11 +696,7 @@ public class MTreeBelowSGCachedImpl {
           protected void updateMeasurement(IMeasurementMNode<ICachedMNode> node)
               throws MetadataException {
             store.updateMNode(
-                node.getAsMNode(),
-                o -> {
-                  o.getAsMeasurementMNode().setPreDeleted(false);
-                  return o;
-                });
+                node.getAsMNode(), o -> o.getAsMeasurementMNode().setPreDeleted(false));
             result.add(getPartialPathFromRootToNode(node.getAsMNode()));
           }
         }) {
@@ -1007,11 +994,7 @@ public class MTreeBelowSGCachedImpl {
               throws MetadataException {
             if (node.isLogicalView()) {
               store.updateMNode(
-                  node.getAsMNode(),
-                  o -> {
-                    o.getAsMeasurementMNode().setPreDeleted(true);
-                    return o;
-                  });
+                  node.getAsMNode(), o -> o.getAsMeasurementMNode().setPreDeleted(true));
               result.add(getPartialPathFromRootToNode(node.getAsMNode()));
             }
           }
@@ -1031,11 +1014,7 @@ public class MTreeBelowSGCachedImpl {
               throws MetadataException {
             if (node.isLogicalView()) {
               store.updateMNode(
-                  node.getAsMNode(),
-                  o -> {
-                    o.getAsMeasurementMNode().setPreDeleted(false);
-                    return o;
-                  });
+                  node.getAsMNode(), o -> o.getAsMeasurementMNode().setPreDeleted(false));
               result.add(getPartialPathFromRootToNode(node.getAsMNode()));
             }
           }
@@ -1072,11 +1051,9 @@ public class MTreeBelowSGCachedImpl {
       }
       store.updateMNode(
           leafMNode.getAsMNode(),
-          o -> {
-            o.getAsMeasurementMNode()
-                .setSchema(new LogicalViewSchema(leafMNode.getName(), expression));
-            return o;
-          });
+          o ->
+              o.getAsMeasurementMNode()
+                  .setSchema(new LogicalViewSchema(leafMNode.getName(), expression)));
     } finally {
       unPinMNode(leafMNode.getAsMNode());
     }
@@ -1125,7 +1102,6 @@ public class MTreeBelowSGCachedImpl {
             }
             entityMNode.setUseTemplate(true);
             entityMNode.setSchemaTemplateId(template.getId());
-            return entityMNode.getAsMNode();
           });
 
       regionStatistics.activateTemplate(template.getId());
@@ -1163,7 +1139,6 @@ public class MTreeBelowSGCachedImpl {
             }
             entityMNode.setUseTemplate(true);
             entityMNode.setSchemaTemplateId(templateId);
-            return entityMNode.getAsMNode();
           });
 
       regionStatistics.activateTemplate(templateId);
@@ -1185,11 +1160,7 @@ public class MTreeBelowSGCachedImpl {
                 resultTemplateSetInfo.put(
                     node.getPartialPath(), Collections.singletonList(node.getSchemaTemplateId()));
                 store.updateMNode(
-                    node.getAsMNode(),
-                    o -> {
-                      o.getAsDeviceMNode().preDeactivateTemplate();
-                      return o;
-                    });
+                    node.getAsMNode(), o -> o.getAsDeviceMNode().preDeactivateTemplate());
               }
             }
           }) {
@@ -1213,11 +1184,7 @@ public class MTreeBelowSGCachedImpl {
                 resultTemplateSetInfo.put(
                     node.getPartialPath(), Collections.singletonList(node.getSchemaTemplateId()));
                 store.updateMNode(
-                    node.getAsMNode(),
-                    o -> {
-                      o.getAsDeviceMNode().rollbackPreDeactivateTemplate();
-                      return o;
-                    });
+                    node.getAsMNode(), o -> o.getAsDeviceMNode().rollbackPreDeactivateTemplate());
               }
             }
           }) {
@@ -1242,11 +1209,7 @@ public class MTreeBelowSGCachedImpl {
                     node.getPartialPath(), Collections.singletonList(node.getSchemaTemplateId()));
                 regionStatistics.deactivateTemplate(node.getSchemaTemplateId());
                 store.updateMNode(
-                    node.getAsMNode(),
-                    o -> {
-                      o.getAsDeviceMNode().deactivateTemplate();
-                      return o;
-                    });
+                    node.getAsMNode(), o -> o.getAsDeviceMNode().deactivateTemplate());
               }
             }
           }) {
@@ -1293,12 +1256,7 @@ public class MTreeBelowSGCachedImpl {
 
   // TODO: This interface should not be exposed to SchemaRegion
   public void updateMNode(ICachedMNode node, Consumer<ICachedMNode> operation) {
-    store.updateMNode(
-        node,
-        o -> {
-          operation.accept(node);
-          return node;
-        });
+    store.updateMNode(node, o -> operation.accept(node));
   }
 
   // endregion

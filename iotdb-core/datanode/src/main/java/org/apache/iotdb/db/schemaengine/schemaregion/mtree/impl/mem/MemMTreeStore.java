@@ -42,7 +42,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Map;
 import java.util.function.Consumer;
-import java.util.function.UnaryOperator;
 
 /** This is a memory-based implementation of IMTreeStore. All MNodes are stored in memory. */
 public class MemMTreeStore implements IMTreeStore<IMemMNode> {
@@ -136,7 +135,7 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
   }
 
   @Override
-  public void updateMNode(IMemMNode node, UnaryOperator<IMemMNode> operation) {}
+  public void updateMNode(IMemMNode node, Consumer<IMemMNode> operation) {}
 
   @Override
   public IDeviceMNode<IMemMNode> setToEntity(IMemMNode node) {
