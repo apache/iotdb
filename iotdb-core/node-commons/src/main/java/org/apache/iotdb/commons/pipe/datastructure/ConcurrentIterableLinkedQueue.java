@@ -89,7 +89,10 @@ public class ConcurrentIterableLinkedQueue<E> {
   }
 
   /**
-   * Try to remove all elements whose index is less than the given index.
+   * Try to remove all elements whose index is less than the given index. Elements whose index is
+   * equal to the given index will not be removed.
+   *
+   * <p>Note that iterators will limit the actual removed index to be larger than their next index.
    *
    * <p>Note that the actual removed index may be larger than the given index if the given index is
    * smaller than {@link ConcurrentIterableLinkedQueue#firstIndex}.
@@ -100,7 +103,7 @@ public class ConcurrentIterableLinkedQueue<E> {
    * @param newFirstIndex the given index
    * @return the actual first index that is not removed
    */
-  public long removeBefore(long newFirstIndex) {
+  public long tryRemoveBefore(long newFirstIndex) {
     lock.writeLock().lock();
     try {
       for (final DynamicIterator iterator : iteratorSet.keySet()) {
@@ -149,7 +152,7 @@ public class ConcurrentIterableLinkedQueue<E> {
       // Use a new set to avoid ConcurrentModificationException
       ImmutableSet.copyOf(iteratorSet.keySet()).forEach(DynamicIterator::close);
 
-      removeBefore(tailIndex);
+      tryRemoveBefore(tailIndex);
     } finally {
       lock.writeLock().unlock();
     }

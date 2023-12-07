@@ -26,6 +26,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -92,7 +93,7 @@ public class ConcurrentIterableLinkedQueueTest {
     executor.submit(
         () -> {
           for (int i = 0; i < numberOfAdds; i += 10) {
-            queue.removeBefore(i);
+            queue.tryRemoveBefore(i);
           }
         });
 
@@ -121,7 +122,7 @@ public class ConcurrentIterableLinkedQueueTest {
     queue.add(2);
     ConcurrentIterableLinkedQueue<Integer>.DynamicIterator itr = queue.iterateFrom(1);
 
-    Assert.assertEquals(1, queue.removeBefore(2));
+    Assert.assertEquals(1, queue.tryRemoveBefore(2));
     Assert.assertEquals(2, (int) itr.next());
   }
 
@@ -147,7 +148,7 @@ public class ConcurrentIterableLinkedQueueTest {
   public void testIntegratedOperations() {
     queue.add(1);
     queue.add(2);
-    Assert.assertEquals(1, queue.removeBefore(1));
+    Assert.assertEquals(1, queue.tryRemoveBefore(1));
     Assert.assertEquals(1, queue.getFirstIndex());
     Assert.assertEquals(2, queue.getTailIndex());
 
@@ -231,5 +232,208 @@ public class ConcurrentIterableLinkedQueueTest {
               return true;
             });
     assertFalse(failure.get());
+  }
+
+  @Test(timeout = 60000)
+  public void testEmptyQueueBehavior() {
+    Assert.assertEquals(0, queue.getFirstIndex());
+    Assert.assertEquals(0, queue.getTailIndex());
+    Assert.assertFalse(queue.iterateFrom(0).hasNext());
+    Assert.assertEquals(0, queue.tryRemoveBefore(10));
+    queue.clear();
+    Assert.assertEquals(0, queue.getFirstIndex());
+    Assert.assertEquals(0, queue.getTailIndex());
+  }
+
+  @Test(timeout = 60000)
+  public void testBoundaryConditions() {
+    queue.add(1);
+    ConcurrentIterableLinkedQueue<Integer>.DynamicIterator itr = queue.iterateFrom(10);
+    Assert.assertFalse(itr.hasNext());
+  }
+
+  @Test(timeout = 60000)
+  public void testConcurrentExceptionHandling() throws InterruptedException {
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+
+    executor.submit(
+        () -> {
+          queue.add(1);
+          try {
+            Thread.sleep(500); // Wait for the iterator to start
+          } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+          }
+          queue.clear();
+        });
+
+    AtomicBoolean caughtException = new AtomicBoolean(false);
+    executor.submit(
+        () -> {
+          try {
+            ConcurrentIterableLinkedQueue<Integer>.DynamicIterator itr =
+                queue.iterateFromEarliest();
+            while (itr.hasNext()) {
+              itr.next();
+            }
+          } catch (Exception e) {
+            caughtException.set(true);
+          }
+        });
+
+    executor.shutdown();
+    Assert.assertTrue(executor.awaitTermination(1, TimeUnit.MINUTES));
+    Assert.assertFalse(caughtException.get());
+  }
+
+  @Test(timeout = 60000)
+  public void testHighLoadPerformance() {
+    int numberOfElements = 100000;
+    for (int i = 0; i < numberOfElements; i++) {
+      queue.add(i);
+    }
+
+    ConcurrentIterableLinkedQueue<Integer>.DynamicIterator itr = queue.iterateFrom(0);
+    for (int i = 0; i < numberOfElements; i++) {
+      Assert.assertTrue(itr.hasNext());
+      Assert.assertEquals(Integer.valueOf(i), itr.next());
+    }
+    Assert.assertFalse(itr.hasNext());
+  }
+
+  @Test(timeout = 60000)
+  public void testMultiThreadedConsistency() throws InterruptedException {
+    int numberOfElements = 1000;
+    ExecutorService executor = Executors.newFixedThreadPool(10);
+
+    for (int i = 0; i < numberOfElements; i++) {
+      int finalI = i;
+      executor.submit(() -> queue.add(finalI));
+    }
+
+    executor.shutdown();
+    Assert.assertTrue(executor.awaitTermination(1, TimeUnit.MINUTES));
+
+    ConcurrentIterableLinkedQueue<Integer>.DynamicIterator itr = queue.iterateFromEarliest();
+    HashSet<Integer> elements = new HashSet<>();
+    while (itr.hasNext()) {
+      elements.add(itr.next());
+    }
+
+    Assert.assertEquals(numberOfElements, elements.size());
+  }
+
+  @Test(timeout = 60000)
+  public void testIteratorBasicFunctionality() {
+    for (int i = 0; i < 5; i++) {
+      queue.add(i);
+    }
+
+    ConcurrentIterableLinkedQueue<Integer>.DynamicIterator itr = queue.iterateFrom(0);
+    for (int i = 0; i < 5; i++) {
+      Assert.assertTrue(itr.hasNext());
+      Assert.assertEquals(Integer.valueOf(i), itr.next());
+    }
+    Assert.assertFalse(itr.hasNext());
+  }
+
+  @Test(timeout = 60000)
+  public void testIteratorAfterRemoval() {
+    for (int i = 0; i < 5; i++) {
+      queue.add(i);
+    }
+
+    queue.tryRemoveBefore(3);
+    ConcurrentIterableLinkedQueue<Integer>.DynamicIterator itr = queue.iterateFrom(0);
+    for (int i = 3; i < 5; i++) {
+      Assert.assertTrue(itr.hasNext());
+      Assert.assertEquals(Integer.valueOf(i), itr.next());
+    }
+    Assert.assertFalse(itr.hasNext());
+  }
+
+  @Test(timeout = 60000)
+  public void testIteratorConcurrentAccess() throws InterruptedException {
+    for (int i = 0; i < 100; i++) {
+      queue.add(i);
+    }
+
+    ExecutorService executor = Executors.newFixedThreadPool(10);
+    AtomicInteger count = new AtomicInteger(0);
+
+    for (int i = 0; i < 10; i++) {
+      executor.submit(
+          () -> {
+            ConcurrentIterableLinkedQueue<Integer>.DynamicIterator itr = queue.iterateFrom(0);
+            while (itr.hasNext()) {
+              itr.next();
+              count.incrementAndGet();
+            }
+          });
+    }
+
+    executor.shutdown();
+    Assert.assertTrue(executor.awaitTermination(1, TimeUnit.MINUTES));
+    Assert.assertEquals(1000, count.get()); // 100 elements iterated by 10 threads
+  }
+
+  @Test(timeout = 60000)
+  public void testIteratorDuringQueueModification() {
+    for (int i = 0; i < 5; i++) {
+      queue.add(i);
+    }
+
+    ConcurrentIterableLinkedQueue<Integer>.DynamicIterator itr = queue.iterateFrom(0);
+    for (int i = 0; i < 3; i++) {
+      Assert.assertTrue(itr.hasNext());
+      Assert.assertEquals(Integer.valueOf(i), itr.next());
+    }
+
+    queue.add(5);
+
+    queue.tryRemoveBefore(itr.getNextIndex());
+
+    for (int i = 3; i <= 5; i++) {
+      Assert.assertTrue(itr.hasNext());
+      Assert.assertEquals(Integer.valueOf(i), itr.next());
+    }
+
+    Assert.assertFalse(itr.hasNext());
+
+    for (int i = 5; i < 10; i++) {
+      queue.add(i);
+      queue.tryRemoveBefore(100 * i);
+    }
+
+    for (int i = 5; i < 10; i++) {
+      Assert.assertTrue(itr.hasNext());
+      Assert.assertEquals(Integer.valueOf(i), itr.next());
+    }
+
+    Assert.assertFalse(itr.hasNext());
+  }
+
+  @Test(timeout = 60000)
+  public void testIteratorExceptionHandling() {
+    queue.add(1);
+    ConcurrentIterableLinkedQueue<Integer>.DynamicIterator itr = queue.iterateFrom(0);
+    queue.clear();
+
+    Assert.assertFalse(itr.hasNext());
+    Assert.assertNull(itr.next());
+    Assert.assertTrue(itr.isClosed());
+  }
+
+  @Test(timeout = 60000)
+  public void testIteratorSeek() {
+    for (int i = 0; i < 10; i++) {
+      queue.add(i);
+    }
+
+    ConcurrentIterableLinkedQueue<Integer>.DynamicIterator itr = queue.iterateFrom(0);
+    long newNextIndex = itr.seek(5);
+    Assert.assertEquals(5, newNextIndex);
+    Assert.assertTrue(itr.hasNext());
+    Assert.assertEquals(Integer.valueOf(5), itr.next());
   }
 }
