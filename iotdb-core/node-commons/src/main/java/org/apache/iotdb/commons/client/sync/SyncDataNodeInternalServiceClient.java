@@ -32,7 +32,9 @@ import org.apache.iotdb.rpc.TimeoutChangeableTransport;
 
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
+import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 
 import java.net.SocketException;
@@ -65,13 +67,35 @@ public class SyncDataNodeInternalServiceClient extends IDataNodeRPCService.Clien
     getInputProtocol().getTransport().open();
   }
 
+  @TestOnly
+  public SyncDataNodeInternalServiceClient(
+      TProtocol protocol,
+      ThriftClientProperty property,
+      TEndPoint endpoint,
+      ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager)
+      throws TTransportException {
+    super(protocol);
+    this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
+    this.endpoint = endpoint;
+    this.clientManager = clientManager;
+    getInputProtocol().getTransport().open();
+  }
+
   public int getTimeout() throws SocketException {
-    return ((TimeoutChangeableTransport) getInputProtocol().getTransport()).getTimeOut();
+    TTransport transport = getInputProtocol().getTransport();
+    if (transport instanceof TimeoutChangeableTransport) {
+      return ((TimeoutChangeableTransport) transport).getTimeOut();
+    } else {
+      return -1;
+    }
   }
 
   public void setTimeout(int timeout) {
     // the same transport is used in both input and output
-    ((TimeoutChangeableTransport) (getInputProtocol().getTransport())).setTimeout(timeout);
+    TTransport transport = getInputProtocol().getTransport();
+    if (transport instanceof TimeoutChangeableTransport) {
+      ((TimeoutChangeableTransport) transport).setTimeout(timeout);
+    }
   }
 
   @TestOnly

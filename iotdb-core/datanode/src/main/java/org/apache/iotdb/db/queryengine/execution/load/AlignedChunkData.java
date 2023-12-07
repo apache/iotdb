@@ -72,6 +72,7 @@ public class AlignedChunkData implements ChunkData {
 
   private AlignedChunkWriterImpl chunkWriter;
   private List<Chunk> chunkList;
+  private int splitId;
 
   public AlignedChunkData(
       String device, ChunkHeader chunkHeader, TTimePartitionSlot timePartitionSlot) {
@@ -151,6 +152,7 @@ public class AlignedChunkData implements ChunkData {
     ReadWriteIOUtils.write(isAligned(), stream);
     serializeAttr(stream);
     byteStream.writeTo(stream);
+    ReadWriteIOUtils.write(splitId, stream);
     close();
   }
 
@@ -205,6 +207,21 @@ public class AlignedChunkData implements ChunkData {
       if (time >= startTime) {
         dataSize += ReadWriteIOUtils.write(time, stream);
       }
+    }
+  }
+
+  @Override
+  public void writeDecodePage(long[] times, Object[] values, int start, int end)
+      throws IOException {
+    pageNumbers.set(pageNumbers.size() - 1, pageNumbers.get(pageNumbers.size() - 1) + 1);
+    satisfiedLengthQueue.offer(end - start);
+    // serialize needDecode==true
+    dataSize += ReadWriteIOUtils.write(true, stream);
+    dataSize += ReadWriteIOUtils.write(end - start, stream);
+
+    for (int i = start; i < end; i++) {
+      long time = times[i];
+      dataSize += ReadWriteIOUtils.write(time, stream);
     }
   }
 
@@ -411,12 +428,19 @@ public class AlignedChunkData implements ChunkData {
     chunkData.pageNumbers = pageNumbers;
     chunkData.deserializeTsFileData(stream);
     chunkData.close();
+
+    chunkData.setSplitId(ReadWriteIOUtils.readInt(stream));
     return chunkData;
   }
 
   private void close() throws IOException {
     byteStream.close();
     stream.close();
+  }
+
+  @Override
+  public String firstMeasurement() {
+    return chunkHeaderList.get(0).getMeasurementID();
   }
 
   @Override
@@ -433,6 +457,30 @@ public class AlignedChunkData implements ChunkData {
         + dataSize
         + ", needDecodeChunk="
         + needDecodeChunk
+        + ", splitId="
+        + splitId
         + '}';
+  }
+
+  @Override
+  public int getSplitId() {
+    return splitId;
+  }
+
+  @Override
+  public void setSplitId(int sid) {
+    this.splitId = sid;
+  }
+
+  public List<ChunkHeader> getChunkHeaderList() {
+    return chunkHeaderList;
+  }
+
+  public List<Chunk> getChunkList() {
+    return chunkList;
+  }
+
+  public PublicBAOS getByteStream() {
+    return byteStream;
   }
 }

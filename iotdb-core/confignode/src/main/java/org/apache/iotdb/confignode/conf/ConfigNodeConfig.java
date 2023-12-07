@@ -301,6 +301,7 @@ public class ConfigNodeConfig {
   private boolean isEnablePrintingNewlyCreatedPartition = false;
 
   private long forceWalPeriodForConfigNodeSimpleInMs = 100;
+  private boolean isEnableAutoCreateDatabase = true;
 
   public ConfigNodeConfig() {
     // empty constructor
@@ -1231,5 +1232,13 @@ public class ConfigNodeConfig {
   public void setDataRegionRatisPeriodicSnapshotInterval(
       long dataRegionRatisPeriodicSnapshotInterval) {
     this.dataRegionRatisPeriodicSnapshotInterval = dataRegionRatisPeriodicSnapshotInterval;
+  }
+
+  public boolean isEnableAutoCreateDatabase() {
+    return isEnableAutoCreateDatabase;
+  }
+
+  public void setEnableAutoCreateDatabase(boolean enableAutoCreateDatabase) {
+    isEnableAutoCreateDatabase = enableAutoCreateDatabase;
   }
 }

@@ -48,6 +48,7 @@ import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.queryengine.execution.load.LoadTsFileManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadCommandNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
@@ -99,6 +100,9 @@ import java.util.function.Consumer;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 
 public class StorageEngine implements IService {
+
+  private static final String MSG_NO_SUCH_UUID =
+      "No load TsFile uuid %s recorded for execute load command %s.";
   private static final Logger LOGGER = LoggerFactory.getLogger(StorageEngine.class);
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
@@ -790,6 +794,50 @@ public class StorageEngine implements IService {
     return RpcUtils.SUCCESS_STATUS;
   }
 
+  public TSStatus executeLoadCommand(LoadCommandNode loadCommandNode) {
+    TSStatus status = new TSStatus();
+    try {
+      switch (loadCommandNode.getLoadCommand()) {
+        case EXECUTE:
+          if (getLoadTsFileManager()
+              .load(
+                  loadCommandNode.getUuid(),
+                  loadCommandNode.getConsensusGroupId(),
+                  loadCommandNode.isGeneratedByPipe())) {
+            status = RpcUtils.SUCCESS_STATUS;
+          } else {
+            status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+            status.setMessage(
+                String.format(
+                    MSG_NO_SUCH_UUID, loadCommandNode.getUuid(), loadCommandNode.getLoadCommand()));
+          }
+          break;
+        case ROLLBACK:
+          if (getLoadTsFileManager()
+              .delete(loadCommandNode.getUuid(), loadCommandNode.getConsensusGroupId())) {
+            status = RpcUtils.SUCCESS_STATUS;
+          } else {
+            status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+            status.setMessage(
+                String.format(
+                    MSG_NO_SUCH_UUID, loadCommandNode.getUuid(), loadCommandNode.getLoadCommand()));
+          }
+          break;
+        default:
+          status.setCode(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode());
+          status.setMessage(
+              String.format("Wrong load command %s.", loadCommandNode.getLoadCommand()));
+      }
+    } catch (IOException | LoadFileException e) {
+      LOGGER.error(
+          String.format("Execute load command %s error.", loadCommandNode.getLoadCommand()), e);
+      status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+      status.setMessage(e.getMessage());
+    }
+
+    return status;
+  }
+
   public TSStatus executeLoadCommand(
       LoadTsFileScheduler.LoadCommand loadCommand, String uuid, boolean isGeneratedByPipe) {
     TSStatus status = new TSStatus();
@@ -797,25 +845,19 @@ public class StorageEngine implements IService {
     try {
       switch (loadCommand) {
         case EXECUTE:
-          if (getLoadTsFileManager().loadAll(uuid, isGeneratedByPipe)) {
+          if (getLoadTsFileManager().load(uuid, null, isGeneratedByPipe)) {
             status = RpcUtils.SUCCESS_STATUS;
           } else {
             status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
-            status.setMessage(
-                String.format(
-                    "No load TsFile uuid %s recorded for execute load command %s.",
-                    uuid, loadCommand));
+            status.setMessage(String.format(MSG_NO_SUCH_UUID, uuid, loadCommand));
           }
           break;
         case ROLLBACK:
-          if (getLoadTsFileManager().deleteAll(uuid)) {
+          if (getLoadTsFileManager().delete(uuid, null)) {
             status = RpcUtils.SUCCESS_STATUS;
           } else {
             status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
-            status.setMessage(
-                String.format(
-                    "No load TsFile uuid %s recorded for execute load command %s.",
-                    uuid, loadCommand));
+            status.setMessage(String.format(MSG_NO_SUCH_UUID, uuid, loadCommand));
           }
           break;
         default:

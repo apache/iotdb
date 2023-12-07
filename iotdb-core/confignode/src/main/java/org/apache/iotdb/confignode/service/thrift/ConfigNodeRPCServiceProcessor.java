@@ -36,6 +36,7 @@ import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -114,6 +115,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPartitionParameterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
@@ -160,6 +162,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -274,8 +277,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     return configManager.showVariables();
   }
 
-  @Override
-  public TSStatus setDatabase(TDatabaseSchema databaseSchema) {
+  public static TSStatus validateDatabaseSchema(TDatabaseSchema databaseSchema) {
     TSStatus errorResp = null;
     boolean isSystemDatabase = databaseSchema.getName().equals(SchemaConstant.SYSTEM_DATABASE);
 
@@ -351,6 +353,15 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     // The maxRegionGroupNum is equal to the minRegionGroupNum when initialize
     databaseSchema.setMaxSchemaRegionGroupNum(databaseSchema.getMinSchemaRegionGroupNum());
     databaseSchema.setMaxDataRegionGroupNum(databaseSchema.getMinDataRegionGroupNum());
+    return errorResp;
+  }
+
+  @Override
+  public TSStatus setDatabase(TDatabaseSchema databaseSchema) {
+    TSStatus errorResp = validateDatabaseSchema(databaseSchema);
+    if (errorResp != null) {
+      return errorResp;
+    }
 
     DatabaseSchemaPlan setPlan =
         new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, databaseSchema);
@@ -1026,5 +1037,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TThrottleQuotaResp getThrottleQuota() {
     return configManager.getThrottleQuota();
+  }
+
+  @Override
+  public TGetPartitionParameterResp getPartitionParameter() {
+    return new TGetPartitionParameterResp(
+        TimePartitionUtils.getTimePartitionInterval(),
+        IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
   }
 }

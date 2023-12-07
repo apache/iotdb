@@ -29,6 +29,7 @@ import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
 import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.factory.ThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.client.sync.SyncThriftClientWithErrorHandler;
@@ -82,6 +83,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPartitionParameterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
@@ -276,7 +278,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   @Override
   public void close() {
-    clientManager.returnClient(configRegionId, this);
+    if (clientManager != null) {
+      clientManager.returnClient(configRegionId, this);
+    } else {
+      // clients not managed by ClientManages will be destroyed after being closed
+      invalidate();
+    }
   }
 
   @Override
@@ -286,7 +293,9 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   @Override
   public void invalidateAll() {
-    clientManager.clear(ConfigNodeInfo.CONFIG_REGION_ID);
+    if (clientManager != null) {
+      clientManager.clear(ConfigNodeInfo.CONFIG_REGION_ID);
+    }
   }
 
   @Override
@@ -984,6 +993,11 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         () -> client.getThrottleQuota(), resp -> !updateConfigNodeLeader(resp.status));
   }
 
+  @Override
+  public TGetPartitionParameterResp getPartitionParameter() throws TException {
+    return executeRemoteCallWithRetry(() -> client.getPartitionParameter(), resp -> true);
+  }
+
   public static class Factory extends ThriftClientFactory<ConfigRegionId, ConfigNodeClient> {
 
     public Factory(
@@ -1018,5 +1032,10 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
           .map(TTransport::isOpen)
           .orElse(false);
     }
+  }
+
+  @FunctionalInterface
+  public interface ConfigNodeClientProvider {
+    ConfigNodeClient supply() throws ClientManagerException, TException;
   }
 }

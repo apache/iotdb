@@ -22,15 +22,12 @@ package org.apache.iotdb.db.queryengine.plan.scheduler.load;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.commons.partition.DataPartition;
-import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.StorageExecutor;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
@@ -43,10 +40,9 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInfo;
-import org.apache.iotdb.db.queryengine.execution.load.ChunkData;
-import org.apache.iotdb.db.queryengine.execution.load.TsFileData;
+import org.apache.iotdb.db.queryengine.execution.load.DataPartitionBatchFetcher;
+import org.apache.iotdb.db.queryengine.execution.load.TsFileDataManager;
 import org.apache.iotdb.db.queryengine.execution.load.TsFileSplitter;
-import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
@@ -59,7 +55,6 @@ import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import io.airlift.units.Duration;
 import org.slf4j.Logger;
@@ -68,11 +63,8 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CancellationException;
@@ -80,8 +72,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 /**
  * {@link LoadTsFileScheduler} is used for scheduling {@link LoadSingleTsFileNode} and {@link
@@ -91,10 +81,11 @@ import java.util.stream.IntStream;
  * href="https://apache-iotdb.feishu.cn/docx/doxcnyBYWzek8ksSEU6obZMpYLe">...</a>;
  */
 public class LoadTsFileScheduler implements IScheduler {
+
   private static final Logger logger = LoggerFactory.getLogger(LoadTsFileScheduler.class);
   public static final long LOAD_TASK_MAX_TIME_IN_SECOND = 900L; // 15min
-  private static final long MAX_MEMORY_SIZE;
-  private static final int TRANSMIT_LIMIT;
+  public static final long MAX_MEMORY_SIZE;
+  public static final int TRANSMIT_LIMIT;
 
   static {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -104,6 +95,10 @@ public class LoadTsFileScheduler implements IScheduler {
             (long) (config.getAllocateMemoryForStorageEngine() * config.getLoadTsFileProportion()));
     TRANSMIT_LIMIT =
         CommonDescriptor.getInstance().getConfig().getTTimePartitionSlotTransmitLimit();
+  }
+
+  public static long getMaxMemorySize() {
+    return MAX_MEMORY_SIZE;
   }
 
   private final MPPQueryContext queryContext;
@@ -120,14 +115,14 @@ public class LoadTsFileScheduler implements IScheduler {
       MPPQueryContext queryContext,
       QueryStateMachine stateMachine,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager,
-      IPartitionFetcher partitionFetcher,
+      DataPartitionBatchFetcher partitionFetcher,
       boolean isGeneratedByPipe) {
     this.queryContext = queryContext;
     this.stateMachine = stateMachine;
     this.tsFileNodeList = new ArrayList<>();
     this.fragmentId = distributedQueryPlan.getRootSubPlan().getPlanFragment().getId();
     this.dispatcher = new LoadTsFileDispatcherImpl(internalServiceClientManager, isGeneratedByPipe);
-    this.partitionFetcher = new DataPartitionBatchFetcher(partitionFetcher);
+    this.partitionFetcher = partitionFetcher;
     this.allReplicaSets = new HashSet<>();
     this.isGeneratedByPipe = isGeneratedByPipe;
 
@@ -203,10 +198,17 @@ public class LoadTsFileScheduler implements IScheduler {
   }
 
   private boolean firstPhase(LoadSingleTsFileNode node) {
-    final TsFileDataManager tsFileDataManager = new TsFileDataManager(this, node);
+    final TsFileDataManager tsFileDataManager =
+        new TsFileDataManager(
+            this::dispatchOnePieceNode,
+            node.getPlanNodeId(),
+            node.getTsFileResource().getTsFile(),
+            partitionFetcher,
+            MAX_MEMORY_SIZE,
+            queryContext.getSession().getUserName());
     try {
       new TsFileSplitter(
-              node.getTsFileResource().getTsFile(), tsFileDataManager::addOrSendTsFileData)
+              node.getTsFileResource().getTsFile(), tsFileDataManager::addOrSendTsFileData, 0)
           .splitTsFileByDataPartition();
       if (!tsFileDataManager.sendAllTsFileData()) {
         stateMachine.transitionToFailed(new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()));
@@ -231,8 +233,7 @@ public class LoadTsFileScheduler implements IScheduler {
     return true;
   }
 
-  private boolean dispatchOnePieceNode(
-      LoadTsFilePieceNode pieceNode, TRegionReplicaSet replicaSet) {
+  public boolean dispatchOnePieceNode(LoadTsFilePieceNode pieceNode, TRegionReplicaSet replicaSet) {
     allReplicaSets.add(replicaSet);
     FragmentInstance instance =
         new FragmentInstance(
@@ -400,160 +401,7 @@ public class LoadTsFileScheduler implements IScheduler {
     ROLLBACK
   }
 
-  private static class TsFileDataManager {
-    private final LoadTsFileScheduler scheduler;
-    private final LoadSingleTsFileNode singleTsFileNode;
-
-    private long dataSize;
-    private final Map<TRegionReplicaSet, LoadTsFilePieceNode> replicaSet2Piece;
-    private final List<ChunkData> nonDirectionalChunkData;
-
-    public TsFileDataManager(LoadTsFileScheduler scheduler, LoadSingleTsFileNode singleTsFileNode) {
-      this.scheduler = scheduler;
-      this.singleTsFileNode = singleTsFileNode;
-      this.dataSize = 0;
-      this.replicaSet2Piece = new HashMap<>();
-      this.nonDirectionalChunkData = new ArrayList<>();
-    }
-
-    private boolean addOrSendTsFileData(TsFileData tsFileData) {
-      return tsFileData.isModification()
-          ? addOrSendDeletionData(tsFileData)
-          : addOrSendChunkData((ChunkData) tsFileData);
-    }
-
-    private boolean addOrSendChunkData(ChunkData chunkData) {
-      nonDirectionalChunkData.add(chunkData);
-      dataSize += chunkData.getDataSize();
-
-      if (dataSize > MAX_MEMORY_SIZE) {
-        routeChunkData();
-
-        // start to dispatch from the biggest TsFilePieceNode
-        List<TRegionReplicaSet> sortedReplicaSets =
-            replicaSet2Piece.keySet().stream()
-                .sorted(
-                    Comparator.comparingLong(o -> replicaSet2Piece.get(o).getDataSize()).reversed())
-                .collect(Collectors.toList());
-
-        for (TRegionReplicaSet sortedReplicaSet : sortedReplicaSets) {
-          LoadTsFilePieceNode pieceNode = replicaSet2Piece.get(sortedReplicaSet);
-          if (pieceNode.getDataSize() == 0) { // total data size has been reduced to 0
-            break;
-          }
-          if (!scheduler.dispatchOnePieceNode(pieceNode, sortedReplicaSet)) {
-            return false;
-          }
-
-          dataSize -= pieceNode.getDataSize();
-          replicaSet2Piece.put(
-              sortedReplicaSet,
-              new LoadTsFilePieceNode(
-                  singleTsFileNode.getPlanNodeId(),
-                  singleTsFileNode
-                      .getTsFileResource()
-                      .getTsFile())); // can not just remove, because of deletion
-          if (dataSize <= MAX_MEMORY_SIZE) {
-            break;
-          }
-        }
-      }
-
-      return true;
-    }
-
-    private void routeChunkData() {
-      if (nonDirectionalChunkData.isEmpty()) {
-        return;
-      }
-
-      List<TRegionReplicaSet> replicaSets =
-          scheduler.partitionFetcher.queryDataPartition(
-              nonDirectionalChunkData.stream()
-                  .map(data -> new Pair<>(data.getDevice(), data.getTimePartitionSlot()))
-                  .collect(Collectors.toList()),
-              scheduler.queryContext.getSession().getUserName());
-      IntStream.range(0, nonDirectionalChunkData.size())
-          .forEach(
-              i ->
-                  replicaSet2Piece
-                      .computeIfAbsent(
-                          replicaSets.get(i),
-                          o ->
-                              new LoadTsFilePieceNode(
-                                  singleTsFileNode.getPlanNodeId(),
-                                  singleTsFileNode.getTsFileResource().getTsFile()))
-                      .addTsFileData(nonDirectionalChunkData.get(i)));
-      nonDirectionalChunkData.clear();
-    }
-
-    private boolean addOrSendDeletionData(TsFileData deletionData) {
-      routeChunkData(); // ensure chunk data will be added before deletion
-
-      for (Map.Entry<TRegionReplicaSet, LoadTsFilePieceNode> entry : replicaSet2Piece.entrySet()) {
-        dataSize += deletionData.getDataSize();
-        entry.getValue().addTsFileData(deletionData);
-      }
-      return true;
-    }
-
-    private boolean sendAllTsFileData() {
-      routeChunkData();
-
-      for (Map.Entry<TRegionReplicaSet, LoadTsFilePieceNode> entry : replicaSet2Piece.entrySet()) {
-        if (!scheduler.dispatchOnePieceNode(entry.getValue(), entry.getKey())) {
-          logger.warn(
-              "Dispatch piece node {} of TsFile {} error.",
-              entry.getValue(),
-              singleTsFileNode.getTsFileResource().getTsFile());
-          return false;
-        }
-      }
-      return true;
-    }
-
-    private void clear() {
-      replicaSet2Piece.clear();
-    }
-  }
-
-  private static class DataPartitionBatchFetcher {
-    private final IPartitionFetcher fetcher;
-
-    public DataPartitionBatchFetcher(IPartitionFetcher fetcher) {
-      this.fetcher = fetcher;
-    }
-
-    public List<TRegionReplicaSet> queryDataPartition(
-        List<Pair<String, TTimePartitionSlot>> slotList, String userName) {
-      List<TRegionReplicaSet> replicaSets = new ArrayList<>();
-      int size = slotList.size();
-
-      for (int i = 0; i < size; i += TRANSMIT_LIMIT) {
-        List<Pair<String, TTimePartitionSlot>> subSlotList =
-            slotList.subList(i, Math.min(size, i + TRANSMIT_LIMIT));
-        DataPartition dataPartition =
-            fetcher.getOrCreateDataPartition(toQueryParam(subSlotList), userName);
-        replicaSets.addAll(
-            subSlotList.stream()
-                .map(pair -> dataPartition.getDataRegionReplicaSetForWriting(pair.left, pair.right))
-                .collect(Collectors.toList()));
-      }
-      return replicaSets;
-    }
-
-    private List<DataPartitionQueryParam> toQueryParam(
-        List<Pair<String, TTimePartitionSlot>> slots) {
-      return slots.stream()
-          .collect(
-              Collectors.groupingBy(
-                  Pair::getLeft, Collectors.mapping(Pair::getRight, Collectors.toSet())))
-          .entrySet()
-          .stream()
-          .map(
-              entry ->
-                  new DataPartitionQueryParam(entry.getKey(), new ArrayList<>(entry.getValue())))
-          .collect(Collectors.toList());
-    }
+  public DataPartitionBatchFetcher getPartitionFetcher() {
+    return partitionFetcher;
   }
 }

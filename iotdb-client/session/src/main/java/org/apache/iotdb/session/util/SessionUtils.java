@@ -261,5 +261,20 @@ public class SessionUtils {
     return endPointsList;
   }
 
+  public static TEndPoint parseNodeUrl(String nodeUrl) {
+    TEndPoint endPoint = new TEndPoint();
+    String[] split = nodeUrl.split(":");
+    if (split.length != 2) {
+      throw new NumberFormatException("NodeUrl Incorrect format");
+    }
+    String ip = split[0];
+    try {
+      int rpcPort = Integer.parseInt(split[1]);
+      return endPoint.setIp(ip).setPort(rpcPort);
+    } catch (Exception e) {
+      throw new NumberFormatException("NodeUrl Incorrect format");
+    }
+  }
+
   private SessionUtils() {}
 }

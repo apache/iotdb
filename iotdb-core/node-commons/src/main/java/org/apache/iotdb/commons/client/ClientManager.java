@@ -35,7 +35,7 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
 
   private final KeyedObjectPool<K, V> pool;
 
-  ClientManager(IClientPoolFactory<K, V> factory) {
+  protected ClientManager(IClientPoolFactory<K, V> factory) {
     pool = factory.createClientPool(this);
   }
 

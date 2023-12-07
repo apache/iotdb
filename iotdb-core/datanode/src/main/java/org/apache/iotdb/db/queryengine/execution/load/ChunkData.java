@@ -45,6 +45,10 @@ public interface ChunkData extends TsFileData {
 
   void writeDecodePage(long[] times, Object[] values, int satisfiedLength) throws IOException;
 
+  void writeDecodePage(long[] times, Object[] values, int start, int end) throws IOException;
+
+  String firstMeasurement();
+
   @Override
   default boolean isModification() {
     return false;

@@ -58,6 +58,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 public class TsFileSplitter {
@@ -65,10 +66,16 @@ public class TsFileSplitter {
 
   private final File tsFile;
   private final Function<TsFileData, Boolean> consumer;
+  private final AtomicInteger splitIdGenerator = new AtomicInteger();
 
-  public TsFileSplitter(File tsFile, Function<TsFileData, Boolean> consumer) {
+  public TsFileSplitter(File tsFile, Function<TsFileData, Boolean> consumer, int startSplitId) {
     this.tsFile = tsFile;
     this.consumer = consumer;
+    splitIdGenerator.set(startSplitId);
+  }
+
+  public int getCurrentSplitId() {
+    return splitIdGenerator.get();
   }
 
   @SuppressWarnings({"squid:S3776", "squid:S6541"})
@@ -189,13 +196,13 @@ public class TsFileSplitter {
                   pageIndex2Times.put(pageIndex, times);
                 }
 
-                int satisfiedLength = 0;
+                int start = 0;
                 long endTime =
                     timePartitionSlot.getStartTime()
                         + TimePartitionUtils.getTimePartitionInterval();
                 for (int i = 0; i < times.length; i++) {
                   if (times[i] >= endTime) {
-                    chunkData.writeDecodePage(times, values, satisfiedLength);
+                    chunkData.writeDecodePage(times, values, start, i);
                     if (isAligned) {
                       pageIndex2ChunkData
                           .computeIfAbsent(pageIndex, o -> new ArrayList<>())
@@ -205,16 +212,15 @@ public class TsFileSplitter {
                     }
 
                     timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[i]);
-                    satisfiedLength = 0;
                     endTime =
                         timePartitionSlot.getStartTime()
                             + TimePartitionUtils.getTimePartitionInterval();
                     chunkData =
                         ChunkData.createChunkData(isAligned, curDevice, header, timePartitionSlot);
+                    start = i;
                   }
-                  satisfiedLength += 1;
                 }
-                chunkData.writeDecodePage(times, values, satisfiedLength);
+                chunkData.writeDecodePage(times, values, start, times.length);
                 if (isAligned) {
                   pageIndex2ChunkData
                       .computeIfAbsent(pageIndex, o -> new ArrayList<>())
@@ -357,7 +363,10 @@ public class TsFileSplitter {
       offset2Deletions
           .pollFirstEntry()
           .getValue()
-          .forEach(o -> consumer.apply(new DeletionData(o)));
+          .forEach(
+              o -> {
+                consumer.apply(new DeletionData(o));
+              });
     }
   }
 

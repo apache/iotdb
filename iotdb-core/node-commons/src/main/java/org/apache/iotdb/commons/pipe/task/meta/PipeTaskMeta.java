@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -57,9 +58,14 @@ public class PipeTaskMeta {
   private final Map<PipeRuntimeException, PipeRuntimeException> exceptionMessages =
       new ConcurrentHashMap<>();
 
+  private long createTime;
+  private long lastReportTime;
+
   public PipeTaskMeta(/* @NotNull */ ProgressIndex progressIndex, int leaderDataNodeId) {
     this.progressIndex.set(progressIndex);
     this.leaderDataNodeId.set(leaderDataNodeId);
+    this.createTime = System.currentTimeMillis();
+    this.lastReportTime = System.currentTimeMillis();
   }
 
   public ProgressIndex getProgressIndex() {
@@ -67,6 +73,7 @@ public class PipeTaskMeta {
   }
 
   public ProgressIndex updateProgressIndex(ProgressIndex updateIndex) {
+    this.lastReportTime = System.currentTimeMillis();
     return progressIndex.updateAndGet(
         index -> index.updateToMinimumIsAfterProgressIndex(updateIndex));
   }
@@ -176,6 +183,11 @@ public class PipeTaskMeta {
         + leaderDataNodeId
         + ", exceptionMessages='"
         + exceptionMessages
+        + ", lastReportSince "
+        + new Date(createTime)
+        + " ("
+        + (lastReportTime - createTime) / 1000
+        + "s)"
         + "'}";
   }
 }

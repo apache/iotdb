@@ -45,6 +45,8 @@ import java.nio.ByteBuffer;
 
 public class NonAlignedChunkData implements ChunkData {
 
+  private static final String MSG_UNSUPPORTED_DATA_TYPE = "Data type %s is not supported.";
+
   private final TTimePartitionSlot timePartitionSlot;
   private final String device;
   private final ChunkHeader chunkHeader;
@@ -57,6 +59,7 @@ public class NonAlignedChunkData implements ChunkData {
 
   private ChunkWriterImpl chunkWriter;
   private Chunk chunk;
+  private int splitId;
 
   public NonAlignedChunkData(
       String device, ChunkHeader chunkHeader, TTimePartitionSlot timePartitionSlot) {
@@ -121,6 +124,7 @@ public class NonAlignedChunkData implements ChunkData {
     ReadWriteIOUtils.write(isAligned(), stream);
     serializeAttr(stream);
     byteStream.writeTo(stream);
+    ReadWriteIOUtils.write(splitId, stream);
     close();
   }
 
@@ -185,8 +189,42 @@ public class NonAlignedChunkData implements ChunkData {
             break;
           default:
             throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", chunkHeader.getDataType()));
+                String.format(MSG_UNSUPPORTED_DATA_TYPE, chunkHeader.getDataType()));
         }
+      }
+    }
+  }
+
+  public void writeDecodePage(long[] times, Object[] values, int start, int end)
+      throws IOException {
+    pageNumber += 1;
+    dataSize += ReadWriteIOUtils.write(true, stream);
+    dataSize += ReadWriteIOUtils.write(end - start, stream);
+
+    for (int i = start; i < end; i++) {
+      dataSize += ReadWriteIOUtils.write(times[i], stream);
+      switch (chunkHeader.getDataType()) {
+        case INT32:
+          dataSize += ReadWriteIOUtils.write((int) values[i], stream);
+          break;
+        case INT64:
+          dataSize += ReadWriteIOUtils.write((long) values[i], stream);
+          break;
+        case FLOAT:
+          dataSize += ReadWriteIOUtils.write((float) values[i], stream);
+          break;
+        case DOUBLE:
+          dataSize += ReadWriteIOUtils.write((double) values[i], stream);
+          break;
+        case BOOLEAN:
+          dataSize += ReadWriteIOUtils.write((boolean) values[i], stream);
+          break;
+        case TEXT:
+          dataSize += ReadWriteIOUtils.write((Binary) values[i], stream);
+          break;
+        default:
+          throw new UnSupportedDataTypeException(
+              String.format(MSG_UNSUPPORTED_DATA_TYPE, chunkHeader.getDataType()));
       }
     }
   }
@@ -205,6 +243,7 @@ public class NonAlignedChunkData implements ChunkData {
     Statistics<? extends Serializable> statistics =
         Statistics.deserialize(stream, chunkHeader.getDataType());
     chunk = new Chunk(chunkHeader, chunkData, null, statistics);
+    dataSize += chunkData.remaining();
   }
 
   private void buildChunkWriter(InputStream stream) throws IOException, PageException {
@@ -243,7 +282,7 @@ public class NonAlignedChunkData implements ChunkData {
               break;
             default:
               throw new UnSupportedDataTypeException(
-                  String.format("Data type %s is not supported.", chunkHeader.getDataType()));
+                  String.format(MSG_UNSUPPORTED_DATA_TYPE, chunkHeader.getDataType()));
           }
         }
 
@@ -275,12 +314,19 @@ public class NonAlignedChunkData implements ChunkData {
     chunkData.pageNumber = pageNumber;
     chunkData.deserializeTsFileData(stream);
     chunkData.close();
+
+    chunkData.setSplitId(ReadWriteIOUtils.readInt(stream));
     return chunkData;
   }
 
   private void close() throws IOException {
     byteStream.close();
     stream.close();
+  }
+
+  @Override
+  public String firstMeasurement() {
+    return chunkHeader.getMeasurementID();
   }
 
   @Override
@@ -297,6 +343,30 @@ public class NonAlignedChunkData implements ChunkData {
         + chunkHeader
         + ", needDecodeChunk="
         + needDecodeChunk
+        + ", splitId="
+        + splitId
         + '}';
+  }
+
+  @Override
+  public int getSplitId() {
+    return splitId;
+  }
+
+  @Override
+  public void setSplitId(int sid) {
+    this.splitId = sid;
+  }
+
+  public ChunkHeader getChunkHeader() {
+    return chunkHeader;
+  }
+
+  public Chunk getChunk() {
+    return chunk;
+  }
+
+  public PublicBAOS getByteStream() {
+    return byteStream;
   }
 }

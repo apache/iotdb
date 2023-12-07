@@ -17,10 +17,14 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
+import org.apache.iotdb.tsfile.compress.IUnCompressor;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 public class TsFileUtils {
 
@@ -54,5 +58,22 @@ public class TsFileUtils {
   public static boolean isSequence(File tsFile) {
     File folder = tsFile.getParentFile().getParentFile().getParentFile().getParentFile();
     return folder.getName().equals("sequence");
+  }
+
+  public static ByteBuffer uncompressPage(
+      PageHeader header, CompressionType type, ByteBuffer buffer) throws IOException {
+    return uncompress(header.getUncompressedSize(), type, buffer);
+  }
+
+  public static ByteBuffer uncompress(int uncompressedSize, CompressionType type, ByteBuffer buffer)
+      throws IOException {
+    if (uncompressedSize == 0 || type == CompressionType.UNCOMPRESSED) {
+      return buffer;
+    }
+    IUnCompressor unCompressor = IUnCompressor.getUnCompressor(type);
+    ByteBuffer uncompressedBuffer = ByteBuffer.allocate(uncompressedSize);
+    unCompressor.uncompress(
+        buffer.array(), buffer.position(), buffer.remaining(), uncompressedBuffer.array(), 0);
+    return uncompressedBuffer;
   }
 }

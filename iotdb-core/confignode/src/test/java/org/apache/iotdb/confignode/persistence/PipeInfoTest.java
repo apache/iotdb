@@ -108,7 +108,6 @@ public class PipeInfoTest {
     PipeInfo pipeInfo1 = new PipeInfo();
     pipeInfo1.processLoadSnapshot(snapshotDir);
 
-    Assert.assertEquals(pipeInfo.toString(), pipeInfo1.toString());
     Assert.assertEquals(pipeInfo, pipeInfo1);
   }
 

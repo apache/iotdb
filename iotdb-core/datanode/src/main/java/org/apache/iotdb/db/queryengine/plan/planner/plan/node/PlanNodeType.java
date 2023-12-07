@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadCommandNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.DevicesCountNode;
@@ -187,7 +188,8 @@ public enum PlanNodeType {
   // NodeId 80 is used by IoTDB-ML which shouldn't be used.
 
   LAST_QUERY_TRANSFORM((short) 81),
-  TOP_K((short) 82);
+  TOP_K((short) 82),
+  LOAD_COMMAND((short) 83);
 
   public static final int BYTES = Short.BYTES;
 
@@ -400,6 +402,8 @@ public enum PlanNodeType {
         return LastQueryTransformNode.deserialize(buffer);
       case 82:
         return TopKNode.deserialize(buffer);
+      case 83:
+        return LoadCommandNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

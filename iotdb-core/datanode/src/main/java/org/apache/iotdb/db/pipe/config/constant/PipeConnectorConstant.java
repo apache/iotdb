@@ -101,6 +101,19 @@ public class PipeConnectorConstant {
           ? IoTDBDescriptor.getInstance().getConfDir() + File.separatorChar + "opc_security"
           : System.getProperty("user.home") + File.separatorChar + "iotdb_opc_security";
 
+  public static final String CONNECTOR_LOCAL_SPLIT_ENABLE_KEY = "connector.local-split.enable";
+  public static final String CONNECTOR_EXTERNAL_CONFIG_NODES_KEY =
+      "connector.external.config-nodes";
+  public static final String CONNECTOR_SPLIT_MAX_SIZE_KEY = "connector.split.max-size";
+  public static final int CONNECTOR_SPLIT_MAX_SIZE_DEFAULT_VALUE = 64 * 1024 * 1024;
+  public static final String CONNECTOR_SPLIT_MAX_CONCURRENT_FILE_KEY =
+      "connector.split.max-concurrent-file";
+  public static final int CONNECTOR_SPLIT_MAX_CONCURRENT_FILE_DEFAULT_VALUE = 16;
+  public static final String CONNECTOR_EXTERNAL_USER_NAME_KEY = "connector.external.user-name";
+  public static final String CONNECTOR_EXTERNAL_USER_NAME_DEFAULT_VALUE = "root";
+  public static final String CONNECTOR_EXTERNAL_USER_PASSWORD_KEY = "connector.external.password";
+  public static final String CONNECTOR_EXTERNAL_USER_PASSWORD_DEFAULT_VALUE = "root";
+
   private PipeConnectorConstant() {
     throw new IllegalStateException("Utility class");
   }

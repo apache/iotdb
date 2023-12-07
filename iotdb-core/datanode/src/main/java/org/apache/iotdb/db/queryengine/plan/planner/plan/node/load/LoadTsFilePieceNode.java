@@ -53,6 +53,7 @@ public class LoadTsFilePieceNode extends WritePlanNode {
 
   private long dataSize;
   private List<TsFileData> tsFileDataList;
+  private boolean hasModification;
 
   public LoadTsFilePieceNode(PlanNodeId id) {
     super(id);
@@ -72,6 +73,9 @@ public class LoadTsFilePieceNode extends WritePlanNode {
   public void addTsFileData(TsFileData tsFileData) {
     tsFileDataList.add(tsFileData);
     dataSize += tsFileData.getDataSize();
+    if (tsFileData.isModification()) {
+      hasModification = true;
+    }
   }
 
   public List<TsFileData> getAllTsFileData() {
@@ -187,5 +191,9 @@ public class LoadTsFilePieceNode extends WritePlanNode {
   @Override
   public String toString() {
     return "LoadTsFilePieceNode{" + "tsFile=" + tsFile + ", dataSize=" + dataSize + '}';
+  }
+
+  public boolean isHasModification() {
+    return hasModification;
   }
 }

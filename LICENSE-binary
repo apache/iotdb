@@ -290,6 +290,7 @@ org.slf4j:slf4j-api
 me.tongfei:progressbar:0.7.3
 com.bugsnag:bugsnag:3.6.1
 org.slf4j:jcl-over-slf4j:1.7.25
+net.ricecode:string-similarity:1.0.0
 
 
 EPL 1.0

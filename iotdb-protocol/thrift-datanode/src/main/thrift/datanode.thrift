@@ -317,12 +317,20 @@ struct TTsFilePieceReq{
     1: required binary body
     2: required string uuid
     3: required common.TConsensusGroupId consensusGroupId
+    4: optional common.TRegionReplicaSet relayTargets
+    5: optional i8 compressionType
+    6: optional i32 uncompressedLength
+    7: optional bool needSchemaRegistration
+    8: optional string username
+    9: optional string password
 }
 
 struct TLoadCommandReq{
     1: required i32 commandType
     2: required string uuid
     3: optional bool isGeneratedByPipe
+    4: optional bool useConsensus
+    5: optional common.TConsensusGroupId consensusGroupId
 }
 
 struct TLoadResp{
