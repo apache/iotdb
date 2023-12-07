@@ -43,12 +43,14 @@ import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static org.apache.iotdb.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
+import static org.apache.iotdb.tsfile.utils.Preconditions.checkArgument;
 
 public class PageReader implements IPageReader {
 
-  private PageHeader pageHeader;
+  private final PageHeader pageHeader;
 
   protected TSDataType dataType;
 
@@ -116,7 +118,7 @@ public class PageReader implements IPageReader {
   @Override
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
     BatchData pageData = BatchDataFactory.createBatchData(dataType, ascending, false);
-    if (filter == null || filter.satisfy(getStatistics())) {
+    if (filter == null || !filter.canSkip(this)) {
       while (timeDecoder.hasNext(timeBuffer)) {
         long timestamp = timeDecoder.readLong(timeBuffer);
         switch (dataType) {
@@ -164,18 +166,17 @@ public class PageReader implements IPageReader {
     return pageData.flip();
   }
 
-  private boolean pageSatisfy() {
-    Statistics statistics = getStatistics();
-    if (filter == null || filter.allSatisfy(statistics)) {
-      long rowCount = statistics.getCount();
+  private boolean pageCanSkip() {
+    if (filter == null || filter.allSatisfy(this)) {
+      long rowCount = getStatistics().getCount();
       if (paginationController.hasCurOffset(rowCount)) {
         paginationController.consumeOffset(rowCount);
-        return false;
-      } else {
         return true;
+      } else {
+        return false;
       }
     } else {
-      return filter.satisfy(statistics);
+      return filter.canSkip(this);
     }
   }
 
@@ -196,7 +197,7 @@ public class PageReader implements IPageReader {
     }
     TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
     ColumnBuilder valueBuilder = builder.getColumnBuilder(0);
-    if (pageSatisfy()) {
+    if (!pageCanSkip()) {
       switch (dataType) {
         case BOOLEAN:
           while (timeDecoder.hasNext(timeBuffer)) {
@@ -334,6 +335,25 @@ public class PageReader implements IPageReader {
   @Override
   public Statistics<? extends Serializable> getStatistics() {
     return pageHeader.getStatistics();
+  }
+
+  @Override
+  public Statistics<? extends Serializable> getTimeStatistics() {
+    return getStatistics();
+  }
+
+  @Override
+  public Optional<Statistics<? extends Serializable>> getMeasurementStatistics(
+      int measurementIndex) {
+    checkArgument(
+        measurementIndex == 0,
+        "Non-aligned page only has one measurement, but measurementIndex is " + measurementIndex);
+    return Optional.ofNullable(getStatistics());
+  }
+
+  @Override
+  public boolean hasNullValue(int measurementIndex) {
+    return false;
   }
 
   @Override

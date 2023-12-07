@@ -17,17 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.read.filter.operator.base;
-
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+package org.apache.iotdb.tsfile.read.filter.basic;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Objects;
 
 /* base class for And, Or */
-public abstract class BinaryLogicalFilter implements Filter {
+public abstract class BinaryLogicalFilter extends Filter {
 
   protected final Filter left;
   protected final Filter right;
@@ -45,8 +42,9 @@ public abstract class BinaryLogicalFilter implements Filter {
     return right;
   }
 
+  @Override
   public void serialize(DataOutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(getOperatorType().ordinal(), outputStream);
+    super.serialize(outputStream);
     left.serialize(outputStream);
     right.serialize(outputStream);
   }

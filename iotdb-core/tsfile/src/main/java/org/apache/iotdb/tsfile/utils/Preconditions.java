@@ -17,15 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.read.filter.basic;
+package org.apache.iotdb.tsfile.utils;
 
-public interface IDisableStatisticsTimeFilter extends ITimeFilter {
+public class Preconditions {
 
-  default boolean satisfyStartEndTime(long startTime, long endTime) {
-    return true;
+  private Preconditions() {
+    // private constructor for utility class
   }
 
-  default boolean containStartEndTime(long startTime, long endTime) {
-    return false;
+  public static void checkArgument(boolean expression) {
+    if (!expression) {
+      throw new IllegalArgumentException();
+    }
+  }
+
+  public static void checkArgument(boolean expression, String errorMessage) {
+    if (!expression) {
+      throw new IllegalArgumentException(errorMessage);
+    }
   }
 }

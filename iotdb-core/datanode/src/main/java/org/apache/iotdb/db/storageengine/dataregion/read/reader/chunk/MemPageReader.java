@@ -39,6 +39,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static org.apache.iotdb.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
 
@@ -95,18 +96,17 @@ public class MemPageReader implements IPageReader {
     return batchData.flip();
   }
 
-  private boolean pageSatisfy() {
-    Statistics<? extends Serializable> statistics = getStatistics();
-    if (valueFilter == null || valueFilter.allSatisfy(statistics)) {
-      long rowCount = statistics.getCount();
+  private boolean pageCanSkip() {
+    if (valueFilter == null || valueFilter.allSatisfy(this)) {
+      long rowCount = getStatistics().getCount();
       if (paginationController.hasCurOffset(rowCount)) {
         paginationController.consumeOffset(rowCount);
-        return false;
-      } else {
         return true;
+      } else {
+        return false;
       }
     } else {
-      return valueFilter.satisfy(statistics);
+      return valueFilter.canSkip(this);
     }
   }
 
@@ -116,7 +116,7 @@ public class MemPageReader implements IPageReader {
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(dataType));
     TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
     ColumnBuilder valueBuilder = builder.getColumnBuilder(0);
-    if (pageSatisfy()) {
+    if (!pageCanSkip()) {
       switch (dataType) {
         case BOOLEAN:
           doWithBoolean(builder, timeBuilder, valueBuilder);
@@ -326,6 +326,22 @@ public class MemPageReader implements IPageReader {
   @Override
   public Statistics<? extends Serializable> getStatistics() {
     return chunkMetadata.getStatistics();
+  }
+
+  @Override
+  public Statistics<? extends Serializable> getTimeStatistics() {
+    return chunkMetadata.getTimeStatistics();
+  }
+
+  @Override
+  public Optional<Statistics<? extends Serializable>> getMeasurementStatistics(
+      int measurementIndex) {
+    return chunkMetadata.getMeasurementStatistics(measurementIndex);
+  }
+
+  @Override
+  public boolean hasNullValue(int measurementIndex) {
+    return chunkMetadata.hasNullValue(measurementIndex);
   }
 
   @Override

@@ -17,17 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.read.filter.basic;
+package org.apache.iotdb.tsfile.file.metadata;
 
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 
-public interface ITimeFilter extends Filter {
+import java.io.Serializable;
+import java.util.Optional;
 
-  default boolean satisfy(Statistics statistics) {
-    return satisfyStartEndTime(statistics.getStartTime(), statistics.getEndTime());
-  }
+public interface IMetadata {
 
-  default boolean allSatisfy(Statistics statistics) {
-    return containStartEndTime(statistics.getStartTime(), statistics.getEndTime());
-  }
+  Statistics<? extends Serializable> getStatistics();
+
+  Statistics<? extends Serializable> getTimeStatistics();
+
+  Optional<Statistics<? extends Serializable>> getMeasurementStatistics(int measurementIndex);
+
+  boolean hasNullValue(int measurementIndex);
 }

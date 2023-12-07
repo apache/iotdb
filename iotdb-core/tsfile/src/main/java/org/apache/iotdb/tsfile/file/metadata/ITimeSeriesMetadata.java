@@ -20,14 +20,11 @@
 package org.apache.iotdb.tsfile.file.metadata;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
 
 import java.util.List;
 
-public interface ITimeSeriesMetadata {
-
-  Statistics getStatistics();
+public interface ITimeSeriesMetadata extends IMetadata {
 
   boolean isModified();
 
