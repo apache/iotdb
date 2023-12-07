@@ -26,7 +26,6 @@ import org.slf4j.LoggerFactory;
 import java.io.Closeable;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
@@ -79,6 +78,7 @@ public class ConcurrentIterableLinkedQueue<E> {
       }
 
       ++tailIndex;
+      // if firstNode == pilotNode, then lastNode == pilotNode
       lastNode.next = newNode;
       lastNode = newNode;
 
@@ -173,8 +173,8 @@ public class ConcurrentIterableLinkedQueue<E> {
     }
   }
 
-  public Set<DynamicIterator> getIteratorSet() {
-    return iteratorSet.keySet();
+  public boolean hasAnyIterators() {
+    return !iteratorSet.isEmpty();
   }
 
   public DynamicIterator iterateFrom(long offset) {
@@ -310,14 +310,14 @@ public class ConcurrentIterableLinkedQueue<E> {
 
     @Override
     public void close() {
-      lock.readLock().lock();
+      lock.writeLock().lock();
       try {
         isClosed = true;
         iteratorSet.remove(this);
 
         hasNextCondition.signalAll();
       } finally {
-        lock.readLock().unlock();
+        lock.writeLock().unlock();
       }
     }
 

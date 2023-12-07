@@ -132,7 +132,7 @@ public class ConcurrentIterableLinkedQueueTest {
     ConcurrentIterableLinkedQueue<Integer>.DynamicIterator itr = queue.iterateFrom(1);
     queue.clear();
 
-    Assert.assertTrue(queue.getIteratorSet().isEmpty());
+    assertFalse(queue.hasAnyIterators());
     Assert.assertEquals(2, queue.getFirstIndex());
     Assert.assertEquals(2, queue.getTailIndex());
 
