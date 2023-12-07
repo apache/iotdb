@@ -77,10 +77,6 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
     this.queryAllSensors = queryAllSensors;
   }
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-  // methods which need override
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-
   @Override
   protected PriorityMergeReader getPriorityMergeReader() {
     return new AlignedPriorityMergeReader();
