@@ -21,15 +21,15 @@ package org.apache.iotdb.db.pipe.task.subtask.connector;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.commons.pipe.task.DecoratingLock;
+import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
-import org.apache.iotdb.db.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.db.pipe.metric.PipeConnectorMetrics;
-import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
-import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
+import org.apache.iotdb.db.pipe.task.subtask.PipeDataNodeSubtask;
 import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -48,7 +48,7 @@ import javax.validation.constraints.NotNull;
 
 import java.util.concurrent.ExecutorService;
 
-public class PipeConnectorSubtask extends PipeSubtask {
+public class PipeConnectorSubtask extends PipeDataNodeSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorSubtask.class);
 

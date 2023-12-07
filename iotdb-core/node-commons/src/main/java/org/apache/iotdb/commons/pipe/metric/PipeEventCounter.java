@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,15 +17,27 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.connection;
+package org.apache.iotdb.commons.pipe.metric;
 
 import org.apache.iotdb.pipe.api.event.Event;
 
-import java.util.concurrent.ArrayBlockingQueue;
+public abstract class PipeEventCounter {
 
-public class BoundedBlockingPendingQueue<E extends Event> extends BlockingPendingQueue<E> {
-
-  public BoundedBlockingPendingQueue(int pendingQueueSize) {
-    super(new ArrayBlockingQueue<>(pendingQueueSize));
+  public Integer getTsFileInsertionEventCount() {
+    return 0;
   }
+
+  public Integer getTabletInsertionEventCount() {
+    return 0;
+  }
+
+  public Integer getPipeHeartbeatEventCount() {
+    return 0;
+  }
+
+  public abstract void increaseEventCount(Event event);
+
+  public abstract void decreaseEventCount(Event event);
+
+  public abstract void reset();
 }

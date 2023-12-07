@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.connection;
+package org.apache.iotdb.commons.pipe.task.connection;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.pipe.metric.PipeEventCounter;
+import org.apache.iotdb.commons.pipe.metric.PipeEventCounter;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.slf4j.Logger;
@@ -39,10 +39,11 @@ public abstract class BlockingPendingQueue<E extends Event> {
 
   protected final BlockingQueue<E> pendingQueue;
 
-  private final PipeEventCounter eventCounter = new PipeEventCounter();
+  private final PipeEventCounter eventCounter;
 
-  protected BlockingPendingQueue(BlockingQueue<E> pendingQueue) {
+  protected BlockingPendingQueue(BlockingQueue<E> pendingQueue, PipeEventCounter eventCounter) {
     this.pendingQueue = pendingQueue;
+    this.eventCounter = eventCounter;
   }
 
   public boolean waitedOffer(E event) {

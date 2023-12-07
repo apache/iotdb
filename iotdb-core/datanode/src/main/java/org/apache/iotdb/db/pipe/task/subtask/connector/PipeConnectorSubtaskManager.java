@@ -22,12 +22,13 @@ package org.apache.iotdb.db.pipe.task.subtask.connector;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.commit.PipeEventCommitManager;
 import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskConnectorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
-import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.db.pipe.metric.PipeDataRegionEventCounter;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -80,7 +81,8 @@ public class PipeConnectorSubtaskManager {
       // Shared pending queue for all subtasks
       final BoundedBlockingPendingQueue<Event> pendingQueue =
           new BoundedBlockingPendingQueue<>(
-              PipeConfig.getInstance().getPipeConnectorPendingQueueSize());
+              PipeConfig.getInstance().getPipeConnectorPendingQueueSize(),
+              new PipeDataRegionEventCounter());
 
       for (int connectorIndex = 0; connectorIndex < connectorNum; connectorIndex++) {
         final PipeConnector pipeConnector =

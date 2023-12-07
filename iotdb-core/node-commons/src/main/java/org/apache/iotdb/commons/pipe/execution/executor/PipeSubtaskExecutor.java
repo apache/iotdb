@@ -17,13 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.execution.executor;
+package org.apache.iotdb.commons.pipe.execution.executor;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.pipe.execution.scheduler.PipeSubtaskScheduler;
+import org.apache.iotdb.commons.pipe.task.subtask.PipeSubtask;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.pipe.execution.scheduler.PipeSubtaskScheduler;
-import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
 
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;

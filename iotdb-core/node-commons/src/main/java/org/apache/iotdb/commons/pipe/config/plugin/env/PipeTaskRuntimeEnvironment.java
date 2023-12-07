@@ -17,8 +17,33 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.event.ddl;
+package org.apache.iotdb.commons.pipe.config.plugin.env;
 
-import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment;
 
-public interface ISchemaEvent extends Event, AutoCloseable {}
+public class PipeTaskRuntimeEnvironment implements PipeRuntimeEnvironment {
+
+  private final String pipeName;
+  private final long creationTime;
+  private final int regionId;
+
+  protected PipeTaskRuntimeEnvironment(String pipeName, long creationTime, int regionId) {
+    this.pipeName = pipeName;
+    this.creationTime = creationTime;
+    this.regionId = regionId;
+  }
+
+  @Override
+  public String getPipeName() {
+    return pipeName;
+  }
+
+  @Override
+  public long getCreationTime() {
+    return creationTime;
+  }
+
+  public int getRegionId() {
+    return regionId;
+  }
+}

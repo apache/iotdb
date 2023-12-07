@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,17 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.execution.executor;
+package org.apache.iotdb.commons.pipe.execution.executor;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.execution.executor.PipeSubtaskExecutor;
 
-public class PipeConnectorSubtaskExecutor extends PipeSubtaskExecutor {
-
-  public PipeConnectorSubtaskExecutor() {
+public class PipeSchemaSubtaskExecutor extends PipeSubtaskExecutor {
+  private PipeSchemaSubtaskExecutor() {
     super(
         PipeConfig.getInstance().getPipeSubtaskExecutorMaxThreadNum(),
-        ThreadName.PIPE_CONNECTOR_EXECUTOR_POOL);
+        ThreadName.PIPE_SCHEMA_EXECUTOR_POOL);
+  }
+
+  private static class PipeSchemaSubtaskExecutorHolder {
+    private static PipeSchemaSubtaskExecutor instance = null;
+  }
+
+  public static synchronized PipeSchemaSubtaskExecutor getInstance() {
+    if (PipeSchemaSubtaskExecutorHolder.instance == null) {
+      PipeSchemaSubtaskExecutorHolder.instance = new PipeSchemaSubtaskExecutor();
+    }
+    return PipeSchemaSubtaskExecutorHolder.instance;
   }
 }

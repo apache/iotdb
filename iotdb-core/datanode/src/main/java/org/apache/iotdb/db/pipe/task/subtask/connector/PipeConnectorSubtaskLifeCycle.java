@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.pipe.task.subtask.connector;
 
+import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
-import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.slf4j.Logger;

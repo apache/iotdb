@@ -17,33 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.config.plugin.env;
+package org.apache.iotdb.commons.pipe.task.connection;
 
-import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.metric.PipeEventCounter;
+import org.apache.iotdb.pipe.api.event.Event;
 
-public class PipeTaskRuntimeEnvironment implements PipeRuntimeEnvironment {
+import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.LinkedBlockingDeque;
 
-  private final String pipeName;
-  private final long creationTime;
-  private final int regionId;
+public class UnboundedBlockingPendingQueue<E extends Event> extends BlockingPendingQueue<E> {
 
-  protected PipeTaskRuntimeEnvironment(String pipeName, long creationTime, int regionId) {
-    this.pipeName = pipeName;
-    this.creationTime = creationTime;
-    this.regionId = regionId;
+  private final BlockingDeque<E> pendingDeque;
+
+  public UnboundedBlockingPendingQueue(PipeEventCounter eventCounter) {
+    super(new LinkedBlockingDeque<>(), eventCounter);
+    pendingDeque = (BlockingDeque<E>) pendingQueue;
   }
 
-  @Override
-  public String getPipeName() {
-    return pipeName;
-  }
-
-  @Override
-  public long getCreationTime() {
-    return creationTime;
-  }
-
-  public int getRegionId() {
-    return regionId;
+  public E peekLast() {
+    return pendingDeque.peekLast();
   }
 }

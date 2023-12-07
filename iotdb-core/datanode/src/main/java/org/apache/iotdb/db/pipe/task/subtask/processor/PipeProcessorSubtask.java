@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.pipe.task.subtask.processor;
 
+import org.apache.iotdb.commons.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.commons.pipe.task.EventSupplier;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
-import org.apache.iotdb.db.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.db.pipe.metric.PipeProcessorMetrics;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
-import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
+import org.apache.iotdb.db.pipe.task.subtask.PipeDataNodeSubtask;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -38,7 +38,7 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class PipeProcessorSubtask extends PipeSubtask {
+public class PipeProcessorSubtask extends PipeDataNodeSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeProcessorSubtask.class);
 

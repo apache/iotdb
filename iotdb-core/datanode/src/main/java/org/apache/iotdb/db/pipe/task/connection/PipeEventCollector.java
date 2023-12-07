@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.task.connection;
 
+import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.commit.PipeEventCommitManager;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;

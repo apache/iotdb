@@ -19,4 +19,6 @@
 
 package org.apache.iotdb.commons.pipe.event.ddl;
 
-public interface IConsensusEvent extends ISchemaEvent {}
+import org.apache.iotdb.pipe.api.event.Event;
+
+public interface IConsensusEvent extends Event {}

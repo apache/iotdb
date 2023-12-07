@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.metric;
 
+import org.apache.iotdb.commons.pipe.metric.PipeEventCounter;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -27,24 +28,28 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class PipeEventCounter {
+public class PipeDataRegionEventCounter extends PipeEventCounter {
 
   private final AtomicInteger tabletInsertionEventCount = new AtomicInteger(0);
   private final AtomicInteger tsFileInsertionEventCount = new AtomicInteger(0);
   private final AtomicInteger pipeHeartbeatEventCount = new AtomicInteger(0);
 
+  @Override
   public Integer getTsFileInsertionEventCount() {
     return tsFileInsertionEventCount.get();
   }
 
+  @Override
   public Integer getTabletInsertionEventCount() {
     return tabletInsertionEventCount.get();
   }
 
+  @Override
   public Integer getPipeHeartbeatEventCount() {
     return pipeHeartbeatEventCount.get();
   }
 
+  @Override
   public void increaseEventCount(Event event) {
     if (Objects.isNull(event)) {
       return;
@@ -58,6 +63,7 @@ public class PipeEventCounter {
     }
   }
 
+  @Override
   public void decreaseEventCount(Event event) {
     if (Objects.isNull(event)) {
       return;
@@ -71,6 +77,7 @@ public class PipeEventCounter {
     }
   }
 
+  @Override
   public void reset() {
     tabletInsertionEventCount.set(0);
     tsFileInsertionEventCount.set(0);

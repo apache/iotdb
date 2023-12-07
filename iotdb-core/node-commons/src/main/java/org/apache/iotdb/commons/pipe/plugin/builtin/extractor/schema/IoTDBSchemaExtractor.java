@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,28 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.plugin.builtin.connector.schema;
+package org.apache.iotdb.commons.pipe.plugin.builtin.extractor.schema;
 
-import org.apache.iotdb.commons.client.property.ThriftClientProperty;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorClient;
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBConnector;
-import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
+import org.apache.iotdb.commons.pipe.metric.PipeSchemaEventFakeCounter;
+import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.pipe.api.PipeExtractor;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
-import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_AUTHORITY_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_DATA_VALUE;
@@ -51,10 +46,12 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_TTL_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_INCLUSION_KEY;
 
-public class IoTDBSchemaConnector extends IoTDBConnector {
+public class IoTDBSchemaExtractor implements PipeExtractor {
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSchemaExtractor.class);
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSchemaConnector.class);
-  private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
+  private final AtomicBoolean hasBeenStarted;
+  protected final UnboundedBlockingPendingQueue<Event> pendingQueue =
+      new UnboundedBlockingPendingQueue<>(new PipeSchemaEventFakeCounter());
 
   private boolean enableSchemaSync = false;
   private boolean enableTtlSync = false;
@@ -64,19 +61,12 @@ public class IoTDBSchemaConnector extends IoTDBConnector {
   private boolean enableAuthoritySync = false;
   private boolean atLeastOneEnable = false;
 
-  private final List<IoTDBThriftSyncConnectorClient> clients = new ArrayList<>();
-  private final List<Boolean> isClientAlive = new ArrayList<>();
-
-  private long currentClientIndex = 0;
-
-  public IoTDBSchemaConnector() {
-    // Do nothing
+  public IoTDBSchemaExtractor() {
+    this.hasBeenStarted = new AtomicBoolean(false);
   }
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
-    super.validate(validator);
-
     validator.validate(
         arg -> {
           Set<String> inclusionList =
@@ -127,130 +117,33 @@ public class IoTDBSchemaConnector extends IoTDBConnector {
   }
 
   @Override
-  public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
+  public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
-    if (!atLeastOneEnable) {
+    // do nothing
+  }
+
+  @Override
+  public void start() throws Exception {
+    if (hasBeenStarted.get()) {
       return;
     }
+    hasBeenStarted.set(true);
+    // TODO: start listen and assign
+  }
 
-    super.customize(parameters, configuration);
-
-    for (int i = 0; i < nodeUrls.size(); i++) {
-      isClientAlive.add(false);
-      clients.add(null);
-    }
+  public final void extract(Event event) {
+    // waitedOffer() should not return false, for the queue is unbounded.
+    pendingQueue.waitedOffer(event);
   }
 
   @Override
-  public void handshake() throws Exception {
-    if (!atLeastOneEnable) {
-      return;
-    }
-
-    for (int i = 0; i < clients.size(); i++) {
-      if (Boolean.TRUE.equals(isClientAlive.get(i))) {
-        continue;
-      }
-
-      final String ip = nodeUrls.get(i).getIp();
-      final int port = nodeUrls.get(i).getPort();
-
-      // Close the client if necessary
-      if (clients.get(i) != null) {
-        try {
-          clients.set(i, null).close();
-        } catch (Exception e) {
-          LOGGER.warn(
-              "Failed to close client with target server ip: {}, port: {}, because: {}. Ignore it.",
-              ip,
-              port,
-              e.getMessage());
-        }
-      }
-
-      clients.set(
-          i,
-          new IoTDBThriftSyncConnectorClient(
-              new ThriftClientProperty.Builder()
-                  .setConnectionTimeoutMs((int) PIPE_CONFIG.getPipeConnectorTimeoutMs())
-                  .setRpcThriftCompressionEnabled(
-                      PIPE_CONFIG.isPipeConnectorRPCThriftCompressionEnabled())
-                  .build(),
-              ip,
-              port,
-              false,
-              null,
-              null));
-
-      // TODO: validate client connectivity here, just like in ThriftSync.
-      isClientAlive.set(i, true);
-      LOGGER.info("Handshake success. Target server ip: {}, port: {}", ip, port);
-    }
-
-    for (int i = 0; i < clients.size(); i++) {
-      if (Boolean.TRUE.equals(isClientAlive.get(i))) {
-        return;
-      }
-    }
-    throw new PipeConnectionException(
-        String.format("All target servers %s are not available.", nodeUrls));
+  public Event supply() throws Exception {
+    // TODO: manage reference count
+    return pendingQueue.directPoll();
   }
 
   @Override
-  public void heartbeat() throws Exception {
-    if (!atLeastOneEnable) {
-      return;
-    }
-
-    // TODO: heartbeat
-  }
-
-  @Override
-  public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
-    throw new UnsupportedOperationException(
-        "IoTDBSchemaConnector can't transfer TabletInsertionEvent.");
-  }
-
-  @Override
-  public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
-    throw new UnsupportedOperationException(
-        "IoTDBSchemaConnector can't transfer TsFileInsertionEvent.");
-  }
-
-  @Override
-  public void transfer(Event event) throws Exception {
-    if (!atLeastOneEnable) {
-      return;
-    }
-
-    // TODO: transfer schema events
-  }
-
-  private int nextClientIndex() {
-    final int clientSize = clients.size();
-    // Round-robin, find the next alive client
-    for (int tryCount = 0; tryCount < clientSize; ++tryCount) {
-      final int clientIndex = (int) (currentClientIndex++ % clientSize);
-      if (Boolean.TRUE.equals(isClientAlive.get(clientIndex))) {
-        return clientIndex;
-      }
-    }
-    throw new PipeConnectionException(
-        "All clients are dead, please check the connection to the receiver.");
-  }
-
-  @Override
-  public void close() {
-    for (int i = 0; i < clients.size(); ++i) {
-      try {
-        if (clients.get(i) != null) {
-          clients.set(i, null).close();
-        }
-      } catch (Exception e) {
-        LOGGER.warn("Failed to close client {}.", i, e);
-      } finally {
-        isClientAlive.set(i, false);
-      }
-    }
+  public void close() throws Exception {
+    // TODO: clear the queue and clear reference count
   }
 }

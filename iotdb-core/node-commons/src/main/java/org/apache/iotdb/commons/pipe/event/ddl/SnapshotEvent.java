@@ -19,4 +19,6 @@
 
 package org.apache.iotdb.commons.pipe.event.ddl;
 
-public abstract class SnapshotEvent implements ISchemaEvent {}
+import org.apache.iotdb.pipe.api.event.Event;
+
+public abstract class SnapshotEvent implements Event {}
