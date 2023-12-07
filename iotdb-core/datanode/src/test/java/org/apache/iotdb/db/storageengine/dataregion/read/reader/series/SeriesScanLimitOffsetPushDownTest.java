@@ -328,7 +328,7 @@ public class SeriesScanLimitOffsetPushDownTest {
     Assert.assertTrue(seriesScanUtil.hasNextPage());
 
     TsBlock tsBlock = seriesScanUtil.nextPage();
-    Assert.assertEquals(0, tsBlock.getPositionCount());
+    Assert.assertTrue(tsBlock == null || tsBlock.isEmpty());
 
     Assert.assertTrue(seriesScanUtil.hasNextPage());
     tsBlock = seriesScanUtil.nextPage();
@@ -417,7 +417,7 @@ public class SeriesScanLimitOffsetPushDownTest {
     Assert.assertTrue(seriesScanUtil.hasNextPage());
 
     TsBlock tsBlock = seriesScanUtil.nextPage();
-    Assert.assertEquals(0, tsBlock.getPositionCount());
+    Assert.assertTrue(tsBlock == null || tsBlock.isEmpty());
 
     Assert.assertFalse(seriesScanUtil.hasNextPage());
 

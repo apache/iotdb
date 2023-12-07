@@ -634,7 +634,7 @@ public class SeriesScanUtil {
     if (firstPageReader == null) {
       return null;
     }
-    return firstPageReader.getStatistics(index);
+    return firstPageReader.getMeasurementStatistics(index);
   }
 
   public void skipCurrentPage() {
@@ -1186,18 +1186,12 @@ public class SeriesScanUtil {
     }
 
     @SuppressWarnings("squid:S3740")
-    Statistics getStatistics(int index) throws IOException {
-      if (!isAligned) {
-        throw new IOException("Can only get statistics by index from AlignedPageReader");
-      }
+    Statistics getMeasurementStatistics(int index) {
       return data.getMeasurementStatistics(index).orElse(null);
     }
 
     @SuppressWarnings("squid:S3740")
-    Statistics getTimeStatistics() throws IOException {
-      if (!isAligned) {
-        throw new IOException("Can only get statistics of time column from AlignedPageReader");
-      }
+    Statistics getTimeStatistics() {
       return data.getTimeStatistics();
     }
 
