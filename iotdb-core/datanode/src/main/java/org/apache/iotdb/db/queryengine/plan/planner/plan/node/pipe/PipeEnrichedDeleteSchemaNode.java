@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.ConstructSchemaBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.DeactivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.DeleteLogicalViewNode;
@@ -47,6 +48,9 @@ import java.util.List;
  * <p>- LogicalView: {@link DeleteLogicalViewNode}
  *
  * <p>- Template: {@link DeactivateTemplateNode}
+ *
+ * <p>Intermediate nodes like {@link ConstructSchemaBlackListNode} will not be included since they
+ * will not be collected by pipe.
  */
 public class PipeEnrichedDeleteSchemaNode extends PlanNode {
 
