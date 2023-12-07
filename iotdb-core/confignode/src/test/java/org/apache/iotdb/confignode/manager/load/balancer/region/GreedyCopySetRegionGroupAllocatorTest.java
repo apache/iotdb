@@ -38,7 +38,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class GreedyCopySetRegionGroupAllocatorTest {
 
@@ -104,18 +103,15 @@ public class GreedyCopySetRegionGroupAllocatorTest {
 
     /* Statistics result */
     // Map<DataNodeId, RegionGroup Count> for greedy algorithm
-    Map<Integer, AtomicInteger> greedyRegionCounter = new HashMap<>();
+    Map<Integer, Integer> greedyRegionCounter = new HashMap<>();
     greedyResult.forEach(
         regionReplicaSet ->
             regionReplicaSet
                 .getDataNodeLocations()
                 .forEach(
-                    dataNodeLocation -> {
-                      greedyRegionCounter
-                          .computeIfAbsent(
-                              dataNodeLocation.getDataNodeId(), empty -> new AtomicInteger(0))
-                          .incrementAndGet();
-                    }));
+                    dataNodeLocation ->
+                        greedyRegionCounter.merge(
+                            dataNodeLocation.getDataNodeId(), 1, Integer::sum)));
     // Map<DataNodeId, ScatterWidth> for greedy algorithm
     // where a true in the bitset denotes the corresponding DataNode can help the DataNode in
     // Map-Key to
@@ -135,17 +131,15 @@ public class GreedyCopySetRegionGroupAllocatorTest {
     }
 
     // Map<DataNodeId, RegionGroup Count> for greedy-copy-set algorithm
-    Map<Integer, AtomicInteger> greedyCopySetRegionCounter = new HashMap<>();
+    Map<Integer, Integer> greedyCopySetRegionCounter = new HashMap<>();
     greedyCopySetResult.forEach(
         regionReplicaSet ->
             regionReplicaSet
                 .getDataNodeLocations()
                 .forEach(
                     dataNodeLocation ->
-                        greedyCopySetRegionCounter
-                            .computeIfAbsent(
-                                dataNodeLocation.getDataNodeId(), empty -> new AtomicInteger(0))
-                            .incrementAndGet()));
+                        greedyCopySetRegionCounter.merge(
+                            dataNodeLocation.getDataNodeId(), 1, Integer::sum)));
     // Map<DataNodeId, ScatterWidth> for greedy-copy-set algorithm, ditto
     Map<Integer, BitSet> greedyCopySetScatterWidth = new HashMap<>();
     for (TRegionReplicaSet replicaSet : greedyCopySetResult) {
@@ -176,8 +170,8 @@ public class GreedyCopySetRegionGroupAllocatorTest {
     int greedyCopySetMinScatterWidth = Integer.MAX_VALUE;
     int greedyCopySetMaxScatterWidth = Integer.MIN_VALUE;
     for (int i = 1; i <= TEST_DATA_NODE_NUM; i++) {
-      Assert.assertTrue(greedyRegionCounter.get(i).get() <= avgDataRegionNum);
-      Assert.assertTrue(greedyCopySetRegionCounter.get(i).get() <= avgDataRegionNum);
+      Assert.assertTrue(greedyRegionCounter.get(i) <= avgDataRegionNum);
+      Assert.assertTrue(greedyCopySetRegionCounter.get(i) <= avgDataRegionNum);
 
       int scatterWidth = greedyScatterWidth.get(i).cardinality();
       greedyScatterWidthSum += scatterWidth;

@@ -31,7 +31,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /** Allocate Region through Greedy and CopySet Algorithm. */
 public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator {
@@ -40,7 +39,7 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
   // RegionGroup allocation BitSet
   private List<BitSet> allocatedBitSets;
   // Map<DataNodeId, RegionGroup count>
-  private Map<Integer, AtomicInteger> regionCounter;
+  private Map<Integer, Integer> regionCounter;
   // Available DataNodeIds
   private Integer[] dataNodeIds;
 
@@ -48,7 +47,7 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
   int optimalRegionSum;
   // Second Key: the sum of intersected Regions with other allocated RegionGroups is minimal
   int optimalIntersectionSum;
-  List<Integer[]> optimalReplicaSets;
+  List<int[]> optimalReplicaSets;
 
   public GreedyCopySetRegionGroupAllocator() {
     // Empty constructor
@@ -61,19 +60,22 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
       List<TRegionReplicaSet> allocatedRegionGroups,
       int replicationFactor,
       TConsensusGroupId consensusGroupId) {
+    try {
+      prepare(replicationFactor, availableDataNodeMap, allocatedRegionGroups);
+      dfs(-1, 0, new int[replicationFactor], 0, 0);
 
-    prepare(replicationFactor, availableDataNodeMap, allocatedRegionGroups);
-    dfs(-1, 0, new Integer[replicationFactor], 0, 0);
-
-    // Randomly pick one optimal plan as result
-    Collections.shuffle(optimalReplicaSets);
-    Integer[] optimalReplicaSet = optimalReplicaSets.get(0);
-    TRegionReplicaSet result = new TRegionReplicaSet();
-    result.setRegionId(consensusGroupId);
-    for (int i = 0; i < replicationFactor; i++) {
-      result.addToDataNodeLocations(availableDataNodeMap.get(optimalReplicaSet[i]).getLocation());
+      // Randomly pick one optimal plan as result
+      Collections.shuffle(optimalReplicaSets);
+      int[] optimalReplicaSet = optimalReplicaSets.get(0);
+      TRegionReplicaSet result = new TRegionReplicaSet();
+      result.setRegionId(consensusGroupId);
+      for (int i = 0; i < replicationFactor; i++) {
+        result.addToDataNodeLocations(availableDataNodeMap.get(optimalReplicaSet[i]).getLocation());
+      }
+      return result;
+    } finally {
+      clear();
     }
-    return result;
   }
 
   /**
@@ -99,7 +101,7 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
 
     // Convert the allocatedRegionGroups into allocatedBitSets,
     // where a true in BitSet corresponding to a DataNodeId in the RegionGroup
-    allocatedBitSets = new ArrayList<>();
+    allocatedBitSets = new ArrayList<>(allocatedRegionGroups.size());
     for (TRegionReplicaSet regionReplicaSet : allocatedRegionGroups) {
       BitSet bitSet = new BitSet(maxDataNodeId + 1);
       for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
@@ -109,9 +111,9 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
     }
 
     // Count the number of Regions in each DataNode
-    regionCounter = new HashMap<>();
+    regionCounter = new HashMap<>(maxDataNodeId + 1);
     for (int i = 0; i <= maxDataNodeId; i++) {
-      regionCounter.put(i, new AtomicInteger(0));
+      regionCounter.put(i, 0);
     }
     allocatedRegionGroups.forEach(
         regionGroup ->
@@ -119,7 +121,7 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
                 .getDataNodeLocations()
                 .forEach(
                     dataNodeLocation ->
-                        regionCounter.get(dataNodeLocation.getDataNodeId()).incrementAndGet()));
+                        regionCounter.merge(dataNodeLocation.getDataNodeId(), 1, Integer::sum)));
 
     // Reset the optimal result
     dataNodeIds = new Integer[availableDataNodeMap.size()];
@@ -144,7 +146,7 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
   private void dfs(
       int lastIndex,
       int currentReplica,
-      Integer[] currentReplicaSet,
+      int[] currentReplicaSet,
       int regionSum,
       int intersectionSum) {
     if (regionSum > optimalRegionSum || intersectionSum > optimalRegionSum) {
@@ -176,8 +178,14 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
           i,
           currentReplica + 1,
           currentReplicaSet,
-          regionSum + regionCounter.get(dataNodeIds[i]).get(),
+          regionSum + regionCounter.get(dataNodeIds[i]),
           intersectionSum + intersectionDelta);
     }
+  }
+
+  void clear() {
+    allocatedBitSets.clear();
+    regionCounter.clear();
+    optimalReplicaSets.clear();
   }
 }
