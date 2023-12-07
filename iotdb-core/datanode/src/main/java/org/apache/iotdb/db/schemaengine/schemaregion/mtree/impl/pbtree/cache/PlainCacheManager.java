@@ -40,13 +40,6 @@ public class PlainCacheManager extends CacheManager {
   @Override
   protected void updateCacheStatusAfterAccess(CacheEntry cacheEntry) {}
 
-  // MNode update operation like node replace may reset the mapping between cacheEntry and node,
-  // thus it should be updated
-  @Override
-  protected void updateCacheStatusAfterUpdate(CacheEntry cacheEntry, ICachedMNode node) {
-    nodeCache.replace(cacheEntry, node);
-  }
-
   @Override
   protected void addToNodeCache(CacheEntry cacheEntry, ICachedMNode node) {
     nodeCache.put(cacheEntry, node);
@@ -65,11 +58,6 @@ public class PlainCacheManager extends CacheManager {
       }
     }
     return null;
-  }
-
-  @Override
-  protected ICachedMNode getCachedEntryBelongedNode(CacheEntry cacheEntry) {
-    return nodeCache.get(cacheEntry);
   }
 
   @Override

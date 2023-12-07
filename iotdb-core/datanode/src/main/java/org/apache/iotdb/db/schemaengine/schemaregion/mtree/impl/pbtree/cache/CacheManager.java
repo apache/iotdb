@@ -143,16 +143,12 @@ public abstract class CacheManager implements ICacheManager {
    */
   @Override
   public void updateCacheStatusAfterUpdate(ICachedMNode node) {
-    CacheEntry cacheEntry = getCacheEntry(node);
-    // update operation like node replace may reset the mapping between cacheEntry and node,
-    // thus it should be updated
-    updateCacheStatusAfterUpdate(cacheEntry, node);
-
     if (node.isDatabase()) {
       nodeBuffer.updateDatabaseNodeAfterStatusUpdate(node.getAsDatabaseMNode());
       return;
     }
 
+    CacheEntry cacheEntry = getCacheEntry(node);
     synchronized (cacheEntry) {
       if (cacheEntry.isVolatile()) {
         return;
@@ -434,10 +430,6 @@ public abstract class CacheManager implements ICacheManager {
               continue;
             }
 
-            // the node may be replaced due to the MTree logic
-            // we need to retake the node again
-            node = getCachedEntryBelongedNode(cacheEntry);
-
             getBelongedContainer(node).evictMNode(node.getName());
             if (node.isMeasurement()) {
               String alias = node.getAsMeasurementMNode().getAlias();
@@ -601,17 +593,11 @@ public abstract class CacheManager implements ICacheManager {
 
   protected abstract void updateCacheStatusAfterAccess(CacheEntry cacheEntry);
 
-  // MNode update operation like node replace may reset the mapping between cacheEntry and node,
-  // thus it should be updated
-  protected abstract void updateCacheStatusAfterUpdate(CacheEntry cacheEntry, ICachedMNode node);
-
   protected abstract void addToNodeCache(CacheEntry cacheEntry, ICachedMNode node);
 
   protected abstract void removeFromNodeCache(CacheEntry cacheEntry);
 
   protected abstract ICachedMNode getPotentialNodeTobeEvicted();
-
-  protected abstract ICachedMNode getCachedEntryBelongedNode(CacheEntry cacheEntry);
 
   protected abstract void clearNodeCache();
 }

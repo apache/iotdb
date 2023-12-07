@@ -51,7 +51,6 @@ public class NodeBuffer implements INodeBuffer {
   public void updateDatabaseNodeAfterStatusUpdate(
       IDatabaseMNode<ICachedMNode> updatedDatabaseMNode) {
     this.updatedDatabaseMNode = updatedDatabaseMNode;
-    put(updatedDatabaseMNode.getAsMNode().getCacheEntry(), updatedDatabaseMNode.getAsMNode());
   }
 
   @Override

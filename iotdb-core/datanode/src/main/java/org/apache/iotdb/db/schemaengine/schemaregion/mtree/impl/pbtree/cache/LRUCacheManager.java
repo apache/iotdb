@@ -47,13 +47,6 @@ public class LRUCacheManager extends CacheManager {
     getTargetCacheList(lruCacheEntry).updateCacheStatusAfterAccess(lruCacheEntry);
   }
 
-  // MNode update operation like node replace may reset the mapping between cacheEntry and node,
-  // thus it should be updated
-  @Override
-  protected void updateCacheStatusAfterUpdate(CacheEntry cacheEntry, ICachedMNode node) {
-    getAsLRUCacheEntry(cacheEntry).setNode(node);
-  }
-
   @Override
   protected void initCacheEntryForNode(ICachedMNode node) {
     LRUCacheEntry cacheEntry = new LRUCacheEntry(node);
@@ -82,11 +75,6 @@ public class LRUCacheManager extends CacheManager {
       }
     }
     return result;
-  }
-
-  @Override
-  protected ICachedMNode getCachedEntryBelongedNode(CacheEntry cacheEntry) {
-    return getAsLRUCacheEntry(cacheEntry).getNode();
   }
 
   @Override
@@ -121,9 +109,7 @@ public class LRUCacheManager extends CacheManager {
   @SuppressWarnings("java:S3077")
   private static class LRUCacheEntry extends CacheEntry {
 
-    // although the node instance may be replaced, the name and full path of the node won't be
-    // changed, which means the cacheEntry always map to only one logic node
-    protected volatile ICachedMNode node;
+    protected final ICachedMNode node;
 
     private volatile LRUCacheEntry pre = null;
 
@@ -135,10 +121,6 @@ public class LRUCacheManager extends CacheManager {
 
     public ICachedMNode getNode() {
       return node;
-    }
-
-    public void setNode(ICachedMNode node) {
-      this.node = node;
     }
 
     LRUCacheEntry getPre() {
@@ -198,7 +180,6 @@ public class LRUCacheManager extends CacheManager {
     private void addToCacheList(LRUCacheEntry lruCacheEntry, ICachedMNode node) {
       lock.lock();
       try {
-        lruCacheEntry.setNode(node);
         moveToFirst(lruCacheEntry);
         size.getAndIncrement();
       } finally {
