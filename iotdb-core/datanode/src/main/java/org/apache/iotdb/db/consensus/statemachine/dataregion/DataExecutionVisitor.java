@@ -31,7 +31,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedD
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
@@ -170,23 +169,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
 
   @Override
   public TSStatus visitPipeEnrichedInsert(PipeEnrichedInsertNode node, DataRegion context) {
-    final InsertNode realInsertNode = node.getInsertNode();
-
-    realInsertNode.markAsGeneratedByPipe();
-
-    if (realInsertNode instanceof InsertRowNode) {
-      return visitInsertRow((InsertRowNode) realInsertNode, context);
-    } else if (realInsertNode instanceof InsertTabletNode) {
-      return visitInsertTablet((InsertTabletNode) realInsertNode, context);
-    } else if (realInsertNode instanceof InsertRowsNode) {
-      return visitInsertRows((InsertRowsNode) realInsertNode, context);
-    } else if (realInsertNode instanceof InsertMultiTabletsNode) {
-      return visitInsertMultiTablets((InsertMultiTabletsNode) realInsertNode, context);
-    } else if (realInsertNode instanceof InsertRowsOfOneDeviceNode) {
-      return visitInsertRowsOfOneDevice((InsertRowsOfOneDeviceNode) realInsertNode, context);
-    } else {
-      return visitPlan(realInsertNode, context);
-    }
+    return node.getInsertNode().accept(this, context);
   }
 
   @Override

@@ -2571,57 +2571,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitPipeEnrichedStatement(
       PipeEnrichedStatement pipeEnrichedStatement, MPPQueryContext context) {
-    Analysis analysis;
-
-    final Statement innerStatement = pipeEnrichedStatement.getInnerStatement();
-    if (innerStatement instanceof InsertTabletStatement) {
-      analysis = visitInsertTablet((InsertTabletStatement) innerStatement, context);
-    } else if (innerStatement instanceof InsertMultiTabletsStatement) {
-      analysis = visitInsertMultiTablets((InsertMultiTabletsStatement) innerStatement, context);
-    } else if (innerStatement instanceof InsertRowStatement) {
-      analysis = visitInsertRow((InsertRowStatement) innerStatement, context);
-    } else if (innerStatement instanceof InsertRowsStatement) {
-      analysis = visitInsertRows((InsertRowsStatement) innerStatement, context);
-    } else if (innerStatement instanceof InsertRowsOfOneDeviceStatement) {
-      analysis =
-          visitInsertRowsOfOneDevice((InsertRowsOfOneDeviceStatement) innerStatement, context);
-    } else if (innerStatement instanceof LoadTsFileStatement) {
-      analysis = visitLoadFile((LoadTsFileStatement) innerStatement, context);
-    } else if (innerStatement instanceof DeleteDataStatement) {
-      analysis = visitDeleteData((DeleteDataStatement) innerStatement, context);
-    } else if (innerStatement instanceof CreateTimeSeriesStatement) {
-      analysis = visitCreateTimeseries((CreateTimeSeriesStatement) innerStatement, context);
-    } else if (innerStatement instanceof CreateAlignedTimeSeriesStatement) {
-      analysis =
-          visitCreateAlignedTimeseries((CreateAlignedTimeSeriesStatement) innerStatement, context);
-    } else if (innerStatement instanceof CreateMultiTimeSeriesStatement) {
-      analysis =
-          visitCreateMultiTimeseries((CreateMultiTimeSeriesStatement) innerStatement, context);
-    } else if (innerStatement instanceof AlterTimeSeriesStatement) {
-      analysis = visitAlterTimeseries((AlterTimeSeriesStatement) innerStatement, context);
-    } else if (innerStatement instanceof InternalCreateTimeSeriesStatement) {
-      analysis =
-          visitInternalCreateTimeseries(
-              (InternalCreateTimeSeriesStatement) innerStatement, context);
-    } else if (innerStatement instanceof InternalCreateMultiTimeSeriesStatement) {
-      analysis =
-          visitInternalCreateMultiTimeSeries(
-              (InternalCreateMultiTimeSeriesStatement) innerStatement, context);
-    } else if (innerStatement instanceof ActivateTemplateStatement) {
-      analysis = visitActivateTemplate((ActivateTemplateStatement) innerStatement, context);
-    } else if (innerStatement instanceof BatchActivateTemplateStatement) {
-      analysis =
-          visitBatchActivateTemplate((BatchActivateTemplateStatement) innerStatement, context);
-    } else if (innerStatement instanceof InternalBatchActivateTemplateStatement) {
-      analysis =
-          visitInternalBatchActivateTemplate(
-              (InternalBatchActivateTemplateStatement) innerStatement, context);
-    } else if (innerStatement instanceof CreateLogicalViewStatement) {
-      analysis = visitCreateLogicalView((CreateLogicalViewStatement) innerStatement, context);
-    } else {
-      throw new UnsupportedOperationException(
-          "Unsupported insert statement type: " + innerStatement.getClass().getName());
-    }
+    Analysis analysis = pipeEnrichedStatement.getInnerStatement().accept(this, context);
 
     // statement may be changed because of logical view
     pipeEnrichedStatement.setInnerStatement(analysis.getStatement());

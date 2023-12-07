@@ -253,20 +253,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
   @Override
   public TriggerFireResult visitPipeEnrichedInsert(
       PipeEnrichedInsertNode node, TriggerEvent context) {
-    final InsertNode realInsertNode = node.getInsertNode();
-    if (realInsertNode instanceof InsertRowNode) {
-      return visitInsertRow((InsertRowNode) realInsertNode, context);
-    } else if (realInsertNode instanceof InsertTabletNode) {
-      return visitInsertTablet((InsertTabletNode) realInsertNode, context);
-    } else if (realInsertNode instanceof InsertRowsNode) {
-      return visitInsertRows((InsertRowsNode) realInsertNode, context);
-    } else if (realInsertNode instanceof InsertMultiTabletsNode) {
-      return visitInsertMultiTablets((InsertMultiTabletsNode) realInsertNode, context);
-    } else if (realInsertNode instanceof InsertRowsOfOneDeviceNode) {
-      return visitInsertRowsOfOneDevice((InsertRowsOfOneDeviceNode) realInsertNode, context);
-    } else {
-      return visitPlan(realInsertNode, context);
-    }
+    return node.getInsertNode().accept(this, context);
   }
 
   private Map<String, Integer> constructMeasurementToSchemaIndexMap(
