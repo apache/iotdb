@@ -227,7 +227,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
     long start = System.nanoTime();
     while (System.nanoTime() - start < leftRuntimeOfOneNextCall && seriesScanUtil.hasNextFile()) {
       if (seriesScanUtil.canUseCurrentFileStatistics()) {
-        Statistics fileTimeStatistics = seriesScanUtil.getCurrentFileTimeStatistics();
+        Statistics fileTimeStatistics = seriesScanUtil.currentFileTimeStatistics();
         if (fileTimeStatistics.getStartTime() > curTimeRange.getMax()) {
           if (ascending) {
             return true;
@@ -241,7 +241,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
             fileTimeStatistics.getStartTime(), fileTimeStatistics.getEndTime())) {
           Statistics[] statisticsList = new Statistics[subSensorSize];
           for (int i = 0; i < subSensorSize; i++) {
-            statisticsList[i] = seriesScanUtil.getCurrentFileMeasurementStatistics(i);
+            statisticsList[i] = seriesScanUtil.currentFileStatistics(i);
           }
           calcFromStatistics(fileTimeStatistics, statisticsList);
           seriesScanUtil.skipCurrentFile();
@@ -268,7 +268,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
     long start = System.nanoTime();
     while (System.nanoTime() - start < leftRuntimeOfOneNextCall && seriesScanUtil.hasNextChunk()) {
       if (seriesScanUtil.canUseCurrentChunkStatistics()) {
-        Statistics chunkTimeStatistics = seriesScanUtil.getCurrentChunkTimeStatistics();
+        Statistics chunkTimeStatistics = seriesScanUtil.currentChunkTimeStatistics();
         if (chunkTimeStatistics.getStartTime() > curTimeRange.getMax()) {
           if (ascending) {
             return true;
@@ -283,7 +283,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
           // calc from chunkMetaData
           Statistics[] statisticsList = new Statistics[subSensorSize];
           for (int i = 0; i < subSensorSize; i++) {
-            statisticsList[i] = seriesScanUtil.getCurrentChunkMeasurementStatistics(i);
+            statisticsList[i] = seriesScanUtil.currentChunkStatistics(i);
           }
           calcFromStatistics(chunkTimeStatistics, statisticsList);
           seriesScanUtil.skipCurrentChunk();
@@ -310,7 +310,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
     try {
       while (System.nanoTime() - start < leftRuntimeOfOneNextCall && seriesScanUtil.hasNextPage()) {
         if (seriesScanUtil.canUseCurrentPageStatistics()) {
-          Statistics pageTimeStatistics = seriesScanUtil.getCurrentPageTimeStatistics();
+          Statistics pageTimeStatistics = seriesScanUtil.currentPageTimeStatistics();
           // There is no more eligible points in current time range
           if (pageTimeStatistics.getStartTime() > curTimeRange.getMax()) {
             if (ascending) {
@@ -325,7 +325,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
               pageTimeStatistics.getStartTime(), pageTimeStatistics.getEndTime())) {
             Statistics[] statisticsList = new Statistics[subSensorSize];
             for (int i = 0; i < subSensorSize; i++) {
-              statisticsList[i] = seriesScanUtil.getCurrentPageMeasurementStatistics(i);
+              statisticsList[i] = seriesScanUtil.currentPageStatistics(i);
             }
             calcFromStatistics(pageTimeStatistics, statisticsList);
             seriesScanUtil.skipCurrentPage();
