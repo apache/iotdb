@@ -188,12 +188,12 @@ public class DistributionPlanner {
     PlanNode rootAfterRewrite = rewriteSource();
 
     PlanNode rootWithExchange = addExchangeNode(rootAfterRewrite);
+    PlanNode optimizedRootWithExchange = optimize(rootWithExchange);
     if (analysis.getStatement() != null && analysis.getStatement().isQuery()) {
       analysis
           .getRespDatasetHeader()
-          .setColumnToTsBlockIndexMap(rootWithExchange.getOutputColumnNames());
+          .setColumnToTsBlockIndexMap(optimizedRootWithExchange.getOutputColumnNames());
     }
-    PlanNode optimizedRootWithExchange = optimize(rootWithExchange);
     SubPlan subPlan = splitFragment(optimizedRootWithExchange);
     // Mark the root Fragment of root SubPlan as `root`
     subPlan.getPlanFragment().setRoot(true);

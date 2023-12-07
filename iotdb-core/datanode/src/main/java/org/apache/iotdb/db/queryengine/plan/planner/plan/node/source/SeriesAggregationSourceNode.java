@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.source;
 
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.optimization.base.ColumnInjectionPushDown;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -28,8 +29,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import javax.annotation.Nullable;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public abstract class SeriesAggregationSourceNode extends SeriesSourceNode
     implements ColumnInjectionPushDown {
@@ -85,6 +88,7 @@ public abstract class SeriesAggregationSourceNode extends SeriesSourceNode
     return outputEndTime;
   }
 
+  @Override
   public void setOutputEndTime(boolean outputEndTime) {
     this.outputEndTime = outputEndTime;
   }
@@ -92,6 +96,20 @@ public abstract class SeriesAggregationSourceNode extends SeriesSourceNode
   @Nullable
   public GroupByTimeParameter getGroupByTimeParameter() {
     return groupByTimeParameter;
+  }
+
+  @Override
+  public List<String> getOutputColumnNames() {
+    List<String> outputColumnNames = new ArrayList<>();
+    if (isOutputEndTime()) {
+      outputColumnNames.add(ColumnHeaderConstant.ENDTIME);
+    }
+    outputColumnNames.addAll(
+        aggregationDescriptorList.stream()
+            .map(AggregationDescriptor::getOutputColumnNames)
+            .flatMap(List::stream)
+            .collect(Collectors.toList()));
+    return outputColumnNames;
   }
 
   @Override

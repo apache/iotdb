@@ -35,9 +35,7 @@ public class PlanNodePushDown implements PlanOptimizer {
   public PlanNode optimize(PlanNode plan, Analysis analysis, MPPQueryContext context) {
     QueryStatement queryStatement = (QueryStatement) analysis.getStatement();
 
-    if (queryStatement.isGroupByTime()
-        && queryStatement.isOutputEndTime()
-        && (!analysis.isRawDataSourceQuery() || analysis.getGroupByTimeParameter().hasOverlap())) {
+    if (queryStatement.isGroupByTime() && queryStatement.isOutputEndTime()) {
       // When the aggregation with GROUP BY TIME isn't rawDataQuery, there are AggregationNode and
       // SeriesAggregationNode,
       // If it is and has overlap in groupByParameter, there is SlidingWindowNode

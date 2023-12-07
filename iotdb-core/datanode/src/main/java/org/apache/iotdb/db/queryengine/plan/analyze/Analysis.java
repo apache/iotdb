@@ -273,8 +273,6 @@ public class Analysis {
   // if `order by limit N align by device` query use topK optimization
   private boolean useTopKNode = false;
 
-  private boolean isRawDataSourceQuery;
-
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // All Queries Devices Set In One Template
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -864,13 +862,5 @@ public class Analysis {
 
   public boolean isTemplateWildCardQuery() {
     return this.templateWildCardQuery;
-  }
-
-  public boolean isRawDataSourceQuery() {
-    return isRawDataSourceQuery;
-  }
-
-  public void setRawDataSourceQuery(boolean rawDataSourceQuery) {
-    isRawDataSourceQuery = rawDataSourceQuery;
   }
 }

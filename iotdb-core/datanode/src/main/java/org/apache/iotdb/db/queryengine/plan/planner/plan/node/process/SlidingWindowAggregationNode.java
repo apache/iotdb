@@ -81,6 +81,7 @@ public class SlidingWindowAggregationNode extends SingleChildProcessNode
     return outputEndTime;
   }
 
+  @Override
   public void setOutputEndTime(boolean outputEndTime) {
     this.outputEndTime = outputEndTime;
   }

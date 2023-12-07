@@ -22,7 +22,6 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -45,7 +44,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 /**
  * This node is responsible to do the aggregation calculation for one series. It will read the
@@ -157,20 +155,6 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
         getPushDownPredicate(),
         getGroupByTimeParameter(),
         getRegionReplicaSet());
-  }
-
-  @Override
-  public List<String> getOutputColumnNames() {
-    List<String> outputColumnNames = new ArrayList<>();
-    if (isOutputEndTime()) {
-      outputColumnNames.add(ColumnHeaderConstant.ENDTIME);
-    }
-    outputColumnNames.addAll(
-        aggregationDescriptorList.stream()
-            .map(AggregationDescriptor::getOutputColumnNames)
-            .flatMap(List::stream)
-            .collect(Collectors.toList()));
-    return outputColumnNames;
   }
 
   @Override

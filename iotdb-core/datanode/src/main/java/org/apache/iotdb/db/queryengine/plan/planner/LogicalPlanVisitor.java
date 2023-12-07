@@ -270,7 +270,6 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
               || analysis.hasGroupByParameter()
               || needTransform(sourceTransformExpressions)
               || cannotUseStatistics(aggregationExpressions, sourceTransformExpressions);
-      analysis.setRawDataSourceQuery(isRawDataSource);
       if (queryStatement.isOutputEndTime()) {
         context.getTypeProvider().setType(ENDTIME, TSDataType.INT64);
       }
@@ -317,13 +316,6 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                   analysis.getGroupByTimeParameter(),
                   curStep,
                   queryStatement.getResultTimeOrder());
-
-          if (queryStatement.isOutputEndTime()) {
-            planBuilder =
-                planBuilder.planEndTimeColumnInject(
-                    analysis.getGroupByTimeParameter(),
-                    queryStatement.getResultTimeOrder().isAscending());
-          }
         }
 
         if (queryStatement.isGroupByLevel()) {
@@ -360,13 +352,13 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                     sourceTransformExpressions,
                     analysis.getCrossGroupByExpressions(),
                     deviceViewInputIndexes);
+      }
 
-        if (queryStatement.isGroupByTime() && queryStatement.isOutputEndTime()) {
-          planBuilder =
-              planBuilder.planEndTimeColumnInject(
-                  analysis.getGroupByTimeParameter(),
-                  queryStatement.getResultTimeOrder().isAscending());
-        }
+      if (queryStatement.isGroupByTime() && queryStatement.isOutputEndTime()) {
+        planBuilder =
+            planBuilder.planEndTimeColumnInject(
+                analysis.getGroupByTimeParameter(),
+                queryStatement.getResultTimeOrder().isAscending());
       }
     }
 
