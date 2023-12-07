@@ -138,7 +138,7 @@ public class PipeSchemaSubtask extends PipeSubtask {
   }
 
   @Override
-  public void onFailure(Throwable throwable) {
+  public synchronized void onFailure(Throwable throwable) {
     // TODO: handle failures
     retryCount.set(0);
     submitSelf();

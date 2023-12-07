@@ -104,7 +104,7 @@ public abstract class PipeSubtask
   protected abstract boolean executeOnce() throws Exception;
 
   @Override
-  public void onSuccess(Boolean hasAtLeastOneEventProcessed) {
+  public synchronized void onSuccess(Boolean hasAtLeastOneEventProcessed) {
     retryCount.set(0);
     submitSelf();
   }

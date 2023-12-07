@@ -39,7 +39,7 @@ public abstract class PipeDataNodeSubtask extends PipeSubtask {
   }
 
   @Override
-  public void onFailure(@NotNull Throwable throwable) {
+  public synchronized void onFailure(@NotNull Throwable throwable) {
     if (isClosed.get()) {
       LOGGER.info("onFailure in pipe subtask, ignored because pipe is dropped.");
       releaseLastEvent(false);
