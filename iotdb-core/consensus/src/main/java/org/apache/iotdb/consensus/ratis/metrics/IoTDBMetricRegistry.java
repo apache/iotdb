@@ -151,8 +151,7 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
         fullName,
         fn -> {
           final GaugeProxy<T> gauge = new GaugeProxy<>(supplier);
-          metricService.createAutoGauge(
-              fn, getMetricLevel(fn), gauge, GaugeProxy::getDoubleValue);
+          metricService.createAutoGauge(fn, getMetricLevel(fn), gauge, GaugeProxy::getDoubleValue);
           return true;
         });
   }
