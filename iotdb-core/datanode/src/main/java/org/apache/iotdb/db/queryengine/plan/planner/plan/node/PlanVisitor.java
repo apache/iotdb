@@ -449,15 +449,15 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
-  public R visitPipeEnrichedDeleteDataNode(PipeEnrichedDeleteDataNode node, C context) {
+  public R visitPipeEnrichedDeleteData(PipeEnrichedDeleteDataNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitPipeEnrichedWriteSchemaNode(PipeEnrichedWriteSchemaNode node, C context) {
+  public R visitPipeEnrichedWriteSchema(PipeEnrichedWriteSchemaNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitPipeEnrichedDeleteSchemaNode(PipeEnrichedDeleteSchemaNode node, C context) {
+  public R visitPipeEnrichedDeleteSchema(PipeEnrichedDeleteSchemaNode node, C context) {
     return visitPlan(node, context);
   }
 }

@@ -45,12 +45,16 @@ import java.util.stream.Collectors;
  * <p>2.{@link DataExecutionVisitor}, to actually write data on data region and mark it as received
  * from pipe.
  */
-public class PipeEnrichedDeleteDataNode extends WritePlanNode {
+public class PipeEnrichedDeleteDataNode extends DeleteDataNode {
 
-  private final WritePlanNode deleteDataNode;
+  private final DeleteDataNode deleteDataNode;
 
-  public PipeEnrichedDeleteDataNode(WritePlanNode deleteDataNode) {
-    super(deleteDataNode.getPlanNodeId());
+  public PipeEnrichedDeleteDataNode(DeleteDataNode deleteDataNode) {
+    super(
+        deleteDataNode.getPlanNodeId(),
+        deleteDataNode.getPathList(),
+        deleteDataNode.getDeleteStartTime(),
+        deleteDataNode.getDeleteEndTime());
     this.deleteDataNode = deleteDataNode;
   }
 
@@ -89,20 +93,20 @@ public class PipeEnrichedDeleteDataNode extends WritePlanNode {
   }
 
   @Override
-  public WritePlanNode clone() {
-    return new PipeEnrichedDeleteDataNode((WritePlanNode) deleteDataNode.clone());
+  public DeleteDataNode clone() {
+    return new PipeEnrichedDeleteDataNode((DeleteDataNode) deleteDataNode.clone());
   }
 
   @Override
-  public WritePlanNode createSubNode(int subNodeId, int startIndex, int endIndex) {
+  public DeleteDataNode createSubNode(int subNodeId, int startIndex, int endIndex) {
     return new PipeEnrichedDeleteDataNode(
-        (WritePlanNode) deleteDataNode.createSubNode(subNodeId, startIndex, endIndex));
+        (DeleteDataNode) deleteDataNode.createSubNode(subNodeId, startIndex, endIndex));
   }
 
   @Override
   public PlanNode cloneWithChildren(List<PlanNode> children) {
     return new PipeEnrichedDeleteDataNode(
-        (WritePlanNode) deleteDataNode.cloneWithChildren(children));
+        (DeleteDataNode) deleteDataNode.cloneWithChildren(children));
   }
 
   @Override
@@ -117,23 +121,23 @@ public class PipeEnrichedDeleteDataNode extends WritePlanNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitPipeEnrichedDeleteDataNode(this, context);
+    return visitor.visitPipeEnrichedDeleteData(this, context);
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.PIPE_ENRICHED_WRITE_SCHEMA.serialize(byteBuffer);
+    PlanNodeType.PIPE_ENRICHED_DELETE_DATA.serialize(byteBuffer);
     deleteDataNode.serialize(byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.PIPE_ENRICHED_WRITE_SCHEMA.serialize(stream);
+    PlanNodeType.PIPE_ENRICHED_DELETE_DATA.serialize(stream);
     deleteDataNode.serialize(stream);
   }
 
-  public static PlanNode deserialize(ByteBuffer buffer) {
-    return new PipeEnrichedDeleteDataNode((WritePlanNode) PlanNodeType.deserialize(buffer));
+  public static PipeEnrichedDeleteDataNode deserialize(ByteBuffer buffer) {
+    return new PipeEnrichedDeleteDataNode((DeleteDataNode) PlanNodeType.deserialize(buffer));
   }
 
   @Override
@@ -159,7 +163,7 @@ public class PipeEnrichedDeleteDataNode extends WritePlanNode {
             plan ->
                 plan instanceof PipeEnrichedDeleteDataNode
                     ? plan
-                    : new PipeEnrichedDeleteDataNode(plan))
+                    : new PipeEnrichedDeleteDataNode((DeleteDataNode) plan))
         .collect(Collectors.toList());
   }
 }

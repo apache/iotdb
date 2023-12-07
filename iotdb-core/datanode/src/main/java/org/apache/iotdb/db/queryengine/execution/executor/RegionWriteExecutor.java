@@ -52,6 +52,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.Int
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.MeasurementGroup;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
@@ -246,13 +247,13 @@ public class RegionWriteExecutor {
       }
     }
 
-    private TSStatus fireTriggerAndInsert(ConsensusGroupId groupId, PlanNode planNode)
+    private TSStatus fireTriggerAndInsert(ConsensusGroupId groupId, InsertNode insertNode)
         throws ConsensusException {
       long triggerCostTime = 0;
       TSStatus status;
       long startTime = System.nanoTime();
       // fire Trigger before the insertion
-      TriggerFireResult result = triggerFireVisitor.process(planNode, TriggerEvent.BEFORE_INSERT);
+      TriggerFireResult result = triggerFireVisitor.process(insertNode, TriggerEvent.BEFORE_INSERT);
       triggerCostTime += (System.nanoTime() - startTime);
       if (result.equals(TriggerFireResult.TERMINATION)) {
         status =
@@ -261,14 +262,14 @@ public class RegionWriteExecutor {
                 "Failed to complete the insertion because trigger error before the insertion.");
       } else {
         long startWriteTime = System.nanoTime();
-        status = dataRegionConsensus.write(groupId, planNode);
+        status = dataRegionConsensus.write(groupId, insertNode);
         PERFORMANCE_OVERVIEW_METRICS.recordScheduleStorageCost(System.nanoTime() - startWriteTime);
 
         // fire Trigger after the insertion
         startTime = System.nanoTime();
         boolean hasFailedTriggerBeforeInsertion =
             result.equals(TriggerFireResult.FAILED_NO_TERMINATION);
-        result = triggerFireVisitor.process(planNode, TriggerEvent.AFTER_INSERT);
+        result = triggerFireVisitor.process(insertNode, TriggerEvent.AFTER_INSERT);
         if (hasFailedTriggerBeforeInsertion || !result.equals(TriggerFireResult.SUCCESS)) {
           status =
               RpcUtils.getStatus(
@@ -279,6 +280,18 @@ public class RegionWriteExecutor {
       }
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleTriggerCost(triggerCostTime);
       return status;
+    }
+
+    @Override
+    public RegionExecutionResult visitPipeEnrichedDeleteData(
+        PipeEnrichedDeleteDataNode node, WritePlanNodeExecutionContext context) {
+      // data deletion should block data insertion, especially when executed for deleting timeseries
+      context.getRegionWriteValidationRWLock().writeLock().lock();
+      try {
+        return super.visitPipeEnrichedDeleteData(node, context);
+      } finally {
+        context.getRegionWriteValidationRWLock().writeLock().unlock();
+      }
     }
 
     @Override

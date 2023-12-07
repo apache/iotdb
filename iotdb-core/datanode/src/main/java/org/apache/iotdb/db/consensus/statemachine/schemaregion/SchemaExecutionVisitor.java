@@ -29,6 +29,7 @@ import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.BatchActivateTemplateNode;
@@ -50,6 +51,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.vie
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.DeleteLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.RollbackLogicalViewBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteSchemaNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWriteSchemaNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.ICreateTimeSeriesPlan;
@@ -517,6 +520,59 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
     } catch (MetadataException e) {
       logger.error(e.getMessage(), e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+  }
+
+  @Override
+  public TSStatus visitPipeEnrichedWriteSchema(
+      PipeEnrichedWriteSchemaNode node, ISchemaRegion schemaRegion) {
+
+    final WritePlanNode writeSchemaNode = node.getWriteSchemaNode();
+
+    if (writeSchemaNode instanceof CreateTimeSeriesNode) {
+      return visitCreateTimeSeries((CreateTimeSeriesNode) writeSchemaNode, schemaRegion);
+    } else if (writeSchemaNode instanceof AlterTimeSeriesNode) {
+      return visitAlterTimeSeries((AlterTimeSeriesNode) writeSchemaNode, schemaRegion);
+    } else if (writeSchemaNode instanceof CreateAlignedTimeSeriesNode) {
+      return visitCreateAlignedTimeSeries(
+          (CreateAlignedTimeSeriesNode) writeSchemaNode, schemaRegion);
+    } else if (writeSchemaNode instanceof CreateMultiTimeSeriesNode) {
+      return visitCreateMultiTimeSeries((CreateMultiTimeSeriesNode) writeSchemaNode, schemaRegion);
+    } else if (writeSchemaNode instanceof InternalCreateTimeSeriesNode) {
+      return visitInternalCreateTimeSeries(
+          (InternalCreateTimeSeriesNode) writeSchemaNode, schemaRegion);
+    } else if (writeSchemaNode instanceof InternalCreateMultiTimeSeriesNode) {
+      return visitInternalCreateMultiTimeSeries(
+          (InternalCreateMultiTimeSeriesNode) writeSchemaNode, schemaRegion);
+    } else if (writeSchemaNode instanceof ActivateTemplateNode) {
+      return visitActivateTemplate((ActivateTemplateNode) writeSchemaNode, schemaRegion);
+    } else if (writeSchemaNode instanceof BatchActivateTemplateNode) {
+      return visitBatchActivateTemplate((BatchActivateTemplateNode) writeSchemaNode, schemaRegion);
+    } else if (writeSchemaNode instanceof InternalBatchActivateTemplateNode) {
+      return visitInternalBatchActivateTemplate(
+          (InternalBatchActivateTemplateNode) writeSchemaNode, schemaRegion);
+    } else if (writeSchemaNode instanceof CreateLogicalViewNode) {
+      return visitCreateLogicalView((CreateLogicalViewNode) writeSchemaNode, schemaRegion);
+    } else if (writeSchemaNode instanceof AlterLogicalViewNode) {
+      return visitAlterLogicalView((AlterLogicalViewNode) writeSchemaNode, schemaRegion);
+    } else {
+      return visitPlan(writeSchemaNode, schemaRegion);
+    }
+  }
+
+  @Override
+  public TSStatus visitPipeEnrichedDeleteSchema(
+      PipeEnrichedDeleteSchemaNode node, ISchemaRegion schemaRegion) {
+    final PlanNode deleteSchemaNode = node.getDeleteSchemaNode();
+
+    if (deleteSchemaNode instanceof DeleteTimeSeriesNode) {
+      return visitDeleteTimeseries((DeleteTimeSeriesNode) deleteSchemaNode, schemaRegion);
+    } else if (deleteSchemaNode instanceof DeactivateTemplateNode) {
+      return visitDeactivateTemplate((DeactivateTemplateNode) deleteSchemaNode, schemaRegion);
+    } else if (deleteSchemaNode instanceof DeleteLogicalViewNode) {
+      return visitDeleteLogicalView((DeleteLogicalViewNode) deleteSchemaNode, schemaRegion);
+    } else {
+      return visitPlan(deleteSchemaNode, schemaRegion);
     }
   }
 

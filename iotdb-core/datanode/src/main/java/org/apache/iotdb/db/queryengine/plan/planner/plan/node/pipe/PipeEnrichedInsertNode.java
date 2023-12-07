@@ -230,7 +230,7 @@ public class PipeEnrichedInsertNode extends InsertNode {
     insertNode.serialize(stream);
   }
 
-  public static PlanNode deserialize(ByteBuffer buffer) {
+  public static PipeEnrichedInsertNode deserialize(ByteBuffer buffer) {
     return new PipeEnrichedInsertNode((InsertNode) PlanNodeType.deserialize(buffer));
   }
 

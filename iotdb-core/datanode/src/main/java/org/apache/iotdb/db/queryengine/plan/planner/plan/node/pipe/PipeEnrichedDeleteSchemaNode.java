@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe;
 
 import org.apache.iotdb.db.consensus.statemachine.schemaregion.SchemaExecutionVisitor;
+import org.apache.iotdb.db.queryengine.execution.executor.RegionWriteExecutor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -37,7 +38,8 @@ import java.util.List;
 /**
  * This class aims to mark the {@link PlanNode} of schema deletion to prevent forwarding pipe
  * deletions. The handling logic is defined only in {@link SchemaExecutionVisitor} to execute
- * deletion logic and mark it as received,
+ * deletion logic and mark it as received, since the request does not need to pass {@link
+ * RegionWriteExecutor} and is assigned directly to regions by configNode.
  *
  * <p>
  *
@@ -45,9 +47,9 @@ import java.util.List;
  *
  * <p>- Timeseries: {@link DeleteTimeSeriesNode}
  *
- * <p>- LogicalView: {@link DeleteLogicalViewNode}
- *
  * <p>- Template: {@link DeactivateTemplateNode}
+ *
+ * <p>- LogicalView: {@link DeleteLogicalViewNode}
  *
  * <p>Intermediate nodes like {@link ConstructSchemaBlackListNode} will not be included since they
  * will not be collected by pipe.
@@ -123,7 +125,7 @@ public class PipeEnrichedDeleteSchemaNode extends PlanNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitPipeEnrichedDeleteSchemaNode(this, context);
+    return visitor.visitPipeEnrichedDeleteSchema(this, context);
   }
 
   @Override
@@ -138,7 +140,7 @@ public class PipeEnrichedDeleteSchemaNode extends PlanNode {
     deleteSchemaNode.serialize(stream);
   }
 
-  public static PlanNode deserialize(ByteBuffer buffer) {
+  public static PipeEnrichedDeleteSchemaNode deserialize(ByteBuffer buffer) {
     return new PipeEnrichedDeleteSchemaNode(PlanNodeType.deserialize(buffer));
   }
 

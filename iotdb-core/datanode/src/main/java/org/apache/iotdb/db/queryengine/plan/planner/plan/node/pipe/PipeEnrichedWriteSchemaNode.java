@@ -30,9 +30,13 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.BatchActivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalBatchActivateTemplateNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalCreateMultiTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.AlterLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
 
@@ -53,14 +57,19 @@ import java.util.stream.Collectors;
  *
  * <p>
  *
- * <p>Notes: The contents includes all the {@link WritePlanNode}s of schema writing:
+ * <p>Notes: The content varies in all the {@link WritePlanNode}s of schema writing nodes:
  *
- * <p>- Timeseries: {@link CreateTimeSeriesNode}, {@link AlterTimeSeriesNode}, {@link
+ * <p>- Timeseries(Manual): {@link CreateTimeSeriesNode}, {@link AlterTimeSeriesNode}, {@link
  * CreateAlignedTimeSeriesNode}, {@link CreateMultiTimeSeriesNode}
  *
- * <p>- LogicalView: {@link CreateLogicalViewNode}, {@link AlterLogicalViewNode}
+ * <p>- Timeseries(Auto): {@link InternalCreateTimeSeriesNode}, {@link
+ * InternalCreateMultiTimeSeriesNode}
  *
- * <p>- Template: {@link ActivateTemplateNode}
+ * <p>- Template(Manual): {@link ActivateTemplateNode}, {@link BatchActivateTemplateNode}
+ *
+ * <p>- Template(Auto): {@link InternalBatchActivateTemplateNode}
+ *
+ * <p>- LogicalView: {@link CreateLogicalViewNode}, {@link AlterLogicalViewNode}
  */
 public class PipeEnrichedWriteSchemaNode extends WritePlanNode {
 
@@ -71,7 +80,7 @@ public class PipeEnrichedWriteSchemaNode extends WritePlanNode {
     this.writeSchemaNode = schemaWriteNode;
   }
 
-  public PlanNode getWriteSchemaNode() {
+  public WritePlanNode getWriteSchemaNode() {
     return writeSchemaNode;
   }
 
@@ -134,7 +143,7 @@ public class PipeEnrichedWriteSchemaNode extends WritePlanNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitPipeEnrichedWriteSchemaNode(this, context);
+    return visitor.visitPipeEnrichedWriteSchema(this, context);
   }
 
   @Override
@@ -149,7 +158,7 @@ public class PipeEnrichedWriteSchemaNode extends WritePlanNode {
     writeSchemaNode.serialize(stream);
   }
 
-  public static PlanNode deserialize(ByteBuffer buffer) {
+  public static PipeEnrichedWriteSchemaNode deserialize(ByteBuffer buffer) {
     return new PipeEnrichedWriteSchemaNode((WritePlanNode) PlanNodeType.deserialize(buffer));
   }
 
