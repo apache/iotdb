@@ -250,6 +250,40 @@ public class IoTDBMultiDeviceIT {
         }
         assertEquals(2140, cnt);
       }
+
+      statement.execute("DELETE FROM root.fans.** WHERE time <= 20000");
+      statement.execute("DELETE FROM root.car.** WHERE time <= 20000");
+
+      try (ResultSet resultSet = statement.executeQuery(selectSql)) {
+        int cnt = 0;
+        long before = -1;
+        while (resultSet.next()) {
+          long cur = Long.parseLong(resultSet.getString(TestConstant.TIMESTAMP_STR));
+          if (cur <= before) {
+            fail("time order wrong!");
+          }
+          before = cur;
+          cnt++;
+        }
+        assertEquals(49, cnt);
+      }
+
+      statement.execute("DELETE FROM root.** WHERE time >= 20000");
+
+      try (ResultSet resultSet = statement.executeQuery(selectSql)) {
+        int cnt = 0;
+        long before = -1;
+        while (resultSet.next()) {
+          long cur = Long.parseLong(resultSet.getString(TestConstant.TIMESTAMP_STR));
+          if (cur <= before) {
+            fail("time order wrong!");
+          }
+          before = cur;
+          cnt++;
+        }
+        assertEquals(0, cnt);
+      }
+
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

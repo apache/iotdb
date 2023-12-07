@@ -31,7 +31,7 @@ public class DriverTaskTimeoutSentinelThread extends AbstractDriverThread {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(DriverTaskTimeoutSentinelThread.class);
 
-  private final long SLEEP_BOUND = 5 * 1000L;
+  private static final long SLEEP_BOUND = 5 * 1000L;
 
   public DriverTaskTimeoutSentinelThread(
       String workerId,

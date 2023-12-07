@@ -19,22 +19,15 @@
 
 package org.apache.iotdb.tsfile.read.filter.basic;
 
-import org.apache.iotdb.tsfile.read.common.TimeRange;
+public abstract class DisableStatisticsTimeFilter extends TimeFilter {
 
-import java.util.List;
-
-public interface IValueFilter extends Filter {
-
-  default boolean satisfyStartEndTime(long startTime, long endTime) {
+  @Override
+  public boolean satisfyStartEndTime(long startTime, long endTime) {
     return true;
   }
 
-  default boolean containStartEndTime(long startTime, long endTime) {
-    return false;
-  }
-
   @Override
-  default List<TimeRange> getTimeRanges() {
-    throw new UnsupportedOperationException("Value filter does not support getTimeRanges()");
+  public boolean containStartEndTime(long startTime, long endTime) {
+    return false;
   }
 }

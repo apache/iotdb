@@ -46,14 +46,16 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
   private final ClusterSchemaTree schemaTree = new ClusterSchemaTree(generateSchemaTree());
 
   @Override
-  public ClusterSchemaTree fetchSchema(PathPatternTree patternTree, MPPQueryContext context) {
+  public ClusterSchemaTree fetchSchema(
+      PathPatternTree patternTree, boolean withTemplate, MPPQueryContext context) {
     schemaTree.setDatabases(Collections.singleton("root.sg"));
     return schemaTree;
   }
 
   @Override
-  public ISchemaTree fetchSchemaWithTags(PathPatternTree patternTree, MPPQueryContext context) {
-    return fetchSchema(patternTree, context);
+  public ISchemaTree fetchSchemaWithTags(
+      PathPatternTree patternTree, boolean withTemplate, MPPQueryContext context) {
+    return fetchSchema(patternTree, withTemplate, context);
   }
 
   @Override

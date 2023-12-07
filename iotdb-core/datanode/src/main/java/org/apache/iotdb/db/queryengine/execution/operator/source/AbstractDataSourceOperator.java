@@ -38,5 +38,10 @@ public abstract class AbstractDataSourceOperator extends AbstractSourceOperator
     resultTsBlockBuilder = new TsBlockBuilder(getResultDataTypes());
   }
 
+  @Override
+  public void close() throws Exception {
+    // do nothing
+  }
+
   protected abstract List<TSDataType> getResultDataTypes();
 }

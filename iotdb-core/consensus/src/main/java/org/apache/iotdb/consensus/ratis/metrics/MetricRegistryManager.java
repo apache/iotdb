@@ -36,7 +36,7 @@ import java.util.function.Consumer;
 public class MetricRegistryManager extends MetricRegistries {
   /** Using RefCountingMap here because of potential duplicate MetricRegistryInfos. */
   private final RefCountingMap<MetricRegistryInfo, RatisMetricRegistry> registries;
-  /** TODO: enable ratis metrics after verifying its correctness and efficiency. */
+
   private final AbstractMetricService service = MetricService.getInstance();
 
   public MetricRegistryManager() {

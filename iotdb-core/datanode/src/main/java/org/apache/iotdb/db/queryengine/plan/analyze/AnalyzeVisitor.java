@@ -363,13 +363,21 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     ISchemaTree schemaTree;
     try {
       logger.debug("[StartFetchSchema]");
+      PathPatternTree authorizedPatternTree = queryStatement.getAuthorityScope();
+      // If the authority scope of query statement contains full path, we should fetch schema
+      // without template. Otherwise, the result ISchemaTree may contain template series that is
+      // not authorized to access.
+      boolean allWildcardLeaf =
+          !authorizedPatternTree.isContainFullPath() && authorizedPatternTree.isContainWildcard();
       if (queryStatement.isGroupByTag()) {
         schemaTree =
-            schemaFetcher.fetchSchemaWithTags(concatPathRewriter.getPatternTree(), context);
+            schemaFetcher.fetchSchemaWithTags(
+                concatPathRewriter.getPatternTree(), allWildcardLeaf, context);
       } else {
-        schemaTree = schemaFetcher.fetchSchema(concatPathRewriter.getPatternTree(), context);
+        schemaTree =
+            schemaFetcher.fetchSchema(
+                concatPathRewriter.getPatternTree(), allWildcardLeaf, context);
       }
-      schemaTree.setAuthorityScope(queryStatement.getAuthorityScope());
 
       // make sure paths in logical view is fetched
       updateSchemaTreeByViews(analysis, schemaTree);
@@ -467,7 +475,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           }
           List<Expression> sourceExpressionsOfNonWritableView =
               searchSourceExpressions(lastQuerySourceExpression);
-          lastQueryNonWritableViewSourceExpressionMap.put(
+          lastQueryNonWritableViewSourceExpressionMap.putIfAbsent(
               lastQuerySourceExpression, sourceExpressionsOfNonWritableView);
           sourceExpressions.addAll(sourceExpressionsOfNonWritableView);
         }
@@ -514,7 +522,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
 
     if (needToReFetch) {
-      ISchemaTree viewSchemaTree = this.schemaFetcher.fetchSchema(patternTree, null);
+      ISchemaTree viewSchemaTree = this.schemaFetcher.fetchSchema(patternTree, true, null);
       originSchemaTree.mergeSchemaTree(viewSchemaTree);
       Set<String> allDatabases = viewSchemaTree.getDatabases();
       allDatabases.addAll(originSchemaTree.getDatabases());
@@ -1983,7 +1991,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     // fetch schema of target paths
     long startTime = System.nanoTime();
-    ISchemaTree targetSchemaTree = schemaFetcher.fetchSchema(targetPathTree, null);
+    ISchemaTree targetSchemaTree = schemaFetcher.fetchSchema(targetPathTree, true, null);
     QueryPlanCostMetricSet.getInstance()
         .recordPlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
     deviceViewIntoPathDescriptor.bindType(targetSchemaTree);
@@ -2051,7 +2059,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     // fetch schema of target paths
     long startTime = System.nanoTime();
-    ISchemaTree targetSchemaTree = schemaFetcher.fetchSchema(targetPathTree, null);
+    ISchemaTree targetSchemaTree = schemaFetcher.fetchSchema(targetPathTree, true, null);
     updateSchemaTreeByViews(analysis, targetSchemaTree);
     QueryPlanCostMetricSet.getInstance()
         .recordPlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
@@ -2691,7 +2699,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       patternTree.constructTree();
       // request schema fetch API
       logger.debug("[StartFetchSchema]");
-      ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, context);
+      ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, true, context);
       updateSchemaTreeByViews(analysis, schemaTree);
       logger.debug("[EndFetchSchema]]");
 
@@ -2924,7 +2932,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     PathPatternTree patternTree = new PathPatternTree();
     deleteDataStatement.getPathList().forEach(patternTree::appendPathPattern);
 
-    ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, context);
+    ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, true, context);
     Set<String> deduplicatedDevicePaths = new HashSet<>();
 
     if (schemaTree.hasLogicalViewMeasurement()) {
@@ -3251,7 +3259,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       for (PartialPath path : pathList) {
         pathPatternTree.appendPathPattern(path);
       }
-      schemaTree = this.schemaFetcher.fetchSchema(pathPatternTree, context);
+      schemaTree = this.schemaFetcher.fetchSchema(pathPatternTree, true, context);
     }
 
     // search each path, make sure they all exist.

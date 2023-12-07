@@ -17,34 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.read.filter.operator.base;
+package org.apache.iotdb.db.pipe.config.plugin.env;
 
-import java.util.Objects;
-import java.util.regex.Pattern;
+public class PipeTaskProcessorRuntimeEnvironment extends PipeTaskRuntimeEnvironment {
 
-/* base class for Regex, NotRegex */
-public abstract class ColumnPatternMatchFilter {
-
-  protected final Pattern pattern;
-
-  protected ColumnPatternMatchFilter(Pattern pattern) {
-    this.pattern = Objects.requireNonNull(pattern, "pattern cannot be null");
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    ColumnPatternMatchFilter that = (ColumnPatternMatchFilter) o;
-    return pattern.pattern().equals(that.pattern.pattern());
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(pattern.pattern());
+  public PipeTaskProcessorRuntimeEnvironment(String pipeName, long creationTime, int regionId) {
+    super(pipeName, creationTime, regionId);
   }
 }

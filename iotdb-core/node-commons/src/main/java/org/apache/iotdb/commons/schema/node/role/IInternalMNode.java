@@ -17,17 +17,39 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.read.filter.basic;
+package org.apache.iotdb.commons.schema.node.role;
 
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.commons.schema.node.IMNode;
+import org.apache.iotdb.commons.schema.node.common.DeviceMNodeWrapper;
+import org.apache.iotdb.commons.schema.node.info.IDeviceInfo;
 
-public interface IDisableStatisticsValueFilter extends IValueFilter {
+public interface IInternalMNode<N extends IMNode<N>> extends IMNode<N> {
 
-  default boolean satisfy(Statistics statistics) {
-    return true;
+  IDeviceInfo<N> getDeviceInfo();
+
+  void setDeviceInfo(IDeviceInfo<N> deviceInfo);
+
+  @Override
+  default boolean isDevice() {
+    return getDeviceInfo() != null;
   }
 
-  default boolean allSatisfy(Statistics statistics) {
+  @Override
+  default boolean isMeasurement() {
     return false;
+  }
+
+  @Override
+  default IInternalMNode<N> getAsInternalMNode() {
+    return this;
+  }
+
+  @Override
+  default IDeviceMNode<N> getAsDeviceMNode() {
+    if (isDevice()) {
+      return new DeviceMNodeWrapper<>(this);
+    } else {
+      throw new UnsupportedOperationException("Wrong node type");
+    }
   }
 }

@@ -23,7 +23,6 @@ package org.apache.iotdb.db.queryengine.transformation.dag.transformer.ternary;
 
 import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.TransformUtils;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 
 public class BetweenTransformer extends CompareTernaryTransformer {
 
@@ -57,20 +56,10 @@ public class BetweenTransformer extends CompareTernaryTransformer {
   protected Evaluator constructTextEvaluator() {
     return () ->
         ((TransformUtils.compare(
-                        firstPointReader
-                            .currentBinary()
-                            .getStringValue(TSFileConfig.STRING_CHARSET),
-                        secondPointReader
-                            .currentBinary()
-                            .getStringValue(TSFileConfig.STRING_CHARSET))
+                        firstPointReader.currentBinary(), secondPointReader.currentBinary())
                     >= 0)
                 && (TransformUtils.compare(
-                        firstPointReader
-                            .currentBinary()
-                            .getStringValue(TSFileConfig.STRING_CHARSET),
-                        thirdPointReader
-                            .currentBinary()
-                            .getStringValue(TSFileConfig.STRING_CHARSET))
+                        firstPointReader.currentBinary(), thirdPointReader.currentBinary())
                     <= 0))
             ^ isNotBetween;
   }

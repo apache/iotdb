@@ -31,7 +31,7 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader
 import org.apache.iotdb.tsfile.read.common.Path
 import org.apache.iotdb.tsfile.read.expression.impl.{BinaryExpression, GlobalTimeExpression, SingleSeriesExpression}
 import org.apache.iotdb.tsfile.read.expression.{IExpression, QueryExpression}
-import org.apache.iotdb.tsfile.read.filter.factory.{TimeFilter, ValueFilter}
+import org.apache.iotdb.tsfile.read.filter.factory.{TimeFilterApi, ValueFilterApi}
 import org.apache.iotdb.tsfile.write.record.TSRecord
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint
 import org.apache.iotdb.tsfile.write.schema.{MeasurementSchema, Schema}
@@ -337,7 +337,7 @@ object NarrowConverter extends Converter {
       case SQLConstant.EQUAL =>
         val basicOperator = node.asInstanceOf[BasicOperator]
         if (QueryConstant.RESERVED_TIME.equals(basicOperator.getSeriesPath.toLowerCase())) {
-          filter = new GlobalTimeExpression(TimeFilter.eq(java.lang.Long.parseLong(
+          filter = new GlobalTimeExpression(TimeFilterApi.eq(java.lang.Long.parseLong(
             basicOperator.getSeriesValue)))
         } else {
           filter = constructExpression(schema, basicOperator.getSeriesPath,
@@ -348,7 +348,7 @@ object NarrowConverter extends Converter {
       case SQLConstant.LESSTHAN =>
         val basicOperator = node.asInstanceOf[BasicOperator]
         if (QueryConstant.RESERVED_TIME.equals(basicOperator.getSeriesPath.toLowerCase())) {
-          filter = new GlobalTimeExpression(TimeFilter.lt(java.lang.Long.parseLong(
+          filter = new GlobalTimeExpression(TimeFilterApi.lt(java.lang.Long.parseLong(
             basicOperator.getSeriesValue)))
         } else {
           filter = constructExpression(schema, basicOperator.getSeriesPath,
@@ -359,7 +359,7 @@ object NarrowConverter extends Converter {
       case SQLConstant.LESSTHANOREQUALTO =>
         val basicOperator = node.asInstanceOf[BasicOperator]
         if (QueryConstant.RESERVED_TIME.equals(basicOperator.getSeriesPath.toLowerCase())) {
-          filter = new GlobalTimeExpression(TimeFilter.ltEq(java.lang.Long.parseLong(
+          filter = new GlobalTimeExpression(TimeFilterApi.ltEq(java.lang.Long.parseLong(
             basicOperator.getSeriesValue)))
         } else {
           filter = constructExpression(schema, basicOperator.getSeriesPath,
@@ -370,7 +370,7 @@ object NarrowConverter extends Converter {
       case SQLConstant.GREATERTHAN =>
         val basicOperator = node.asInstanceOf[BasicOperator]
         if (QueryConstant.RESERVED_TIME.equals(basicOperator.getSeriesPath.toLowerCase())) {
-          filter = new GlobalTimeExpression(TimeFilter.gt(java.lang.Long.parseLong(
+          filter = new GlobalTimeExpression(TimeFilterApi.gt(java.lang.Long.parseLong(
             basicOperator.getSeriesValue)))
         } else {
           filter = constructExpression(schema, basicOperator.getSeriesPath,
@@ -381,7 +381,7 @@ object NarrowConverter extends Converter {
       case SQLConstant.GREATERTHANOREQUALTO =>
         val basicOperator = node.asInstanceOf[BasicOperator]
         if (QueryConstant.RESERVED_TIME.equals(basicOperator.getSeriesPath.toLowerCase())) {
-          filter = new GlobalTimeExpression(TimeFilter.gtEq(java.lang.Long.parseLong(
+          filter = new GlobalTimeExpression(TimeFilterApi.gtEq(java.lang.Long.parseLong(
             basicOperator.getSeriesValue)))
         } else {
           filter = constructExpression(schema, basicOperator.getSeriesPath,
@@ -411,27 +411,27 @@ object NarrowConverter extends Converter {
           dataType match {
             case BooleanType =>
               val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
-                ValueFilter.eq(new java.lang.Boolean(nodeValue)))
+                ValueFilterApi.eq(new java.lang.Boolean(nodeValue)))
               filter
             case IntegerType =>
               val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
-                ValueFilter.eq(new java.lang.Integer(nodeValue)))
+                ValueFilterApi.eq(new java.lang.Integer(nodeValue)))
               filter
             case LongType =>
               val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
-                ValueFilter.eq(new java.lang.Long(nodeValue)))
+                ValueFilterApi.eq(new java.lang.Long(nodeValue)))
               filter
             case FloatType =>
               val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
-                ValueFilter.eq(new java.lang.Float(nodeValue)))
+                ValueFilterApi.eq(new java.lang.Float(nodeValue)))
               filter
             case DoubleType =>
               val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
-                ValueFilter.eq(new java.lang.Double(nodeValue)))
+                ValueFilterApi.eq(new java.lang.Double(nodeValue)))
               filter
             case StringType =>
               val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
-                ValueFilter.eq(nodeValue))
+                ValueFilterApi.eq(nodeValue))
               filter
             case other => throw new UnsupportedOperationException(s"Unsupported type $other")
           }
@@ -439,19 +439,19 @@ object NarrowConverter extends Converter {
           dataType match {
             case IntegerType =>
               val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
-                ValueFilter.gt(new java.lang.Integer(nodeValue)))
+                ValueFilterApi.gt(new java.lang.Integer(nodeValue)))
               filter
             case LongType =>
               val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
-                ValueFilter.gt(new java.lang.Long(nodeValue)))
+                ValueFilterApi.gt(new java.lang.Long(nodeValue)))
               filter
             case FloatType =>
               val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
-                ValueFilter.gt(new java.lang.Float(nodeValue)))
+                ValueFilterApi.gt(new java.lang.Float(nodeValue)))
               filter
             case DoubleType =>
               val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
-                ValueFilter.gt(new java.lang.Double(nodeValue)))
+                ValueFilterApi.gt(new java.lang.Double(nodeValue)))
               filter
             case other => throw new UnsupportedOperationException(s"Unsupported type $other")
           }
@@ -459,19 +459,19 @@ object NarrowConverter extends Converter {
           dataType match {
             case IntegerType =>
               val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
-                ValueFilter.gtEq(new java.lang.Integer(nodeValue)))
+                ValueFilterApi.gtEq(new java.lang.Integer(nodeValue)))
               filter
             case LongType =>
               val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
-                ValueFilter.gtEq(new java.lang.Long(nodeValue)))
+                ValueFilterApi.gtEq(new java.lang.Long(nodeValue)))
               filter
             case FloatType =>
               val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
-                ValueFilter.gtEq(new java.lang.Float(nodeValue)))
+                ValueFilterApi.gtEq(new java.lang.Float(nodeValue)))
               filter
             case DoubleType =>
               val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
-                ValueFilter.gtEq(new java.lang.Double(nodeValue)))
+                ValueFilterApi.gtEq(new java.lang.Double(nodeValue)))
               filter
             case other => throw new UnsupportedOperationException(s"Unsupported type $other")
           }
@@ -479,19 +479,19 @@ object NarrowConverter extends Converter {
           dataType match {
             case IntegerType =>
               val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
-                ValueFilter.lt(new java.lang.Integer(nodeValue)))
+                ValueFilterApi.lt(new java.lang.Integer(nodeValue)))
               filter
             case LongType =>
               val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
-                ValueFilter.lt(new java.lang.Long(nodeValue)))
+                ValueFilterApi.lt(new java.lang.Long(nodeValue)))
               filter
             case FloatType =>
               val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
-                ValueFilter.lt(new java.lang.Float(nodeValue)))
+                ValueFilterApi.lt(new java.lang.Float(nodeValue)))
               filter
             case DoubleType =>
               val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
-                ValueFilter.lt(new java.lang.Double(nodeValue)))
+                ValueFilterApi.lt(new java.lang.Double(nodeValue)))
               filter
             case other => throw new UnsupportedOperationException(s"Unsupported type $other")
           }
@@ -499,19 +499,19 @@ object NarrowConverter extends Converter {
           dataType match {
             case IntegerType =>
               val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
-                ValueFilter.ltEq(new java.lang.Integer(nodeValue)))
+                ValueFilterApi.ltEq(new java.lang.Integer(nodeValue)))
               filter
             case LongType =>
               val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
-                ValueFilter.ltEq(new java.lang.Long(nodeValue)))
+                ValueFilterApi.ltEq(new java.lang.Long(nodeValue)))
               filter
             case FloatType =>
               val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
-                ValueFilter.ltEq(new java.lang.Float(nodeValue)))
+                ValueFilterApi.ltEq(new java.lang.Float(nodeValue)))
               filter
             case DoubleType =>
               val filter = new SingleSeriesExpression(new Path(device_name, nodeName, true),
-                ValueFilter.ltEq(new java.lang.Double(nodeValue)))
+                ValueFilterApi.ltEq(new java.lang.Double(nodeValue)))
               filter
             case other => throw new UnsupportedOperationException(s"Unsupported type $other")
           }

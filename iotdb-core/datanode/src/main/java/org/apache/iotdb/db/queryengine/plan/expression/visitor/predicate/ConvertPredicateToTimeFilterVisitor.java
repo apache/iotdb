@@ -42,7 +42,7 @@ import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.read.filter.factory.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilterApi;
 import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 import java.util.LinkedHashSet;
@@ -70,7 +70,7 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
     for (String value : values) {
       longValues.add(Long.parseLong(value));
     }
-    return inExpression.isNotIn() ? TimeFilter.notIn(longValues) : TimeFilter.in(longValues);
+    return inExpression.isNotIn() ? TimeFilterApi.notIn(longValues) : TimeFilterApi.in(longValues);
   }
 
   private Expression rewriteInExpressionToEqual(InExpression inExpression) {
@@ -171,17 +171,17 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
     long value = Long.parseLong(((ConstantOperand) constantExpression).getValueString());
     switch (expressionType) {
       case EQUAL_TO:
-        return TimeFilter.eq(value);
+        return TimeFilterApi.eq(value);
       case NON_EQUAL:
-        return TimeFilter.notEq(value);
+        return TimeFilterApi.notEq(value);
       case GREATER_THAN:
-        return TimeFilter.gt(value);
+        return TimeFilterApi.gt(value);
       case GREATER_EQUAL:
-        return TimeFilter.gtEq(value);
+        return TimeFilterApi.gtEq(value);
       case LESS_THAN:
-        return TimeFilter.lt(value);
+        return TimeFilterApi.lt(value);
       case LESS_EQUAL:
-        return TimeFilter.ltEq(value);
+        return TimeFilterApi.ltEq(value);
       default:
         throw new UnsupportedOperationException(
             String.format("Unsupported expression type %s", expressionType));
@@ -201,20 +201,20 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
       long maxValue = Long.parseLong(((ConstantOperand) thirdExpression).getValueString());
 
       if (minValue == maxValue) {
-        return isNot ? TimeFilter.notEq(minValue) : TimeFilter.eq(minValue);
+        return isNot ? TimeFilterApi.notEq(minValue) : TimeFilterApi.eq(minValue);
       }
       return isNot
-          ? TimeFilter.notBetween(minValue, maxValue)
-          : TimeFilter.between(minValue, maxValue);
+          ? TimeFilterApi.notBetween(minValue, maxValue)
+          : TimeFilterApi.between(minValue, maxValue);
     } else if (secondExpression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
       // secondExpression is TIMESTAMP
       long value = Long.parseLong(((ConstantOperand) firstExpression).getValueString());
-      return isNot ? TimeFilter.gt(value) : TimeFilter.ltEq(value);
+      return isNot ? TimeFilterApi.gt(value) : TimeFilterApi.ltEq(value);
     }
 
     // thirdExpression is TIMESTAMP
     long value = Long.parseLong(((ConstantOperand) firstExpression).getValueString());
-    return isNot ? TimeFilter.lt(value) : TimeFilter.gtEq(value);
+    return isNot ? TimeFilterApi.lt(value) : TimeFilterApi.gtEq(value);
   }
 
   @Override
@@ -226,7 +226,7 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
     TimeDuration slidingStep = groupByTimeExpression.getSlidingStep();
 
     if (interval.containsMonth() || slidingStep.containsMonth()) {
-      return TimeFilter.groupByMonth(
+      return TimeFilterApi.groupByMonth(
           startTime,
           endTime,
           interval,
@@ -234,7 +234,7 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
           TimeZone.getTimeZone("+00:00"),
           TimestampPrecisionUtils.currPrecision);
     } else {
-      return TimeFilter.groupBy(
+      return TimeFilterApi.groupBy(
           startTime, endTime, interval.nonMonthDuration, slidingStep.nonMonthDuration);
     }
   }

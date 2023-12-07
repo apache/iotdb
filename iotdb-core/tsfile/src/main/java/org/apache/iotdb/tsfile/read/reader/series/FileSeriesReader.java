@@ -61,7 +61,7 @@ public class FileSeriesReader extends AbstractFileSeriesReader {
   }
 
   @Override
-  protected boolean chunkSatisfied(IChunkMetadata chunkMetaData) {
-    return filter == null || filter.satisfy(chunkMetaData.getStatistics());
+  protected boolean chunkCanSkip(IChunkMetadata chunkMetaData) {
+    return filter != null && filter.canSkip(chunkMetaData);
   }
 }

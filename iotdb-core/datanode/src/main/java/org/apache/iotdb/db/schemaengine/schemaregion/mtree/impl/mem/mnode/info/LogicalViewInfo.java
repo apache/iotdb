@@ -158,7 +158,7 @@ public class LogicalViewInfo implements IMeasurementInfo {
     throw new SchemaExecutionException(
         new IllegalArgumentException(
             "Type of newMNode is not LogicalViewMNode! It's "
-                + newMNode.getMNodeType(false).toString()));
+                + newMNode.getMNodeType().toString()));
   }
   // endregion
 }

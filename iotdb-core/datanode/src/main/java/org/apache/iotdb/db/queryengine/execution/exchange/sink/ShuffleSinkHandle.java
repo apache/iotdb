@@ -75,10 +75,13 @@ public class ShuffleSinkHandle implements ISinkHandle {
       DownStreamChannelIndex downStreamChannelIndex,
       ShuffleStrategyEnum shuffleStrategyEnum,
       MPPDataExchangeManager.SinkListener sinkListener) {
-    this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
-    this.downStreamChannelList = Validate.notNull(downStreamChannelList);
-    this.downStreamChannelIndex = Validate.notNull(downStreamChannelIndex);
-    this.sinkListener = Validate.notNull(sinkListener);
+    this.localFragmentInstanceId =
+        Validate.notNull(localFragmentInstanceId, "localFragmentInstanceId can not be null.");
+    this.downStreamChannelList =
+        Validate.notNull(downStreamChannelList, "downStreamChannelList can not be null.");
+    this.downStreamChannelIndex =
+        Validate.notNull(downStreamChannelIndex, "downStreamChannelIndex can not be null.");
+    this.sinkListener = Validate.notNull(sinkListener, "sinkListener can not be null.");
     this.channelNum = downStreamChannelList.size();
     this.shuffleStrategy = getShuffleStrategy(shuffleStrategyEnum);
     this.hasSetNoMoreTsBlocks = new boolean[channelNum];
@@ -186,7 +189,9 @@ public class ShuffleSinkHandle implements ISinkHandle {
       return;
     }
     aborted = true;
-    LOGGER.debug("[StartAbortShuffleSinkHandle]");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("[StartAbortShuffleSinkHandle]");
+    }
     boolean meetError = false;
     Exception firstException = null;
     for (ISink channel : downStreamChannelList) {
@@ -203,7 +208,9 @@ public class ShuffleSinkHandle implements ISinkHandle {
       LOGGER.warn("Error occurred when try to abort channel.", firstException);
     }
     sinkListener.onAborted(this);
-    LOGGER.debug("[EndAbortShuffleSinkHandle]");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("[EndAbortShuffleSinkHandle]");
+    }
   }
 
   // Add synchronized on this method may lead to Dead Lock
@@ -216,7 +223,9 @@ public class ShuffleSinkHandle implements ISinkHandle {
       return;
     }
     closed = true;
-    LOGGER.debug("[StartCloseShuffleSinkHandle]");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("[StartCloseShuffleSinkHandle]");
+    }
     boolean meetError = false;
     Exception firstException = null;
     for (ISink channel : downStreamChannelList) {
@@ -233,7 +242,9 @@ public class ShuffleSinkHandle implements ISinkHandle {
       LOGGER.warn("Error occurred when try to close channel.", firstException);
     }
     sinkListener.onFinish(this);
-    LOGGER.debug("[EndCloseShuffleSinkHandle]");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("[EndCloseShuffleSinkHandle]");
+    }
   }
 
   @Override

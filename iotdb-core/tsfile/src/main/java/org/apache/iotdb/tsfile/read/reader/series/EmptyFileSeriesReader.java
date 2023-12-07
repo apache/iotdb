@@ -36,8 +36,8 @@ public class EmptyFileSeriesReader extends AbstractFileSeriesReader {
   }
 
   @Override
-  protected boolean chunkSatisfied(IChunkMetadata chunkMetaData) {
-    return false;
+  protected boolean chunkCanSkip(IChunkMetadata chunkMetaData) {
+    return true;
   }
 
   @Override
