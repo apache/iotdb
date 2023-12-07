@@ -58,6 +58,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.LOAD_TIMESERIES_METADATA_ALIGNED_DISK;
+import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.LOAD_TIMESERIES_METADATA_ALIGNED_MEM;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.LOAD_TIMESERIES_METADATA_NONALIGNED_DISK;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.LOAD_TIMESERIES_METADATA_NONALIGNED_MEM;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.TIMESERIES_METADATA_MODIFICATION_ALIGNED;
@@ -275,8 +277,8 @@ public class FileLoaderUtils {
 
       SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
           loadFromMem
-              ? LOAD_TIMESERIES_METADATA_NONALIGNED_MEM
-              : LOAD_TIMESERIES_METADATA_NONALIGNED_DISK,
+              ? LOAD_TIMESERIES_METADATA_ALIGNED_MEM
+              : LOAD_TIMESERIES_METADATA_ALIGNED_DISK,
           costTime);
     }
   }
