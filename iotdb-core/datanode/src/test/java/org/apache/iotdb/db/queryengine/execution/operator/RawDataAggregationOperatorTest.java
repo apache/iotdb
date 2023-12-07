@@ -57,7 +57,7 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilterApi;
 import org.apache.iotdb.tsfile.utils.TimeDuration;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -948,7 +948,7 @@ public class RawDataAggregationOperatorTest {
 
     Filter timeFilter = null;
     if (groupByTimeParameter != null && !groupByTimeParameter.isLeftCRightO()) {
-      timeFilter = TimeFilter.gt(0L);
+      timeFilter = TimeFilterApi.gt(0L);
     }
 
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();

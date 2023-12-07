@@ -19,12 +19,13 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl;
 
 import org.apache.iotdb.commons.schema.node.common.AbstractDatabaseMNode;
+import org.apache.iotdb.commons.schema.node.info.IDeviceInfo;
+import org.apache.iotdb.commons.schema.node.role.IInternalMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.basic.BasicMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.DatabaseInfo;
 
-public class DatabaseMNode extends AbstractDatabaseMNode<IMemMNode, BasicMNode>
-    implements IMemMNode {
+public class DatabaseMNode extends AbstractDatabaseMNode<IMemMNode, BasicInternalMNode>
+    implements IMemMNode, IInternalMNode<IMemMNode> {
 
   public DatabaseMNode(IMemMNode parent, String name) {
     super(new BasicInternalMNode(parent, name), new DatabaseInfo<>());
@@ -39,5 +40,15 @@ public class DatabaseMNode extends AbstractDatabaseMNode<IMemMNode, BasicMNode>
   @Override
   public IMemMNode getAsMNode() {
     return this;
+  }
+
+  @Override
+  public IDeviceInfo<IMemMNode> getDeviceInfo() {
+    return basicMNode.getDeviceInfo();
+  }
+
+  @Override
+  public void setDeviceInfo(IDeviceInfo<IMemMNode> deviceInfo) {
+    basicMNode.setDeviceInfo(deviceInfo);
   }
 }

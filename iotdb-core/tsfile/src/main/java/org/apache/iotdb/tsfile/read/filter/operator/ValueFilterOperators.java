@@ -20,29 +20,29 @@
 package org.apache.iotdb.tsfile.read.filter.operator;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
+import org.apache.iotdb.tsfile.file.metadata.IMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.filter.basic.DisableStatisticsValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.basic.IDisableStatisticsValueFilter;
-import org.apache.iotdb.tsfile.read.filter.basic.IValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.OperatorType;
-import org.apache.iotdb.tsfile.read.filter.operator.base.ColumnCompareFilter;
-import org.apache.iotdb.tsfile.read.filter.operator.base.ColumnPatternMatchFilter;
-import org.apache.iotdb.tsfile.read.filter.operator.base.ColumnRangeFilter;
-import org.apache.iotdb.tsfile.read.filter.operator.base.ColumnSetFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.ValueFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.ValueFilterApi;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.utils.RegexUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
  * These are the value column operators in a filter predicate expression tree. They are constructed
- * by using the methods in {@link org.apache.iotdb.tsfile.read.filter.factory.ValueFilter}
+ * by using the methods in {@link ValueFilterApi}
  */
 public final class ValueFilterOperators {
 
@@ -50,28 +50,32 @@ public final class ValueFilterOperators {
     // forbidden construction
   }
 
-  private static final String MEASUREMENT_CANNOT_BE_NULL_MSG = "measurement cannot be null";
   private static final String CONSTANT_CANNOT_BE_NULL_MSG = "constant cannot be null";
+  public static final String CANNOT_PUSH_DOWN_MSG = " operator can not be pushed down.";
+
+  private static final String OPERATOR_TO_STRING_FORMAT = "measurements[%s] %s %s";
 
   // base class for ValueEq, ValueNotEq, ValueLt, ValueGt, ValueLtEq, ValueGtEq
-  abstract static class ValueColumnCompareFilter<T extends Comparable<T>>
-      extends ColumnCompareFilter<T> implements IValueFilter {
+  abstract static class ValueColumnCompareFilter<T extends Comparable<T>> extends ValueFilter {
 
-    protected final String measurement;
+    protected final T constant;
 
-    protected ValueColumnCompareFilter(String measurement, T constant) {
-      super(constant);
-      this.measurement = Objects.requireNonNull(measurement, MEASUREMENT_CANNOT_BE_NULL_MSG);
+    protected ValueColumnCompareFilter(int measurementIndex, T constant) {
+      super(measurementIndex);
+      this.constant = Objects.requireNonNull(constant, CONSTANT_CANNOT_BE_NULL_MSG);
     }
 
-    public String getMeasurement() {
-      return measurement;
+    @SuppressWarnings("unchecked")
+    protected ValueColumnCompareFilter(ByteBuffer buffer) {
+      super(buffer);
+      this.constant =
+          Objects.requireNonNull(
+              (T) ReadWriteIOUtils.readObject(buffer), CONSTANT_CANNOT_BE_NULL_MSG);
     }
 
     @Override
     public void serialize(DataOutputStream outputStream) throws IOException {
-      ReadWriteIOUtils.write(getOperatorType().ordinal(), outputStream);
-      ReadWriteIOUtils.write(measurement, outputStream);
+      super.serialize(outputStream);
       ReadWriteIOUtils.writeObject(constant, outputStream);
     }
 
@@ -83,330 +87,340 @@ public final class ValueFilterOperators {
       if (o == null || getClass() != o.getClass()) {
         return false;
       }
+      if (!super.equals(o)) {
+        return false;
+      }
       ValueColumnCompareFilter<?> that = (ValueColumnCompareFilter<?>) o;
-      return measurement.equals(that.measurement);
+      return Objects.equals(constant, that.constant);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(measurement);
+      return Objects.hash(super.hashCode(), constant);
+    }
+
+    @Override
+    public String toString() {
+      return String.format(
+          OPERATOR_TO_STRING_FORMAT, measurementIndex, getOperatorType().getSymbol(), constant);
     }
   }
 
   public static final class ValueEq<T extends Comparable<T>> extends ValueColumnCompareFilter<T> {
 
-    // constant can be null
-    // TODO: consider support IS NULL
-    public ValueEq(String measurement, T constant) {
-      super(measurement, constant);
+    public ValueEq(int measurementIndex, T constant) {
+      super(measurementIndex, constant);
     }
 
     public ValueEq(ByteBuffer buffer) {
-      this(ReadWriteIOUtils.readString(buffer), (T) ReadWriteIOUtils.readObject(buffer));
+      super(buffer);
     }
 
     @Override
-    public boolean satisfy(long time, Object value) {
+    public boolean valueSatisfy(Object value) {
       return constant.equals(value);
     }
 
     @Override
-    public boolean satisfy(Statistics statistics) {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
-        return true;
+    @SuppressWarnings("unchecked")
+    public boolean canSkip(Statistics<? extends Serializable> statistics) {
+      if (statisticsNotAvailable(statistics)) {
+        return false;
       }
-      return constant.compareTo((T) statistics.getMinValue()) >= 0
-          && constant.compareTo((T) statistics.getMaxValue()) <= 0;
+
+      // drop if value < min || value > max
+      return constant.compareTo((T) statistics.getMinValue()) < 0
+          || constant.compareTo((T) statistics.getMaxValue()) > 0;
     }
 
     @Override
-    public boolean allSatisfy(Statistics statistics) {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
+    @SuppressWarnings("unchecked")
+    public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
+      if (statisticsNotAvailable(statistics)) {
         return false;
       }
+
       return constant.compareTo((T) statistics.getMinValue()) == 0
           && constant.compareTo((T) statistics.getMaxValue()) == 0;
     }
 
     @Override
     public Filter reverse() {
-      return new ValueNotEq<>(measurement, constant);
+      return new ValueNotEq<>(measurementIndex, constant);
     }
 
     @Override
     public OperatorType getOperatorType() {
       return OperatorType.VALUE_EQ;
     }
-
-    @Override
-    public String toString() {
-      return measurement + " == " + constant;
-    }
   }
 
   public static final class ValueNotEq<T extends Comparable<T>>
       extends ValueColumnCompareFilter<T> {
 
-    // constant can be null
-    // TODO: consider support IS NOT NULL
-    public ValueNotEq(String measurement, T constant) {
-      super(measurement, constant);
+    public ValueNotEq(int measurementIndex, T constant) {
+      super(measurementIndex, constant);
     }
 
     public ValueNotEq(ByteBuffer buffer) {
-      this(ReadWriteIOUtils.readString(buffer), (T) ReadWriteIOUtils.readObject(buffer));
+      super(buffer);
     }
 
     @Override
-    public boolean satisfy(long time, Object value) {
+    public boolean valueSatisfy(Object value) {
       return !constant.equals(value);
     }
 
     @Override
-    public boolean satisfy(Statistics statistics) {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
-        return true;
+    @SuppressWarnings("unchecked")
+    public boolean canSkip(Statistics<? extends Serializable> statistics) {
+      if (statisticsNotAvailable(statistics)) {
+        return false;
       }
-      return !(constant.compareTo((T) statistics.getMinValue()) == 0
-          && constant.compareTo((T) statistics.getMaxValue()) == 0);
+
+      // drop if this is a column where min = max = value
+      return constant.compareTo((T) statistics.getMinValue()) == 0
+          && constant.compareTo((T) statistics.getMaxValue()) == 0;
     }
 
     @Override
-    public boolean allSatisfy(Statistics statistics) {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
+    @SuppressWarnings("unchecked")
+    public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
+      if (statisticsNotAvailable(statistics)) {
         return false;
       }
+
       return constant.compareTo((T) statistics.getMinValue()) < 0
           || constant.compareTo((T) statistics.getMaxValue()) > 0;
     }
 
     @Override
     public Filter reverse() {
-      return new ValueEq<>(measurement, constant);
+      return new ValueEq<>(measurementIndex, constant);
     }
 
     @Override
     public OperatorType getOperatorType() {
       return OperatorType.VALUE_NEQ;
     }
-
-    @Override
-    public String toString() {
-      return measurement + " != " + constant;
-    }
   }
 
   public static final class ValueLt<T extends Comparable<T>> extends ValueColumnCompareFilter<T> {
 
-    // constant cannot be null
-    public ValueLt(String measurement, T constant) {
-      super(measurement, Objects.requireNonNull(constant, CONSTANT_CANNOT_BE_NULL_MSG));
+    public ValueLt(int measurementIndex, T constant) {
+      super(measurementIndex, constant);
     }
 
     public ValueLt(ByteBuffer buffer) {
-      this(ReadWriteIOUtils.readString(buffer), (T) ReadWriteIOUtils.readObject(buffer));
+      super(buffer);
     }
 
     @Override
-    public boolean satisfy(long time, Object value) {
+    @SuppressWarnings("unchecked")
+    public boolean valueSatisfy(Object value) {
       return constant.compareTo((T) value) > 0;
     }
 
     @Override
-    public boolean satisfy(Statistics statistics) {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
-        return true;
+    @SuppressWarnings("unchecked")
+    public boolean canSkip(Statistics<? extends Serializable> statistics) {
+      if (statisticsNotAvailable(statistics)) {
+        return false;
       }
-      return constant.compareTo((T) statistics.getMinValue()) > 0;
+
+      // drop if value <= min
+      return constant.compareTo((T) statistics.getMinValue()) <= 0;
     }
 
     @Override
-    public boolean allSatisfy(Statistics statistics) {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
+    @SuppressWarnings("unchecked")
+    public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
+      if (statisticsNotAvailable(statistics)) {
         return false;
       }
+
       return constant.compareTo((T) statistics.getMaxValue()) > 0;
     }
 
     @Override
     public Filter reverse() {
-      return new ValueGtEq<>(measurement, constant);
+      return new ValueGtEq<>(measurementIndex, constant);
     }
 
     @Override
     public OperatorType getOperatorType() {
       return OperatorType.VALUE_LT;
     }
-
-    @Override
-    public String toString() {
-      return measurement + " < " + constant;
-    }
   }
 
   public static final class ValueLtEq<T extends Comparable<T>> extends ValueColumnCompareFilter<T> {
 
-    // constant cannot be null
-    public ValueLtEq(String measurement, T constant) {
-      super(measurement, Objects.requireNonNull(constant, CONSTANT_CANNOT_BE_NULL_MSG));
+    public ValueLtEq(int measurementIndex, T constant) {
+      super(measurementIndex, constant);
     }
 
     public ValueLtEq(ByteBuffer buffer) {
-      this(ReadWriteIOUtils.readString(buffer), (T) ReadWriteIOUtils.readObject(buffer));
+      super(buffer);
     }
 
     @Override
-    public boolean satisfy(long time, Object value) {
+    @SuppressWarnings("unchecked")
+    public boolean valueSatisfy(Object value) {
       return constant.compareTo((T) value) >= 0;
     }
 
     @Override
-    public boolean satisfy(Statistics statistics) {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
-        return true;
+    @SuppressWarnings("unchecked")
+    public boolean canSkip(Statistics<? extends Serializable> statistics) {
+      if (statisticsNotAvailable(statistics)) {
+        return false;
       }
-      return constant.compareTo((T) statistics.getMinValue()) >= 0;
+
+      // drop if value < min
+      return constant.compareTo((T) statistics.getMinValue()) < 0;
     }
 
     @Override
-    public boolean allSatisfy(Statistics statistics) {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
+    @SuppressWarnings("unchecked")
+    public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
+      if (statisticsNotAvailable(statistics)) {
         return false;
       }
+
       return constant.compareTo((T) statistics.getMaxValue()) >= 0;
     }
 
     @Override
     public Filter reverse() {
-      return new ValueGt<>(measurement, constant);
+      return new ValueGt<>(measurementIndex, constant);
     }
 
     @Override
     public OperatorType getOperatorType() {
       return OperatorType.VALUE_LTEQ;
     }
-
-    @Override
-    public String toString() {
-      return measurement + " <= " + constant;
-    }
   }
 
   public static final class ValueGt<T extends Comparable<T>> extends ValueColumnCompareFilter<T> {
 
-    // constant cannot be null
-    public ValueGt(String measurement, T constant) {
-      super(measurement, Objects.requireNonNull(constant, CONSTANT_CANNOT_BE_NULL_MSG));
+    public ValueGt(int measurementIndex, T constant) {
+      super(measurementIndex, constant);
     }
 
     public ValueGt(ByteBuffer buffer) {
-      this(ReadWriteIOUtils.readString(buffer), (T) ReadWriteIOUtils.readObject(buffer));
+      super(buffer);
     }
 
     @Override
-    public boolean satisfy(long time, Object value) {
+    @SuppressWarnings("unchecked")
+    public boolean valueSatisfy(Object value) {
       return constant.compareTo((T) value) < 0;
     }
 
     @Override
-    public boolean satisfy(Statistics statistics) {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
-        return true;
+    @SuppressWarnings("unchecked")
+    public boolean canSkip(Statistics<? extends Serializable> statistics) {
+      if (statisticsNotAvailable(statistics)) {
+        return false;
       }
-      return constant.compareTo((T) statistics.getMaxValue()) < 0;
+
+      // drop if value >= max
+      return constant.compareTo((T) statistics.getMaxValue()) >= 0;
     }
 
     @Override
-    public boolean allSatisfy(Statistics statistics) {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
+    @SuppressWarnings("unchecked")
+    public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
+      if (statisticsNotAvailable(statistics)) {
         return false;
       }
+
       return constant.compareTo((T) statistics.getMinValue()) < 0;
     }
 
     @Override
     public Filter reverse() {
-      return new ValueLtEq<>(measurement, constant);
+      return new ValueLtEq<>(measurementIndex, constant);
     }
 
     @Override
     public OperatorType getOperatorType() {
       return OperatorType.VALUE_GT;
     }
-
-    @Override
-    public String toString() {
-      return measurement + " > " + constant;
-    }
   }
 
   public static final class ValueGtEq<T extends Comparable<T>> extends ValueColumnCompareFilter<T> {
 
-    // constant cannot be null
-    public ValueGtEq(String measurement, T constant) {
-      super(measurement, Objects.requireNonNull(constant, CONSTANT_CANNOT_BE_NULL_MSG));
+    public ValueGtEq(int measurementIndex, T constant) {
+      super(measurementIndex, constant);
     }
 
     public ValueGtEq(ByteBuffer buffer) {
-      this(ReadWriteIOUtils.readString(buffer), (T) ReadWriteIOUtils.readObject(buffer));
+      super(buffer);
     }
 
     @Override
-    public boolean satisfy(long time, Object value) {
+    @SuppressWarnings("unchecked")
+    public boolean valueSatisfy(Object value) {
       return constant.compareTo((T) value) <= 0;
     }
 
     @Override
-    public boolean satisfy(Statistics statistics) {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
-        return true;
+    @SuppressWarnings("unchecked")
+    public boolean canSkip(Statistics<? extends Serializable> statistics) {
+      if (statisticsNotAvailable(statistics)) {
+        return false;
       }
-      return constant.compareTo((T) statistics.getMaxValue()) <= 0;
+
+      // drop if value > max
+      return constant.compareTo((T) statistics.getMaxValue()) > 0;
     }
 
     @Override
-    public boolean allSatisfy(Statistics statistics) {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
+    @SuppressWarnings("unchecked")
+    public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
+      if (statisticsNotAvailable(statistics)) {
         return false;
       }
+
       return constant.compareTo((T) statistics.getMinValue()) <= 0;
     }
 
     @Override
     public Filter reverse() {
-      return new ValueLt<>(measurement, constant);
+      return new ValueLt<>(measurementIndex, constant);
     }
 
     @Override
     public OperatorType getOperatorType() {
       return OperatorType.VALUE_GTEQ;
     }
-
-    @Override
-    public String toString() {
-      return measurement + " >= " + constant;
-    }
   }
 
   // base class for ValueBetweenAnd, ValueNotBetweenAnd
-  abstract static class ValueColumnRangeFilter<T extends Comparable<T>> extends ColumnRangeFilter<T>
-      implements IValueFilter {
+  abstract static class ValueColumnRangeFilter<T extends Comparable<T>> extends ValueFilter {
 
-    protected final String measurement;
+    protected final T min;
+    protected final T max;
 
-    protected ValueColumnRangeFilter(String measurement, T min, T max) {
-      super(min, max);
-      this.measurement = Objects.requireNonNull(measurement, MEASUREMENT_CANNOT_BE_NULL_MSG);
+    protected ValueColumnRangeFilter(int measurementIndex, T min, T max) {
+      super(measurementIndex);
+      this.min = Objects.requireNonNull(min, "min cannot be null");
+      this.max = Objects.requireNonNull(max, "max cannot be null");
     }
 
-    public String getMeasurement() {
-      return measurement;
+    @SuppressWarnings("unchecked")
+    protected ValueColumnRangeFilter(ByteBuffer buffer) {
+      super(buffer);
+      this.min =
+          Objects.requireNonNull((T) ReadWriteIOUtils.readObject(buffer), "min cannot be null");
+      this.max =
+          Objects.requireNonNull((T) ReadWriteIOUtils.readObject(buffer), "max cannot be null");
     }
 
     @Override
     public void serialize(DataOutputStream outputStream) throws IOException {
-      ReadWriteIOUtils.write(getOperatorType().ordinal(), outputStream);
-      ReadWriteIOUtils.write(measurement, outputStream);
+      super.serialize(outputStream);
       ReadWriteIOUtils.writeObject(min, outputStream);
       ReadWriteIOUtils.writeObject(max, outputStream);
     }
@@ -423,140 +437,291 @@ public final class ValueFilterOperators {
         return false;
       }
       ValueColumnRangeFilter<?> that = (ValueColumnRangeFilter<?>) o;
-      return measurement.equals(that.measurement);
+      return min.equals(that.min) && max.equals(that.max);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(super.hashCode(), measurement);
+      return Objects.hash(super.hashCode(), min, max);
+    }
+
+    @Override
+    public String toString() {
+      return String.format(
+          "measurements[%s] %s %s AND %s",
+          measurementIndex, getOperatorType().getSymbol(), min, max);
     }
   }
 
   public static final class ValueBetweenAnd<T extends Comparable<T>>
       extends ValueColumnRangeFilter<T> {
 
-    public ValueBetweenAnd(String measurement, T min, T max) {
-      super(measurement, min, max);
+    public ValueBetweenAnd(int measurementIndex, T min, T max) {
+      super(measurementIndex, min, max);
     }
 
     public ValueBetweenAnd(ByteBuffer buffer) {
-      this(
-          ReadWriteIOUtils.readString(buffer),
-          (T) ReadWriteIOUtils.readObject(buffer),
-          (T) ReadWriteIOUtils.readObject(buffer));
+      super(buffer);
     }
 
     @Override
-    public boolean satisfy(long time, Object value) {
+    @SuppressWarnings("unchecked")
+    public boolean valueSatisfy(Object value) {
       return min.compareTo((T) value) <= 0 && max.compareTo((T) value) >= 0;
     }
 
     @Override
-    public boolean satisfy(Statistics statistics) {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
-        return true;
+    @SuppressWarnings("unchecked")
+    public boolean canSkip(Statistics<? extends Serializable> statistics) {
+      if (statisticsNotAvailable(statistics)) {
+        return false;
       }
-      return (((T) statistics.getMaxValue()).compareTo(min) >= 0
-          && ((T) statistics.getMinValue()).compareTo(max) <= 0);
+
+      return ((T) statistics.getMaxValue()).compareTo(min) < 0
+          || ((T) statistics.getMinValue()).compareTo(max) > 0;
     }
 
     @Override
-    public boolean allSatisfy(Statistics statistics) {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
+    @SuppressWarnings("unchecked")
+    public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
+      if (statisticsNotAvailable(statistics)) {
         return false;
       }
-      return (((T) statistics.getMinValue()).compareTo(min) >= 0
-          && ((T) statistics.getMaxValue()).compareTo(max) <= 0);
+
+      return ((T) statistics.getMinValue()).compareTo(min) >= 0
+          && ((T) statistics.getMaxValue()).compareTo(max) <= 0;
     }
 
     @Override
     public Filter reverse() {
-      return new ValueNotBetweenAnd<>(measurement, min, max);
+      return new ValueNotBetweenAnd<>(measurementIndex, min, max);
     }
 
     @Override
     public OperatorType getOperatorType() {
       return OperatorType.VALUE_BETWEEN_AND;
     }
-
-    @Override
-    public String toString() {
-      return measurement + " between " + min + " and " + max;
-    }
   }
 
   public static final class ValueNotBetweenAnd<T extends Comparable<T>>
       extends ValueColumnRangeFilter<T> {
 
-    public ValueNotBetweenAnd(String measurement, T min, T max) {
-      super(measurement, min, max);
+    public ValueNotBetweenAnd(int measurementIndex, T min, T max) {
+      super(measurementIndex, min, max);
     }
 
     public ValueNotBetweenAnd(ByteBuffer buffer) {
-      this(
-          ReadWriteIOUtils.readString(buffer),
-          (T) ReadWriteIOUtils.readObject(buffer),
-          (T) ReadWriteIOUtils.readObject(buffer));
+      super(buffer);
     }
 
     @Override
-    public boolean satisfy(long time, Object value) {
+    @SuppressWarnings("unchecked")
+    public boolean valueSatisfy(Object value) {
       return min.compareTo((T) value) > 0 || max.compareTo((T) value) < 0;
     }
 
     @Override
-    public boolean satisfy(Statistics statistics) {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
-        return true;
+    @SuppressWarnings("unchecked")
+    public boolean canSkip(Statistics<? extends Serializable> statistics) {
+      if (statisticsNotAvailable(statistics)) {
+        return false;
       }
-      return (((T) statistics.getMinValue()).compareTo(min) < 0
-          || ((T) statistics.getMaxValue()).compareTo(max) > 0);
+
+      return ((T) statistics.getMinValue()).compareTo(min) >= 0
+          && ((T) statistics.getMaxValue()).compareTo(max) <= 0;
     }
 
     @Override
-    public boolean allSatisfy(Statistics statistics) {
-      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
+    @SuppressWarnings("unchecked")
+    public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
+      if (statisticsNotAvailable(statistics)) {
         return false;
       }
-      return (((T) statistics.getMinValue()).compareTo(max) > 0
-          || ((T) statistics.getMaxValue()).compareTo(min) < 0);
+
+      return ((T) statistics.getMinValue()).compareTo(max) > 0
+          || ((T) statistics.getMaxValue()).compareTo(min) < 0;
     }
 
     @Override
     public Filter reverse() {
-      return new ValueBetweenAnd<>(measurement, min, max);
+      return new ValueBetweenAnd<>(measurementIndex, min, max);
     }
 
     @Override
     public OperatorType getOperatorType() {
       return OperatorType.VALUE_NOT_BETWEEN_AND;
     }
+  }
+
+  // we have no statistics available, we cannot drop any blocks
+  private static boolean statisticsNotAvailable(Statistics<?> statistics) {
+    return statistics.getType() == TSDataType.TEXT
+        || statistics.getType() == TSDataType.BOOLEAN
+        || statistics.isEmpty();
+  }
+
+  // base class for ValueIsNull and ValueIsNotNull
+  abstract static class ValueCompareNullFilter extends ValueFilter {
+
+    protected ValueCompareNullFilter(int measurementIndex) {
+      super(measurementIndex);
+    }
+
+    protected ValueCompareNullFilter(ByteBuffer buffer) {
+      super(buffer);
+    }
 
     @Override
     public String toString() {
-      return measurement + " not between " + min + " and " + max;
+      return String.format("measurements[%s] %s", measurementIndex, getOperatorType().getSymbol());
+    }
+  }
+
+  // ValueIsNull can not be pushed down
+  public static final class ValueIsNull extends ValueCompareNullFilter {
+
+    public ValueIsNull(int measurementIndex) {
+      super(measurementIndex);
+    }
+
+    public ValueIsNull(ByteBuffer buffer) {
+      super(buffer);
+    }
+
+    @Override
+    public boolean satisfy(long time, Object value) {
+      throw new IllegalArgumentException(getOperatorType().getSymbol() + CANNOT_PUSH_DOWN_MSG);
+    }
+
+    @Override
+    public boolean satisfyRow(long time, Object[] values) {
+      throw new IllegalArgumentException(getOperatorType().getSymbol() + CANNOT_PUSH_DOWN_MSG);
+    }
+
+    @Override
+    public boolean valueSatisfy(Object value) {
+      throw new IllegalArgumentException(getOperatorType().getSymbol() + CANNOT_PUSH_DOWN_MSG);
+    }
+
+    @Override
+    public boolean canSkip(IMetadata metadata) {
+      throw new IllegalArgumentException(getOperatorType().getSymbol() + CANNOT_PUSH_DOWN_MSG);
+    }
+
+    @Override
+    public boolean canSkip(Statistics<? extends Serializable> statistics) {
+      throw new IllegalArgumentException(getOperatorType().getSymbol() + CANNOT_PUSH_DOWN_MSG);
+    }
+
+    @Override
+    public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
+      throw new IllegalArgumentException(getOperatorType().getSymbol() + CANNOT_PUSH_DOWN_MSG);
+    }
+
+    @Override
+    public boolean allSatisfy(IMetadata metadata) {
+      throw new IllegalArgumentException(getOperatorType().getSymbol() + CANNOT_PUSH_DOWN_MSG);
+    }
+
+    @Override
+    public Filter reverse() {
+      return new ValueIsNotNull(measurementIndex);
+    }
+
+    @Override
+    public OperatorType getOperatorType() {
+      return OperatorType.VALUE_IS_NULL;
+    }
+  }
+
+  // ValueIsNotNull are only used in ValueFilter
+  public static final class ValueIsNotNull extends ValueCompareNullFilter {
+
+    public ValueIsNotNull(int measurementIndex) {
+      super(measurementIndex);
+    }
+
+    public ValueIsNotNull(ByteBuffer buffer) {
+      super(buffer);
+    }
+
+    @Override
+    public boolean valueSatisfy(Object value) {
+      return value != null;
+    }
+
+    @Override
+    public boolean canSkip(IMetadata metadata) {
+      Optional<Statistics<? extends Serializable>> statistics =
+          metadata.getMeasurementStatistics(measurementIndex);
+
+      if (!statistics.isPresent()) {
+        // the measurement isn't in this block so all values are null.
+        // null is always equal to null
+        return true;
+      }
+
+      // we are looking for records where v notEq(null)
+      // so, if this is a column of all nulls, we can drop it
+      return isAllNulls(statistics.get());
+    }
+
+    @Override
+    public boolean canSkip(Statistics<? extends Serializable> statistics) {
+      throw new NotImplementedException();
+    }
+
+    @Override
+    public boolean allSatisfy(IMetadata metadata) {
+      Optional<Statistics<? extends Serializable>> statistics =
+          metadata.getMeasurementStatistics(measurementIndex);
+
+      if (!statistics.isPresent()) {
+        // block cannot match
+        return false;
+      }
+
+      return !metadata.hasNullValue(measurementIndex);
+    }
+
+    @Override
+    public boolean allSatisfy(Statistics<? extends Serializable> statistics) {
+      throw new NotImplementedException();
+    }
+
+    @Override
+    public Filter reverse() {
+      return new ValueIsNull(measurementIndex);
+    }
+
+    @Override
+    public OperatorType getOperatorType() {
+      return OperatorType.VALUE_IS_NOT_NULL;
+    }
+
+    private boolean isAllNulls(Statistics<? extends Serializable> statistics) {
+      return statistics.getCount() == 0;
     }
   }
 
   // base class for ValueIn, ValueNotIn
-  abstract static class ValueColumnSetFilter<T> extends ColumnSetFilter<T>
-      implements IDisableStatisticsValueFilter {
+  abstract static class ValueColumnSetFilter<T> extends DisableStatisticsValueFilter {
 
-    protected final String measurement;
+    protected final Set<T> candidates;
 
-    protected ValueColumnSetFilter(String measurement, Set<T> candidates) {
-      super(candidates);
-      this.measurement = Objects.requireNonNull(measurement, MEASUREMENT_CANNOT_BE_NULL_MSG);
+    protected ValueColumnSetFilter(int measurementIndex, Set<T> candidates) {
+      super(measurementIndex);
+      this.candidates = Objects.requireNonNull(candidates, "candidates cannot be null");
     }
 
-    public String getMeasurement() {
-      return measurement;
+    protected ValueColumnSetFilter(ByteBuffer buffer) {
+      super(buffer);
+      candidates = ReadWriteIOUtils.readObjectSet(buffer);
     }
 
     @Override
     public void serialize(DataOutputStream outputStream) throws IOException {
-      ReadWriteIOUtils.write(getOperatorType().ordinal(), outputStream);
-      ReadWriteIOUtils.write(measurement, outputStream);
+      super.serialize(outputStream);
       ReadWriteIOUtils.writeObjectSet(candidates, outputStream);
     }
 
@@ -572,96 +737,94 @@ public final class ValueFilterOperators {
         return false;
       }
       ValueColumnSetFilter<?> that = (ValueColumnSetFilter<?>) o;
-      return measurement.equals(that.measurement);
+      return candidates.equals(that.candidates);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(super.hashCode(), measurement);
+      return Objects.hash(super.hashCode(), candidates);
+    }
+
+    @Override
+    public String toString() {
+      return String.format(
+          OPERATOR_TO_STRING_FORMAT, measurementIndex, getOperatorType().getSymbol(), candidates);
     }
   }
 
   public static final class ValueIn<T> extends ValueColumnSetFilter<T> {
 
-    public ValueIn(String measurement, Set<T> candidates) {
-      super(measurement, candidates);
+    public ValueIn(int measurementIndex, Set<T> candidates) {
+      super(measurementIndex, candidates);
     }
 
     public ValueIn(ByteBuffer buffer) {
-      this(ReadWriteIOUtils.readString(buffer), ReadWriteIOUtils.readObjectSet(buffer));
+      super(buffer);
     }
 
     @Override
-    public boolean satisfy(long time, Object value) {
+    public boolean valueSatisfy(Object value) {
       return candidates.contains(value);
     }
 
     @Override
     public Filter reverse() {
-      return new ValueNotIn<>(measurement, candidates);
+      return new ValueNotIn<>(measurementIndex, candidates);
     }
 
     @Override
     public OperatorType getOperatorType() {
       return OperatorType.VALUE_IN;
     }
-
-    @Override
-    public String toString() {
-      return measurement + " in " + candidates;
-    }
   }
 
   public static final class ValueNotIn<T> extends ValueColumnSetFilter<T> {
 
-    public ValueNotIn(String measurement, Set<T> candidates) {
-      super(measurement, candidates);
+    public ValueNotIn(int measurementIndex, Set<T> candidates) {
+      super(measurementIndex, candidates);
     }
 
     public ValueNotIn(ByteBuffer buffer) {
-      this(ReadWriteIOUtils.readString(buffer), ReadWriteIOUtils.readObjectSet(buffer));
+      super(buffer);
     }
 
     @Override
-    public boolean satisfy(long time, Object value) {
+    public boolean valueSatisfy(Object value) {
       return !candidates.contains(value);
     }
 
     @Override
     public Filter reverse() {
-      return new ValueIn<>(measurement, candidates);
+      return new ValueIn<>(measurementIndex, candidates);
     }
 
     @Override
     public OperatorType getOperatorType() {
       return OperatorType.VALUE_NOT_IN;
     }
-
-    @Override
-    public String toString() {
-      return measurement + " not in " + candidates;
-    }
   }
 
   // base class for ValueRegex, ValueNotRegex
-  abstract static class ValueColumnPatternMatchFilter extends ColumnPatternMatchFilter
-      implements IDisableStatisticsValueFilter {
+  abstract static class ValueColumnPatternMatchFilter extends DisableStatisticsValueFilter {
 
-    protected final String measurement;
+    protected final Pattern pattern;
 
-    protected ValueColumnPatternMatchFilter(String measurement, Pattern pattern) {
-      super(pattern);
-      this.measurement = Objects.requireNonNull(measurement, MEASUREMENT_CANNOT_BE_NULL_MSG);
+    protected ValueColumnPatternMatchFilter(int measurementIndex, Pattern pattern) {
+      super(measurementIndex);
+      this.pattern = Objects.requireNonNull(pattern, "pattern cannot be null");
     }
 
-    public String getMeasurement() {
-      return measurement;
+    protected ValueColumnPatternMatchFilter(ByteBuffer buffer) {
+      super(buffer);
+      this.pattern =
+          Pattern.compile(
+              Objects.requireNonNull(
+                  ReadWriteIOUtils.readString(buffer), "pattern cannot be null"));
     }
 
     @Override
     public void serialize(DataOutputStream outputStream) throws IOException {
-      ReadWriteIOUtils.write(getOperatorType().ordinal(), outputStream);
-      ReadWriteIOUtils.write(measurement, outputStream);
+      super.serialize(outputStream);
       ReadWriteIOUtils.write(pattern.pattern(), outputStream);
     }
 
@@ -677,78 +840,70 @@ public final class ValueFilterOperators {
         return false;
       }
       ValueColumnPatternMatchFilter that = (ValueColumnPatternMatchFilter) o;
-      return measurement.equals(that.measurement);
+      return pattern.pattern().equals(that.pattern.pattern());
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(super.hashCode(), measurement);
+      return Objects.hash(super.hashCode(), pattern.pattern());
+    }
+
+    @Override
+    public String toString() {
+      return String.format(
+          OPERATOR_TO_STRING_FORMAT, measurementIndex, getOperatorType().getSymbol(), pattern);
     }
   }
 
   public static final class ValueRegexp extends ValueColumnPatternMatchFilter {
 
-    public ValueRegexp(String measurement, Pattern pattern) {
-      super(measurement, pattern);
+    public ValueRegexp(int measurementIndex, Pattern pattern) {
+      super(measurementIndex, pattern);
     }
 
     public ValueRegexp(ByteBuffer buffer) {
-      this(
-          ReadWriteIOUtils.readString(buffer),
-          RegexUtils.compileRegex(ReadWriteIOUtils.readString(buffer)));
+      super(buffer);
     }
 
     @Override
-    public boolean satisfy(long time, Object value) {
+    public boolean valueSatisfy(Object value) {
       return pattern.matcher(new MatcherInput(value.toString(), new AccessCount())).find();
     }
 
     @Override
     public Filter reverse() {
-      return new ValueNotRegexp(measurement, pattern);
+      return new ValueNotRegexp(measurementIndex, pattern);
     }
 
     @Override
     public OperatorType getOperatorType() {
       return OperatorType.VALUE_REGEXP;
     }
-
-    @Override
-    public String toString() {
-      return measurement + " match " + pattern;
-    }
   }
 
   public static final class ValueNotRegexp extends ValueColumnPatternMatchFilter {
 
-    public ValueNotRegexp(String measurement, Pattern pattern) {
-      super(measurement, pattern);
+    public ValueNotRegexp(int measurementIndex, Pattern pattern) {
+      super(measurementIndex, pattern);
     }
 
     public ValueNotRegexp(ByteBuffer buffer) {
-      this(
-          ReadWriteIOUtils.readString(buffer),
-          RegexUtils.compileRegex(ReadWriteIOUtils.readString(buffer)));
+      super(buffer);
     }
 
     @Override
-    public boolean satisfy(long time, Object value) {
+    public boolean valueSatisfy(Object value) {
       return !pattern.matcher(new MatcherInput(value.toString(), new AccessCount())).find();
     }
 
     @Override
     public Filter reverse() {
-      return new ValueRegexp(measurement, pattern);
+      return new ValueRegexp(measurementIndex, pattern);
     }
 
     @Override
     public OperatorType getOperatorType() {
       return OperatorType.VALUE_NOT_REGEXP;
-    }
-
-    @Override
-    public String toString() {
-      return measurement + " not match " + pattern;
     }
   }
 

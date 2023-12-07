@@ -22,9 +22,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.snapshot;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.node.IMNode;
-import org.apache.iotdb.commons.schema.node.common.AbstractDatabaseDeviceMNode;
 import org.apache.iotdb.commons.schema.node.common.AbstractDatabaseMNode;
-import org.apache.iotdb.commons.schema.node.common.AbstractDeviceMNode;
 import org.apache.iotdb.commons.schema.node.common.AbstractMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
@@ -281,10 +279,19 @@ public class MemMTreeSnapshotUtil {
     @Override
     public Boolean visitBasicMNode(IMNode<?> node, OutputStream outputStream) {
       try {
-        ReadWriteIOUtils.write(INTERNAL_MNODE_TYPE, outputStream);
-        serializeBasicMNode(node, outputStream);
-        ReadWriteIOUtils.write(0, outputStream); // for compatibly
-        ReadWriteIOUtils.write(false, outputStream); // for compatibly
+        if (node.isDevice()) {
+          ReadWriteIOUtils.write(ENTITY_MNODE_TYPE, outputStream);
+          serializeBasicMNode(node, outputStream);
+          IDeviceMNode<?> deviceMNode = node.getAsDeviceMNode();
+          ReadWriteIOUtils.write(deviceMNode.getSchemaTemplateIdWithState(), outputStream);
+          ReadWriteIOUtils.write(deviceMNode.isUseTemplate(), outputStream);
+          ReadWriteIOUtils.write(deviceMNode.isAlignedNullable(), outputStream);
+        } else {
+          ReadWriteIOUtils.write(INTERNAL_MNODE_TYPE, outputStream);
+          serializeBasicMNode(node, outputStream);
+          ReadWriteIOUtils.write(0, outputStream); // for compatibly
+          ReadWriteIOUtils.write(false, outputStream); // for compatibly
+        }
         return true;
       } catch (IOException e) {
         logger.error(SERIALIZE_ERROR_INFO, e);
@@ -296,45 +303,23 @@ public class MemMTreeSnapshotUtil {
     public Boolean visitDatabaseMNode(
         AbstractDatabaseMNode<?, ? extends IMNode<?>> node, OutputStream outputStream) {
       try {
-        ReadWriteIOUtils.write(STORAGE_GROUP_MNODE_TYPE, outputStream);
-        serializeBasicMNode(node.getBasicMNode(), outputStream);
-        ReadWriteIOUtils.write(0, outputStream); // for compatibly
-        ReadWriteIOUtils.write(false, outputStream); // for compatibly
-        // database node in schemaRegion doesn't store any database schema
-        return true;
-      } catch (IOException e) {
-        logger.error(SERIALIZE_ERROR_INFO, e);
-        return false;
-      }
-    }
-
-    @Override
-    public Boolean visitDatabaseDeviceMNode(
-        AbstractDatabaseDeviceMNode<?, ? extends IMNode<?>> node, OutputStream outputStream) {
-      try {
-        ReadWriteIOUtils.write(STORAGE_GROUP_ENTITY_MNODE_TYPE, outputStream);
-        serializeBasicMNode(node.getBasicMNode(), outputStream);
-        ReadWriteIOUtils.write(node.getSchemaTemplateIdWithState(), outputStream);
-        ReadWriteIOUtils.write(node.isUseTemplate(), outputStream);
-        ReadWriteIOUtils.write(node.isAlignedNullable(), outputStream);
-        // database node in schemaRegion doesn't store any database schema
-        return true;
-      } catch (IOException e) {
-        logger.error(SERIALIZE_ERROR_INFO, e);
-        return false;
-      }
-    }
-
-    @Override
-    public Boolean visitDeviceMNode(
-        AbstractDeviceMNode<?, ? extends IMNode<?>> node, OutputStream outputStream) {
-      try {
-        ReadWriteIOUtils.write(ENTITY_MNODE_TYPE, outputStream);
-        serializeBasicMNode(node.getBasicMNode(), outputStream);
-        ReadWriteIOUtils.write(node.getSchemaTemplateIdWithState(), outputStream);
-        ReadWriteIOUtils.write(node.isUseTemplate(), outputStream);
-        ReadWriteIOUtils.write(node.isAlignedNullable(), outputStream);
-        return true;
+        if (node.isDevice()) {
+          ReadWriteIOUtils.write(STORAGE_GROUP_ENTITY_MNODE_TYPE, outputStream);
+          serializeBasicMNode(node.getBasicMNode(), outputStream);
+          IDeviceMNode<?> deviceMNode = node.getAsDeviceMNode();
+          ReadWriteIOUtils.write(deviceMNode.getSchemaTemplateIdWithState(), outputStream);
+          ReadWriteIOUtils.write(deviceMNode.isUseTemplate(), outputStream);
+          ReadWriteIOUtils.write(deviceMNode.isAlignedNullable(), outputStream);
+          // database node in schemaRegion doesn't store any database schema
+          return true;
+        } else {
+          ReadWriteIOUtils.write(STORAGE_GROUP_MNODE_TYPE, outputStream);
+          serializeBasicMNode(node.getBasicMNode(), outputStream);
+          ReadWriteIOUtils.write(0, outputStream); // for compatibly
+          ReadWriteIOUtils.write(false, outputStream); // for compatibly
+          // database node in schemaRegion doesn't store any database schema
+          return true;
+        }
       } catch (IOException e) {
         logger.error(SERIALIZE_ERROR_INFO, e);
         return false;

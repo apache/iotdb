@@ -21,8 +21,8 @@ package org.apache.iotdb.tsfile.read.filter.operator;
 
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.basic.ITimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.OperatorType;
+import org.apache.iotdb.tsfile.read.filter.basic.TimeFilter;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -32,7 +32,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public class GroupByFilter implements ITimeFilter {
+public class GroupByFilter extends TimeFilter {
 
   // [startTime, endTime]
   protected long startTime;
@@ -61,7 +61,7 @@ public class GroupByFilter implements ITimeFilter {
   }
 
   @Override
-  public boolean satisfy(long time, Object value) {
+  public boolean timeSatisfy(long time) {
     if (time < startTime || time >= endTime) {
       return false;
     } else {
@@ -126,7 +126,7 @@ public class GroupByFilter implements ITimeFilter {
 
   @Override
   public void serialize(DataOutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(getOperatorType().ordinal(), outputStream);
+    super.serialize(outputStream);
     ReadWriteIOUtils.write(startTime, outputStream);
     ReadWriteIOUtils.write(endTime, outputStream);
     ReadWriteIOUtils.write(interval, outputStream);

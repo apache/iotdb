@@ -17,35 +17,30 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.read.filter.operator.base;
+package org.apache.iotdb.tsfile.read.filter.basic;
 
-import java.util.Objects;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 
-/* base class for Eq, NotEq, Lt, Gt, LtEq, GtEq */
-public abstract class ColumnCompareFilter<T extends Comparable<T>> {
+import java.io.Serializable;
+import java.nio.ByteBuffer;
 
-  protected final T constant;
+public abstract class DisableStatisticsValueFilter extends ValueFilter {
 
-  protected ColumnCompareFilter(T constant) {
-    // ValueEq and ValueNotEq allow constant to be null, TimeEq, TimeEq, Lt, Gt, LtEq, GtEq however
-    // do not, so they guard against null in their own constructors.
-    this.constant = constant;
+  protected DisableStatisticsValueFilter(int measurementIndex) {
+    super(measurementIndex);
+  }
+
+  protected DisableStatisticsValueFilter(ByteBuffer buffer) {
+    super(buffer);
   }
 
   @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    ColumnCompareFilter<?> that = (ColumnCompareFilter<?>) o;
-    return Objects.equals(constant, that.constant);
+  protected boolean canSkip(Statistics<? extends Serializable> statistics) {
+    return false;
   }
 
   @Override
-  public int hashCode() {
-    return Objects.hash(constant);
+  protected boolean allSatisfy(Statistics<? extends Serializable> statistics) {
+    return false;
   }
 }

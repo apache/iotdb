@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.schema.node.common;
 
 import org.apache.iotdb.commons.path.PartialPath;
@@ -24,25 +25,21 @@ import org.apache.iotdb.commons.schema.node.MNodeType;
 import org.apache.iotdb.commons.schema.node.info.IDeviceInfo;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
+import org.apache.iotdb.commons.schema.node.role.IInternalMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
 
 import java.util.Map;
 
-public abstract class AbstractDeviceMNode<N extends IMNode<N>, BasicNode extends IMNode<N>>
+// This class provides a device view for an internal node with deviceInfo.
+public class DeviceMNodeWrapper<N extends IMNode<N>, BasicNode extends IInternalMNode<N>>
     implements IDeviceMNode<N> {
 
-  private final IDeviceInfo<N> deviceInfo;
   protected final BasicNode basicMNode;
 
-  public AbstractDeviceMNode(BasicNode basicMNode, IDeviceInfo<N> deviceInfo) {
+  public DeviceMNodeWrapper(BasicNode basicMNode) {
     this.basicMNode = basicMNode;
-    this.deviceInfo = deviceInfo;
-  }
-
-  public BasicNode getBasicMNode() {
-    return basicMNode;
   }
 
   @Override
@@ -82,52 +79,27 @@ public abstract class AbstractDeviceMNode<N extends IMNode<N>, BasicNode extends
 
   @Override
   public boolean hasChild(String name) {
-    return basicMNode.hasChild(name) || deviceInfo.hasAliasChild(name);
+    return basicMNode.hasChild(name);
   }
 
   @Override
   public N getChild(String name) {
-    N res = basicMNode.getChild(name);
-    if (res == null) {
-      res = deviceInfo.getAliasChild(name);
-    }
-    return res;
+    return basicMNode.getChild(name);
   }
 
   @Override
   public N addChild(String name, N child) {
-    N res = basicMNode.addChild(name, child);
-    if (res == child) {
-      child.setParent(this.getAsMNode());
-    }
-    return res;
+    return basicMNode.addChild(name, child);
   }
 
   @Override
   public N addChild(N child) {
-    N res = basicMNode.addChild(child);
-    if (res == child) {
-      child.setParent(this.getAsMNode());
-    }
-    return res;
+    return basicMNode.addChild(child);
   }
 
   @Override
   public N deleteChild(String name) {
     return basicMNode.deleteChild(name);
-  }
-
-  @Override
-  public void replaceChild(String oldChildName, N newChildNode) {
-    basicMNode.replaceChild(oldChildName, newChildNode);
-  }
-
-  @Override
-  public void moveDataToNewMNode(N newMNode) {
-    basicMNode.moveDataToNewMNode(newMNode);
-    if (newMNode.isDevice()) {
-      deviceInfo.moveDataToNewMNode(newMNode.getAsDeviceMNode());
-    }
   }
 
   @Override
@@ -142,12 +114,22 @@ public abstract class AbstractDeviceMNode<N extends IMNode<N>, BasicNode extends
 
   @Override
   public boolean isAboveDatabase() {
-    return false;
+    return basicMNode.isAboveDatabase();
   }
 
   @Override
   public boolean isDatabase() {
-    return false;
+    return basicMNode.isDatabase();
+  }
+
+  @Override
+  public IDeviceInfo<N> getDeviceInfo() {
+    return basicMNode.getDeviceInfo();
+  }
+
+  @Override
+  public void setDeviceInfo(IDeviceInfo<N> deviceInfo) {
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -156,23 +138,23 @@ public abstract class AbstractDeviceMNode<N extends IMNode<N>, BasicNode extends
   }
 
   @Override
-  public boolean isMeasurement() {
-    return false;
-  }
-
-  @Override
-  public MNodeType getMNodeType(Boolean isConfig) {
+  public MNodeType getMNodeType() {
     return MNodeType.DEVICE;
   }
 
   @Override
   public IDatabaseMNode<N> getAsDatabaseMNode() {
-    throw new UnsupportedOperationException("Wrong MNode Type");
+    return basicMNode.getAsDatabaseMNode();
   }
 
   @Override
   public IDeviceMNode<N> getAsDeviceMNode() {
     return this;
+  }
+
+  @Override
+  public IInternalMNode<N> getAsInternalMNode() {
+    return basicMNode;
   }
 
   @Override
@@ -182,77 +164,77 @@ public abstract class AbstractDeviceMNode<N extends IMNode<N>, BasicNode extends
 
   @Override
   public <R, C> R accept(MNodeVisitor<R, C> visitor, C context) {
-    return visitor.visitDeviceMNode(this, context);
+    return visitor.visitBasicMNode(this, context);
   }
 
   @Override
   public boolean addAlias(String alias, IMeasurementMNode<N> child) {
-    return deviceInfo.addAlias(alias, child);
+    return basicMNode.getDeviceInfo().addAlias(alias, child);
   }
 
   @Override
   public void deleteAliasChild(String alias) {
-    deviceInfo.deleteAliasChild(alias);
+    basicMNode.getDeviceInfo().deleteAliasChild(alias);
   }
 
   @Override
   public Map<String, IMeasurementMNode<N>> getAliasChildren() {
-    return deviceInfo.getAliasChildren();
+    return basicMNode.getDeviceInfo().getAliasChildren();
   }
 
   @Override
   public void setAliasChildren(Map<String, IMeasurementMNode<N>> aliasChildren) {
-    deviceInfo.setAliasChildren(aliasChildren);
+    basicMNode.getDeviceInfo().setAliasChildren(aliasChildren);
   }
 
   @Override
   public boolean isUseTemplate() {
-    return deviceInfo.isUseTemplate();
+    return basicMNode.getDeviceInfo().isUseTemplate();
   }
 
   @Override
   public void setUseTemplate(boolean useTemplate) {
-    deviceInfo.setUseTemplate(useTemplate);
+    basicMNode.getDeviceInfo().setUseTemplate(useTemplate);
   }
 
   @Override
   public void setSchemaTemplateId(int schemaTemplateId) {
-    deviceInfo.setSchemaTemplateId(schemaTemplateId);
+    basicMNode.getDeviceInfo().setSchemaTemplateId(schemaTemplateId);
   }
 
   @Override
   public int getSchemaTemplateId() {
-    return deviceInfo.getSchemaTemplateId();
+    return basicMNode.getDeviceInfo().getSchemaTemplateId();
   }
 
   @Override
   public int getSchemaTemplateIdWithState() {
-    return deviceInfo.getSchemaTemplateIdWithState();
+    return basicMNode.getDeviceInfo().getSchemaTemplateIdWithState();
   }
 
   @Override
   public boolean isPreDeactivateTemplate() {
-    return deviceInfo.isPreDeactivateTemplate();
+    return basicMNode.getDeviceInfo().isPreDeactivateTemplate();
   }
 
   @Override
   public void preDeactivateTemplate() {
-    deviceInfo.preDeactivateTemplate();
+    basicMNode.getDeviceInfo().preDeactivateTemplate();
   }
 
   @Override
   public void rollbackPreDeactivateTemplate() {
-    deviceInfo.rollbackPreDeactivateTemplate();
+    basicMNode.getDeviceInfo().rollbackPreDeactivateTemplate();
   }
 
   @Override
   public void deactivateTemplate() {
-    deviceInfo.deactivateTemplate();
+    basicMNode.getDeviceInfo().deactivateTemplate();
   }
 
   @Override
   public boolean isAligned() {
-    Boolean align = deviceInfo.isAligned();
+    Boolean align = basicMNode.getDeviceInfo().isAligned();
     if (align == null) {
       return false;
     }
@@ -261,29 +243,21 @@ public abstract class AbstractDeviceMNode<N extends IMNode<N>, BasicNode extends
 
   @Override
   public Boolean isAlignedNullable() {
-    return deviceInfo.isAligned();
+    return basicMNode.getDeviceInfo().isAligned();
   }
 
   @Override
   public void setAligned(Boolean isAligned) {
-    deviceInfo.setAligned(isAligned);
+    basicMNode.getDeviceInfo().setAligned(isAligned);
   }
 
-  /**
-   * The basic memory occupied by any AbstractDeviceMNode object
-   *
-   * <ol>
-   *   <li>object header, 8B
-   *   <li>node attributes
-   *       <ol>
-   *         <li>deviceInfo reference, 8B
-   *         <li>basicMNode reference, 8B
-   *       </ol>
-   *   <li>MapEntry in parent
-   * </ol>
-   */
   @Override
   public int estimateSize() {
-    return 8 + 8 + deviceInfo.estimateSize() + basicMNode.estimateSize();
+    return basicMNode.estimateSize();
+  }
+
+  @Override
+  public N getAsMNode() {
+    return basicMNode.getAsMNode();
   }
 }

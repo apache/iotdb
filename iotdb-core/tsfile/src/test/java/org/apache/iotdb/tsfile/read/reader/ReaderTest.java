@@ -28,8 +28,8 @@ import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.read.filter.factory.TimeFilter;
-import org.apache.iotdb.tsfile.read.filter.factory.ValueFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilterApi;
+import org.apache.iotdb.tsfile.read.filter.factory.ValueFilterApi;
 import org.apache.iotdb.tsfile.read.reader.series.AbstractFileSeriesReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
@@ -112,8 +112,8 @@ public class ReaderTest {
 
     Filter filter =
         FilterFactory.or(
-            FilterFactory.and(TimeFilter.gt(1480563570029L), TimeFilter.lt(1480563570033L)),
-            FilterFactory.and(ValueFilter.gtEq(9520331), ValueFilter.ltEq(9520361)));
+            FilterFactory.and(TimeFilterApi.gt(1480563570029L), TimeFilterApi.lt(1480563570033L)),
+            FilterFactory.and(ValueFilterApi.gtEq(9520331), ValueFilterApi.ltEq(9520361)));
     SingleSeriesExpression singleSeriesExp =
         new SingleSeriesExpression(new Path("d1", "s1", true), filter);
     AbstractFileSeriesReader seriesReader =
