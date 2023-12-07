@@ -169,6 +169,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
 
   @Override
   public TSStatus visitPipeEnrichedInsert(PipeEnrichedInsertNode node, DataRegion context) {
+    node.getInsertNode().markAsGeneratedByPipe();
     return node.getInsertNode().accept(this, context);
   }
 
