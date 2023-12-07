@@ -75,10 +75,12 @@ public class ConcurrentIterableLinkedQueue<E> {
       if (firstNode == pilotNode) {
         firstIndex = tailIndex;
         firstNode = newNode;
+        // Always explicitly set pilotNode.next to firstNode
+        pilotNode.next = newNode;
       }
 
       ++tailIndex;
-      // if firstNode == pilotNode, then lastNode == pilotNode
+      // If firstNode == pilotNode, then lastNode == pilotNode
       lastNode.next = newNode;
       lastNode = newNode;
 
@@ -106,6 +108,7 @@ public class ConcurrentIterableLinkedQueue<E> {
   public long tryRemoveBefore(long newFirstIndex) {
     lock.writeLock().lock();
     try {
+      // Iterate over iterators to find the minimum valid newFirstIndex
       for (final DynamicIterator iterator : iteratorSet.keySet()) {
         newFirstIndex = Math.min(newFirstIndex, iterator.getNextIndex());
       }
@@ -123,11 +126,13 @@ public class ConcurrentIterableLinkedQueue<E> {
       firstNode = currentNode;
       pilotNode.next = firstNode;
 
+      // Reset firstNode and lastNode to pilotNode if the queue becomes empty
       if (firstNode == null) {
         firstNode = pilotNode;
         lastNode = pilotNode;
       }
 
+      // Update iterators if necessary
       iteratorSet
           .keySet()
           .forEach(
