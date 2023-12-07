@@ -222,7 +222,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
   @Override
   public void notifyLeaderReady() {
     LOGGER.info(
-        "Current node [nodeId: {}, ip:port: {}] becomes Leader",
+        "Current node [nodeId: {}, ip:port: {}] becomes Leader and is ready to work",
         ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
         currentNodeTEndPoint);
 
@@ -236,6 +236,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     configManager.checkUserPathPrivilege();
     // Add Metric after leader ready
     configManager.addMetrics();
+    configManager.getClusterManager().checkClusterId();
 
     // we do cq recovery async for two reasons:
     // 1. For performance: cq recovery may be time-consuming, we use another thread to do it in

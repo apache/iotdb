@@ -91,6 +91,7 @@ import org.apache.iotdb.confignode.manager.pipe.PipeManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaQuotaStatistics;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
+import org.apache.iotdb.confignode.persistence.ClusterInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
@@ -203,6 +204,8 @@ public class ConfigManager implements IManager {
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private static final CommonConfig COMMON_CONF = CommonDescriptor.getInstance().getConfig();
 
+  private final ClusterManager clusterManager;
+
   /** Manage PartitionTable read/write requests through the ConsensusLayer. */
   private final AtomicReference<ConsensusManager> consensusManager = new AtomicReference<>();
 
@@ -246,6 +249,7 @@ public class ConfigManager implements IManager {
 
   public ConfigManager() throws IOException {
     // Build the persistence module
+    ClusterInfo clusterInfo = new ClusterInfo();
     NodeInfo nodeInfo = new NodeInfo();
     ClusterSchemaInfo clusterSchemaInfo = new ClusterSchemaInfo();
     PartitionInfo partitionInfo = new PartitionInfo();
@@ -260,6 +264,7 @@ public class ConfigManager implements IManager {
     // Build state machine and executor
     ConfigPlanExecutor executor =
         new ConfigPlanExecutor(
+            clusterInfo,
             nodeInfo,
             clusterSchemaInfo,
             partitionInfo,
@@ -272,6 +277,7 @@ public class ConfigManager implements IManager {
             quotaInfo);
     this.stateMachine = new ConfigRegionStateMachine(this, executor);
 
+    this.clusterManager = new ClusterManager(this, clusterInfo);
     // Build the manager module
     this.nodeManager = new NodeManager(this, nodeInfo);
     this.clusterSchemaManager =
@@ -898,6 +904,11 @@ public class ConfigManager implements IManager {
                   + "please make sure the target-ConfigNode has been started successfully.");
     }
     return getConsensusManager().confirmLeader();
+  }
+
+  @Override
+  public ClusterManager getClusterManager() {
+    return clusterManager;
   }
 
   @Override

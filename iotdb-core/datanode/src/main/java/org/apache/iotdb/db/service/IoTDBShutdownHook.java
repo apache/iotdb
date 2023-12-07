@@ -55,6 +55,7 @@ public class IoTDBShutdownHook extends Thread {
 
   @Override
   public void run() {
+    logger.info("IoTDB exiting...");
     // stop external rpc service firstly.
     RPCService.getInstance().stop();
 
