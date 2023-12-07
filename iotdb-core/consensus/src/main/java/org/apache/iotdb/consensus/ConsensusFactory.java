@@ -45,6 +45,7 @@ public class ConsensusFactory {
   public static Optional<IConsensus> getConsensusImpl(
       String className, ConsensusConfig config, IStateMachine.Registry registry) {
     try {
+      className = RATIS_CONSENSUS;
       Class<?> executor = Class.forName(className);
       Constructor<?> executorConstructor =
           executor.getDeclaredConstructor(ConsensusConfig.class, IStateMachine.Registry.class);
