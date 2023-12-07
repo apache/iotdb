@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -47,15 +48,14 @@ public class MemPageReader implements IPageReader {
   private final TsBlock tsBlock;
   private final IChunkMetadata chunkMetadata;
 
-  private final Filter globalTimeFilter;
-  private Filter pushDownFilter;
+  private Filter recordFilter;
 
   private PaginationController paginationController = UNLIMITED_PAGINATION_CONTROLLER;
 
-  public MemPageReader(TsBlock tsBlock, IChunkMetadata chunkMetadata, Filter globalTimeFilter) {
+  public MemPageReader(TsBlock tsBlock, IChunkMetadata chunkMetadata, Filter recordFilter) {
     this.tsBlock = tsBlock;
     this.chunkMetadata = chunkMetadata;
-    this.globalTimeFilter = globalTimeFilter;
+    this.recordFilter = recordFilter;
   }
 
   @Override
@@ -63,9 +63,7 @@ public class MemPageReader implements IPageReader {
     TSDataType dataType = chunkMetadata.getDataType();
     BatchData batchData = BatchDataFactory.createBatchData(dataType, ascending, false);
     for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-      if (globalTimeFilter == null
-          || globalTimeFilter.satisfy(
-              tsBlock.getTimeColumn().getLong(i), tsBlock.getColumn(0).getObject(i))) {
+      if (satisfyRecordFilter(i)) {
         switch (dataType) {
           case BOOLEAN:
             batchData.putBoolean(
@@ -97,8 +95,10 @@ public class MemPageReader implements IPageReader {
     return batchData.flip();
   }
 
-  private boolean pageCanSkip() {
-    return globalTimeFilter != null && globalTimeFilter.canSkip(this);
+  private boolean satisfyRecordFilter(int index) {
+    long time = tsBlock.getTimeColumn().getLong(index);
+    Object value = tsBlock.getColumn(0).getObject(index);
+    return recordFilter == null || recordFilter.satisfy(time, value);
   }
 
   @Override
@@ -107,29 +107,27 @@ public class MemPageReader implements IPageReader {
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(dataType));
     TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
     ColumnBuilder valueBuilder = builder.getColumnBuilder(0);
-    if (!pageCanSkip()) {
-      switch (dataType) {
-        case BOOLEAN:
-          doWithBoolean(builder, timeBuilder, valueBuilder);
-          break;
-        case INT32:
-          doWithInt32(builder, timeBuilder, valueBuilder);
-          break;
-        case INT64:
-          doWithInt64(builder, timeBuilder, valueBuilder);
-          break;
-        case FLOAT:
-          doWithFloat(builder, timeBuilder, valueBuilder);
-          break;
-        case DOUBLE:
-          doWithDouble(builder, timeBuilder, valueBuilder);
-          break;
-        case TEXT:
-          doWithText(builder, timeBuilder, valueBuilder);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(String.valueOf(dataType));
-      }
+    switch (dataType) {
+      case BOOLEAN:
+        doWithBoolean(builder, timeBuilder, valueBuilder);
+        break;
+      case INT32:
+        doWithInt32(builder, timeBuilder, valueBuilder);
+        break;
+      case INT64:
+        doWithInt64(builder, timeBuilder, valueBuilder);
+        break;
+      case FLOAT:
+        doWithFloat(builder, timeBuilder, valueBuilder);
+        break;
+      case DOUBLE:
+        doWithDouble(builder, timeBuilder, valueBuilder);
+        break;
+      case TEXT:
+        doWithText(builder, timeBuilder, valueBuilder);
+        break;
+      default:
+        throw new UnSupportedDataTypeException(String.valueOf(dataType));
     }
     return builder.build();
   }
@@ -154,10 +152,7 @@ public class MemPageReader implements IPageReader {
   }
 
   private boolean needCurrentBooleanRow(long time, boolean value) {
-    if (globalTimeFilter != null && !globalTimeFilter.satisfy(time, value)) {
-      return false;
-    }
-    if (pushDownFilter != null && !pushDownFilter.satisfy(time, value)) {
+    if (recordFilter != null && !recordFilter.satisfy(time, value)) {
       return false;
     }
     if (paginationController.hasCurOffset()) {
@@ -187,10 +182,7 @@ public class MemPageReader implements IPageReader {
   }
 
   private boolean needCurrentInt32Row(long time, int value) {
-    if (globalTimeFilter != null && !globalTimeFilter.satisfy(time, value)) {
-      return false;
-    }
-    if (pushDownFilter != null && !pushDownFilter.satisfy(time, value)) {
+    if (recordFilter != null && !recordFilter.satisfy(time, value)) {
       return false;
     }
     if (paginationController.hasCurOffset()) {
@@ -220,10 +212,7 @@ public class MemPageReader implements IPageReader {
   }
 
   private boolean needCurrentInt64Row(long time, long value) {
-    if (globalTimeFilter != null && !globalTimeFilter.satisfy(time, value)) {
-      return false;
-    }
-    if (pushDownFilter != null && !pushDownFilter.satisfy(time, value)) {
+    if (recordFilter != null && !recordFilter.satisfy(time, value)) {
       return false;
     }
     if (paginationController.hasCurOffset()) {
@@ -253,10 +242,7 @@ public class MemPageReader implements IPageReader {
   }
 
   private boolean needCurrentFloatRow(long time, float value) {
-    if (globalTimeFilter != null && !globalTimeFilter.satisfy(time, value)) {
-      return false;
-    }
-    if (pushDownFilter != null && !pushDownFilter.satisfy(time, value)) {
+    if (recordFilter != null && !recordFilter.satisfy(time, value)) {
       return false;
     }
     if (paginationController.hasCurOffset()) {
@@ -286,10 +272,7 @@ public class MemPageReader implements IPageReader {
   }
 
   private boolean needCurrentDoubleRow(long time, double value) {
-    if (globalTimeFilter != null && !globalTimeFilter.satisfy(time, value)) {
-      return false;
-    }
-    if (pushDownFilter != null && !pushDownFilter.satisfy(time, value)) {
+    if (recordFilter != null && !recordFilter.satisfy(time, value)) {
       return false;
     }
     if (paginationController.hasCurOffset()) {
@@ -319,10 +302,7 @@ public class MemPageReader implements IPageReader {
   }
 
   private boolean needCurrentTextRow(long time, Binary value) {
-    if (globalTimeFilter != null && !globalTimeFilter.satisfy(time, value)) {
-      return false;
-    }
-    if (pushDownFilter != null && !pushDownFilter.satisfy(time, value)) {
+    if (recordFilter != null && !recordFilter.satisfy(time, value)) {
       return false;
     }
     if (paginationController.hasCurOffset()) {
@@ -354,8 +334,8 @@ public class MemPageReader implements IPageReader {
   }
 
   @Override
-  public void setFilter(Filter filter) {
-    this.pushDownFilter = filter;
+  public void addRecordFilter(Filter filter) {
+    this.recordFilter = FilterFactory.and(recordFilter, filter);
   }
 
   @Override

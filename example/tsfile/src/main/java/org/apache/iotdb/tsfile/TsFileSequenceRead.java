@@ -150,7 +150,7 @@ public class TsFileSequenceRead {
               } else { // NonAligned Chunk
                 PageReader pageReader =
                     new PageReader(
-                        pageData, header.getDataType(), valueDecoder, defaultTimeDecoder, null);
+                        pageData, header.getDataType(), valueDecoder, defaultTimeDecoder);
                 BatchData batchData = pageReader.getAllSatisfiedPageData();
                 if (header.getChunkType() == MetaMarker.CHUNK_HEADER) {
                   System.out.println(POINT_IN_PAGE + pageHeader.getNumOfValues());

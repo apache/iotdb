@@ -138,7 +138,7 @@ public class MemAlignedChunkLoaderTest {
     assertEquals(timeStatistics, pageReader.getTimeStatistics());
     assertFalse(pageReader.isModified());
     pageReader.setLimitOffset(UNLIMITED_PAGINATION_CONTROLLER);
-    pageReader.setFilter(null);
+    pageReader.addRecordFilter(null);
 
     memAlignedChunkLoader.close();
   }

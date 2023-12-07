@@ -1691,8 +1691,7 @@ public class TsFileSequenceReader implements AutoCloseable {
                           pageData,
                           chunkHeader.getDataType(),
                           valueDecoder,
-                          timeDecoder,
-                          null);
+                          timeDecoder);
                   BatchData batchData = reader.getAllSatisfiedPageData();
                   while (batchData.hasCurrent()) {
                     switch (dataType) {
@@ -1900,7 +1899,7 @@ public class TsFileSequenceReader implements AutoCloseable {
               TSDataType.INT64);
       PageReader reader =
           new PageReader(
-              pageHeader, pageData, chunkHeader.getDataType(), valueDecoder, timeDecoder, null);
+              pageHeader, pageData, chunkHeader.getDataType(), valueDecoder, timeDecoder);
       BatchData batchData = reader.getAllSatisfiedPageData();
       while (batchData.hasCurrent()) {
         switch (dataType) {

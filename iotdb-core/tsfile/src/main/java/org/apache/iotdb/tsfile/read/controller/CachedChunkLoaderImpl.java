@@ -82,7 +82,7 @@ public class CachedChunkLoaderImpl implements IChunkLoader {
   }
 
   @Override
-  public IChunkReader getChunkReader(IChunkMetadata chunkMetaData, Filter timeFilter)
+  public IChunkReader getChunkReader(IChunkMetadata chunkMetaData, Filter globalTimeFilter)
       throws IOException {
     Chunk chunk = chunkCache.get(new ChunkCacheKey((ChunkMetadata) chunkMetaData));
     return new ChunkReader(
@@ -91,7 +91,7 @@ public class CachedChunkLoaderImpl implements IChunkLoader {
             chunk.getData().duplicate(),
             chunkMetaData.getDeleteIntervalList(),
             chunkMetaData.getStatistics()),
-        timeFilter);
+        globalTimeFilter);
   }
 
   public static class ChunkCacheKey {

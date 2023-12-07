@@ -44,35 +44,35 @@ import java.util.List;
 
 public class ChunkReader implements IChunkReader {
 
-  private ChunkHeader chunkHeader;
-  private ByteBuffer chunkDataBuffer;
-  private IUnCompressor unCompressor;
+  private final ChunkHeader chunkHeader;
+  private final ByteBuffer chunkDataBuffer;
+  private final IUnCompressor unCompressor;
   private final Decoder timeDecoder =
       Decoder.getDecoderByType(
           TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
           TSDataType.INT64);
 
-  protected Filter filter;
-  private long currentTimestamp;
+  protected Filter globalTimeFilter;
+  private final long currentTimestamp;
 
-  private List<IPageReader> pageReaderList = new LinkedList<>();
+  private final List<IPageReader> pageReaderList = new LinkedList<>();
 
   /** A list of deleted intervals. */
-  private List<TimeRange> deleteIntervalList;
+  private final List<TimeRange> deleteIntervalList;
 
   /**
    * constructor of ChunkReader.
    *
    * @param chunk input Chunk object
-   * @param filter filter
+   * @param globalTimeFilter filter
    */
-  public ChunkReader(Chunk chunk, Filter filter) throws IOException {
-    this.filter = filter;
+  public ChunkReader(Chunk chunk, Filter globalTimeFilter) throws IOException {
+    this.globalTimeFilter = globalTimeFilter;
     this.chunkDataBuffer = chunk.getData();
     this.deleteIntervalList = chunk.getDeleteIntervalList();
     this.currentTimestamp = Long.MIN_VALUE;
-    chunkHeader = chunk.getHeader();
-    this.unCompressor = IUnCompressor.getUnCompressor(chunkHeader.getCompressionType());
+    this.chunkHeader = chunk.getHeader();
+    this.unCompressor = IUnCompressor.getUnCompressor(this.chunkHeader.getCompressionType());
     initAllPageReaders(chunk.getChunkStatistic());
   }
 
@@ -80,13 +80,12 @@ public class ChunkReader implements IChunkReader {
    * Constructor of ChunkReader by timestamp. This constructor is used to accelerate queries by
    * filtering out pages whose endTime is less than current timestamp.
    */
-  public ChunkReader(Chunk chunk, Filter filter, long currentTimestamp) throws IOException {
-    this.filter = filter;
+  public ChunkReader(Chunk chunk, long currentTimestamp) throws IOException {
     this.chunkDataBuffer = chunk.getData();
     this.deleteIntervalList = chunk.getDeleteIntervalList();
     this.currentTimestamp = currentTimestamp;
-    chunkHeader = chunk.getHeader();
-    this.unCompressor = IUnCompressor.getUnCompressor(chunkHeader.getCompressionType());
+    this.chunkHeader = chunk.getHeader();
+    this.unCompressor = IUnCompressor.getUnCompressor(this.chunkHeader.getCompressionType());
     initAllPageReaders(chunk.getChunkStatistic());
   }
 
@@ -95,7 +94,6 @@ public class ChunkReader implements IChunkReader {
    * compaction.
    */
   public ChunkReader(Chunk chunk) {
-    this.filter = null;
     this.chunkDataBuffer = chunk.getData();
     this.deleteIntervalList = chunk.getDeleteIntervalList();
     this.currentTimestamp = Long.MIN_VALUE;
@@ -161,7 +159,7 @@ public class ChunkReader implements IChunkReader {
         }
       }
     }
-    return filter != null && filter.canSkip(pageHeader);
+    return globalTimeFilter != null && globalTimeFilter.canSkip(pageHeader);
   }
 
   private PageReader constructPageReaderForNextPage(PageHeader pageHeader) throws IOException {
@@ -198,7 +196,12 @@ public class ChunkReader implements IChunkReader {
     ByteBuffer pageData = ByteBuffer.wrap(uncompressedPageData);
     PageReader reader =
         new PageReader(
-            pageHeader, pageData, chunkHeader.getDataType(), valueDecoder, timeDecoder, filter);
+            pageHeader,
+            pageData,
+            chunkHeader.getDataType(),
+            valueDecoder,
+            timeDecoder,
+            globalTimeFilter);
     reader.setDeleteIntervalList(deleteIntervalList);
     return reader;
   }
@@ -255,7 +258,7 @@ public class ChunkReader implements IChunkReader {
     TSDataType dataType = chunkHeader.getDataType();
     Decoder valueDecoder = Decoder.getDecoderByType(chunkHeader.getEncodingType(), dataType);
     PageReader pageReader =
-        new PageReader(pageHeader, pageData, dataType, valueDecoder, timeDecoder, filter);
+        new PageReader(pageHeader, pageData, dataType, valueDecoder, timeDecoder, globalTimeFilter);
     pageReader.setDeleteIntervalList(deleteIntervalList);
     return pageReader.getAllSatisfiedData();
   }

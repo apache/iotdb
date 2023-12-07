@@ -197,7 +197,7 @@ public class TsFileSplitTool {
                       ((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.CHUNK_HEADER);
               ByteBuffer pageData = reader.readPage(pageHeader, chunkHeader.getCompressionType());
               PageReader pageReader =
-                  new PageReader(pageData, dataType, valueDecoder, defaultTimeDecoder, null);
+                  new PageReader(pageData, dataType, valueDecoder, defaultTimeDecoder);
               BatchData batchData = pageReader.getAllSatisfiedPageData();
 
               while (batchData.hasCurrent()) {

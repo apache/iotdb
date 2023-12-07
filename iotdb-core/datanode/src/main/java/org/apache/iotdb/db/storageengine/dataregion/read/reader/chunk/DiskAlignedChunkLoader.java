@@ -63,7 +63,7 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
   }
 
   @Override
-  public IChunkReader getChunkReader(IChunkMetadata chunkMetaData, Filter timeFilter)
+  public IChunkReader getChunkReader(IChunkMetadata chunkMetaData, Filter globalTimeFilter)
       throws IOException {
     long t1 = System.nanoTime();
     try {
@@ -98,7 +98,8 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
       }
 
       long t2 = System.nanoTime();
-      IChunkReader chunkReader = new AlignedChunkReader(timeChunk, valueChunkList, timeFilter);
+      IChunkReader chunkReader =
+          new AlignedChunkReader(timeChunk, valueChunkList, globalTimeFilter);
       SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
           INIT_CHUNK_READER_ALIGNED_DISK, System.nanoTime() - t2);
 

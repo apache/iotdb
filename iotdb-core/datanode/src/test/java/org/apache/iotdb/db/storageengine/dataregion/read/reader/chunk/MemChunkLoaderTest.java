@@ -99,7 +99,7 @@ public class MemChunkLoaderTest {
 
     assertFalse(pageReader.isModified());
     pageReader.setLimitOffset(UNLIMITED_PAGINATION_CONTROLLER);
-    pageReader.setFilter(null);
+    pageReader.addRecordFilter(null);
 
     memChunkLoader.close();
   }
@@ -167,7 +167,7 @@ public class MemChunkLoaderTest {
 
     assertFalse(pageReader.isModified());
     pageReader.setLimitOffset(UNLIMITED_PAGINATION_CONTROLLER);
-    pageReader.setFilter(null);
+    pageReader.addRecordFilter(null);
 
     memChunkLoader.close();
   }
@@ -235,7 +235,7 @@ public class MemChunkLoaderTest {
 
     assertFalse(pageReader.isModified());
     pageReader.setLimitOffset(UNLIMITED_PAGINATION_CONTROLLER);
-    pageReader.setFilter(null);
+    pageReader.addRecordFilter(null);
 
     memChunkLoader.close();
   }
@@ -303,7 +303,7 @@ public class MemChunkLoaderTest {
 
     assertFalse(pageReader.isModified());
     pageReader.setLimitOffset(UNLIMITED_PAGINATION_CONTROLLER);
-    pageReader.setFilter(null);
+    pageReader.addRecordFilter(null);
 
     memChunkLoader.close();
   }
@@ -371,7 +371,7 @@ public class MemChunkLoaderTest {
 
     assertFalse(pageReader.isModified());
     pageReader.setLimitOffset(UNLIMITED_PAGINATION_CONTROLLER);
-    pageReader.setFilter(null);
+    pageReader.addRecordFilter(null);
 
     memChunkLoader.close();
   }
@@ -439,7 +439,7 @@ public class MemChunkLoaderTest {
 
     assertFalse(pageReader.isModified());
     pageReader.setLimitOffset(UNLIMITED_PAGINATION_CONTROLLER);
-    pageReader.setFilter(null);
+    pageReader.addRecordFilter(null);
 
     memChunkLoader.close();
   }

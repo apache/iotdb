@@ -403,7 +403,7 @@ public class AlignedPageReader implements IPageReader {
   }
 
   @Override
-  public void setFilter(Filter filter) {
+  public void addRecordFilter(Filter filter) {
     this.pushDownFilter = filter;
   }
 

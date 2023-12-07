@@ -232,7 +232,7 @@ public class CompactionCheckerUtils {
                 ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
                 PageReader reader1 =
                     new PageReader(
-                        pageData, header.getDataType(), valueDecoder, defaultTimeDecoder, null);
+                        pageData, header.getDataType(), valueDecoder, defaultTimeDecoder);
                 BatchData batchData = reader1.getAllSatisfiedPageData();
                 long count = fullPathPointNum.getOrDefault(path.getFullPath(), 0L);
                 if (header.getChunkType() == MetaMarker.CHUNK_HEADER) {
@@ -426,8 +426,7 @@ public class CompactionCheckerUtils {
                       header.getDataType(), header.getChunkType() == MetaMarker.CHUNK_HEADER);
               ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
               PageReader reader1 =
-                  new PageReader(
-                      pageData, header.getDataType(), valueDecoder, defaultTimeDecoder, null);
+                  new PageReader(pageData, header.getDataType(), valueDecoder, defaultTimeDecoder);
               BatchData batchData = reader1.getAllSatisfiedPageData();
               if (header.getChunkType() == MetaMarker.CHUNK_HEADER) {
                 pagePointsNum.add(pageHeader.getNumOfValues());

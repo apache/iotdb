@@ -207,7 +207,7 @@ public class TsFileResourceUtils {
               } else { // NonAligned Chunk
                 PageReader pageReader =
                     new PageReader(
-                        pageData, header.getDataType(), valueDecoder, defaultTimeDecoder, null);
+                        pageData, header.getDataType(), valueDecoder, defaultTimeDecoder);
                 BatchData batchData = pageReader.getAllSatisfiedPageData();
                 long pageHeaderStartTime =
                     isHasStatistic ? pageHeader.getStartTime() : chunkMetadata.getStartTime();

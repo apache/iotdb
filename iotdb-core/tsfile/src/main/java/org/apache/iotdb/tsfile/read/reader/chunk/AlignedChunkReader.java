@@ -60,7 +60,7 @@ public class AlignedChunkReader implements IChunkReader {
           TSDataType.INT64);
   private final long currentTimestamp;
 
-  protected Filter filter;
+  protected Filter globalTimeFilter;
 
   private final List<IPageReader> pageReaderList = new LinkedList<>();
 
@@ -72,7 +72,6 @@ public class AlignedChunkReader implements IChunkReader {
    * compaction.
    */
   public AlignedChunkReader(Chunk timeChunk, List<Chunk> valueChunkList) {
-    this.filter = null;
     this.timeChunkDataBuffer = timeChunk.getData();
     this.valueDeleteIntervalList = new ArrayList<>();
     this.timeChunkHeader = timeChunk.getHeader();
@@ -90,11 +89,11 @@ public class AlignedChunkReader implements IChunkReader {
   /**
    * constructor of ChunkReader.
    *
-   * @param filter filter
+   * @param globalTimeFilter filter
    */
-  public AlignedChunkReader(Chunk timeChunk, List<Chunk> valueChunkList, Filter filter)
+  public AlignedChunkReader(Chunk timeChunk, List<Chunk> valueChunkList, Filter globalTimeFilter)
       throws IOException {
-    this.filter = filter;
+    this.globalTimeFilter = globalTimeFilter;
     this.timeChunkDataBuffer = timeChunk.getData();
     this.valueDeleteIntervalList = new ArrayList<>();
     this.timeChunkHeader = timeChunk.getHeader();
@@ -115,10 +114,8 @@ public class AlignedChunkReader implements IChunkReader {
    * Constructor of ChunkReader by timestamp. This constructor is used to accelerate queries by
    * filtering out pages whose endTime is less than current timestamp.
    */
-  public AlignedChunkReader(
-      Chunk timeChunk, List<Chunk> valueChunkList, Filter filter, long currentTimestamp)
+  public AlignedChunkReader(Chunk timeChunk, List<Chunk> valueChunkList, long currentTimestamp)
       throws IOException {
-    this.filter = filter;
     this.timeChunkDataBuffer = timeChunk.getData();
     this.valueDeleteIntervalList = new ArrayList<>();
     this.timeChunkHeader = timeChunk.getHeader();
@@ -174,7 +171,7 @@ public class AlignedChunkReader implements IChunkReader {
         }
       }
       // if the current page satisfies
-      if (exits && timePageSatisfied(timePageHeader)) {
+      if (exits && !pageCanSkip(timePageHeader)) {
         AlignedPageReader alignedPageReader =
             constructPageReaderForNextPage(timePageHeader, valuePageHeaderList);
         if (alignedPageReader != null) {
@@ -187,10 +184,8 @@ public class AlignedChunkReader implements IChunkReader {
   }
 
   /** used for time page filter */
-  private boolean timePageSatisfied(PageHeader timePageHeader) {
-    long startTime = timePageHeader.getStatistics().getStartTime();
-    long endTime = timePageHeader.getStatistics().getEndTime();
-    return filter == null || filter.satisfyStartEndTime(startTime, endTime);
+  private boolean pageCanSkip(PageHeader timePageHeader) {
+    return globalTimeFilter != null && globalTimeFilter.canSkip(timePageHeader);
   }
 
   /** used for value page filter */
@@ -209,7 +204,7 @@ public class AlignedChunkReader implements IChunkReader {
         }
       }
     }
-    return filter != null && filter.canSkip(pageHeader);
+    return globalTimeFilter != null && globalTimeFilter.canSkip(pageHeader);
   }
 
   private AlignedPageReader constructPageReaderForNextPage(
@@ -264,7 +259,7 @@ public class AlignedChunkReader implements IChunkReader {
             valuePageDataList,
             valueDataTypeList,
             valueDecoderList,
-            filter);
+            globalTimeFilter);
     alignedPageReader.setDeleteIntervalList(valueDeleteIntervalList);
     return alignedPageReader;
   }

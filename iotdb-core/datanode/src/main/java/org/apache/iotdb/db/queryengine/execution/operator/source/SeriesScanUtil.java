@@ -1223,7 +1223,7 @@ public class SeriesScanUtil {
     }
 
     void setPushDownFilter(Filter pushDownFilter) {
-      data.setFilter(pushDownFilter);
+      data.addRecordFilter(pushDownFilter);
     }
 
     boolean isModified() {

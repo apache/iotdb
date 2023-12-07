@@ -343,7 +343,7 @@ public class TsFileValidationTool {
                     // NonAligned Chunk
                     PageReader pageReader =
                         new PageReader(
-                            pageData, header.getDataType(), valueDecoder, defaultTimeDecoder, null);
+                            pageData, header.getDataType(), valueDecoder, defaultTimeDecoder);
                     BatchData batchData = pageReader.getAllSatisfiedPageData();
                     while (batchData.hasCurrent()) {
                       long timestamp = batchData.currentTime();

@@ -124,7 +124,7 @@ public class TsFileIntegrityCheckingTool {
               } else { // NonAligned Chunk
                 PageReader pageReader =
                     new PageReader(
-                        pageData, header.getDataType(), valueDecoder, defaultTimeDecoder, null);
+                        pageData, header.getDataType(), valueDecoder, defaultTimeDecoder);
                 BatchData batchData = pageReader.getAllSatisfiedPageData();
               }
               pageIndex++;

@@ -374,7 +374,7 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
       throws IOException, IllegalPathException {
     valueDecoder.reset();
     PageReader pageReader =
-        new PageReader(pageData, schema.getType(), valueDecoder, defaultTimeDecoder, null);
+        new PageReader(pageData, schema.getType(), valueDecoder, defaultTimeDecoder);
     // read delete time range from old modification file
     List<TimeRange> deleteIntervalList =
         getOldSortedDeleteIntervals(deviceId, schema, chunkHeaderOffset);

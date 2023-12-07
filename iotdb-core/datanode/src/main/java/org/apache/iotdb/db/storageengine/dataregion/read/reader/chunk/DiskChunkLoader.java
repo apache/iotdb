@@ -70,7 +70,7 @@ public class DiskChunkLoader implements IChunkLoader {
   }
 
   @Override
-  public IChunkReader getChunkReader(IChunkMetadata chunkMetaData, Filter timeFilter)
+  public IChunkReader getChunkReader(IChunkMetadata chunkMetaData, Filter globalTimeFilter)
       throws IOException {
     long t1 = System.nanoTime();
     try {
@@ -87,7 +87,7 @@ public class DiskChunkLoader implements IChunkLoader {
                   debug);
 
       long t2 = System.nanoTime();
-      IChunkReader chunkReader = new ChunkReader(chunk, timeFilter);
+      IChunkReader chunkReader = new ChunkReader(chunk, globalTimeFilter);
       SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
           INIT_CHUNK_READER_NONALIGNED_DISK, System.nanoTime() - t2);
 

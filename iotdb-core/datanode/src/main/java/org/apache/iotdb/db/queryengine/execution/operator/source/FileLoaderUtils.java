@@ -179,10 +179,7 @@ public class FileLoaderUtils {
               > alignedTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getEndTime()) {
             return null;
           }
-          if (globalTimeFilter != null
-              && !globalTimeFilter.satisfyStartEndTime(
-                  alignedTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getStartTime(),
-                  alignedTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getEndTime())) {
+          if (globalTimeFilter != null && globalTimeFilter.canSkip(alignedTimeSeriesMetadata)) {
             return null;
           }
         } finally {

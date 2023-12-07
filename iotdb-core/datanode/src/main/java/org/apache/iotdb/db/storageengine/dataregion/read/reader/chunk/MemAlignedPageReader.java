@@ -46,17 +46,16 @@ public class MemAlignedPageReader implements IPageReader {
   private final TsBlock tsBlock;
   private final AlignedChunkMetadata chunkMetadata;
 
-  private Filter globalTimeFilter;
-  private Filter pushDownFilter;
+  private Filter recordFilter;
   private PaginationController paginationController = UNLIMITED_PAGINATION_CONTROLLER;
 
   private TsBlockBuilder builder;
 
   public MemAlignedPageReader(
-      TsBlock tsBlock, AlignedChunkMetadata chunkMetadata, Filter globalTimeFilter) {
+      TsBlock tsBlock, AlignedChunkMetadata chunkMetadata, Filter recordFilter) {
     this.tsBlock = tsBlock;
     this.chunkMetadata = chunkMetadata;
-    this.globalTimeFilter = globalTimeFilter;
+    this.recordFilter = recordFilter;
   }
 
   @Override
@@ -67,50 +66,41 @@ public class MemAlignedPageReader implements IPageReader {
   @Override
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
     BatchData batchData = BatchDataFactory.createBatchData(TSDataType.VECTOR, ascending, false);
-    for (int row = 0; row < tsBlock.getPositionCount(); row++) {
-      // save the first not null value of each row
-      Object firstNotNullObject = getFirstNotNullObject(row);
-      // if all the sub sensors' value are null in current time
-      // or current row is not satisfied with the filter, just discard it
-      if (firstNotNullObject != null) {
-        doFilter(firstNotNullObject, row, batchData);
+    Object[] rowValues = new Object[tsBlock.getValueColumnCount()];
+    for (int rowIndex = 0; rowIndex < tsBlock.getPositionCount(); rowIndex++) {
+      long time = tsBlock.getTimeByIndex(rowIndex);
+      updateRowValues(rowValues, rowIndex);
+
+      if (satisfyRecordFilter(time, rowValues)) {
+        TsPrimitiveType[] values = new TsPrimitiveType[tsBlock.getValueColumnCount()];
+        for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
+          if (tsBlock.getColumn(column) != null && !tsBlock.getColumn(column).isNull(rowIndex)) {
+            values[column] = tsBlock.getColumn(column).getTsPrimitiveType(rowIndex);
+          }
+        }
+        batchData.putVector(time, values);
       }
     }
     return batchData.flip();
   }
 
-  private Object getFirstNotNullObject(int rowIndex) {
+  private void updateRowValues(Object[] rowValues, int rowIndex) {
     for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
       if (!tsBlock.getColumn(column).isNull(rowIndex)) {
-        return tsBlock.getColumn(column).getObject(rowIndex);
+        rowValues[column] = tsBlock.getColumn(column).getObject(rowIndex);
+      } else {
+        rowValues[column] = null;
       }
-    }
-    return null;
-  }
-
-  private void doFilter(Object row, int rowIndex, BatchData batchData) {
-    if (globalTimeFilter == null
-        || globalTimeFilter.satisfy(tsBlock.getTimeByIndex(rowIndex), row)) {
-      TsPrimitiveType[] values = new TsPrimitiveType[tsBlock.getValueColumnCount()];
-      for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
-        if (tsBlock.getColumn(column) != null && !tsBlock.getColumn(column).isNull(rowIndex)) {
-          values[column] = tsBlock.getColumn(column).getTsPrimitiveType(rowIndex);
-        }
-      }
-      batchData.putVector(tsBlock.getTimeByIndex(rowIndex), values);
     }
   }
 
-  private boolean pageCanSkip() {
-    return globalTimeFilter != null && globalTimeFilter.canSkip(this);
+  private boolean satisfyRecordFilter(long time, Object[] values) {
+    return (recordFilter == null || recordFilter.satisfy(time, values));
   }
 
   @Override
   public TsBlock getAllSatisfiedData() {
     builder.reset();
-    if (pageCanSkip()) {
-      return builder.build();
-    }
 
     boolean[] satisfyInfo = buildSatisfyInfoArray();
 
@@ -127,18 +117,13 @@ public class MemAlignedPageReader implements IPageReader {
 
   private boolean[] buildSatisfyInfoArray() {
     boolean[] satisfyInfo = new boolean[tsBlock.getPositionCount()];
-    for (int row = 0; row < tsBlock.getPositionCount(); row++) {
-      long time = tsBlock.getTimeByIndex(row);
-      Object[] values = new Object[tsBlock.getValueColumnCount()];
-      for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
-        if (!tsBlock.getColumn(column).isNull(row)) {
-          values[column] = tsBlock.getColumn(column).getObject(row);
-        }
-      }
-      if ((globalTimeFilter == null || globalTimeFilter.satisfy(time, null))
-          && (pushDownFilter == null || pushDownFilter.satisfy(time, values))) {
-        satisfyInfo[row] = true;
-      }
+
+    Object[] values = new Object[tsBlock.getValueColumnCount()];
+    for (int rowIndex = 0; rowIndex < tsBlock.getPositionCount(); rowIndex++) {
+      long time = tsBlock.getTimeByIndex(rowIndex);
+      updateRowValues(values, rowIndex);
+
+      satisfyInfo[rowIndex] = satisfyRecordFilter(time, values);
     }
     return satisfyInfo;
   }
@@ -224,12 +209,8 @@ public class MemAlignedPageReader implements IPageReader {
   }
 
   @Override
-  public void setFilter(Filter filter) {
-    if (globalTimeFilter == null) {
-      this.globalTimeFilter = filter;
-    } else {
-      globalTimeFilter = FilterFactory.and(this.globalTimeFilter, filter);
-    }
+  public void addRecordFilter(Filter filter) {
+    this.recordFilter = FilterFactory.and(recordFilter, filter);
   }
 
   @Override
