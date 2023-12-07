@@ -26,7 +26,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.LongColumn;
 import java.util.Optional;
 
 /**
- * This class is used to generate a time column in DOUBLE where the value would increase in a way of
+ * This class is used to generate a time column in INT64 where the value would increase in a way of
  * sliding-window. It's only designed for group by time now.
  */
 public class SlidingTimeColumnGenerator extends ColumnGenerator {
