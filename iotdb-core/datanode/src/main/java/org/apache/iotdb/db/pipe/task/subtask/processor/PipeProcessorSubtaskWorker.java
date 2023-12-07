@@ -28,7 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.pipe.task.subtask.PipeDataNodeSubtask.MAX_RETRY_TIMES;
+import static org.apache.iotdb.db.pipe.task.subtask.PipeDataRegionSubtask.MAX_RETRY_TIMES;
 
 public class PipeProcessorSubtaskWorker extends WrappedRunnable {
 

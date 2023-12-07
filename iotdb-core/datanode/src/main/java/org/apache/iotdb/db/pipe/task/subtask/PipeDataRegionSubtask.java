@@ -30,11 +30,11 @@ import org.slf4j.LoggerFactory;
 
 import javax.validation.constraints.NotNull;
 
-public abstract class PipeDataNodeSubtask extends PipeSubtask {
+public abstract class PipeDataRegionSubtask extends PipeSubtask {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataNodeSubtask.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataRegionSubtask.class);
 
-  protected PipeDataNodeSubtask(String taskID, long creationTime) {
+  protected PipeDataRegionSubtask(String taskID, long creationTime) {
     super(taskID, creationTime);
   }
 

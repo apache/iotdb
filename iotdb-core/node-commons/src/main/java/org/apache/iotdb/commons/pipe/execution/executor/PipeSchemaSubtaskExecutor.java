@@ -21,8 +21,17 @@ package org.apache.iotdb.commons.pipe.execution.executor;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.utils.TestOnly;
 
 public class PipeSchemaSubtaskExecutor extends PipeSubtaskExecutor {
+
+  @TestOnly
+  public PipeSchemaSubtaskExecutor(Object ignored) {
+    super(
+        PipeConfig.getInstance().getPipeSubtaskExecutorMaxThreadNum(),
+        ThreadName.PIPE_SCHEMA_EXECUTOR_POOL);
+  }
+
   private PipeSchemaSubtaskExecutor() {
     super(
         PipeConfig.getInstance().getPipeSubtaskExecutorMaxThreadNum(),

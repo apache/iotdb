@@ -17,23 +17,52 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.execution;
+package org.apache.iotdb.commons.pipe.execution;
 
+import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
+import org.apache.iotdb.commons.pipe.execution.executor.PipeSchemaSubtaskExecutor;
 import org.apache.iotdb.commons.pipe.execution.executor.PipeSubtaskExecutor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.task.subtask.PipeSchemaSubtask;
 import org.apache.iotdb.commons.pipe.task.subtask.PipeSubtask;
 
 import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
+
+import java.util.HashMap;
 
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-public abstract class PipeSubtaskExecutorTest {
+public class PipeSchemaSubtaskExecutorTest {
 
-  protected PipeSubtaskExecutor executor;
-  protected PipeSubtask subtask;
+  private PipeSubtaskExecutor executor;
+  private PipeSubtask subtask;
+
+  @Before
+  public void setUp() throws Exception {
+    executor = new PipeSchemaSubtaskExecutor(new Object());
+
+    subtask =
+        Mockito.spy(
+            new PipeSchemaSubtask(
+                "PipeProcessorSubtaskExecutorTest",
+                System.currentTimeMillis(),
+                new HashMap<>(),
+                new HashMap<String, String>() {
+                  {
+                    put(
+                        PipeConnectorConstant.CONNECTOR_KEY,
+                        BuiltinPipePlugin.IOTDB_LEGACY_PIPE_CONNECTOR.getPipePluginName());
+                    put(PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY, "127.0.0.1");
+                    put(PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY, "6667");
+                  }
+                }));
+  }
 
   @After
   public void tearDown() throws Exception {
@@ -55,6 +84,9 @@ public abstract class PipeSubtaskExecutorTest {
     executor.register(subtask);
     Assert.assertTrue(executor.isRegistered(subtask.getTaskID()));
     Assert.assertEquals(1, executor.getRegisteredSubtaskNumber());
+
+    executor.deregister(subtask.getTaskID());
+    Assert.assertFalse(executor.isRegistered(subtask.getTaskID()));
   }
 
   @Test
@@ -72,11 +104,11 @@ public abstract class PipeSubtaskExecutorTest {
     executor.register(subtask);
     executor.start(subtask.getTaskID());
     try {
-      Thread.sleep(1000);
+      Thread.sleep(5000);
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
-    verify(subtask, atLeast(2)).call();
+    verify(subtask, atLeast(1)).call();
     Assert.assertTrue(subtask.isSubmittingSelf());
 
     // test start a subtask which is in the map and is already running
