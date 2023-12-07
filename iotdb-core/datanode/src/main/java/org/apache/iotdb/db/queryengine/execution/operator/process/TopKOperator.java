@@ -80,7 +80,7 @@ public class TopKOperator implements ProcessOperator {
   // the data of every childOperator is in order
   private final boolean childrenDataInOrder;
 
-  public static int operatorBatchUpperBound = 100000;
+  public static final int OPERATOR_BATCH_UPPER_BOUND = 100000;
 
   public TopKOperator(
       OperatorContext operatorContext,
@@ -101,9 +101,9 @@ public class TopKOperator implements ProcessOperator {
     initResultTsBlock();
 
     deviceBatchStep =
-        operatorBatchUpperBound % topValue == 0
-            ? operatorBatchUpperBound / topValue
-            : operatorBatchUpperBound / topValue + 1;
+        OPERATOR_BATCH_UPPER_BOUND % topValue == 0
+            ? OPERATOR_BATCH_UPPER_BOUND / topValue
+            : OPERATOR_BATCH_UPPER_BOUND / topValue + 1;
     canCallNext = new boolean[deviceOperators.size()];
   }
 
