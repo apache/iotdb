@@ -119,8 +119,8 @@ public class AlignedPageReader implements IPageReader {
   }
 
   private boolean satisfyRecordFilter(long timestamp, Object[] rowValues) {
-    return (globalTimeFilter == null || globalTimeFilter.satisfy(timestamp, rowValues))
-        && (pushDownFilter == null || pushDownFilter.satisfy(timestamp, rowValues));
+    return (globalTimeFilter == null || globalTimeFilter.satisfyRow(timestamp, rowValues))
+        && (pushDownFilter == null || pushDownFilter.satisfyRow(timestamp, rowValues));
   }
 
   @Override
@@ -348,7 +348,7 @@ public class AlignedPageReader implements IPageReader {
       long time = unFilteredBlock.getTimeByIndex(i);
       Object[] rowValues = unFilteredBlock.getRowValues(i);
 
-      if (pushDownFilter.satisfy(time, rowValues)) {
+      if (pushDownFilter.satisfyRow(time, rowValues)) {
         writeTimeValuesToTsBlockBuilder(builder, time, rowValues);
       }
     }

@@ -879,7 +879,7 @@ public class SeriesScanUtil {
   private boolean processFilterAndPagination(
       TimeValuePair timeValuePair, Filter recordFilter, TsBlockBuilder builder) {
     if (recordFilter != null
-        && !recordFilter.satisfy(timeValuePair.getTimestamp(), timeValuePair.getValues())) {
+        && !recordFilter.satisfyRow(timeValuePair.getTimestamp(), timeValuePair.getValues())) {
       return false;
     }
     if (paginationController.hasCurOffset()) {

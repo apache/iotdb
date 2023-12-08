@@ -85,7 +85,7 @@ public class MemAlignedPageReader implements IPageReader {
   }
 
   private boolean satisfyRecordFilter(long time, Object[] values) {
-    return recordFilter == null || recordFilter.satisfy(time, values);
+    return recordFilter == null || recordFilter.satisfyRow(time, values);
   }
 
   @Override
