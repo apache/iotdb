@@ -847,7 +847,8 @@ public class AggregationDistributionTest {
                         Collections.singletonList(new TimeSeriesOperand(path))))
             .collect(Collectors.toList()),
         groupByTimeParameter,
-        Ordering.ASC);
+        Ordering.ASC,
+        false);
   }
 
   private SeriesAggregationSourceNode genAggregationSourceNode(

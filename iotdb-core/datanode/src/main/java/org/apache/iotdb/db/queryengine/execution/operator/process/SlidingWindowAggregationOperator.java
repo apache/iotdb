@@ -46,6 +46,7 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
   private final ITimeRangeIterator subTimeRangeIterator;
   // Current interval of pre-aggregation window [curStartTime, curEndTime)
   private TimeRange curSubTimeRange;
+  private final boolean outputEndTime;
 
   public SlidingWindowAggregationOperator(
       OperatorContext operatorContext,
@@ -53,6 +54,7 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
       ITimeRangeIterator timeRangeIterator,
       Operator child,
       boolean ascending,
+      boolean outputEndTime,
       GroupByTimeParameter groupByTimeParameter,
       long maxReturnSize) {
     super(operatorContext, aggregators, child, ascending, maxReturnSize);
@@ -61,12 +63,16 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
         "GroupByTimeParameter cannot be null in SlidingWindowAggregationOperator");
 
     List<TSDataType> dataTypes = new ArrayList<>();
+    if (outputEndTime) {
+      dataTypes.add(TSDataType.INT64);
+    }
     for (Aggregator aggregator : aggregators) {
       dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
     }
     this.resultTsBlockBuilder = new TsBlockBuilder(dataTypes);
 
     this.timeRangeIterator = timeRangeIterator;
+    this.outputEndTime = outputEndTime;
     this.subTimeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending, true);
   }
 
@@ -144,8 +150,16 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
 
   @Override
   protected void updateResultTsBlock() {
+    if (!outputEndTime) {
+      appendAggregationResult(
+          resultTsBlockBuilder, aggregators, timeRangeIterator.currentOutputTime());
+    } else {
+      appendAggregationResult(
+          resultTsBlockBuilder,
+          aggregators,
+          timeRangeIterator.currentOutputTime(),
+          curTimeRange.getMax());
+    }
     curTimeRange = null;
-    appendAggregationResult(
-        resultTsBlockBuilder, aggregators, timeRangeIterator.currentOutputTime());
   }
 }
