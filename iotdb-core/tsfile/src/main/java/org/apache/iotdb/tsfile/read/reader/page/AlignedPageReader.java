@@ -341,8 +341,13 @@ public class AlignedPageReader implements IPageReader {
     if (pushDownFilter == null) {
       return builder.build();
     }
+    return applyPushDownFilter();
+  }
 
+  private TsBlock applyPushDownFilter() {
     TsBlock unFilteredBlock = builder.build();
+    builder.reset();
+
     Object[] values = new Object[valueCount];
     for (int i = 0, size = unFilteredBlock.getPositionCount(); i < size; i++) {
       long time = unFilteredBlock.getTimeByIndex(i);
@@ -354,6 +359,7 @@ public class AlignedPageReader implements IPageReader {
         for (int j = 0; j < valueCount; j++) {
           builder.getColumnBuilder(j).writeObject(values[j]);
         }
+        builder.declarePosition();
       }
     }
     return builder.build();

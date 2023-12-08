@@ -55,7 +55,11 @@ public class TimeValuePair implements Serializable, Comparable<TimeValuePair> {
       TsPrimitiveType[] vector = value.getVector();
       Object[] values = new Object[vector.length];
       for (int i = 0; i < vector.length; i++) {
-        values[i] = vector[i].getValue();
+        if (vector[i] == null) {
+          values[i] = null;
+        } else {
+          values[i] = vector[i].getValue();
+        }
       }
       return values;
     } else {

@@ -60,7 +60,8 @@ public class AlignedChunkReader implements IChunkReader {
           TSDataType.INT64);
   private final long currentTimestamp;
 
-  protected Filter globalTimeFilter;
+  // any filter, no matter value filter or time filter
+  private Filter queryFilter;
 
   private final List<IPageReader> pageReaderList = new LinkedList<>();
 
@@ -89,11 +90,11 @@ public class AlignedChunkReader implements IChunkReader {
   /**
    * constructor of ChunkReader.
    *
-   * @param globalTimeFilter filter
+   * @param queryFilter filter
    */
-  public AlignedChunkReader(Chunk timeChunk, List<Chunk> valueChunkList, Filter globalTimeFilter)
+  public AlignedChunkReader(Chunk timeChunk, List<Chunk> valueChunkList, Filter queryFilter)
       throws IOException {
-    this.globalTimeFilter = globalTimeFilter;
+    this.queryFilter = queryFilter;
     this.timeChunkDataBuffer = timeChunk.getData();
     this.valueDeleteIntervalList = new ArrayList<>();
     this.timeChunkHeader = timeChunk.getHeader();
@@ -185,7 +186,9 @@ public class AlignedChunkReader implements IChunkReader {
 
   /** used for time page filter */
   private boolean pageCanSkip(PageHeader timePageHeader) {
-    return globalTimeFilter != null && globalTimeFilter.canSkip(timePageHeader);
+    return queryFilter != null
+        && !queryFilter.satisfyStartEndTime(
+            timePageHeader.getStartTime(), timePageHeader.getEndTime());
   }
 
   /** used for value page filter */
@@ -204,7 +207,7 @@ public class AlignedChunkReader implements IChunkReader {
         }
       }
     }
-    return globalTimeFilter != null && globalTimeFilter.canSkip(pageHeader);
+    return queryFilter != null && queryFilter.canSkip(pageHeader);
   }
 
   private AlignedPageReader constructPageReaderForNextPage(
@@ -259,7 +262,7 @@ public class AlignedChunkReader implements IChunkReader {
             valuePageDataList,
             valueDataTypeList,
             valueDecoderList,
-            globalTimeFilter);
+            queryFilter);
     alignedPageReader.setDeleteIntervalList(valueDeleteIntervalList);
     return alignedPageReader;
   }

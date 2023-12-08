@@ -242,11 +242,13 @@ public class SeriesScanUtil {
         && timeAllSelected(firstTimeSeriesMetadata);
   }
 
-  public Statistics<? extends Serializable> currentFileTimeStatistics() {
+  @SuppressWarnings("squid:S3740")
+  public Statistics currentFileTimeStatistics() {
     return firstTimeSeriesMetadata.getTimeStatistics();
   }
 
-  public Statistics<? extends Serializable> currentFileStatistics(int index) {
+  @SuppressWarnings("squid:S3740")
+  public Statistics currentFileStatistics(int index) {
     return firstTimeSeriesMetadata.getMeasurementStatistics(index).orElse(null);
   }
 
@@ -351,7 +353,7 @@ public class SeriesScanUtil {
   }
 
   private void unpackAllOverlappedTimeSeriesMetadataToCachedChunkMetadata(
-      long endpointTime, boolean init) throws IOException {
+      long endpointTime, boolean init) {
     while (!seqTimeSeriesMetadata.isEmpty()
         && orderUtils.isOverlapped(endpointTime, seqTimeSeriesMetadata.get(0).getStatistics())) {
       unpackOneTimeSeriesMetadata(seqTimeSeriesMetadata.remove(0));
@@ -397,11 +399,13 @@ public class SeriesScanUtil {
         && timeAllSelected(firstChunkMetadata);
   }
 
-  public Statistics<? extends Serializable> currentChunkTimeStatistics() {
+  @SuppressWarnings("squid:S3740")
+  public Statistics currentChunkTimeStatistics() {
     return firstChunkMetadata.getTimeStatistics();
   }
 
-  public Statistics<? extends Serializable> currentChunkStatistics(int index) {
+  @SuppressWarnings("squid:S3740")
+  public Statistics currentChunkStatistics(int index) {
     return firstChunkMetadata.getMeasurementStatistics(index).orElse(null);
   }
 
@@ -622,7 +626,7 @@ public class SeriesScanUtil {
   }
 
   @SuppressWarnings("squid:S3740")
-  public Statistics currentPageTimeStatistics() throws IOException {
+  public Statistics currentPageTimeStatistics() {
     if (firstPageReader == null) {
       return null;
     }
@@ -630,7 +634,7 @@ public class SeriesScanUtil {
   }
 
   @SuppressWarnings("squid:S3740")
-  public Statistics currentPageStatistics(int index) throws IOException {
+  public Statistics currentPageStatistics(int index) {
     if (firstPageReader == null) {
       return null;
     }
