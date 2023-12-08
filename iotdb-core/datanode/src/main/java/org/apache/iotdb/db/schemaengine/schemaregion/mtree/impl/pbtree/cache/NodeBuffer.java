@@ -60,7 +60,7 @@ public class NodeBuffer implements INodeBuffer {
 
   @Override
   public void addNewNodeToBuffer(ICachedMNode node) {
-    addNodeToBuffer(node);
+    addNonVolatileAncestorToBuffer(node);
   }
 
   @Override
@@ -70,7 +70,7 @@ public class NodeBuffer implements INodeBuffer {
      * the volatile subtree it belongs to is in nodeBuffer
      */
     remove(node.getCacheEntry());
-    addNodeToBuffer(node);
+    addNonVolatileAncestorToBuffer(node);
   }
 
   @Override
@@ -82,7 +82,7 @@ public class NodeBuffer implements INodeBuffer {
    * look for the first none volatile ancestor of this node and add it to nodeBuffer. Through this
    * the volatile subtree the given node belong to will be record in nodeBuffer.
    */
-  private void addNodeToBuffer(ICachedMNode node) {
+  private void addNonVolatileAncestorToBuffer(ICachedMNode node) {
     ICachedMNode parent = node.getParent();
     CacheEntry cacheEntry = parent.getCacheEntry();
 

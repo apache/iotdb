@@ -337,9 +337,7 @@ public abstract class CacheManager implements ICacheManager {
             if (cacheEntry.hasVolatileDescendant()
                 && getCachedMNodeContainer(node).hasChildrenInBuffer()) {
               // these two factor judgement is not redundant because the #hasVolatileDescendant is
-              // on
-              // a higher priority
-              // than #container.hasChildren
+              // on a higher priority than #container.hasChildren
 
               // nodes with volatile children should be treated as root of volatile subtree and
               // return

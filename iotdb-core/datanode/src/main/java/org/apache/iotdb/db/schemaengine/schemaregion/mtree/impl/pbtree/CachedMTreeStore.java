@@ -636,6 +636,8 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       if (hasVolatileNodes) {
         flushCallback.run();
       }
+
+      ensureMemoryStatus();
     } catch (MetadataException | IOException e) {
       LOGGER.warn(
           "Exception occurred during MTree flush, current SchemaRegionId is {}", schemaRegionId, e);

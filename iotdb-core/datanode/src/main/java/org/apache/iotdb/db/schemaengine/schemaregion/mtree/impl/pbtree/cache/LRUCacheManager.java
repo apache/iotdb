@@ -56,7 +56,7 @@ public class LRUCacheManager extends CacheManager {
   @Override
   protected void addToNodeCache(CacheEntry cacheEntry, ICachedMNode node) {
     LRUCacheEntry lruCacheEntry = getAsLRUCacheEntry(cacheEntry);
-    getTargetCacheList(lruCacheEntry).addToCacheList(lruCacheEntry, node);
+    getTargetCacheList(lruCacheEntry).addToCacheList(lruCacheEntry);
   }
 
   @Override
@@ -177,11 +177,15 @@ public class LRUCacheManager extends CacheManager {
       }
     }
 
-    private void addToCacheList(LRUCacheEntry lruCacheEntry, ICachedMNode node) {
+    private void addToCacheList(LRUCacheEntry lruCacheEntry) {
       lock.lock();
       try {
-        moveToFirst(lruCacheEntry);
-        size.getAndIncrement();
+        if (isInCacheList(lruCacheEntry)) {
+          moveToFirst(lruCacheEntry);
+        } else {
+          moveToFirst(lruCacheEntry);
+          size.getAndIncrement();
+        }
       } finally {
         lock.unlock();
       }
@@ -190,8 +194,10 @@ public class LRUCacheManager extends CacheManager {
     private void removeFromCacheList(LRUCacheEntry lruCacheEntry) {
       lock.lock();
       try {
-        removeOne(lruCacheEntry);
-        size.getAndDecrement();
+        if (isInCacheList(lruCacheEntry)) {
+          removeOne(lruCacheEntry);
+          size.getAndDecrement();
+        }
       } finally {
         lock.unlock();
       }
