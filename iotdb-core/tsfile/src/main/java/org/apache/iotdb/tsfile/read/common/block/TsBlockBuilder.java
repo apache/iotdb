@@ -38,6 +38,7 @@ import java.util.List;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.tsfile.utils.Preconditions.checkArgument;
 
 public class TsBlockBuilder {
 
@@ -324,12 +325,6 @@ public class TsBlockBuilder {
       getColumnBuilder(columnIndex).appendNull();
     } else {
       getColumnBuilder(columnIndex).writeBinary(new Binary(value, TSFileConfig.STRING_CHARSET));
-    }
-  }
-
-  private static void checkArgument(boolean expression, String errorMessage) {
-    if (!expression) {
-      throw new IllegalArgumentException(errorMessage);
     }
   }
 }

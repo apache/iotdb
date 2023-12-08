@@ -1345,6 +1345,7 @@ public class OperatorMemoryTest {
             timeRangeIterator,
             child,
             true,
+            false,
             groupByTimeParameter,
             maxReturnSize);
 
@@ -1423,6 +1424,7 @@ public class OperatorMemoryTest {
             aggregators,
             timeRangeIterator,
             children,
+            false,
             maxReturnSize);
 
     long expectedMaxReturnSize =

@@ -17,34 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.read.filter.operator.base;
+package org.apache.iotdb.db.utils.columngenerator;
 
-import java.util.Objects;
-import java.util.regex.Pattern;
+public enum ColumnGeneratorType {
+  SLIDING_TIME((byte) 0);
 
-/* base class for Regex, NotRegex */
-public abstract class ColumnPatternMatchFilter {
+  private final byte type;
 
-  protected final Pattern pattern;
-
-  protected ColumnPatternMatchFilter(Pattern pattern) {
-    this.pattern = Objects.requireNonNull(pattern, "pattern cannot be null");
+  ColumnGeneratorType(byte type) {
+    this.type = type;
   }
 
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    ColumnPatternMatchFilter that = (ColumnPatternMatchFilter) o;
-    return pattern.pattern().equals(that.pattern.pattern());
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(pattern.pattern());
+  public byte getType() {
+    return type;
   }
 }

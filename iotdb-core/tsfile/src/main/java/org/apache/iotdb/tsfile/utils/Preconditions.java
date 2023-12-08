@@ -17,24 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.read.filter.basic;
+package org.apache.iotdb.tsfile.utils;
 
-import org.apache.iotdb.tsfile.read.common.TimeRange;
+public class Preconditions {
 
-import java.util.List;
-
-public interface IValueFilter extends Filter {
-
-  default boolean satisfyStartEndTime(long startTime, long endTime) {
-    return true;
+  private Preconditions() {
+    // private constructor for utility class
   }
 
-  default boolean containStartEndTime(long startTime, long endTime) {
-    return false;
+  public static void checkArgument(boolean expression) {
+    if (!expression) {
+      throw new IllegalArgumentException();
+    }
   }
 
-  @Override
-  default List<TimeRange> getTimeRanges() {
-    throw new UnsupportedOperationException("Value filter does not support getTimeRanges()");
+  public static void checkArgument(boolean expression, String errorMessage) {
+    if (!expression) {
+      throw new IllegalArgumentException(errorMessage);
+    }
   }
 }

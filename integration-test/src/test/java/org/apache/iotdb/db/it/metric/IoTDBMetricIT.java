@@ -30,13 +30,83 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.regex.Pattern;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBMetricIT {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBMetricIT.class);
+
+  private static final String METRIC_NAME_REGEX = "[a-zA-Z_:][a-zA-Z0-9_:]*";
+  private static final String LABEL_NAME_REGEX = "[a-zA-Z_][a-zA-Z0-9_]*";
+  private static final String LABEL_VALUE_REGEX = "[^\",]+";
+  private static final String METRIC_LINE_REGEX =
+      METRIC_NAME_REGEX
+          + "(\\{"
+          + LABEL_NAME_REGEX
+          + "=\""
+          + LABEL_VALUE_REGEX
+          + "\",("
+          + LABEL_NAME_REGEX
+          + "=\""
+          + LABEL_VALUE_REGEX
+          + "\",)*})? [+-]?[0-9]*\\.?[0-9]+([eE][+-]?[0-9]+)?";
+  private static final String HELP_PREFIX = "# HELP ";
+  private static final String HELP_REGEX = HELP_PREFIX + METRIC_NAME_REGEX;
+  private static final String TYPE_PREFIX = "# TYPE ";
+  private static final String TYPE_REGEX = TYPE_PREFIX + METRIC_NAME_REGEX + " .+";
+
+  private static final String VALID_LOG_STRING =
+      "This line {} is invalid in prometheus line protocol";
+
+  public static boolean isValidPrometheusTextFormat(String metrics) {
+    String[] lines = metrics.split("\\n");
+    boolean valid = true;
+
+    for (String line : lines) {
+      if (!line.isEmpty()) {
+        if (line.startsWith(HELP_PREFIX)) {
+          if (!isValidHelpLine(line)) {
+            LOGGER.error(VALID_LOG_STRING, line);
+            valid = false;
+            break;
+          }
+        } else if (line.startsWith(TYPE_PREFIX)) {
+          if (!isValidTypeLine(line)) {
+            LOGGER.error(VALID_LOG_STRING, line);
+            valid = false;
+            break;
+          }
+        } else {
+          if (!isValidMetricLine(line)) {
+            LOGGER.error(VALID_LOG_STRING, line);
+            valid = false;
+            break;
+          }
+        }
+      }
+    }
+    return valid;
+  }
+
+  private static boolean isValidMetricLine(String line) {
+    return Pattern.matches(METRIC_LINE_REGEX, line.trim());
+  }
+
+  private static boolean isValidHelpLine(String line) {
+    return Pattern.matches(HELP_REGEX, line.trim());
+  }
+
+  private static boolean isValidTypeLine(String line) {
+    return Pattern.matches(TYPE_REGEX, line.trim());
+  }
+
   @BeforeClass
   public static void setUp() throws Exception {
     // Start ConfigNode with Prometheus reporter up
@@ -63,6 +133,7 @@ public class IoTDBMetricIT {
     for (String metricContent : metricContents) {
       Assert.assertNotNull(metricContent);
       Assert.assertNotEquals(0, metricContent.length());
+      Assert.assertTrue(isValidPrometheusTextFormat(metricContent));
     }
   }
 }

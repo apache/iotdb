@@ -28,11 +28,10 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static java.util.Map.Entry.comparingByValue;
@@ -41,8 +40,6 @@ import static java.util.Map.Entry.comparingByValue;
 public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(GreedyRegionGroupAllocator.class);
-
-  private static final AtomicInteger ZERO = new AtomicInteger(0);
 
   public GreedyRegionGroupAllocator() {
     // Empty constructor
@@ -69,29 +66,25 @@ public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
       List<TRegionReplicaSet> allocatedRegionGroups) {
 
     // Map<DataNodeId, Region count>
-    Map<Integer, AtomicInteger> regionCounter = new ConcurrentHashMap<>();
+    Map<Integer, Integer> regionCounter = new HashMap<>(availableDataNodeMap.size());
     allocatedRegionGroups.forEach(
         regionReplicaSet ->
             regionReplicaSet
                 .getDataNodeLocations()
                 .forEach(
                     dataNodeLocation ->
-                        regionCounter
-                            .computeIfAbsent(
-                                dataNodeLocation.getDataNodeId(), empty -> new AtomicInteger(0))
-                            .getAndIncrement()));
+                        regionCounter.merge(dataNodeLocation.getDataNodeId(), 1, Integer::sum)));
 
     /* Construct priority map */
-    Map<TDataNodeLocation, Pair<Integer, Double>> priorityMap = new ConcurrentHashMap<>();
-    availableDataNodeMap
-        .keySet()
-        .forEach(
-            dataNodeId ->
-                priorityMap.put(
-                    availableDataNodeMap.get(dataNodeId).getLocation(),
-                    new Pair<>(
-                        regionCounter.getOrDefault(dataNodeId, ZERO).get(),
-                        freeDiskSpaceMap.getOrDefault(dataNodeId, 0d))));
+    Map<TDataNodeLocation, Pair<Integer, Double>> priorityMap =
+        new HashMap<>(availableDataNodeMap.size());
+    availableDataNodeMap.forEach(
+        (datanodeId, dataNodeConfiguration) ->
+            priorityMap.put(
+                dataNodeConfiguration.getLocation(),
+                new Pair<>(
+                    regionCounter.getOrDefault(datanodeId, 0),
+                    freeDiskSpaceMap.getOrDefault(datanodeId, 0d))));
 
     // Sort weightList
     List<TDataNodeLocation> result =

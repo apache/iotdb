@@ -32,8 +32,8 @@ import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.read.filter.factory.TimeFilter;
-import org.apache.iotdb.tsfile.read.filter.factory.ValueFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilterApi;
+import org.apache.iotdb.tsfile.read.filter.factory.ValueFilterApi;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
@@ -72,13 +72,13 @@ public class TimeGeneratorReadEmptyTest {
 
   @Test
   public void testFilterAnd() throws IOException {
-    Filter timeFilter = FilterFactory.and(TimeFilter.gtEq(2L), TimeFilter.ltEq(2L));
+    Filter timeFilter = FilterFactory.and(TimeFilterApi.gtEq(2L), TimeFilterApi.ltEq(2L));
     IExpression timeExpression = new GlobalTimeExpression(timeFilter);
 
     IExpression valueExpression =
         BinaryExpression.or(
-            new SingleSeriesExpression(new Path("d1", "s1", true), ValueFilter.gt(1.0f)),
-            new SingleSeriesExpression(new Path("d1", "s2", true), ValueFilter.lt(22)));
+            new SingleSeriesExpression(new Path("d1", "s1", true), ValueFilterApi.gt(1.0f)),
+            new SingleSeriesExpression(new Path("d1", "s2", true), ValueFilterApi.lt(22)));
 
     IExpression finalExpression = BinaryExpression.and(valueExpression, timeExpression);
 
