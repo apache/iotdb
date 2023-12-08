@@ -58,7 +58,7 @@ public abstract class PageLoader {
     this.modifiedStatus = modifiedStatus;
   }
 
-  public PageHeader getPageHeader() {
+  public PageHeader getHeader() {
     return pageHeader;
   }
 
