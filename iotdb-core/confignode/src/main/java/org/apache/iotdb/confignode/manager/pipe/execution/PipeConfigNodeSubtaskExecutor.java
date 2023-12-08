@@ -28,13 +28,13 @@ public class PipeConfigNodeSubtaskExecutor extends PipeSubtaskExecutor {
   private static final int THREAD_NUM = 1;
 
   private PipeConfigNodeSubtaskExecutor() {
-    super(THREAD_NUM, ThreadName.PIPE_SCHEMA_EXECUTOR_POOL);
+    super(THREAD_NUM, ThreadName.PIPE_CONFIGNODE_EXECUTOR_POOL);
   }
 
   /** @param ignored Used to distinguish this constructor from the default constructor. */
   @TestOnly
   public PipeConfigNodeSubtaskExecutor(Object ignored) {
-    super(THREAD_NUM, ThreadName.PIPE_SCHEMA_EXECUTOR_POOL);
+    super(THREAD_NUM, ThreadName.PIPE_CONFIGNODE_EXECUTOR_POOL);
   }
 
   private static class PipeSchemaSubtaskExecutorHolder {
