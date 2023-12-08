@@ -988,26 +988,6 @@ public class RegionWriteExecutor {
     }
   }
 
-  private static class WritePlanNodeExecutionContext {
-
-    private final ConsensusGroupId regionId;
-
-    private final ReentrantReadWriteLock regionRWLock;
-
-    WritePlanNodeExecutionContext(ConsensusGroupId regionId, ReentrantReadWriteLock regionRWLock) {
-      this.regionId = regionId;
-      this.regionRWLock = regionRWLock;
-    }
-
-    public ConsensusGroupId getRegionId() {
-      return regionId;
-    }
-
-    public ReentrantReadWriteLock getRegionWriteValidationRWLock() {
-      return regionRWLock;
-    }
-  }
-
   private class PipeEnrichedWriteSchemaNodeExecutionVisitor
       extends PlanVisitor<RegionExecutionResult, WritePlanNodeExecutionContext> {
 
@@ -1081,6 +1061,26 @@ public class RegionWriteExecutor {
     public RegionExecutionResult visitCreateLogicalView(
         CreateLogicalViewNode node, WritePlanNodeExecutionContext context) {
       return visitor.executeCreateLogicalView(node, context, true);
+    }
+  }
+
+  private static class WritePlanNodeExecutionContext {
+
+    private final ConsensusGroupId regionId;
+
+    private final ReentrantReadWriteLock regionRWLock;
+
+    WritePlanNodeExecutionContext(ConsensusGroupId regionId, ReentrantReadWriteLock regionRWLock) {
+      this.regionId = regionId;
+      this.regionRWLock = regionRWLock;
+    }
+
+    public ConsensusGroupId getRegionId() {
+      return regionId;
+    }
+
+    public ReentrantReadWriteLock getRegionWriteValidationRWLock() {
+      return regionRWLock;
     }
   }
 }
