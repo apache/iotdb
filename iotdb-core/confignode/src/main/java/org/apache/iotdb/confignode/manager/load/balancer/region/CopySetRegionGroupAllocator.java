@@ -88,12 +88,12 @@ public class CopySetRegionGroupAllocator implements IRegionGroupAllocator {
     Map<TDataNodeLocation, Integer> countMap = new HashMap<>();
     for (TDataNodeConfiguration dataNodeConfiguration : onlineDataNodes) {
       maxId = Math.max(maxId, dataNodeConfiguration.getLocation().getDataNodeId());
-      countMap.put(dataNodeConfiguration.getLocation(), 0);
+      countMap.putIfAbsent(dataNodeConfiguration.getLocation(), 0);
     }
     for (TRegionReplicaSet regionReplicaSet : allocatedRegions) {
       for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
         countMap.computeIfPresent(dataNodeLocation, (dataNode, count) -> (count + 1));
-        maximumRegionNum = Math.max(maximumRegionNum, countMap.get(dataNodeLocation));
+        maximumRegionNum = Math.max(maximumRegionNum, countMap.getOrDefault(dataNodeLocation, 0));
       }
     }
 

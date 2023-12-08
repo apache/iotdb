@@ -36,9 +36,9 @@ import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * The RegionBalancer provides interfaces to generate optimal Region allocation and migration plans
@@ -101,8 +101,9 @@ public class RegionBalancer {
 
       for (int i = 0; i < allotment; i++) {
         // Prepare input data
-        Map<Integer, TDataNodeConfiguration> availableDataNodeMap = new ConcurrentHashMap<>();
-        Map<Integer, Double> freeDiskSpaceMap = new ConcurrentHashMap<>();
+        Map<Integer, TDataNodeConfiguration> availableDataNodeMap =
+            new HashMap<>(availableDataNodes.size());
+        Map<Integer, Double> freeDiskSpaceMap = new HashMap<>(availableDataNodes.size());
         availableDataNodes.forEach(
             dataNodeConfiguration -> {
               int dataNodeId = dataNodeConfiguration.getLocation().getDataNodeId();

@@ -90,6 +90,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.ShowLogicalV
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.lang3.StringUtils;
@@ -102,6 +103,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.ENDTIME;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
 
 /**
@@ -269,6 +271,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
               || analysis.hasGroupByParameter()
               || needTransform(sourceTransformExpressions)
               || cannotUseStatistics(aggregationExpressions, sourceTransformExpressions);
+      if (queryStatement.isOutputEndTime()) {
+        context.getTypeProvider().setType(ENDTIME, TSDataType.INT64);
+      }
       AggregationStep curStep;
       if (isRawDataSource) {
         planBuilder =
@@ -348,6 +353,13 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                     sourceTransformExpressions,
                     analysis.getCrossGroupByExpressions(),
                     deviceViewInputIndexes);
+      }
+
+      if (queryStatement.isGroupByTime() && queryStatement.isOutputEndTime()) {
+        planBuilder =
+            planBuilder.planEndTimeColumnInject(
+                analysis.getGroupByTimeParameter(),
+                queryStatement.getResultTimeOrder().isAscending());
       }
     }
 

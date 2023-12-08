@@ -576,7 +576,7 @@ public abstract class AbstractCli {
         println("Msg: " + SUCCESS_MESSAGE);
       }
     } catch (Exception e) {
-      println("Msg: " + e.getMessage());
+      println("Msg: " + e);
       executeStatus = CODE_ERROR;
     } finally {
       resetArgs();

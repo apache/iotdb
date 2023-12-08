@@ -61,6 +61,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedD
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWriteSchemaNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewIntoNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
@@ -191,9 +192,10 @@ public enum PlanNodeType {
 
   LAST_QUERY_TRANSFORM((short) 81),
   TOP_K((short) 82),
-  PIPE_ENRICHED_DELETE_DATA((short) 83),
-  PIPE_ENRICHED_WRITE_SCHEMA((short) 84),
-  PIPE_ENRICHED_DELETE_SCHEMA((short) 85),
+  COLUMN_INJECT((short) 83),
+  PIPE_ENRICHED_DELETE_DATA((short) 84),
+  PIPE_ENRICHED_WRITE_SCHEMA((short) 85),
+  PIPE_ENRICHED_DELETE_SCHEMA((short) 86),
   ;
 
   public static final int BYTES = Short.BYTES;
@@ -408,11 +410,14 @@ public enum PlanNodeType {
       case 82:
         return TopKNode.deserialize(buffer);
       case 83:
-        return PipeEnrichedDeleteDataNode.deserialize(buffer);
+        return ColumnInjectNode.deserialize(buffer);
       case 84:
-        return PipeEnrichedWriteSchemaNode.deserialize(buffer);
+        return PipeEnrichedDeleteDataNode.deserialize(buffer);
       case 85:
+        return PipeEnrichedWriteSchemaNode.deserialize(buffer);
+      case 86:
         return PipeEnrichedDeleteSchemaNode.deserialize(buffer);
+
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
