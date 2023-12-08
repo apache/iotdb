@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.MNodeType;
 import org.apache.iotdb.commons.schema.node.info.IDatabaseInfo;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
-import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
@@ -114,19 +113,6 @@ public abstract class AbstractDatabaseMNode<N extends IMNode<N>, BasicNode exten
   }
 
   @Override
-  public void replaceChild(String oldChildName, N newChildNode) {
-    basicMNode.replaceChild(oldChildName, newChildNode);
-  }
-
-  @Override
-  public void moveDataToNewMNode(N newMNode) {
-    basicMNode.moveDataToNewMNode(newMNode);
-    if (newMNode.isDatabase()) {
-      databaseInfo.moveDataToNewMNode(newMNode.getAsDatabaseMNode());
-    }
-  }
-
-  @Override
   public IMNodeContainer<N> getChildren() {
     return basicMNode.getChildren();
   }
@@ -147,28 +133,18 @@ public abstract class AbstractDatabaseMNode<N extends IMNode<N>, BasicNode exten
   }
 
   @Override
-  public boolean isDevice() {
-    return false;
-  }
-
-  @Override
   public boolean isMeasurement() {
     return false;
   }
 
   @Override
-  public MNodeType getMNodeType(Boolean isConfig) {
+  public MNodeType getMNodeType() {
     return MNodeType.STORAGE_GROUP;
   }
 
   @Override
   public IDatabaseMNode<N> getAsDatabaseMNode() {
     return this;
-  }
-
-  @Override
-  public IDeviceMNode<N> getAsDeviceMNode() {
-    throw new UnsupportedOperationException("Wrong MNode Type");
   }
 
   @Override

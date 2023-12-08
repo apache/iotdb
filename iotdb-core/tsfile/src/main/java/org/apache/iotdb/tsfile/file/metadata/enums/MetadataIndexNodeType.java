@@ -41,7 +41,7 @@ public enum MetadataIndexNodeType {
   /** INTERNAL_MEASUREMENT. */
   INTERNAL_MEASUREMENT((byte) 2),
 
-  /** INTERNAL_MEASUREMENT. */
+  /** LEAF_MEASUREMENT. */
   LEAF_MEASUREMENT((byte) 3);
 
   private final byte type;

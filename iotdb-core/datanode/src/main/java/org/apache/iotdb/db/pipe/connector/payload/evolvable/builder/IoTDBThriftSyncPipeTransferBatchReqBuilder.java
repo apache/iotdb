@@ -19,15 +19,9 @@
 
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.builder;
 
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBThriftSyncConnector;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
-
-import java.io.IOException;
 
 public class IoTDBThriftSyncPipeTransferBatchReqBuilder extends PipeTransferBatchReqBuilder {
 
@@ -35,47 +29,16 @@ public class IoTDBThriftSyncPipeTransferBatchReqBuilder extends PipeTransferBatc
     super(parameters);
   }
 
-  /**
-   * Try offer event into cache if the given event is not duplicated.
-   *
-   * @param event the given event
-   * @return true if the batch can be transferred
-   */
-  public boolean onEvent(TabletInsertionEvent event) throws IOException, WALPipeException {
-    final TPipeTransferReq req = buildTabletInsertionReq(event);
-
-    if (events.isEmpty() || !events.get(events.size() - 1).equals(event)) {
-      reqs.add(req);
-
-      if (event instanceof EnrichedEvent) {
-        ((EnrichedEvent) event).increaseReferenceCount(PipeTransferBatchReqBuilder.class.getName());
-      }
-      events.add(event);
-
-      if (firstEventProcessingTime == Long.MIN_VALUE) {
-        firstEventProcessingTime = System.currentTimeMillis();
-      }
-
-      bufferSize += req.getBody().length;
-    }
-
-    return bufferSize >= getMaxBatchSizeInBytes()
-        || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs;
-  }
-
+  @Override
   public void onSuccess() {
-    reqs.clear();
-
     for (final Event event : events) {
       if (event instanceof EnrichedEvent) {
         ((EnrichedEvent) event)
-            .decreaseReferenceCount(IoTDBThriftSyncConnector.class.getName(), true);
+            .decreaseReferenceCount(
+                IoTDBThriftSyncPipeTransferBatchReqBuilder.class.getName(), true);
       }
     }
-    events.clear();
 
-    firstEventProcessingTime = Long.MIN_VALUE;
-
-    bufferSize = 0;
+    super.onSuccess();
   }
 }

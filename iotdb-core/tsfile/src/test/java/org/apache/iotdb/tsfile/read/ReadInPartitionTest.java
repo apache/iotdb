@@ -30,9 +30,9 @@ import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
-import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilterApi;
+import org.apache.iotdb.tsfile.read.filter.factory.ValueFilterApi;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 
@@ -158,7 +158,7 @@ public class ReadInPartitionTest {
     ArrayList<Path> paths = new ArrayList<>();
     paths.add(new Path("d1", "s6", true));
     paths.add(new Path("d2", "s1", true));
-    IExpression expression = new GlobalTimeExpression(TimeFilter.gt(50L));
+    IExpression expression = new GlobalTimeExpression(TimeFilterApi.gt(50L));
     QueryExpression queryExpression = QueryExpression.create(paths, expression);
 
     QueryDataSet queryDataSet =
@@ -195,7 +195,7 @@ public class ReadInPartitionTest {
     ArrayList<Path> paths = new ArrayList<>();
     paths.add(new Path("d1", "s6", true));
     paths.add(new Path("d2", "s1", true));
-    Filter filter = ValueFilter.gt(10L);
+    Filter filter = ValueFilterApi.gt(10L);
     IExpression expression = new SingleSeriesExpression(new Path("d1", "s3", true), filter);
     QueryExpression queryExpression = QueryExpression.create(paths, expression);
 

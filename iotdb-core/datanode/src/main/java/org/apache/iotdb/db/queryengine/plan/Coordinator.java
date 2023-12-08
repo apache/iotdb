@@ -158,7 +158,6 @@ public class Coordinator {
         queryContext.setTimeOut(Long.MAX_VALUE);
       }
       execution.start();
-
       return execution.getStatus();
     }
   }

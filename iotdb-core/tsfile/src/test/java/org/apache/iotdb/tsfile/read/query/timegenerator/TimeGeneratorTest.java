@@ -28,10 +28,10 @@ import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
-import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilterApi;
+import org.apache.iotdb.tsfile.read.filter.factory.ValueFilterApi;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 
@@ -67,10 +67,10 @@ public class TimeGeneratorTest {
   @Test
   public void testTimeGenerator() throws IOException {
     long startTimestamp = 1480562618000L;
-    Filter filter = TimeFilter.lt(1480562618100L);
-    Filter filter2 = ValueFilter.gt(new Binary("dog", TSFileConfig.STRING_CHARSET));
+    Filter filter = TimeFilterApi.lt(1480562618100L);
+    Filter filter2 = ValueFilterApi.gt(new Binary("dog", TSFileConfig.STRING_CHARSET));
     Filter filter3 =
-        FilterFactory.and(TimeFilter.gtEq(1480562618000L), TimeFilter.ltEq(1480562618100L));
+        FilterFactory.and(TimeFilterApi.gtEq(1480562618000L), TimeFilterApi.ltEq(1480562618100L));
 
     IExpression IExpression =
         BinaryExpression.or(

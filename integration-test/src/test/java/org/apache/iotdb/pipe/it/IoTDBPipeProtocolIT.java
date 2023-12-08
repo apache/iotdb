@@ -29,16 +29,16 @@ import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2;
-import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.pipe.PipeEnvironmentException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -46,22 +46,18 @@ import java.util.Map;
 /** Test pipe's basic functionalities under multiple cluster and consensus protocol settings. */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
-public class IoTDBPipeProtocolIT {
+public class IoTDBPipeProtocolIT extends AbstractPipeDualIT {
 
-  private BaseEnv senderEnv;
-  private BaseEnv receiverEnv;
-
+  @Override
   @Before
-  public void setUp() throws Exception {
-    MultiEnvFactory.createEnv(2);
-    senderEnv = MultiEnvFactory.getEnv(0);
-    receiverEnv = MultiEnvFactory.getEnv(1);
-  }
-
-  @After
-  public void tearDown() {
-    senderEnv.cleanClusterEnvironment();
-    receiverEnv.cleanClusterEnvironment();
+  public void setUp() throws PipeEnvironmentException {
+    try {
+      MultiEnvFactory.createEnv(2);
+      senderEnv = MultiEnvFactory.getEnv(0);
+      receiverEnv = MultiEnvFactory.getEnv(1);
+    } catch (Exception | Error e) {
+      throw new PipeEnvironmentException(e.getMessage(), e);
+    }
   }
 
   private void innerSetUp(
@@ -402,6 +398,9 @@ public class IoTDBPipeProtocolIT {
       connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.node-urls", nodeUrlsBuilder.toString());
 
+      // Test forced-log mode, in TimechoDB this might be "file"
+      extractorAttributes.put("source.realtime.mode", "forced-log");
+
       TSStatus status =
           client.createPipe(
               new TCreatePipeReq("p1", connectorAttributes)
@@ -413,11 +412,8 @@ public class IoTDBPipeProtocolIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (2, 2)")) {
-        return;
-      }
-      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv, Arrays.asList("insert into root.db.d1(time, s1) values (2, 2)", "flush"))) {
         return;
       }
 
@@ -426,6 +422,31 @@ public class IoTDBPipeProtocolIT {
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
           Collections.singleton("2,"));
+
+      // Test file mode
+      extractorAttributes.replace("source.realtime.mode", "file");
+
+      status =
+          client.createPipe(
+              new TCreatePipeReq("p2", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      System.out.println(status.getMessage());
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p2").getCode());
+
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv, Arrays.asList("insert into root.db.d1(time, s1) values (3, 3)", "flush"))) {
+        return;
+      }
+
+      TestUtils.assertDataOnEnv(
+          receiverEnv,
+          "select count(*) from root.**",
+          "count(root.db.d1.s1),",
+          Collections.singleton("3,"));
     }
   }
 }

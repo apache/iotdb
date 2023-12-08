@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.common.schematree;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -73,6 +74,8 @@ public class ClusterSchemaTree implements ISchemaTree {
 
   private Map<Integer, Template> templateMap = new HashMap<>();
 
+  private PathPatternTree authorityScope;
+
   public ClusterSchemaTree() {
     root = new SchemaInternalNode(PATH_ROOT);
   }
@@ -97,7 +100,7 @@ public class ClusterSchemaTree implements ISchemaTree {
       PartialPath pathPattern, int slimit, int soffset, boolean isPrefixMatch) {
     try (SchemaTreeVisitorWithLimitOffsetWrapper<MeasurementPath> visitor =
         SchemaTreeVisitorFactory.createSchemaTreeMeasurementVisitor(
-            root, pathPattern, isPrefixMatch, slimit, soffset)) {
+            root, pathPattern, isPrefixMatch, slimit, soffset, authorityScope)) {
       visitor.setTemplateMap(templateMap);
       return new Pair<>(visitor.getAllResult(), visitor.getNextOffset());
     }
@@ -277,20 +280,29 @@ public class ClusterSchemaTree implements ISchemaTree {
     String[] nodes = devicePath.getNodes();
     SchemaNode cur = root;
     SchemaNode child;
-    for (int i = 1; i < nodes.length; i++) {
+    for (int i = 1; i < nodes.length - 1; i++) {
       child = cur.getChild(nodes[i]);
       if (child == null) {
-        if (i == nodes.length - 1) {
-          SchemaEntityNode entityNode = new SchemaEntityNode(nodes[i]);
-          entityNode.setAligned(isAligned);
-          entityNode.setTemplateId(templateId);
-          child = entityNode;
-        } else {
-          child = new SchemaInternalNode(nodes[i]);
-        }
+        child = new SchemaInternalNode(nodes[i]);
         cur.addChild(nodes[i], child);
       }
       cur = child;
+    }
+    String deviceName = nodes[nodes.length - 1];
+    child = cur.getChild(deviceName);
+    if (child == null) {
+      SchemaEntityNode entityNode = new SchemaEntityNode(deviceName);
+      entityNode.setAligned(isAligned);
+      entityNode.setTemplateId(templateId);
+      cur.addChild(deviceName, entityNode);
+    } else if (child.isEntity()) {
+      child.getAsEntityNode().setTemplateId(templateId);
+      child.getAsEntityNode().setAligned(isAligned);
+    } else {
+      SchemaEntityNode entityNode = new SchemaEntityNode(deviceName);
+      entityNode.setAligned(isAligned);
+      entityNode.setTemplateId(templateId);
+      cur.replaceChild(deviceName, entityNode);
     }
     templateMap.putIfAbsent(templateId, template);
   }
@@ -447,6 +459,7 @@ public class ClusterSchemaTree implements ISchemaTree {
     Deque<SchemaNode> stack = new ArrayDeque<>();
     SchemaNode child;
     boolean hasLogicalView = false;
+    boolean hasNormalTimeSeries = false;
     Map<Integer, Template> templateMap = new HashMap<>();
 
     while (inputStream.available() > 0) {
@@ -457,6 +470,7 @@ public class ClusterSchemaTree implements ISchemaTree {
         if (measurementNode.isLogicalView()) {
           hasLogicalView = true;
         }
+        hasNormalTimeSeries = true;
       } else {
         SchemaInternalNode internalNode;
         if (nodeType == SCHEMA_ENTITY_NODE) {
@@ -489,6 +503,7 @@ public class ClusterSchemaTree implements ISchemaTree {
     ClusterSchemaTree result = new ClusterSchemaTree(stack.poll());
     result.templateMap = templateMap;
     result.hasLogicalMeasurementPath = hasLogicalView;
+    result.hasNormalTimeSeries = hasNormalTimeSeries;
     return result;
   }
 

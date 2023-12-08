@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewIntoNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
@@ -98,9 +99,9 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("SeriesScan-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("Series: %s", node.getSeriesPath()));
-    boxValue.add(String.format("TimeFilter: %s", node.getTimeFilter()));
 
-    long limit = node.getLimit(), offset = node.getOffset();
+    long limit = node.getPushDownLimit();
+    long offset = node.getPushDownOffset();
     if (limit > 0) {
       boxValue.add(String.format("Limit: %s", limit));
     }
@@ -119,9 +120,9 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
         String.format(
             "Series: %s%s",
             node.getAlignedPath().getDevice(), node.getAlignedPath().getMeasurementList()));
-    boxValue.add(String.format("TimeFilter: %s", node.getTimeFilter()));
 
-    long limit = node.getLimit(), offset = node.getOffset();
+    long limit = node.getPushDownLimit();
+    long offset = node.getPushDownOffset();
     if (limit > 0) {
       boxValue.add(String.format("Limit: %s", limit));
     }
@@ -428,7 +429,6 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   public List<String> visitLastQuery(LastQueryNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("LastQuery-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("TimeFilter: %s", node.getTimeFilter()));
     return render(node, boxValue, context);
   }
 
@@ -472,6 +472,18 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   public List<String> visitShuffleSink(ShuffleSinkNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("ShuffleSink-%s", node.getPlanNodeId().getId()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitColumnInject(ColumnInjectNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("ColumnInject-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("TargetIndex: %d", node.getTargetIndex()));
+    boxValue.add(
+        String.format(
+            "ColumnGeneratorParameterType: %s",
+            node.getColumnGeneratorParameter().getGeneratorType()));
     return render(node, boxValue, context);
   }
 

@@ -2875,6 +2875,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       case SqlConstant.SUM:
       case SqlConstant.TIME_DURATION:
       case SqlConstant.MODE:
+      case SqlConstant.STDDEV:
+      case SqlConstant.STDDEV_POP:
+      case SqlConstant.STDDEV_SAMP:
+      case SqlConstant.VARIANCE:
+      case SqlConstant.VAR_POP:
+      case SqlConstant.VAR_SAMP:
         checkFunctionExpressionInputSize(
             functionExpression.getExpressionString(),
             functionExpression.getExpressions().size(),
@@ -2913,13 +2919,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private Expression parseRegularExpression(ExpressionContext context, boolean canUseFullPath) {
     return new RegularExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, canUseFullPath),
-        parseStringLiteral(context.STRING_LITERAL().getText()));
+        parseStringLiteral(context.STRING_LITERAL().getText()),
+        false);
   }
 
   private Expression parseLikeExpression(ExpressionContext context, boolean canUseFullPath) {
     return new LikeExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, canUseFullPath),
-        parseStringLiteral(context.STRING_LITERAL().getText()));
+        parseStringLiteral(context.STRING_LITERAL().getText()),
+        false);
   }
 
   private Expression parseIsNullExpression(ExpressionContext context, boolean canUseFullPath) {

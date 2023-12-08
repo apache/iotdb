@@ -100,16 +100,18 @@ public class PipeTaskCoordinator {
 
   /** Caller should ensure that the method is called in the lock {@link #tryLock()}. */
   public TSStatus createPipe(TCreatePipeReq req) {
-    return configManager.getProcedureManager().createPipe(req);
+    final TSStatus status = configManager.getProcedureManager().createPipe(req);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn("Failed to create pipe {}. Result status: {}.", req.getPipeName(), status);
+    }
+    return status;
   }
 
   /** Caller should ensure that the method is called in the lock {@link #tryLock()}. */
   public TSStatus startPipe(String pipeName) {
-    final boolean hasException = pipeTaskInfo.hasExceptions(pipeName);
     final TSStatus status = configManager.getProcedureManager().startPipe(pipeName);
-    if (status == RpcUtils.SUCCESS_STATUS && hasException) {
-      LOGGER.info("Pipe {} has started successfully, clear its exceptions.", pipeName);
-      configManager.getProcedureManager().pipeHandleMetaChange(true, true);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn("Failed to start pipe {}. Result status: {}.", pipeName, status);
     }
     return status;
   }
@@ -118,11 +120,24 @@ public class PipeTaskCoordinator {
   public TSStatus stopPipe(String pipeName) {
     final boolean isStoppedByRuntimeException = pipeTaskInfo.isStoppedByRuntimeException(pipeName);
     final TSStatus status = configManager.getProcedureManager().stopPipe(pipeName);
-    if (status == RpcUtils.SUCCESS_STATUS && isStoppedByRuntimeException) {
-      LOGGER.info(
-          "Pipe {} has stopped successfully manually, stop its auto restart process.", pipeName);
-      pipeTaskInfo.setIsStoppedByRuntimeExceptionToFalse(pipeName);
-      configManager.getProcedureManager().pipeHandleMetaChange(true, true);
+    if (status == RpcUtils.SUCCESS_STATUS) {
+      if (isStoppedByRuntimeException) {
+        // Under normal circumstances, this branch is not executed because when
+        // `isStoppedByRuntimeException` is true, the pipe status is most likely to be STOPPED,
+        // unless this method is called between the execution of `autoRestartWithLock` and
+        // `handleSuccessfulRestartWithLock` in `PipeMetaSyncer` (in this case, the pipe status is
+        // RUNNING and `isStoppedByRuntimeException` is true).
+
+        // Even if return status is success, it doesn't imply the success of the
+        // `executeFromOperateOnDataNodes` phase of stopping pipe. However, we still need to set
+        // `isStoppedByRuntimeException` to false to avoid auto-restart. Meanwhile,
+        // `isStoppedByRuntimeException` does not need to be synchronized with DNs.
+        LOGGER.info("Pipe {} has stopped manually, stop its auto restart process.", pipeName);
+        pipeTaskInfo.setIsStoppedByRuntimeExceptionToFalse(pipeName);
+        configManager.getProcedureManager().pipeHandleMetaChange(true, false);
+      }
+    } else {
+      LOGGER.warn("Failed to stop pipe {}. Result status: {}.", pipeName, status);
     }
     return status;
   }
@@ -169,5 +184,32 @@ public class PipeTaskCoordinator {
 
   public boolean hasAnyPipe() {
     return !pipeTaskInfo.isEmpty();
+  }
+
+  /** Caller should ensure that the method is called in the write lock of {@link #pipeTaskInfo}. */
+  public void updateLastSyncedVersion() {
+    pipeTaskInfo.updateLastSyncedVersion();
+  }
+
+  public boolean canSkipNextSync() {
+    return pipeTaskInfo.canSkipNextSync();
+  }
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  public long runningPipeCount() {
+    return pipeTaskInfo.runningPipeCount();
+  }
+
+  public long droppedPipeCount() {
+    return pipeTaskInfo.droppedPipeCount();
+  }
+
+  public long userStoppedPipeCount() {
+    return pipeTaskInfo.userStoppedPipeCount();
+  }
+
+  public long exceptionStoppedPipeCount() {
+    return pipeTaskInfo.exceptionStoppedPipeCount();
   }
 }

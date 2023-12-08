@@ -168,8 +168,8 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilterApi;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TimeDuration;
@@ -633,7 +633,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       TSDataType dataType,
       boolean isAligned,
       long startTime,
-      long endTme,
+      long endTime,
       long interval,
       TAggregationType aggregationType,
       List<DataRegion> dataRegionList)
@@ -645,7 +645,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           "dataRegionList.size() should only be 1 now,  current size is " + dataRegionSize);
     }
 
-    Filter timeFilter = new TimeFilter.TimeGtEqAndLt(startTime, endTme);
+    Filter timeFilter = TimeFilterApi.between(startTime, endTime - 1);
 
     QueryId queryId = new QueryId("stub_query");
     FragmentInstanceId instanceId =
@@ -675,7 +675,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(
-            startTime, endTme, new TimeDuration(0, interval), new TimeDuration(0, interval), true);
+            startTime, endTime, new TimeDuration(0, interval), new TimeDuration(0, interval), true);
 
     IMeasurementSchema measurementSchema = new MeasurementSchema(measurement, dataType);
     AbstractSeriesAggregationScanOperator operator;

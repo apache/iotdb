@@ -33,10 +33,10 @@ import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
-import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilterApi;
+import org.apache.iotdb.tsfile.read.filter.factory.ValueFilterApi;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
@@ -102,7 +102,7 @@ public class TsFileReaderTest {
 
     TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(filePath));
 
-    SingleSeriesExpression filter = new SingleSeriesExpression(path, ValueFilter.eq(8000001));
+    SingleSeriesExpression filter = new SingleSeriesExpression(path, ValueFilterApi.eq(8000001));
     QueryExpression queryExpression = QueryExpression.create(Arrays.asList(path), filter);
     QueryDataSet query = tsFileReader.query(queryExpression);
 
@@ -139,10 +139,10 @@ public class TsFileReaderTest {
   }
 
   private void queryTest(int rowCount) throws IOException {
-    Filter filter = TimeFilter.lt(1480562618100L);
-    Filter filter2 = ValueFilter.gt(new Binary("dog", TSFileConfig.STRING_CHARSET));
+    Filter filter = TimeFilterApi.lt(1480562618100L);
+    Filter filter2 = ValueFilterApi.gt(new Binary("dog", TSFileConfig.STRING_CHARSET));
     Filter filter3 =
-        FilterFactory.and(TimeFilter.gtEq(1480562618000L), TimeFilter.ltEq(1480562618100L));
+        FilterFactory.and(TimeFilterApi.gtEq(1480562618000L), TimeFilterApi.ltEq(1480562618100L));
 
     IExpression IExpression =
         BinaryExpression.or(
@@ -214,7 +214,7 @@ public class TsFileReaderTest {
     paths.add(new Path("d1", "s6", true));
     paths.add(new Path("d2", "s1", true));
 
-    IExpression expression = new GlobalTimeExpression(TimeFilter.gt(1480562664760L));
+    IExpression expression = new GlobalTimeExpression(TimeFilterApi.gt(1480562664760L));
 
     QueryExpression queryExpression = QueryExpression.create(paths, expression);
 
@@ -232,7 +232,7 @@ public class TsFileReaderTest {
     ArrayList<Path> paths = new ArrayList<>();
     paths.add(new Path("d1", "s1", true));
     paths.add(new Path("d2", "s1", true));
-    IExpression expression = new GlobalTimeExpression(TimeFilter.gt(1480562664760L));
+    IExpression expression = new GlobalTimeExpression(TimeFilterApi.gt(1480562664760L));
     QueryExpression queryExpression = QueryExpression.create(paths, expression);
     try {
       QueryDataSet queryDataSet = tsFile.query(queryExpression);
@@ -274,8 +274,8 @@ public class TsFileReaderTest {
 
       IExpression timeFilter =
           BinaryExpression.and(
-              new GlobalTimeExpression(TimeFilter.gtEq(29990L)),
-              new GlobalTimeExpression(TimeFilter.ltEq(30009L)));
+              new GlobalTimeExpression(TimeFilterApi.gtEq(29990L)),
+              new GlobalTimeExpression(TimeFilterApi.ltEq(30009L)));
       long rowCount = queryAndPrint(paths, tsFileReader, timeFilter);
       Assert.assertNotEquals(0, rowCount);
     }
@@ -295,7 +295,7 @@ public class TsFileReaderTest {
       paths.add(new Path("d2", "s2", true));
 
       IExpression valueFilter =
-          new SingleSeriesExpression(new Path("d2", "s1", true), ValueFilter.ltEq(9L));
+          new SingleSeriesExpression(new Path("d2", "s1", true), ValueFilterApi.ltEq(9L));
       long rowCount = queryAndPrint(paths, tsFileReader, valueFilter);
       Assert.assertNotEquals(0, rowCount);
     }
@@ -315,9 +315,9 @@ public class TsFileReaderTest {
       paths.add(new Path("d2", "s1", true));
 
       IExpression valueFilter1 =
-          new SingleSeriesExpression(new Path("d2", "s1", true), ValueFilter.gtEq(100L));
+          new SingleSeriesExpression(new Path("d2", "s1", true), ValueFilterApi.gtEq(100L));
       IExpression valueFilter2 =
-          new SingleSeriesExpression(new Path("d1", "s2", true), ValueFilter.ltEq(10000L));
+          new SingleSeriesExpression(new Path("d1", "s2", true), ValueFilterApi.ltEq(10000L));
       IExpression binaryExpression = BinaryExpression.and(valueFilter1, valueFilter2);
       long rowCount = queryAndPrint(paths, tsFileReader, binaryExpression);
       Assert.assertNotEquals(0, rowCount);
@@ -339,12 +339,12 @@ public class TsFileReaderTest {
 
       IExpression valueFilter =
           BinaryExpression.and(
-              new SingleSeriesExpression(new Path("d2", "s1", true), ValueFilter.gtEq(7000L)),
-              new SingleSeriesExpression(new Path("d1", "s1", true), ValueFilter.ltEq(10000L)));
+              new SingleSeriesExpression(new Path("d2", "s1", true), ValueFilterApi.gtEq(7000L)),
+              new SingleSeriesExpression(new Path("d1", "s1", true), ValueFilterApi.ltEq(10000L)));
       IExpression timeFilter =
           BinaryExpression.and(
-              new GlobalTimeExpression(TimeFilter.gtEq(2000)),
-              new GlobalTimeExpression(TimeFilter.ltEq(10000L)));
+              new GlobalTimeExpression(TimeFilterApi.gtEq(2000)),
+              new GlobalTimeExpression(TimeFilterApi.ltEq(10000L)));
       IExpression binaryExpression = BinaryExpression.and(valueFilter, timeFilter);
       long rowCount = queryAndPrint(paths, tsFileReader, binaryExpression);
       Assert.assertNotEquals(0, rowCount);
@@ -365,14 +365,14 @@ public class TsFileReaderTest {
       paths.add(new Path("d2", "s1", true));
 
       IExpression valueFilter1 =
-          new SingleSeriesExpression(new Path("d2", "s1", true), ValueFilter.gtEq(100L));
+          new SingleSeriesExpression(new Path("d2", "s1", true), ValueFilterApi.gtEq(100L));
       IExpression valueFilter2 =
-          new SingleSeriesExpression(new Path("d1", "s2", true), ValueFilter.ltEq(10000L));
+          new SingleSeriesExpression(new Path("d1", "s2", true), ValueFilterApi.ltEq(10000L));
       IExpression valueFilter = BinaryExpression.and(valueFilter1, valueFilter2);
       IExpression timeFilter =
           BinaryExpression.and(
-              new GlobalTimeExpression(TimeFilter.gtEq(19990L)),
-              new GlobalTimeExpression(TimeFilter.ltEq(18009L)));
+              new GlobalTimeExpression(TimeFilterApi.gtEq(19990L)),
+              new GlobalTimeExpression(TimeFilterApi.ltEq(18009L)));
       IExpression binaryExpression = BinaryExpression.or(valueFilter, timeFilter);
       long rowCount = queryAndPrint(paths, tsFileReader, binaryExpression);
       Assert.assertNotEquals(0, rowCount);
@@ -393,14 +393,14 @@ public class TsFileReaderTest {
       paths.add(new Path("d2", "s2", true));
 
       IExpression valueFilter1 =
-          new SingleSeriesExpression(new Path("d2", "s1", true), ValueFilter.gtEq(100L));
+          new SingleSeriesExpression(new Path("d2", "s1", true), ValueFilterApi.gtEq(100L));
       IExpression valueFilter2 =
-          new SingleSeriesExpression(new Path("d1", "s2", true), ValueFilter.ltEq(10000L));
+          new SingleSeriesExpression(new Path("d1", "s2", true), ValueFilterApi.ltEq(10000L));
       IExpression valueFilter = BinaryExpression.and(valueFilter1, valueFilter2);
       IExpression timeFilter =
           BinaryExpression.and(
-              new GlobalTimeExpression(TimeFilter.gtEq(1799L)),
-              new GlobalTimeExpression(TimeFilter.ltEq(1900L)));
+              new GlobalTimeExpression(TimeFilterApi.gtEq(1799L)),
+              new GlobalTimeExpression(TimeFilterApi.ltEq(1900L)));
       IExpression binaryExpression = BinaryExpression.and(valueFilter, timeFilter);
       long rowCount = queryAndPrint(paths, tsFileReader, binaryExpression);
       Assert.assertNotEquals(0, rowCount);
@@ -422,14 +422,14 @@ public class TsFileReaderTest {
       paths.add(new Path("d9", "s8", true));
 
       IExpression valueFilter1 =
-          new SingleSeriesExpression(new Path("d2", "s1", true), ValueFilter.gtEq(100L));
+          new SingleSeriesExpression(new Path("d2", "s1", true), ValueFilterApi.gtEq(100L));
       IExpression valueFilter2 =
-          new SingleSeriesExpression(new Path("d1", "s2", true), ValueFilter.ltEq(10000L));
+          new SingleSeriesExpression(new Path("d1", "s2", true), ValueFilterApi.ltEq(10000L));
       IExpression valueFilter = BinaryExpression.and(valueFilter1, valueFilter2);
       IExpression timeFilter =
           BinaryExpression.and(
-              new GlobalTimeExpression(TimeFilter.gtEq(1799L)),
-              new GlobalTimeExpression(TimeFilter.ltEq(1900L)));
+              new GlobalTimeExpression(TimeFilterApi.gtEq(1799L)),
+              new GlobalTimeExpression(TimeFilterApi.ltEq(1900L)));
       IExpression binaryExpression = BinaryExpression.and(valueFilter, timeFilter);
       long rowCount = queryAndPrint(paths, tsFileReader, binaryExpression);
       Assert.assertNotEquals(0, rowCount);
@@ -450,14 +450,14 @@ public class TsFileReaderTest {
       paths.add(new Path("d9", "s8", true));
 
       IExpression valueFilter1 =
-          new SingleSeriesExpression(new Path("d2", "s9", true), ValueFilter.gtEq(100L));
+          new SingleSeriesExpression(new Path("d2", "s9", true), ValueFilterApi.gtEq(100L));
       IExpression valueFilter2 =
-          new SingleSeriesExpression(new Path("d1", "s2", true), ValueFilter.ltEq(10000L));
+          new SingleSeriesExpression(new Path("d1", "s2", true), ValueFilterApi.ltEq(10000L));
       IExpression valueFilter = BinaryExpression.and(valueFilter1, valueFilter2);
       IExpression timeFilter =
           BinaryExpression.and(
-              new GlobalTimeExpression(TimeFilter.gtEq(1799L)),
-              new GlobalTimeExpression(TimeFilter.ltEq(1900L)));
+              new GlobalTimeExpression(TimeFilterApi.gtEq(1799L)),
+              new GlobalTimeExpression(TimeFilterApi.ltEq(1900L)));
       IExpression binaryExpression = BinaryExpression.and(valueFilter, timeFilter);
       long rowCount = queryAndPrint(paths, tsFileReader, binaryExpression);
       Assert.assertEquals(0, rowCount);

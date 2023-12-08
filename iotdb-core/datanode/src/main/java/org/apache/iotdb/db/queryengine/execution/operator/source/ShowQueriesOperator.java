@@ -87,6 +87,11 @@ public class ShowQueriesOperator implements SourceOperator {
   }
 
   @Override
+  public void close() throws Exception {
+    // do nothing
+  }
+
+  @Override
   public long calculateMaxPeekMemory() {
     return DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
   }

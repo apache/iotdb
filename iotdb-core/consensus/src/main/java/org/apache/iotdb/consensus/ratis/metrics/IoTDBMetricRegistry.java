@@ -24,25 +24,16 @@ import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
-import com.codahale.metrics.ConsoleReporter;
-import com.codahale.metrics.Counter;
-import com.codahale.metrics.Gauge;
-import com.codahale.metrics.Histogram;
-import com.codahale.metrics.Meter;
-import com.codahale.metrics.Metric;
-import com.codahale.metrics.MetricFilter;
-import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.MetricSet;
-import com.codahale.metrics.Timer;
-import com.codahale.metrics.jmx.JmxReporter;
+import org.apache.ratis.metrics.LongCounter;
 import org.apache.ratis.metrics.MetricRegistryInfo;
 import org.apache.ratis.metrics.RatisMetricRegistry;
+import org.apache.ratis.metrics.Timekeeper;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.SortedMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 public class IoTDBMetricRegistry implements RatisMetricRegistry {
 
@@ -52,7 +43,7 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
   private final Map<String, String> metricNameCache = new ConcurrentHashMap<>();
   private final Map<String, CounterProxy> counterCache = new ConcurrentHashMap<>();
   private final Map<String, TimerProxy> timerCache = new ConcurrentHashMap<>();
-  private final Map<String, GaugeProxy> gaugeCache = new ConcurrentHashMap<>();
+  private final Map<String, Boolean> gaugeCache = new ConcurrentHashMap<>();
   /** Time taken to flush log. */
   public static final String RAFT_LOG_FLUSH_TIME = "flushTime";
   /** Size of SegmentedRaftLogCache::closedSegments in bytes. */
@@ -76,12 +67,6 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
   /** Time taken to process write requests from client. */
   public static final String RAFT_CLIENT_WRITE_REQUEST = "clientWriteRequest";
 
-  private static final String METHOD_NOT_USED_EXCEPTION_MESSAGE =
-      "This method is not used in IoTDB project";
-
-  private static final String METER_NOT_USED_EXCEPTION_MESSAGE =
-      "Meter is not used in Ratis Metrics";
-
   private static final List<String> RATIS_METRICS = new ArrayList<>();
 
   static {
@@ -99,15 +84,14 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
   IoTDBMetricRegistry(MetricRegistryInfo info, AbstractMetricService service) {
     this.info = info;
     this.metricService = service;
-    prefix =
-        MetricRegistry.name(
-            Utils.getConsensusGroupTypeFromPrefix(info.getPrefix()).toString(),
-            info.getApplicationName(),
-            info.getMetricsComponentName());
+    this.prefix =
+        Utils.getConsensusGroupTypeFromPrefix(info.getPrefix()).toString()
+            + info.getApplicationName()
+            + info.getMetricsComponentName();
   }
 
   private String getMetricName(String name) {
-    return metricNameCache.computeIfAbsent(name, n -> MetricRegistry.name(prefix, n));
+    return metricNameCache.computeIfAbsent(name, n -> this.prefix + n);
   }
 
   public MetricLevel getMetricLevel(String name) {
@@ -120,7 +104,7 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
   }
 
   @Override
-  public Timer timer(String name) {
+  public Timekeeper timer(String name) {
     final String fullName = getMetricName(name);
     return timerCache.computeIfAbsent(
         fullName,
@@ -128,7 +112,7 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
   }
 
   @Override
-  public Counter counter(String name) {
+  public LongCounter counter(String name) {
     final String fullName = getMetricName(name);
     return counterCache.computeIfAbsent(
         fullName,
@@ -161,91 +145,20 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
   }
 
   @Override
-  public Gauge gauge(String name, MetricRegistry.MetricSupplier<Gauge> metricSupplier) {
+  public <T> void gauge(String name, Supplier<Supplier<T>> supplier) {
     final String fullName = getMetricName(name);
-    return gaugeCache.computeIfAbsent(
+    gaugeCache.computeIfAbsent(
         fullName,
-        gaugeName -> {
-          final GaugeProxy gauge = new GaugeProxy(metricSupplier);
-          metricService.createAutoGauge(
-              gaugeName, getMetricLevel(fullName), gauge, GaugeProxy::getValueAsDouble);
-          return gauge;
+        fn -> {
+          final GaugeProxy<T> gauge = new GaugeProxy<>(supplier);
+          metricService.createAutoGauge(fn, getMetricLevel(fn), gauge, GaugeProxy::getDoubleValue);
+          return true;
         });
-  }
-
-  @Override
-  public Timer timer(String name, MetricRegistry.MetricSupplier<Timer> metricSupplier) {
-    throw new UnsupportedOperationException(METHOD_NOT_USED_EXCEPTION_MESSAGE);
-  }
-
-  @Override
-  public SortedMap<String, Gauge> getGauges(MetricFilter metricFilter) {
-    throw new UnsupportedOperationException(METHOD_NOT_USED_EXCEPTION_MESSAGE);
-  }
-
-  @Override
-  public Counter counter(String name, MetricRegistry.MetricSupplier<Counter> metricSupplier) {
-    throw new UnsupportedOperationException(METHOD_NOT_USED_EXCEPTION_MESSAGE);
-  }
-
-  @Override
-  public Histogram histogram(String name) {
-    throw new UnsupportedOperationException("Histogram is not used in Ratis Metrics");
-  }
-
-  @Override
-  public Meter meter(String name) {
-    throw new UnsupportedOperationException(METER_NOT_USED_EXCEPTION_MESSAGE);
-  }
-
-  @Override
-  public Meter meter(String name, MetricRegistry.MetricSupplier<Meter> metricSupplier) {
-    throw new UnsupportedOperationException(METER_NOT_USED_EXCEPTION_MESSAGE);
-  }
-
-  @Override
-  public Metric get(String name) {
-    throw new UnsupportedOperationException(METER_NOT_USED_EXCEPTION_MESSAGE);
-  }
-
-  @Override
-  public <T extends Metric> T register(String name, T t) throws IllegalArgumentException {
-    throw new UnsupportedOperationException("register is not used in Ratis Metrics");
-  }
-
-  @Override
-  public MetricRegistry getDropWizardMetricRegistry() {
-    throw new UnsupportedOperationException(METHOD_NOT_USED_EXCEPTION_MESSAGE);
   }
 
   @Override
   public MetricRegistryInfo getMetricRegistryInfo() {
     return info;
-  }
-
-  @Override
-  public void registerAll(String s, MetricSet metricSet) {
-    throw new UnsupportedOperationException("registerAll is not used in Ratis Metrics");
-  }
-
-  @Override
-  public void setJmxReporter(JmxReporter jmxReporter) {
-    throw new UnsupportedOperationException("JmxReporter is not used in Ratis Metrics");
-  }
-
-  @Override
-  public JmxReporter getJmxReporter() {
-    throw new UnsupportedOperationException("JmxReporter is not used in Ratis Metrics");
-  }
-
-  @Override
-  public void setConsoleReporter(ConsoleReporter consoleReporter) {
-    throw new UnsupportedOperationException("ConsoleReporter is not used in Ratis Metrics");
-  }
-
-  @Override
-  public ConsoleReporter getConsoleReporter() {
-    throw new UnsupportedOperationException("ConsoleReporter is not used in Ratis Metrics");
   }
 
   void removeAll() {

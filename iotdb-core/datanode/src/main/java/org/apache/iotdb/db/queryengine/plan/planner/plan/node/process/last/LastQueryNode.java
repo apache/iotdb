@@ -24,8 +24,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nullable;
@@ -40,8 +38,6 @@ import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.Last
 
 public class LastQueryNode extends MultiChildProcessNode {
 
-  private final Filter timeFilter;
-
   // the ordering of timeseries in the result of last query
   // which is set to null if there is no need to sort
   private Ordering timeseriesOrdering;
@@ -50,12 +46,8 @@ public class LastQueryNode extends MultiChildProcessNode {
   private boolean containsLastTransformNode;
 
   public LastQueryNode(
-      PlanNodeId id,
-      Filter timeFilter,
-      @Nullable Ordering timeseriesOrdering,
-      boolean containsLastTransformNode) {
+      PlanNodeId id, @Nullable Ordering timeseriesOrdering, boolean containsLastTransformNode) {
     super(id);
-    this.timeFilter = timeFilter;
     this.timeseriesOrdering = timeseriesOrdering;
     this.containsLastTransformNode = containsLastTransformNode;
   }
@@ -63,11 +55,9 @@ public class LastQueryNode extends MultiChildProcessNode {
   public LastQueryNode(
       PlanNodeId id,
       List<PlanNode> children,
-      Filter timeFilter,
       @Nullable Ordering timeseriesOrdering,
       boolean containsLastTransformNode) {
     super(id, children);
-    this.timeFilter = timeFilter;
     this.timeseriesOrdering = timeseriesOrdering;
     this.containsLastTransformNode = containsLastTransformNode;
   }
@@ -84,8 +74,7 @@ public class LastQueryNode extends MultiChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new LastQueryNode(
-        getPlanNodeId(), timeFilter, timeseriesOrdering, containsLastTransformNode);
+    return new LastQueryNode(getPlanNodeId(), timeseriesOrdering, containsLastTransformNode);
   }
 
   @Override
@@ -100,7 +89,7 @@ public class LastQueryNode extends MultiChildProcessNode {
 
   @Override
   public String toString() {
-    return String.format("LastQueryNode-%s:[TimeFilter: %s]", this.getPlanNodeId(), timeFilter);
+    return String.format("LastQueryNode-%s", this.getPlanNodeId());
   }
 
   @Override
@@ -115,13 +104,12 @@ public class LastQueryNode extends MultiChildProcessNode {
       return false;
     }
     LastQueryNode that = (LastQueryNode) o;
-    return Objects.equals(timeFilter, that.timeFilter)
-        && timeseriesOrdering.equals(that.timeseriesOrdering);
+    return timeseriesOrdering.equals(that.timeseriesOrdering);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), timeFilter, timeseriesOrdering);
+    return Objects.hash(super.hashCode(), timeseriesOrdering);
   }
 
   @Override
@@ -132,12 +120,6 @@ public class LastQueryNode extends MultiChildProcessNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.LAST_QUERY.serialize(byteBuffer);
-    if (timeFilter == null) {
-      ReadWriteIOUtils.write((byte) 0, byteBuffer);
-    } else {
-      ReadWriteIOUtils.write((byte) 1, byteBuffer);
-      timeFilter.serialize(byteBuffer);
-    }
     if (timeseriesOrdering == null) {
       ReadWriteIOUtils.write((byte) 0, byteBuffer);
     } else {
@@ -149,12 +131,6 @@ public class LastQueryNode extends MultiChildProcessNode {
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.LAST_QUERY.serialize(stream);
-    if (timeFilter == null) {
-      ReadWriteIOUtils.write((byte) 0, stream);
-    } else {
-      ReadWriteIOUtils.write((byte) 1, stream);
-      timeFilter.serialize(stream);
-    }
     if (timeseriesOrdering == null) {
       ReadWriteIOUtils.write((byte) 0, stream);
     } else {
@@ -164,27 +140,18 @@ public class LastQueryNode extends MultiChildProcessNode {
   }
 
   public static LastQueryNode deserialize(ByteBuffer byteBuffer) {
-    Filter timeFilter = null;
-    if (ReadWriteIOUtils.readByte(byteBuffer) == 1) {
-      timeFilter = FilterFactory.deserialize(byteBuffer);
-    }
     byte needOrderByTimeseries = ReadWriteIOUtils.readByte(byteBuffer);
     Ordering timeseriesOrdering = null;
     if (needOrderByTimeseries == 1) {
       timeseriesOrdering = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new LastQueryNode(planNodeId, timeFilter, timeseriesOrdering, false);
+    return new LastQueryNode(planNodeId, timeseriesOrdering, false);
   }
 
   @Override
   public void setChildren(List<PlanNode> children) {
     this.children = children;
-  }
-
-  @Nullable
-  public Filter getTimeFilter() {
-    return timeFilter;
   }
 
   public Ordering getTimeseriesOrdering() {

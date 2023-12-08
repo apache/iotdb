@@ -24,7 +24,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.BatchData.BatchDataType;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -506,13 +505,6 @@ public class SerializeUtils {
       default:
         return null;
     }
-  }
-
-  public static ByteBuffer serializeFilter(Filter filter) {
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    filter.serialize(dataOutputStream);
-    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }
 
   public static void serializeObject(Object object, DataOutputStream dataOutputStream) {
