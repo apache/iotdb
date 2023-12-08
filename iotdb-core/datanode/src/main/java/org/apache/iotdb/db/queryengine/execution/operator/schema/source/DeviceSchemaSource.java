@@ -31,6 +31,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
+import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -96,15 +97,28 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
     builder
         .getColumnBuilder(0)
         .writeBinary(new Binary(device.getFullPath(), TSFileConfig.STRING_CHARSET));
+
+    String TemplateName = "null";
+    int TemplateId = device.getTemplateId();
+    if (TemplateId != -1) {
+      TemplateName = ClusterTemplateManager.getInstance().getTemplate(TemplateId).getName();
+    }
+
     if (hasSgCol) {
       builder.getColumnBuilder(1).writeBinary(new Binary(database, TSFileConfig.STRING_CHARSET));
       builder
           .getColumnBuilder(2)
           .writeBinary(new Binary(String.valueOf(device.isAligned()), TSFileConfig.STRING_CHARSET));
+      builder
+          .getColumnBuilder(3)
+          .writeBinary(new Binary(String.valueOf(TemplateName), TSFileConfig.STRING_CHARSET));
     } else {
       builder
           .getColumnBuilder(1)
           .writeBinary(new Binary(String.valueOf(device.isAligned()), TSFileConfig.STRING_CHARSET));
+      builder
+          .getColumnBuilder(2)
+          .writeBinary(new Binary(String.valueOf(TemplateName), TSFileConfig.STRING_CHARSET));
     }
     builder.declarePosition();
   }

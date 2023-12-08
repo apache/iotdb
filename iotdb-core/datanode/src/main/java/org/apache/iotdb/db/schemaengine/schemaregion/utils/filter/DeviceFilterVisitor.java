@@ -22,7 +22,9 @@ package org.apache.iotdb.db.schemaengine.schemaregion.utils.filter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
+import org.apache.iotdb.commons.schema.filter.impl.TemplateFilter;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
+import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 
 public class DeviceFilterVisitor extends SchemaFilterVisitor<IDeviceSchemaInfo> {
   @Override
@@ -37,5 +39,27 @@ public class DeviceFilterVisitor extends SchemaFilterVisitor<IDeviceSchemaInfo> 
       return true;
     }
     return info.getFullPath().toLowerCase().contains(pathContainsFilter.getContainString());
+  }
+
+  @Override
+  public boolean visitTemplateFilter(TemplateFilter templateFilter, IDeviceSchemaInfo info) {
+    if (templateFilter.getTemplateName() == null) {
+      return true;
+    }
+    String TemplateName = "null";
+    boolean EqualAns;
+    int TemplateId = info.getTemplateId();
+    if (TemplateId != -1) {
+      TemplateName = ClusterTemplateManager.getInstance().getTemplate(TemplateId).getName();
+      EqualAns = TemplateName.equals(templateFilter.getTemplateName());
+    } else {
+      EqualAns = TemplateName.equalsIgnoreCase(templateFilter.getTemplateName());
+    }
+
+    if (templateFilter.isEqual()) {
+      return EqualAns;
+    } else {
+      return !EqualAns;
+    }
   }
 }

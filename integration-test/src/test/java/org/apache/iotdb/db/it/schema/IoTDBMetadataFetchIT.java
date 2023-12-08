@@ -227,17 +227,34 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
   public void showDevicesWithSgTest() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("CREATE DATABASE root.sg2");
+      statement.execute("CREATE DEVICE TEMPLATE t1 (s1 INT64, s2 DOUBLE)");
+      statement.execute("CREATE DEVICE TEMPLATE t2 aligned (s1 INT64, s2 DOUBLE)");
+      statement.execute("SET DEVICE TEMPLATE t1 TO root.sg1.d1");
+      statement.execute("SET DEVICE TEMPLATE t2 TO root.sg1.d2");
+      statement.execute("SET DEVICE TEMPLATE t1 TO root.sg2.d1");
+      statement.execute("SET DEVICE TEMPLATE t2 TO root.sg2.d2");
+      statement.execute("CREATE TIMESERIES OF DEVICE TEMPLATE ON root.sg1.d2");
+      statement.execute("CREATE TIMESERIES OF DEVICE TEMPLATE ON root.sg2.d1");
+      statement.execute("CREATE TIMESERIES OF DEVICE TEMPLATE ON root.sg2.d2");
+
       String[] sqls =
           new String[] {
-            "show devices root.ln.** with database", "show devices root.ln.wf01.wt01.temperature"
+            "show devices root.ln.** with database",
+            "show devices root.ln.wf01.wt01.temperature",
+            "show devices root.sg1.** with database",
+            "show devices root.sg2.** with database where template = t2",
           };
       Set<String>[] standards =
           new Set[] {
             new HashSet<>(
                 Arrays.asList(
-                    "root.ln.wf01.wt01,root.ln.wf01.wt01,false,",
-                    "root.ln.wf01.wt02,root.ln.wf01.wt02,true,")),
-            new HashSet<>()
+                    "root.ln.wf01.wt01,root.ln.wf01.wt01,false,null,",
+                    "root.ln.wf01.wt02,root.ln.wf01.wt02,true,null,")),
+            new HashSet<>(),
+            new HashSet<>(Arrays.asList("root.sg1.d2,root.sg1,true,t2,")),
+            new HashSet<>(Arrays.asList("root.sg2.d2,root.sg2,true,t2,")),
           };
 
       for (int n = 0; n < sqls.length; n++) {
@@ -268,17 +285,34 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
   public void showDevicesTest() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("CREATE DATABASE root.sg2");
+      statement.execute("CREATE DEVICE TEMPLATE t1 (s1 INT64, s2 DOUBLE)");
+      statement.execute("CREATE DEVICE TEMPLATE t2 aligned (s1 INT64, s2 DOUBLE)");
+      statement.execute("SET DEVICE TEMPLATE t1 TO root.sg1.d1");
+      statement.execute("SET DEVICE TEMPLATE t2 TO root.sg1.d2");
+      statement.execute("SET DEVICE TEMPLATE t1 TO root.sg2.d1");
+      statement.execute("SET DEVICE TEMPLATE t2 TO root.sg2.d2");
+      statement.execute("CREATE TIMESERIES OF DEVICE TEMPLATE ON root.sg1.d2");
+      statement.execute("CREATE TIMESERIES OF DEVICE TEMPLATE ON root.sg2.d1");
+      statement.execute("CREATE TIMESERIES OF DEVICE TEMPLATE ON root.sg2.d2");
+
       String[] sqls =
           new String[] {
             "show devices root.ln.**",
             "show devices root.ln.wf01.wt01.temperature",
-            "show devices root.** where device contains 'wt02'"
+            "show devices root.** where device contains 'wt02'",
+            "show devices root.** where template != null",
           };
       Set<String>[] standards =
           new Set[] {
-            new HashSet<>(Arrays.asList("root.ln.wf01.wt01,false,", "root.ln.wf01.wt02,true,")),
+            new HashSet<>(
+                Arrays.asList("root.ln.wf01.wt01,false,null,", "root.ln.wf01.wt02,true,null,")),
             new HashSet<>(),
-            new HashSet<>(Arrays.asList("root.ln.wf01.wt02,true,")),
+            new HashSet<>(Arrays.asList("root.ln.wf01.wt02,true,null,")),
+            new HashSet<>(
+                Arrays.asList(
+                    "root.sg1.d2,true,t2,", "root.sg2.d1,false,t1,", "root.sg2.d2,true,t2,")),
           };
 
       for (int n = 0; n < sqls.length; n++) {
@@ -292,6 +326,7 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
               builder.append(resultSet.getString(i)).append(",");
             }
             String string = builder.toString();
+            System.out.println(string);
             Assert.assertTrue(standard.contains(string));
             standard.remove(string);
           }

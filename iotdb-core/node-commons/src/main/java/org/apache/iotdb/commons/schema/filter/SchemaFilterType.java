@@ -25,6 +25,7 @@ public enum SchemaFilterType {
   DATA_TYPE((short) 3),
   VIEW_TYPE((short) 4),
   AND((short) 5),
+  TEMPLATE_FILTER((short) 6),
   ;
 
   private final short code;
@@ -51,6 +52,8 @@ public enum SchemaFilterType {
         return VIEW_TYPE;
       case 5:
         return AND;
+      case 6:
+        return TEMPLATE_FILTER;
       default:
         throw new IllegalArgumentException("Invalid input: " + code);
     }

@@ -49,6 +49,8 @@ public class ColumnHeaderConstant {
   public static final String DEADBAND = "Deadband";
   public static final String DEADBAND_PARAMETERS = "DeadbandParameters";
   public static final String IS_ALIGNED = "IsAligned";
+  public static final String Template = "Template";
+
   public static final String COUNT = "Count";
   public static final String COLUMN_TTL = "TTL";
   public static final String SCHEMA_REPLICATION_FACTOR = "SchemaReplicationFactor";
@@ -207,12 +209,14 @@ public class ColumnHeaderConstant {
       ImmutableList.of(
           new ColumnHeader(DEVICE, TSDataType.TEXT),
           new ColumnHeader(DATABASE, TSDataType.TEXT),
-          new ColumnHeader(IS_ALIGNED, TSDataType.TEXT));
+          new ColumnHeader(IS_ALIGNED, TSDataType.TEXT),
+          new ColumnHeader(Template, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showDevicesColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(DEVICE, TSDataType.TEXT), new ColumnHeader(IS_ALIGNED, TSDataType.TEXT));
-
+          new ColumnHeader(DEVICE, TSDataType.TEXT),
+          new ColumnHeader(IS_ALIGNED, TSDataType.TEXT),
+          new ColumnHeader(Template, TSDataType.TEXT));
   public static final List<ColumnHeader> showTTLColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(DATABASE, TSDataType.TEXT),

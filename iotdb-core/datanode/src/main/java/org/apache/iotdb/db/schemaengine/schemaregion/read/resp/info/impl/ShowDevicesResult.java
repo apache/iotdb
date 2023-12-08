@@ -24,14 +24,25 @@ import java.util.Objects;
 
 public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchemaInfo {
   private Boolean isAligned;
+  private int templateId;
 
   public ShowDevicesResult(String name, Boolean isAligned) {
     super(name);
     this.isAligned = isAligned;
   }
 
+  public ShowDevicesResult(String name, Boolean isAligned, int templateId) {
+    super(name);
+    this.isAligned = isAligned;
+    this.templateId = templateId;
+  }
+
   public Boolean isAligned() {
     return isAligned;
+  }
+
+  public int getTemplateId() {
+    return templateId;
   }
 
   @Override

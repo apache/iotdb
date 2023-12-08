@@ -22,4 +22,6 @@ package org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info;
 public interface IDeviceSchemaInfo extends ISchemaInfo {
 
   Boolean isAligned();
+
+  int getTemplateId();
 }
