@@ -17,10 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.payload.evolvable.request;
+package org.apache.iotdb.commons.pipe.connector.payload.request;
 
-import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
-import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -32,77 +30,77 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Objects;
 
-public class PipeTransferFilePieceReq extends TPipeTransferReq {
+public class PipeTransferSnapshotPieceReq extends TPipeTransferReq {
 
-  private transient String fileName;
+  private transient String snapshotName;
   private transient long startWritingOffset;
-  private transient byte[] filePiece;
+  private transient byte[] snapshotPiece;
 
-  private PipeTransferFilePieceReq() {
+  private PipeTransferSnapshotPieceReq() {
     // Empty constructor
   }
 
-  public String getFileName() {
-    return fileName;
+  public String getsnapshotName() {
+    return snapshotName;
   }
 
   public long getStartWritingOffset() {
     return startWritingOffset;
   }
 
-  public byte[] getFilePiece() {
-    return filePiece;
+  public byte[] getsnapshotPiece() {
+    return snapshotPiece;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeTransferFilePieceReq toTPipeTransferReq(
-      String fileName, long startWritingOffset, byte[] filePiece) throws IOException {
-    final PipeTransferFilePieceReq filePieceReq = new PipeTransferFilePieceReq();
+  public static PipeTransferSnapshotPieceReq toTPipeTransferReq(
+      String snapshotName, long startWritingOffset, byte[] snapshotPiece) throws IOException {
+    final PipeTransferSnapshotPieceReq snapshotPieceReq = new PipeTransferSnapshotPieceReq();
 
-    filePieceReq.fileName = fileName;
-    filePieceReq.startWritingOffset = startWritingOffset;
-    filePieceReq.filePiece = filePiece;
+    snapshotPieceReq.snapshotName = snapshotName;
+    snapshotPieceReq.startWritingOffset = startWritingOffset;
+    snapshotPieceReq.snapshotPiece = snapshotPiece;
 
-    filePieceReq.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
-    filePieceReq.type = PipeRequestType.TRANSFER_FILE_PIECE.getType();
+    snapshotPieceReq.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
+    snapshotPieceReq.type = PipeRequestType.TRANSFER_SNAPSHOT_PIECE.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      ReadWriteIOUtils.write(fileName, outputStream);
+      ReadWriteIOUtils.write(snapshotName, outputStream);
       ReadWriteIOUtils.write(startWritingOffset, outputStream);
-      ReadWriteIOUtils.write(new Binary(filePiece), outputStream);
-      filePieceReq.body =
+      ReadWriteIOUtils.write(new Binary(snapshotPiece), outputStream);
+      snapshotPieceReq.body =
           ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
 
-    return filePieceReq;
+    return snapshotPieceReq;
   }
 
-  public static PipeTransferFilePieceReq fromTPipeTransferReq(TPipeTransferReq transferReq) {
-    final PipeTransferFilePieceReq filePieceReq = new PipeTransferFilePieceReq();
+  public static PipeTransferSnapshotPieceReq fromTPipeTransferReq(TPipeTransferReq transferReq) {
+    final PipeTransferSnapshotPieceReq snapshotPieceReq = new PipeTransferSnapshotPieceReq();
 
-    filePieceReq.fileName = ReadWriteIOUtils.readString(transferReq.body);
-    filePieceReq.startWritingOffset = ReadWriteIOUtils.readLong(transferReq.body);
-    filePieceReq.filePiece = ReadWriteIOUtils.readBinary(transferReq.body).getValues();
+    snapshotPieceReq.snapshotName = ReadWriteIOUtils.readString(transferReq.body);
+    snapshotPieceReq.startWritingOffset = ReadWriteIOUtils.readLong(transferReq.body);
+    snapshotPieceReq.snapshotPiece = ReadWriteIOUtils.readBinary(transferReq.body).getValues();
 
-    filePieceReq.version = transferReq.version;
-    filePieceReq.type = transferReq.type;
-    filePieceReq.body = transferReq.body;
+    snapshotPieceReq.version = transferReq.version;
+    snapshotPieceReq.type = transferReq.type;
+    snapshotPieceReq.body = transferReq.body;
 
-    return filePieceReq;
+    return snapshotPieceReq;
   }
 
   /////////////////////////////// Air Gap ///////////////////////////////
 
   public static byte[] toTPipeTransferBytes(
-      String fileName, long startWritingOffset, byte[] filePiece) throws IOException {
+      String snapshotName, long startWritingOffset, byte[] snapshotPiece) throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
-      ReadWriteIOUtils.write(PipeRequestType.TRANSFER_FILE_PIECE.getType(), outputStream);
-      ReadWriteIOUtils.write(fileName, outputStream);
+      ReadWriteIOUtils.write(PipeRequestType.TRANSFER_SNAPSHOT_PIECE.getType(), outputStream);
+      ReadWriteIOUtils.write(snapshotName, outputStream);
       ReadWriteIOUtils.write(startWritingOffset, outputStream);
-      ReadWriteIOUtils.write(new Binary(filePiece), outputStream);
+      ReadWriteIOUtils.write(new Binary(snapshotPiece), outputStream);
       return byteArrayOutputStream.toByteArray();
     }
   }
@@ -117,10 +115,10 @@ public class PipeTransferFilePieceReq extends TPipeTransferReq {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeTransferFilePieceReq that = (PipeTransferFilePieceReq) obj;
-    return fileName.equals(that.fileName)
+    PipeTransferSnapshotPieceReq that = (PipeTransferSnapshotPieceReq) obj;
+    return snapshotName.equals(that.snapshotName)
         && startWritingOffset == that.startWritingOffset
-        && Arrays.equals(filePiece, that.filePiece)
+        && Arrays.equals(snapshotPiece, that.snapshotPiece)
         && version == that.version
         && type == that.type
         && body.equals(that.body);
@@ -129,6 +127,6 @@ public class PipeTransferFilePieceReq extends TPipeTransferReq {
   @Override
   public int hashCode() {
     return Objects.hash(
-        fileName, startWritingOffset, Arrays.hashCode(filePiece), version, type, body);
+        snapshotName, startWritingOffset, Arrays.hashCode(snapshotPiece), version, type, body);
   }
 }

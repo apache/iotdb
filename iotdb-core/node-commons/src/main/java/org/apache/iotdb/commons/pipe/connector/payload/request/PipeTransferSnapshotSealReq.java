@@ -17,10 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.payload.evolvable.request;
+package org.apache.iotdb.commons.pipe.connector.payload.request;
 
-import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
-import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -30,68 +28,68 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class PipeTransferFileSealReq extends TPipeTransferReq {
+public class PipeTransferSnapshotSealReq extends TPipeTransferReq {
 
-  private transient String fileName;
-  private transient long fileLength;
+  private transient String snapshotName;
+  private transient long snapshotLength;
 
-  private PipeTransferFileSealReq() {
+  private PipeTransferSnapshotSealReq() {
     // Empty constructor
   }
 
-  public String getFileName() {
-    return fileName;
+  public String getsnapshotName() {
+    return snapshotName;
   }
 
-  public long getFileLength() {
-    return fileLength;
+  public long getsnapshotLength() {
+    return snapshotLength;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeTransferFileSealReq toTPipeTransferReq(String fileName, long fileLength)
-      throws IOException {
-    final PipeTransferFileSealReq fileSealReq = new PipeTransferFileSealReq();
+  public static PipeTransferSnapshotSealReq toTPipeTransferReq(
+      String snapshotName, long snapshotLength) throws IOException {
+    final PipeTransferSnapshotSealReq snapshotSealReq = new PipeTransferSnapshotSealReq();
 
-    fileSealReq.fileName = fileName;
-    fileSealReq.fileLength = fileLength;
+    snapshotSealReq.snapshotName = snapshotName;
+    snapshotSealReq.snapshotLength = snapshotLength;
 
-    fileSealReq.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
-    fileSealReq.type = PipeRequestType.TRANSFER_FILE_SEAL.getType();
+    snapshotSealReq.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
+    snapshotSealReq.type = PipeRequestType.TRANSFER_SNAPSHOT_SEAL.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      ReadWriteIOUtils.write(fileName, outputStream);
-      ReadWriteIOUtils.write(fileLength, outputStream);
-      fileSealReq.body =
+      ReadWriteIOUtils.write(snapshotName, outputStream);
+      ReadWriteIOUtils.write(snapshotLength, outputStream);
+      snapshotSealReq.body =
           ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
 
-    return fileSealReq;
+    return snapshotSealReq;
   }
 
-  public static PipeTransferFileSealReq fromTPipeTransferReq(TPipeTransferReq req) {
-    final PipeTransferFileSealReq fileSealReq = new PipeTransferFileSealReq();
+  public static PipeTransferSnapshotSealReq fromTPipeTransferReq(TPipeTransferReq req) {
+    final PipeTransferSnapshotSealReq snapshotSealReq = new PipeTransferSnapshotSealReq();
 
-    fileSealReq.fileName = ReadWriteIOUtils.readString(req.body);
-    fileSealReq.fileLength = ReadWriteIOUtils.readLong(req.body);
+    snapshotSealReq.snapshotName = ReadWriteIOUtils.readString(req.body);
+    snapshotSealReq.snapshotLength = ReadWriteIOUtils.readLong(req.body);
 
-    fileSealReq.version = req.version;
-    fileSealReq.type = req.type;
-    fileSealReq.body = req.body;
+    snapshotSealReq.version = req.version;
+    snapshotSealReq.type = req.type;
+    snapshotSealReq.body = req.body;
 
-    return fileSealReq;
+    return snapshotSealReq;
   }
 
   /////////////////////////////// Air Gap ///////////////////////////////
 
-  public static byte[] toTPipeTransferFileSealBytes(String fileName, long fileLength)
+  public static byte[] toTPipeTransferSnapshotSealBytes(String snapshotName, long snapshotLength)
       throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
-      ReadWriteIOUtils.write(PipeRequestType.TRANSFER_FILE_SEAL.getType(), outputStream);
-      ReadWriteIOUtils.write(fileName, outputStream);
-      ReadWriteIOUtils.write(fileLength, outputStream);
+      ReadWriteIOUtils.write(PipeRequestType.TRANSFER_SNAPSHOT_SEAL.getType(), outputStream);
+      ReadWriteIOUtils.write(snapshotName, outputStream);
+      ReadWriteIOUtils.write(snapshotLength, outputStream);
       return byteArrayOutputStream.toByteArray();
     }
   }
@@ -106,9 +104,9 @@ public class PipeTransferFileSealReq extends TPipeTransferReq {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeTransferFileSealReq that = (PipeTransferFileSealReq) obj;
-    return fileName.equals(that.fileName)
-        && fileLength == that.fileLength
+    PipeTransferSnapshotSealReq that = (PipeTransferSnapshotSealReq) obj;
+    return snapshotName.equals(that.snapshotName)
+        && snapshotLength == that.snapshotLength
         && version == that.version
         && type == that.type
         && body.equals(that.body);
@@ -116,6 +114,6 @@ public class PipeTransferFileSealReq extends TPipeTransferReq {
 
   @Override
   public int hashCode() {
-    return Objects.hash(fileName, fileLength, version, type, body);
+    return Objects.hash(snapshotName, snapshotLength, version, type, body);
   }
 }
