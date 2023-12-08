@@ -1019,7 +1019,8 @@ public class RegionWriteExecutor {
 
     @Override
     public RegionExecutionResult visitPlan(PlanNode node, WritePlanNodeExecutionContext context) {
-      return null;
+      throw new UnsupportedOperationException(
+          "PipeEnrichedWriteSchemaNodeExecutionVisitor does not support visiting general plan.");
     }
 
     @Override

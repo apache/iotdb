@@ -37,7 +37,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.Cre
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalBatchActivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalCreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.AlterLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
 
 import java.io.DataOutputStream;
@@ -69,7 +68,7 @@ import java.util.stream.Collectors;
  *
  * <p>- Template(Auto): {@link InternalBatchActivateTemplateNode}
  *
- * <p>- LogicalView: {@link CreateLogicalViewNode}, {@link AlterLogicalViewNode}
+ * <p>- LogicalView: {@link CreateLogicalViewNode}
  */
 public class PipeEnrichedWriteSchemaNode extends WritePlanNode {
 

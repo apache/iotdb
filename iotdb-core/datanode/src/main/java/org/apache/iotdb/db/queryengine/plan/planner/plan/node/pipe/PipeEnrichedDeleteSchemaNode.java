@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.ConstructSchemaBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.DeactivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.AlterLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.DeleteLogicalViewNode;
 
 import java.io.DataOutputStream;
@@ -49,7 +50,7 @@ import java.util.List;
  *
  * <p>- Template: {@link DeactivateTemplateNode}
  *
- * <p>- LogicalView: {@link DeleteLogicalViewNode}
+ * <p>- LogicalView: {@link AlterLogicalViewNode}, {@link DeleteLogicalViewNode}
  *
  * <p>Intermediate nodes like {@link ConstructSchemaBlackListNode} will not be included since they
  * will not be collected by pipe.
