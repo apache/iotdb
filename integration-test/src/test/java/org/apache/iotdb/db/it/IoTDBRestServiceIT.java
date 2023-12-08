@@ -280,11 +280,6 @@ public class IoTDBRestServiceIT {
   }
 
   public void errorInsertTablet(String json, HttpPost httpPost) {
-    try {
-      Thread.sleep(1000 * 30);
-    } catch (InterruptedException e) {
-      throw new RuntimeException(e);
-    }
     CloseableHttpResponse response = null;
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
     try {
