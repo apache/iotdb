@@ -22,6 +22,7 @@ package org.apache.iotdb.tsfile.file.metadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
+import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -29,6 +30,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.openjdk.jol.info.ClassLayout;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
@@ -129,6 +131,32 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
       timeseriesMetaData.chunkMetadataList.trimToSize();
     }
     buffer.position(buffer.position() + chunkMetaDataListDataSize);
+    return timeseriesMetaData;
+  }
+
+  public static TimeseriesMetadata deserializeFrom(
+      TsFileInput tsFileInput, boolean needChunkMetadata) throws IOException {
+    InputStream inputStream = tsFileInput.wrapAsInputStream();
+    TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
+    timeseriesMetaData.setTimeSeriesMetadataType(ReadWriteIOUtils.readByte(inputStream));
+    timeseriesMetaData.setMeasurementId(ReadWriteIOUtils.readVarIntString(inputStream));
+    timeseriesMetaData.setTsDataType(ReadWriteIOUtils.readDataType(inputStream));
+    int chunkMetaDataListDataSize = ReadWriteForEncodingUtils.readUnsignedVarInt(inputStream);
+    timeseriesMetaData.setDataSizeOfChunkMetaDataList(chunkMetaDataListDataSize);
+    timeseriesMetaData.setStatistics(
+        Statistics.deserialize(inputStream, timeseriesMetaData.dataType));
+    long startOffset = tsFileInput.position();
+    if (needChunkMetadata) {
+      timeseriesMetaData.chunkMetadataList = new ArrayList<>();
+      while (tsFileInput.position() < startOffset + chunkMetaDataListDataSize) {
+        timeseriesMetaData.chunkMetadataList.add(
+            ChunkMetadata.deserializeFrom(inputStream, timeseriesMetaData));
+      }
+      // minimize the storage of an ArrayList instance.
+      timeseriesMetaData.chunkMetadataList.trimToSize();
+    } else {
+      tsFileInput.position(startOffset + chunkMetaDataListDataSize);
+    }
     return timeseriesMetaData;
   }
 

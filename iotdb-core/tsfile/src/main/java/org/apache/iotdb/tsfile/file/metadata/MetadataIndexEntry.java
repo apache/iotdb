@@ -22,6 +22,7 @@ package org.apache.iotdb.tsfile.file.metadata;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
@@ -65,6 +66,12 @@ public class MetadataIndexEntry {
   public static MetadataIndexEntry deserializeFrom(ByteBuffer buffer) {
     String name = ReadWriteIOUtils.readVarIntString(buffer);
     long offset = ReadWriteIOUtils.readLong(buffer);
+    return new MetadataIndexEntry(name, offset);
+  }
+
+  public static MetadataIndexEntry deserializeFrom(InputStream inputStream) throws IOException {
+    String name = ReadWriteIOUtils.readVarIntString(inputStream);
+    long offset = ReadWriteIOUtils.readLong(inputStream);
     return new MetadataIndexEntry(name, offset);
   }
 }

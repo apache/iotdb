@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -105,6 +106,18 @@ public class MetadataIndexNode {
     long offset = ReadWriteIOUtils.readLong(buffer);
     MetadataIndexNodeType nodeType =
         MetadataIndexNodeType.deserialize(ReadWriteIOUtils.readByte(buffer));
+    return new MetadataIndexNode(children, offset, nodeType);
+  }
+
+  public static MetadataIndexNode deserializeFrom(InputStream inputStream) throws IOException {
+    List<MetadataIndexEntry> children = new ArrayList<>();
+    int size = ReadWriteForEncodingUtils.readUnsignedVarInt(inputStream);
+    for (int i = 0; i < size; i++) {
+      children.add(MetadataIndexEntry.deserializeFrom(inputStream));
+    }
+    long offset = ReadWriteIOUtils.readLong(inputStream);
+    MetadataIndexNodeType nodeType =
+        MetadataIndexNodeType.deserialize(ReadWriteIOUtils.readByte(inputStream));
     return new MetadataIndexNode(children, offset, nodeType);
   }
 

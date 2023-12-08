@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.openjdk.jol.info.ClassLayout;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
@@ -186,6 +187,25 @@ public class ChunkMetadata implements IChunkMetadata {
     // and each chunk's metadata has its own statistics
     if ((timeseriesMetadata.getTimeSeriesMetadataType() & 0x3F) != 0) {
       chunkMetaData.statistics = Statistics.deserialize(buffer, chunkMetaData.tsDataType);
+    } else {
+      // if the TimeSeriesMetadataType is 0, it means it has only one chunk
+      // and that chunk's metadata has no statistic
+      chunkMetaData.statistics = timeseriesMetadata.getStatistics();
+    }
+    return chunkMetaData;
+  }
+
+  public static ChunkMetadata deserializeFrom(
+      InputStream inputStream, TimeseriesMetadata timeseriesMetadata) throws IOException {
+    ChunkMetadata chunkMetaData = new ChunkMetadata();
+
+    chunkMetaData.measurementUid = timeseriesMetadata.getMeasurementId();
+    chunkMetaData.tsDataType = timeseriesMetadata.getTsDataType();
+    chunkMetaData.offsetOfChunkHeader = ReadWriteIOUtils.readLong(inputStream);
+    // if the TimeSeriesMetadataType is not 0, it means it has more than one chunk
+    // and each chunk's metadata has its own statistics
+    if ((timeseriesMetadata.getTimeSeriesMetadataType() & 0x3F) != 0) {
+      chunkMetaData.statistics = Statistics.deserialize(inputStream, chunkMetaData.tsDataType);
     } else {
       // if the TimeSeriesMetadataType is 0, it means it has only one chunk
       // and that chunk's metadata has no statistic

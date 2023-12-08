@@ -401,10 +401,11 @@ public class TsFileSequenceReader implements AutoCloseable {
       return null;
     }
     List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
-    buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
-    while (buffer.hasRemaining()) {
+    //    buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
+    tsFileInput.position(metadataIndexPair.left.getOffset());
+    while (tsFileInput.position() < metadataIndexPair.right) {
       try {
-        timeseriesMetadataList.add(TimeseriesMetadata.deserializeFrom(buffer, true));
+        timeseriesMetadataList.add(TimeseriesMetadata.deserializeFrom(tsFileInput, true));
       } catch (Exception e) {
         logger.error(
             "Something error happened while deserializing TimeseriesMetadata of file {}", file);
@@ -1083,11 +1084,59 @@ public class TsFileSequenceReader implements AutoCloseable {
           if (i != metadataIndexListSize - 1) {
             endOffset = metadataIndexNode.getChildren().get(i + 1).getOffset();
           }
-          ByteBuffer nextBuffer =
-              readData(metadataIndexNode.getChildren().get(i).getOffset(), endOffset);
           generateMetadataIndex(
               metadataIndexNode.getChildren().get(i),
-              nextBuffer,
+              metadataIndexNode.getChildren().get(i).getOffset(),
+              endOffset,
+              deviceId,
+              metadataIndexNode.getNodeType(),
+              timeseriesMetadataMap,
+              needChunkMetadata);
+        }
+      }
+    } catch (Exception e) {
+      logger.error("Something error happened while generating MetadataIndex of file {}", file);
+      throw e;
+    }
+  }
+
+  private void generateMetadataIndex(
+      MetadataIndexEntry metadataIndex,
+      long start,
+      long end,
+      String deviceId,
+      MetadataIndexNodeType type,
+      Map<String, List<TimeseriesMetadata>> timeseriesMetadataMap,
+      boolean needChunkMetadata)
+      throws IOException {
+    try {
+      tsFileInput.position(start);
+      if (type.equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
+        List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
+        while (tsFileInput.position() < end) {
+          timeseriesMetadataList.add(
+              TimeseriesMetadata.deserializeFrom(tsFileInput, needChunkMetadata));
+        }
+        timeseriesMetadataMap
+            .computeIfAbsent(deviceId, k -> new ArrayList<>())
+            .addAll(timeseriesMetadataList);
+      } else {
+        // deviceId should be determined by LEAF_DEVICE node
+        if (type.equals(MetadataIndexNodeType.LEAF_DEVICE)) {
+          deviceId = metadataIndex.getName();
+        }
+        MetadataIndexNode metadataIndexNode =
+            MetadataIndexNode.deserializeFrom(tsFileInput.wrapAsInputStream());
+        int metadataIndexListSize = metadataIndexNode.getChildren().size();
+        for (int i = 0; i < metadataIndexListSize; i++) {
+          long endOffset = metadataIndexNode.getEndOffset();
+          if (i != metadataIndexListSize - 1) {
+            endOffset = metadataIndexNode.getChildren().get(i + 1).getOffset();
+          }
+          generateMetadataIndex(
+              metadataIndexNode.getChildren().get(i),
+              metadataIndexNode.getChildren().get(i).getOffset(),
+              endOffset,
               deviceId,
               metadataIndexNode.getNodeType(),
               timeseriesMetadataMap,

@@ -55,7 +55,7 @@ public class TsFileSequenceRead {
     "squid:S106"
   }) // Suppress high Cognitive Complexity and Standard outputs warning
   public static void main(String[] args) throws IOException {
-    String filename = "test.tsfile";
+    String filename = "/Volumes/ExtHD/ExtDownloads/2811/1700281998534-405-4-0.tsfile";
     if (args.length >= 1) {
       filename = args[0];
     }
