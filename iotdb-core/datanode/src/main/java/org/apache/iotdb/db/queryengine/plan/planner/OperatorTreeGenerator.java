@@ -508,7 +508,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     if (globalTimeFilter != null) {
       // time filter may be stateful, so we need to copy it
       scanOptionsBuilder.withGlobalTimeFilter(globalTimeFilter.copy());
-      scanOptionsBuilder.withPushDownFilter(globalTimeFilter.copy());
     }
 
     Expression pushDownPredicate = node.getPushDownPredicate();
