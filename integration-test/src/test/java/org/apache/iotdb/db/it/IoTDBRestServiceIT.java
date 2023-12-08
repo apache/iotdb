@@ -281,7 +281,7 @@ public class IoTDBRestServiceIT {
 
   public void errorInsertTablet(String json, HttpPost httpPost) {
     try {
-      Thread.sleep(1000 * 30);
+      Thread.sleep(1000 * 60);
     } catch (InterruptedException e) {
       throw new RuntimeException(e);
     }
