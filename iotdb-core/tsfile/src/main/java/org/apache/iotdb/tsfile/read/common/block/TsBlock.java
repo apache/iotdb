@@ -223,6 +223,18 @@ public class TsBlock {
     return columns;
   }
 
+  public Object[] getRowValues(int rowIndex) {
+    Object[] rowValues = new Object[valueColumns.length];
+    for (int i = 0; i < valueColumns.length; i++) {
+      if (valueColumns[i].isNull(rowIndex)) {
+        rowValues[i] = null;
+      } else {
+        rowValues[i] = valueColumns[i].getObject(rowIndex);
+      }
+    }
+    return rowValues;
+  }
+
   public TsBlockSingleColumnIterator getTsBlockSingleColumnIterator() {
     return new TsBlockSingleColumnIterator(0);
   }

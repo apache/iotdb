@@ -66,10 +66,10 @@ public class MemAlignedPageReader implements IPageReader {
   @Override
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
     BatchData batchData = BatchDataFactory.createBatchData(TSDataType.VECTOR, ascending, false);
-    Object[] rowValues = new Object[tsBlock.getValueColumnCount()];
+
     for (int rowIndex = 0; rowIndex < tsBlock.getPositionCount(); rowIndex++) {
       long time = tsBlock.getTimeByIndex(rowIndex);
-      updateRowValues(rowValues, rowIndex);
+      Object[] rowValues = tsBlock.getRowValues(rowIndex);
 
       if (satisfyRecordFilter(time, rowValues)) {
         TsPrimitiveType[] values = new TsPrimitiveType[tsBlock.getValueColumnCount()];
@@ -84,18 +84,8 @@ public class MemAlignedPageReader implements IPageReader {
     return batchData.flip();
   }
 
-  private void updateRowValues(Object[] rowValues, int rowIndex) {
-    for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
-      if (!tsBlock.getColumn(column).isNull(rowIndex)) {
-        rowValues[column] = tsBlock.getColumn(column).getObject(rowIndex);
-      } else {
-        rowValues[column] = null;
-      }
-    }
-  }
-
   private boolean satisfyRecordFilter(long time, Object[] values) {
-    return (recordFilter == null || recordFilter.satisfy(time, values));
+    return recordFilter == null || recordFilter.satisfy(time, values);
   }
 
   @Override
@@ -118,12 +108,11 @@ public class MemAlignedPageReader implements IPageReader {
   private boolean[] buildSatisfyInfoArray() {
     boolean[] satisfyInfo = new boolean[tsBlock.getPositionCount()];
 
-    Object[] values = new Object[tsBlock.getValueColumnCount()];
     for (int rowIndex = 0; rowIndex < tsBlock.getPositionCount(); rowIndex++) {
       long time = tsBlock.getTimeByIndex(rowIndex);
-      updateRowValues(values, rowIndex);
+      Object[] rowValues = tsBlock.getRowValues(rowIndex);
 
-      satisfyInfo[rowIndex] = satisfyRecordFilter(time, values);
+      satisfyInfo[rowIndex] = satisfyRecordFilter(time, rowValues);
     }
     return satisfyInfo;
   }

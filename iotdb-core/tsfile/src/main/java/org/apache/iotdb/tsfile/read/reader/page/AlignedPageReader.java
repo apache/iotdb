@@ -94,29 +94,33 @@ public class AlignedPageReader implements IPageReader {
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
     BatchData pageData = BatchDataFactory.createBatchData(TSDataType.VECTOR, ascending, false);
     int timeIndex = -1;
+    Object[] rowValues = new Object[valueCount];
     while (timePageReader.hasNextTime()) {
       long timestamp = timePageReader.nextTime();
       timeIndex++;
-      // if all the sub sensors' value are null in current row, just discard it
-      boolean isNull = true;
-      Object notNullObject = null;
+
       TsPrimitiveType[] v = new TsPrimitiveType[valueCount];
-      for (int i = 0; i < v.length; i++) {
+      for (int i = 0; i < valueCount; i++) {
         ValuePageReader pageReader = valuePageReaderList.get(i);
-        v[i] = pageReader == null ? null : pageReader.nextValue(timestamp, timeIndex);
-        if (v[i] != null) {
-          isNull = false;
-          notNullObject = v[i].getValue();
+        if (pageReader != null) {
+          v[i] = pageReader.nextValue(timestamp, timeIndex);
+          rowValues[i] = (v[i] == null) ? null : v[i].getValue();
+        } else {
+          v[i] = null;
+          rowValues[i] = null;
         }
       }
-      // Currently, if it's a value filter, it will only accept AlignedPath with only one sub
-      // sensor
-      if (!isNull
-          && (globalTimeFilter == null || globalTimeFilter.satisfy(timestamp, notNullObject))) {
+
+      if (satisfyRecordFilter(timestamp, rowValues)) {
         pageData.putVector(timestamp, v);
       }
     }
     return pageData.flip();
+  }
+
+  private boolean satisfyRecordFilter(long timestamp, Object[] rowValues) {
+    return (globalTimeFilter == null || globalTimeFilter.satisfy(timestamp, rowValues))
+        && (pushDownFilter == null || pushDownFilter.satisfy(timestamp, rowValues));
   }
 
   @Override
@@ -340,29 +344,27 @@ public class AlignedPageReader implements IPageReader {
     TsBlock unFilteredBlock = builder.build();
     builder.reset();
 
-    Object[] values = new Object[valueCount];
     for (int i = 0, size = unFilteredBlock.getPositionCount(); i < size; i++) {
       long time = unFilteredBlock.getTimeByIndex(i);
-      for (int j = 0; j < valueCount; j++) {
-        if (unFilteredBlock.getValueColumns()[j].isNull(i)) {
-          values[j] = null;
-        } else {
-          values[j] = unFilteredBlock.getValueColumns()[j].getObject(i);
-        }
-      }
-      if (pushDownFilter.satisfy(time, values)) {
-        builder.getTimeColumnBuilder().writeLong(time);
-        for (int j = 0; j < valueCount; j++) {
-          if (values[j] == null) {
-            builder.getColumnBuilder(j).appendNull();
-          } else {
-            builder.getColumnBuilder(j).writeObject(values[j]);
-          }
-        }
-        builder.declarePosition();
+      Object[] rowValues = unFilteredBlock.getRowValues(i);
+
+      if (pushDownFilter.satisfy(time, rowValues)) {
+        writeTimeValuesToTsBlockBuilder(builder, time, rowValues);
       }
     }
     return builder.build();
+  }
+
+  public void writeTimeValuesToTsBlockBuilder(TsBlockBuilder builder, long time, Object[] values) {
+    builder.getTimeColumnBuilder().writeLong(time);
+    for (int i = 0, size = builder.getPositionCount(); i < size; i++) {
+      if (values[i] == null) {
+        builder.getColumnBuilder(i).appendNull();
+      } else {
+        builder.getColumnBuilder(i).writeObject(values[i]);
+      }
+    }
+    builder.declarePosition();
   }
 
   public void setDeleteIntervalList(List<List<TimeRange>> list) {
