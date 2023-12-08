@@ -26,7 +26,7 @@ public class EncodeTest {
   @Test
   public void test() throws IOException {
     String[] Inputs = {
-      "/home/ubuntu/Datasets/Real-World/Numerical", "/home/ubuntu/Datasets/Synthetic/Numerical"
+      "/home/ubuntu/Datasets/Real-world/Numerical", "/home/ubuntu/Datasets/Synthetic/Numerical"
     };
     String[] Outputs = {
       "/home/ubuntu/Real_Numerical_result.csv", "/home/ubuntu/Synthetic_Numerical_result.csv"
@@ -36,20 +36,20 @@ public class EncodeTest {
 
       String Input = Inputs[idx];
       String Output = Outputs[idx];
-      int repeatTime = 50; // set repeat time
+      int repeatTime = 5; // set repeat time
 
-      String[] dataTypeNames = {"INT32", "INT64", "FLOAT", "DOUBLE"};
+      String[] dataTypeNames = {"FLOAT"};
       // select encoding algorithms
       TSEncoding[] encodingList = {
-        TSEncoding.PLAIN,
-        TSEncoding.TS_2DIFF,
-        TSEncoding.RLE,
-        TSEncoding.SPRINTZ,
-        TSEncoding.GORILLA,
-        TSEncoding.RLBE,
-        TSEncoding.RAKE,
-        TSEncoding.BUFF,
-        TSEncoding.CHIMP
+        // TSEncoding.PLAIN,
+        TSEncoding.TS_2DIFF
+        // TSEncoding.RLE,
+        // TSEncoding.SPRINTZ,
+        // TSEncoding.GORILLA,
+        // TSEncoding.RLBE,
+        // TSEncoding.RAKE,
+        // TSEncoding.BUFF,
+        // TSEncoding.CHIMP
       };
       // select compression algorithms
       CompressionType[] compressList = {

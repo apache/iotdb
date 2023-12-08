@@ -140,9 +140,8 @@ public abstract class Decoder {
           case INT64:
             return new LongSprintzDecoder();
           case FLOAT:
-            return new FloatSprintzDecoder();
           case DOUBLE:
-            return new DoubleSprintzDecoder();
+            return new FloatDecoder(TSEncoding.valueOf(encoding.toString()), dataType);
           default:
             throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
         }
@@ -153,9 +152,8 @@ public abstract class Decoder {
           case INT64:
             return new LongRAKEDecoder();
           case FLOAT:
-            return new FloatRAKEDecoder();
           case DOUBLE:
-            return new DoubleRAKEDecoder();
+            return new FloatDecoder(TSEncoding.valueOf(encoding.toString()), dataType);
           default:
             throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
         }
@@ -166,9 +164,8 @@ public abstract class Decoder {
           case INT64:
             return new LongRLBEDecoder();
           case FLOAT:
-            return new FloatRLBEDecoder();
           case DOUBLE:
-            return new DoubleRLBEDecoder();
+            return new FloatDecoder(TSEncoding.valueOf(encoding.toString()), dataType);
           default:
             throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
         }

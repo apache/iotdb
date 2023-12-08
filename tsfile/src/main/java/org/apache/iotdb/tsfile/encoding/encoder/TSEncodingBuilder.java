@@ -296,6 +296,7 @@ public abstract class TSEncodingBuilder {
       } else {
         try {
           this.maxPointNumber = Integer.parseInt(props.get(Encoder.MAX_POINT_NUMBER));
+          System.out.println(this.maxPointNumber);
         } catch (NumberFormatException e) {
           logger.warn(
               "The format of max point number {} is not correct."
@@ -485,6 +486,9 @@ public abstract class TSEncodingBuilder {
   }
 
   public static class Sprintz extends TSEncodingBuilder {
+
+    private int maxPointNumber = 0;
+
     @Override
     public Encoder getEncoder(TSDataType type) {
       switch (type) {
@@ -493,9 +497,8 @@ public abstract class TSEncodingBuilder {
         case INT64:
           return new LongSprintzEncoder();
         case FLOAT:
-          return new FloatSprintzEncoder();
         case DOUBLE:
-          return new DoubleSprintzEncoder();
+          return new FloatEncoder(TSEncoding.SPRINTZ, type, maxPointNumber);
         default:
           throw new UnSupportedDataTypeException("Sprintz doesn't support data type: " + type);
       }
@@ -509,13 +512,14 @@ public abstract class TSEncodingBuilder {
 
   public static class Rake extends TSEncodingBuilder {
 
+    private int maxPointNumber = 0;
+
     @Override
     public Encoder getEncoder(TSDataType type) {
       switch (type) {
         case FLOAT:
-          return new FloatRAKEEncoder();
         case DOUBLE:
-          return new DoubleRAKEEncoder();
+          return new FloatEncoder(TSEncoding.RAKE, type, maxPointNumber);
         case INT32:
           return new IntRAKEEncoder();
         case INT64:
@@ -532,6 +536,9 @@ public abstract class TSEncodingBuilder {
   }
 
   public static class RLBE extends TSEncodingBuilder {
+
+    private int maxPointNumber = 0;
+
     @Override
     public Encoder getEncoder(TSDataType type) {
       switch (type) {
@@ -540,9 +547,8 @@ public abstract class TSEncodingBuilder {
         case INT64:
           return new LongRLBE();
         case FLOAT:
-          return new FloatRLBE();
         case DOUBLE:
-          return new DoubleRLBE();
+          return new FloatEncoder(TSEncoding.RLBE, type, maxPointNumber);
         default:
           throw new UnSupportedDataTypeException("RLBE doesn't support data type: " + type);
       }

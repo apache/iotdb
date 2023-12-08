@@ -71,6 +71,39 @@ public class FloatDecoder extends Decoder {
         throw new TsFileDecodingException(
             String.format("data type %s is not supported by FloatDecoder", dataType));
       }
+    } else if (encodingType == TSEncoding.SPRINTZ) {
+      if (dataType == TSDataType.FLOAT) {
+        decoder = new IntSprintzDecoder();
+        logger.debug("tsfile-encoding FloatDecoder: init decoder using int-delta and float");
+      } else if (dataType == TSDataType.DOUBLE) {
+        decoder = new LongSprintzDecoder();
+        logger.debug("tsfile-encoding FloatDecoder: init decoder using long-delta and double");
+      } else {
+        throw new TsFileDecodingException(
+            String.format("data type %s is not supported by FloatDecoder", dataType));
+      }
+    } else if (encodingType == TSEncoding.RAKE) {
+      if (dataType == TSDataType.FLOAT) {
+        decoder = new IntRAKEDecoder();
+        logger.debug("tsfile-encoding FloatDecoder: init decoder using int-delta and float");
+      } else if (dataType == TSDataType.DOUBLE) {
+        decoder = new LongRAKEDecoder();
+        logger.debug("tsfile-encoding FloatDecoder: init decoder using long-delta and double");
+      } else {
+        throw new TsFileDecodingException(
+            String.format("data type %s is not supported by FloatDecoder", dataType));
+      }
+    } else if (encodingType == TSEncoding.RLBE) {
+      if (dataType == TSDataType.FLOAT) {
+        decoder = new IntRLBEDecoder();
+        logger.debug("tsfile-encoding FloatDecoder: init decoder using int-delta and float");
+      } else if (dataType == TSDataType.DOUBLE) {
+        decoder = new LongRLBEDecoder();
+        logger.debug("tsfile-encoding FloatDecoder: init decoder using long-delta and double");
+      } else {
+        throw new TsFileDecodingException(
+            String.format("data type %s is not supported by FloatDecoder", dataType));
+      }
     } else {
       throw new TsFileDecodingException(
           String.format("%s encoding is not supported by FloatDecoder", encodingType));
