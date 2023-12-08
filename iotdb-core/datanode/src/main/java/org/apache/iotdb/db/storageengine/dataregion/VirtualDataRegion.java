@@ -54,7 +54,10 @@ public class VirtualDataRegion implements IDataRegionForQuery {
 
   @Override
   public QueryDataSource query(
-      List<PartialPath> pathList, String singleDeviceId, QueryContext context, Filter timeFilter)
+      List<PartialPath> pathList,
+      String singleDeviceId,
+      QueryContext context,
+      Filter globalTimeFilter)
       throws QueryProcessException {
     return EMPTY_QUERY_DATA_SOURCE;
   }

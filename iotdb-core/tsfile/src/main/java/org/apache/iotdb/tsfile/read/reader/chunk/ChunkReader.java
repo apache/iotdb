@@ -66,6 +66,7 @@ public class ChunkReader implements IChunkReader {
    *
    * @param chunk input Chunk object
    * @param queryFilter filter
+   * @throws IOException exception when initAllPageReaders
    */
   public ChunkReader(Chunk chunk, Filter queryFilter) throws IOException {
     this.chunkHeader = chunk.getHeader();
@@ -81,6 +82,8 @@ public class ChunkReader implements IChunkReader {
   /**
    * Constructor of ChunkReader by timestamp. This constructor is used to accelerate queries by
    * filtering out pages whose endTime is less than current timestamp.
+   *
+   * @throws IOException exception when initAllPageReaders
    */
   public ChunkReader(Chunk chunk, long currentTimestamp) throws IOException {
     this.chunkHeader = chunk.getHeader();

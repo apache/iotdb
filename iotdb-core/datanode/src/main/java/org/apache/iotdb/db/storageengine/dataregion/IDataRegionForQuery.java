@@ -36,7 +36,10 @@ public interface IDataRegionForQuery {
 
   /** Get satisfied QueryDataSource from DataRegion */
   QueryDataSource query(
-      List<PartialPath> pathList, String singleDeviceId, QueryContext context, Filter timeFilter)
+      List<PartialPath> pathList,
+      String singleDeviceId,
+      QueryContext context,
+      Filter globalTimeFilter)
       throws QueryProcessException;
 
   /** Get TTL of this DataRegion */

@@ -64,13 +64,13 @@ public class FileLoaderUtils {
   }
 
   /**
-   * Load TimeSeriesMetadata for non-aligned time series
+   * Load TimeSeriesMetadata for non-aligned time series.
    *
    * @param resource TsFile
    * @param seriesPath Timeseries path
    * @param allSensors measurements queried at the same time of this device
    * @param globalTimeFilter global time filter, only used to check time range
-   * @throws IOException IOException may be thrown while reading it from disk.
+   * @throws IOException may be thrown while reading it from disk.
    */
   public static TimeseriesMetadata loadTimeSeriesMetadata(
       TsFileResource resource,

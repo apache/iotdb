@@ -40,7 +40,6 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
@@ -582,14 +581,12 @@ public class SeriesScanUtil {
     }
   }
 
-  /**
-   * This method should be called after calling hasNextPage.
-   *
-   * <p>hasNextPage may cache firstPageReader if it is not overlapped or cached a BatchData if the
-   * first page is overlapped
-   */
   @SuppressWarnings("unchecked")
   private boolean currentPageOverlapped() throws IOException {
+    // This method should be called after calling hasNextPage.
+    // hasNextPage may cache firstPageReader if it is not overlapped or cached a tsBlock if the
+    // first page is overlapped
+
     // has cached overlapped page
     if (hasCachedNextOverlappedPage) {
       return true;
@@ -714,6 +711,8 @@ public class SeriesScanUtil {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private boolean hasNextOverlappedPage() throws IOException {
     long startTime = System.nanoTime();
+    Filter recordFilter =
+        FilterFactory.and(scanOptions.getGlobalTimeFilter(), scanOptions.getPushDownFilter());
     try {
       if (hasCachedNextOverlappedPage) {
         return true;
@@ -727,7 +726,6 @@ public class SeriesScanUtil {
         if (mergeReader.hasNextTimeValuePair()) {
 
           TsBlockBuilder builder = new TsBlockBuilder(getTsDataTypeList());
-          TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
           long currentPageEndPointTime = mergeReader.getCurrentReadStopTime();
           while (mergeReader.hasNextTimeValuePair()) {
 
@@ -814,59 +812,9 @@ public class SeriesScanUtil {
               }
             }
 
-            /*
-             * get the latest first point in mergeReader
-             */
+            // get the latest first point in mergeReader
             timeValuePair = mergeReader.nextTimeValuePair();
-
-            Filter recordFilter =
-                FilterFactory.and(
-                    scanOptions.getGlobalTimeFilter(), scanOptions.getPushDownFilter());
-            if (recordFilter != null
-                && !recordFilter.satisfy(timeValuePair.getTimestamp(), timeValuePair.getValues())) {
-              continue;
-            }
-            if (paginationController.hasCurOffset()) {
-              paginationController.consumeOffset();
-              continue;
-            }
-            if (paginationController.hasCurLimit()) {
-              timeBuilder.writeLong(timeValuePair.getTimestamp());
-              switch (dataType) {
-                case BOOLEAN:
-                  builder.getColumnBuilder(0).writeBoolean(timeValuePair.getValue().getBoolean());
-                  break;
-                case INT32:
-                  builder.getColumnBuilder(0).writeInt(timeValuePair.getValue().getInt());
-                  break;
-                case INT64:
-                  builder.getColumnBuilder(0).writeLong(timeValuePair.getValue().getLong());
-                  break;
-                case FLOAT:
-                  builder.getColumnBuilder(0).writeFloat(timeValuePair.getValue().getFloat());
-                  break;
-                case DOUBLE:
-                  builder.getColumnBuilder(0).writeDouble(timeValuePair.getValue().getDouble());
-                  break;
-                case TEXT:
-                  builder.getColumnBuilder(0).writeBinary(timeValuePair.getValue().getBinary());
-                  break;
-                case VECTOR:
-                  TsPrimitiveType[] values = timeValuePair.getValue().getVector();
-                  for (int i = 0; i < values.length; i++) {
-                    if (values[i] == null) {
-                      builder.getColumnBuilder(i).appendNull();
-                    } else {
-                      builder.getColumnBuilder(i).writeTsPrimitiveType(values[i]);
-                    }
-                  }
-                  break;
-                default:
-                  throw new UnSupportedDataTypeException(String.valueOf(dataType));
-              }
-              builder.declarePosition();
-              paginationController.consumeLimit();
-            } else {
+            if (processFilterAndPagination(timeValuePair, recordFilter, builder)) {
               break;
             }
           }
@@ -929,6 +877,62 @@ public class SeriesScanUtil {
      * put all currently directly overlapped unseq page reader to merge reader
      */
     unpackAllOverlappedUnseqPageReadersToMergeReader(currentPageEndpointTime);
+  }
+
+  private boolean processFilterAndPagination(
+      TimeValuePair timeValuePair, Filter recordFilter, TsBlockBuilder builder) {
+    if (recordFilter != null
+        && !recordFilter.satisfy(timeValuePair.getTimestamp(), timeValuePair.getValues())) {
+      return false;
+    }
+    if (paginationController.hasCurOffset()) {
+      paginationController.consumeOffset();
+      return false;
+    }
+    if (paginationController.hasCurLimit()) {
+      addTimeValuePairToResult(timeValuePair, builder);
+      paginationController.consumeLimit();
+      return false;
+    } else {
+      return true;
+    }
+  }
+
+  private void addTimeValuePairToResult(TimeValuePair timeValuePair, TsBlockBuilder builder) {
+    builder.getTimeColumnBuilder().writeLong(timeValuePair.getTimestamp());
+    switch (dataType) {
+      case BOOLEAN:
+        builder.getColumnBuilder(0).writeBoolean(timeValuePair.getValue().getBoolean());
+        break;
+      case INT32:
+        builder.getColumnBuilder(0).writeInt(timeValuePair.getValue().getInt());
+        break;
+      case INT64:
+        builder.getColumnBuilder(0).writeLong(timeValuePair.getValue().getLong());
+        break;
+      case FLOAT:
+        builder.getColumnBuilder(0).writeFloat(timeValuePair.getValue().getFloat());
+        break;
+      case DOUBLE:
+        builder.getColumnBuilder(0).writeDouble(timeValuePair.getValue().getDouble());
+        break;
+      case TEXT:
+        builder.getColumnBuilder(0).writeBinary(timeValuePair.getValue().getBinary());
+        break;
+      case VECTOR:
+        TsPrimitiveType[] values = timeValuePair.getValue().getVector();
+        for (int i = 0; i < values.length; i++) {
+          if (values[i] == null) {
+            builder.getColumnBuilder(i).appendNull();
+          } else {
+            builder.getColumnBuilder(i).writeTsPrimitiveType(values[i]);
+          }
+        }
+        break;
+      default:
+        throw new UnSupportedDataTypeException(String.valueOf(dataType));
+    }
+    builder.declarePosition();
   }
 
   private void initFirstPageReader() throws IOException {
@@ -1013,6 +1017,8 @@ public class SeriesScanUtil {
    * <p>Because there may be too many files in the scenario used by the user, we cannot open all the
    * chunks at once, which may cause OOM, so we can only unpack one file at a time when needed. This
    * approach is likely to be ubiquitous, but it keeps the system running smoothly
+   *
+   * @throws IOException exception in unpacking
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void tryToUnpackAllOverlappedFilesToTimeSeriesMetadata() throws IOException {
