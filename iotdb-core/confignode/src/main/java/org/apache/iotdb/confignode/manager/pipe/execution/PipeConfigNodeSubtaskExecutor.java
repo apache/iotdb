@@ -17,34 +17,33 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.execution.executor;
+package org.apache.iotdb.confignode.manager.pipe.execution;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.execution.executor.PipeSubtaskExecutor;
 import org.apache.iotdb.commons.utils.TestOnly;
 
-public class PipeSchemaSubtaskExecutor extends PipeSubtaskExecutor {
+public class PipeConfigNodeSubtaskExecutor extends PipeSubtaskExecutor {
 
-  @TestOnly
-  public PipeSchemaSubtaskExecutor(Object ignored) {
-    super(
-        PipeConfig.getInstance().getPipeSubtaskExecutorMaxThreadNum(),
-        ThreadName.PIPE_SCHEMA_EXECUTOR_POOL);
+  private static final int THREAD_NUM = 1;
+
+  private PipeConfigNodeSubtaskExecutor() {
+    super(THREAD_NUM, ThreadName.PIPE_SCHEMA_EXECUTOR_POOL);
   }
 
-  private PipeSchemaSubtaskExecutor() {
-    super(
-        PipeConfig.getInstance().getPipeSubtaskExecutorMaxThreadNum(),
-        ThreadName.PIPE_SCHEMA_EXECUTOR_POOL);
+  /** @param ignored Used to distinguish this constructor from the default constructor. */
+  @TestOnly
+  public PipeConfigNodeSubtaskExecutor(Object ignored) {
+    super(THREAD_NUM, ThreadName.PIPE_SCHEMA_EXECUTOR_POOL);
   }
 
   private static class PipeSchemaSubtaskExecutorHolder {
-    private static PipeSchemaSubtaskExecutor instance = null;
+    private static PipeConfigNodeSubtaskExecutor instance = null;
   }
 
-  public static synchronized PipeSchemaSubtaskExecutor getInstance() {
+  public static synchronized PipeConfigNodeSubtaskExecutor getInstance() {
     if (PipeSchemaSubtaskExecutorHolder.instance == null) {
-      PipeSchemaSubtaskExecutorHolder.instance = new PipeSchemaSubtaskExecutor();
+      PipeSchemaSubtaskExecutorHolder.instance = new PipeConfigNodeSubtaskExecutor();
     }
     return PipeSchemaSubtaskExecutorHolder.instance;
   }

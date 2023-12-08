@@ -17,12 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.task.subtask;
+package org.apache.iotdb.confignode.manager.pipe.execution;
 
 import org.apache.iotdb.commons.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.schema.IoTDBSchemaConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.schema.IoTDBSchemaExtractor;
 import org.apache.iotdb.commons.pipe.task.DecoratingLock;
+import org.apache.iotdb.commons.pipe.task.subtask.PipeSubtask;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -38,9 +39,9 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
-public class PipeSchemaSubtask extends PipeSubtask {
+public class PipeConfigNodeSubtask extends PipeSubtask {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeSchemaSubtask.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfigNodeSubtask.class);
 
   private final IoTDBSchemaExtractor inputPipeExtractor;
   private final IoTDBSchemaConnector outputPipeConnector;
@@ -53,7 +54,7 @@ public class PipeSchemaSubtask extends PipeSubtask {
   // at a time
   private volatile boolean isSubmitted = false;
 
-  public PipeSchemaSubtask(
+  public PipeConfigNodeSubtask(
       String taskID,
       long creationTime,
       Map<String, String> extractorAttributes,

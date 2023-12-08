@@ -17,14 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.execution;
+package org.apache.iotdb.confignode.manager.pipe;
 
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
-import org.apache.iotdb.commons.pipe.execution.executor.PipeSchemaSubtaskExecutor;
 import org.apache.iotdb.commons.pipe.execution.executor.PipeSubtaskExecutor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
-import org.apache.iotdb.commons.pipe.task.subtask.PipeSchemaSubtask;
 import org.apache.iotdb.commons.pipe.task.subtask.PipeSubtask;
+import org.apache.iotdb.confignode.manager.pipe.execution.PipeConfigNodeSubtask;
+import org.apache.iotdb.confignode.manager.pipe.execution.PipeConfigNodeSubtaskExecutor;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -38,18 +38,18 @@ import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-public class PipeSchemaSubtaskExecutorTest {
+public class PipeConfigNodeSubtaskExecutorTest {
 
   private PipeSubtaskExecutor executor;
   private PipeSubtask subtask;
 
   @Before
   public void setUp() throws Exception {
-    executor = new PipeSchemaSubtaskExecutor(new Object());
+    executor = new PipeConfigNodeSubtaskExecutor(new Object());
 
     subtask =
         Mockito.spy(
-            new PipeSchemaSubtask(
+            new PipeConfigNodeSubtask(
                 "PipeProcessorSubtaskExecutorTest",
                 System.currentTimeMillis(),
                 new HashMap<>(),

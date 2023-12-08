@@ -23,15 +23,15 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
-import org.apache.iotdb.commons.pipe.execution.executor.PipeSchemaSubtaskExecutor;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.task.subtask.PipeSchemaSubtask;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.manager.pipe.PipeManager;
+import org.apache.iotdb.confignode.manager.pipe.execution.PipeConfigNodeSubtask;
+import org.apache.iotdb.confignode.manager.pipe.execution.PipeConfigNodeSubtaskExecutor;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
@@ -148,9 +148,9 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
     // Create subtask of schema pipe here
     try {
-      PipeSchemaSubtaskExecutor.getInstance()
+      PipeConfigNodeSubtaskExecutor.getInstance()
           .register(
-              new PipeSchemaSubtask(
+              new PipeConfigNodeSubtask(
                   pipeStaticMeta.getPipeName(),
                   pipeStaticMeta.getCreationTime(),
                   pipeStaticMeta.getExtractorParameters().getAttribute(),
@@ -201,7 +201,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
     // Drop subtask of schema pipe here
     try {
-      PipeSchemaSubtaskExecutor.getInstance().deregister(pipeStaticMeta.getPipeName());
+      PipeConfigNodeSubtaskExecutor.getInstance().deregister(pipeStaticMeta.getPipeName());
     } catch (Exception e) {
       throw new PipeException(
           String.format("Failed to drop subtask for schema pipe %s.", pipeStaticMeta.getPipeName()),
