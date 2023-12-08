@@ -26,7 +26,6 @@ import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -35,39 +34,14 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class LazyChunkLoader implements ChunkLoader {
+public class LazyChunkLoader extends ChunkLoader {
   private CompactionTsFileReader reader;
-  private ChunkMetadata chunkMetadata;
   private Chunk chunk;
   private ChunkHeader chunkHeader;
-  private ModifiedStatus modifiedStatus;
 
   public LazyChunkLoader(CompactionTsFileReader reader, ChunkMetadata chunkMetadata) {
+    super(chunkMetadata);
     this.reader = reader;
-    this.chunkMetadata = chunkMetadata;
-    calculateModifiedStatus();
-  }
-
-  private void calculateModifiedStatus() {
-    if (modifiedStatus != null) {
-      return;
-    }
-    this.modifiedStatus = ModifiedStatus.NONE_DELETED;
-    List<TimeRange> deleteIntervalList = chunkMetadata.getDeleteIntervalList();
-    if (deleteIntervalList == null || deleteIntervalList.isEmpty()) {
-      return;
-    }
-    long startTime = chunkMetadata.getStartTime();
-    long endTime = chunkMetadata.getEndTime();
-    TimeRange chunkTimeRange = new TimeRange(startTime, endTime);
-    for (TimeRange timeRange : deleteIntervalList) {
-      if (timeRange.contains(chunkTimeRange)) {
-        this.modifiedStatus = ModifiedStatus.ALL_DELETED;
-        break;
-      } else if (timeRange.overlaps(chunkTimeRange)) {
-        this.modifiedStatus = ModifiedStatus.PARTIAL_DELETED;
-      }
-    }
   }
 
   public LazyChunkLoader() {}
@@ -160,26 +134,6 @@ public class LazyChunkLoader implements ChunkLoader {
       inputStream.skip(pageHeader.getCompressedSize());
     }
     return pageLoaders;
-  }
-
-  private ModifiedStatus calculatePageModifiedStatus(PageHeader pageHeader) {
-    if (this.modifiedStatus != ModifiedStatus.PARTIAL_DELETED) {
-      return this.modifiedStatus;
-    }
-    ModifiedStatus pageModifiedStatus = ModifiedStatus.NONE_DELETED;
-    List<TimeRange> deleteIntervalList = chunkMetadata.getDeleteIntervalList();
-    long startTime = pageHeader.getStartTime();
-    long endTime = pageHeader.getEndTime();
-    TimeRange pageTimeRange = new TimeRange(startTime, endTime);
-    for (TimeRange timeRange : deleteIntervalList) {
-      if (timeRange.contains(pageTimeRange)) {
-        pageModifiedStatus = ModifiedStatus.ALL_DELETED;
-        break;
-      } else if (timeRange.overlaps(pageTimeRange)) {
-        pageModifiedStatus = ModifiedStatus.PARTIAL_DELETED;
-      }
-    }
-    return pageModifiedStatus;
   }
 
   @Override

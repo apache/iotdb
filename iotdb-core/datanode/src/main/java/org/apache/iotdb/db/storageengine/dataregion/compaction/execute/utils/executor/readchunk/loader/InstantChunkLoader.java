@@ -25,35 +25,26 @@ import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class InstantChunkLoader implements ChunkLoader {
+public class InstantChunkLoader extends ChunkLoader {
 
-  private ChunkMetadata chunkMetadata;
   private Chunk chunk;
-  private ModifiedStatus modifiedStatus;
 
   public InstantChunkLoader() {}
 
   public InstantChunkLoader(ChunkMetadata chunkMetadata, Chunk chunk) {
-    this.chunkMetadata = chunkMetadata;
+    super(chunkMetadata);
     this.chunk = chunk;
-    calculateModifiedStatus();
   }
 
   @Override
   public Chunk getChunk() {
     return chunk;
-  }
-
-  @Override
-  public ChunkMetadata getChunkMetadata() {
-    return chunkMetadata;
   }
 
   @Override
@@ -70,28 +61,6 @@ public class InstantChunkLoader implements ChunkLoader {
       return null;
     }
     return chunk.getHeader();
-  }
-
-  private void calculateModifiedStatus() {
-    if (modifiedStatus != null) {
-      return;
-    }
-    this.modifiedStatus = ModifiedStatus.NONE_DELETED;
-    List<TimeRange> deleteIntervalList = chunkMetadata.getDeleteIntervalList();
-    if (deleteIntervalList == null || deleteIntervalList.isEmpty()) {
-      return;
-    }
-    long startTime = chunkMetadata.getStartTime();
-    long endTime = chunkMetadata.getEndTime();
-    TimeRange chunkTimeRange = new TimeRange(startTime, endTime);
-    for (TimeRange timeRange : deleteIntervalList) {
-      if (timeRange.contains(chunkTimeRange)) {
-        this.modifiedStatus = ModifiedStatus.ALL_DELETED;
-        break;
-      } else if (timeRange.overlaps(chunkTimeRange)) {
-        this.modifiedStatus = ModifiedStatus.PARTIAL_DELETED;
-      }
-    }
   }
 
   @Override
@@ -130,26 +99,6 @@ public class InstantChunkLoader implements ChunkLoader {
               pageModifiedStatus));
     }
     return pageList;
-  }
-
-  private ModifiedStatus calculatePageModifiedStatus(PageHeader pageHeader) {
-    if (this.modifiedStatus != ModifiedStatus.PARTIAL_DELETED) {
-      return this.modifiedStatus;
-    }
-    ModifiedStatus pageModifiedStatus = ModifiedStatus.NONE_DELETED;
-    List<TimeRange> deleteIntervalList = chunkMetadata.getDeleteIntervalList();
-    long startTime = pageHeader.getStartTime();
-    long endTime = pageHeader.getEndTime();
-    TimeRange pageTimeRange = new TimeRange(startTime, endTime);
-    for (TimeRange timeRange : deleteIntervalList) {
-      if (timeRange.contains(pageTimeRange)) {
-        pageModifiedStatus = ModifiedStatus.ALL_DELETED;
-        break;
-      } else if (timeRange.overlaps(pageTimeRange)) {
-        pageModifiedStatus = ModifiedStatus.PARTIAL_DELETED;
-      }
-    }
-    return pageModifiedStatus;
   }
 
   @Override
