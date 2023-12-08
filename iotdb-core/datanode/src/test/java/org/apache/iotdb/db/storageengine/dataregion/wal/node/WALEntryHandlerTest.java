@@ -124,9 +124,12 @@ public class WALEntryHandlerTest {
     // pin memTable
     WALEntryHandler handler = flushListener.getWalEntryHandler();
     handler.pinMemTable();
-    walNode1.onMemTableFlushed(memTable);
     // roll wal file
     walNode1.rollWALFile();
+    InsertRowNode node2 = getInsertRowNode(devicePath, System.currentTimeMillis());
+    node2.setSearchIndex(2);
+    walNode1.log(memTable.getMemTableId(), node2);
+    walNode1.onMemTableFlushed(memTable);
     walNode1.rollWALFile();
     // find node1
     ConsensusReqReader.ReqIterator itr = walNode1.getReqIterator(1);

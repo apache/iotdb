@@ -88,7 +88,7 @@ public class CheckpointManager implements AutoCloseable {
     logHeader();
   }
 
-  public List<MemTableInfo> snapshotMemTableInfos() {
+  public List<MemTableInfo> activeOrPinnedMemTables() {
     infoLock.lock();
     try {
       return new ArrayList<>(memTableId2Info.values());
@@ -121,7 +121,7 @@ public class CheckpointManager implements AutoCloseable {
    */
   private void makeGlobalInfoCP() {
     long start = System.nanoTime();
-    List<MemTableInfo> memTableInfos = snapshotMemTableInfos();
+    List<MemTableInfo> memTableInfos = activeOrPinnedMemTables();
     memTableInfos.removeIf(MemTableInfo::isFlushed);
     Checkpoint checkpoint = new Checkpoint(CheckpointType.GLOBAL_MEMORY_TABLE_INFO, memTableInfos);
     logByCachedByteBuffer(checkpoint);
@@ -318,7 +318,7 @@ public class CheckpointManager implements AutoCloseable {
   /** Get MemTableInfo of oldest MemTable, whose first version id is smallest. */
   public MemTableInfo getOldestMemTableInfo() {
     // find oldest memTable
-    List<MemTableInfo> memTableInfos = snapshotMemTableInfos();
+    List<MemTableInfo> memTableInfos = activeOrPinnedMemTables();
     if (memTableInfos.isEmpty()) {
       return null;
     }
@@ -337,7 +337,7 @@ public class CheckpointManager implements AutoCloseable {
    * @return Return {@link Long#MIN_VALUE} if no file is valid
    */
   public long getFirstValidWALVersionId() {
-    List<MemTableInfo> memTableInfos = snapshotMemTableInfos();
+    List<MemTableInfo> memTableInfos = activeOrPinnedMemTables();
     long firstValidVersionId = memTableInfos.isEmpty() ? Long.MIN_VALUE : Long.MAX_VALUE;
     for (MemTableInfo memTableInfo : memTableInfos) {
       firstValidVersionId = Math.min(firstValidVersionId, memTableInfo.getFirstFileVersionId());
@@ -347,7 +347,7 @@ public class CheckpointManager implements AutoCloseable {
 
   /** Get total cost of active memTables. */
   public long getTotalCostOfActiveMemTables() {
-    List<MemTableInfo> memTableInfos = snapshotMemTableInfos();
+    List<MemTableInfo> memTableInfos = activeOrPinnedMemTables();
     long totalCost = 0;
     for (MemTableInfo memTableInfo : memTableInfos) {
       // flushed memTables are not active

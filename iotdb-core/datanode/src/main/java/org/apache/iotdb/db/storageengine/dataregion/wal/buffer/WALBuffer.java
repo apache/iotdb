@@ -33,6 +33,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointMan
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALNodeClosedException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.utils.MmapUtil;
@@ -45,9 +46,13 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
@@ -101,6 +106,9 @@ public class WALBuffer extends AbstractWALBuffer {
   private final ExecutorService serializeThread;
   // single thread to sync syncingBuffer to disk
   private final ExecutorService syncBufferThread;
+
+  // manage wal files which have MemTableIds
+  private final Map<Long, Set<Long>> memTableIdsOfWal = new ConcurrentHashMap<>();
 
   public WALBuffer(String identifier, String logDirectory) throws FileNotFoundException {
     this(identifier, logDirectory, new CheckpointManager(identifier, logDirectory), 0, 0L);
@@ -186,6 +194,8 @@ public class WALBuffer extends AbstractWALBuffer {
     final List<Checkpoint> checkpoints = new ArrayList<>();
     final List<WALFlushListener> fsyncListeners = new ArrayList<>();
     WALFlushListener rollWALFileWriterListener = null;
+
+    final Set<Long> memTableIds = new HashSet<>();
   }
 
   /** This task serializes WALEntry to workingBuffer and will call fsync at last. */
@@ -309,6 +319,7 @@ public class WALBuffer extends AbstractWALBuffer {
       info.metaData.add(size, searchIndex);
       walEntry.getWalFlushListener().getWalEntryHandler().setSize(size);
       info.fsyncListeners.add(walEntry.getWalFlushListener());
+      info.memTableIds.add(walEntry.getMemTableId());
     }
 
     /**
@@ -510,6 +521,11 @@ public class WALBuffer extends AbstractWALBuffer {
       } finally {
         switchSyncingBufferToIdle();
       }
+      long walFileVersion =
+          WALFileUtils.parseVersionId(currentWALFileWriter.getLogFile().getName());
+      memTableIdsOfWal
+          .computeIfAbsent(walFileVersion, memTableIds -> new HashSet<>())
+          .addAll(info.memTableIds);
 
       boolean forceSuccess = false;
       // try to roll log writer
@@ -683,5 +699,13 @@ public class WALBuffer extends AbstractWALBuffer {
 
   public CheckpointManager getCheckpointManager() {
     return checkpointManager;
+  }
+
+  public Map<Long, Set<Long>> getMemTableIdsOfWal() {
+    return memTableIdsOfWal;
+  }
+
+  public void removeMemTableIdsOfWal(Long walVersionId) {
+    this.memTableIdsOfWal.remove(walVersionId);
   }
 }
