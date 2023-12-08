@@ -224,7 +224,7 @@ public class PipeHeartbeatParser {
               runtimeMeta.setIsStoppedByRuntimeException(true);
 
               needWriteConsensusOnConfigNodes.set(true);
-              needPushPipeMetaToDataNodes.set(true);
+              needPushPipeMetaToDataNodes.set(false);
 
               LOGGER.warn(
                   "Detect PipeRuntimeCriticalException {} from DataNode, stop pipe {}.",
@@ -253,7 +253,7 @@ public class PipeHeartbeatParser {
                             runtimeMeta.setIsStoppedByRuntimeException(true);
 
                             needWriteConsensusOnConfigNodes.set(true);
-                            needPushPipeMetaToDataNodes.set(true);
+                            needPushPipeMetaToDataNodes.set(false);
 
                             LOGGER.warn(
                                 String.format(
