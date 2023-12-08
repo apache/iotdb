@@ -119,10 +119,6 @@ public class AlignedPageReader implements IPageReader {
     return pageData.flip();
   }
 
-  private boolean pageCanSkip() {
-    return globalTimeFilter != null && globalTimeFilter.canSkip(this);
-  }
-
   @Override
   public boolean timeAllSelected() {
     for (int index = 0; index < getMeasurementCount(); index++) {
@@ -163,10 +159,6 @@ public class AlignedPageReader implements IPageReader {
 
   @Override
   public TsBlock getAllSatisfiedData() throws IOException {
-    if (pageCanSkip()) {
-      return builder.build();
-    }
-
     long[] timeBatch = timePageReader.getNextTimeBatch();
 
     if (canGoFastWay()) {
@@ -352,12 +344,20 @@ public class AlignedPageReader implements IPageReader {
     for (int i = 0, size = unFilteredBlock.getPositionCount(); i < size; i++) {
       long time = unFilteredBlock.getTimeByIndex(i);
       for (int j = 0; j < valueCount; j++) {
-        values[j] = unFilteredBlock.getValueColumns()[j].getObject(i);
+        if (unFilteredBlock.getValueColumns()[j].isNull(i)) {
+          values[j] = null;
+        } else {
+          values[j] = unFilteredBlock.getValueColumns()[j].getObject(i);
+        }
       }
       if (pushDownFilter.satisfy(time, values)) {
         builder.getTimeColumnBuilder().writeLong(time);
         for (int j = 0; j < valueCount; j++) {
-          builder.getColumnBuilder(j).writeObject(values[j]);
+          if (values[j] == null) {
+            builder.getColumnBuilder(j).appendNull();
+          } else {
+            builder.getColumnBuilder(j).writeObject(values[j]);
+          }
         }
         builder.declarePosition();
       }

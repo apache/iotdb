@@ -237,8 +237,7 @@ public class SeriesScanUtil {
       return false;
     }
     return filterAllSatisfy(scanOptions.getGlobalTimeFilter(), firstTimeSeriesMetadata)
-        && filterAllSatisfy(scanOptions.getPushDownFilter(), firstTimeSeriesMetadata)
-        && timeAllSelected(firstTimeSeriesMetadata);
+        && filterAllSatisfy(scanOptions.getPushDownFilter(), firstTimeSeriesMetadata);
   }
 
   @SuppressWarnings("squid:S3740")
@@ -394,8 +393,7 @@ public class SeriesScanUtil {
       return false;
     }
     return filterAllSatisfy(scanOptions.getGlobalTimeFilter(), firstChunkMetadata)
-        && filterAllSatisfy(scanOptions.getPushDownFilter(), firstChunkMetadata)
-        && timeAllSelected(firstChunkMetadata);
+        && filterAllSatisfy(scanOptions.getPushDownFilter(), firstChunkMetadata);
   }
 
   @SuppressWarnings("squid:S3740")
@@ -618,8 +616,7 @@ public class SeriesScanUtil {
       return false;
     }
     return filterAllSatisfy(scanOptions.getGlobalTimeFilter(), firstPageReader.data)
-        && filterAllSatisfy(scanOptions.getPushDownFilter(), firstPageReader.data)
-        && timeAllSelected(firstPageReader.data);
+        && filterAllSatisfy(scanOptions.getPushDownFilter(), firstPageReader.data);
   }
 
   @SuppressWarnings("squid:S3740")
