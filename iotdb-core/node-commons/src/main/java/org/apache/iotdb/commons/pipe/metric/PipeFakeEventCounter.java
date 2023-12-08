@@ -21,7 +21,8 @@ package org.apache.iotdb.commons.pipe.metric;
 
 import org.apache.iotdb.pipe.api.event.Event;
 
-public class PipeSchemaEventFakeCounter extends PipeEventCounter {
+public class PipeFakeEventCounter extends PipeEventCounter {
+
   @Override
   public void increaseEventCount(Event event) {}
 

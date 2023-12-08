@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.plugin.builtin.extractor.schema;
 
-import org.apache.iotdb.commons.pipe.metric.PipeSchemaEventFakeCounter;
+import org.apache.iotdb.commons.pipe.metric.PipeFakeEventCounter;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
@@ -52,7 +52,7 @@ public class IoTDBSchemaExtractor implements PipeExtractor {
 
   private final AtomicBoolean hasBeenStarted;
   protected final UnboundedBlockingPendingQueue<Event> pendingQueue =
-      new UnboundedBlockingPendingQueue<>(new PipeSchemaEventFakeCounter());
+      new UnboundedBlockingPendingQueue<>(new PipeFakeEventCounter());
 
   private boolean enableSchemaSync = false;
   private boolean enableTtlSync = false;
