@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock.TsBlockSingleColumnIter
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.DoubleColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.FloatColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
@@ -37,6 +38,7 @@ import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Optional;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -374,6 +376,81 @@ public class TsBlockTest {
     } catch (IllegalArgumentException e) {
       Assert.assertTrue(
           e.getMessage().contains("FromIndex of subTsBlock cannot over positionCount."));
+    }
+  }
+
+  private TsBlock getOriginalTsBlock() {
+    TsBlockBuilder tsBlockBuilder =
+        new TsBlockBuilder(Arrays.asList(TSDataType.INT64, TSDataType.DOUBLE));
+    for (int i = 0; i < 19; i++) {
+      tsBlockBuilder.getTimeColumnBuilder().writeLong(i);
+      tsBlockBuilder.getColumnBuilder(0).writeLong(i);
+      tsBlockBuilder.getColumnBuilder(1).writeDouble(i * 0.1);
+      tsBlockBuilder.declarePosition();
+    }
+    return tsBlockBuilder.build();
+  }
+
+  @Test
+  public void ColumnInsertTest() {
+    TsBlock tsBlock = getOriginalTsBlock();
+    int[] targetValue = new int[19];
+    for (int i = 0; i < 19; i++) {
+      targetValue[i] = i;
+    }
+
+    Column targetColumn = new IntColumn(19, Optional.empty(), targetValue);
+    tsBlock = tsBlock.insertValueColumn(1, new Column[] {targetColumn});
+    for (int i = 0; i < 19; i++) {
+      assertEquals(i, tsBlock.getColumn(0).getLong(i));
+      assertEquals(i, tsBlock.getColumn(1).getInt(i));
+      assertEquals(i * 0.1, tsBlock.getColumn(2).getDouble(i), DELTA);
+    }
+  }
+
+  @Test
+  public void MultiColumnInsertTest() {
+    TsBlock tsBlock = getOriginalTsBlock();
+    int[] targetValue1 = new int[19];
+    double[] targetValue2 = new double[19];
+    for (int i = 0; i < 19; i++) {
+      targetValue1[i] = i;
+      targetValue2[i] = i * 0.2;
+    }
+    Column[] targetColumn =
+        new Column[] {
+          new IntColumn(19, Optional.empty(), targetValue1),
+          new DoubleColumn(19, Optional.empty(), targetValue2)
+        };
+    tsBlock = tsBlock.insertValueColumn(1, targetColumn);
+    for (int i = 0; i < 19; i++) {
+      assertEquals(i, tsBlock.getColumn(0).getLong(i));
+      assertEquals(i, tsBlock.getColumn(1).getInt(i));
+      assertEquals(i * 0.2, tsBlock.getColumn(2).getDouble(i), DELTA);
+      assertEquals(i * 0.1, tsBlock.getColumn(3).getDouble(i), DELTA);
+    }
+  }
+
+  @Test
+  public void ColumnAppendTest() {
+    TsBlock tsBlock = getOriginalTsBlock();
+    int[] targetValue = new int[19];
+    long[] targetValue2 = new long[19];
+    for (int i = 0; i < 19; i++) {
+      targetValue[i] = i * 2;
+      targetValue2[i] = i * 3;
+    }
+    Column[] targetColumn =
+        new Column[] {
+          new IntColumn(19, Optional.empty(), targetValue),
+          new LongColumn(19, Optional.empty(), targetValue2)
+        };
+    tsBlock = tsBlock.appendValueColumns(targetColumn);
+    for (int i = 0; i < 19; i++) {
+      assertEquals(i, tsBlock.getColumn(0).getLong(i));
+      assertEquals(i * 0.1, tsBlock.getColumn(1).getDouble(i), DELTA);
+      assertEquals(i * 2, tsBlock.getColumn(2).getInt(i));
+      assertEquals(i * 3, tsBlock.getColumn(3).getLong(i));
     }
   }
 }

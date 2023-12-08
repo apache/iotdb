@@ -54,6 +54,8 @@ public class AggregationUtil {
   private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
+  private static final int INVALID_END_TIME = -1;
+
   private AggregationUtil() {
     // Forbidding instantiation
   }
@@ -147,12 +149,19 @@ public class AggregationUtil {
 
   /** Append a row of aggregation results to the result tsBlock. */
   public static void appendAggregationResult(
-      TsBlockBuilder tsBlockBuilder, List<? extends Aggregator> aggregators, long outputTime) {
+      TsBlockBuilder tsBlockBuilder,
+      List<? extends Aggregator> aggregators,
+      long outputTime,
+      long endTime) {
     TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
     // Use start time of current time range as time column
     timeColumnBuilder.writeLong(outputTime);
     ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
     int columnIndex = 0;
+    if (endTime != INVALID_END_TIME) {
+      columnBuilders[columnIndex].writeLong(endTime);
+      columnIndex++;
+    }
     for (Aggregator aggregator : aggregators) {
       ColumnBuilder[] columnBuilder = new ColumnBuilder[aggregator.getOutputType().length];
       columnBuilder[0] = columnBuilders[columnIndex++];
@@ -162,6 +171,11 @@ public class AggregationUtil {
       aggregator.outputResult(columnBuilder);
     }
     tsBlockBuilder.declarePosition();
+  }
+
+  public static void appendAggregationResult(
+      TsBlockBuilder tsBlockBuilder, List<? extends Aggregator> aggregators, long outputTime) {
+    appendAggregationResult(tsBlockBuilder, aggregators, outputTime, INVALID_END_TIME);
   }
 
   /** return whether the tsBlock contains the data of the current time window. */

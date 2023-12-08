@@ -122,13 +122,14 @@ public class PipeMetaSyncer {
     if (metaSyncStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       boolean successfulSync = !somePipesNeedRestarting;
 
-      if (somePipesNeedRestarting) {
-        final boolean isRestartSuccessful = handleSuccessfulRestartWithLock();
+      if (somePipesNeedRestarting && handleSuccessfulRestartWithLock()) {
         final TSStatus handleMetaChangeStatus =
             procedureManager.pipeHandleMetaChangeWithBlock(true, false);
-        if (isRestartSuccessful
-            && handleMetaChangeStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (handleMetaChangeStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           successfulSync = true;
+        } else {
+          LOGGER.warn(
+              "Failed to handle pipe meta change. Result status: {}.", handleMetaChangeStatus);
         }
       }
 
@@ -139,12 +140,6 @@ public class PipeMetaSyncer {
       }
     } else {
       LOGGER.warn("Failed to sync pipe meta. Result status: {}.", metaSyncStatus);
-      final TSStatus handleMetaChangeStatus =
-          procedureManager.pipeHandleMetaChangeWithBlock(true, true);
-      if (handleMetaChangeStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn(
-            "Failed to handle pipe meta change. Result status: {}.", handleMetaChangeStatus);
-      }
     }
   }
 
