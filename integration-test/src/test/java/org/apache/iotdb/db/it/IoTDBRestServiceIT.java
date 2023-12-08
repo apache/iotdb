@@ -229,7 +229,6 @@ public class IoTDBRestServiceIT {
   }
 
   public void rightInsertTablet(CloseableHttpClient httpClient, String json, HttpPost httpPost) {
-    System.out.println(4444);
     CloseableHttpResponse response = null;
     try {
       httpPost.setEntity(new StringEntity(json, Charset.defaultCharset()));
@@ -281,7 +280,11 @@ public class IoTDBRestServiceIT {
   }
 
   public void errorInsertTablet(String json, HttpPost httpPost) {
-
+    try {
+      Thread.sleep(1000 * 30);
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
+    }
     CloseableHttpResponse response = null;
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
     try {
@@ -411,7 +414,6 @@ public class IoTDBRestServiceIT {
 
     List<String> nonQuery_right_json_list_v2 = new ArrayList<>();
     List<String> nonQuery_error_json_list_v2 = new ArrayList<>();
-    System.out.println("1111111111");
     for (int i = 0; i <= 1; i++) {
       boolean isAligned = false;
       if (i == 0) {
@@ -607,7 +609,6 @@ public class IoTDBRestServiceIT {
           "{\"sql\":\"insert into root.time.`aa`(time,`bb`) values(111,1)\"}");
       nonQuery_error_json_list_v2.add("{\"sql\":\"insert into root.aa(time,root) values(111,1)\"}");
     }
-    System.out.println("123123123");
     HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/insertTablet");
     HttpPost httpPost1 = getHttpPost_1("http://127.0.0.1:" + port + "/rest/v1/insertTablet");
 
@@ -618,7 +619,6 @@ public class IoTDBRestServiceIT {
       for (String json : insertTablet_right_json_list) {
         rightInsertTablet(httpClient, json, hp);
       }
-      System.out.println("12333333123123");
       for (String json : insertTablet_error_json_list) {
         errorInsertTablet(json, hp);
       }
@@ -665,7 +665,6 @@ public class IoTDBRestServiceIT {
     List<HttpPost> httpPosts1V2 = new ArrayList<>();
     httpPosts1V2.add(httpPost3V2);
     httpPosts1V2.add(httpPost4V2);
-    System.out.println("666666");
     for (HttpPost hp : httpPosts1V2) {
       for (String json : nonQuery_right_json_list_v2) {
         nonQuery(httpClient, json, hp);
@@ -680,12 +679,10 @@ public class IoTDBRestServiceIT {
     List<HttpPost> httpPosts2V2 = new ArrayList<>();
     httpPosts2V2.add(httpPost5V2);
     httpPosts2V2.add(httpPost6V2);
-    System.out.println("22222222");
     for (HttpPost hp : httpPosts2V2) {
       for (String json : insertRecords_right_json_list_v2) {
         rightInsertRecords(httpClient, json, hp);
       }
-      System.out.println("44444");
       for (String json : insertRecords_error_json_list_v2) {
         errorInsertRecords(httpClient, json, hp);
       }
