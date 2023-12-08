@@ -34,15 +34,10 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 
-public class InstantPageLoader implements PageLoader {
+public class InstantPageLoader extends PageLoader {
 
-  private PageHeader pageHeader;
   private ByteBuffer pageData;
-  private CompressionType compressionType;
-  private TSDataType dataType;
-  private TSEncoding encoding;
   private List<TimeRange> deleteIntervalList;
-  private ModifiedStatus modifiedStatus;
 
   public InstantPageLoader() {}
 
@@ -54,33 +49,8 @@ public class InstantPageLoader implements PageLoader {
       TSEncoding encoding,
       List<TimeRange> deleteIntervalList,
       ModifiedStatus modifiedStatus) {
-    this.pageHeader = pageHeader;
+    super(pageHeader, compressionType, dataType, encoding, deleteIntervalList, modifiedStatus);
     this.pageData = pageData;
-    this.compressionType = compressionType;
-    this.dataType = dataType;
-    this.encoding = encoding;
-    this.deleteIntervalList = deleteIntervalList;
-    this.modifiedStatus = modifiedStatus;
-  }
-
-  @Override
-  public PageHeader getHeader() {
-    return pageHeader;
-  }
-
-  @Override
-  public TSDataType getDataType() {
-    return dataType;
-  }
-
-  @Override
-  public CompressionType getCompressionType() {
-    return compressionType;
-  }
-
-  @Override
-  public TSEncoding getEncoding() {
-    return encoding;
   }
 
   @Override
@@ -95,11 +65,6 @@ public class InstantPageLoader implements PageLoader {
     unCompressor.uncompress(
         pageData.array(), 0, pageHeader.getCompressedSize(), unCompressedData, 0);
     return ByteBuffer.wrap(unCompressedData);
-  }
-
-  @Override
-  public ModifiedStatus getModifiedStatus() {
-    return this.modifiedStatus;
   }
 
   @Override

@@ -32,29 +32,68 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-public interface PageLoader {
-  PageHeader getHeader();
+public abstract class PageLoader {
 
-  TSDataType getDataType();
+  protected PageHeader pageHeader;
+  protected CompressionType compressionType;
+  protected TSDataType dataType;
+  protected TSEncoding encoding;
+  protected List<TimeRange> deleteIntervalList;
+  protected ModifiedStatus modifiedStatus;
 
-  CompressionType getCompressionType();
+  protected PageLoader() {}
 
-  TSEncoding getEncoding();
+  protected PageLoader(
+      PageHeader pageHeader,
+      CompressionType compressionType,
+      TSDataType dataType,
+      TSEncoding encoding,
+      List<TimeRange> deleteIntervalList,
+      ModifiedStatus modifiedStatus) {
+    this.pageHeader = pageHeader;
+    this.compressionType = compressionType;
+    this.dataType = dataType;
+    this.encoding = encoding;
+    this.deleteIntervalList = deleteIntervalList;
+    this.modifiedStatus = modifiedStatus;
+  }
 
-  ByteBuffer getCompressedData() throws IOException;
+  public PageHeader getPageHeader() {
+    return pageHeader;
+  }
 
-  ByteBuffer getUnCompressedData() throws IOException;
+  public TSDataType getDataType() {
+    return dataType;
+  }
 
-  ModifiedStatus getModifiedStatus();
+  public CompressionType getCompressionType() {
+    return compressionType;
+  }
 
-  List<TimeRange> getDeleteIntervalList();
+  public TSEncoding getEncoding() {
+    return encoding;
+  }
 
-  void flushToTimeChunkWriter(AlignedChunkWriterImpl alignedChunkWriter) throws PageException;
+  public abstract ByteBuffer getCompressedData() throws IOException;
 
-  void flushToValueChunkWriter(AlignedChunkWriterImpl alignedChunkWriter, int valueColumnIndex)
+  public abstract ByteBuffer getUnCompressedData() throws IOException;
+
+  public ModifiedStatus getModifiedStatus() {
+    return modifiedStatus;
+  }
+
+  public List<TimeRange> getDeleteIntervalList() {
+    return deleteIntervalList;
+  }
+
+  public abstract void flushToTimeChunkWriter(AlignedChunkWriterImpl alignedChunkWriter)
+      throws PageException;
+
+  public abstract void flushToValueChunkWriter(
+      AlignedChunkWriterImpl alignedChunkWriter, int valueColumnIndex)
       throws IOException, PageException;
 
-  boolean isEmpty();
+  public abstract boolean isEmpty();
 
-  void clear();
+  public abstract void clear();
 }

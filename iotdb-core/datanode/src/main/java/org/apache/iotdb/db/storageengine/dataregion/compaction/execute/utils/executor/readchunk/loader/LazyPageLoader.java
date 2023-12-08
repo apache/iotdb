@@ -35,17 +35,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-public class LazyPageLoader implements PageLoader {
+public class LazyPageLoader extends PageLoader {
 
   private CompactionTsFileReader reader;
-  private PageHeader pageHeader;
   private long startOffset;
   private ByteBuffer pageData;
-  private CompressionType compressionType;
-  private TSDataType dataType;
-  private TSEncoding encoding;
-  private List<TimeRange> deleteIntervalList;
-  private ModifiedStatus modifiedStatus;
 
   public LazyPageLoader() {}
 
@@ -58,34 +52,9 @@ public class LazyPageLoader implements PageLoader {
       TSEncoding encoding,
       List<TimeRange> deleteIntervalList,
       ModifiedStatus modifiedStatus) {
+    super(pageHeader, compressionType, dataType, encoding, deleteIntervalList, modifiedStatus);
     this.reader = reader;
-    this.pageHeader = pageHeader;
     this.startOffset = startOffset;
-    this.compressionType = compressionType;
-    this.dataType = dataType;
-    this.encoding = encoding;
-    this.deleteIntervalList = deleteIntervalList;
-    this.modifiedStatus = modifiedStatus;
-  }
-
-  @Override
-  public PageHeader getHeader() {
-    return pageHeader;
-  }
-
-  @Override
-  public TSDataType getDataType() {
-    return dataType;
-  }
-
-  @Override
-  public CompressionType getCompressionType() {
-    return compressionType;
-  }
-
-  @Override
-  public TSEncoding getEncoding() {
-    return encoding;
   }
 
   @Override
@@ -105,16 +74,6 @@ public class LazyPageLoader implements PageLoader {
     unCompressor.uncompress(
         pageData.array(), 0, pageHeader.getCompressedSize(), unCompressedData, 0);
     return ByteBuffer.wrap(unCompressedData);
-  }
-
-  @Override
-  public ModifiedStatus getModifiedStatus() {
-    return modifiedStatus;
-  }
-
-  @Override
-  public List<TimeRange> getDeleteIntervalList() {
-    return deleteIntervalList;
   }
 
   @Override
@@ -139,11 +98,15 @@ public class LazyPageLoader implements PageLoader {
 
   @Override
   public boolean isEmpty() {
-    return pageHeader == null || pageHeader.getStatistics().getCount() == 0;
+    return pageHeader == null
+        || pageHeader.getUncompressedSize() == 0
+        || pageHeader.getStatistics().getCount() == 0;
   }
 
   @Override
   public void clear() {
+    this.deleteIntervalList = null;
+    this.pageHeader = null;
     this.pageData = null;
   }
 }
