@@ -45,7 +45,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.Int
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.MeasurementGroup;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteSchemaNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWriteSchemaNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
@@ -550,16 +549,16 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   @Override
   public PlanNode visitPipeEnrichedStatement(
       PipeEnrichedStatement pipeEnrichedStatement, MPPQueryContext context) {
-    PlanNode node = pipeEnrichedStatement.getInnerStatement().accept(this, context);
+    WritePlanNode node =
+        (WritePlanNode) pipeEnrichedStatement.getInnerStatement().accept(this, context);
 
     if (node instanceof InsertNode) {
       return new PipeEnrichedInsertNode((InsertNode) node);
     } else if (node instanceof DeleteDataNode) {
       return new PipeEnrichedDeleteDataNode((DeleteDataNode) node);
-    } else if (node instanceof WritePlanNode) {
-      return new PipeEnrichedWriteSchemaNode((WritePlanNode) node);
     }
-    return new PipeEnrichedDeleteSchemaNode(node);
+
+    return new PipeEnrichedWriteSchemaNode(node);
   }
 
   @Override

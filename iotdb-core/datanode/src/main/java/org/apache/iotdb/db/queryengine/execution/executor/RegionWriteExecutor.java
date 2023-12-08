@@ -54,6 +54,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.Mea
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWriteSchemaNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -105,6 +106,10 @@ public class RegionWriteExecutor {
 
   private final TriggerFireVisitor triggerFireVisitor;
 
+  private final WritePlanNodeExecutionVisitor executionVisitor;
+
+  private final PipeEnrichedWriteSchemaNodeExecutionVisitor pipeExecutionVisitor;
+
   public RegionWriteExecutor() {
     dataRegionConsensus = DataRegionConsensusImpl.getInstance();
     schemaRegionConsensus = SchemaRegionConsensusImpl.getInstance();
@@ -112,6 +117,8 @@ public class RegionWriteExecutor {
     schemaEngine = SchemaEngine.getInstance();
     clusterTemplateManager = ClusterTemplateManager.getInstance();
     triggerFireVisitor = new TriggerFireVisitor();
+    executionVisitor = new WritePlanNodeExecutionVisitor();
+    pipeExecutionVisitor = new PipeEnrichedWriteSchemaNodeExecutionVisitor(executionVisitor);
   }
 
   @TestOnly
@@ -128,6 +135,8 @@ public class RegionWriteExecutor {
     this.schemaEngine = schemaEngine;
     this.clusterTemplateManager = clusterTemplateManager;
     this.triggerFireVisitor = triggerFireVisitor;
+    executionVisitor = new WritePlanNodeExecutionVisitor();
+    pipeExecutionVisitor = new PipeEnrichedWriteSchemaNodeExecutionVisitor(executionVisitor);
   }
 
   @SuppressWarnings("squid:S1181")
@@ -135,7 +144,6 @@ public class RegionWriteExecutor {
     try {
       WritePlanNodeExecutionContext context =
           new WritePlanNodeExecutionContext(groupId, regionManager.getRegionLock(groupId));
-      WritePlanNodeExecutionVisitor executionVisitor = new WritePlanNodeExecutionVisitor();
       return planNode.accept(executionVisitor, context);
     } catch (Throwable e) {
       LOGGER.error(e.getMessage(), e);
@@ -309,6 +317,13 @@ public class RegionWriteExecutor {
     @Override
     public RegionExecutionResult visitCreateTimeSeries(
         CreateTimeSeriesNode node, WritePlanNodeExecutionContext context) {
+      return executeCreateTimeSeries(node, context, false);
+    }
+
+    private RegionExecutionResult executeCreateTimeSeries(
+        CreateTimeSeriesNode node,
+        WritePlanNodeExecutionContext context,
+        boolean receivedFromPipe) {
       ISchemaRegion schemaRegion =
           schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
       RegionExecutionResult result =
@@ -325,7 +340,9 @@ public class RegionWriteExecutor {
                   Collections.singletonList(node.getPath().getMeasurement()),
                   Collections.singletonList(node.getAlias()));
           if (failingMeasurementMap.isEmpty()) {
-            return super.visitCreateTimeSeries(node, context);
+            return receivedFromPipe
+                ? super.visitPipeEnrichedWriteSchema(new PipeEnrichedWriteSchemaNode(node), context)
+                : super.visitCreateTimeSeries(node, context);
           } else {
             MetadataException metadataException = failingMeasurementMap.get(0);
             LOGGER.error(METADATA_ERROR_MSG, metadataException);
@@ -341,13 +358,22 @@ public class RegionWriteExecutor {
           context.getRegionWriteValidationRWLock().writeLock().unlock();
         }
       } else {
-        return super.visitCreateTimeSeries(node, context);
+        return receivedFromPipe
+            ? super.visitPipeEnrichedWriteSchema(new PipeEnrichedWriteSchemaNode(node), context)
+            : super.visitCreateTimeSeries(node, context);
       }
     }
 
     @Override
     public RegionExecutionResult visitCreateAlignedTimeSeries(
         CreateAlignedTimeSeriesNode node, WritePlanNodeExecutionContext context) {
+      return executeCreateAlignedTimeSeries(node, context, false);
+    }
+
+    private RegionExecutionResult executeCreateAlignedTimeSeries(
+        CreateAlignedTimeSeriesNode node,
+        WritePlanNodeExecutionContext context,
+        boolean receivedFromPipe) {
       ISchemaRegion schemaRegion =
           schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
       RegionExecutionResult result =
@@ -363,7 +389,9 @@ public class RegionWriteExecutor {
               schemaRegion.checkMeasurementExistence(
                   node.getDevicePath(), node.getMeasurements(), node.getAliasList());
           if (failingMeasurementMap.isEmpty()) {
-            return super.visitCreateAlignedTimeSeries(node, context);
+            return receivedFromPipe
+                ? super.visitPipeEnrichedWriteSchema(new PipeEnrichedWriteSchemaNode(node), context)
+                : super.visitCreateAlignedTimeSeries(node, context);
           } else {
             MetadataException metadataException = failingMeasurementMap.values().iterator().next();
             LOGGER.error(METADATA_ERROR_MSG, metadataException);
@@ -379,13 +407,22 @@ public class RegionWriteExecutor {
           context.getRegionWriteValidationRWLock().writeLock().unlock();
         }
       } else {
-        return super.visitCreateAlignedTimeSeries(node, context);
+        return receivedFromPipe
+            ? super.visitPipeEnrichedWriteSchema(new PipeEnrichedWriteSchemaNode(node), context)
+            : super.visitCreateAlignedTimeSeries(node, context);
       }
     }
 
     @Override
     public RegionExecutionResult visitCreateMultiTimeSeries(
         CreateMultiTimeSeriesNode node, WritePlanNodeExecutionContext context) {
+      return executeCreateMultiTimeSeries(node, context, false);
+    }
+
+    private RegionExecutionResult executeCreateMultiTimeSeries(
+        CreateMultiTimeSeriesNode node,
+        WritePlanNodeExecutionContext context,
+        boolean receivedFromPipe) {
       ISchemaRegion schemaRegion =
           schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
       RegionExecutionResult result;
@@ -413,7 +450,8 @@ public class RegionWriteExecutor {
           }
 
           RegionExecutionResult failingResult =
-              registerTimeSeries(measurementGroupMap, node, context, failingStatus);
+              registerTimeSeries(
+                  measurementGroupMap, node, context, failingStatus, receivedFromPipe);
 
           if (failingResult != null) {
             return failingResult;
@@ -429,7 +467,9 @@ public class RegionWriteExecutor {
           context.getRegionWriteValidationRWLock().writeLock().unlock();
         }
       } else {
-        return super.visitCreateMultiTimeSeries(node, context);
+        return receivedFromPipe
+            ? super.visitPipeEnrichedWriteSchema(new PipeEnrichedWriteSchemaNode(node), context)
+            : super.visitCreateMultiTimeSeries(node, context);
       }
     }
 
@@ -468,10 +508,14 @@ public class RegionWriteExecutor {
         Map<PartialPath, MeasurementGroup> measurementGroupMap,
         CreateMultiTimeSeriesNode node,
         WritePlanNodeExecutionContext context,
-        List<TSStatus> failingStatus) {
+        List<TSStatus> failingStatus,
+        boolean receivedFromPipe) {
       if (!measurementGroupMap.isEmpty()) {
         // try registering the rest timeseries
-        RegionExecutionResult executionResult = super.visitCreateMultiTimeSeries(node, context);
+        RegionExecutionResult executionResult =
+            receivedFromPipe
+                ? super.visitPipeEnrichedWriteSchema(new PipeEnrichedWriteSchemaNode(node), context)
+                : super.visitCreateMultiTimeSeries(node, context);
         if (failingStatus.isEmpty()) {
           return executionResult;
         }
@@ -489,6 +533,13 @@ public class RegionWriteExecutor {
     @Override
     public RegionExecutionResult visitInternalCreateTimeSeries(
         InternalCreateTimeSeriesNode node, WritePlanNodeExecutionContext context) {
+      return executeInternalCreateTimeSeries(node, context, false);
+    }
+
+    private RegionExecutionResult executeInternalCreateTimeSeries(
+        InternalCreateTimeSeriesNode node,
+        WritePlanNodeExecutionContext context,
+        boolean receivedFromPipe) {
       ISchemaRegion schemaRegion =
           schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
       RegionExecutionResult result =
@@ -532,20 +583,32 @@ public class RegionWriteExecutor {
           measurementGroup.removeMeasurements(failingMeasurementMap.keySet());
 
           return processExecutionResultOfInternalCreateSchema(
-              super.visitInternalCreateTimeSeries(node, context),
+              receivedFromPipe
+                  ? super.visitPipeEnrichedWriteSchema(
+                      new PipeEnrichedWriteSchemaNode(node), context)
+                  : super.visitInternalCreateTimeSeries(node, context),
               failingStatus,
               alreadyExistingStatus);
         } finally {
           context.getRegionWriteValidationRWLock().writeLock().unlock();
         }
       } else {
-        return super.visitInternalCreateTimeSeries(node, context);
+        return receivedFromPipe
+            ? super.visitPipeEnrichedWriteSchema(new PipeEnrichedWriteSchemaNode(node), context)
+            : super.visitInternalCreateTimeSeries(node, context);
       }
     }
 
     @Override
     public RegionExecutionResult visitInternalCreateMultiTimeSeries(
         InternalCreateMultiTimeSeriesNode node, WritePlanNodeExecutionContext context) {
+      return executeInternalCreateMultiTimeSeries(node, context, false);
+    }
+
+    private RegionExecutionResult executeInternalCreateMultiTimeSeries(
+        InternalCreateMultiTimeSeriesNode node,
+        WritePlanNodeExecutionContext context,
+        boolean receivedFromPipe) {
       ISchemaRegion schemaRegion =
           schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
       RegionExecutionResult result;
@@ -599,14 +662,19 @@ public class RegionWriteExecutor {
           }
 
           return processExecutionResultOfInternalCreateSchema(
-              super.visitInternalCreateMultiTimeSeries(node, context),
+              receivedFromPipe
+                  ? super.visitPipeEnrichedWriteSchema(
+                      new PipeEnrichedWriteSchemaNode(node), context)
+                  : super.visitInternalCreateMultiTimeSeries(node, context),
               failingStatus,
               alreadyExistingStatus);
         } finally {
           context.getRegionWriteValidationRWLock().writeLock().unlock();
         }
       } else {
-        return super.visitInternalCreateMultiTimeSeries(node, context);
+        return receivedFromPipe
+            ? super.visitPipeEnrichedWriteSchema(new PipeEnrichedWriteSchemaNode(node), context)
+            : super.visitInternalCreateMultiTimeSeries(node, context);
       }
     }
 
@@ -689,17 +757,22 @@ public class RegionWriteExecutor {
     @Override
     public RegionExecutionResult visitAlterTimeSeries(
         AlterTimeSeriesNode node, WritePlanNodeExecutionContext context) {
+      return executeAlterTimeSeries(node, context, false);
+    }
+
+    private RegionExecutionResult executeAlterTimeSeries(
+        AlterTimeSeriesNode node, WritePlanNodeExecutionContext context, boolean receivedFromPipe) {
       ISchemaRegion schemaRegion =
           schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
       try {
         MeasurementPath measurementPath = schemaRegion.fetchMeasurementPath(node.getPath());
-        if (node.isAlterView()) {
-          if (!measurementPath.getMeasurementSchema().isLogicalView()) {
-            throw new MetadataException(
-                String.format("%s is not view.", measurementPath.getFullPath()));
-          }
+        if (node.isAlterView() && !measurementPath.getMeasurementSchema().isLogicalView()) {
+          throw new MetadataException(
+              String.format("%s is not view.", measurementPath.getFullPath()));
         }
-        return super.visitAlterTimeSeries(node, context);
+        return receivedFromPipe
+            ? super.visitPipeEnrichedWriteSchema(new PipeEnrichedWriteSchemaNode(node), context)
+            : super.visitAlterTimeSeries(node, context);
       } catch (MetadataException e) {
         RegionExecutionResult result = new RegionExecutionResult();
         result.setAccepted(true);
@@ -712,6 +785,13 @@ public class RegionWriteExecutor {
     @Override
     public RegionExecutionResult visitActivateTemplate(
         ActivateTemplateNode node, WritePlanNodeExecutionContext context) {
+      return executeActivateTemplate(node, context, false);
+    }
+
+    private RegionExecutionResult executeActivateTemplate(
+        ActivateTemplateNode node,
+        WritePlanNodeExecutionContext context,
+        boolean receivedFromPipe) {
       // activate template operation shall be blocked by unset template check
       context.getRegionWriteValidationRWLock().readLock().lock();
       try {
@@ -735,7 +815,13 @@ public class RegionWriteExecutor {
         RegionExecutionResult result =
             checkQuotaBeforeCreatingTimeSeries(
                 schemaRegion, node.getActivatePath(), templateSetInfo.left.getMeasurementNumber());
-        return result == null ? super.visitActivateTemplate(node, context) : result;
+        if (result == null) {
+          return receivedFromPipe
+              ? super.visitPipeEnrichedWriteSchema(new PipeEnrichedWriteSchemaNode(node), context)
+              : super.visitActivateTemplate(node, context);
+        } else {
+          return result;
+        }
       } finally {
         context.getRegionWriteValidationRWLock().readLock().unlock();
       }
@@ -744,6 +830,13 @@ public class RegionWriteExecutor {
     @Override
     public RegionExecutionResult visitBatchActivateTemplate(
         BatchActivateTemplateNode node, WritePlanNodeExecutionContext context) {
+      return executeBatchActivateTemplate(node, context, false);
+    }
+
+    private RegionExecutionResult executeBatchActivateTemplate(
+        BatchActivateTemplateNode node,
+        WritePlanNodeExecutionContext context,
+        boolean receivedFromPipe) {
       // activate template operation shall be blocked by unset template check
       context.getRegionWriteValidationRWLock().readLock().lock();
       try {
@@ -773,7 +866,9 @@ public class RegionWriteExecutor {
           }
         }
 
-        return super.visitBatchActivateTemplate(node, context);
+        return receivedFromPipe
+            ? super.visitPipeEnrichedWriteSchema(new PipeEnrichedWriteSchemaNode(node), context)
+            : super.visitBatchActivateTemplate(node, context);
       } finally {
         context.getRegionWriteValidationRWLock().readLock().unlock();
       }
@@ -782,6 +877,13 @@ public class RegionWriteExecutor {
     @Override
     public RegionExecutionResult visitInternalBatchActivateTemplate(
         InternalBatchActivateTemplateNode node, WritePlanNodeExecutionContext context) {
+      return executeInternalBatchActivateTemplate(node, context, false);
+    }
+
+    private RegionExecutionResult executeInternalBatchActivateTemplate(
+        InternalBatchActivateTemplateNode node,
+        WritePlanNodeExecutionContext context,
+        boolean receivedFromPipe) {
       // activate template operation shall be blocked by unset template check
       context.getRegionWriteValidationRWLock().readLock().lock();
       try {
@@ -814,7 +916,9 @@ public class RegionWriteExecutor {
           }
         }
 
-        return super.visitInternalBatchActivateTemplate(node, context);
+        return receivedFromPipe
+            ? super.visitPipeEnrichedWriteSchema(new PipeEnrichedWriteSchemaNode(node), context)
+            : super.visitInternalBatchActivateTemplate(node, context);
       } finally {
         context.getRegionWriteValidationRWLock().readLock().unlock();
       }
@@ -823,12 +927,19 @@ public class RegionWriteExecutor {
     @Override
     public RegionExecutionResult visitCreateLogicalView(
         CreateLogicalViewNode node, WritePlanNodeExecutionContext context) {
+      return executeCreateLogicalView(node, context, false);
+    }
+
+    private RegionExecutionResult executeCreateLogicalView(
+        CreateLogicalViewNode node,
+        WritePlanNodeExecutionContext context,
+        boolean receivedFromPipe) {
       ISchemaRegion schemaRegion =
           schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
       if (CONFIG.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
         context.getRegionWriteValidationRWLock().writeLock().lock();
         try {
-          // step 1. make sure all target paths are NOT exist.
+          // step 1. make sure all target paths do NOT exist.
           List<PartialPath> targetPaths = node.getViewPathList();
           List<MetadataException> failingMetadataException = new ArrayList<>();
           for (PartialPath thisPath : targetPaths) {
@@ -838,12 +949,12 @@ public class RegionWriteExecutor {
                     thisPath.getDevicePath(),
                     Collections.singletonList(thisPath.getMeasurement()),
                     null);
-            // merge all exception into one map
+            // merge all exceptions into one map
             for (Map.Entry<Integer, MetadataException> entry : failingMeasurementMap.entrySet()) {
               failingMetadataException.add(entry.getValue());
             }
           }
-          // if there is some exception, handle each exception and return first of them.
+          // if there are some exceptions, handle each exception and return first of them.
           if (!failingMetadataException.isEmpty()) {
             MetadataException metadataException = failingMetadataException.get(0);
             LOGGER.error(METADATA_ERROR_MSG, metadataException);
@@ -855,15 +966,25 @@ public class RegionWriteExecutor {
                     metadataException.getErrorCode(), metadataException.getMessage()));
             return result;
           }
-          // step 2. make sure all source paths are existed.
-          return super.visitCreateLogicalView(node, context);
+          // step 2. make sure all source paths exist.
+          return receivedFromPipe
+              ? super.visitPipeEnrichedWriteSchema(new PipeEnrichedWriteSchemaNode(node), context)
+              : super.visitCreateLogicalView(node, context);
         } finally {
           context.getRegionWriteValidationRWLock().writeLock().unlock();
         }
       } else {
-        return super.visitCreateLogicalView(node, context);
+        return receivedFromPipe
+            ? super.visitPipeEnrichedWriteSchema(new PipeEnrichedWriteSchemaNode(node), context)
+            : super.visitCreateLogicalView(node, context);
       }
       // end of visitCreateLogicalView
+    }
+
+    @Override
+    public RegionExecutionResult visitPipeEnrichedWriteSchema(
+        PipeEnrichedWriteSchemaNode node, WritePlanNodeExecutionContext context) {
+      return node.getWriteSchemaNode().accept(pipeExecutionVisitor, context);
     }
   }
 
@@ -884,6 +1005,81 @@ public class RegionWriteExecutor {
 
     public ReentrantReadWriteLock getRegionWriteValidationRWLock() {
       return regionRWLock;
+    }
+  }
+
+  private class PipeEnrichedWriteSchemaNodeExecutionVisitor
+      extends PlanVisitor<RegionExecutionResult, WritePlanNodeExecutionContext> {
+
+    WritePlanNodeExecutionVisitor visitor;
+
+    private PipeEnrichedWriteSchemaNodeExecutionVisitor(WritePlanNodeExecutionVisitor visitor) {
+      this.visitor = visitor;
+    }
+
+    @Override
+    public RegionExecutionResult visitPlan(PlanNode node, WritePlanNodeExecutionContext context) {
+      return null;
+    }
+
+    @Override
+    public RegionExecutionResult visitCreateTimeSeries(
+        CreateTimeSeriesNode node, WritePlanNodeExecutionContext context) {
+      return visitor.executeCreateTimeSeries(node, context, true);
+    }
+
+    @Override
+    public RegionExecutionResult visitCreateAlignedTimeSeries(
+        CreateAlignedTimeSeriesNode node, WritePlanNodeExecutionContext context) {
+      return visitor.executeCreateAlignedTimeSeries(node, context, true);
+    }
+
+    @Override
+    public RegionExecutionResult visitCreateMultiTimeSeries(
+        CreateMultiTimeSeriesNode node, WritePlanNodeExecutionContext context) {
+      return visitor.executeCreateMultiTimeSeries(node, context, true);
+    }
+
+    @Override
+    public RegionExecutionResult visitInternalCreateTimeSeries(
+        InternalCreateTimeSeriesNode node, WritePlanNodeExecutionContext context) {
+      return visitor.executeInternalCreateTimeSeries(node, context, true);
+    }
+
+    @Override
+    public RegionExecutionResult visitInternalCreateMultiTimeSeries(
+        InternalCreateMultiTimeSeriesNode node, WritePlanNodeExecutionContext context) {
+      return visitor.executeInternalCreateMultiTimeSeries(node, context, true);
+    }
+
+    @Override
+    public RegionExecutionResult visitAlterTimeSeries(
+        AlterTimeSeriesNode node, WritePlanNodeExecutionContext context) {
+      return visitor.executeAlterTimeSeries(node, context, true);
+    }
+
+    @Override
+    public RegionExecutionResult visitActivateTemplate(
+        ActivateTemplateNode node, WritePlanNodeExecutionContext context) {
+      return visitor.executeActivateTemplate(node, context, true);
+    }
+
+    @Override
+    public RegionExecutionResult visitBatchActivateTemplate(
+        BatchActivateTemplateNode node, WritePlanNodeExecutionContext context) {
+      return visitor.executeBatchActivateTemplate(node, context, true);
+    }
+
+    @Override
+    public RegionExecutionResult visitInternalBatchActivateTemplate(
+        InternalBatchActivateTemplateNode node, WritePlanNodeExecutionContext context) {
+      return visitor.executeInternalBatchActivateTemplate(node, context, true);
+    }
+
+    @Override
+    public RegionExecutionResult visitCreateLogicalView(
+        CreateLogicalViewNode node, WritePlanNodeExecutionContext context) {
+      return visitor.executeCreateLogicalView(node, context, true);
     }
   }
 }
