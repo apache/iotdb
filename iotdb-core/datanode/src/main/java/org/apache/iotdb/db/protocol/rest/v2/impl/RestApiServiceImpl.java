@@ -211,18 +211,32 @@ public class RestApiServiceImpl extends RestApiService {
               partitionFetcher,
               schemaFetcher,
               config.getQueryTimeoutThreshold());
+      if (result.status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          || result.status.code == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        return Response.ok()
+            .entity(
+                new ExecutionStatus()
+                    .code(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+                    .message(TSStatusCode.SUCCESS_STATUS.name()))
+            .build();
+      } else if (result.status.message == null
+          && result.status.subStatus != null
+          && result.status.subStatus.size() > 0) {
+        return Response.ok()
+            .entity(
+                new ExecutionStatus()
+                    .code(result.status.getCode())
+                    .message(result.status.subStatus.get(0).message))
+            .build();
+      } else {
+        return Response.ok()
+            .entity(
+                new ExecutionStatus()
+                    .code(result.status.getCode())
+                    .message(result.status.getMessage()))
+            .build();
+      }
 
-      return Response.ok()
-          .entity(
-              (result.status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-                      || result.status.code == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode())
-                  ? new ExecutionStatus()
-                      .code(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-                      .message(TSStatusCode.SUCCESS_STATUS.name())
-                  : new ExecutionStatus()
-                      .code(result.status.getCode())
-                      .message(result.status.getMessage()))
-          .build();
     } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     } finally {
