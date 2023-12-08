@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.manager.pipe.connector.payload.request;
 import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.request.TransferConfigPlanReq;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
@@ -30,8 +31,11 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.Objects;
 
 public class PipeTransferConfigPlanReq extends TransferConfigPlanReq {
+
+  private transient ConfigPhysicalPlan plan;
 
   private PipeTransferConfigPlanReq() {
     // Empty constructor
@@ -39,18 +43,23 @@ public class PipeTransferConfigPlanReq extends TransferConfigPlanReq {
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeTransferConfigPlanReq toTPipeTransferReq(IConsensusRequest consensusRequest) {
+  public static PipeTransferConfigPlanReq toTPipeTransferReq(ConfigPhysicalPlan plan) {
     final PipeTransferConfigPlanReq req = new PipeTransferConfigPlanReq();
+
+    req.plan = plan;
 
     req.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
     req.type = PipeRequestType.TRANSFER_CONFIG_PLAN.getType();
-    req.body = consensusRequest.serializeToByteBuffer();
+    req.body = plan.serializeToByteBuffer();
 
     return req;
   }
 
-  public static PipeTransferConfigPlanReq fromTPipeTransferReq(TPipeTransferReq transferReq) {
+  public static PipeTransferConfigPlanReq fromTPipeTransferReq(TPipeTransferReq transferReq)
+      throws IOException {
     final PipeTransferConfigPlanReq configPlanReq = new PipeTransferConfigPlanReq();
+
+    configPlanReq.plan = ConfigPhysicalPlan.Factory.create(transferReq.body);
 
     configPlanReq.version = transferReq.version;
     configPlanReq.type = transferReq.type;
@@ -74,5 +83,23 @@ public class PipeTransferConfigPlanReq extends TransferConfigPlanReq {
 
   /////////////////////////////// Object ///////////////////////////////
 
-  // do not overwrite equals() and hashCode() methods for there is no extra member variable
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    PipeTransferConfigPlanReq that = (PipeTransferConfigPlanReq) obj;
+    return plan.equals(that.plan)
+        && version == that.version
+        && type == that.type
+        && body.equals(that.body);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(plan, version, type, body);
+  }
 }
