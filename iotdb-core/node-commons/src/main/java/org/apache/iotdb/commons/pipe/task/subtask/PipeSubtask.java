@@ -24,8 +24,6 @@ import org.apache.iotdb.pipe.api.event.Event;
 
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.ListeningExecutorService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -34,8 +32,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class PipeSubtask
     implements FutureCallback<Boolean>, Callable<Boolean>, AutoCloseable {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeSubtask.class);
 
   // Used for identifying the subtask
   protected final String taskID;

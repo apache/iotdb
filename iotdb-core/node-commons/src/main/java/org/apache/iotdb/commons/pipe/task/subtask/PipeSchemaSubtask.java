@@ -179,6 +179,7 @@ public class PipeSchemaSubtask extends PipeSubtask {
     }
   }
 
+  @Override
   protected synchronized void releaseLastEvent(boolean shouldReport) {
     if (lastEvent != null) {
       // TODO: should decrease reference count here

@@ -30,11 +30,11 @@ import org.slf4j.LoggerFactory;
 
 import javax.validation.constraints.NotNull;
 
-public abstract class PipeDataRegionSubtask extends PipeSubtask {
+public abstract class PipeDataNodeSubtask extends PipeSubtask {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataRegionSubtask.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataNodeSubtask.class);
 
-  protected PipeDataRegionSubtask(String taskID, long creationTime) {
+  protected PipeDataNodeSubtask(String taskID, long creationTime) {
     super(taskID, creationTime);
   }
 
@@ -121,6 +121,7 @@ public abstract class PipeDataRegionSubtask extends PipeSubtask {
     }
   }
 
+  @Override
   protected synchronized void releaseLastEvent(boolean shouldReport) {
     if (lastEvent != null) {
       if (lastEvent instanceof EnrichedEvent) {
