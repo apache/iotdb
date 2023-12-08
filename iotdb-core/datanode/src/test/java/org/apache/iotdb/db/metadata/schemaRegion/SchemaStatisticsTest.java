@@ -40,7 +40,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -56,7 +55,6 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
   }
 
   @Test
-  @Ignore
   public void testPBTreeMemoryStatistics() throws Exception {
     ISchemaRegion schemaRegion1 = getSchemaRegion("root.sg1", 0);
     ISchemaEngineStatistics engineStatistics =
@@ -77,7 +75,6 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
         || testParams.getTestModeName().equals("PBTree-NonMemory")) {
       IMNodeFactory<ICachedMNode> nodeFactory =
           MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
-      CacheMemoryManager.getInstance().forceFlushAndRelease();
       // wait release and flush task
       Thread.sleep(1000);
       // schemaRegion1

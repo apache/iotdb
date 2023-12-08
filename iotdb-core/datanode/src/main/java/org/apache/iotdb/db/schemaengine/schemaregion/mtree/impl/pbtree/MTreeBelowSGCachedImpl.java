@@ -1256,7 +1256,7 @@ public class MTreeBelowSGCachedImpl {
 
   // TODO: This interface should not be exposed to SchemaRegion
   public void updateMNode(ICachedMNode node, Consumer<ICachedMNode> operation) {
-    store.updateMNode(node, o -> operation.accept(node));
+    store.updateMNode(node, operation);
   }
 
   // endregion
