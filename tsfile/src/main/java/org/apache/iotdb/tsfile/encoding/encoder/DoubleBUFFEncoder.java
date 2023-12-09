@@ -43,15 +43,15 @@ public class DoubleBUFFEncoder extends Encoder {
   protected long bitsLeft = Byte.SIZE;
 
   private void reset() {
-    maxFloatLength = 0;
     first = true;
     li = new ArrayList<>();
     buffer = 0;
     bitsLeft = Byte.SIZE;
   }
 
-  public DoubleBUFFEncoder() {
+  public DoubleBUFFEncoder(int maxFloatLength) {
     super(TSEncoding.BUFF);
+    this.maxFloatLength = maxFloatLength;
     reset();
   }
 
@@ -65,15 +65,6 @@ public class DoubleBUFFEncoder extends Encoder {
       minValue = Math.min(minValue, (long) Math.floor(value));
       maxValue = Math.max(maxValue, (long) Math.ceil(value));
     }
-    double tmp = value;
-    tmp -= Math.floor(tmp + eps);
-    int curFloatLength = 0;
-    while (tmp > eps && curFloatLength < maxlen) {
-      curFloatLength++;
-      tmp *= 10;
-      tmp -= Math.floor(tmp + eps);
-    }
-    maxFloatLength = Math.max(maxFloatLength, curFloatLength);
     li.add(value);
   }
 

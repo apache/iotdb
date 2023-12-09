@@ -20,8 +20,64 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 public class EncodeTest {
+
+  // 一个方法，用于计算一个字符串表示的浮点数的小数点后的位数
+  public static int countDecimalDigits(String s) {
+    // 如果字符串中没有小数点，返回0
+    if (!s.contains(".")) {
+      return 0;
+    }
+    // 否则，返回小数点后的字符个数
+    return s.length() - s.indexOf(".") - 1;
+  }
+
+  // 一个方法，用于遍历一个字符串列表，找出其中表示的浮点数的小数点后的位数出现最多的那个结果
+  public static int findMostFrequentDecimalDigits(ArrayList<String> list) {
+    // 初始化一个哈希表，用于存储每个位数出现的次数
+    HashMap<Integer, Integer> map = new HashMap<>();
+    // 遍历列表中的每个元素
+    for (String s : list) {
+      // 计算该元素的小数点后的位数
+      int digits = countDecimalDigits(s);
+      // 如果哈希表中已经有该位数，增加其出现的次数
+      if (map.containsKey(digits)) {
+        map.put(digits, map.get(digits) + 1);
+      }
+      // 否则，将该位数和1加入哈希表
+      else {
+        map.put(digits, 1);
+      }
+    }
+    // 初始化一个变量，用于存储当前的最大次数
+    int maxCount = 0;
+    // 初始化一个变量，用于存储当前的最频繁的位数
+    int mostFrequentDigits = 0;
+    // 遍历哈希表中的每个键值对
+    for (Integer key : map.keySet()) {
+      // 获取该键值对的值，即出现的次数
+      int count = map.get(key);
+      // 如果该次数大于当前的最大次数，更新最大次数和最频繁的位数
+      if (count > maxCount) {
+        maxCount = count;
+        mostFrequentDigits = key;
+      }
+    }
+    // 返回最频繁的位数
+    return mostFrequentDigits;
+  }
+
+  // 一个方法，用于创建一个只有一个键值对的Map<String, String>
+  public static HashMap<String, String> createMap(String key, String value) {
+    // 初始化一个空的HashMap
+    HashMap<String, String> map = new HashMap<>();
+    // 将键值对加入HashMap
+    map.put(key, value);
+    // 返回HashMap
+    return map;
+  }
 
   @Test
   public void test() throws IOException {
@@ -32,31 +88,31 @@ public class EncodeTest {
       "/home/ubuntu/Real_Numerical_result.csv", "/home/ubuntu/Synthetic_Numerical_result.csv"
     };
 
-    for (int idx = 0; idx < 2; idx++) {
+    for (int idx = 1; idx < 2; idx++) {
 
       String Input = Inputs[idx];
       String Output = Outputs[idx];
-      int repeatTime = 5; // set repeat time
+      int repeatTime = 1; // set repeat time
 
-      String[] dataTypeNames = {"FLOAT"};
+      String[] dataTypeNames = {"FLOAT", "DOUBLE"};
       // select encoding algorithms
       TSEncoding[] encodingList = {
         // TSEncoding.PLAIN,
-        TSEncoding.TS_2DIFF
-        // TSEncoding.RLE,
-        // TSEncoding.SPRINTZ,
+        TSEncoding.TS_2DIFF,
+        TSEncoding.RLE,
+        TSEncoding.SPRINTZ,
         // TSEncoding.GORILLA,
-        // TSEncoding.RLBE,
-        // TSEncoding.RAKE,
+        TSEncoding.RLBE,
+        TSEncoding.RAKE
         // TSEncoding.BUFF,
         // TSEncoding.CHIMP
       };
       // select compression algorithms
       CompressionType[] compressList = {
         CompressionType.UNCOMPRESSED,
-        CompressionType.LZ4,
-        CompressionType.GZIP,
-        CompressionType.SNAPPY
+        // CompressionType.LZ4,
+        // CompressionType.GZIP,
+        // CompressionType.SNAPPY
       };
       String[] head = {
         "Input Direction",
@@ -360,6 +416,7 @@ public class EncodeTest {
                   // for (String valueIndex : dataIndex) {
                   // tmpIndex.add(Long.valueOf(valueIndex));
                   // }
+                  int len = findMostFrequentDecimalDigits(data);
                   for (String value : data) {
                     tmp.add(Double.valueOf(value));
                   }
@@ -385,6 +442,9 @@ public class EncodeTest {
                         // .getEncoder(TSDataType.INT64);
                         // Decoder decoderIndex = Decoder.getDecoderByType(encoding,
                         // TSDataType.INT64);
+                        TSEncodingBuilder.getEncodingBuilder(encoding)
+                            .initFromProps(
+                                createMap(Encoder.MAX_POINT_NUMBER, String.valueOf(len)));
                         Encoder encoder =
                             TSEncodingBuilder.getEncodingBuilder(encoding).getEncoder(dataType);
                         Decoder decoder = Decoder.getDecoderByType(encoding, dataType);
@@ -481,6 +541,7 @@ public class EncodeTest {
                   // for (String valueIndex : dataIndex) {
                   // tmpIndex.add(Long.valueOf(valueIndex));
                   // }
+                  int len = findMostFrequentDecimalDigits(data);
                   for (String value : data) {
                     tmp.add(Float.valueOf(value));
                   }
@@ -506,6 +567,9 @@ public class EncodeTest {
                         // .getEncoder(TSDataType.INT64);
                         // Decoder decoderIndex = Decoder.getDecoderByType(encoding,
                         // TSDataType.INT64);
+                        TSEncodingBuilder.getEncodingBuilder(encoding)
+                            .initFromProps(
+                                createMap(Encoder.MAX_POINT_NUMBER, String.valueOf(len)));
                         Encoder encoder =
                             TSEncodingBuilder.getEncodingBuilder(encoding).getEncoder(dataType);
                         Decoder decoder = Decoder.getDecoderByType(encoding, dataType);

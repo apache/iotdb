@@ -26,8 +26,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Encoder for float or double value using rle or two-diff according to following grammar.
@@ -51,22 +49,16 @@ public class FloatEncoder extends Encoder {
   /** flag to check whether maxPointNumber is saved in the stream. */
   private boolean isMaxPointNumberSaved;
 
-  private static final int lenlen = 10;
-  private static final int perlen = 5;
-  private static final int maxlen = 16;
-  private static final float epsFloat = (float) 1e-4;
-  private static final double epsDouble = 1e-4;
-  private int maxFloatLength;
-  private List<Float> liFloat;
-  private List<Double> liDouble;
-
   public FloatEncoder(TSEncoding encodingType, TSDataType dataType, int maxPointNumber) {
     super(encodingType);
     this.maxPointNumber = maxPointNumber;
-    reset();
+    System.out.println(maxPointNumber);
+    calculateMaxPonitNum();
+    isMaxPointNumberSaved = false;
+
     if (encodingType == TSEncoding.RLE) {
       if (dataType == TSDataType.FLOAT) {
-        encoder = new IntRleEncoder();
+        encoder = new LongRleEncoder();
       } else if (dataType == TSDataType.DOUBLE) {
         encoder = new LongRleEncoder();
       } else {
@@ -75,7 +67,7 @@ public class FloatEncoder extends Encoder {
       }
     } else if (encodingType == TSEncoding.TS_2DIFF) {
       if (dataType == TSDataType.FLOAT) {
-        encoder = new DeltaBinaryEncoder.IntDeltaEncoder();
+        encoder = new DeltaBinaryEncoder.LongDeltaEncoder();
       } else if (dataType == TSDataType.DOUBLE) {
         encoder = new DeltaBinaryEncoder.LongDeltaEncoder();
       } else {
@@ -84,7 +76,7 @@ public class FloatEncoder extends Encoder {
       }
     } else if (encodingType == TSEncoding.SPRINTZ) {
       if (dataType == TSDataType.FLOAT) {
-        encoder = new IntSprintzEncoder();
+        encoder = new LongSprintzEncoder();
       } else if (dataType == TSDataType.DOUBLE) {
         encoder = new LongSprintzEncoder();
       } else {
@@ -93,7 +85,7 @@ public class FloatEncoder extends Encoder {
       }
     } else if (encodingType == TSEncoding.RAKE) {
       if (dataType == TSDataType.FLOAT) {
-        encoder = new IntRAKEEncoder();
+        encoder = new LongRAKEEncoder();
       } else if (dataType == TSDataType.DOUBLE) {
         encoder = new LongRAKEEncoder();
       } else {
@@ -102,7 +94,7 @@ public class FloatEncoder extends Encoder {
       }
     } else if (encodingType == TSEncoding.RLBE) {
       if (dataType == TSDataType.FLOAT) {
-        encoder = new IntRLBE();
+        encoder = new LongRLBE();
       } else if (dataType == TSDataType.DOUBLE) {
         encoder = new LongRLBE();
       } else {
@@ -117,30 +109,16 @@ public class FloatEncoder extends Encoder {
 
   @Override
   public void encode(float value, ByteArrayOutputStream out) {
-    float tmp = value;
-    tmp -= Math.floor(tmp + epsFloat);
-    int curFloatLength = 0;
-    while (tmp > epsFloat && curFloatLength < maxlen) {
-      curFloatLength++;
-      tmp *= 10;
-      tmp -= Math.floor(tmp + epsFloat);
-    }
-    maxFloatLength = Math.max(maxFloatLength, curFloatLength);
-    liFloat.add(value);
+    saveMaxPointNumber(out);
+    long valueLong = convertFloatToLong(value);
+    encoder.encode(valueLong, out);
   }
 
   @Override
   public void encode(double value, ByteArrayOutputStream out) {
-    double tmp = value;
-    tmp -= Math.floor(tmp + epsDouble);
-    int curFloatLength = 0;
-    while (tmp > epsDouble && curFloatLength < maxlen) {
-      curFloatLength++;
-      tmp *= 10;
-      tmp -= Math.floor(tmp + epsDouble);
-    }
-    maxFloatLength = Math.max(maxFloatLength, curFloatLength);
-    liDouble.add(value);
+    saveMaxPointNumber(out);
+    long valueLong = convertDoubleToLong(value);
+    encoder.encode(valueLong, out);
   }
 
   private void calculateMaxPonitNum() {
@@ -156,36 +134,26 @@ public class FloatEncoder extends Encoder {
     return (int) Math.round(value * maxPointValue);
   }
 
+  private long convertFloatToLong(float value) {
+    return Math.round(value * maxPointValue);
+  }
+
   private long convertDoubleToLong(double value) {
     return Math.round(value * maxPointValue);
   }
 
   @Override
   public void flush(ByteArrayOutputStream out) throws IOException {
-    saveMaxPointNumber(out);
-    for (float value : liFloat) {
-      int valueInt = convertFloatToInt(value);
-      encoder.encode(valueInt, out);
-    }
-    for (double value : liDouble) {
-      long valueLong = convertDoubleToLong(value);
-      encoder.encode(valueLong, out);
-    }
     encoder.flush(out);
     reset();
   }
 
   private void reset() {
-    maxFloatLength = 0;
     isMaxPointNumberSaved = false;
-    liFloat = new ArrayList<>();
-    liDouble = new ArrayList<>();
   }
 
   private void saveMaxPointNumber(ByteArrayOutputStream out) {
     if (!isMaxPointNumberSaved) {
-      maxPointNumber = maxFloatLength;
-      calculateMaxPonitNum();
       ReadWriteForEncodingUtils.writeUnsignedVarInt(maxPointNumber, out);
       isMaxPointNumberSaved = true;
     }
