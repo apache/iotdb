@@ -52,7 +52,6 @@ public class FloatEncoder extends Encoder {
   public FloatEncoder(TSEncoding encodingType, TSDataType dataType, int maxPointNumber) {
     super(encodingType);
     this.maxPointNumber = maxPointNumber;
-    System.out.println(maxPointNumber);
     calculateMaxPonitNum();
     isMaxPointNumberSaved = false;
 

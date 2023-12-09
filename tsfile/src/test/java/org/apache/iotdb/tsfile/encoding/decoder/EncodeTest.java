@@ -442,11 +442,10 @@ public class EncodeTest {
                         // .getEncoder(TSDataType.INT64);
                         // Decoder decoderIndex = Decoder.getDecoderByType(encoding,
                         // TSDataType.INT64);
-                        TSEncodingBuilder.getEncodingBuilder(encoding)
-                            .initFromProps(
-                                createMap(Encoder.MAX_POINT_NUMBER, String.valueOf(len)));
-                        Encoder encoder =
-                            TSEncodingBuilder.getEncodingBuilder(encoding).getEncoder(dataType);
+                        TSEncodingBuilder builder = TSEncodingBuilder.getEncodingBuilder(encoding);
+                        builder.initFromProps(
+                            createMap(Encoder.MAX_POINT_NUMBER, String.valueOf(len)));
+                        Encoder encoder = builder.getEncoder(dataType);
                         Decoder decoder = Decoder.getDecoderByType(encoding, dataType);
 
                         // ICompressor compressorIndex = ICompressor.getCompressor(comp);
@@ -542,6 +541,7 @@ public class EncodeTest {
                   // tmpIndex.add(Long.valueOf(valueIndex));
                   // }
                   int len = findMostFrequentDecimalDigits(data);
+                  // System.out.println(len);
                   for (String value : data) {
                     tmp.add(Float.valueOf(value));
                   }
@@ -567,11 +567,10 @@ public class EncodeTest {
                         // .getEncoder(TSDataType.INT64);
                         // Decoder decoderIndex = Decoder.getDecoderByType(encoding,
                         // TSDataType.INT64);
-                        TSEncodingBuilder.getEncodingBuilder(encoding)
-                            .initFromProps(
-                                createMap(Encoder.MAX_POINT_NUMBER, String.valueOf(len)));
-                        Encoder encoder =
-                            TSEncodingBuilder.getEncodingBuilder(encoding).getEncoder(dataType);
+                        TSEncodingBuilder builder = TSEncodingBuilder.getEncodingBuilder(encoding);
+                        builder.initFromProps(
+                            createMap(Encoder.MAX_POINT_NUMBER, String.valueOf(len)));
+                        Encoder encoder = builder.getEncoder(dataType);
                         Decoder decoder = Decoder.getDecoderByType(encoding, dataType);
 
                         // ICompressor compressorIndex = ICompressor.getCompressor(comp);
