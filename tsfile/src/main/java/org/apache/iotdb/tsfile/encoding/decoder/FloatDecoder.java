@@ -114,7 +114,7 @@ public class FloatDecoder extends Decoder {
   @Override
   public float readFloat(ByteBuffer buffer) {
     readMaxPointValue(buffer);
-    int value = decoder.readInt(buffer);
+    long value = decoder.readLong(buffer);
     double result = value / maxPointValue;
     return (float) result;
   }

@@ -98,7 +98,7 @@ public class EncodeTest {
       // select encoding algorithms
       TSEncoding[] encodingList = {
         // TSEncoding.PLAIN,
-        // TSEncoding.TS_2DIFF,
+        TSEncoding.TS_2DIFF,
         // TSEncoding.RLE,
         // TSEncoding.SPRINTZ,
         // TSEncoding.GORILLA,
