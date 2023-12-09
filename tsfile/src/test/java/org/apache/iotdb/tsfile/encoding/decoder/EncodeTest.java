@@ -88,7 +88,7 @@ public class EncodeTest {
       "/home/ubuntu/Real_Numerical_result.csv", "/home/ubuntu/Synthetic_Numerical_result.csv"
     };
 
-    for (int idx = 1; idx < 2; idx++) {
+    for (int idx = 0; idx < 2; idx++) {
 
       String Input = Inputs[idx];
       String Output = Outputs[idx];
@@ -97,22 +97,22 @@ public class EncodeTest {
       String[] dataTypeNames = {"FLOAT", "DOUBLE"};
       // select encoding algorithms
       TSEncoding[] encodingList = {
-        // TSEncoding.PLAIN,
+        TSEncoding.PLAIN,
         TSEncoding.TS_2DIFF,
-        // TSEncoding.RLE,
-        // TSEncoding.SPRINTZ,
-        // TSEncoding.GORILLA,
-        // TSEncoding.RLBE,
-        TSEncoding.RAKE
-        // TSEncoding.BUFF,
-        // TSEncoding.CHIMP
+        TSEncoding.RLE,
+        TSEncoding.SPRINTZ,
+        TSEncoding.GORILLA,
+        TSEncoding.RLBE,
+        TSEncoding.RAKE,
+        TSEncoding.BUFF,
+        TSEncoding.CHIMP
       };
       // select compression algorithms
       CompressionType[] compressList = {
         CompressionType.UNCOMPRESSED,
-        // CompressionType.LZ4,
-        // CompressionType.GZIP,
-        // CompressionType.SNAPPY
+        CompressionType.LZ4,
+        CompressionType.GZIP,
+        CompressionType.SNAPPY
       };
       String[] head = {
         "Input Direction",
@@ -417,6 +417,8 @@ public class EncodeTest {
                   // tmpIndex.add(Long.valueOf(valueIndex));
                   // }
                   int len = findMostFrequentDecimalDigits(data);
+                  if(len > 16)
+                    len = 16;
                   for (String value : data) {
                     tmp.add(Double.valueOf(value));
                   }
@@ -541,6 +543,8 @@ public class EncodeTest {
                   // tmpIndex.add(Long.valueOf(valueIndex));
                   // }
                   int len = findMostFrequentDecimalDigits(data);
+                  if(len > 8)
+                    len = 8;
                   // System.out.println(len);
                   for (String value : data) {
                     tmp.add(Float.valueOf(value));

@@ -28,10 +28,12 @@ import java.util.List;
 
 public class DoubleBUFFEncoder extends Encoder {
 
-  private static final int lenlen = 10;
+  private static final int lenlen = 16;
   private static final int perlen = 5;
   private static final int maxlen = 16;
-  private static final int[] len = {0, 5, 8, 11, 15, 18, 21, 25, 28, 31, 35};
+  private static final int[] len = {
+    0, 5, 8, 11, 15, 18, 21, 25, 28, 31, 35, 38, 41, 45, 48, 51, 55
+  };
   private static final double eps = 1e-4;
 
   private int maxFloatLength;

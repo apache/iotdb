@@ -296,7 +296,6 @@ public abstract class TSEncodingBuilder {
       } else {
         try {
           this.maxPointNumber = Integer.parseInt(props.get(Encoder.MAX_POINT_NUMBER));
-          System.out.println(this.maxPointNumber);
         } catch (NumberFormatException e) {
           logger.warn(
               "The format of max point number {} is not correct."

@@ -30,7 +30,7 @@ public class FloatBUFFEncoder extends Encoder {
 
   private static final int lenlen = 10;
   private static final int perlen = 5;
-  private static final int maxlen = 10;
+  private static final int maxlen = 8;
   private static final int[] len = {0, 5, 8, 11, 15, 18, 21, 25, 28, 31, 35};
   private static final float eps = (float) 1e-4;
 
