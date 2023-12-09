@@ -51,7 +51,7 @@ public class FloatDecoder extends Decoder {
     super(encodingType);
     if (encodingType == TSEncoding.RLE) {
       if (dataType == TSDataType.FLOAT) {
-        decoder = new IntRleDecoder();
+        decoder = new LongRleDecoder();
         logger.debug("tsfile-encoding FloatDecoder: init decoder using int-rle and float");
       } else if (dataType == TSDataType.DOUBLE) {
         decoder = new LongRleDecoder();
@@ -62,7 +62,7 @@ public class FloatDecoder extends Decoder {
       }
     } else if (encodingType == TSEncoding.TS_2DIFF) {
       if (dataType == TSDataType.FLOAT) {
-        decoder = new DeltaBinaryDecoder.IntDeltaDecoder();
+        decoder = new DeltaBinaryDecoder.LongDeltaDecoder();
         logger.debug("tsfile-encoding FloatDecoder: init decoder using int-delta and float");
       } else if (dataType == TSDataType.DOUBLE) {
         decoder = new DeltaBinaryDecoder.LongDeltaDecoder();
@@ -73,7 +73,7 @@ public class FloatDecoder extends Decoder {
       }
     } else if (encodingType == TSEncoding.SPRINTZ) {
       if (dataType == TSDataType.FLOAT) {
-        decoder = new IntSprintzDecoder();
+        decoder = new LongSprintzDecoder();
         logger.debug("tsfile-encoding FloatDecoder: init decoder using int-delta and float");
       } else if (dataType == TSDataType.DOUBLE) {
         decoder = new LongSprintzDecoder();
@@ -84,7 +84,7 @@ public class FloatDecoder extends Decoder {
       }
     } else if (encodingType == TSEncoding.RAKE) {
       if (dataType == TSDataType.FLOAT) {
-        decoder = new IntRAKEDecoder();
+        decoder = new LongRAKEDecoder();
         logger.debug("tsfile-encoding FloatDecoder: init decoder using int-delta and float");
       } else if (dataType == TSDataType.DOUBLE) {
         decoder = new LongRAKEDecoder();
@@ -95,7 +95,7 @@ public class FloatDecoder extends Decoder {
       }
     } else if (encodingType == TSEncoding.RLBE) {
       if (dataType == TSDataType.FLOAT) {
-        decoder = new IntRLBEDecoder();
+        decoder = new LongRLBEDecoder();
         logger.debug("tsfile-encoding FloatDecoder: init decoder using int-delta and float");
       } else if (dataType == TSDataType.DOUBLE) {
         decoder = new LongRLBEDecoder();
