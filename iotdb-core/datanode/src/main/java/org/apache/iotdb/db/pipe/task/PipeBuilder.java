@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.StorageEngine;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -47,6 +48,13 @@ public class PipeBuilder {
     final PipeRuntimeMeta pipeRuntimeMeta = pipeMeta.getRuntimeMeta();
     for (Map.Entry<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToPipeTaskMeta :
         pipeRuntimeMeta.getConsensusGroupId2TaskMetaMap().entrySet()) {
+      // Currently disable schemaRegion tasks
+      if (StorageEngine.getInstance().getAllDataRegionIds().stream()
+          .noneMatch(
+              dataRegionId ->
+                  dataRegionId.getId() == consensusGroupIdToPipeTaskMeta.getKey().getId())) {
+        continue;
+      }
       if (consensusGroupIdToPipeTaskMeta.getValue().getLeaderNodeId() == CONFIG.getDataNodeId()) {
         consensusGroupIdToPipeTaskMap.put(
             consensusGroupIdToPipeTaskMeta.getKey(),

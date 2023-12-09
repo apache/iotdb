@@ -1184,7 +1184,9 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void pipeHandleLeaderChangePlanTest() throws IOException {
     Map<TConsensusGroupId, Integer> newLeaderMap = new HashMap<>();
-    newLeaderMap.put(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1), 2);
+    // Do not test SchemaRegion or ConfigRegion since the Type is always "DataRegion" when
+    // deserialized
+    newLeaderMap.put(new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), 2);
     newLeaderMap.put(new TConsensusGroupId(TConsensusGroupType.DataRegion, 2), 3);
     newLeaderMap.put(new TConsensusGroupId(TConsensusGroupType.DataRegion, 3), 5);
 
