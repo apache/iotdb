@@ -19,17 +19,4 @@
 
 package org.apache.iotdb.commons.pipe.plugin.meta;
 
-import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
-
-public class DataNodePipePluginMetaKeeper extends PipePluginMetaKeeper {
-
-  @Override
-  protected void loadBuiltInPlugins() {
-    super.loadBuiltInPlugins();
-
-    for (final BuiltinPipePlugin builtinPipePlugin : BuiltinPipePlugin.values()) {
-      addPluginAndClass(
-          builtinPipePlugin.getPipePluginName(), builtinPipePlugin.getPipePluginClass());
-    }
-  }
-}
+public class DataNodePipePluginMetaKeeper extends PipePluginMetaKeeper {}

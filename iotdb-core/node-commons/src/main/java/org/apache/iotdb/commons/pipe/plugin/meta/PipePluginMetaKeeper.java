@@ -47,6 +47,8 @@ public class PipePluginMetaKeeper {
           builtinPipePlugin.getPipePluginName(),
           new PipePluginMeta(
               builtinPipePlugin.getPipePluginName(), builtinPipePlugin.getClassName()));
+      addPluginAndClass(
+          builtinPipePlugin.getPipePluginName(), builtinPipePlugin.getPipePluginClass());
     }
   }
 

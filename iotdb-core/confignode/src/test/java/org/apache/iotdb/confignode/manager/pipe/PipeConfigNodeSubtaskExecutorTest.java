@@ -23,8 +23,11 @@ import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.execution.executor.PipeSubtaskExecutor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.task.subtask.PipeSubtask;
+import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.pipe.execution.PipeConfigNodeSubtask;
 import org.apache.iotdb.confignode.manager.pipe.execution.PipeConfigNodeSubtaskExecutor;
+import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.confignode.procedure.scheduler.SimpleProcedureScheduler;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -57,12 +60,12 @@ public class PipeConfigNodeSubtaskExecutorTest {
                   {
                     put(
                         PipeConnectorConstant.CONNECTOR_KEY,
-                        BuiltinPipePlugin.IOTDB_LEGACY_PIPE_CONNECTOR.getPipePluginName());
+                        BuiltinPipePlugin.IOTDB_SCHEMA_SINK.getPipePluginName());
                     put(PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY, "127.0.0.1");
                     put(PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY, "6667");
                   }
                 },
-                env));
+                new ConfigNodeProcedureEnv(new ConfigManager(), new SimpleProcedureScheduler())));
   }
 
   @After
