@@ -20,10 +20,11 @@
 package org.apache.iotdb.confignode.manager.pipe.execution;
 
 import org.apache.iotdb.commons.pipe.execution.scheduler.PipeSubtaskScheduler;
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.schema.IoTDBSchemaConnector;
-import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.schema.IoTDBSchemaExtractor;
 import org.apache.iotdb.commons.pipe.task.DecoratingLock;
 import org.apache.iotdb.commons.pipe.task.subtask.PipeSubtask;
+import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.pipe.api.PipeConnector;
+import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -43,8 +44,8 @@ public class PipeConfigNodeSubtask extends PipeSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfigNodeSubtask.class);
 
-  private final IoTDBSchemaExtractor inputPipeExtractor;
-  private final IoTDBSchemaConnector outputPipeConnector;
+  private final PipeExtractor inputPipeExtractor;
+  private final PipeConnector outputPipeConnector;
 
   // For thread pool to execute callbacks
   private final DecoratingLock callbackDecoratingLock = new DecoratingLock();
@@ -58,18 +59,34 @@ public class PipeConfigNodeSubtask extends PipeSubtask {
       String taskID,
       long creationTime,
       Map<String, String> extractorAttributes,
-      Map<String, String> connectorAttributes)
+      Map<String, String> connectorAttributes,
+      ConfigNodeProcedureEnv env)
       throws Exception {
     super(taskID, creationTime);
 
-    this.inputPipeExtractor = new IoTDBSchemaExtractor();
     PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
+    // The construction of this subtask is inside a procedure,
+    // so we assume that the lock of PipePluginCoordinator is held.
+    this.inputPipeExtractor =
+        env.getConfigManager()
+            .getPipeManager()
+            .getPipePluginCoordinator()
+            .getPipePluginInfo()
+            .reflectExtractor(extractorParameters);
+
     this.inputPipeExtractor.validate(new PipeParameterValidator(extractorParameters));
     // do nothing in customize() now
     this.inputPipeExtractor.customize(extractorParameters, () -> null);
 
-    this.outputPipeConnector = new IoTDBSchemaConnector();
     PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
+    // The construction of this subtask is inside a procedure,
+    // so we assume that the lock of PipePluginCoordinator is held.
+    this.outputPipeConnector =
+        env.getConfigManager()
+            .getPipeManager()
+            .getPipePluginCoordinator()
+            .getPipePluginInfo()
+            .reflectConnector(connectorParameters);
     this.outputPipeConnector.validate(new PipeParameterValidator(connectorParameters));
     // do nothing in customize() now
     this.outputPipeConnector.customize(connectorParameters, () -> null);

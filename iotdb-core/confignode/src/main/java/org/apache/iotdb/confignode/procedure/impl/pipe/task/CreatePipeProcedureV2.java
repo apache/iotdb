@@ -154,7 +154,8 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                   pipeStaticMeta.getPipeName(),
                   pipeStaticMeta.getCreationTime(),
                   pipeStaticMeta.getExtractorParameters().getAttribute(),
-                  pipeStaticMeta.getConnectorParameters().getAttribute()));
+                  pipeStaticMeta.getConnectorParameters().getAttribute(),
+                  env));
     } catch (Exception e) {
       throw new PipeException(
           String.format(

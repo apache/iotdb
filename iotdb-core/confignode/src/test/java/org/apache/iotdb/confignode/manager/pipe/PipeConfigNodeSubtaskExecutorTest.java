@@ -61,7 +61,8 @@ public class PipeConfigNodeSubtaskExecutorTest {
                     put(PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY, "127.0.0.1");
                     put(PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY, "6667");
                   }
-                }));
+                },
+                env));
   }
 
   @After

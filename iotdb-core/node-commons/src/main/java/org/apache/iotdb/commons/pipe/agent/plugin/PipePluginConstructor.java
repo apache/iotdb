@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.agent.plugin;
+package org.apache.iotdb.commons.pipe.agent.plugin;
 
-import org.apache.iotdb.commons.pipe.plugin.meta.DataNodePipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
+import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMetaKeeper;
 import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -37,11 +37,11 @@ public abstract class PipePluginConstructor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipePluginConstructor.class);
 
-  private final DataNodePipePluginMetaKeeper pipePluginMetaKeeper;
+  private final PipePluginMetaKeeper pipePluginMetaKeeper;
 
   protected static final Map<String, Supplier<PipePlugin>> PLUGIN_CONSTRUCTORS = new HashMap<>();
 
-  PipePluginConstructor(DataNodePipePluginMetaKeeper pipePluginMetaKeeper) {
+  protected PipePluginConstructor(PipePluginMetaKeeper pipePluginMetaKeeper) {
     this.pipePluginMetaKeeper = pipePluginMetaKeeper;
     initConstructors();
   }
@@ -49,7 +49,7 @@ public abstract class PipePluginConstructor {
   // New plugins shall be put here
   protected abstract void initConstructors();
 
-  abstract PipePlugin reflectPlugin(PipeParameters pipeParameters);
+  protected abstract PipePlugin reflectPlugin(PipeParameters pipeParameters);
 
   protected final PipePlugin reflectPluginByKey(String pluginKey) {
     return PLUGIN_CONSTRUCTORS.getOrDefault(pluginKey, () -> reflect(pluginKey)).get();

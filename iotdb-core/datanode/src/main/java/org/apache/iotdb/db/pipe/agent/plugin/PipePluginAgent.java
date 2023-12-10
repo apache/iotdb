@@ -49,15 +49,15 @@ public class PipePluginAgent {
 
   private final DataNodePipePluginMetaKeeper pipePluginMetaKeeper;
 
-  private final PipeExtractorConstructor pipeExtractorConstructor;
-  private final PipeProcessorConstructor pipeProcessorConstructor;
-  private final PipeConnectorConstructor pipeConnectorConstructor;
+  private final PipeDataNodeExtractorConstructor pipeExtractorConstructor;
+  private final PipeDataNodeProcessorConstructor pipeProcessorConstructor;
+  private final PipeDataNodeConnectorConstructor pipeConnectorConstructor;
 
   public PipePluginAgent() {
     this.pipePluginMetaKeeper = new DataNodePipePluginMetaKeeper();
-    this.pipeExtractorConstructor = new PipeExtractorConstructor(pipePluginMetaKeeper);
-    this.pipeProcessorConstructor = new PipeProcessorConstructor(pipePluginMetaKeeper);
-    this.pipeConnectorConstructor = new PipeConnectorConstructor(pipePluginMetaKeeper);
+    this.pipeExtractorConstructor = new PipeDataNodeExtractorConstructor(pipePluginMetaKeeper);
+    this.pipeProcessorConstructor = new PipeDataNodeProcessorConstructor(pipePluginMetaKeeper);
+    this.pipeConnectorConstructor = new PipeDataNodeConnectorConstructor(pipePluginMetaKeeper);
   }
 
   /////////////////////////////// Lock ///////////////////////////////

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.agent.plugin;
 
+import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginConstructor;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.DoNothingConnector;
@@ -36,9 +37,9 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import java.util.Arrays;
 
-public class PipeConnectorConstructor extends PipePluginConstructor {
+public class PipeDataNodeConnectorConstructor extends PipePluginConstructor {
 
-  PipeConnectorConstructor(DataNodePipePluginMetaKeeper pipePluginMetaKeeper) {
+  PipeDataNodeConnectorConstructor(DataNodePipePluginMetaKeeper pipePluginMetaKeeper) {
     super(pipePluginMetaKeeper);
   }
 
@@ -90,7 +91,7 @@ public class PipeConnectorConstructor extends PipePluginConstructor {
   }
 
   @Override
-  PipeConnector reflectPlugin(PipeParameters connectorParameters) {
+  protected PipeConnector reflectPlugin(PipeParameters connectorParameters) {
     if (!connectorParameters.hasAnyAttributes(
         PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY)) {
       throw new PipeException(

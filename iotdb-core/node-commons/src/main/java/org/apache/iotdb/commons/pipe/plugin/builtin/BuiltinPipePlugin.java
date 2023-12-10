@@ -28,7 +28,9 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBThriftSyncCon
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.OpcUaConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.WebSocketConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.WriteBackConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.schema.IoTDBSchemaConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.IoTDBExtractor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.schema.IoTDBSchemaExtractor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.DoNothingProcessor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.DownSamplingProcessor;
 
@@ -68,7 +70,14 @@ public enum BuiltinPipePlugin {
   WEBSOCKET_SINK("websocket-sink", WebSocketConnector.class),
   OPC_UA_SINK("opc-ua-sink", OpcUaConnector.class),
   WRITE_BACK_SINK("write-back-sink", WriteBackConnector.class),
-  ;
+
+  IOTDB_SCHEMA_EXTRACTOR("iotdb-schema-extractor", IoTDBSchemaExtractor.class),
+
+  IOTDB_SCHEMA_SOURCE("iotdb-schema-source", IoTDBSchemaExtractor.class),
+
+  IOTDB_SCHEMA_CONNECTOR("iotdb-schema-connector", IoTDBSchemaConnector.class),
+
+  IOTDB_SCHEMA_SINK("iotdb-schema-sink", IoTDBSchemaConnector.class);
 
   private final String pipePluginName;
   private final Class<?> pipePluginClass;

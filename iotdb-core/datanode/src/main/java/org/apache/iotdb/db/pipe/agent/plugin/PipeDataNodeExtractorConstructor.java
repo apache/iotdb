@@ -19,37 +19,41 @@
 
 package org.apache.iotdb.db.pipe.agent.plugin;
 
-import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
+import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginConstructor;
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
-import org.apache.iotdb.commons.pipe.plugin.builtin.processor.DoNothingProcessor;
 import org.apache.iotdb.commons.pipe.plugin.meta.DataNodePipePluginMetaKeeper;
-import org.apache.iotdb.db.pipe.processor.downsampling.DownSamplingProcessor;
-import org.apache.iotdb.pipe.api.PipeProcessor;
+import org.apache.iotdb.db.pipe.extractor.IoTDBDataRegionExtractor;
+import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
-public class PipeProcessorConstructor extends PipePluginConstructor {
-  PipeProcessorConstructor(DataNodePipePluginMetaKeeper pipePluginMetaKeeper) {
+import java.util.Arrays;
+
+public class PipeDataNodeExtractorConstructor extends PipePluginConstructor {
+
+  PipeDataNodeExtractorConstructor(DataNodePipePluginMetaKeeper pipePluginMetaKeeper) {
     super(pipePluginMetaKeeper);
   }
 
   @Override
   protected void initConstructors() {
     PLUGIN_CONSTRUCTORS.put(
-        BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName(), DoNothingProcessor::new);
+        BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName(), IoTDBDataRegionExtractor::new);
     PLUGIN_CONSTRUCTORS.put(
-        BuiltinPipePlugin.DOWN_SAMPLING_PROCESSOR.getPipePluginName(), DownSamplingProcessor::new);
+        BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName(), IoTDBDataRegionExtractor::new);
   }
 
   @Override
-  PipeProcessor reflectPlugin(PipeParameters processorParameters) {
-    return (PipeProcessor)
+  protected PipeExtractor reflectPlugin(PipeParameters extractorParameters) {
+    return (PipeExtractor)
         reflectPluginByKey(
-            processorParameters
+            extractorParameters
                 .getStringOrDefault(
-                    PipeProcessorConstant.PROCESSOR_KEY,
-                    BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName())
-                // Convert the value of `PROCESSOR_KEY` to lowercase for matching
-                // `DO_NOTHING_PROCESSOR`
+                    Arrays.asList(
+                        PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+                    BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+                // Convert the value of `EXTRACTOR_KEY` or `SOURCE_KEY` to lowercase for matching
+                // `IOTDB_EXTRACTOR`
                 .toLowerCase());
   }
 }

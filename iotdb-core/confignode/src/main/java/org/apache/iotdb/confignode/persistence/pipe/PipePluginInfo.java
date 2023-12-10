@@ -35,8 +35,12 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePip
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
 import org.apache.iotdb.confignode.consensus.response.JarResp;
 import org.apache.iotdb.confignode.consensus.response.pipe.plugin.PipePluginTableResp;
+import org.apache.iotdb.confignode.manager.pipe.agent.plugin.PipeConfigNodeConnectorConstructor;
+import org.apache.iotdb.confignode.manager.pipe.agent.plugin.PipeConfigNodeExtractorConstructor;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.pipe.api.PipeConnector;
+import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -69,11 +73,15 @@ public class PipePluginInfo implements SnapshotProcessor {
   private final ReentrantLock pipePluginInfoLock = new ReentrantLock();
 
   private final ConfigNodePipePluginMetaKeeper pipePluginMetaKeeper;
+  private final PipeConfigNodeExtractorConstructor pipeExtractorConstructor;
+  private final PipeConfigNodeConnectorConstructor pipeConnectorConstructor;
   private final PipePluginExecutableManager pipePluginExecutableManager;
 
   public PipePluginInfo() throws IOException {
-    pipePluginMetaKeeper = new ConfigNodePipePluginMetaKeeper();
-    pipePluginExecutableManager =
+    this.pipePluginMetaKeeper = new ConfigNodePipePluginMetaKeeper();
+    this.pipeExtractorConstructor = new PipeConfigNodeExtractorConstructor(pipePluginMetaKeeper);
+    this.pipeConnectorConstructor = new PipeConfigNodeConnectorConstructor(pipePluginMetaKeeper);
+    this.pipePluginExecutableManager =
         PipePluginExecutableManager.setupAndGetInstance(
             CONFIG_NODE_CONF.getPipeTemporaryLibDir(), CONFIG_NODE_CONF.getPipeDir());
   }
@@ -239,6 +247,14 @@ public class PipePluginInfo implements SnapshotProcessor {
               .setMessage("Get PipePlugin_Jar failed, because " + e.getMessage()),
           Collections.emptyList());
     }
+  }
+
+  public PipeExtractor reflectExtractor(PipeParameters extractorParameters) {
+    return pipeExtractorConstructor.reflectPlugin(extractorParameters);
+  }
+
+  public PipeConnector reflectConnector(PipeParameters connectorParameters) {
+    return pipeConnectorConstructor.reflectPlugin(connectorParameters);
   }
 
   /////////////////////////////// Snapshot Processor ///////////////////////////////
