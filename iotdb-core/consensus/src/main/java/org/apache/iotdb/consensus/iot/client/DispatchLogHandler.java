@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.consensus.iot.client;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.iot.logdispatcher.Batch;
 import org.apache.iotdb.consensus.iot.logdispatcher.LogDispatcher.LogDispatcherThread;
 import org.apache.iotdb.consensus.iot.logdispatcher.LogDispatcherThreadMetrics;
@@ -30,7 +31,9 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRes> {
 
@@ -54,17 +57,25 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
 
   @Override
   public void onComplete(TSyncLogEntriesRes response) {
-    if (response.getStatuses().size() == 1 && needRetry(response.getStatuses().get(0).getCode())) {
+    if (response.getStatuses().stream().anyMatch(status -> needRetry(status.getCode()))) {
+      List<String> retryStatusMessages =
+          response.getStatuses().stream()
+              .filter(status -> needRetry(status.getCode()))
+              .map(TSStatus::getMessage)
+              .collect(Collectors.toList());
+
+      String messages = String.join(", ", retryStatusMessages);
       logger.warn(
           "Can not send {} to peer {} for {} times because {}",
           batch,
           thread.getPeer(),
           ++retryCount,
-          response.getStatuses().get(0).getMessage());
+          messages);
       sleepCorrespondingTimeAndRetryAsynchronous();
     } else {
       thread.getSyncStatus().removeBatch(batch);
-      // update safely deleted search index after current sync index is updated by removeBatch
+      // update safely deleted search index after last flushed sync index may be updated by
+      // removeBatch
       thread.updateSafelyDeletedSearchIndex();
     }
     logDispatcherThreadMetrics.recordSyncLogTimePerRequest(System.nanoTime() - createTime);

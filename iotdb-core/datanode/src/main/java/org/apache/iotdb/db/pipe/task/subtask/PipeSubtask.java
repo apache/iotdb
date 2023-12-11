@@ -198,6 +198,10 @@ public abstract class PipeSubtask
     }
   }
 
+  /**
+   * Submit the subTask. Be sure to add parallel check since a subtask is currently not designed to
+   * run in parallel.
+   */
   public abstract void submitSelf();
 
   public void allowSubmittingSelf() {

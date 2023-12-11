@@ -28,7 +28,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.input.QueryDataSetInpu
 import org.apache.iotdb.db.queryengine.transformation.dag.intermediate.IntermediateLayer;
 import org.apache.iotdb.db.queryengine.transformation.dag.memory.LayerMemoryAssigner;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFContext;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.HashMap;
 import java.util.List;

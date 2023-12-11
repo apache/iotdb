@@ -725,7 +725,7 @@ sortKey
 
 // ---- Fill Clause
 fillClause
-    : FILL LR_BRACKET (LINEAR | PREVIOUS | constant) RR_BRACKET
+    : FILL LR_BRACKET (LINEAR | PREVIOUS | constant) (COMMA interval=DURATION_LITERAL)? RR_BRACKET
     ;
 
 // ---- Pagination Clause

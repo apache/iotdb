@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.connector.payload.evolvable.builder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
+import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
@@ -53,6 +54,7 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
 
   protected final List<TPipeTransferReq> reqs = new ArrayList<>();
   protected final List<Event> events = new ArrayList<>();
+  protected final List<Long> requestCommitIds = new ArrayList<>();
 
   // limit in delayed time
   protected final int maxDelayInMs;
@@ -60,7 +62,6 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
 
   // limit in buffer size
   protected final PipeMemoryBlock allocatedMemoryBlock;
-  protected final long maxBatchSizeInBytes;
   protected long bufferSize = 0;
 
   protected PipeTransferBatchReqBuilder(PipeParameters parameters) {
@@ -74,18 +75,80 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
         parameters.getLongOrDefault(
             Arrays.asList(CONNECTOR_IOTDB_BATCH_SIZE_KEY, SINK_IOTDB_BATCH_SIZE_KEY),
             CONNECTOR_IOTDB_BATCH_SIZE_DEFAULT_VALUE);
-    allocatedMemoryBlock = PipeResourceManager.memory().tryAllocate(requestMaxBatchSizeInBytes);
-    maxBatchSizeInBytes = allocatedMemoryBlock.getMemoryUsageInBytes();
-    if (maxBatchSizeInBytes != requestMaxBatchSizeInBytes) {
+
+    allocatedMemoryBlock =
+        PipeResourceManager.memory()
+            .tryAllocate(requestMaxBatchSizeInBytes)
+            .setShrinkMethod((oldMemory) -> Math.max(oldMemory / 2, 0))
+            .setShrinkCallback(
+                (oldMemory, newMemory) ->
+                    LOGGER.info(
+                        "The batch size limit has shrunk from {} to {}.", oldMemory, newMemory))
+            .setExpandMethod(
+                (oldMemory) -> Math.min(Math.max(oldMemory, 1) * 2, requestMaxBatchSizeInBytes))
+            .setExpandCallback(
+                (oldMemory, newMemory) ->
+                    LOGGER.info(
+                        "The batch size limit has expanded from {} to {}.", oldMemory, newMemory));
+
+    if (getMaxBatchSizeInBytes() != requestMaxBatchSizeInBytes) {
       LOGGER.info(
-          "PipeTransferBatchReqBuilder: the max batch size is adjusted from {} to {}.",
+          "PipeTransferBatchReqBuilder: the max batch size is adjusted from {} to {} due to the "
+              + "memory restriction",
           requestMaxBatchSizeInBytes,
-          maxBatchSizeInBytes);
+          getMaxBatchSizeInBytes());
     }
+  }
+
+  /**
+   * Try offer event into cache if the given event is not duplicated.
+   *
+   * @param event the given event
+   * @return true if the batch can be transferred
+   */
+  public boolean onEvent(TabletInsertionEvent event) throws IOException, WALPipeException {
+    if (!(event instanceof EnrichedEvent)) {
+      return false;
+    }
+
+    final TPipeTransferReq req = buildTabletInsertionReq(event);
+    final long requestCommitId = ((EnrichedEvent) event).getCommitId();
+
+    if (requestCommitIds.isEmpty()
+        || !requestCommitIds.get(requestCommitIds.size() - 1).equals(requestCommitId)) {
+      reqs.add(req);
+      events.add(event);
+      requestCommitIds.add(requestCommitId);
+
+      ((EnrichedEvent) event).increaseReferenceCount(PipeTransferBatchReqBuilder.class.getName());
+
+      if (firstEventProcessingTime == Long.MIN_VALUE) {
+        firstEventProcessingTime = System.currentTimeMillis();
+      }
+
+      bufferSize += req.getBody().length;
+    }
+
+    return bufferSize >= getMaxBatchSizeInBytes()
+        || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs;
+  }
+
+  public void onSuccess() {
+    reqs.clear();
+    events.clear();
+    requestCommitIds.clear();
+
+    firstEventProcessingTime = Long.MIN_VALUE;
+
+    bufferSize = 0;
   }
 
   public List<TPipeTransferReq> getTPipeTransferReqs() {
     return reqs;
+  }
+
+  protected long getMaxBatchSizeInBytes() {
+    return allocatedMemoryBlock.getMemoryUsageInBytes();
   }
 
   public boolean isEmpty() {

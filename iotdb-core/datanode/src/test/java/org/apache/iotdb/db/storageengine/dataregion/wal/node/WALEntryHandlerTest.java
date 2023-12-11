@@ -38,10 +38,11 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushL
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -107,6 +108,7 @@ public class WALEntryHandlerTest {
         walNode1.log(
             memTable.getMemTableId(), getInsertRowNode(devicePath, System.currentTimeMillis()));
     walNode1.onMemTableFlushed(memTable);
+    Awaitility.await().until(() -> walNode1.isAllWALEntriesConsumed());
     // pin flushed memTable
     WALEntryHandler handler = flushListener.getWalEntryHandler();
     handler.pinMemTable();
@@ -167,6 +169,7 @@ public class WALEntryHandlerTest {
     handler.pinMemTable();
     handler.pinMemTable();
     walNode1.onMemTableFlushed(memTable);
+    Awaitility.await().until(() -> walNode1.isAllWALEntriesConsumed());
     // unpin 1
     CheckpointManager checkpointManager = walNode1.getCheckpointManager();
     handler.unpinMemTable();
@@ -234,9 +237,7 @@ public class WALEntryHandlerTest {
     handler.pinMemTable();
     walNode1.onMemTableFlushed(memTable);
     // wait until wal flushed
-    while (!walNode1.isAllWALEntriesConsumed()) {
-      Thread.sleep(50);
-    }
+    Awaitility.await().until(() -> walNode1.isAllWALEntriesConsumed());
     assertEquals(node1, handler.getInsertNode());
   }
 
@@ -269,9 +270,7 @@ public class WALEntryHandlerTest {
             }
 
             // wait until wal flushed
-            while (!walNode1.isAllWALEntriesConsumed() && !walNode2.isAllWALEntriesConsumed()) {
-              Thread.sleep(50);
-            }
+            Awaitility.await().until(walNode::isAllWALEntriesConsumed);
 
             walFlushListeners.get(0).getWalEntryHandler().pinMemTable();
             walNode.onMemTableFlushed(memTable);

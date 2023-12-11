@@ -22,8 +22,8 @@ package org.apache.iotdb.pulsar;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.pool.SessionPool;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.apache.pulsar.client.api.Consumer;
@@ -45,7 +45,7 @@ public class PulsarConsumer {
   private static final int CONSUMER_NUM = 3;
   private List<Consumer<?>> consumerList;
   private static SessionPool pool;
-  private static final Logger logger = LoggerFactory.getLogger(PulsarConsumer.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PulsarConsumer.class);
 
   public PulsarConsumer(List<Consumer<?>> consumerList) {
     this.consumerList = consumerList;
@@ -69,7 +69,7 @@ public class PulsarConsumer {
         createTimeseries(sql);
       }
     } catch (IoTDBConnectionException | StatementExecutionException e) {
-      logger.error(e.getMessage());
+      LOGGER.error(e.getMessage());
     }
   }
 

@@ -35,7 +35,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.window;
 
-import org.apache.iotdb.tsfile.access.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
 public class ${className} extends AbstractVariation${dataType.dataType?cap_first}Window {
 

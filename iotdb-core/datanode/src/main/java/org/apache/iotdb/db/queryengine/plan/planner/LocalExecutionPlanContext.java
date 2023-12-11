@@ -28,11 +28,10 @@ import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
-import org.apache.iotdb.db.queryengine.execution.timer.RuleBasedTimeSliceAllocator;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -76,8 +75,7 @@ public class LocalExecutionPlanContext {
   // left is cached last value in last query
   // right is full path for each cached last value
   private List<Pair<TimeValuePair, Binary>> cachedLastValueAndPathList;
-  // timeFilter for last query
-  private Filter lastQueryTimeFilter;
+
   // whether we need to update last cache
   private boolean needUpdateLastCache;
   private boolean needUpdateNullEntry;
@@ -134,12 +132,6 @@ public class LocalExecutionPlanContext {
 
   public void addPipelineDriverFactory(
       Operator operation, DriverContext driverContext, long estimatedMemorySize) {
-    driverContext
-        .getOperatorContexts()
-        .forEach(
-            operatorContext ->
-                operatorContext.setMaxRunTime(
-                    driverContext.getTimeSliceAllocator().getMaxRunTime(operatorContext)));
     pipelineDriverFactories.add(
         new PipelineDriverFactory(operation, driverContext, estimatedMemorySize));
   }
@@ -226,10 +218,6 @@ public class LocalExecutionPlanContext {
     return allSensors;
   }
 
-  public void setLastQueryTimeFilter(Filter lastQueryTimeFilter) {
-    this.lastQueryTimeFilter = lastQueryTimeFilter;
-  }
-
   public void setNeedUpdateLastCache(boolean needUpdateLastCache) {
     this.needUpdateLastCache = needUpdateLastCache;
   }
@@ -264,16 +252,8 @@ public class LocalExecutionPlanContext {
     return typeProvider;
   }
 
-  public RuleBasedTimeSliceAllocator getTimeSliceAllocator() {
-    return driverContext.getTimeSliceAllocator();
-  }
-
   public FragmentInstanceContext getInstanceContext() {
     return driverContext.getFragmentInstanceContext();
-  }
-
-  public Filter getLastQueryTimeFilter() {
-    return lastQueryTimeFilter;
   }
 
   public boolean isNeedUpdateLastCache() {
@@ -290,5 +270,9 @@ public class LocalExecutionPlanContext {
 
   public long getDataRegionTTL() {
     return dataRegionTTL;
+  }
+
+  public Filter getGlobalTimeFilter() {
+    return driverContext.getFragmentInstanceContext().getGlobalTimeFilter();
   }
 }

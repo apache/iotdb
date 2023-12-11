@@ -25,16 +25,26 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
+import org.openjdk.jol.info.ClassLayout;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
+import static io.airlift.slice.SizeOf.sizeOfByteArray;
+
 /** used in query. */
 public class Chunk {
 
-  private ChunkHeader chunkHeader;
-  private Statistics chunkStatistic;
+  private static final int INSTANCE_SIZE =
+      ClassLayout.parseClass(Chunk.class).instanceSize()
+          + ChunkHeader.INSTANCE_SIZE
+          + ClassLayout.parseClass(ByteBuffer.class).instanceSize();
+
+  private final ChunkHeader chunkHeader;
   private ByteBuffer chunkData;
+  private Statistics chunkStatistic;
+
   /** A list of deleted intervals. */
   private List<TimeRange> deleteIntervalList;
 
@@ -47,6 +57,11 @@ public class Chunk {
     this.chunkData = buffer;
     this.deleteIntervalList = deleteIntervalList;
     this.chunkStatistic = chunkStatistic;
+  }
+
+  public Chunk(ChunkHeader header, ByteBuffer buffer) {
+    this.chunkHeader = header;
+    this.chunkData = buffer;
   }
 
   public ChunkHeader getHeader() {
@@ -147,5 +162,14 @@ public class Chunk {
 
   public Statistics getChunkStatistic() {
     return chunkStatistic;
+  }
+
+  /**
+   * it's only used for query cache, and assuming that we use HeapByteBuffer, if we use Pooled
+   * DirectByteBuffer in the future, we need to change the calculation logic here. chunkStatistic
+   * and deleteIntervalList are all null in cache
+   */
+  public long getRetainedSizeInBytes() {
+    return INSTANCE_SIZE + sizeOfByteArray(chunkData.capacity());
   }
 }

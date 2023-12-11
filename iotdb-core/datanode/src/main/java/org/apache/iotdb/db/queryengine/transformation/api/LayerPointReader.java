@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.transformation.api;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.io.IOException;

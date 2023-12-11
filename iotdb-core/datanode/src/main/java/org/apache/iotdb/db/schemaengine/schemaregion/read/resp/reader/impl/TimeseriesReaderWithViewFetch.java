@@ -39,7 +39,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.utils.filter.FilterContains
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.filter.TimeseriesFilterVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.GetSourcePathsVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.TransformToExpressionVisitor;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -240,7 +240,8 @@ public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesS
     // clear cachedViewList, all cached view will be added in the last step
     cachedViewList.clear();
 
-    ISchemaTree schemaTree = ClusterSchemaFetcher.getInstance().fetchSchema(patternTree, null);
+    ISchemaTree schemaTree =
+        ClusterSchemaFetcher.getInstance().fetchSchema(patternTree, true, null);
     // process each view expression and get data type
     TransformToExpressionVisitor transformToExpressionVisitor = new TransformToExpressionVisitor();
     CompleteMeasurementSchemaVisitor completeMeasurementSchemaVisitor =

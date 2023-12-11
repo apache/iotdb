@@ -21,7 +21,7 @@ package org.apache.iotdb.hadoop.tsfile;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
@@ -38,9 +38,9 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 
 public class TsFileWriteToHDFS {
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileWriteToHDFS.class);
 
   private static TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
-  private static final Logger logger = LoggerFactory.getLogger(TsFileWriteToHDFS.class);
 
   public static void main(String[] args) {
     config.setTSFileStorageFs(new FSType[] {FSType.HDFS});
@@ -72,7 +72,7 @@ public class TsFileWriteToHDFS {
         tsFileWriter.write(tsRecord);
       }
     } catch (Exception e) {
-      logger.error("Failed to write TsFile on HDFS. {}", e.getMessage());
+      LOGGER.error("Failed to write TsFile on HDFS. {}", e.getMessage());
     }
   }
 }

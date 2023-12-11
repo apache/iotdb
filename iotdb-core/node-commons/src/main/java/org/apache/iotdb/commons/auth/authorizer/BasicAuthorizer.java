@@ -58,9 +58,13 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
    * directly.
    */
   // FOR PRE VERSION BEGIN -----
+
+  @Override
   public void checkUserPathPrivilege() {
     userManager.checkAndRefreshPathPri();
     roleManager.checkAndRefreshPathPri();
+    userManager.setPreVersion(false);
+    roleManager.setPreVersion(false);
   }
 
   // FOR PRE VERSION END -----
@@ -334,7 +338,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       try {
         userWaterMarkStatus.put(user, isUserUseWaterMark(user));
       } catch (AuthException e) {
-        LOGGER.error(String.format(NO_SUCH_USER_EXCEPTION, user));
+        LOGGER.error("No such user: {}", user);
       }
     }
     return userWaterMarkStatus;
@@ -348,7 +352,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       try {
         allUsers.put(userName, getUser(userName));
       } catch (AuthException e) {
-        LOGGER.error(String.format("get all users failed, No such user : %s", userName));
+        LOGGER.error("get all users failed, No such user: {}", userName);
       }
     }
     return allUsers;
@@ -362,7 +366,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       try {
         allRoles.put(roleName, getRole(roleName));
       } catch (AuthException e) {
-        LOGGER.error(String.format("get all roles failed, No such role : %s", roleName));
+        LOGGER.error("get all roles failed, No such role: {}", roleName);
       }
     }
     return allRoles;

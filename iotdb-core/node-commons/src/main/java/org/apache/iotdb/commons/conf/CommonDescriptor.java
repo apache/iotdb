@@ -287,6 +287,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_subtask_executor_pending_queue_max_blocking_time_ms",
                 String.valueOf(config.getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs()))));
+    config.setPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_subtask_executor_cron_heartbeat_event_interval_seconds",
+                String.valueOf(config.getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds()))));
 
     config.setPipeExtractorAssignerDisruptorRingBufferSize(
         Integer.parseInt(
@@ -392,6 +397,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_max_allowed_pending_tsfile_epoch_per_data_region",
                 String.valueOf(config.getPipeMaxAllowedPendingTsFileEpochPerDataRegion()))));
+    config.setPipeMaxAllowedPinnedMemTableCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_max_allowed_pinned_memtable_count",
+                String.valueOf(config.getPipeMaxAllowedPinnedMemTableCount()))));
 
     config.setPipeMemoryManagementEnabled(
         Boolean.parseBoolean(
@@ -418,6 +428,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_memory_allocate_for_tsfile_sequence_reader_in_bytes",
                 String.valueOf(config.getPipeMemoryAllocateForTsFileSequenceReaderInBytes()))));
+    config.setPipeMemoryExpanderIntervalSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_memory_expander_interval_seconds",
+                String.valueOf(config.getPipeMemoryExpanderIntervalSeconds()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {

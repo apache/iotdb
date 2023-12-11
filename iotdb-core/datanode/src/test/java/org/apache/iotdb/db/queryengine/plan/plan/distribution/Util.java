@@ -56,8 +56,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -300,12 +300,14 @@ public class Util {
   private static ISchemaFetcher getFakeSchemaFetcher() {
     return new ISchemaFetcher() {
       @Override
-      public ISchemaTree fetchSchema(PathPatternTree patternTree, MPPQueryContext context) {
+      public ISchemaTree fetchSchema(
+          PathPatternTree patternTree, boolean withTemplate, MPPQueryContext context) {
         return ANALYSIS.getSchemaTree();
       }
 
       @Override
-      public ISchemaTree fetchSchemaWithTags(PathPatternTree patternTree, MPPQueryContext context) {
+      public ISchemaTree fetchSchemaWithTags(
+          PathPatternTree patternTree, boolean withTemplate, MPPQueryContext context) {
         return ANALYSIS.getSchemaTree();
       }
 
@@ -344,7 +346,7 @@ public class Util {
 
       @Override
       public Map<Integer, Template> checkAllRelatedTemplate(PartialPath pathPattern) {
-        return null;
+        return Collections.emptyMap();
       }
 
       @Override

@@ -19,7 +19,8 @@
 package org.apache.iotdb.db.storageengine.buffer;
 
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -62,7 +63,7 @@ public class BloomFilterCacheTest {
               .concat(File.separator)
               .concat("root.sg" + (i + 1))
               .concat(File.separator)
-              .concat("0")
+              .concat(Integer.toString(i))
               .concat(File.separator)
               .concat("0")
               .concat(File.separator)
@@ -82,6 +83,7 @@ public class BloomFilterCacheTest {
       for (String filePath : pathList) {
         FileUtils.forceDelete(new File(filePath));
       }
+      bloomFilterCache.clear();
     } catch (Exception e) {
       Assert.fail(e.getMessage());
     }
@@ -91,8 +93,15 @@ public class BloomFilterCacheTest {
   public void testGet() {
     try {
       for (String filePath : pathList) {
+        TsFileID tsFileID = new TsFileID(filePath);
         BloomFilter bloomFilter =
-            bloomFilterCache.get(new BloomFilterCache.BloomFilterCacheKey(filePath));
+            bloomFilterCache.get(
+                new BloomFilterCache.BloomFilterCacheKey(
+                    filePath,
+                    tsFileID.regionId,
+                    tsFileID.timePartitionId,
+                    tsFileID.fileVersion,
+                    tsFileID.compactionVersion));
         TsFileSequenceReader reader = FileReaderManager.getInstance().get(filePath, true);
         BloomFilter bloomFilter1 = reader.readBloomFilter();
         Assert.assertEquals(bloomFilter1, bloomFilter);
@@ -108,7 +117,14 @@ public class BloomFilterCacheTest {
   public void testRemove() {
     try {
       String path = pathList.get(0);
-      BloomFilterCache.BloomFilterCacheKey key = new BloomFilterCache.BloomFilterCacheKey(path);
+      TsFileID tsFileID = new TsFileID(path);
+      BloomFilterCache.BloomFilterCacheKey key =
+          new BloomFilterCache.BloomFilterCacheKey(
+              path,
+              tsFileID.regionId,
+              tsFileID.timePartitionId,
+              tsFileID.fileVersion,
+              tsFileID.compactionVersion);
       BloomFilter bloomFilter = bloomFilterCache.get(key);
       TsFileSequenceReader reader = FileReaderManager.getInstance().get(path, true);
       BloomFilter bloomFilter1 = reader.readBloomFilter();
@@ -127,7 +143,14 @@ public class BloomFilterCacheTest {
   public void testClear() {
     try {
       for (String path : pathList) {
-        BloomFilterCache.BloomFilterCacheKey key = new BloomFilterCache.BloomFilterCacheKey(path);
+        TsFileID tsFileID = new TsFileID(path);
+        BloomFilterCache.BloomFilterCacheKey key =
+            new BloomFilterCache.BloomFilterCacheKey(
+                path,
+                tsFileID.regionId,
+                tsFileID.timePartitionId,
+                tsFileID.fileVersion,
+                tsFileID.compactionVersion);
         BloomFilter bloomFilter = bloomFilterCache.get(key);
         TsFileSequenceReader reader = FileReaderManager.getInstance().get(path, true);
         BloomFilter bloomFilter1 = reader.readBloomFilter();
@@ -136,7 +159,14 @@ public class BloomFilterCacheTest {
       }
       bloomFilterCache.clear();
       for (String path : pathList) {
-        BloomFilterCache.BloomFilterCacheKey key = new BloomFilterCache.BloomFilterCacheKey(path);
+        TsFileID tsFileID = new TsFileID(path);
+        BloomFilterCache.BloomFilterCacheKey key =
+            new BloomFilterCache.BloomFilterCacheKey(
+                path,
+                tsFileID.regionId,
+                tsFileID.timePartitionId,
+                tsFileID.fileVersion,
+                tsFileID.compactionVersion);
         BloomFilter bloomFilter = bloomFilterCache.getIfPresent(key);
         Assert.assertNull(bloomFilter);
       }

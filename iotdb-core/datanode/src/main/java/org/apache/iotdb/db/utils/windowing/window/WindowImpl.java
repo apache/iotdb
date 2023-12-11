@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.utils.windowing.window;
 
 import org.apache.iotdb.db.utils.windowing.api.Window;
-import org.apache.iotdb.tsfile.enums.TSDataType;
-import org.apache.iotdb.tsfile.exception.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 public class WindowImpl implements Window {

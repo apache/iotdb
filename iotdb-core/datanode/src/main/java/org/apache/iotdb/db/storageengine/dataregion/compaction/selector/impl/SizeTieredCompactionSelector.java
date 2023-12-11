@@ -196,6 +196,9 @@ public class SizeTieredCompactionSelector
       if (Objects.isNull(modFile) || !modFile.exists()) {
         continue;
       }
+      if (tsFileResource.getStatus() != TsFileResourceStatus.NORMAL) {
+        continue;
+      }
       if (modFile.getSize() > MODS_FILE_SIZE_THRESHOLD
           || !CompactionUtils.isDiskHasSpace(DISK_REDUNDANCY)) {
         taskList.add(

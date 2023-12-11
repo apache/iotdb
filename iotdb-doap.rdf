@@ -58,6 +58,39 @@
     <category rdf:resource="http://projects.apache.org/category/python"/>
     <category rdf:resource="http://projects.apache.org/category/c++"/>
     <category rdf:resource="http://projects.apache.org/category/go"/>
+    <category rdf:resource="http://projects.apache.org/category/csharp"/>
+
+    <release>
+      <Version>
+        <name>apache-iotdb-1.2.2</name>
+        <created>2023-10-15</created>
+        <revision>1.2.2</revision>
+      </Version>
+    </release>
+
+    <release>
+      <Version>
+        <name>apache-iotdb-1.2.1</name>
+        <created>2023-09-19</created>
+        <revision>1.2.1</revision>
+      </Version>
+    </release>
+
+    <release>
+      <Version>
+        <name>apache-iotdb-1.2.0</name>
+        <created>2023-09-08</created>
+        <revision>1.2.0</revision>
+      </Version>
+    </release>
+
+    <release>
+      <Version>
+        <name>apache-iotdb-1.1.2</name>
+        <created>2023-07-28</created>
+        <revision>1.1.2</revision>
+      </Version>
+    </release>
 
     <release>
       <Version>

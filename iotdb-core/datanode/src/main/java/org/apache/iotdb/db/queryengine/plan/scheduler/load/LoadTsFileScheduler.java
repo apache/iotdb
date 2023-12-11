@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.StorageExecutor;
@@ -36,6 +37,7 @@ import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
@@ -90,7 +92,7 @@ import java.util.stream.IntStream;
  */
 public class LoadTsFileScheduler implements IScheduler {
   private static final Logger logger = LoggerFactory.getLogger(LoadTsFileScheduler.class);
-  public static final long LOAD_TASK_MAX_TIME_IN_SECOND = 5184000L; // one day
+  public static final long LOAD_TASK_MAX_TIME_IN_SECOND = 900L; // 15min
   private static final long MAX_MEMORY_SIZE;
   private static final int TRANSMIT_LIMIT;
 
@@ -201,8 +203,8 @@ public class LoadTsFileScheduler implements IScheduler {
   }
 
   private boolean firstPhase(LoadSingleTsFileNode node) {
+    final TsFileDataManager tsFileDataManager = new TsFileDataManager(this, node);
     try {
-      TsFileDataManager tsFileDataManager = new TsFileDataManager(this, node);
       new TsFileSplitter(
               node.getTsFileResource().getTsFile(), tsFileDataManager::addOrSendTsFileData)
           .splitTsFileByDataPartition();
@@ -223,6 +225,8 @@ public class LoadTsFileScheduler implements IScheduler {
       logger.warn(
           String.format("Parse or send TsFile %s error.", node.getTsFileResource().getTsFile()), e);
       return false;
+    } finally {
+      tsFileDataManager.clear();
     }
     return true;
   }
@@ -325,8 +329,13 @@ public class LoadTsFileScheduler implements IScheduler {
     return true;
   }
 
-  private boolean loadLocally(LoadSingleTsFileNode node) {
+  private boolean loadLocally(LoadSingleTsFileNode node) throws IoTDBException {
     logger.info("Start load TsFile {} locally.", node.getTsFileResource().getTsFile().getPath());
+
+    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+      throw new LoadReadOnlyException();
+    }
+
     try {
       FragmentInstance instance =
           new FragmentInstance(
@@ -501,6 +510,10 @@ public class LoadTsFileScheduler implements IScheduler {
         }
       }
       return true;
+    }
+
+    private void clear() {
+      replicaSet2Piece.clear();
     }
   }
 

@@ -148,6 +148,8 @@ public class IoTConsensusServerImpl {
     // This prevents wal from being piled up if the safelyDeletedSearchIndex is not updated after
     // the restart and Leader migration occurs
     checkAndUpdateSafeDeletedSearchIndex();
+    // see message in logs for details
+    checkAndUpdateSearchIndex();
   }
 
   public IStateMachine getStateMachine() {
@@ -179,10 +181,7 @@ public class IoTConsensusServerImpl {
       ioTConsensusServerMetrics.recordGetStateMachineLockTime(
           getStateMachineLockTime - consensusWriteStartTime);
       if (needBlockWrite()) {
-        logger.info(
-            "[Throttle Down] index:{}, safeIndex:{}",
-            getSearchIndex(),
-            getCurrentSafelyDeletedSearchIndex());
+        logger.info("[Throttle Down] index:{}, safeIndex:{}", getSearchIndex(), getMinSyncIndex());
         try {
           boolean timeout =
               !stateMachineCondition.await(
@@ -211,7 +210,7 @@ public class IoTConsensusServerImpl {
         logger.info(
             "DataRegion[{}]: index after build: safeIndex:{}, searchIndex: {}",
             thisNode.getGroupId(),
-            getCurrentSafelyDeletedSearchIndex(),
+            getMinSyncIndex(),
             indexedConsensusRequest.getSearchIndex());
       }
       IConsensusRequest planNode = stateMachine.deserializeRequest(indexedConsensusRequest);
@@ -558,7 +557,7 @@ public class IoTConsensusServerImpl {
    * @throws ConsensusGroupModifyPeerException
    */
   public void buildSyncLogChannel(Peer targetPeer) throws ConsensusGroupModifyPeerException {
-    buildSyncLogChannel(targetPeer, getCurrentSafelyDeletedSearchIndex());
+    buildSyncLogChannel(targetPeer, getMinSyncIndex());
   }
 
   public void buildSyncLogChannel(Peer targetPeer, long initialSyncIndex)
@@ -672,8 +671,12 @@ public class IoTConsensusServerImpl {
    * In the case of multiple copies, the minimum synchronization index is selected. In the case of
    * single copies, the current index is selected
    */
-  public long getCurrentSafelyDeletedSearchIndex() {
+  public long getMinSyncIndex() {
     return logDispatcher.getMinSyncIndex().orElseGet(searchIndex::get);
+  }
+
+  public long getMinFlushedSyncIndex() {
+    return logDispatcher.getMinFlushedSyncIndex().orElseGet(searchIndex::get);
   }
 
   public String getStorageDir() {
@@ -693,8 +696,8 @@ public class IoTConsensusServerImpl {
   }
 
   public long getSyncLag() {
-    long safeIndex = getCurrentSafelyDeletedSearchIndex();
-    return getSearchIndex() - safeIndex;
+    long minSyncIndex = getMinSyncIndex();
+    return getSearchIndex() - minSyncIndex;
   }
 
   public IoTConsensusConfig getConfig() {
@@ -799,7 +802,26 @@ public class IoTConsensusServerImpl {
     if (configuration.size() == 1) {
       consensusReqReader.setSafelyDeletedSearchIndex(Long.MAX_VALUE);
     } else {
-      consensusReqReader.setSafelyDeletedSearchIndex(getCurrentSafelyDeletedSearchIndex());
+      consensusReqReader.setSafelyDeletedSearchIndex(getMinFlushedSyncIndex());
+    }
+  }
+
+  public void checkAndUpdateSearchIndex() {
+    long currentSearchIndex = searchIndex.get();
+    long safelyDeletedSearchIndex = getMinFlushedSyncIndex();
+    if (currentSearchIndex < safelyDeletedSearchIndex) {
+      logger.warn(
+          "The searchIndex for this region({}) is smaller than the safelyDeletedSearchIndex when "
+              + "the node is restarted, which means that the data of the current region is not flushed "
+              + "by the wal, but has been synchronized to other nodes. At this point, "
+              + "different replicas have been inconsistent and cannot be automatically recovered. "
+              + "To prevent subsequent logs from marking smaller searchIndex and exacerbating the "
+              + "inconsistency, we manually set the searchIndex({}) to safelyDeletedSearchIndex({}) "
+              + "here to reduce the impact of this problem in the future",
+          consensusGroupId,
+          currentSearchIndex,
+          safelyDeletedSearchIndex);
+      searchIndex.set(safelyDeletedSearchIndex);
     }
   }
 

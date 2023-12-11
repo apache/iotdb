@@ -29,20 +29,25 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
+
 public class DeviceSchemaInfo {
 
   private PartialPath devicePath;
   private boolean isAligned;
-  private List<MeasurementSchemaInfo> measurementSchemaInfoList;
+  private List<IMeasurementSchemaInfo> measurementSchemaInfoList;
+  private int templateId = NON_TEMPLATE;
 
   private DeviceSchemaInfo() {}
 
   public DeviceSchemaInfo(
       PartialPath devicePath,
       boolean isAligned,
-      List<MeasurementSchemaInfo> measurementSchemaInfoList) {
+      int templateId,
+      List<IMeasurementSchemaInfo> measurementSchemaInfoList) {
     this.devicePath = devicePath;
     this.isAligned = isAligned;
+    this.templateId = templateId;
     this.measurementSchemaInfoList = measurementSchemaInfoList;
   }
 
@@ -54,6 +59,10 @@ public class DeviceSchemaInfo {
     return isAligned;
   }
 
+  public int getTemplateId() {
+    return templateId;
+  }
+
   public List<MeasurementSchema> getMeasurementSchemaList() {
     return measurementSchemaInfoList.stream()
         .map(
@@ -61,6 +70,29 @@ public class DeviceSchemaInfo {
                 measurementSchemaInfo == null
                     ? null
                     : measurementSchemaInfo.getSchemaAsMeasurementSchema())
+        .collect(Collectors.toList());
+  }
+
+  public List<MeasurementPath> getMeasurementSchemaPathList() {
+    return measurementSchemaInfoList.stream()
+        .map(
+            measurementSchemaInfo -> {
+              if (measurementSchemaInfo == null) {
+                return null;
+              }
+              MeasurementPath measurementPath =
+                  new MeasurementPath(
+                      devicePath.concatNode(measurementSchemaInfo.getName()),
+                      measurementSchemaInfo.getSchema());
+              if (measurementSchemaInfo.getAlias() != null) {
+                measurementPath.setMeasurementAlias(measurementSchemaInfo.getAlias());
+              }
+              if (measurementSchemaInfo.getTagMap() != null) {
+                measurementPath.setTagMap(measurementSchemaInfo.getTagMap());
+              }
+              measurementPath.setUnderAlignedEntity(isAligned);
+              return measurementPath;
+            })
         .collect(Collectors.toList());
   }
 

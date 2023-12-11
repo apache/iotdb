@@ -132,7 +132,7 @@ public class GrafanaApiServiceTest {
     }
   }
 
-  public void expressionGroupByLevel(CloseableHttpClient httpClient) {
+  public void expressionAggGroupByTimeAndLevel(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
       HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/grafana/v1/query/expression");
@@ -325,7 +325,7 @@ public class GrafanaApiServiceTest {
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
     rightInsertTablet(httpClient);
     expression(httpClient);
-    expressionGroupByLevel(httpClient);
+    expressionAggGroupByTimeAndLevel(httpClient);
     try {
       httpClient.close();
     } catch (IOException e) {
@@ -352,6 +352,94 @@ public class GrafanaApiServiceTest {
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
     rightInsertTablet(httpClient);
     variable(httpClient);
+    try {
+      httpClient.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void expressionWithAggGroupByTimeTest() {
+    CloseableHttpClient httpClient = HttpClientBuilder.create().build();
+    rightInsertTablet(httpClient);
+
+    CloseableHttpResponse response = null;
+    try {
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/grafana/v1/query/expression");
+      String sql =
+          "{\"expression\":[\"count(s4)\"],\"prefixPath\":[\"root.sg25\"],\"startTime\":1635232143960,\"endTime\":1635232153960,\"control\":\"group by([1635232143960,1635232153960),1s)\"}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      HttpEntity responseEntity = response.getEntity();
+      String message = EntityUtils.toString(responseEntity, "utf-8");
+      ObjectMapper mapper = new ObjectMapper();
+      Map map = mapper.readValue(message, Map.class);
+      List<Long> timestampsResult = (List<Long>) map.get("timestamps");
+      List<Long> expressionsResult = (List<Long>) map.get("expressions");
+      List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
+      Assert.assertTrue(map.size() > 0);
+      Assert.assertTrue(timestampsResult.size() == 10);
+      Assert.assertTrue(valuesResult.size() == 1);
+      Assert.assertTrue("count(root.sg25.s4)".equals(expressionsResult.get(0)));
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+    try {
+      httpClient.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void expressionWithAggGroupByLevelTest() {
+    CloseableHttpClient httpClient = HttpClientBuilder.create().build();
+    rightInsertTablet(httpClient);
+
+    CloseableHttpResponse response = null;
+    try {
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/grafana/v1/query/expression");
+      String sql =
+          "{\"expression\":[\"count(s4)\"],\"prefixPath\":[\"root.sg25\"],\"startTime\":1635232143960,\"endTime\":1635232153960,\"control\":\"group by level = 1\"}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      HttpEntity responseEntity = response.getEntity();
+      String message = EntityUtils.toString(responseEntity, "utf-8");
+      ObjectMapper mapper = new ObjectMapper();
+      Map map = mapper.readValue(message, Map.class);
+      List<Long> timestampsResult = (List<Long>) map.get("timestamps");
+      List<Long> expressionsResult = (List<Long>) map.get("expressions");
+      List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
+      Assert.assertTrue(map.size() > 0);
+      Assert.assertTrue(timestampsResult == null);
+      Assert.assertTrue(valuesResult.size() == 1);
+      Assert.assertTrue("count(root.sg25.s4)".equals(expressionsResult.get(0)));
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
     try {
       httpClient.close();
     } catch (IOException e) {

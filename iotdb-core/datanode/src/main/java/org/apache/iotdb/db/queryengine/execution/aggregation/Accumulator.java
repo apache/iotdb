@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
-import org.apache.iotdb.tsfile.access.Column;
-import org.apache.iotdb.tsfile.access.ColumnBuilder;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.utils.BitMap;
 
 public interface Accumulator {
@@ -39,6 +39,15 @@ public interface Accumulator {
    * advance for various reasons(eq. current row doesn't satisfy the window)
    */
   void addInput(Column[] column, BitMap bitMap, int lastIndex);
+
+  /**
+   * Sliding window constantly add and remove partial result in the window. Aggregation functions
+   * need to implement this method to support sliding window feature.
+   */
+  default void removeIntermediate(Column[] partialResult) {
+    throw new UnsupportedOperationException(
+        "This type of accumulator does not support remove input!");
+  }
 
   /**
    * For aggregation function like COUNT, SUM, partialResult should be single; But for AVG,

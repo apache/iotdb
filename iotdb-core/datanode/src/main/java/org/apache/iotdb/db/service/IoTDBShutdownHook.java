@@ -55,6 +55,9 @@ public class IoTDBShutdownHook extends Thread {
 
   @Override
   public void run() {
+    // stop external rpc service firstly.
+    RPCService.getInstance().stop();
+
     // close rocksdb if possible to avoid lose data
     if (SchemaEngineMode.valueOf(CommonDescriptor.getInstance().getConfig().getSchemaEngineMode())
         .equals(SchemaEngineMode.Rocksdb_based)) {

@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.FileElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.PageElement;
@@ -206,7 +206,8 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
                     } else {
                       valueModifications.add(
                           getModificationsFromCache(
-                              resource, new PartialPath(deviceId, x.getMeasurementUid())));
+                              resource,
+                              CompactionPathUtils.getPath(deviceId, x.getMeasurementUid())));
                     }
                   } catch (IllegalPathException e) {
                     throw new RuntimeException(e);

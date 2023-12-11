@@ -38,7 +38,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeInd
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -57,15 +56,11 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -87,6 +82,7 @@ public class TsFileResource {
 
   public static final String RESOURCE_SUFFIX = ".resource";
   public static final String TEMP_SUFFIX = ".temp";
+  public static final String BROKEN_SUFFIX = ".broken";
 
   /** version number */
   public static final byte VERSION_NUMBER = 1;
@@ -110,8 +106,6 @@ public class TsFileResource {
 
   private TsFileLock tsFileLock = new TsFileLock();
 
-  private final Random random = new Random();
-
   private boolean isSeq;
 
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
@@ -124,7 +118,7 @@ public class TsFileResource {
   /** Minimum index of plans executed within this TsFile. */
   public long minPlanIndex = Long.MAX_VALUE;
 
-  private long version = 0;
+  private TsFileID tsFileID;
 
   private long ramSize;
 
@@ -157,32 +151,15 @@ public class TsFileResource {
 
   private boolean isInsertionCompactionTaskCandidate = true;
 
-  public TsFileResource() {}
-
-  public TsFileResource(TsFileResource other) throws IOException {
-    this.file = other.file;
-    this.processor = other.processor;
-    this.timeIndex = other.timeIndex;
-    this.modFile = other.modFile;
-    this.setAtomicStatus(other.getStatus());
-    this.pathToChunkMetadataListMap = other.pathToChunkMetadataListMap;
-    this.pathToReadOnlyMemChunkMap = other.pathToReadOnlyMemChunkMap;
-    this.pathToTimeSeriesMetadataMap = other.pathToTimeSeriesMetadataMap;
-    this.tsFileLock = other.tsFileLock;
-    this.fsFactory = other.fsFactory;
-    this.maxPlanIndex = other.maxPlanIndex;
-    this.minPlanIndex = other.minPlanIndex;
-    this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
-    this.tsFileSize = other.tsFileSize;
-    this.isSeq = other.isSeq;
-    this.tierLevel = other.tierLevel;
-    this.maxProgressIndex = other.maxProgressIndex;
+  @TestOnly
+  public TsFileResource() {
+    this.tsFileID = new TsFileID();
   }
 
   /** for sealed TsFile, call setClosed to close TsFileResource */
   public TsFileResource(File file) {
     this.file = file;
-    this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
+    this.tsFileID = new TsFileID(file.getAbsolutePath());
     this.timeIndex = CONFIG.getTimeIndexLevel().getTimeIndex();
     this.isSeq = FilePathUtils.isSequence(this.file.getAbsolutePath());
     // This method is invoked when DataNode recovers, so the tierLevel should be calculated when
@@ -199,7 +176,7 @@ public class TsFileResource {
   /** unsealed TsFile, for writter */
   public TsFileResource(File file, TsFileProcessor processor) {
     this.file = file;
-    this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
+    this.tsFileID = new TsFileID(file.getAbsolutePath());
     this.timeIndex = CONFIG.getTimeIndexLevel().getTimeIndex();
     this.processor = processor;
     this.isSeq = processor.isSequence();
@@ -220,16 +197,9 @@ public class TsFileResource {
     this.pathToChunkMetadataListMap = pathToChunkMetadataListMap;
     generatePathToTimeSeriesMetadataMap();
     this.originTsFileResource = originTsFileResource;
-    this.version = originTsFileResource.version;
+    this.tsFileID = originTsFileResource.tsFileID;
     this.isSeq = originTsFileResource.isSeq;
     this.tierLevel = originTsFileResource.tierLevel;
-  }
-
-  @TestOnly
-  public TsFileResource(
-      File file, Map<String, Integer> deviceToIndex, long[] startTimes, long[] endTimes) {
-    this.file = file;
-    this.timeIndex = new DeviceTimeIndex(deviceToIndex, startTimes, endTimes);
   }
 
   public synchronized void serialize() throws IOException {
@@ -368,6 +338,7 @@ public class TsFileResource {
 
   public void setFile(File file) {
     this.file = file;
+    this.tsFileID = new TsFileID(file.getAbsolutePath());
   }
 
   public File getTsFile() {
@@ -823,10 +794,6 @@ public class TsFileResource {
     return null;
   }
 
-  public void setTimeSeriesMetadata(PartialPath path, ITimeSeriesMetadata timeSeriesMetadata) {
-    this.pathToTimeSeriesMetadataMap.put(path, timeSeriesMetadata);
-  }
-
   public DataRegion.SettleTsFileCallBack getSettleTsFileCallBack() {
     return settleTsFileCallBack;
   }
@@ -837,7 +804,7 @@ public class TsFileResource {
 
   /** make sure Either the deviceToIndex is not empty Or the path contains a partition folder */
   public long getTimePartition() {
-    return timeIndex.getTimePartition(file.getAbsolutePath());
+    return tsFileID.timePartitionId;
   }
 
   /**
@@ -852,48 +819,6 @@ public class TsFileResource {
   /** Check whether the tsFile spans multiple time partitions. */
   public boolean isSpanMultiTimePartitions() {
     return timeIndex.isSpanMultiTimePartitions();
-  }
-
-  /**
-   * Create a hardlink for the TsFile and modification file (if exists) The hardlink will have a
-   * suffix like ".{sysTime}_{randomLong}"
-   *
-   * @return a new TsFileResource with its file changed to the hardlink or null the hardlink cannot
-   *     be created.
-   */
-  public TsFileResource createHardlink() {
-    if (file == null || !file.exists()) {
-      return null;
-    }
-
-    TsFileResource newResource;
-    try {
-      newResource = new TsFileResource(this);
-    } catch (IOException e) {
-      LOGGER.error("Cannot create hardlink for {}", file, e);
-      return null;
-    }
-
-    while (true) {
-      String hardlinkSuffix =
-          TsFileConstant.PATH_SEPARATOR + System.currentTimeMillis() + "_" + random.nextLong();
-      File hardlink = new File(file.getAbsolutePath() + hardlinkSuffix);
-
-      try {
-        Files.createLink(Paths.get(hardlink.getAbsolutePath()), Paths.get(file.getAbsolutePath()));
-        newResource.setFile(hardlink);
-        if (modFile != null && modFile.exists()) {
-          newResource.setModFile(modFile.createHardlink());
-        }
-        break;
-      } catch (FileAlreadyExistsException e) {
-        // retry a different name if the file is already created
-      } catch (IOException e) {
-        LOGGER.error("Cannot create hardlink for {}", file, e);
-        return null;
-      }
-    }
-    return newResource;
   }
 
   public void setModFile(ModificationFile modFile) {
@@ -965,11 +890,17 @@ public class TsFileResource {
   }
 
   public void setVersion(long version) {
-    this.version = version;
+    this.tsFileID =
+        new TsFileID(
+            tsFileID.regionId, tsFileID.timePartitionId, version, tsFileID.compactionVersion);
   }
 
   public long getVersion() {
-    return version;
+    return tsFileID.fileVersion;
+  }
+
+  public TsFileID getTsFileID() {
+    return tsFileID;
   }
 
   public void setTimeIndex(ITimeIndex timeIndex) {

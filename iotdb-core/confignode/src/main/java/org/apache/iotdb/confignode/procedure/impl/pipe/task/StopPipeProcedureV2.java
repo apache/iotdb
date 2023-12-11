@@ -93,15 +93,16 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
-      throws PipeException, IOException {
+  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
     LOGGER.info("StopPipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 
     String exceptionMessage =
         parsePushPipeMetaExceptionForPipe(pipeName, pushSinglePipeMetaToDataNodes(pipeName, env));
     if (!exceptionMessage.isEmpty()) {
-      throw new PipeException(
-          String.format("Failed to stop pipe %s, details: %s", pipeName, exceptionMessage));
+      LOGGER.warn(
+          "Failed to stop pipe {}, details: {}, metadata will be synchronized later.",
+          pipeName,
+          exceptionMessage);
     }
   }
 
@@ -138,17 +139,17 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
-      throws PipeException, IOException {
+  protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
     LOGGER.info("StopPipeProcedureV2: rollbackFromOperateOnDataNodes({})", pipeName);
 
     // Push all pipe metas to datanode, may be time-consuming
     String exceptionMessage =
         parsePushPipeMetaExceptionForPipe(pipeName, pushPipeMetaToDataNodes(env));
     if (!exceptionMessage.isEmpty()) {
-      throw new PipeException(
-          String.format(
-              "Failed to rollback stop pipe %s, details: %s", pipeName, exceptionMessage));
+      LOGGER.warn(
+          "Failed to rollback stop pipe {}, details: {}, metadata will be synchronized later.",
+          pipeName,
+          exceptionMessage);
     }
   }
 

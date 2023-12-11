@@ -116,6 +116,12 @@ public class TimePartitionManager {
             StorageEngine.getInstance().getDataRegion(timePartitionInfo.dataRegionId);
         if (dataRegion != null) {
           dataRegion.releaseFlushTimeMap(timePartitionInfo.partitionId);
+          logger.info(
+              "[{}]evict LastFlushTimeMap of old TimePartitionInfo-{}, mem size is {}, remaining mem cost is {}",
+              timePartitionInfo.dataRegionId,
+              timePartitionInfo.partitionId,
+              timePartitionInfo.memSize,
+              memCost);
         }
         timePartitionInfoMap
             .get(timePartitionInfo.dataRegionId)

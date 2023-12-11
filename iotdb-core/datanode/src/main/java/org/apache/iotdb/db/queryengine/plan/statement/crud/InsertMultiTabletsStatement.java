@@ -23,8 +23,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -85,6 +85,15 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
     return insertTabletStatementList.stream()
         .map(InsertTabletStatement::getSchemaValidation)
         .collect(Collectors.toList());
+  }
+
+  @Override
+  public void updateAfterSchemaValidation() {
+    for (InsertTabletStatement insertTabletStatement : insertTabletStatementList) {
+      if (!this.hasFailedMeasurements() && insertTabletStatement.hasFailedMeasurements()) {
+        this.failedMeasurementIndex2Info = insertTabletStatement.failedMeasurementIndex2Info;
+      }
+    }
   }
 
   @Override

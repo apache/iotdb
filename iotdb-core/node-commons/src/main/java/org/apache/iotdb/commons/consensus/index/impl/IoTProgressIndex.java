@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import javax.annotation.Nonnull;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -31,13 +33,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class IoTProgressIndex implements ProgressIndex {
+public class IoTProgressIndex extends ProgressIndex {
 
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
   private final Map<Integer, Long> peerId2SearchIndex;
 
-  public IoTProgressIndex() {
+  private IoTProgressIndex() {
     peerId2SearchIndex = new HashMap<>();
   }
 
@@ -79,7 +81,7 @@ public class IoTProgressIndex implements ProgressIndex {
   }
 
   @Override
-  public boolean isAfter(ProgressIndex progressIndex) {
+  public boolean isAfter(@Nonnull ProgressIndex progressIndex) {
     lock.readLock().lock();
     try {
       if (progressIndex instanceof MinimumProgressIndex) {
@@ -174,6 +176,17 @@ public class IoTProgressIndex implements ProgressIndex {
   @Override
   public ProgressIndexType getType() {
     return ProgressIndexType.IOT_PROGRESS_INDEX;
+  }
+
+  @Override
+  public TotalOrderSumTuple getTotalOrderSumTuple() {
+    lock.readLock().lock();
+    try {
+      return new TotalOrderSumTuple(
+          peerId2SearchIndex.values().stream().mapToLong(Long::longValue).sum());
+    } finally {
+      lock.readLock().unlock();
+    }
   }
 
   public static IoTProgressIndex deserializeFrom(ByteBuffer byteBuffer) {

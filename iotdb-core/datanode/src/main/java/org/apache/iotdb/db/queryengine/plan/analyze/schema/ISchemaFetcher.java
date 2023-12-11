@@ -24,8 +24,8 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.schemaengine.template.Template;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -43,7 +43,8 @@ public interface ISchemaFetcher {
    * @param patternTree used for matching the timeseries
    * @return the matched timeseries schema organized as tree structure logically
    */
-  ISchemaTree fetchSchema(PathPatternTree patternTree, MPPQueryContext context);
+  ISchemaTree fetchSchema(
+      PathPatternTree patternTree, boolean withTemplate, MPPQueryContext context);
 
   /**
    * Fetch all the schema with tags of existing timeseries matched by the given patternTree
@@ -51,7 +52,8 @@ public interface ISchemaFetcher {
    * @param patternTree used for matching the timeseries
    * @return the matched timeseries schema organized as tree structure logically
    */
-  ISchemaTree fetchSchemaWithTags(PathPatternTree patternTree, MPPQueryContext context);
+  ISchemaTree fetchSchemaWithTags(
+      PathPatternTree patternTree, boolean withTemplate, MPPQueryContext context);
 
   /**
    * Fetch and compute the schema of target timeseries, with device and measurement defined in given

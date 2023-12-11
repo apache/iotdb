@@ -273,6 +273,9 @@ CONFIGNODE_JMX_OPTS="$CONFIGNODE_JMX_OPTS -Xms${ON_HEAP_MEMORY}"
 CONFIGNODE_JMX_OPTS="$CONFIGNODE_JMX_OPTS -Xmx${ON_HEAP_MEMORY}"
 CONFIGNODE_JMX_OPTS="$CONFIGNODE_JMX_OPTS -XX:MaxDirectMemorySize=${OFF_HEAP_MEMORY}"
 CONFIGNODE_JMX_OPTS="$CONFIGNODE_JMX_OPTS -Djdk.nio.maxCachedBufferSize=${MAX_CACHED_BUFFER_SIZE}"
+IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+ExitOnOutOfMemoryError"
+# if you want to dump the heap memory while OOM happening, you can use the following command, remember to replace /tmp/heapdump.hprof with your own file path and the folder where this file is located needs to be created in advance
+#IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/confignode_heapdump.hprof"
 
 echo "ConfigNode on heap memory size = ${ON_HEAP_MEMORY}B, off heap memory size = ${OFF_HEAP_MEMORY}B"
 echo "If you want to change this configuration, please check conf/confignode-env.sh."

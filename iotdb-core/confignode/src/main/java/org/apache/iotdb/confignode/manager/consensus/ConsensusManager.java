@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
@@ -187,6 +186,9 @@ public class ConsensusManager {
                                       .setRaftLogSizeMaxThreshold(CONF.getConfigNodeRatisLogMax())
                                       .setForceSnapshotInterval(
                                           CONF.getConfigNodeRatisPeriodicSnapshotInterval())
+                                      .setRetryTimesMax(10)
+                                      .setRetryWaitMillis(
+                                          COMMON_CONF.getConnectionTimeoutInMS() / 10)
                                       .build())
                               .setRead(
                                   RatisConfig.Read.newBuilder()
@@ -209,20 +211,6 @@ public class ConsensusManager {
     }
     consensusImpl.start();
     if (SystemPropertiesUtils.isRestarted()) {
-      // TODO: @Itami-Sho Check and notify if current ConfigNode's ip or port has changed
-
-      if (SIMPLE_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
-        // Only SIMPLE_CONSENSUS need invoking `createPeerForConsensusGroup` when restarted,
-        // but RATIS_CONSENSUS doesn't need it
-        try {
-          createPeerForConsensusGroup(SystemPropertiesUtils.loadConfigNodeList());
-        } catch (BadNodeUrlException e) {
-          throw new IOException(e);
-        } catch (ConsensusException e) {
-          LOGGER.error(
-              "Something wrong happened while calling consensus layer's createLocalPeer API.", e);
-        }
-      }
       LOGGER.info("Init ConsensusManager successfully when restarted");
     } else if (ConfigNodeDescriptor.getInstance().isSeedConfigNode()) {
       // Create ConsensusGroup that contains only itself

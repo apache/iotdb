@@ -40,11 +40,11 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilterApi;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import com.google.common.collect.Sets;
@@ -126,7 +126,7 @@ public class UpdateLastCacheOperatorTest {
   public void testUpdateLastCacheOperatorTestWithTimeFilter1() {
     try {
       List<Aggregator> aggregators = LastQueryUtil.createAggregators(TSDataType.INT32);
-      Filter timeFilter = TimeFilter.gtEq(200);
+      Filter timeFilter = TimeFilterApi.gtEq(200);
       UpdateLastCacheOperator updateLastCacheOperator =
           initUpdateLastCacheOperator(aggregators, timeFilter, false, null);
 
@@ -156,7 +156,7 @@ public class UpdateLastCacheOperatorTest {
   public void testUpdateLastCacheOperatorTestWithTimeFilter2() {
     try {
       List<Aggregator> aggregators = LastQueryUtil.createAggregators(TSDataType.INT32);
-      Filter timeFilter = TimeFilter.ltEq(120);
+      Filter timeFilter = TimeFilterApi.ltEq(120);
       UpdateLastCacheOperator updateLastCacheOperator =
           initUpdateLastCacheOperator(aggregators, timeFilter, false, null);
 

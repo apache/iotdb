@@ -22,7 +22,6 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionRecoverException;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionValidationFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogAnalyzer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
@@ -34,7 +33,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
-import org.apache.iotdb.db.storageengine.dataregion.utils.validate.TsFileValidator;
 
 import java.io.File;
 import java.io.IOException;
@@ -100,7 +98,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
   protected boolean needRecoverTaskInfoFromLogFile;
 
   @Override
-  protected List<TsFileResource> getAllSourceTsFiles() {
+  public List<TsFileResource> getAllSourceTsFiles() {
     return Stream.concat(selectedSeqFiles.stream(), selectedUnseqFiles.stream())
         .collect(Collectors.toList());
   }
@@ -149,19 +147,13 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
 
       prepareTargetFiles();
 
+      validateCompactionResult(
+          Collections.emptyList(),
+          Collections.singletonList(unseqFileToInsert),
+          Collections.singletonList(targetFile));
+
       replaceTsFileInMemory(
           Collections.singletonList(unseqFileToInsert), Collections.singletonList(targetFile));
-
-      if (!TsFileValidator.getInstance()
-          .validateTsFilesIsHasNoOverlap(
-              tsFileManager.getOrCreateSequenceListByTimePartition(timePartition))) {
-        LOGGER.error(
-            "Failed to pass compaction validation, source un seq files is: {}, target files is {}",
-            unseqFileToInsert,
-            targetFile);
-        IoTDBDescriptor.getInstance().getConfig().setEnableInsertionCrossSpaceCompaction(false);
-        throw new CompactionValidationFailedException("Failed to pass compaction validation");
-      }
 
       lockWrite(Collections.singletonList(unseqFileToInsert));
       CompactionUtils.deleteCompactionModsFile(selectedSeqFiles, selectedUnseqFiles);
@@ -203,7 +195,9 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
 
   public File generateTargetFile() throws IOException {
     String path = unseqFileToInsert.getTsFile().getParentFile().getPath();
-    path = path.replace("unsequence", "sequence");
+    int pos = path.lastIndexOf("unsequence");
+    path = path.substring(0, pos) + "sequence" + path.substring(pos + "unsequence".length());
+
     TsFileNameGenerator.TsFileName tsFileName =
         TsFileNameGenerator.getTsFileName(unseqFileToInsert.getTsFile().getName());
     tsFileName.setTime(timestamp);

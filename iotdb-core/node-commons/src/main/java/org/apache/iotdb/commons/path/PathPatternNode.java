@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
@@ -227,9 +228,10 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
   }
 
   public static <V, T extends PathPatternNode.Serializer<V>> PathPatternNode<V, T> deserializeNode(
-      ByteBuffer buffer, T serializer) {
+      ByteBuffer buffer, T serializer, Consumer<String> nodeNameProcessor) {
     PathPatternNode<V, T> node =
         new PathPatternNode<>(ReadWriteIOUtils.readString(buffer), serializer);
+    nodeNameProcessor.accept(node.name);
     int typeOrValueSize = ReadWriteIOUtils.readInt(buffer);
     if (typeOrValueSize >= 0) {
       // measurement node in PatternTreeMap
@@ -244,7 +246,7 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
     }
     int childrenSize = ReadWriteIOUtils.readInt(buffer);
     while (childrenSize > 0) {
-      PathPatternNode<V, T> tmpNode = deserializeNode(buffer, serializer);
+      PathPatternNode<V, T> tmpNode = deserializeNode(buffer, serializer, nodeNameProcessor);
       node.addChild(tmpNode);
       childrenSize--;
     }

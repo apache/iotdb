@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.tsfile.read.common.block;
 
-import org.apache.iotdb.tsfile.access.Column;
-import org.apache.iotdb.tsfile.exception.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -138,32 +138,22 @@ public class TsBlock {
         length, (TimeColumn) timeColumn.getRegion(positionOffset, length), slicedColumns);
   }
 
+  /**
+   * ATTENTION!!! The following two methods use System.arraycopy() to extend the valueColumn array,
+   * so its performance is not ensured if you have many insert operations. </br> PLEASE MAKE SURE
+   * the column object CAN'T BE NULL and POSITION COUNT SHOULD MATCH valueColumn's</br>
+   */
   public TsBlock appendValueColumns(Column[] columns) {
     Column[] newBlocks = Arrays.copyOf(valueColumns, valueColumns.length + columns.length);
-    int newColumnIndex = valueColumns.length;
-    for (Column column : columns) {
-      requireNonNull(column, "Column is null");
-      if (positionCount != column.getPositionCount()) {
-        throw new IllegalArgumentException("Block does not have same position count");
-      }
-      newBlocks[newColumnIndex++] = column;
-    }
+    System.arraycopy(columns, 0, newBlocks, valueColumns.length, columns.length);
     return wrapBlocksWithoutCopy(positionCount, timeColumn, newBlocks);
   }
 
-  /**
-   * Attention. This method uses System.arraycopy() to extend the valueColumn array, so its
-   * performance is not ensured if you have many insert operations.
-   */
-  public TsBlock insertValueColumn(int index, Column column) {
-    requireNonNull(column, "Column is null");
-    if (positionCount != column.getPositionCount()) {
-      throw new IllegalArgumentException("Block does not have same position count");
-    }
-
-    Column[] newBlocks = Arrays.copyOf(valueColumns, valueColumns.length + 1);
-    System.arraycopy(newBlocks, index, newBlocks, index + 1, valueColumns.length - index);
-    newBlocks[index] = column;
+  public TsBlock insertValueColumn(int index, Column[] columns) {
+    Column[] newBlocks = Arrays.copyOf(valueColumns, valueColumns.length + columns.length);
+    System.arraycopy(
+        newBlocks, index, newBlocks, index + columns.length, valueColumns.length - index);
+    System.arraycopy(columns, 0, newBlocks, index, columns.length);
     return wrapBlocksWithoutCopy(positionCount, timeColumn, newBlocks);
   }
 

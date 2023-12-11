@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.MergeException;
+import org.apache.iotdb.db.service.metrics.CompactionMetrics;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICrossSpaceSelector;
@@ -354,8 +356,9 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         }
         return Collections.emptyList();
       }
+      long timeCost = System.currentTimeMillis() - startTime;
       LOGGER.info(
-          "{} [Compaction] Total source files: {} seqFiles, {} unseqFiles. "
+          "{} [{}] Total source files: {} seqFiles, {} unseqFiles. "
               + "Candidate source files: {} seqFiles, {} unseqFiles. "
               + "Selected source files: {} seqFiles, "
               + "{} unseqFiles, total memory cost {} MB, "
@@ -364,6 +367,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
               + "total selected unseq file size is {} MB, "
               + "time consumption {}ms.",
           sgDataRegionId,
+          isInsertionTask ? "InsertionCrossSpaceCompaction" : "CrossSpaceCompaction",
           sequenceFileList.size(),
           unsequenceFileList.size(),
           candidate.getSeqFiles().size(),
@@ -374,7 +378,10 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           (float) (taskResources.getTotalFileSize()) / 1024 / 1024,
           taskResources.getTotalSeqFileSize() / 1024 / 1024,
           taskResources.getTotalUnseqFileSize() / 1024 / 1024,
-          System.currentTimeMillis() - startTime);
+          timeCost);
+      CompactionMetrics.getInstance()
+          .updateCompactionTaskSelectionTimeCost(
+              isInsertionTask ? CompactionTaskType.INSERTION : CompactionTaskType.CROSS, timeCost);
       hasPrintedLog = false;
       return Collections.singletonList(taskResources);
 

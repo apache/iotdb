@@ -46,6 +46,8 @@ public abstract class AbstractTraverserIterator<N extends IMNode<N>> implements 
   // if true, the pre deleted measurement or pre deactivated template won't be processed
   private boolean skipPreDeletedSchema = false;
 
+  private boolean skipTemplateChildren = false;
+
   protected AbstractTraverserIterator(
       IMTreeStore<N> store,
       IDeviceMNode<N> parent,
@@ -63,6 +65,11 @@ public abstract class AbstractTraverserIterator<N extends IMNode<N>> implements 
 
   public void setSkipPreDeletedSchema(boolean skipPreDeletedSchema) {
     this.skipPreDeletedSchema = skipPreDeletedSchema;
+  }
+
+  @Override
+  public void skipTemplateChildren() {
+    skipTemplateChildren = true;
   }
 
   private Template getActivatedSchemaTemplate(
@@ -89,7 +96,9 @@ public abstract class AbstractTraverserIterator<N extends IMNode<N>> implements 
       if (directChildrenIterator.hasNext()) {
         nextMatchedNode = directChildrenIterator.next();
         usingDirectChildrenIterator = true;
-      } else if (templateChildrenIterator != null && templateChildrenIterator.hasNext()) {
+      } else if (!skipTemplateChildren
+          && templateChildrenIterator != null
+          && templateChildrenIterator.hasNext()) {
         nextMatchedNode = templateChildrenIterator.next();
         usingDirectChildrenIterator = false;
       } else {

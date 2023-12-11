@@ -24,7 +24,7 @@ import java.util.Objects;
 
 public class DFAState implements IFAState {
   private final int index;
-  private final boolean isFinal;
+  private boolean isFinal;
 
   public DFAState(int state) {
     this.index = state;
@@ -49,6 +49,10 @@ public class DFAState implements IFAState {
   @Override
   public boolean isFinal() {
     return isFinal;
+  }
+
+  public void setFinal(boolean aFinal) {
+    isFinal = aFinal;
   }
 
   @Override

@@ -85,6 +85,12 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setMaxInnerCompactionCandidateFileNum(
+      int maxInnerCompactionCandidateFileNum) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setAutoCreateSchemaEnabled(boolean enableAutoCreateSchema) {
     return this;
   }
@@ -285,6 +291,11 @@ public class RemoteCommonConfig implements CommonConfig {
 
   @Override
   public CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDriverTaskExecutionTimeSliceInMs(long driverTaskExecutionTimeSliceInMs) {
     return this;
   }
 }

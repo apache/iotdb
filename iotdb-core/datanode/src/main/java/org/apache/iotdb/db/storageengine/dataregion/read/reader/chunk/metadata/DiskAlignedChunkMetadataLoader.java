@@ -118,10 +118,10 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
       alignedChunkMetadataList.forEach(
           chunkMetadata -> {
             if (chunkMetadata.needSetChunkLoader()) {
-              chunkMetadata.setFilePath(resource.getTsFilePath());
+              chunkMetadata.setVersion(resource.getVersion());
               chunkMetadata.setClosed(resource.isClosed());
               chunkMetadata.setChunkLoader(
-                  new DiskAlignedChunkLoader(context.isDebug(), queryAllSensors));
+                  new DiskAlignedChunkLoader(context.isDebug(), queryAllSensors, resource));
             }
           });
 

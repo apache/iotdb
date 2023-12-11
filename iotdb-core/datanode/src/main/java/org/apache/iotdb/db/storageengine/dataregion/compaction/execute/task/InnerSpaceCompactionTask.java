@@ -171,12 +171,13 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     recoverMemoryStatus = true;
     LOGGER.info(
         "{}-{} [Compaction] {} InnerSpaceCompaction task starts with {} files, "
-            + "total file size is {} MB.",
+            + "total file size is {} MB, memory cost is {} MB",
         storageGroupName,
         dataRegionId,
         sequence ? "Sequence" : "Unsequence",
         selectedTsFileResourceList.size(),
-        selectedFileSize / 1024 / 1024);
+        selectedFileSize / 1024 / 1024,
+        memoryCost == 0 ? 0 : (double) memoryCost / 1024 / 1024);
     boolean isSuccess = true;
 
     try {
@@ -219,30 +220,24 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
               String.format("%s-%s [Compaction] abort", storageGroupName, dataRegionId));
         }
 
+        validateCompactionResult(
+            sequence ? selectedTsFileResourceList : Collections.emptyList(),
+            sequence ? Collections.emptyList() : selectedTsFileResourceList,
+            targetTsFileList);
+
         // replace the old files with new file, the new is in same position as the old
-        if (sequence) {
-          tsFileManager.replace(
-              selectedTsFileResourceList,
-              Collections.emptyList(),
-              targetTsFileList,
-              timePartition,
-              true);
-        } else {
-          tsFileManager.replace(
-              Collections.emptyList(),
-              selectedTsFileResourceList,
-              targetTsFileList,
-              timePartition,
-              false);
-        }
+        tsFileManager.replace(
+            sequence ? selectedTsFileResourceList : Collections.emptyList(),
+            sequence ? Collections.emptyList() : selectedTsFileResourceList,
+            targetTsFileList,
+            timePartition,
+            sequence);
 
         if (targetTsFileResource.isDeleted()) {
           compactionLogger.logEmptyTargetFile(targetTsFileResource);
           isTargetTsFileEmpty = true;
           compactionLogger.force();
         }
-
-        validateTsFileResource(targetTsFileList, sequence);
 
         LOGGER.info(
             "{}-{} [Compaction] Compacted target files, try to get the write lock of source files",
@@ -387,7 +382,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   @Override
-  protected List<TsFileResource> getAllSourceTsFiles() {
+  public List<TsFileResource> getAllSourceTsFiles() {
     return this.selectedTsFileResourceList;
   }
 

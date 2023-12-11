@@ -22,8 +22,8 @@ package org.apache.iotdb.kafka;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.pool.SessionPool;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -45,9 +45,11 @@ import java.util.concurrent.Executors;
  */
 public class Consumer {
 
-  private List<KafkaConsumer<String, String>> consumerList;
-  private static final Logger logger = LoggerFactory.getLogger(Consumer.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(Consumer.class);
+
   private static SessionPool pool;
+
+  private List<KafkaConsumer<String, String>> consumerList;
 
   private Consumer(List<KafkaConsumer<String, String>> consumerList) {
     this.consumerList = consumerList;
@@ -105,7 +107,7 @@ public class Consumer {
         createTimeseries(sql);
       }
     } catch (IoTDBConnectionException | StatementExecutionException e) {
-      logger.error(e.getMessage());
+      LOGGER.error(e.getMessage());
     }
   }
 

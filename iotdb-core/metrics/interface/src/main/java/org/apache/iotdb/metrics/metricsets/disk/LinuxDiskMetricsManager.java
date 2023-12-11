@@ -50,7 +50,7 @@ import java.util.stream.Collectors;
  * cancelled write byte.
  */
 public class LinuxDiskMetricsManager implements IDiskMetricsManager {
-  private final Logger log = LoggerFactory.getLogger(LinuxDiskMetricsManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(LinuxDiskMetricsManager.class);
 
   @SuppressWarnings("squid:S1075")
   private static final String DISK_STATUS_FILE_PATH = "/proc/diskstats";
@@ -348,7 +348,7 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
           diskSectorSizeMap.put(diskId, DEFAULT_SECTOR_SIZE);
         }
       } catch (IOException e) {
-        log.warn("Failed to get the sector size of {}", diskId, e);
+        LOGGER.warn("Failed to get the sector size of {}", diskId, e);
         // use DEFAULT_SECTOR_SIZE bytes as default value
         diskSectorSizeMap.put(diskId, DEFAULT_SECTOR_SIZE);
       }
@@ -366,7 +366,7 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   private void updateDiskInfo() {
     File diskStatsFile = new File(DISK_STATUS_FILE_PATH);
     if (!diskStatsFile.exists()) {
-      log.warn("Cannot find disk io status file {}", DISK_STATUS_FILE_PATH);
+      LOGGER.warn("Cannot find disk io status file {}", DISK_STATUS_FILE_PATH);
       return;
     }
 
@@ -419,7 +419,7 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
         }
       }
     } catch (IOException e) {
-      log.error("Meets error while updating disk io info", e);
+      LOGGER.error("Meets error while updating disk io info", e);
     }
   }
 
@@ -444,7 +444,7 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   private void updateProcessInfo() {
     File processStatInfoFile = new File(processIoStatusPath);
     if (!processStatInfoFile.exists()) {
-      log.warn("Cannot find process io status file {}", processIoStatusPath);
+      LOGGER.warn("Cannot find process io status file {}", processIoStatusPath);
     }
 
     try (Scanner processStatsScanner =
@@ -466,7 +466,7 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
         }
       }
     } catch (IOException e) {
-      log.error("Meets error while updating process io info", e);
+      LOGGER.error("Meets error while updating process io info", e);
     }
   }
 

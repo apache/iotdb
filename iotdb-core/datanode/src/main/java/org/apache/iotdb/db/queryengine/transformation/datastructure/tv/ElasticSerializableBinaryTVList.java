@@ -21,7 +21,7 @@ package org.apache.iotdb.db.queryengine.transformation.datastructure.tv;
 
 import org.apache.iotdb.commons.udf.utils.UDFBinaryTransformer;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.SerializableList;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.udf.api.type.Binary;
 

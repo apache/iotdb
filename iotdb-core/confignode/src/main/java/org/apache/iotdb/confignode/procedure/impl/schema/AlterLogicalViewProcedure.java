@@ -106,14 +106,12 @@ public class AlterLogicalViewProcedure
           }
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized state " + state.toString()));
+          setFailure(new ProcedureException("Unrecognized state " + state));
           return Flow.NO_MORE_STATE;
       }
     } finally {
       LOGGER.info(
-          String.format(
-              "AlterLogicalView-[%s] costs %sms",
-              state.toString(), (System.currentTimeMillis() - startTime)));
+          "AlterLogicalView-[{}] costs {}ms", state, (System.currentTimeMillis() - startTime));
     }
   }
 

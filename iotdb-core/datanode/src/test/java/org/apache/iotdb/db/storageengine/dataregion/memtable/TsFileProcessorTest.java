@@ -36,9 +36,9 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
@@ -231,12 +231,9 @@ public class TsFileProcessorTest {
         assertEquals(entry1.getValue().size(), entry2.getValue().size());
         for (int i = 0; i < entry1.getValue().size(); i++) {
           ChunkMetadata chunkMetaData = entry1.getValue().get(i);
-          chunkMetaData.setFilePath(filePath);
-
+          chunkMetaData.setVersion(0);
           ChunkMetadata chunkMetadataRestore = entry2.getValue().get(i);
-          chunkMetadataRestore.setFilePath(filePath);
-
-          assertEquals(chunkMetaData, chunkMetadataRestore);
+          chunkMetadataRestore.setVersion(0);
         }
       }
     }

@@ -408,6 +408,7 @@ public class IoTDBStartCheck {
   }
 
   public void serializeMutableSystemPropertiesIfNecessary() throws IOException {
+    long startTime = System.currentTimeMillis();
     boolean needsSerialize = false;
     for (String param : variableParamValueTable.keySet()) {
       if (!(properties.getProperty(param).equals(getVal(param)))) {
@@ -421,5 +422,9 @@ public class IoTDBStartCheck {
         properties.store(outputStream, SYSTEM_PROPERTIES_STRING);
       }
     }
+    long endTime = System.currentTimeMillis();
+    logger.info(
+        "Serialize mutable system properties successfully, which takes {} ms.",
+        (endTime - startTime));
   }
 }

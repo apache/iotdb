@@ -29,6 +29,7 @@ import org.apache.iotdb.db.schemaengine.template.Template;
 
 import java.io.File;
 import java.util.Map;
+import java.util.function.Consumer;
 
 public class ReentrantReadOnlyCachedMTreeStore implements IMTreeStore<ICachedMNode> {
   private final CachedMTreeStore store;
@@ -82,8 +83,8 @@ public class ReentrantReadOnlyCachedMTreeStore implements IMTreeStore<ICachedMNo
   }
 
   @Override
-  public void updateMNode(ICachedMNode node) {
-    store.updateMNode(node, false);
+  public void updateMNode(ICachedMNode node, Consumer<ICachedMNode> operation) {
+    store.updateMNode(node, operation, false);
   }
 
   @Override

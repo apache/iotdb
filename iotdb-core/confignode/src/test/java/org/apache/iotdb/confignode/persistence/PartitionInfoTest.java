@@ -29,7 +29,6 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
-import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
@@ -46,9 +45,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
-import org.junit.AfterClass;
+import org.junit.After;
 import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
@@ -58,6 +57,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.apache.iotdb.db.utils.constant.TestConstant.BASE_OUTPUT_PATH;
 
@@ -81,16 +81,16 @@ public class PartitionInfoTest {
     }
   }
 
-  @BeforeClass
-  public static void setup() {
+  @Before
+  public void setup() {
     partitionInfo = new PartitionInfo();
     if (!snapshotDir.exists()) {
       snapshotDir.mkdirs();
     }
   }
 
-  @AfterClass
-  public static void cleanup() throws IOException {
+  @After
+  public void cleanup() throws IOException {
     partitionInfo.clear();
     if (snapshotDir.exists()) {
       FileUtils.deleteDirectory(snapshotDir);
@@ -109,8 +109,6 @@ public class PartitionInfoTest {
 
     // Create a SchemaRegion
     CreateRegionGroupsPlan createRegionGroupsReq = new CreateRegionGroupsPlan();
-    createRegionGroupsReq.setCreateTime(CommonDateTimeUtils.currentTime());
-
     TRegionReplicaSet schemaRegionReplicaSet =
         generateTRegionReplicaSet(
             testFlag.SchemaPartition.getFlag(),
@@ -155,6 +153,45 @@ public class PartitionInfoTest {
   }
 
   @Test
+  public void testGetRegionType() {
+
+    partitionInfo.generateNextRegionGroupId();
+
+    // Set StorageGroup
+    partitionInfo.createDatabase(
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("root.test")));
+
+    // Create a SchemaRegion
+    CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
+    TConsensusGroupId schemaRegionId =
+        generateTConsensusGroupId(
+            testFlag.SchemaPartition.getFlag(), TConsensusGroupType.SchemaRegion);
+
+    TRegionReplicaSet schemaRegionReplicaSet =
+        generateTRegionReplicaSet(testFlag.SchemaPartition.getFlag(), schemaRegionId);
+    createRegionGroupsPlan.addRegionGroup("root.test", schemaRegionReplicaSet);
+    partitionInfo.createRegionGroups(createRegionGroupsPlan);
+
+    // Create a DataRegion
+    createRegionGroupsPlan = new CreateRegionGroupsPlan();
+    TConsensusGroupId dataRegionId =
+        generateTConsensusGroupId(testFlag.DataPartition.getFlag(), TConsensusGroupType.DataRegion);
+    TRegionReplicaSet dataRegionReplicaSet =
+        generateTRegionReplicaSet(testFlag.DataPartition.getFlag(), dataRegionId);
+    createRegionGroupsPlan.addRegionGroup("root.test", dataRegionReplicaSet);
+    partitionInfo.createRegionGroups(createRegionGroupsPlan);
+
+    Assert.assertEquals(
+        Optional.of(TConsensusGroupType.SchemaRegion),
+        partitionInfo.getRegionType(schemaRegionId.getId()));
+    Assert.assertEquals(
+        Optional.of(TConsensusGroupType.DataRegion),
+        partitionInfo.getRegionType(dataRegionId.getId()));
+    Assert.assertEquals(Optional.empty(), partitionInfo.getRegionType(-1));
+  }
+
+  @Test
   public void testShowRegion() {
     for (int i = 0; i < 2; i++) {
       partitionInfo.generateNextRegionGroupId();
@@ -166,7 +203,6 @@ public class PartitionInfoTest {
 
       // Create a SchemaRegion
       CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
-      createRegionGroupsPlan.setCreateTime(CommonDateTimeUtils.currentTime());
       TRegionReplicaSet schemaRegionReplicaSet =
           generateTRegionReplicaSet(
               testFlag.SchemaPartition.getFlag(),
@@ -177,7 +213,6 @@ public class PartitionInfoTest {
 
       // Create a DataRegion
       createRegionGroupsPlan = new CreateRegionGroupsPlan();
-      createRegionGroupsPlan.setCreateTime(CommonDateTimeUtils.currentTime());
       TRegionReplicaSet dataRegionReplicaSet =
           generateTRegionReplicaSet(
               testFlag.DataPartition.getFlag(),
@@ -192,43 +227,43 @@ public class PartitionInfoTest {
     regionReq.setShowRegionReq(showRegionReq);
     RegionInfoListResp regionInfoList1 =
         (RegionInfoListResp) partitionInfo.getRegionInfoList(regionReq);
-    Assert.assertEquals(regionInfoList1.getRegionInfoList().size(), 20);
+    Assert.assertEquals(20, regionInfoList1.getRegionInfoList().size());
     regionInfoList1
         .getRegionInfoList()
-        .forEach((regionInfo) -> Assert.assertEquals(regionInfo.getClientRpcIp(), "127.0.0.1"));
+        .forEach((regionInfo) -> Assert.assertEquals("127.0.0.1", regionInfo.getClientRpcIp()));
 
     showRegionReq.setConsensusGroupType(TConsensusGroupType.SchemaRegion);
     RegionInfoListResp regionInfoList2 =
         (RegionInfoListResp) partitionInfo.getRegionInfoList(regionReq);
-    Assert.assertEquals(regionInfoList2.getRegionInfoList().size(), 10);
+    Assert.assertEquals(10, regionInfoList2.getRegionInfoList().size());
     regionInfoList2
         .getRegionInfoList()
         .forEach(
             (regionInfo) ->
                 Assert.assertEquals(
-                    regionInfo.getConsensusGroupId().getType(), TConsensusGroupType.SchemaRegion));
+                    TConsensusGroupType.SchemaRegion, regionInfo.getConsensusGroupId().getType()));
 
     showRegionReq.setConsensusGroupType(TConsensusGroupType.DataRegion);
     RegionInfoListResp regionInfoList3 =
         (RegionInfoListResp) partitionInfo.getRegionInfoList(regionReq);
-    Assert.assertEquals(regionInfoList3.getRegionInfoList().size(), 10);
+    Assert.assertEquals(10, regionInfoList3.getRegionInfoList().size());
     regionInfoList3
         .getRegionInfoList()
         .forEach(
             (regionInfo) ->
                 Assert.assertEquals(
-                    regionInfo.getConsensusGroupId().getType(), TConsensusGroupType.DataRegion));
+                    TConsensusGroupType.DataRegion, regionInfo.getConsensusGroupId().getType()));
     showRegionReq.setConsensusGroupType(null);
     showRegionReq.setDatabases(Collections.singletonList("root.test1"));
     RegionInfoListResp regionInfoList4 =
         (RegionInfoListResp) partitionInfo.getRegionInfoList(regionReq);
-    Assert.assertEquals(regionInfoList4.getRegionInfoList().size(), 10);
+    Assert.assertEquals(10, regionInfoList4.getRegionInfoList().size());
     regionInfoList4
         .getRegionInfoList()
         .forEach(
             (regionInfo) -> {
-              Assert.assertEquals(regionInfo.getClientRpcIp(), "127.0.0.1");
-              Assert.assertEquals(regionInfo.getDatabase(), "root.test1");
+              Assert.assertEquals("127.0.0.1", regionInfo.getClientRpcIp());
+              Assert.assertEquals("root.test1", regionInfo.getDatabase());
             });
   }
 

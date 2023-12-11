@@ -28,8 +28,8 @@ import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.enums.TSDataType;
-import org.apache.iotdb.tsfile.exception.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -331,6 +331,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   public void encode(IChunkWriter chunkWriter) {
     AlignedChunkWriterImpl alignedChunkWriter = (AlignedChunkWriterImpl) chunkWriter;
 
+    BitMap rowBitMap = list.getRowBitMap();
     boolean[] timeDuplicateInfo = null;
     List<Integer> pageRange = new ArrayList<>();
     int range = 0;
@@ -345,12 +346,19 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
         range = 0;
       }
 
-      if (sortedRowIndex != list.rowCount() - 1 && time == list.getTime(sortedRowIndex + 1)) {
+      int nextRowIndex = sortedRowIndex + 1;
+      while (nextRowIndex < list.rowCount()
+          && rowBitMap != null
+          && rowBitMap.isMarked(nextRowIndex)) {
+        nextRowIndex++;
+      }
+      if (nextRowIndex != list.rowCount() && time == list.getTime(nextRowIndex)) {
         if (Objects.isNull(timeDuplicateInfo)) {
           timeDuplicateInfo = new boolean[list.rowCount()];
         }
         timeDuplicateInfo[sortedRowIndex] = true;
       }
+      sortedRowIndex = nextRowIndex - 1;
     }
 
     if (range != 0) {
@@ -367,11 +375,14 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
             && lastValidPointIndexForTimeDupCheck[columnIndex] == null) {
           lastValidPointIndexForTimeDupCheck[columnIndex] = new Pair<>(Long.MIN_VALUE, null);
         }
+        TSDataType tsDataType = dataTypes.get(columnIndex);
         for (int sortedRowIndex = pageRange.get(pageNum * 2);
             sortedRowIndex <= pageRange.get(pageNum * 2 + 1);
             sortedRowIndex++) {
-          TSDataType tsDataType = dataTypes.get(columnIndex);
-
+          // skip empty row
+          if (rowBitMap != null && rowBitMap.isMarked(list.getValueIndex(sortedRowIndex))) {
+            continue;
+          }
           // skip time duplicated rows
           long time = list.getTime(sortedRowIndex);
           if (Objects.nonNull(timeDuplicateInfo)) {
@@ -450,6 +461,10 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       for (int sortedRowIndex = pageRange.get(pageNum * 2);
           sortedRowIndex <= pageRange.get(pageNum * 2 + 1);
           sortedRowIndex++) {
+        // skip empty row
+        if (rowBitMap != null && rowBitMap.isMarked(list.getValueIndex(sortedRowIndex))) {
+          continue;
+        }
         if (Objects.isNull(timeDuplicateInfo) || !timeDuplicateInfo[sortedRowIndex]) {
           times[pointsInPage++] = list.getTime(sortedRowIndex);
         }

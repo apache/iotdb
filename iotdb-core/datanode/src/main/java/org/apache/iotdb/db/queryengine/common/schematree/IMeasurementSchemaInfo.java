@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import java.util.Map;
+
 public interface IMeasurementSchemaInfo {
 
   String getName();
@@ -37,6 +39,8 @@ public interface IMeasurementSchemaInfo {
   MeasurementSchema getSchemaAsMeasurementSchema();
 
   LogicalViewSchema getSchemaAsLogicalViewSchema();
+
+  Map<String, String> getTagMap();
 
   String getAlias();
 

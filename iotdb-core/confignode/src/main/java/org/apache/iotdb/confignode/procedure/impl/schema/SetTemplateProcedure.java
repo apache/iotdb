@@ -136,15 +136,13 @@ public class SetTemplateProcedure
           commitReleaseTemplate(env);
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized SetTemplateState " + state.toString()));
+          setFailure(new ProcedureException("Unrecognized SetTemplateState " + state));
           return Flow.NO_MORE_STATE;
       }
       return Flow.HAS_MORE_STATE;
     } finally {
       LOGGER.info(
-          String.format(
-              "SetSchemaTemplate-[%s] costs %sms",
-              state.toString(), (System.currentTimeMillis() - startTime)));
+          "SetSchemaTemplate-[{}] costs {}ms", state, (System.currentTimeMillis() - startTime));
     }
   }
 

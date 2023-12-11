@@ -43,6 +43,11 @@ public class MNodeIterator<N extends IMNode<?>> implements IMNodeIterator<N> {
   }
 
   @Override
+  public void skipTemplateChildren() {
+    // do nothing
+  }
+
+  @Override
   public void close() {
     iterator = null;
   }

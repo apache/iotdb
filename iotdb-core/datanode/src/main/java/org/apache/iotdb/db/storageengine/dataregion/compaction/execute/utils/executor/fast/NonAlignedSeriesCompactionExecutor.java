@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.FileElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.PageElement;
@@ -142,7 +142,8 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
             iChunkMetadataList,
             getModificationsFromCache(
                 resource,
-                new PartialPath(deviceId, iChunkMetadataList.get(0).getMeasurementUid())));
+                CompactionPathUtils.getPath(
+                    deviceId, iChunkMetadataList.get(0).getMeasurementUid())));
         if (iChunkMetadataList.isEmpty()) {
           // all chunks has been deleted in this file, just remove it
           removeFile(fileElement);

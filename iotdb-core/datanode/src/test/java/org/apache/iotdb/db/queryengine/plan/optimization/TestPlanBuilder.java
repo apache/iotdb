@@ -76,16 +76,16 @@ public class TestPlanBuilder {
 
   public TestPlanBuilder scan(String id, PartialPath path, int limit, int offset) {
     SeriesScanNode node = new SeriesScanNode(new PlanNodeId(id), (MeasurementPath) path);
-    node.setLimit(limit);
-    node.setOffset(offset);
+    node.setPushDownLimit(limit);
+    node.setPushDownOffset(offset);
     this.root = node;
     return this;
   }
 
   public TestPlanBuilder scanAligned(String id, PartialPath path, int limit, int offset) {
     AlignedSeriesScanNode node = new AlignedSeriesScanNode(new PlanNodeId(id), (AlignedPath) path);
-    node.setLimit(limit);
-    node.setOffset(offset);
+    node.setPushDownLimit(limit);
+    node.setPushDownOffset(offset);
     this.root = node;
     return this;
   }
@@ -128,7 +128,11 @@ public class TestPlanBuilder {
 
   public TestPlanBuilder fill(String id, FillPolicy fillPolicy) {
     this.root =
-        new FillNode(new PlanNodeId(id), getRoot(), new FillDescriptor(fillPolicy), Ordering.ASC);
+        new FillNode(
+            new PlanNodeId(id),
+            getRoot(),
+            new FillDescriptor(fillPolicy, null, null),
+            Ordering.ASC);
     return this;
   }
 
@@ -137,7 +141,7 @@ public class TestPlanBuilder {
         new FillNode(
             new PlanNodeId(id),
             getRoot(),
-            new FillDescriptor(FillPolicy.VALUE, new LongLiteral(intValue)),
+            new FillDescriptor(FillPolicy.VALUE, new LongLiteral(intValue), null),
             Ordering.ASC);
     return this;
   }

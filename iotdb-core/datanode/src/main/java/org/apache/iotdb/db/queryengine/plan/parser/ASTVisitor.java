@@ -199,8 +199,8 @@ import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.trigger.api.enums.TriggerType;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.TimeDuration;
@@ -1667,12 +1667,21 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       fillComponent.setFillPolicy(FillPolicy.LINEAR);
     } else if (ctx.PREVIOUS() != null) {
       fillComponent.setFillPolicy(FillPolicy.PREVIOUS);
+
     } else if (ctx.constant() != null) {
       fillComponent.setFillPolicy(FillPolicy.VALUE);
       Literal fillValue = parseLiteral(ctx.constant());
       fillComponent.setFillValue(fillValue);
     } else {
       throw new SemanticException("Unknown FILL type.");
+    }
+    if (ctx.interval != null) {
+      if (fillComponent.getFillPolicy() != FillPolicy.PREVIOUS) {
+        throw new SemanticException(
+            "Only FILL(PREVIOUS) support specifying the time duration threshold.");
+      }
+      fillComponent.setTimeDurationThreshold(
+          DateTimeUtils.constructTimeDuration(ctx.interval.getText()));
     }
     return fillComponent;
   }
@@ -2866,6 +2875,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       case SqlConstant.SUM:
       case SqlConstant.TIME_DURATION:
       case SqlConstant.MODE:
+      case SqlConstant.STDDEV:
+      case SqlConstant.STDDEV_POP:
+      case SqlConstant.STDDEV_SAMP:
+      case SqlConstant.VARIANCE:
+      case SqlConstant.VAR_POP:
+      case SqlConstant.VAR_SAMP:
         checkFunctionExpressionInputSize(
             functionExpression.getExpressionString(),
             functionExpression.getExpressions().size(),
@@ -2904,13 +2919,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private Expression parseRegularExpression(ExpressionContext context, boolean canUseFullPath) {
     return new RegularExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, canUseFullPath),
-        parseStringLiteral(context.STRING_LITERAL().getText()));
+        parseStringLiteral(context.STRING_LITERAL().getText()),
+        false);
   }
 
   private Expression parseLikeExpression(ExpressionContext context, boolean canUseFullPath) {
     return new LikeExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, canUseFullPath),
-        parseStringLiteral(context.STRING_LITERAL().getText()));
+        parseStringLiteral(context.STRING_LITERAL().getText()),
+        false);
   }
 
   private Expression parseIsNullExpression(ExpressionContext context, boolean canUseFullPath) {

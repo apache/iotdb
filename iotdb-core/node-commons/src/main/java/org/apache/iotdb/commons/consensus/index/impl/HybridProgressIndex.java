@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import javax.annotation.Nonnull;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -30,20 +32,26 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
 
-public class HybridProgressIndex implements ProgressIndex {
+public class HybridProgressIndex extends ProgressIndex {
 
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
   private final Map<Short, ProgressIndex> type2Index;
 
-  public HybridProgressIndex() {
+  private HybridProgressIndex() {
     this.type2Index = new HashMap<>();
   }
 
-  public HybridProgressIndex(short type, ProgressIndex progressIndex) {
-    this.type2Index = new HashMap<>();
-    type2Index.put(type, progressIndex);
+  public HybridProgressIndex(ProgressIndex progressIndex) {
+    short type = progressIndex.getType().getType();
+    if (ProgressIndexType.HYBRID_PROGRESS_INDEX.getType() != type) {
+      this.type2Index = new HashMap<>();
+      type2Index.put(type, progressIndex);
+    } else {
+      this.type2Index = ((HybridProgressIndex) progressIndex).type2Index;
+    }
   }
 
   @Override
@@ -79,11 +87,12 @@ public class HybridProgressIndex implements ProgressIndex {
   }
 
   @Override
-  public boolean isAfter(ProgressIndex progressIndex) {
+  public boolean isAfter(@Nonnull ProgressIndex progressIndex) {
     lock.readLock().lock();
     try {
       if (progressIndex instanceof MinimumProgressIndex) {
-        return true;
+        return type2Index.size() > 1
+            || !type2Index.containsKey(ProgressIndexType.MINIMUM_PROGRESS_INDEX.getType());
       }
 
       if (!(progressIndex instanceof HybridProgressIndex)) {
@@ -190,6 +199,19 @@ public class HybridProgressIndex implements ProgressIndex {
   @Override
   public ProgressIndexType getType() {
     return ProgressIndexType.HYBRID_PROGRESS_INDEX;
+  }
+
+  @Override
+  public TotalOrderSumTuple getTotalOrderSumTuple() {
+    lock.readLock().lock();
+    try {
+      return ProgressIndex.TotalOrderSumTuple.sum(
+          type2Index.values().stream()
+              .map(ProgressIndex::getTotalOrderSumTuple)
+              .collect(Collectors.toList()));
+    } finally {
+      lock.readLock().unlock();
+    }
   }
 
   public static HybridProgressIndex deserializeFrom(ByteBuffer byteBuffer) {

@@ -47,7 +47,7 @@ import java.util.List;
 import java.util.Objects;
 
 public class LoadTsFilePieceNode extends WritePlanNode {
-  private static final Logger logger = LoggerFactory.getLogger(LoadTsFilePieceNode.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFilePieceNode.class);
 
   private File tsFile;
 
@@ -120,7 +120,7 @@ public class LoadTsFilePieceNode extends WritePlanNode {
       serializeAttributes(stream);
       byteBuffer.put(byteOutputStream.toByteArray());
     } catch (IOException e) {
-      logger.error("Serialize to ByteBuffer error.", e);
+      LOGGER.error("Serialize to ByteBuffer error.", e);
     }
   }
 
@@ -133,7 +133,7 @@ public class LoadTsFilePieceNode extends WritePlanNode {
       try {
         tsFileData.serialize(stream);
       } catch (IOException e) {
-        logger.error(
+        LOGGER.error(
             String.format(
                 "Serialize data of TsFile %s error, skip TsFileData %s",
                 tsFile.getPath(), tsFileData));
@@ -160,7 +160,7 @@ public class LoadTsFilePieceNode extends WritePlanNode {
       pieceNode.setPlanNodeId(PlanNodeId.deserialize(stream));
       return pieceNode;
     } catch (IOException | PageException | IllegalPathException e) {
-      logger.error(String.format("Deserialize %s error.", LoadTsFilePieceNode.class.getName()), e);
+      LOGGER.error("Deserialize {} error.", LoadTsFilePieceNode.class.getName(), e);
       return null;
     }
   }

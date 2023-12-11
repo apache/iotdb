@@ -20,8 +20,8 @@
 package org.apache.iotdb.tsfile.utils;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 
@@ -659,6 +659,11 @@ public class ReadWriteIOUtils {
 
   /** read string from byteBuffer with user define length. */
   public static String readStringWithLength(ByteBuffer buffer, int length) {
+    if (length < 0) {
+      return null;
+    } else if (length == 0) {
+      return "";
+    }
     byte[] bytes = new byte[length];
     buffer.get(bytes, 0, length);
     return new String(bytes, 0, length);
@@ -909,16 +914,67 @@ public class ReadWriteIOUtils {
     return set;
   }
 
-  /** write integer set with self define length. */
+  private static final String SET_NOT_NULL_MSG = "set must not be null!";
+
+  // write integer set with self define length
   public static void writeIntegerSet(Set<Integer> set, OutputStream outputStream)
       throws IOException {
     if (set == null) {
-      throw new IllegalArgumentException("stringList must not be null!");
+      throw new IllegalArgumentException(SET_NOT_NULL_MSG);
     }
     int size = set.size();
     write(size, outputStream);
     for (int i : set) {
       write(i, outputStream);
+    }
+  }
+
+  // read long set with self define length
+  public static Set<Long> readLongSet(ByteBuffer buffer) {
+    int size = readInt(buffer);
+    if (size <= 0) {
+      return Collections.emptySet();
+    }
+    Set<Long> set = new HashSet<>();
+    for (int i = 0; i < size; i++) {
+      set.add(readLong(buffer));
+    }
+    return set;
+  }
+
+  // write long set with self define length
+  public static void writeLongSet(Set<Long> set, DataOutputStream outputStream) throws IOException {
+    if (set == null) {
+      throw new IllegalArgumentException(SET_NOT_NULL_MSG);
+    }
+    write(set.size(), outputStream);
+    for (long e : set) {
+      write(e, outputStream);
+    }
+  }
+
+  // read object set with self define length
+  public static <T> Set<T> readObjectSet(ByteBuffer buffer) {
+    int size = readInt(buffer);
+    if (size <= 0) {
+      return Collections.emptySet();
+    }
+    Set<T> set = new HashSet<>();
+    for (int i = 0; i < size; i++) {
+      set.add((T) readObject(buffer));
+    }
+    return set;
+  }
+
+  // write object set with self define length
+  public static <T> void writeObjectSet(Set<T> set, DataOutputStream outputStream)
+      throws IOException {
+    if (set == null) {
+      throw new IllegalArgumentException(SET_NOT_NULL_MSG);
+    }
+    write(set.size(), outputStream);
+    for (T e : set) {
+      writeObject(e, outputStream);
     }
   }
 

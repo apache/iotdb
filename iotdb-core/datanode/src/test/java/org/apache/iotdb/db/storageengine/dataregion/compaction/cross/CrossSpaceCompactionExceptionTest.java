@@ -61,10 +61,13 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
 
   private final String oldThreadName = Thread.currentThread().getName();
 
+  private long targetChunkSize;
+
   @Before
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
+    targetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024);
     Thread.currentThread().setName("pool-1-IoTDB-Compaction-Worker-1");
   }
@@ -73,6 +76,7 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
     Thread.currentThread().setName(oldThreadName);
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(targetChunkSize);
     new CompactionConfigRestorer().restoreCompactionConfig();
   }
 

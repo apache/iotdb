@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
-import org.apache.iotdb.tsfile.access.Column;
-import org.apache.iotdb.tsfile.access.ColumnBuilder;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.utils.BitMap;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -64,6 +64,15 @@ public class CountAccumulator implements Accumulator {
       return;
     }
     countValue += partialResult[0].getLong(0);
+  }
+
+  @Override
+  public void removeIntermediate(Column[] input) {
+    checkArgument(input.length == 1, "input of Count should be 1");
+    if (input[0].isNull(0)) {
+      return;
+    }
+    countValue -= input[0].getLong(0);
   }
 
   @Override

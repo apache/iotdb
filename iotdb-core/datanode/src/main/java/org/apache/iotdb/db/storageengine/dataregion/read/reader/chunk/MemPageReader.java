@@ -19,18 +19,18 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
-import org.apache.iotdb.tsfile.access.ColumnBuilder;
-import org.apache.iotdb.tsfile.enums.TSDataType;
-import org.apache.iotdb.tsfile.exception.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -39,6 +39,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static org.apache.iotdb.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
 
@@ -95,18 +96,17 @@ public class MemPageReader implements IPageReader {
     return batchData.flip();
   }
 
-  private boolean pageSatisfy() {
-    Statistics<? extends Serializable> statistics = getStatistics();
-    if (valueFilter == null || valueFilter.allSatisfy(statistics)) {
-      long rowCount = statistics.getCount();
+  private boolean pageCanSkip() {
+    if (valueFilter == null || valueFilter.allSatisfy(this)) {
+      long rowCount = getStatistics().getCount();
       if (paginationController.hasCurOffset(rowCount)) {
         paginationController.consumeOffset(rowCount);
-        return false;
-      } else {
         return true;
+      } else {
+        return false;
       }
     } else {
-      return valueFilter.satisfy(statistics);
+      return valueFilter.canSkip(this);
     }
   }
 
@@ -116,7 +116,7 @@ public class MemPageReader implements IPageReader {
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(dataType));
     TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
     ColumnBuilder valueBuilder = builder.getColumnBuilder(0);
-    if (pageSatisfy()) {
+    if (!pageCanSkip()) {
       switch (dataType) {
         case BOOLEAN:
           doWithBoolean(builder, timeBuilder, valueBuilder);
@@ -329,11 +329,27 @@ public class MemPageReader implements IPageReader {
   }
 
   @Override
+  public Statistics<? extends Serializable> getTimeStatistics() {
+    return chunkMetadata.getTimeStatistics();
+  }
+
+  @Override
+  public Optional<Statistics<? extends Serializable>> getMeasurementStatistics(
+      int measurementIndex) {
+    return chunkMetadata.getMeasurementStatistics(measurementIndex);
+  }
+
+  @Override
+  public boolean hasNullValue(int measurementIndex) {
+    return chunkMetadata.hasNullValue(measurementIndex);
+  }
+
+  @Override
   public void setFilter(Filter filter) {
     if (valueFilter == null) {
       this.valueFilter = filter;
     } else {
-      valueFilter = new AndFilter(this.valueFilter, filter);
+      valueFilter = FilterFactory.and(this.valueFilter, filter);
     }
   }
 
