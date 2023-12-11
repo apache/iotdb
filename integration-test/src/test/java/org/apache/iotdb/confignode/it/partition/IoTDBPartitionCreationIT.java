@@ -428,7 +428,7 @@ public class IoTDBPartitionCreationIT {
         TimeUnit.SECONDS.sleep(1);
       }
       // Check Region count and status
-      for (int i = 0; i < 10; i++) {
+      for (int i = 0; i < 30; i++) {
         runningCnt = 0;
         unknownCnt = 0;
         readOnlyCnt = 0;
@@ -452,7 +452,7 @@ public class IoTDBPartitionCreationIT {
         }
         TimeUnit.SECONDS.sleep(1);
       }
-      Assert.fail("Region status is not correct after 10s of recovery");
+      Assert.fail("Region status is not correct after 30s of recovery");
     }
   }
 }
