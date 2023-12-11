@@ -221,7 +221,6 @@ public class PipeHeartbeatParser {
                 .equals(PipeStatus.STOPPED)) {
               PipeRuntimeMeta runtimeMeta = pipeMetaOnConfigNode.getRuntimeMeta();
               runtimeMeta.getStatus().set(PipeStatus.STOPPED);
-              runtimeMeta.setIsStoppedByRuntimeException(true);
 
               needWriteConsensusOnConfigNodes.set(true);
               needPushPipeMetaToDataNodes.set(false);
@@ -250,7 +249,6 @@ public class PipeHeartbeatParser {
                               exceptionMap.put(dataNodeId, exception);
                             }
                             runtimeMeta.getStatus().set(PipeStatus.STOPPED);
-                            runtimeMeta.setIsStoppedByRuntimeException(true);
 
                             needWriteConsensusOnConfigNodes.set(true);
                             needPushPipeMetaToDataNodes.set(false);
