@@ -187,7 +187,10 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
   @Override
   public CreateLogicalViewStatement visitCreateLogicalView(
       CreateLogicalViewNode node, Void context) {
-    return visitPlan(node, context);
+    CreateLogicalViewStatement statement = new CreateLogicalViewStatement();
+    statement.setTargetFullPaths(node.getViewPathList());
+    statement.setViewExpressions(new ArrayList<>(node.getViewPathToSourceExpressionMap().values()));
+    return statement;
   }
 
   @Override

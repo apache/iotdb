@@ -3430,7 +3430,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     context.setQueryType(QueryType.WRITE);
     analysis.setStatement(createLogicalViewStatement);
 
-    if (createLogicalViewStatement.getViewExpression() == null) {
+    if (createLogicalViewStatement.getViewExpressions() == null) {
       // analyze query in statement
       QueryStatement queryStatement = createLogicalViewStatement.getQueryStatement();
       if (queryStatement != null) {

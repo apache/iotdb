@@ -966,7 +966,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   public PlanNode visitCreateLogicalView(
       CreateLogicalViewStatement createLogicalViewStatement, MPPQueryContext context) {
     List<ViewExpression> viewExpressionList = new ArrayList<>();
-    if (createLogicalViewStatement.getViewExpression() == null) {
+    if (createLogicalViewStatement.getViewExpressions() == null) {
       // Transform all Expressions into ViewExpressions.
       TransformToViewExpressionVisitor transformToViewExpressionVisitor =
           new TransformToViewExpressionVisitor();
@@ -975,7 +975,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         viewExpressionList.add(transformToViewExpressionVisitor.process(expression, null));
       }
     } else {
-      viewExpressionList.add(createLogicalViewStatement.getViewExpression());
+      viewExpressionList = createLogicalViewStatement.getViewExpressions();
     }
 
     return new CreateLogicalViewNode(
