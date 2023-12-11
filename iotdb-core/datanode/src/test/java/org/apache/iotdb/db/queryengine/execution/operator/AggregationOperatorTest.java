@@ -398,6 +398,7 @@ public class AggregationOperatorTest {
         finalAggregators,
         initTimeRangeIterator(groupByTimeParameter, true, true),
         children,
+        false,
         DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
   }
 }

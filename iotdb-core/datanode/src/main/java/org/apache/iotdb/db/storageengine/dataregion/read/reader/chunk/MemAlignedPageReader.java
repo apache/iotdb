@@ -30,7 +30,6 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.read.reader.IAlignedPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -38,17 +37,17 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.List;
+import java.util.Optional;
 
 import static org.apache.iotdb.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
 
-public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
+public class MemAlignedPageReader implements IPageReader {
 
   private final TsBlock tsBlock;
   private final AlignedChunkMetadata chunkMetadata;
 
   // only used for limit and offset push down optimizer, if we select all columns from aligned
-  // device, we
-  // can use statistics to skip.
+  // device, we can use statistics to skip.
   // it's only exact while using limit & offset push down
   private final boolean queryAllSensors;
 
@@ -106,44 +105,39 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
     }
   }
 
-  private boolean pageSatisfy() {
-    Statistics<? extends Serializable> statistics = getStatistics();
-    if (valueFilter == null || valueFilter.allSatisfy(statistics)) {
-      // For aligned series, When we only query some measurements under an aligned device, if any
-      // values of these queried measurements has the same value count as the time column, the
-      // timestamp will be selected.
-      // NOTE: if we change the query semantic in the future for aligned series, we need to remove
-      // this check here.
-      long rowCount = getTimeStatistics().getCount();
-      boolean canUse = queryAllSensors || getValueStatisticsList().isEmpty();
-      if (!canUse) {
-        for (Statistics<? extends Serializable> vStatistics : getValueStatisticsList()) {
-          if (vStatistics != null && !vStatistics.hasNullValue(rowCount)) {
-            canUse = true;
-            break;
-          }
-        }
-      }
-      if (!canUse) {
-        return true;
-      }
-      // When the number of points in all value pages is the same as that in the time page, it means
-      // that there is no null value, and all timestamps will be selected.
-      if (paginationController.hasCurOffset(rowCount)) {
-        paginationController.consumeOffset(rowCount);
-        return false;
-      } else {
-        return true;
-      }
-    } else {
-      return valueFilter.satisfy(statistics);
+  private boolean pageCanSkip() {
+    if (valueFilter != null && !valueFilter.allSatisfy(this)) {
+      return valueFilter.canSkip(this);
     }
+
+    if (!canSkipOffsetByStatistics()) {
+      return false;
+    }
+
+    long rowCount = getTimeStatistics().getCount();
+    if (paginationController.hasCurOffset(rowCount)) {
+      paginationController.consumeOffset(rowCount);
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  private boolean canSkipOffsetByStatistics() {
+    if (queryAllSensors || chunkMetadata.getMeasurementCount() == 0) {
+      return true;
+    }
+
+    // For aligned series, we can use statistics to skip OFFSET only when all times are selected.
+    // NOTE: if we change the query semantic in the future for aligned series, we need to remove
+    // this check here.
+    return chunkMetadata.timeAllSelected();
   }
 
   @Override
   public TsBlock getAllSatisfiedData() {
     builder.reset();
-    if (!pageSatisfy()) {
+    if (pageCanSkip()) {
       return builder.build();
     }
 
@@ -237,17 +231,19 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
   }
 
   @Override
-  public Statistics<? extends Serializable> getStatistics(int index) {
-    return chunkMetadata.getStatistics(index);
-  }
-
-  @Override
   public Statistics<? extends Serializable> getTimeStatistics() {
     return chunkMetadata.getTimeStatistics();
   }
 
-  private List<Statistics<? extends Serializable>> getValueStatisticsList() {
-    return chunkMetadata.getValueStatisticsList();
+  @Override
+  public Optional<Statistics<? extends Serializable>> getMeasurementStatistics(
+      int measurementIndex) {
+    return chunkMetadata.getMeasurementStatistics(measurementIndex);
+  }
+
+  @Override
+  public boolean hasNullValue(int measurementIndex) {
+    return chunkMetadata.hasNullValue(measurementIndex);
   }
 
   @Override

@@ -19,13 +19,15 @@
 
 package org.apache.iotdb.tsfile.read.filter.basic;
 
-public interface IDisableStatisticsTimeFilter extends ITimeFilter {
+public abstract class DisableStatisticsTimeFilter extends TimeFilter {
 
-  default boolean satisfyStartEndTime(long startTime, long endTime) {
+  @Override
+  public boolean satisfyStartEndTime(long startTime, long endTime) {
     return true;
   }
 
-  default boolean containStartEndTime(long startTime, long endTime) {
+  @Override
+  public boolean containStartEndTime(long startTime, long endTime) {
     return false;
   }
 }

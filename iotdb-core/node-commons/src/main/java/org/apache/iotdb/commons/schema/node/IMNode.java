@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.schema.node;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
+import org.apache.iotdb.commons.schema.node.role.IInternalMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
@@ -53,13 +54,6 @@ public interface IMNode<N extends IMNode<N>> extends ITreeNode {
 
   N deleteChild(String name);
 
-  // this method will replace the oldChild with the newChild, the data of oldChild will be moved to
-  // newChild
-  void replaceChild(String oldChildName, N newChildNode);
-
-  // this method will move all the reference or value of current node's attributes to newMNode
-  void moveDataToNewMNode(N newMNode);
-
   IMNodeContainer<N> getChildren();
 
   void setChildren(IMNodeContainer<N> children);
@@ -72,11 +66,13 @@ public interface IMNode<N extends IMNode<N>> extends ITreeNode {
 
   boolean isMeasurement();
 
-  MNodeType getMNodeType(Boolean isConfig);
+  MNodeType getMNodeType();
 
   IDatabaseMNode<N> getAsDatabaseMNode();
 
   IDeviceMNode<N> getAsDeviceMNode();
+
+  IInternalMNode<N> getAsInternalMNode();
 
   IMeasurementMNode<N> getAsMeasurementMNode();
 

@@ -37,9 +37,9 @@ import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
-public class TimeFilter {
+public class TimeFilterApi {
 
-  private TimeFilter() {
+  private TimeFilterApi() {
     // forbidden construction
   }
 

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.MNodeType;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
+import org.apache.iotdb.commons.schema.node.role.IInternalMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
@@ -155,21 +156,6 @@ public class CachedBasicMNode implements ICachedMNode {
     return null;
   }
 
-  /**
-   * Replace a child of this mnode. New child's name must be the same as old child's name.
-   *
-   * @param oldChildName measurement name
-   * @param newChildNode new child node
-   */
-  @Override
-  public synchronized void replaceChild(String oldChildName, ICachedMNode newChildNode) {}
-
-  @Override
-  public void moveDataToNewMNode(ICachedMNode newMNode) {
-    newMNode.setParent(parent);
-    newMNode.setCacheEntry(getCacheEntry());
-  }
-
   @Override
   public IMNodeContainer<ICachedMNode> getChildren() {
     return CachedMNodeContainer.emptyMNodeContainer();
@@ -199,8 +185,8 @@ public class CachedBasicMNode implements ICachedMNode {
   }
 
   @Override
-  public MNodeType getMNodeType(Boolean isConfig) {
-    return isConfig ? MNodeType.SG_INTERNAL : MNodeType.INTERNAL;
+  public MNodeType getMNodeType() {
+    return MNodeType.UNIMPLEMENT;
   }
 
   @Override
@@ -210,6 +196,11 @@ public class CachedBasicMNode implements ICachedMNode {
 
   @Override
   public IDeviceMNode<ICachedMNode> getAsDeviceMNode() {
+    throw new UnsupportedOperationException("Wrong MNode Type");
+  }
+
+  @Override
+  public IInternalMNode<ICachedMNode> getAsInternalMNode() {
     throw new UnsupportedOperationException("Wrong MNode Type");
   }
 

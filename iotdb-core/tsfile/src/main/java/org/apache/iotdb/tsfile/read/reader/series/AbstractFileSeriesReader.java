@@ -60,13 +60,15 @@ public abstract class AbstractFileSeriesReader implements IBatchReader {
     while (chunkToRead < chunkMetadataList.size()) {
 
       IChunkMetadata chunkMetaData = nextChunkMeta();
-      if (chunkSatisfied(chunkMetaData)) {
-        // chunk metadata satisfy the condition
-        initChunkReader(chunkMetaData);
+      if (chunkCanSkip(chunkMetaData)) {
+        continue;
+      }
 
-        if (chunkReader.hasNextSatisfiedPage()) {
-          return true;
-        }
+      // chunk metadata satisfy the condition
+      initChunkReader(chunkMetaData);
+
+      if (chunkReader.hasNextSatisfiedPage()) {
+        return true;
       }
     }
     return false;
@@ -79,7 +81,7 @@ public abstract class AbstractFileSeriesReader implements IBatchReader {
 
   protected abstract void initChunkReader(IChunkMetadata chunkMetaData) throws IOException;
 
-  protected abstract boolean chunkSatisfied(IChunkMetadata chunkMetaData);
+  protected abstract boolean chunkCanSkip(IChunkMetadata chunkMetaData);
 
   @Override
   public void close() throws IOException {

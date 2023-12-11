@@ -29,6 +29,7 @@ import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
@@ -73,16 +74,21 @@ public class SettleRequestHandler {
   public TSStatus handleSettleRequest(TSettleReq req) {
     List<String> paths = req.getPaths();
 
-    SettleRequestContext context = new SettleRequestContext(paths);
-    TSStatus validationResult = context.validate();
-    if (validationResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return validationResult;
+    CompactionScheduler.lockCompactionSelection();
+    try {
+      SettleRequestContext context = new SettleRequestContext(paths);
+      TSStatus validationResult = context.validate();
+      if (validationResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return validationResult;
+      }
+      if (testMode) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
+      List<TsFileResource> selectedTsFileResources = context.getTsFileResourcesByFileNames();
+      return context.submitCompactionTask(selectedTsFileResources);
+    } finally {
+      CompactionScheduler.unlockCompactionSelection();
     }
-    if (testMode) {
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-    }
-    List<TsFileResource> selectedTsFileResources = context.getTsFileResourcesByFileNames();
-    return context.submitCompactionTask(selectedTsFileResources);
   }
 
   private static class SettleRequestContext {
