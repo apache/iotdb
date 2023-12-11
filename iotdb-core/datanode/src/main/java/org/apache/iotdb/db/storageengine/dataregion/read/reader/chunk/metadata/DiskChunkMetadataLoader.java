@@ -105,14 +105,18 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
             }
           });
 
-      // remove not satisfied ChunkMetaData
-      final long t3 = System.nanoTime();
-      chunkMetadataList.removeIf(
-          chunkMetaData ->
-              (globalTimeFilter != null && globalTimeFilter.canSkip(chunkMetaData))
-                  || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
-      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-          CHUNK_METADATA_FILTER_NONALIGNED_DISK, System.nanoTime() - t3);
+      // when chunkMetadataList.size() == 1, it means that the chunk statistics is same as
+      // the time series metadata, so we don't need to filter it again.
+      if (chunkMetadataList.size() > 1) {
+        // remove not satisfied ChunkMetaData
+        final long t3 = System.nanoTime();
+        chunkMetadataList.removeIf(
+            chunkMetaData ->
+                (globalTimeFilter != null && globalTimeFilter.canSkip(chunkMetaData))
+                    || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
+        SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
+            CHUNK_METADATA_FILTER_NONALIGNED_DISK, System.nanoTime() - t3);
+      }
 
       if (context.isDebug()) {
         DEBUG_LOGGER.info("After removed by filter Chunk meta data list is: ");

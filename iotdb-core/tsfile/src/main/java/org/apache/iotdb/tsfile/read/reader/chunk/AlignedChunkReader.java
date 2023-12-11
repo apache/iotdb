@@ -139,49 +139,71 @@ public class AlignedChunkReader implements IChunkReader {
       throws IOException {
     // construct next satisfied page header
     while (timeChunkDataBuffer.remaining() > 0) {
-      // deserialize a PageHeader from chunkDataBuffer
-      PageHeader timePageHeader;
-      List<PageHeader> valuePageHeaderList = new ArrayList<>();
-
-      boolean exits = valueChunkDataBufferList.isEmpty();
-      // this chunk has only one page
-      if ((timeChunkHeader.getChunkType() & 0x3F) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
-        timePageHeader = PageHeader.deserializeFrom(timeChunkDataBuffer, timeChunkStatistics);
-        for (int i = 0; i < valueChunkDataBufferList.size(); i++) {
-          if (valueChunkDataBufferList.get(i) != null) {
-            exits = true;
-            valuePageHeaderList.add(
-                PageHeader.deserializeFrom(
-                    valueChunkDataBufferList.get(i), valueChunkStatisticsList.get(i)));
-          } else {
-            valuePageHeaderList.add(null);
-          }
-        }
-      } else { // this chunk has more than one page
-        timePageHeader =
-            PageHeader.deserializeFrom(timeChunkDataBuffer, timeChunkHeader.getDataType());
-        for (int i = 0; i < valueChunkDataBufferList.size(); i++) {
-          if (valueChunkDataBufferList.get(i) != null) {
-            exits = true;
-            valuePageHeaderList.add(
-                PageHeader.deserializeFrom(
-                    valueChunkDataBufferList.get(i), valueChunkHeaderList.get(i).getDataType()));
-          } else {
-            valuePageHeaderList.add(null);
-          }
-        }
-      }
-      // if the current page satisfies
-      if (exits && !pageCanSkip(timePageHeader)) {
-        AlignedPageReader alignedPageReader =
-            constructPageReaderForNextPage(timePageHeader, valuePageHeaderList);
-        if (alignedPageReader != null) {
-          pageReaderList.add(alignedPageReader);
-        }
-      } else {
-        skipBytesInStreamByLength(timePageHeader, valuePageHeaderList);
+      // deserialize PageHeader from chunkDataBuffer
+      AlignedPageReader alignedPageReader =
+          isSinglePageChunk()
+              ? deserializeFromSinglePageChunk(timeChunkStatistics, valueChunkStatisticsList)
+              : deserializeFromMultiPageChunk();
+      if (alignedPageReader != null) {
+        pageReaderList.add(alignedPageReader);
       }
     }
+  }
+
+  private boolean isSinglePageChunk() {
+    return (timeChunkHeader.getChunkType() & 0x3F) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER;
+  }
+
+  private AlignedPageReader deserializeFromSinglePageChunk(
+      Statistics timeChunkStatistics, List<Statistics> valueChunkStatisticsList)
+      throws IOException {
+    PageHeader timePageHeader =
+        PageHeader.deserializeFrom(timeChunkDataBuffer, timeChunkStatistics);
+    List<PageHeader> valuePageHeaderList = new ArrayList<>();
+
+    boolean isAllNull = true;
+    for (int i = 0; i < valueChunkDataBufferList.size(); i++) {
+      if (valueChunkDataBufferList.get(i) != null) {
+        isAllNull = false;
+        valuePageHeaderList.add(
+            PageHeader.deserializeFrom(
+                valueChunkDataBufferList.get(i), valueChunkStatisticsList.get(i)));
+      } else {
+        valuePageHeaderList.add(null);
+      }
+    }
+
+    if (isAllNull) {
+      // when there is only one page in the chunk, the page statistic is the same as the chunk, so
+      // we needn't filter the page again
+      skipBytesInStreamByLength(timePageHeader, valuePageHeaderList);
+      return null;
+    }
+    return constructPageReaderForNextPage(timePageHeader, valuePageHeaderList);
+  }
+
+  private AlignedPageReader deserializeFromMultiPageChunk() throws IOException {
+    PageHeader timePageHeader =
+        PageHeader.deserializeFrom(timeChunkDataBuffer, timeChunkHeader.getDataType());
+    List<PageHeader> valuePageHeaderList = new ArrayList<>();
+
+    boolean isAllNull = true;
+    for (int i = 0; i < valueChunkDataBufferList.size(); i++) {
+      if (valueChunkDataBufferList.get(i) != null) {
+        isAllNull = false;
+        valuePageHeaderList.add(
+            PageHeader.deserializeFrom(
+                valueChunkDataBufferList.get(i), valueChunkHeaderList.get(i).getDataType()));
+      } else {
+        valuePageHeaderList.add(null);
+      }
+    }
+
+    if (isAllNull || pageCanSkip(timePageHeader)) {
+      skipBytesInStreamByLength(timePageHeader, valuePageHeaderList);
+      return null;
+    }
+    return constructPageReaderForNextPage(timePageHeader, valuePageHeaderList);
   }
 
   /** used for time page filter */

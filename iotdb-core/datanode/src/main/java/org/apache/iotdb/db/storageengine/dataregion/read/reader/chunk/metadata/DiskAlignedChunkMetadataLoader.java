@@ -95,14 +95,18 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
       SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
           CHUNK_METADATA_MODIFICATION_ALIGNED_DISK, System.nanoTime() - t2);
 
-      // remove not satisfied ChunkMetaData
-      final long t3 = System.nanoTime();
-      alignedChunkMetadataList.removeIf(
-          alignedChunkMetaData ->
-              (globalTimeFilter != null && globalTimeFilter.canSkip(alignedChunkMetaData))
-                  || alignedChunkMetaData.getStartTime() > alignedChunkMetaData.getEndTime());
-      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-          CHUNK_METADATA_FILTER_ALIGNED_DISK, System.nanoTime() - t3);
+      // when alignedChunkMetadataList.size() == 1, it means that the chunk statistics is same as
+      // the time series metadata, so we don't need to filter it again.
+      if (alignedChunkMetadataList.size() > 1) {
+        // remove not satisfied ChunkMetaData
+        final long t3 = System.nanoTime();
+        alignedChunkMetadataList.removeIf(
+            alignedChunkMetaData ->
+                (globalTimeFilter != null && globalTimeFilter.canSkip(alignedChunkMetaData))
+                    || alignedChunkMetaData.getStartTime() > alignedChunkMetaData.getEndTime());
+        SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
+            CHUNK_METADATA_FILTER_ALIGNED_DISK, System.nanoTime() - t3);
+      }
 
       // it is ok, even if it is not thread safe, because the cost of creating a DiskChunkLoader is
       // very cheap.

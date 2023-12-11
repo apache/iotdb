@@ -116,15 +116,17 @@ public class ChunkReader implements IChunkReader {
       PageHeader pageHeader;
       if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
         pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkStatistic);
+        // when there is only one page in the chunk, the page statistic is the same as the chunk, so
+        // we needn't filter the page again
       } else {
         pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
+        // if the current page satisfies
+        if (pageCanSkip(pageHeader)) {
+          skipBytesInStreamByLength(pageHeader.getCompressedSize());
+          continue;
+        }
       }
-      // if the current page satisfies
-      if (pageCanSkip(pageHeader)) {
-        skipBytesInStreamByLength(pageHeader.getCompressedSize());
-      } else {
-        pageReaderList.add(constructPageReaderForNextPage(pageHeader));
-      }
+      pageReaderList.add(constructPageReaderForNextPage(pageHeader));
     }
   }
 

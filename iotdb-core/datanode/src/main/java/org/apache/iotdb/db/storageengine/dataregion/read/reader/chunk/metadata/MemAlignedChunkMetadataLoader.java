@@ -85,14 +85,18 @@ public class MemAlignedChunkMetadataLoader implements IChunkMetadataLoader {
         }
       }
 
-      // remove not satisfied ChunkMetaData
-      long t2 = System.nanoTime();
-      chunkMetadataList.removeIf(
-          chunkMetaData ->
-              (globalTimeFilter != null && globalTimeFilter.canSkip(chunkMetaData))
-                  || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
-      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-          CHUNK_METADATA_FILTER_ALIGNED_MEM, System.nanoTime() - t2);
+      // when chunkMetadataList.size() == 1, it means that the chunk statistics is same as
+      // the time series metadata, so we don't need to filter it again.
+      if (chunkMetadataList.size() > 1) {
+        // remove not satisfied ChunkMetaData
+        long t2 = System.nanoTime();
+        chunkMetadataList.removeIf(
+            chunkMetaData ->
+                (globalTimeFilter != null && globalTimeFilter.canSkip(chunkMetaData))
+                    || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
+        SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
+            CHUNK_METADATA_FILTER_ALIGNED_MEM, System.nanoTime() - t2);
+      }
 
       for (IChunkMetadata metadata : chunkMetadataList) {
         metadata.setVersion(resource.getVersion());
