@@ -98,9 +98,7 @@ public class PageReader implements IPageReader {
     this.dataType = dataType;
     this.valueDecoder = valueDecoder;
     this.timeDecoder = timeDecoder;
-    if (recordFilter != null && !recordFilter.allSatisfy(this)) {
-      this.recordFilter = recordFilter;
-    }
+    this.recordFilter = recordFilter;
     this.pageHeader = pageHeader;
     splitDataToTimeStampAndValue(pageData);
   }
@@ -194,7 +192,6 @@ public class PageReader implements IPageReader {
     }
     TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
     ColumnBuilder valueBuilder = builder.getColumnBuilder(0);
-    Filter recordFilter = this.recordFilter.allSatisfy(this) ? null : this.recordFilter;
     switch (dataType) {
       case BOOLEAN:
         while (timeDecoder.hasNext(timeBuffer)) {
@@ -360,9 +357,7 @@ public class PageReader implements IPageReader {
 
   @Override
   public void addRecordFilter(Filter filter) {
-    if (filter != null && !filter.allSatisfy(this)) {
-      this.recordFilter = FilterFactory.and(recordFilter, filter);
-    }
+    this.recordFilter = FilterFactory.and(recordFilter, filter);
   }
 
   @Override

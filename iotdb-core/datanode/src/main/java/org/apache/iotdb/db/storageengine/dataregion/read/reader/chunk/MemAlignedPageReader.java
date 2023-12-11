@@ -55,9 +55,7 @@ public class MemAlignedPageReader implements IPageReader {
       TsBlock tsBlock, AlignedChunkMetadata chunkMetadata, Filter recordFilter) {
     this.tsBlock = tsBlock;
     this.chunkMetadata = chunkMetadata;
-    if (recordFilter != null && !recordFilter.allSatisfy(this)) {
-      this.recordFilter = recordFilter;
-    }
+    this.recordFilter = recordFilter;
   }
 
   @Override
@@ -201,9 +199,7 @@ public class MemAlignedPageReader implements IPageReader {
 
   @Override
   public void addRecordFilter(Filter filter) {
-    if (filter != null && !filter.allSatisfy(this)) {
-      this.recordFilter = FilterFactory.and(recordFilter, filter);
-    }
+    this.recordFilter = FilterFactory.and(recordFilter, filter);
   }
 
   @Override
