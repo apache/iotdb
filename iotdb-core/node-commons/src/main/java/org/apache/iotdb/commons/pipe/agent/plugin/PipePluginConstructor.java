@@ -51,11 +51,11 @@ public abstract class PipePluginConstructor {
 
   protected abstract PipePlugin reflectPlugin(PipeParameters pipeParameters);
 
-  protected final PipePlugin reflectPluginByKey(String pluginKey) {
+  protected PipePlugin reflectPluginByKey(String pluginKey) {
     return PLUGIN_CONSTRUCTORS.getOrDefault(pluginKey, () -> reflect(pluginKey)).get();
   }
 
-  private PipePlugin reflect(String pluginName) {
+  protected PipePlugin reflect(String pluginName) {
     PipePluginMeta information = pipePluginMetaKeeper.getPipePluginMeta(pluginName);
     if (information == null) {
       String errorMessage =

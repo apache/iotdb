@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.schema.IoTDBSchemaExtractor;
 import org.apache.iotdb.commons.pipe.plugin.meta.ConfigNodePipePluginMetaKeeper;
 import org.apache.iotdb.pipe.api.PipeExtractor;
+import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import java.util.Arrays;
@@ -40,7 +41,7 @@ public class PipeConfigNodeExtractorConstructor extends PipePluginConstructor {
     PLUGIN_CONSTRUCTORS.put(
         BuiltinPipePlugin.IOTDB_SCHEMA_EXTRACTOR.getPipePluginName(), IoTDBSchemaExtractor::new);
     PLUGIN_CONSTRUCTORS.put(
-        BuiltinPipePlugin.IOTDB_SCHEMA_SINK.getPipePluginName(), IoTDBSchemaExtractor::new);
+        BuiltinPipePlugin.IOTDB_SCHEMA_SOURCE.getPipePluginName(), IoTDBSchemaExtractor::new);
   }
 
   @Override
@@ -55,5 +56,11 @@ public class PipeConfigNodeExtractorConstructor extends PipePluginConstructor {
                 // Convert the value of `EXTRACTOR_KEY` or `SOURCE_KEY` to lowercase for matching
                 // `IOTDB_EXTRACTOR`
                 .toLowerCase());
+  }
+
+  @Override
+  protected final PipePlugin reflectPluginByKey(String pluginKey) {
+    // currently only support IOTDB_SCHEMA_SOURCE
+    return PLUGIN_CONSTRUCTORS.get(BuiltinPipePlugin.IOTDB_SCHEMA_SOURCE.getPipePluginName()).get();
   }
 }

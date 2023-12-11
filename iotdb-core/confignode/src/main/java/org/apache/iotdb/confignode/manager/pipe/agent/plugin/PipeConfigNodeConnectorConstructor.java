@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.schema.IoTDBSchemaConnector;
 import org.apache.iotdb.commons.pipe.plugin.meta.ConfigNodePipePluginMetaKeeper;
 import org.apache.iotdb.pipe.api.PipeConnector;
+import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -64,5 +65,11 @@ public class PipeConfigNodeConnectorConstructor extends PipePluginConstructor {
                 // Convert the value of `CONNECTOR_KEY` or `SINK_KEY` to lowercase for matching in
                 // `PLUGIN_CONSTRUCTORS`
                 .toLowerCase());
+  }
+
+  @Override
+  protected final PipePlugin reflectPluginByKey(String pluginKey) {
+    // currently only support IOTDB_SCHEMA_SINK
+    return PLUGIN_CONSTRUCTORS.get(BuiltinPipePlugin.IOTDB_SCHEMA_SINK.getPipePluginName()).get();
   }
 }
