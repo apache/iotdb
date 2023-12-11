@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.loader.ChunkLoader;
@@ -89,6 +90,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
   protected final long targetPagePointNum;
   protected final long targetPageSize;
   protected final boolean saveMemory;
+  protected long lastWriteTimestamp = Long.MIN_VALUE;
 
   public ReadChunkAlignedSeriesCompactionExecutor(
       String device,
@@ -281,6 +283,8 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     }
     summary.increaseDirectlyFlushChunkNum(nonEmptyChunkNum);
     writer.markEndingWritingAligned();
+    checkAndUpdatePreviousTimestamp(timeChunk.getChunkMetadata().getStartTime());
+    checkAndUpdatePreviousTimestamp(timeChunk.getChunkMetadata().getEndTime());
   }
 
   private void compactAlignedChunkByDeserialize(
@@ -360,6 +364,8 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       valuePage.flushToValueChunkWriter(chunkWriter, i);
     }
     summary.increaseDirectlyFlushPageNum(nonEmptyPage);
+    checkAndUpdatePreviousTimestamp(timePage.getHeader().getStartTime());
+    checkAndUpdatePreviousTimestamp(timePage.getHeader().getEndTime());
   }
 
   private void compactAlignedPageByDeserialize(PageLoader timePage, List<PageLoader> valuePages)
@@ -415,18 +421,31 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       IPointReader lazyPointReader = alignedPageReader.getLazyPointReader();
       while (lazyPointReader.hasNextTimeValuePair()) {
         TimeValuePair timeValuePair = lazyPointReader.nextTimeValuePair();
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getVector());
+        long currentTime = timeValuePair.getTimestamp();
+        chunkWriter.write(currentTime, timeValuePair.getValue().getVector());
+        checkAndUpdatePreviousTimestamp(currentTime);
         processedPointNum++;
       }
     } else {
       BatchData batchData = alignedPageReader.getAllSatisfiedPageData();
       while (batchData.hasCurrent()) {
-        chunkWriter.write(batchData.currentTime(), (TsPrimitiveType[]) batchData.currentValue());
+        long currentTime = batchData.currentTime();
+        chunkWriter.write(currentTime, (TsPrimitiveType[]) batchData.currentValue());
+        checkAndUpdatePreviousTimestamp(currentTime);
         batchData.next();
       }
       processedPointNum = batchData.length();
     }
     summary.increaseProcessPointNum(processedPointNum);
     rateLimiter.acquire(processedPointNum);
+  }
+
+  private void checkAndUpdatePreviousTimestamp(long currentWritingTimestamp) {
+    if (currentWritingTimestamp <= lastWriteTimestamp) {
+      throw new CompactionLastTimeCheckFailedException(
+          device, currentWritingTimestamp, lastWriteTimestamp);
+    } else {
+      lastWriteTimestamp = currentWritingTimestamp;
+    }
   }
 }
