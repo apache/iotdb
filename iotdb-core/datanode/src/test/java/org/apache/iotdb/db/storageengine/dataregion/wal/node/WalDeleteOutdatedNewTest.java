@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.node;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -251,6 +252,7 @@ public class WalDeleteOutdatedNewTest {
     walNode1.rollWALFile();
 
     IMemTable memTable2 = new PrimitiveMemTable(databasePath, dataRegionId);
+    walNode1.onMemTableCreated(memTable2, logDirectory1 + "/" + "fake.tsfile");
     walNode1.log(
         memTable2.getMemTableId(),
         generateInsertRowNode(devicePath, System.currentTimeMillis(), 2));
@@ -409,6 +411,7 @@ public class WalDeleteOutdatedNewTest {
         generateInsertRowNode(devicePath, System.currentTimeMillis(), -1));
 
     IMemTable memTable2 = new PrimitiveMemTable(databasePath, dataRegionId);
+    walNode1.onMemTableCreated(memTable2, logDirectory1 + "/" + "fake.tsfile");
     walNode1.log(
         memTable2.getMemTableId(),
         generateInsertRowNode(devicePath, System.currentTimeMillis(), -1));
@@ -427,6 +430,7 @@ public class WalDeleteOutdatedNewTest {
         generateInsertRowNode(devicePath, System.currentTimeMillis(), -1));
     walNode1.rollWALFile();
     IMemTable memTable3 = new PrimitiveMemTable(databasePath, dataRegionId);
+    walNode1.onMemTableCreated(memTable3, logDirectory1 + "/" + "fake.tsfile");
     walNode1.log(
         memTable3.getMemTableId(),
         generateInsertRowNode(devicePath, System.currentTimeMillis(), -1));
@@ -454,6 +458,91 @@ public class WalDeleteOutdatedNewTest {
     Map<Long, Set<Long>> memTableIdsOfWalAfterAfter = walNode1.getWALBuffer().getMemTableIdsOfWal();
     Assert.assertEquals(1, memTableIdsOfWalAfterAfter.size());
     Assert.assertEquals(1, WALFileUtils.listAllWALFiles(new File(logDirectory1)).length);
+  }
+
+  /**
+   * Ensure that files that can be cleaned can be deleted: <br>
+   * 1. _0-0-1.wal: memTable0 <br>
+   * 2. roll wal file <br>
+   * 3. _1-1-0.wal: memTable1<br>
+   * 4. memTable1 flush <br>
+   * 5. roll wal file <br>
+   * 6. _2-1-0.wal: memTable2 <br>
+   * 7. wait until all walEntry consumed <br>
+   * 8. delete outdated wal files
+   */
+  @Test
+  public void test08() throws IllegalPathException {
+    IMemTable memTable0 = new PrimitiveMemTable(databasePath, dataRegionId);
+    walNode1.onMemTableCreated(memTable0, logDirectory1 + "/" + "fake.tsfile");
+    walNode1.log(
+        memTable0.getMemTableId(),
+        generateInsertRowNode(devicePath, System.currentTimeMillis(), 1));
+    walNode1.rollWALFile();
+
+    ConsensusReqReader.ReqIterator itr1 = walNode1.getReqIterator(1);
+    Assert.assertFalse(itr1.hasNext());
+
+    IMemTable memTable1 = new PrimitiveMemTable(databasePath, dataRegionId);
+    walNode1.onMemTableCreated(memTable1, logDirectory1 + "/" + "fake.tsfile");
+    walNode1.log(
+        memTable1.getMemTableId(),
+        generateInsertRowNode(devicePath, System.currentTimeMillis(), -1));
+    walNode1.onMemTableFlushed(memTable1);
+    walNode1.rollWALFile();
+
+    ConsensusReqReader.ReqIterator itr2 = walNode1.getReqIterator(1);
+    Assert.assertTrue(itr2.hasNext());
+
+    IMemTable memTable2 = new PrimitiveMemTable(databasePath, dataRegionId);
+    walNode1.onMemTableCreated(memTable2, logDirectory1 + "/" + "fake.tsfile");
+    walNode1.log(
+        memTable2.getMemTableId(),
+        generateInsertRowNode(devicePath, System.currentTimeMillis(), 2));
+    walNode1.log(
+        memTable2.getMemTableId(),
+        generateInsertRowNode(devicePath, System.currentTimeMillis(), 3));
+    Awaitility.await().until(() -> walNode1.isAllWALEntriesConsumed());
+
+    ConsensusReqReader.ReqIterator itr3 = walNode1.getReqIterator(1);
+    Assert.assertTrue(itr3.hasNext());
+    walNode1.deleteOutdatedFiles();
+
+    ConsensusReqReader.ReqIterator itr4 = walNode1.getReqIterator(1);
+    Assert.assertFalse(itr4.hasNext());
+    walNode1.rollWALFile();
+    Assert.assertTrue(itr4.hasNext());
+  }
+
+  /**
+   * Ensure that files that can be cleaned can be deleted: <br>
+   * 1. _0-0-1.wal: memTable0 <br>
+   * 2. roll wal file <br>
+   * 3. _2-1-0.wal: memTable2 <br>
+   * 4. wait until all walEntry consumed <br>
+   * 5. delete outdated wal files
+   */
+  @Test
+  public void test09() throws IllegalPathException {
+    IMemTable memTable0 = new PrimitiveMemTable(databasePath, dataRegionId);
+    walNode1.onMemTableCreated(memTable0, logDirectory1 + "/" + "fake.tsfile");
+    walNode1.log(
+        memTable0.getMemTableId(),
+        generateInsertRowNode(devicePath, System.currentTimeMillis(), 1));
+    walNode1.rollWALFile();
+
+    IMemTable memTable2 = new PrimitiveMemTable(databasePath, dataRegionId);
+    walNode1.onMemTableCreated(memTable2, logDirectory1 + "/" + "fake.tsfile");
+    walNode1.log(
+        memTable2.getMemTableId(),
+        generateInsertRowNode(devicePath, System.currentTimeMillis(), 2));
+    walNode1.log(
+        memTable2.getMemTableId(),
+        generateInsertRowNode(devicePath, System.currentTimeMillis(), 3));
+    Awaitility.await().until(() -> walNode1.isAllWALEntriesConsumed());
+
+    ConsensusReqReader.ReqIterator itr3 = walNode1.getReqIterator(1);
+    Assert.assertFalse(itr3.hasNext());
   }
 
   public static InsertRowNode generateInsertRowNode(String devicePath, long time, long searchIndex)

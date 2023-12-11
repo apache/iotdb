@@ -342,7 +342,7 @@ public class WALNode implements IWALNode {
           StringBuilder summary =
               new StringBuilder(
                   String.format(
-                      "wal node-%s delete outdated files summary:the range that should be removed is: [%d,%d], delete successful is [%s], end file index is: [%s].The following reasons influenced the result: %s",
+                      "wal node-%s delete outdated files summary:the range is: [%d,%d], delete successful is [%s], safely delete file index is: [%s].The following reasons influenced the result: %s",
                       identifier,
                       WALFileUtils.parseVersionId(sortedWalFilesExcludingLast[0].getName()),
                       WALFileUtils.parseVersionId(
@@ -580,6 +580,12 @@ public class WALNode implements IWALNode {
 
     public boolean isContainsActiveOrPinnedMemTable(Long versionId) {
       Set<Long> memTableIdsOfCurrentWal = memTableIdsOfWalMap.get(versionId);
+      // If this set is empty, there is a case where WalEntry has been logged but not persisted,
+      // because WalEntry is persisted asynchronously. In this case, the file cannot be deleted
+      // directly, so it is considered active
+      if (memTableIdsOfCurrentWal.isEmpty()) {
+        return true;
+      }
       for (MemTableInfo memTableInfo : activeOrPinnedMemTables) {
         for (Long memTableId : memTableIdsOfCurrentWal) {
           if (memTableId.equals(memTableInfo.getMemTableId())) {
