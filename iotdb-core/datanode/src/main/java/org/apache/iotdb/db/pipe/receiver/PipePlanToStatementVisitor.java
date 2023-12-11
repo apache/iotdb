@@ -33,7 +33,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.Int
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalCreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.MeasurementGroup;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.AlterLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.DeleteLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
@@ -48,7 +47,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteTimeSeriesS
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DeactivateTemplateStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.AlterLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.DeleteLogicalViewStatement;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -199,10 +197,7 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
     return new DeleteLogicalViewStatement(node.getPatternTree().getAllPathPatterns());
   }
 
-  @Override
-  public AlterLogicalViewStatement visitAlterLogicalView(AlterLogicalViewNode node, Void context) {
-    return visitPlan(node, context);
-  }
+  // We do not support AlterLogicalViewNode parsing and use direct rpc instead
 
   @Override
   public DeleteDataStatement visitDeleteData(DeleteDataNode node, Void context) {
