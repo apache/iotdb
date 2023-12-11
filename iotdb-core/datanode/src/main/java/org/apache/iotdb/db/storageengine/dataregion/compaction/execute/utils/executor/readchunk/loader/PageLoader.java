@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.List;
 
 public abstract class PageLoader {
@@ -83,7 +84,14 @@ public abstract class PageLoader {
   }
 
   public List<TimeRange> getDeleteIntervalList() {
-    return deleteIntervalList;
+    if (this.modifiedStatus == ModifiedStatus.PARTIAL_DELETED) {
+      return this.deleteIntervalList;
+    } else if (this.modifiedStatus == ModifiedStatus.ALL_DELETED) {
+      return Collections.singletonList(
+          new TimeRange(pageHeader.getStartTime(), pageHeader.getEndTime()));
+    } else {
+      return null;
+    }
   }
 
   public abstract void flushToTimeChunkWriter(AlignedChunkWriterImpl alignedChunkWriter)

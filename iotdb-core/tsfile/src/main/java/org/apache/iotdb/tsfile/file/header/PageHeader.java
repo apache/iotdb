@@ -35,7 +35,7 @@ public class PageHeader implements IMetadata {
 
   private int uncompressedSize;
   private int compressedSize;
-  private final Statistics<? extends Serializable> statistics;
+  private Statistics<? extends Serializable> statistics;
   private boolean modified;
 
   public PageHeader(
@@ -121,6 +121,10 @@ public class PageHeader implements IMetadata {
   @Override
   public Statistics<? extends Serializable> getStatistics() {
     return statistics;
+  }
+
+  public void setStatistics(Statistics<? extends Serializable> statistics) {
+    this.statistics = statistics;
   }
 
   @Override

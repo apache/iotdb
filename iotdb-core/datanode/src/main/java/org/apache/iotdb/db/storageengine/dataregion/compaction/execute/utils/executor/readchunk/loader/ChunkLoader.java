@@ -43,9 +43,9 @@ public abstract class ChunkLoader {
 
   private void calculateModifiedStatus() {
     this.modifiedStatus = ModifiedStatus.NONE_DELETED;
-    if (isEmpty()) {
-      return;
-    }
+//    if (isEmpty()) {
+//      return;
+//    }
     ChunkMetadata chunkMetadata = getChunkMetadata();
     List<TimeRange> deleteIntervalList = chunkMetadata.getDeleteIntervalList();
     if (deleteIntervalList == null || deleteIntervalList.isEmpty()) {

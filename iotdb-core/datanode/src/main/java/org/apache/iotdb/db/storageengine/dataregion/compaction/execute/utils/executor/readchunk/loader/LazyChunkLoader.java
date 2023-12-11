@@ -111,13 +111,11 @@ public class LazyChunkLoader extends ChunkLoader {
     reader.position(index);
     InputStream inputStream = reader.wrapAsInputStream();
     while (index < chunkEndOffset) {
-      PageHeader pageHeader;
-      if (hasPageStatistics) {
-        pageHeader = PageHeader.deserializeFrom(inputStream, chunkHeader.getDataType(), true);
-      } else {
-        pageHeader = PageHeader.deserializeFrom(inputStream, chunkMetadata.getStatistics());
-      }
+      PageHeader pageHeader = PageHeader.deserializeFrom(inputStream, chunkHeader.getDataType(), hasPageStatistics);
       int serializedPageSize = pageHeader.getSerializedPageSize();
+      if (!hasPageStatistics) {
+        pageHeader.setStatistics(chunkMetadata.getStatistics());
+      }
       int headerSize = serializedPageSize - pageHeader.getCompressedSize();
       ModifiedStatus pageModifiedStatus = calculatePageModifiedStatus(pageHeader);
       pageLoaders.add(

@@ -29,7 +29,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.MultiTsFileDeviceIterator;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.AlignedSeriesCompactionExecutor2;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.AlignedSeriesCompactionExecutor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.ReadChunkAlignedSeriesCompactionExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.SingleSeriesCompactionExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
@@ -132,12 +133,12 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
     }
     writer.startChunkGroup(device);
     Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllSchemasOfCurrentDevice();
-    AlignedSeriesCompactionExecutor2 compactionExecutor =
-        new AlignedSeriesCompactionExecutor2(
-            device, schemaMap, targetResource, readerAndChunkMetadataList, writer, summary, false);
-    //            AlignedSeriesCompactionExecutor compactionExecutor =
-    //                new AlignedSeriesCompactionExecutor(
-    //                    device, targetResource, readerAndChunkMetadataList, writer, summary);
+//    ReadChunkAlignedSeriesCompactionExecutor compactionExecutor =
+//        new ReadChunkAlignedSeriesCompactionExecutor(
+//            device, schemaMap, targetResource, readerAndChunkMetadataList, writer, summary, false);
+                AlignedSeriesCompactionExecutor compactionExecutor =
+                    new AlignedSeriesCompactionExecutor(
+                        device, targetResource, readerAndChunkMetadataList, writer, summary);
     compactionExecutor.execute();
     for (ChunkMetadata chunkMetadata : writer.getChunkMetadataListOfCurrentDeviceInMemory()) {
       if (chunkMetadata.getMeasurementUid().isEmpty()) {

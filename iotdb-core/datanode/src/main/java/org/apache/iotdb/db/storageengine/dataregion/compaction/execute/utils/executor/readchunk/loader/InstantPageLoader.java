@@ -37,7 +37,6 @@ import java.util.List;
 public class InstantPageLoader extends PageLoader {
 
   private ByteBuffer pageData;
-  private List<TimeRange> deleteIntervalList;
 
   public InstantPageLoader() {}
 
@@ -65,18 +64,6 @@ public class InstantPageLoader extends PageLoader {
     unCompressor.uncompress(
         pageData.array(), 0, pageHeader.getCompressedSize(), unCompressedData, 0);
     return ByteBuffer.wrap(unCompressedData);
-  }
-
-  @Override
-  public List<TimeRange> getDeleteIntervalList() {
-    if (this.modifiedStatus == ModifiedStatus.PARTIAL_DELETED) {
-      return this.deleteIntervalList;
-    } else if (this.modifiedStatus == ModifiedStatus.ALL_DELETED) {
-      return Collections.singletonList(
-          new TimeRange(pageHeader.getStartTime(), pageHeader.getEndTime()));
-    } else {
-      return null;
-    }
   }
 
   @Override

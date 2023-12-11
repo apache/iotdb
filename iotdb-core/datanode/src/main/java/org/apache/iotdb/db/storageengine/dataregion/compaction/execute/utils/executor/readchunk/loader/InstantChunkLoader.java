@@ -64,11 +64,6 @@ public class InstantChunkLoader extends ChunkLoader {
   }
 
   @Override
-  public ModifiedStatus getModifiedStatus() {
-    return this.modifiedStatus;
-  }
-
-  @Override
   public List<PageLoader> getPages() {
     if (chunk == null) {
       return Collections.emptyList();

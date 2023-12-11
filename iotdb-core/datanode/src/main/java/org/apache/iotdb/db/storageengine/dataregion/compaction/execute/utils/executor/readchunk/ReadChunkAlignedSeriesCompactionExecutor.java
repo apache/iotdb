@@ -36,6 +36,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.exception.write.PageException;
+import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -64,12 +65,14 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
-public class AlignedSeriesCompactionExecutor2 {
+public class ReadChunkAlignedSeriesCompactionExecutor {
 
   protected final String device;
   protected final LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
@@ -78,7 +81,6 @@ public class AlignedSeriesCompactionExecutor2 {
   protected final CompactionTsFileWriter writer;
 
   protected final AlignedChunkWriterImpl chunkWriter;
-  protected final Map<String, MeasurementSchema> schemaMap;
   protected List<IMeasurementSchema> schemaList;
   protected Map<String, Integer> measurementSchemaListIndexMap;
   protected final CompactionTaskSummary summary;
@@ -90,7 +92,7 @@ public class AlignedSeriesCompactionExecutor2 {
   protected final long targetPageSize;
   protected final boolean saveMemory;
 
-  public AlignedSeriesCompactionExecutor2(
+  public ReadChunkAlignedSeriesCompactionExecutor(
       String device,
       Map<String, MeasurementSchema> schemaMap,
       TsFileResource targetResource,
@@ -103,9 +105,8 @@ public class AlignedSeriesCompactionExecutor2 {
     this.readerAndChunkMetadataList = readerAndChunkMetadataList;
     this.writer = writer;
     this.targetResource = targetResource;
-    this.schemaMap = schemaMap;
     this.summary = summary;
-    collectValueColumnSchemaList(schemaMap);
+    collectValueColumnSchemaList();
     this.saveMemory = saveMemory;
     if (saveMemory) {
       this.chunkWriter = new LazyAlignedChunkWriterImpl(schemaList);
@@ -120,12 +121,29 @@ public class AlignedSeriesCompactionExecutor2 {
     this.rateLimiter = CompactionTaskManager.getInstance().getProcessPointRateLimiter();
   }
 
-  private void collectValueColumnSchemaList(Map<String, MeasurementSchema> schemaMap) {
-    this.schemaList =
-        schemaMap.values().stream()
-            .filter(schema -> !"".equals(schema.getMeasurementId()))
-            .sorted(Comparator.comparing(IMeasurementSchema::getMeasurementId))
-            .collect(Collectors.toList());
+  private void collectValueColumnSchemaList() throws IOException {
+    Map<String, IMeasurementSchema> measurementSchemaMap = new HashMap<>();
+    for (Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> pair : this.readerAndChunkMetadataList) {
+      TsFileSequenceReader reader = pair.getLeft();
+      List<AlignedChunkMetadata> alignedChunkMetadataList = pair.getRight();
+      for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
+        if (alignedChunkMetadata == null) {
+          continue;
+        }
+        for (IChunkMetadata chunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
+          if (chunkMetadata == null || measurementSchemaMap.containsKey(chunkMetadata.getMeasurementUid())) {
+            continue;
+          }
+          ChunkHeader chunkHeader = reader.readChunkHeader(chunkMetadata.getOffsetOfChunkHeader());
+          IMeasurementSchema schema = new MeasurementSchema(chunkHeader.getMeasurementID(), chunkHeader.getDataType(), chunkHeader.getEncodingType(), chunkHeader.getCompressionType());
+          measurementSchemaMap.put(chunkMetadata.getMeasurementUid(), schema);
+        }
+        break;
+      }
+    }
+
+    this.schemaList = measurementSchemaMap.values().stream().sorted(Comparator.comparing(IMeasurementSchema::getMeasurementId)).collect(Collectors.toList());
+
     this.measurementSchemaListIndexMap = new HashMap<>();
     for (int i = 0; i < schemaList.size(); i++) {
       this.measurementSchemaListIndexMap.put(schemaList.get(i).getMeasurementId(), i);
