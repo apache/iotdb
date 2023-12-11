@@ -37,11 +37,11 @@ public class PipeTransferSnapshotSealReq extends TPipeTransferReq {
     // Empty constructor
   }
 
-  public String getsnapshotName() {
+  public String getSnapshotName() {
     return snapshotName;
   }
 
-  public long getsnapshotLength() {
+  public long getSnapshotLength() {
     return snapshotLength;
   }
 

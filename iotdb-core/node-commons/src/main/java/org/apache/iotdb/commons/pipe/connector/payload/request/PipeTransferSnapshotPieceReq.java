@@ -40,7 +40,7 @@ public class PipeTransferSnapshotPieceReq extends TPipeTransferReq {
     // Empty constructor
   }
 
-  public String getsnapshotName() {
+  public String getSnapshotName() {
     return snapshotName;
   }
 
@@ -48,7 +48,7 @@ public class PipeTransferSnapshotPieceReq extends TPipeTransferReq {
     return startWritingOffset;
   }
 
-  public byte[] getsnapshotPiece() {
+  public byte[] getSnapshotPiece() {
     return snapshotPiece;
   }
 
