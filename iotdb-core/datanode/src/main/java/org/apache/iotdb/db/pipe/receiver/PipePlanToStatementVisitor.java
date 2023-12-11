@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.receiver;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
@@ -31,13 +32,13 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.Del
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalBatchActivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalCreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.MeasurementGroup;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.AlterLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.DeleteLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalBatchActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
@@ -50,6 +51,13 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.Deactiva
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.AlterLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.DeleteLogicalViewStatement;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
 
@@ -77,7 +85,40 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
   public CreateMultiTimeSeriesStatement visitCreateMultiTimeSeries(
       CreateMultiTimeSeriesNode node, Void context) {
     CreateMultiTimeSeriesStatement statement = new CreateMultiTimeSeriesStatement();
-    return visitPlan(node, context);
+
+    List<PartialPath> paths = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
+    List<TSEncoding> encodings = new ArrayList<>();
+    List<CompressionType> compressors = new ArrayList<>();
+    List<Map<String, String>> propsList = new ArrayList<>();
+    List<String> aliasList = new ArrayList<>();
+    List<Map<String, String>> tagsList = new ArrayList<>();
+    List<Map<String, String>> attributesList = new ArrayList<>();
+
+    for (Map.Entry<PartialPath, MeasurementGroup> path2Group :
+        node.getMeasurementGroupMap().entrySet()) {
+      MeasurementGroup group = path2Group.getValue();
+      dataTypes.addAll(group.getDataTypes());
+      encodings.addAll(group.getEncodings());
+      compressors.addAll(group.getCompressors());
+      propsList.addAll(group.getPropsList());
+      aliasList.addAll(group.getAliasList());
+      tagsList.addAll(group.getTagsList());
+      attributesList.addAll(group.getAttributesList());
+      for (int i = 0; i < group.getAttributesList().size(); ++i) {
+        paths.add(path2Group.getKey());
+      }
+    }
+
+    statement.setPaths(paths);
+    statement.setDataTypes(dataTypes);
+    statement.setEncodings(encodings);
+    statement.setCompressors(compressors);
+    statement.setPropsList(propsList);
+    statement.setAliasList(aliasList);
+    statement.setTagsList(tagsList);
+    statement.setAttributesList(attributesList);
+    return statement;
   }
 
   @Override
@@ -95,7 +136,13 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
   @Override
   public InternalCreateTimeSeriesStatement visitInternalCreateTimeSeries(
       InternalCreateTimeSeriesNode node, Void context) {
-    return visitPlan(node, context);
+    return new InternalCreateTimeSeriesStatement(
+        node.getDevicePath(),
+        node.getMeasurementGroup().getMeasurements(),
+        node.getMeasurementGroup().getDataTypes(),
+        node.getMeasurementGroup().getEncodings(),
+        node.getMeasurementGroup().getCompressors(),
+        node.isAligned());
   }
 
   @Override
@@ -105,33 +152,36 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
     return statement;
   }
 
+  // TODO: add the Template name
   @Override
   public DeactivateTemplateStatement visitDeactivateTemplate(
       DeactivateTemplateNode node, Void context) {
-    return visitPlan(node, context);
+    return new DeactivateTemplateStatement();
   }
 
   @Override
-  public InternalBatchActivateTemplateStatement visitInternalBatchActivateTemplate(
+  public BatchActivateTemplateStatement visitInternalBatchActivateTemplate(
       InternalBatchActivateTemplateNode node, Void context) {
-    return visitPlan(node, context);
+    return new BatchActivateTemplateStatement(
+        new ArrayList<>(node.getTemplateActivationMap().keySet()));
   }
 
   @Override
   public InternalCreateMultiTimeSeriesStatement visitInternalCreateMultiTimeSeries(
       InternalCreateMultiTimeSeriesNode node, Void context) {
-    return visitPlan(node, context);
+    return new InternalCreateMultiTimeSeriesStatement(node.getDeviceMap());
   }
 
   @Override
   public DeleteTimeSeriesStatement visitDeleteTimeseries(DeleteTimeSeriesNode node, Void context) {
-    return visitPlan(node, context);
+    return new DeleteTimeSeriesStatement(node.getPatternTree().getAllDevicePaths());
   }
 
   @Override
   public BatchActivateTemplateStatement visitBatchActivateTemplate(
       BatchActivateTemplateNode node, Void context) {
-    return visitPlan(node, context);
+    return new BatchActivateTemplateStatement(
+        new ArrayList<>(node.getTemplateActivationMap().keySet()));
   }
 
   @Override
@@ -143,7 +193,7 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
   @Override
   public DeleteLogicalViewStatement visitDeleteLogicalView(
       DeleteLogicalViewNode node, Void context) {
-    return visitPlan(node, context);
+    return new DeleteLogicalViewStatement(node.getPatternTree().getAllPathPatterns());
   }
 
   @Override
@@ -153,6 +203,10 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
 
   @Override
   public DeleteDataStatement visitDeleteData(DeleteDataNode node, Void context) {
-    return visitPlan(node, context);
+    DeleteDataStatement statement = new DeleteDataStatement();
+    statement.setDeleteEndTime(node.getDeleteEndTime());
+    statement.setDeleteStartTime(node.getDeleteStartTime());
+    statement.setPathList(node.getPathList());
+    return statement;
   }
 }
