@@ -41,7 +41,6 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.page.AlignedPageReader;
@@ -708,8 +707,7 @@ public class SeriesScanUtil {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private boolean hasNextOverlappedPage() throws IOException {
     long startTime = System.nanoTime();
-    Filter recordFilter =
-        FilterFactory.and(scanOptions.getGlobalTimeFilter(), scanOptions.getPushDownFilter());
+    Filter pushDownFilter = scanOptions.getPushDownFilter();
     try {
       if (hasCachedNextOverlappedPage) {
         return true;
@@ -811,7 +809,7 @@ public class SeriesScanUtil {
 
             // get the latest first point in mergeReader
             timeValuePair = mergeReader.nextTimeValuePair();
-            if (processFilterAndPagination(timeValuePair, recordFilter, builder)) {
+            if (processFilterAndPagination(timeValuePair, pushDownFilter, builder)) {
               break;
             }
           }
@@ -877,9 +875,9 @@ public class SeriesScanUtil {
   }
 
   private boolean processFilterAndPagination(
-      TimeValuePair timeValuePair, Filter recordFilter, TsBlockBuilder builder) {
-    if (recordFilter != null
-        && !recordFilter.satisfyRow(timeValuePair.getTimestamp(), timeValuePair.getValues())) {
+      TimeValuePair timeValuePair, Filter pushDownFilter, TsBlockBuilder builder) {
+    if (pushDownFilter != null
+        && !pushDownFilter.satisfyRow(timeValuePair.getTimestamp(), timeValuePair.getValues())) {
       return false;
     }
     if (paginationController.hasCurOffset()) {
