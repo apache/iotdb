@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.task.stage;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskConnectorRuntimeEnvironment;
-import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutorManager;
+import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtaskManager;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -40,7 +40,8 @@ public class PipeTaskConnectorStage extends PipeTaskStage {
       String pipeName,
       long creationTime,
       PipeParameters pipeConnectorParameters,
-      TConsensusGroupId dataRegionId) {
+      TConsensusGroupId dataRegionId,
+      PipeConnectorSubtaskExecutor executor) {
     this.pipeName = pipeName;
     this.dataRegionId = dataRegionId.getId();
     this.pipeConnectorParameters = pipeConnectorParameters;
@@ -48,7 +49,7 @@ public class PipeTaskConnectorStage extends PipeTaskStage {
     connectorSubtaskId =
         PipeConnectorSubtaskManager.instance()
             .register(
-                PipeSubtaskExecutorManager.getInstance().getConnectorSubtaskExecutor(),
+                executor,
                 pipeConnectorParameters,
                 new PipeTaskConnectorRuntimeEnvironment(
                     this.pipeName, creationTime, this.dataRegionId));

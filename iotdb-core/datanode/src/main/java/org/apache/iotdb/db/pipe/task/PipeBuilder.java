@@ -51,7 +51,7 @@ public class PipeBuilder {
           == CONFIG.getDataNodeId()) {
         consensusGroupIdToPipeTaskMap.put(
             consensusGroupIdToPipeTaskMeta.getKey(),
-            new PipeTaskBuilder(
+            new PipeTaskDataRegionBuilder(
                     pipeStaticMeta,
                     consensusGroupIdToPipeTaskMeta.getKey(),
                     consensusGroupIdToPipeTaskMeta.getValue())

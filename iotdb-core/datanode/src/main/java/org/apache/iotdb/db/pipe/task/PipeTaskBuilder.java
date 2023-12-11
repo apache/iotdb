@@ -22,21 +22,32 @@ package org.apache.iotdb.db.pipe.task;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
+import org.apache.iotdb.db.pipe.execution.executor.PipeProcessorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.task.stage.PipeTaskConnectorStage;
 import org.apache.iotdb.db.pipe.task.stage.PipeTaskExtractorStage;
 import org.apache.iotdb.db.pipe.task.stage.PipeTaskProcessorStage;
 
-public class PipeTaskBuilder {
+public abstract class PipeTaskBuilder {
 
   private final PipeStaticMeta pipeStaticMeta;
-  private final TConsensusGroupId dataRegionId;
+  private final TConsensusGroupId regionId;
   private final PipeTaskMeta pipeTaskMeta;
 
-  public PipeTaskBuilder(
-      PipeStaticMeta pipeStaticMeta, TConsensusGroupId dataRegionId, PipeTaskMeta pipeTaskMeta) {
+  protected final PipeProcessorSubtaskExecutor processorExecutor;
+  protected final PipeConnectorSubtaskExecutor connectorExecutor;
+
+  protected PipeTaskBuilder(
+      PipeStaticMeta pipeStaticMeta,
+      TConsensusGroupId regionId,
+      PipeTaskMeta pipeTaskMeta,
+      PipeProcessorSubtaskExecutor processorExecutor,
+      PipeConnectorSubtaskExecutor connectorExecutor) {
     this.pipeStaticMeta = pipeStaticMeta;
-    this.dataRegionId = dataRegionId;
+    this.regionId = regionId;
     this.pipeTaskMeta = pipeTaskMeta;
+    this.processorExecutor = processorExecutor;
+    this.connectorExecutor = connectorExecutor;
   }
 
   public PipeTask build() {
@@ -48,7 +59,7 @@ public class PipeTaskBuilder {
             pipeStaticMeta.getPipeName(),
             pipeStaticMeta.getCreationTime(),
             pipeStaticMeta.getExtractorParameters(),
-            dataRegionId,
+            regionId,
             pipeTaskMeta);
 
     final PipeTaskConnectorStage connectorStage =
@@ -56,7 +67,8 @@ public class PipeTaskBuilder {
             pipeStaticMeta.getPipeName(),
             pipeStaticMeta.getCreationTime(),
             pipeStaticMeta.getConnectorParameters(),
-            dataRegionId);
+            regionId,
+            connectorExecutor);
 
     // The processor connects the extractor and connector.
     final PipeTaskProcessorStage processorStage =
@@ -64,11 +76,12 @@ public class PipeTaskBuilder {
             pipeStaticMeta.getPipeName(),
             pipeStaticMeta.getCreationTime(),
             pipeStaticMeta.getProcessorParameters(),
-            dataRegionId,
+            regionId,
             extractorStage.getEventSupplier(),
-            connectorStage.getPipeConnectorPendingQueue());
+            connectorStage.getPipeConnectorPendingQueue(),
+            processorExecutor);
 
     return new PipeTask(
-        pipeStaticMeta.getPipeName(), dataRegionId, extractorStage, processorStage, connectorStage);
+        pipeStaticMeta.getPipeName(), regionId, extractorStage, processorStage, connectorStage);
   }
 }

@@ -26,7 +26,6 @@ import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.execution.executor.PipeProcessorSubtaskExecutor;
-import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutorManager;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.task.subtask.processor.PipeProcessorSubtask;
 import org.apache.iotdb.pipe.api.PipeProcessor;
@@ -38,8 +37,7 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 public class PipeTaskProcessorStage extends PipeTaskStage {
 
-  private final PipeProcessorSubtaskExecutor executor =
-      PipeSubtaskExecutorManager.getInstance().getProcessorSubtaskExecutor();
+  private final PipeProcessorSubtaskExecutor executor;
 
   private final PipeProcessorSubtask pipeProcessorSubtask;
 
@@ -58,7 +56,8 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
       PipeParameters pipeProcessorParameters,
       TConsensusGroupId dataRegionId,
       EventSupplier pipeExtractorInputEventSupplier,
-      BoundedBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue) {
+      BoundedBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue,
+      PipeProcessorSubtaskExecutor executor) {
     final PipeProcessor pipeProcessor =
         PipeAgent.plugin().reflectProcessor(pipeProcessorParameters);
 
@@ -95,6 +94,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
             pipeExtractorInputEventSupplier,
             pipeProcessor,
             pipeConnectorOutputEventCollector);
+    this.executor = executor;
   }
 
   @Override

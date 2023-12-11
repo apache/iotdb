@@ -17,14 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.execution.executor;
+package org.apache.iotdb.db.pipe.execution.executor.dataregion;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.pipe.execution.executor.PipeSubtaskExecutor;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
 
-public abstract class PipeConnectorSubtaskExecutor extends PipeSubtaskExecutor {
+public class PipeDataRegionConnectorSubtaskExecutor extends PipeConnectorSubtaskExecutor {
 
-  public PipeConnectorSubtaskExecutor(int corePoolSize, ThreadName threadName) {
-    super(corePoolSize, threadName);
+  public PipeDataRegionConnectorSubtaskExecutor() {
+    super(
+        PipeConfig.getInstance().getPipeSubtaskExecutorMaxThreadNum(),
+        ThreadName.PIPE_DATAREGION_CONNECTOR_EXECUTOR_POOL);
   }
 }
