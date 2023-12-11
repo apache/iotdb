@@ -278,6 +278,7 @@ public class SlidingWindowAggregationOperatorTest {
         initTimeRangeIterator(groupByTimeParameter, ascending, false),
         seriesAggregationScanOperator,
         ascending,
+        false,
         groupByTimeParameter,
         DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
   }
