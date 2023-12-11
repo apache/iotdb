@@ -56,7 +56,7 @@ public class CompactionUpdateFileCountTest extends AbstractCompactionTest {
     long initSeqFileNum = FileMetrics.getInstance().getFileCount(true);
     long initUnSeqFileNum = FileMetrics.getInstance().getFileCount(false);
     createFiles(1, 2, 3, 100, 1, 0, 50, 0, false, true);
-    createFiles(1, 2, 3, 50, 20, 30000, 50, 50, false, true);
+    createFiles(1, 2, 3, 50, 200, 30000, 50, 50, false, true);
     tsFileManager.addAll(seqResources, true);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(

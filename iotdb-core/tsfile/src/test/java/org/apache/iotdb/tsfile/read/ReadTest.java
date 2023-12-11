@@ -27,8 +27,8 @@ import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
-import org.apache.iotdb.tsfile.read.filter.factory.TimeFilter;
-import org.apache.iotdb.tsfile.read.filter.factory.ValueFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilterApi;
+import org.apache.iotdb.tsfile.read.filter.factory.ValueFilterApi;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.FileGenerator;
 
@@ -110,11 +110,11 @@ public class ReadTest {
     pathList.add(new Path("d2", "s1", true));
     pathList.add(new Path("d2", "s4", true));
     IExpression valFilter =
-        new SingleSeriesExpression(new Path("d2", "s2", true), ValueFilter.gt(9722L));
+        new SingleSeriesExpression(new Path("d2", "s2", true), ValueFilterApi.gt(9722L));
     IExpression tFilter =
         BinaryExpression.and(
-            new GlobalTimeExpression(TimeFilter.gtEq(1480562618970L)),
-            new GlobalTimeExpression(TimeFilter.lt(1480562618977L)));
+            new GlobalTimeExpression(TimeFilterApi.gtEq(1480562618970L)),
+            new GlobalTimeExpression(TimeFilterApi.lt(1480562618977L)));
     IExpression finalFilter = BinaryExpression.and(valFilter, tFilter);
     QueryExpression queryExpression = QueryExpression.create(pathList, finalFilter);
     QueryDataSet dataSet = roTsFile.query(queryExpression);
@@ -131,7 +131,7 @@ public class ReadTest {
     List<Path> pathList = new ArrayList<>();
     pathList.add(new Path("d2", "s2", true));
     IExpression valFilter =
-        new SingleSeriesExpression(new Path("d2", "s2", true), ValueFilter.gt(9722L));
+        new SingleSeriesExpression(new Path("d2", "s2", true), ValueFilterApi.gt(9722L));
     QueryExpression queryExpression = QueryExpression.create(pathList, valFilter);
     QueryDataSet dataSet = roTsFile.query(queryExpression);
 
@@ -160,11 +160,11 @@ public class ReadTest {
     pathList.add(new Path("d1", "s1", true));
     pathList.add(new Path("d2", "s2", true));
     IExpression valFilter =
-        new SingleSeriesExpression(new Path("d2", "s2", true), ValueFilter.notEq(9722L));
+        new SingleSeriesExpression(new Path("d2", "s2", true), ValueFilterApi.notEq(9722L));
     IExpression tFilter =
         BinaryExpression.and(
-            new GlobalTimeExpression(TimeFilter.gtEq(1480562618970L)),
-            new GlobalTimeExpression(TimeFilter.lt(1480562618977L)));
+            new GlobalTimeExpression(TimeFilterApi.gtEq(1480562618970L)),
+            new GlobalTimeExpression(TimeFilterApi.lt(1480562618977L)));
     IExpression finalFilter = BinaryExpression.and(valFilter, tFilter);
     QueryExpression queryExpression = QueryExpression.create(pathList, finalFilter);
     QueryDataSet dataSet = roTsFile.query(queryExpression);
@@ -192,11 +192,11 @@ public class ReadTest {
     pathList.add(new Path("d1", "s1", true));
     pathList.add(new Path("d2", "s2", true));
     IExpression valFilter =
-        new SingleSeriesExpression(new Path("d2", "s2", true), ValueFilter.notEq(9722L));
+        new SingleSeriesExpression(new Path("d2", "s2", true), ValueFilterApi.notEq(9722L));
     IExpression tFilter =
         BinaryExpression.and(
-            new GlobalTimeExpression(TimeFilter.gtEq(1480562618970L)),
-            new GlobalTimeExpression(TimeFilter.lt(1480562618975L)));
+            new GlobalTimeExpression(TimeFilterApi.gtEq(1480562618970L)),
+            new GlobalTimeExpression(TimeFilterApi.lt(1480562618975L)));
     IExpression finalFilter = BinaryExpression.and(valFilter, tFilter);
     QueryExpression queryExpression = QueryExpression.create(pathList, finalFilter);
     QueryDataSet dataSet = roTsFile.query(queryExpression);
@@ -226,17 +226,17 @@ public class ReadTest {
     pathList.clear();
     pathList.add(new Path("d1", "s1", true));
     pathList.add(new Path("d2", "s2", true));
-    valFilter = new SingleSeriesExpression(new Path("d2", "s2", true), ValueFilter.ltEq(9082L));
+    valFilter = new SingleSeriesExpression(new Path("d2", "s2", true), ValueFilterApi.ltEq(9082L));
     tFilter =
         BinaryExpression.and(
-            new GlobalTimeExpression(TimeFilter.gtEq(1480562618906L)),
-            new GlobalTimeExpression(TimeFilter.ltEq(1480562618915L)));
+            new GlobalTimeExpression(TimeFilterApi.gtEq(1480562618906L)),
+            new GlobalTimeExpression(TimeFilterApi.ltEq(1480562618915L)));
     tFilter =
         BinaryExpression.or(
             tFilter,
             BinaryExpression.and(
-                new GlobalTimeExpression(TimeFilter.gtEq(1480562618928L)),
-                new GlobalTimeExpression(TimeFilter.ltEq(1480562618933L))));
+                new GlobalTimeExpression(TimeFilterApi.gtEq(1480562618928L)),
+                new GlobalTimeExpression(TimeFilterApi.ltEq(1480562618933L))));
     finalFilter = BinaryExpression.and(valFilter, tFilter);
     queryExpression = QueryExpression.create(pathList, finalFilter);
     dataSet = roTsFile.query(queryExpression);
@@ -256,11 +256,11 @@ public class ReadTest {
     List<Path> pathList = new ArrayList<>();
     pathList.add(new Path("d1", "s5", true));
     IExpression valFilter =
-        new SingleSeriesExpression(new Path("d1", "s5", true), ValueFilter.eq(false));
+        new SingleSeriesExpression(new Path("d1", "s5", true), ValueFilterApi.eq(false));
     IExpression tFilter =
         BinaryExpression.and(
-            new GlobalTimeExpression(TimeFilter.gtEq(1480562618970L)),
-            new GlobalTimeExpression(TimeFilter.lt(1480562618981L)));
+            new GlobalTimeExpression(TimeFilterApi.gtEq(1480562618970L)),
+            new GlobalTimeExpression(TimeFilterApi.lt(1480562618981L)));
     IExpression finalFilter = BinaryExpression.and(valFilter, tFilter);
     QueryExpression queryExpression = QueryExpression.create(pathList, finalFilter);
     QueryDataSet dataSet = roTsFile.query(queryExpression);
@@ -288,8 +288,8 @@ public class ReadTest {
     pathList.add(new Path("d1", "s4", true));
     IExpression tFilter =
         BinaryExpression.and(
-            new GlobalTimeExpression(TimeFilter.gtEq(1480562618970L)),
-            new GlobalTimeExpression(TimeFilter.ltEq(1480562618981L)));
+            new GlobalTimeExpression(TimeFilterApi.gtEq(1480562618970L)),
+            new GlobalTimeExpression(TimeFilterApi.ltEq(1480562618981L)));
     QueryExpression queryExpression = QueryExpression.create(pathList, tFilter);
     QueryDataSet dataSet = roTsFile.query(queryExpression);
 
@@ -309,8 +309,8 @@ public class ReadTest {
     pathList.add(new Path("d1", "s4", true));
     tFilter =
         BinaryExpression.and(
-            new GlobalTimeExpression(TimeFilter.gtEq(1480562618970L)),
-            new GlobalTimeExpression(TimeFilter.ltEq(1480562618981L)));
+            new GlobalTimeExpression(TimeFilterApi.gtEq(1480562618970L)),
+            new GlobalTimeExpression(TimeFilterApi.ltEq(1480562618981L)));
     queryExpression = QueryExpression.create(pathList, tFilter);
     dataSet = roTsFile.query(queryExpression);
     cnt = 0;
@@ -331,11 +331,11 @@ public class ReadTest {
     List<Path> pathList = new ArrayList<>();
     pathList.add(new Path("d1", "s6", true));
     IExpression valFilter =
-        new SingleSeriesExpression(new Path("d1", "s6", true), ValueFilter.gt(103.0f));
+        new SingleSeriesExpression(new Path("d1", "s6", true), ValueFilterApi.gt(103.0f));
     IExpression tFilter =
         BinaryExpression.and(
-            new GlobalTimeExpression(TimeFilter.gtEq(1480562618970L)),
-            new GlobalTimeExpression(TimeFilter.ltEq(1480562618981L)));
+            new GlobalTimeExpression(TimeFilterApi.gtEq(1480562618970L)),
+            new GlobalTimeExpression(TimeFilterApi.ltEq(1480562618981L)));
     IExpression finalFilter = BinaryExpression.and(valFilter, tFilter);
     QueryExpression queryExpression = QueryExpression.create(pathList, finalFilter);
     QueryDataSet dataSet = roTsFile.query(queryExpression);
@@ -362,11 +362,11 @@ public class ReadTest {
     List<Path> pathList = new ArrayList<>();
     pathList.add(new Path("d1", "s7", true));
     IExpression valFilter =
-        new SingleSeriesExpression(new Path("d1", "s7", true), ValueFilter.gt(1.0));
+        new SingleSeriesExpression(new Path("d1", "s7", true), ValueFilterApi.gt(1.0));
     IExpression tFilter =
         BinaryExpression.and(
-            new GlobalTimeExpression(TimeFilter.gtEq(1480562618011L)),
-            new GlobalTimeExpression(TimeFilter.ltEq(1480562618033L)));
+            new GlobalTimeExpression(TimeFilterApi.gtEq(1480562618011L)),
+            new GlobalTimeExpression(TimeFilterApi.ltEq(1480562618033L)));
     IExpression finalFilter = BinaryExpression.and(valFilter, tFilter);
     QueryExpression queryExpression = QueryExpression.create(pathList, finalFilter);
     QueryDataSet dataSet = roTsFile.query(queryExpression);

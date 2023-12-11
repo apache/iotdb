@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.tsfile.read.filter.operator;
 
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.file.metadata.IMetadata;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.filter.basic.BinaryLogicalFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.OperatorType;
-import org.apache.iotdb.tsfile.read.filter.operator.base.BinaryLogicalFilter;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -45,13 +45,20 @@ public class Or extends BinaryLogicalFilter {
   }
 
   @Override
-  public boolean satisfy(Statistics statistics) {
-    return left.satisfy(statistics) || right.satisfy(statistics);
+  public boolean satisfyRow(long time, Object[] values) {
+    return left.satisfyRow(time, values) || right.satisfyRow(time, values);
   }
 
   @Override
-  public boolean allSatisfy(Statistics statistics) {
-    return left.allSatisfy(statistics) || right.allSatisfy(statistics);
+  public boolean canSkip(IMetadata metadata) {
+    // we can only drop a chunk of records if we know that both the left and right predicates agree
+    // that no matter what we don't need this chunk.
+    return left.canSkip(metadata) && right.canSkip(metadata);
+  }
+
+  @Override
+  public boolean allSatisfy(IMetadata metadata) {
+    return left.allSatisfy(metadata) || right.allSatisfy(metadata);
   }
 
   @Override

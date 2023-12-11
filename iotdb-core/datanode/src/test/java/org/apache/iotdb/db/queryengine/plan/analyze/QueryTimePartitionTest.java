@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.read.filter.factory.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilterApi;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.junit.Test;
@@ -41,8 +41,8 @@ public class QueryTimePartitionTest {
 
   @Test
   public void testAndTimeFilter() {
-    Filter left = TimeFilter.gt(10);
-    Filter right = TimeFilter.lt(20);
+    Filter left = TimeFilterApi.gt(10);
+    Filter right = TimeFilterApi.lt(20);
 
     // time > 10 and time < 20
     Filter andFilter = FilterFactory.and(left, right);
@@ -52,33 +52,33 @@ public class QueryTimePartitionTest {
     assertEquals(19, timeRangeList.get(0).getMax());
 
     // time > 10 and time <= 20
-    andFilter = FilterFactory.and(left, TimeFilter.ltEq(20));
+    andFilter = FilterFactory.and(left, TimeFilterApi.ltEq(20));
     timeRangeList = andFilter.getTimeRanges();
     assertEquals(1, timeRangeList.size());
     assertEquals(11, timeRangeList.get(0).getMin());
     assertEquals(20, timeRangeList.get(0).getMax());
 
     // time >= 10 and time <= 20
-    andFilter = FilterFactory.and(TimeFilter.gtEq(10), TimeFilter.ltEq(20));
+    andFilter = FilterFactory.and(TimeFilterApi.gtEq(10), TimeFilterApi.ltEq(20));
     timeRangeList = andFilter.getTimeRanges();
     assertEquals(1, timeRangeList.size());
     assertEquals(10, timeRangeList.get(0).getMin());
     assertEquals(20, timeRangeList.get(0).getMax());
 
     // time <= 20 and time >= 10
-    andFilter = FilterFactory.and(TimeFilter.ltEq(20), TimeFilter.gtEq(10));
+    andFilter = FilterFactory.and(TimeFilterApi.ltEq(20), TimeFilterApi.gtEq(10));
     timeRangeList = andFilter.getTimeRanges();
     assertEquals(1, timeRangeList.size());
     assertEquals(10, timeRangeList.get(0).getMin());
     assertEquals(20, timeRangeList.get(0).getMax());
 
     // time >= 20 and time <= 10
-    andFilter = FilterFactory.and(TimeFilter.gtEq(20), TimeFilter.ltEq(10));
+    andFilter = FilterFactory.and(TimeFilterApi.gtEq(20), TimeFilterApi.ltEq(10));
     timeRangeList = andFilter.getTimeRanges();
     assertEquals(0, timeRangeList.size());
 
     // time >= 20 and time < 20
-    andFilter = FilterFactory.and(TimeFilter.gtEq(20), TimeFilter.lt(20));
+    andFilter = FilterFactory.and(TimeFilterApi.gtEq(20), TimeFilterApi.lt(20));
     timeRangeList = andFilter.getTimeRanges();
     assertEquals(0, timeRangeList.size());
   }
@@ -87,7 +87,7 @@ public class QueryTimePartitionTest {
   public void testOrTimeFilter() {
 
     // time < 10 or time > 20
-    Filter filter = FilterFactory.or(TimeFilter.lt(10), TimeFilter.gt(20));
+    Filter filter = FilterFactory.or(TimeFilterApi.lt(10), TimeFilterApi.gt(20));
     List<TimeRange> timeRangeList = filter.getTimeRanges();
     assertEquals(2, timeRangeList.size());
     assertEquals(Long.MIN_VALUE, timeRangeList.get(0).getMin());
@@ -96,7 +96,7 @@ public class QueryTimePartitionTest {
     assertEquals(Long.MAX_VALUE, timeRangeList.get(1).getMax());
 
     // time < 10 or time >= 20
-    filter = FilterFactory.or(TimeFilter.lt(10), TimeFilter.gtEq(20));
+    filter = FilterFactory.or(TimeFilterApi.lt(10), TimeFilterApi.gtEq(20));
     timeRangeList = filter.getTimeRanges();
     assertEquals(2, timeRangeList.size());
     assertEquals(Long.MIN_VALUE, timeRangeList.get(0).getMin());
@@ -105,7 +105,7 @@ public class QueryTimePartitionTest {
     assertEquals(Long.MAX_VALUE, timeRangeList.get(1).getMax());
 
     // time <= 10 or time >= 20
-    filter = FilterFactory.or(TimeFilter.ltEq(10), TimeFilter.gtEq(20));
+    filter = FilterFactory.or(TimeFilterApi.ltEq(10), TimeFilterApi.gtEq(20));
     timeRangeList = filter.getTimeRanges();
     assertEquals(2, timeRangeList.size());
     assertEquals(Long.MIN_VALUE, timeRangeList.get(0).getMin());
@@ -114,7 +114,7 @@ public class QueryTimePartitionTest {
     assertEquals(Long.MAX_VALUE, timeRangeList.get(1).getMax());
 
     // time >= 20 or time <= 10
-    filter = FilterFactory.or(TimeFilter.gtEq(20), TimeFilter.ltEq(10));
+    filter = FilterFactory.or(TimeFilterApi.gtEq(20), TimeFilterApi.ltEq(10));
     timeRangeList = filter.getTimeRanges();
     assertEquals(2, timeRangeList.size());
     assertEquals(Long.MIN_VALUE, timeRangeList.get(0).getMin());
@@ -123,14 +123,14 @@ public class QueryTimePartitionTest {
     assertEquals(Long.MAX_VALUE, timeRangeList.get(1).getMax());
 
     // time >= 20 or time >= 10
-    filter = FilterFactory.or(TimeFilter.gtEq(20), TimeFilter.gtEq(10));
+    filter = FilterFactory.or(TimeFilterApi.gtEq(20), TimeFilterApi.gtEq(10));
     timeRangeList = filter.getTimeRanges();
     assertEquals(1, timeRangeList.size());
     assertEquals(10, timeRangeList.get(0).getMin());
     assertEquals(Long.MAX_VALUE, timeRangeList.get(0).getMax());
 
     // time < 20 or time <= 10
-    filter = FilterFactory.or(TimeFilter.lt(20), TimeFilter.ltEq(10));
+    filter = FilterFactory.or(TimeFilterApi.lt(20), TimeFilterApi.ltEq(10));
     timeRangeList = filter.getTimeRanges();
     assertEquals(1, timeRangeList.size());
     assertEquals(Long.MIN_VALUE, timeRangeList.get(0).getMin());
@@ -143,7 +143,8 @@ public class QueryTimePartitionTest {
     // (time >= 10 and time <= 20) or (time > 30)
     Filter filter =
         FilterFactory.or(
-            FilterFactory.and(TimeFilter.gtEq(10), TimeFilter.ltEq(20)), TimeFilter.gt(30));
+            FilterFactory.and(TimeFilterApi.gtEq(10), TimeFilterApi.ltEq(20)),
+            TimeFilterApi.gt(30));
     List<TimeRange> timeRangeList = filter.getTimeRanges();
     assertEquals(2, timeRangeList.size());
     assertEquals(10, timeRangeList.get(0).getMin());
@@ -154,7 +155,7 @@ public class QueryTimePartitionTest {
     // (time <= 10 or time > 20) and (time >= 30)
     Filter filter1 =
         FilterFactory.and(
-            FilterFactory.or(TimeFilter.ltEq(10), TimeFilter.gt(20)), TimeFilter.gtEq(30));
+            FilterFactory.or(TimeFilterApi.ltEq(10), TimeFilterApi.gt(20)), TimeFilterApi.gtEq(30));
     timeRangeList = filter1.getTimeRanges();
     assertEquals(1, timeRangeList.size());
     assertEquals(30, timeRangeList.get(0).getMin());
@@ -163,7 +164,7 @@ public class QueryTimePartitionTest {
     // (time <= 10 or time > 20) and (time <= 30)
     filter1 =
         FilterFactory.and(
-            FilterFactory.or(TimeFilter.ltEq(10), TimeFilter.gt(20)), TimeFilter.ltEq(30));
+            FilterFactory.or(TimeFilterApi.ltEq(10), TimeFilterApi.gt(20)), TimeFilterApi.ltEq(30));
     timeRangeList = filter1.getTimeRanges();
     assertEquals(2, timeRangeList.size());
     assertEquals(Long.MIN_VALUE, timeRangeList.get(0).getMin());
@@ -174,8 +175,8 @@ public class QueryTimePartitionTest {
     // (time >= 10 and time <= 20) or (time < 99 and time > 30)
     filter =
         FilterFactory.or(
-            FilterFactory.and(TimeFilter.gtEq(10), TimeFilter.ltEq(20)),
-            FilterFactory.and(TimeFilter.lt(100), TimeFilter.gt(30)));
+            FilterFactory.and(TimeFilterApi.gtEq(10), TimeFilterApi.ltEq(20)),
+            FilterFactory.and(TimeFilterApi.lt(100), TimeFilterApi.gt(30)));
     timeRangeList = filter.getTimeRanges();
     assertEquals(2, timeRangeList.size());
     assertEquals(10, timeRangeList.get(0).getMin());
@@ -188,14 +189,14 @@ public class QueryTimePartitionTest {
   public void testBetweenTimeFilter() {
 
     // time between 10 and 20
-    Filter filter = TimeFilter.between(10, 20);
+    Filter filter = TimeFilterApi.between(10, 20);
     List<TimeRange> timeRangeList = filter.getTimeRanges();
     assertEquals(1, timeRangeList.size());
     assertEquals(10, timeRangeList.get(0).getMin());
     assertEquals(20, timeRangeList.get(0).getMax());
 
     // time not between 10 and 20
-    filter = TimeFilter.notBetween(10, 20);
+    filter = TimeFilterApi.notBetween(10, 20);
     timeRangeList = filter.getTimeRanges();
     assertEquals(2, timeRangeList.size());
     assertEquals(Long.MIN_VALUE, timeRangeList.get(0).getMin());
@@ -204,14 +205,14 @@ public class QueryTimePartitionTest {
     assertEquals(Long.MAX_VALUE, timeRangeList.get(1).getMax());
 
     // time not between 10 and Long.MAX_VALUE
-    filter = TimeFilter.notBetween(10, Long.MAX_VALUE);
+    filter = TimeFilterApi.notBetween(10, Long.MAX_VALUE);
     timeRangeList = filter.getTimeRanges();
     assertEquals(1, timeRangeList.size());
     assertEquals(Long.MIN_VALUE, timeRangeList.get(0).getMin());
     assertEquals(9, timeRangeList.get(0).getMax());
 
     // time not between Long.MIN_VALUE and 20
-    filter = TimeFilter.notBetween(Long.MIN_VALUE, 20);
+    filter = TimeFilterApi.notBetween(Long.MIN_VALUE, 20);
     timeRangeList = filter.getTimeRanges();
     assertEquals(1, timeRangeList.size());
     assertEquals(21, timeRangeList.get(0).getMin());
@@ -222,7 +223,8 @@ public class QueryTimePartitionTest {
   public void testNotTimeFilter() {
 
     // !(time > 10 and time <= 20)
-    Filter filter = FilterFactory.not(FilterFactory.and(TimeFilter.gt(10), TimeFilter.ltEq(20)));
+    Filter filter =
+        FilterFactory.not(FilterFactory.and(TimeFilterApi.gt(10), TimeFilterApi.ltEq(20)));
     List<TimeRange> timeRangeList = filter.getTimeRanges();
     assertEquals(2, timeRangeList.size());
     assertEquals(Long.MIN_VALUE, timeRangeList.get(0).getMin());
@@ -231,7 +233,7 @@ public class QueryTimePartitionTest {
     assertEquals(Long.MAX_VALUE, timeRangeList.get(1).getMax());
 
     // !(time > 20 or time <= 10)
-    filter = FilterFactory.not(FilterFactory.or(TimeFilter.gt(20), TimeFilter.ltEq(10)));
+    filter = FilterFactory.not(FilterFactory.or(TimeFilterApi.gt(20), TimeFilterApi.ltEq(10)));
     timeRangeList = filter.getTimeRanges();
     assertEquals(1, timeRangeList.size());
     assertEquals(11, timeRangeList.get(0).getMin());
@@ -242,7 +244,7 @@ public class QueryTimePartitionTest {
   public void testTimeEqFilter() {
 
     // time = 10
-    Filter filter = TimeFilter.eq(10);
+    Filter filter = TimeFilterApi.eq(10);
     List<TimeRange> timeRangeList = filter.getTimeRanges();
     assertEquals(1, timeRangeList.size());
     assertEquals(10, timeRangeList.get(0).getMin());
@@ -262,7 +264,7 @@ public class QueryTimePartitionTest {
   public void testTimeNotEqFilter() {
 
     // time != 10
-    Filter filter = TimeFilter.notEq(10);
+    Filter filter = TimeFilterApi.notEq(10);
     List<TimeRange> timeRangeList = filter.getTimeRanges();
     assertEquals(2, timeRangeList.size());
     assertEquals(Long.MIN_VALUE, timeRangeList.get(0).getMin());
@@ -282,7 +284,7 @@ public class QueryTimePartitionTest {
   public void testTimeGtFilter() {
 
     // time > 10
-    Filter filter = TimeFilter.gt(10);
+    Filter filter = TimeFilterApi.gt(10);
     List<TimeRange> timeRangeList = filter.getTimeRanges();
     assertEquals(1, timeRangeList.size());
     assertEquals(11, timeRangeList.get(0).getMin());
@@ -300,7 +302,7 @@ public class QueryTimePartitionTest {
   public void testTimeGtEqFilter() {
 
     // time >= 10
-    Filter filter = TimeFilter.gtEq(10);
+    Filter filter = TimeFilterApi.gtEq(10);
     List<TimeRange> timeRangeList = filter.getTimeRanges();
     assertEquals(1, timeRangeList.size());
     assertEquals(10, timeRangeList.get(0).getMin());
@@ -318,7 +320,7 @@ public class QueryTimePartitionTest {
   public void testTimeLtFilter() {
 
     // time < 10
-    Filter filter = TimeFilter.lt(10);
+    Filter filter = TimeFilterApi.lt(10);
     List<TimeRange> timeRangeList = filter.getTimeRanges();
     assertEquals(1, timeRangeList.size());
     assertEquals(Long.MIN_VALUE, timeRangeList.get(0).getMin());
@@ -336,7 +338,7 @@ public class QueryTimePartitionTest {
   public void testTimeLtEqFilter() {
 
     // time <= 10
-    Filter filter = TimeFilter.ltEq(10);
+    Filter filter = TimeFilterApi.ltEq(10);
     List<TimeRange> timeRangeList = filter.getTimeRanges();
     assertEquals(1, timeRangeList.size());
     assertEquals(Long.MIN_VALUE, timeRangeList.get(0).getMin());
@@ -355,13 +357,13 @@ public class QueryTimePartitionTest {
 
     // time >= 10 and time <= 9
     Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
-        getTimePartitionSlotList(FilterFactory.and(TimeFilter.gtEq(10), TimeFilter.ltEq(9)));
+        getTimePartitionSlotList(FilterFactory.and(TimeFilterApi.gtEq(10), TimeFilterApi.ltEq(9)));
     assertTrue(res.left.isEmpty());
     assertFalse(res.right.left);
     assertFalse(res.right.right);
 
     // time >= 10
-    res = getTimePartitionSlotList(TimeFilter.gtEq(10));
+    res = getTimePartitionSlotList(TimeFilterApi.gtEq(10));
     assertEquals(1, res.left.size());
     List<TTimePartitionSlot> expected = Collections.singletonList(new TTimePartitionSlot(0));
     assertEquals(expected.size(), res.left.size());
@@ -372,7 +374,7 @@ public class QueryTimePartitionTest {
     assertTrue(res.right.right);
 
     // time < 20
-    res = getTimePartitionSlotList(TimeFilter.lt(20));
+    res = getTimePartitionSlotList(TimeFilterApi.lt(20));
     assertEquals(1, res.left.size());
     expected = Collections.singletonList(new TTimePartitionSlot(0));
     assertEquals(expected.size(), res.left.size());
@@ -383,7 +385,7 @@ public class QueryTimePartitionTest {
     assertFalse(res.right.right);
 
     // time > 10 and time <= 20
-    res = getTimePartitionSlotList(FilterFactory.and(TimeFilter.gt(10), TimeFilter.ltEq(20)));
+    res = getTimePartitionSlotList(FilterFactory.and(TimeFilterApi.gt(10), TimeFilterApi.ltEq(20)));
     expected = Collections.singletonList(new TTimePartitionSlot(0));
     assertEquals(expected.size(), res.left.size());
     for (int i = 0; i < expected.size(); i++) {
@@ -397,8 +399,8 @@ public class QueryTimePartitionTest {
     res =
         getTimePartitionSlotList(
             FilterFactory.and(
-                TimeFilter.gt(0),
-                TimeFilter.ltEq(
+                TimeFilterApi.gt(0),
+                TimeFilterApi.ltEq(
                     CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() * 3
                         + 1)));
     expected =
@@ -422,9 +424,9 @@ public class QueryTimePartitionTest {
     res =
         getTimePartitionSlotList(
             FilterFactory.and(
-                TimeFilter.gtEq(
+                TimeFilterApi.gtEq(
                     CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() - 1),
-                TimeFilter.lt(
+                TimeFilterApi.lt(
                     CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() + 1)));
     expected =
         Arrays.asList(
@@ -442,7 +444,7 @@ public class QueryTimePartitionTest {
     // time < IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval()
     res =
         getTimePartitionSlotList(
-            TimeFilter.between(
+            TimeFilterApi.between(
                 CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() - 1,
                 CommonDescriptor.getInstance().getConfig().getTimePartitionInterval()));
     expected =
@@ -462,9 +464,9 @@ public class QueryTimePartitionTest {
     res =
         getTimePartitionSlotList(
             FilterFactory.and(
-                TimeFilter.gtEq(
+                TimeFilterApi.gtEq(
                     CommonDescriptor.getInstance().getConfig().getTimePartitionInterval()),
-                TimeFilter.ltEq(
+                TimeFilterApi.ltEq(
                     CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() + 1)));
     expected =
         Collections.singletonList(
@@ -481,7 +483,7 @@ public class QueryTimePartitionTest {
     // IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() + 1
     res =
         getTimePartitionSlotList(
-            TimeFilter.between(
+            TimeFilterApi.between(
                 CommonDescriptor.getInstance().getConfig().getTimePartitionInterval(),
                 CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() + 1));
     expected =
@@ -508,40 +510,40 @@ public class QueryTimePartitionTest {
     Filter orFilter1 =
         FilterFactory.or(
             FilterFactory.and(
-                TimeFilter.gtEq(10),
-                TimeFilter.lt(
+                TimeFilterApi.gtEq(10),
+                TimeFilterApi.lt(
                     CommonDescriptor.getInstance().getConfig().getTimePartitionInterval())),
             FilterFactory.and(
-                TimeFilter.gt(
+                TimeFilterApi.gt(
                     CommonDescriptor.getInstance().getConfig().getTimePartitionInterval()),
-                TimeFilter.lt(
+                TimeFilterApi.lt(
                     CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() * 2
                         - 100)));
     Filter orFilter2 =
         FilterFactory.or(
             orFilter1,
             FilterFactory.and(
-                TimeFilter.gt(
+                TimeFilterApi.gt(
                     CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() * 2 - 50),
-                TimeFilter.ltEq(
+                TimeFilterApi.ltEq(
                     CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() * 2
                         - 40)));
     Filter orFilter3 =
         FilterFactory.or(
             orFilter2,
             FilterFactory.and(
-                TimeFilter.gt(
+                TimeFilterApi.gt(
                     CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() * 2 - 20),
-                TimeFilter.ltEq(
+                TimeFilterApi.ltEq(
                     CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() * 3
                         + 10)));
     Filter orFilter4 =
         FilterFactory.or(
             orFilter3,
             FilterFactory.and(
-                TimeFilter.gt(
+                TimeFilterApi.gt(
                     CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() * 5 + 1),
-                TimeFilter.lt(
+                TimeFilterApi.lt(
                     CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() * 5
                         + 10)));
 
