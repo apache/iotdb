@@ -456,23 +456,6 @@ public class PipeTaskInfo implements SnapshotProcessor {
             });
   }
 
-  public void setIsStoppedByRuntimeExceptionToFalse(String pipeName) {
-    acquireWriteLock();
-    try {
-      setIsStoppedByRuntimeExceptionToFalseInternal(pipeName);
-    } finally {
-      releaseWriteLock();
-    }
-  }
-
-  private void setIsStoppedByRuntimeExceptionToFalseInternal(String pipeName) {
-    if (!pipeMetaKeeper.containsPipeMeta(pipeName)) {
-      return;
-    }
-
-    pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta().setShouldBeRunning(false);
-  }
-
   public boolean autoRestart() {
     acquireWriteLock();
     try {
