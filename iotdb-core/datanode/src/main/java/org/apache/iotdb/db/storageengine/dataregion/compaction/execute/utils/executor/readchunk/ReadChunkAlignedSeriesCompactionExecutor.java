@@ -65,11 +65,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 public class ReadChunkAlignedSeriesCompactionExecutor {
@@ -122,7 +120,8 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
 
   private void collectValueColumnSchemaList() throws IOException {
     Map<String, IMeasurementSchema> measurementSchemaMap = new HashMap<>();
-    for (Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> pair : this.readerAndChunkMetadataList) {
+    for (Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> pair :
+        this.readerAndChunkMetadataList) {
       TsFileSequenceReader reader = pair.getLeft();
       List<AlignedChunkMetadata> alignedChunkMetadataList = pair.getRight();
       for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
@@ -130,18 +129,27 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
           continue;
         }
         for (IChunkMetadata chunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
-          if (chunkMetadata == null || measurementSchemaMap.containsKey(chunkMetadata.getMeasurementUid())) {
+          if (chunkMetadata == null
+              || measurementSchemaMap.containsKey(chunkMetadata.getMeasurementUid())) {
             continue;
           }
           ChunkHeader chunkHeader = reader.readChunkHeader(chunkMetadata.getOffsetOfChunkHeader());
-          IMeasurementSchema schema = new MeasurementSchema(chunkHeader.getMeasurementID(), chunkHeader.getDataType(), chunkHeader.getEncodingType(), chunkHeader.getCompressionType());
+          IMeasurementSchema schema =
+              new MeasurementSchema(
+                  chunkHeader.getMeasurementID(),
+                  chunkHeader.getDataType(),
+                  chunkHeader.getEncodingType(),
+                  chunkHeader.getCompressionType());
           measurementSchemaMap.put(chunkMetadata.getMeasurementUid(), schema);
         }
         break;
       }
     }
 
-    this.schemaList = measurementSchemaMap.values().stream().sorted(Comparator.comparing(IMeasurementSchema::getMeasurementId)).collect(Collectors.toList());
+    this.schemaList =
+        measurementSchemaMap.values().stream()
+            .sorted(Comparator.comparing(IMeasurementSchema::getMeasurementId))
+            .collect(Collectors.toList());
 
     this.measurementSchemaListIndexMap = new HashMap<>();
     for (int i = 0; i < schemaList.size(); i++) {

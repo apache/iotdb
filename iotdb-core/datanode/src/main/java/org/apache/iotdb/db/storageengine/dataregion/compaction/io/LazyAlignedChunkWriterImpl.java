@@ -65,13 +65,6 @@ public class LazyAlignedChunkWriterImpl extends AlignedChunkWriterImpl {
     this.remainingPointsNumber = timeChunkWriter.getRemainingPointNumberForCurrentPage();
   }
 
-  /**
-   * This is used to rewrite file. The encoding and compression of the time column should be the
-   * same as the source file.
-   *
-   * @param timeSchema time schema
-   * @param valueSchemaList value schema list
-   */
   public LazyAlignedChunkWriterImpl(
       IMeasurementSchema timeSchema, List<IMeasurementSchema> valueSchemaList) {
     timeChunkWriter =
@@ -96,13 +89,6 @@ public class LazyAlignedChunkWriterImpl extends AlignedChunkWriterImpl {
     this.remainingPointsNumber = timeChunkWriter.getRemainingPointNumberForCurrentPage();
   }
 
-  /**
-   * This is used to write 0-level file. The compression of the time column is 'LZ4' in the
-   * configuration by default. The encoding of the time column is 'TS_2DIFF' in the configuration by
-   * default.
-   *
-   * @param schemaList value schema list
-   */
   public LazyAlignedChunkWriterImpl(List<IMeasurementSchema> schemaList) {
     TSEncoding timeEncoding =
         TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
