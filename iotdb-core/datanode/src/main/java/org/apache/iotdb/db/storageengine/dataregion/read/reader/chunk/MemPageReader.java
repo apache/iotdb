@@ -55,7 +55,9 @@ public class MemPageReader implements IPageReader {
   public MemPageReader(TsBlock tsBlock, IChunkMetadata chunkMetadata, Filter recordFilter) {
     this.tsBlock = tsBlock;
     this.chunkMetadata = chunkMetadata;
-    this.recordFilter = recordFilter;
+    if (recordFilter != null && !recordFilter.allSatisfy(this)) {
+      this.recordFilter = recordFilter;
+    }
   }
 
   @Override
@@ -335,7 +337,9 @@ public class MemPageReader implements IPageReader {
 
   @Override
   public void addRecordFilter(Filter filter) {
-    this.recordFilter = FilterFactory.and(recordFilter, filter);
+    if (filter != null && !filter.allSatisfy(this)) {
+      this.recordFilter = FilterFactory.and(recordFilter, filter);
+    }
   }
 
   @Override
