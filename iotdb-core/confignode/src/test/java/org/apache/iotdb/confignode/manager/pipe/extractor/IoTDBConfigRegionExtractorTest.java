@@ -17,10 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.extractor;
+package org.apache.iotdb.confignode.manager.pipe.extractor;
 
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
-import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.schema.IoTDBSchemaExtractor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
@@ -29,10 +28,10 @@ import org.junit.Test;
 
 import java.util.HashMap;
 
-public class IoTDBSchemaExtractorTest {
+public class IoTDBConfigRegionExtractorTest {
   @Test
   public void testIoTDBSchemaExtractor() {
-    IoTDBSchemaExtractor extractor = new IoTDBSchemaExtractor();
+    IoTDBConfigRegionExtractor extractor = new IoTDBConfigRegionExtractor();
     try {
       extractor.validate(
           new PipeParameterValidator(

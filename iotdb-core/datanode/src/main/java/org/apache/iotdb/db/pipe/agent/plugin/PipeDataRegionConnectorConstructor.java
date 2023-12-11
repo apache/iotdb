@@ -37,9 +37,9 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import java.util.Arrays;
 
-public class PipeDataNodeConnectorConstructor extends PipePluginConstructor {
+public class PipeDataRegionConnectorConstructor extends PipePluginConstructor {
 
-  PipeDataNodeConnectorConstructor(DataNodePipePluginMetaKeeper pipePluginMetaKeeper) {
+  PipeDataRegionConnectorConstructor(DataNodePipePluginMetaKeeper pipePluginMetaKeeper) {
     super(pipePluginMetaKeeper);
   }
 

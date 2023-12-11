@@ -35,8 +35,8 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePip
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
 import org.apache.iotdb.confignode.consensus.response.JarResp;
 import org.apache.iotdb.confignode.consensus.response.pipe.plugin.PipePluginTableResp;
-import org.apache.iotdb.confignode.manager.pipe.agent.plugin.PipeConfigNodeConnectorConstructor;
-import org.apache.iotdb.confignode.manager.pipe.agent.plugin.PipeConfigNodeExtractorConstructor;
+import org.apache.iotdb.confignode.manager.pipe.agent.plugin.PipeConfigRegionConnectorConstructor;
+import org.apache.iotdb.confignode.manager.pipe.agent.plugin.PipeConfigRegionExtractorConstructor;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -73,14 +73,14 @@ public class PipePluginInfo implements SnapshotProcessor {
   private final ReentrantLock pipePluginInfoLock = new ReentrantLock();
 
   private final ConfigNodePipePluginMetaKeeper pipePluginMetaKeeper;
-  private final PipeConfigNodeExtractorConstructor pipeExtractorConstructor;
-  private final PipeConfigNodeConnectorConstructor pipeConnectorConstructor;
+  private final PipeConfigRegionExtractorConstructor pipeExtractorConstructor;
+  private final PipeConfigRegionConnectorConstructor pipeConnectorConstructor;
   private final PipePluginExecutableManager pipePluginExecutableManager;
 
   public PipePluginInfo() throws IOException {
     this.pipePluginMetaKeeper = new ConfigNodePipePluginMetaKeeper();
-    this.pipeExtractorConstructor = new PipeConfigNodeExtractorConstructor(pipePluginMetaKeeper);
-    this.pipeConnectorConstructor = new PipeConfigNodeConnectorConstructor(pipePluginMetaKeeper);
+    this.pipeExtractorConstructor = new PipeConfigRegionExtractorConstructor(pipePluginMetaKeeper);
+    this.pipeConnectorConstructor = new PipeConfigRegionConnectorConstructor(pipePluginMetaKeeper);
     this.pipePluginExecutableManager =
         PipePluginExecutableManager.setupAndGetInstance(
             CONFIG_NODE_CONF.getPipeTemporaryLibDir(), CONFIG_NODE_CONF.getPipeDir());

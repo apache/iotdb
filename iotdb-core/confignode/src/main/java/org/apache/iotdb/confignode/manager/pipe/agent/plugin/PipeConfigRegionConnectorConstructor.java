@@ -22,8 +22,8 @@ package org.apache.iotdb.confignode.manager.pipe.agent.plugin;
 import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginConstructor;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.schema.IoTDBSchemaConnector;
 import org.apache.iotdb.commons.pipe.plugin.meta.ConfigNodePipePluginMetaKeeper;
+import org.apache.iotdb.confignode.manager.pipe.connector.IoTDBConfigRegionConnector;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -31,19 +31,21 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import java.util.Arrays;
 
-public class PipeConfigNodeConnectorConstructor extends PipePluginConstructor {
+public class PipeConfigRegionConnectorConstructor extends PipePluginConstructor {
 
-  public PipeConfigNodeConnectorConstructor(ConfigNodePipePluginMetaKeeper pipePluginMetaKeeper) {
+  public PipeConfigRegionConnectorConstructor(ConfigNodePipePluginMetaKeeper pipePluginMetaKeeper) {
     super(pipePluginMetaKeeper);
   }
 
   @Override
   protected void initConstructors() {
     PLUGIN_CONSTRUCTORS.put(
-        BuiltinPipePlugin.IOTDB_SCHEMA_CONNECTOR.getPipePluginName(), IoTDBSchemaConnector::new);
+        BuiltinPipePlugin.IOTDB_CONFIG_REGION_CONNECTOR.getPipePluginName(),
+        IoTDBConfigRegionConnector::new);
 
     PLUGIN_CONSTRUCTORS.put(
-        BuiltinPipePlugin.IOTDB_SCHEMA_SINK.getPipePluginName(), IoTDBSchemaConnector::new);
+        BuiltinPipePlugin.IOTDB_CONFIG_REGION_SINK.getPipePluginName(),
+        IoTDBConfigRegionConnector::new);
   }
 
   @Override
@@ -61,7 +63,7 @@ public class PipeConfigNodeConnectorConstructor extends PipePluginConstructor {
                 .getStringOrDefault(
                     Arrays.asList(
                         PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
-                    BuiltinPipePlugin.IOTDB_SCHEMA_SINK.getPipePluginName())
+                    BuiltinPipePlugin.IOTDB_CONFIG_REGION_SINK.getPipePluginName())
                 // Convert the value of `CONNECTOR_KEY` or `SINK_KEY` to lowercase for matching in
                 // `PLUGIN_CONSTRUCTORS`
                 .toLowerCase());
@@ -70,6 +72,8 @@ public class PipeConfigNodeConnectorConstructor extends PipePluginConstructor {
   @Override
   protected final PipePlugin reflectPluginByKey(String pluginKey) {
     // currently only support IOTDB_SCHEMA_SINK
-    return PLUGIN_CONSTRUCTORS.get(BuiltinPipePlugin.IOTDB_SCHEMA_SINK.getPipePluginName()).get();
+    return PLUGIN_CONSTRUCTORS
+        .get(BuiltinPipePlugin.IOTDB_CONFIG_REGION_SINK.getPipePluginName())
+        .get();
   }
 }

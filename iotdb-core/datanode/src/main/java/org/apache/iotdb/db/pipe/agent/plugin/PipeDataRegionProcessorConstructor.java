@@ -28,8 +28,8 @@ import org.apache.iotdb.db.pipe.processor.downsampling.DownSamplingProcessor;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
-public class PipeDataNodeProcessorConstructor extends PipePluginConstructor {
-  PipeDataNodeProcessorConstructor(DataNodePipePluginMetaKeeper pipePluginMetaKeeper) {
+public class PipeDataRegionProcessorConstructor extends PipePluginConstructor {
+  PipeDataRegionProcessorConstructor(DataNodePipePluginMetaKeeper pipePluginMetaKeeper) {
     super(pipePluginMetaKeeper);
   }
 

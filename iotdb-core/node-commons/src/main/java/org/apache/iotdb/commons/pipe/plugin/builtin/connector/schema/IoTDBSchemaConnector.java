@@ -51,8 +51,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_TTL_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_INCLUSION_KEY;
 
-public class IoTDBSchemaConnector extends IoTDBConnector {
-
+public abstract class IoTDBSchemaConnector extends IoTDBConnector {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSchemaConnector.class);
   private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
 

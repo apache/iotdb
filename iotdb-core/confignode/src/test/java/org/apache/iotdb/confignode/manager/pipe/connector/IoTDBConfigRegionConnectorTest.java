@@ -17,11 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.connector;
+package org.apache.iotdb.confignode.manager.pipe.connector;
 
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.schema.IoTDBSchemaConnector;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
@@ -30,11 +29,11 @@ import org.junit.Test;
 
 import java.util.HashMap;
 
-public class IoTDBSchemaConnectorTest {
+public class IoTDBConfigRegionConnectorTest {
 
   @Test
   public void testIoTDBSchemaConnector() {
-    try (IoTDBSchemaConnector connector = new IoTDBSchemaConnector()) {
+    try (IoTDBConfigRegionConnector connector = new IoTDBConfigRegionConnector()) {
       connector.validate(
           new PipeParameterValidator(
               new PipeParameters(
