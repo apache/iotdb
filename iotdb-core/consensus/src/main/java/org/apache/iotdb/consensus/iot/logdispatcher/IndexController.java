@@ -20,6 +20,7 @@
 package org.apache.iotdb.consensus.iot.logdispatcher;
 
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.iot.IoTConsensus;
 import org.apache.iotdb.consensus.ratis.utils.Utils;
 
 import org.apache.commons.io.FileUtils;
@@ -55,6 +56,7 @@ public class IndexController {
   private final long initialIndex;
 
   private final long checkpointGap;
+  private long updateTime = System.nanoTime();
 
   public IndexController(String storageDir, Peer peer, long initialIndex, long checkpointGap) {
     this.storageDir = storageDir;
@@ -69,7 +71,7 @@ public class IndexController {
     restore();
   }
 
-  public long updateAndGet(long index, boolean forcePersist) {
+  public void update(long index, boolean forcePersist) {
     try {
       lock.writeLock().lock();
       long newCurrentIndex = Math.max(currentIndex, index);
@@ -81,7 +83,6 @@ public class IndexController {
           storageDir);
       currentIndex = newCurrentIndex;
       checkPersist(forcePersist);
-      return currentIndex;
     } finally {
       lock.writeLock().unlock();
     }
@@ -101,12 +102,15 @@ public class IndexController {
   }
 
   private void checkPersist(boolean forcePersist) {
-    if (forcePersist || currentIndex - lastFlushedIndex >= checkpointGap) {
+    if (forcePersist
+        || currentIndex - lastFlushedIndex >= checkpointGap
+        || System.nanoTime() - updateTime >= IoTConsensus.READER_UPDATE_INTERVAL_IN_NS) {
       persist();
     }
   }
 
   private void persist() {
+    updateTime = System.nanoTime();
     long flushIndex = currentIndex;
     if (flushIndex == lastFlushedIndex) {
       return;
