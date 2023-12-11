@@ -166,4 +166,10 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
     return new PipeRawTabletInsertionEvent(
         convertToTablet(), isAligned, pipeName, pipeTaskMeta, this, needToReport);
   }
+
+  /////////////////////////// getDeviceId ///////////////////////////
+
+  public String getDeviceId() {
+    return tablet.deviceId;
+  }
 }
