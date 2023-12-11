@@ -132,13 +132,9 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
       return;
     }
     writer.startChunkGroup(device);
-    Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllSchemasOfCurrentDevice();
-//    ReadChunkAlignedSeriesCompactionExecutor compactionExecutor =
-//        new ReadChunkAlignedSeriesCompactionExecutor(
-//            device, schemaMap, targetResource, readerAndChunkMetadataList, writer, summary, false);
-                AlignedSeriesCompactionExecutor compactionExecutor =
-                    new AlignedSeriesCompactionExecutor(
-                        device, targetResource, readerAndChunkMetadataList, writer, summary);
+    ReadChunkAlignedSeriesCompactionExecutor compactionExecutor =
+        new ReadChunkAlignedSeriesCompactionExecutor(
+            device, targetResource, readerAndChunkMetadataList, writer, summary, false);
     compactionExecutor.execute();
     for (ChunkMetadata chunkMetadata : writer.getChunkMetadataListOfCurrentDeviceInMemory()) {
       if (chunkMetadata.getMeasurementUid().isEmpty()) {

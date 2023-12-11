@@ -94,7 +94,6 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
 
   public ReadChunkAlignedSeriesCompactionExecutor(
       String device,
-      Map<String, MeasurementSchema> schemaMap,
       TsFileResource targetResource,
       LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList,
       CompactionTsFileWriter writer,
