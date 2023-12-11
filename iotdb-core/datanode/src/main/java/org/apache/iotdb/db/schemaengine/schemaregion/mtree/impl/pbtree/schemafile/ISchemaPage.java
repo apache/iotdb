@@ -27,6 +27,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public interface ISchemaPage {
   /**
@@ -108,6 +111,10 @@ public interface ISchemaPage {
     ReadWriteIOUtils.write(-1L, buffer);
     return new AliasIndexPage(buffer);
   }
+
+  AtomicInteger getRefCnt();
+
+  ReadWriteLock getLock();
 
   void syncPageBuffer();
 

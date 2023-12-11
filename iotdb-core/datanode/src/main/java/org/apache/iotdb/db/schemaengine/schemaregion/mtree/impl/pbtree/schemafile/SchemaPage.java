@@ -27,6 +27,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * {@link SchemaFile} manages a collection of SchemaPages, which acts like a segment of index entry
@@ -36,6 +39,9 @@ public abstract class SchemaPage implements ISchemaPage {
 
   // All other attributes are to describe this ByteBuffer
   protected final ByteBuffer pageBuffer;
+
+  protected final AtomicInteger refCnt;
+  protected final ReadWriteLock lock;
 
   protected int pageIndex; // only change when register buffer as a new page
   protected short spareOffset; // bound of the variable length part in a slotted structure
@@ -51,10 +57,23 @@ public abstract class SchemaPage implements ISchemaPage {
         .limit(this.pageBuffer.capacity())
         .position(SchemaFileConfig.PAGE_HEADER_INDEX_OFFSET);
 
+    refCnt = new AtomicInteger();
+    lock = new ReentrantReadWriteLock();
+
     pageIndex = ReadWriteIOUtils.readInt(this.pageBuffer);
     spareOffset = ReadWriteIOUtils.readShort(this.pageBuffer);
     spareSize = ReadWriteIOUtils.readShort(this.pageBuffer);
     memberNum = ReadWriteIOUtils.readShort(this.pageBuffer);
+  }
+
+  @Override
+  public AtomicInteger getRefCnt() {
+    return refCnt;
+  }
+
+  @Override
+  public ReadWriteLock getLock() {
+    return lock;
   }
 
   @Override
