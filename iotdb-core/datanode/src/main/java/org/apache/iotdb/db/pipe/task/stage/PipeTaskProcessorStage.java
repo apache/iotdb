@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.task.stage;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
@@ -56,7 +55,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
       String pipeName,
       long creationTime,
       PipeParameters pipeProcessorParameters,
-      TConsensusGroupId dataRegionId,
+      int dataRegionId,
       EventSupplier pipeExtractorInputEventSupplier,
       BoundedBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue) {
     final PipeProcessor pipeProcessor =
@@ -71,8 +70,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
       // 2. customize processor
       final PipeProcessorRuntimeConfiguration runtimeConfiguration =
           new PipeTaskRuntimeConfiguration(
-              new PipeTaskProcessorRuntimeEnvironment(
-                  pipeName, creationTime, dataRegionId.getId()));
+              new PipeTaskProcessorRuntimeEnvironment(pipeName, creationTime, dataRegionId));
       pipeProcessor.customize(pipeProcessorParameters, runtimeConfiguration);
     } catch (Exception e) {
       throw new PipeException(e.getMessage(), e);
@@ -83,15 +81,15 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
     // a timed thread. If a pipe is deleted and created again before its subtask is
     // removed, the new subtask will have the same pipeName and dataRegionId as the
     // old one, so we need creationTime to make their hash code different in the map.
-    final String taskId = pipeName + "_" + dataRegionId.getId() + "_" + creationTime;
+    final String taskId = pipeName + "_" + dataRegionId + "_" + creationTime;
     final PipeEventCollector pipeConnectorOutputEventCollector =
-        new PipeEventCollector(pipeConnectorOutputPendingQueue, dataRegionId.getId());
+        new PipeEventCollector(pipeConnectorOutputPendingQueue, dataRegionId);
     this.pipeProcessorSubtask =
         new PipeProcessorSubtask(
             taskId,
             creationTime,
             pipeName,
-            dataRegionId.getId(),
+            dataRegionId,
             pipeExtractorInputEventSupplier,
             pipeProcessor,
             pipeConnectorOutputEventCollector);

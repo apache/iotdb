@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.manager.pipe.runtime;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
@@ -154,11 +153,11 @@ public class PipeHeartbeatParser {
         continue;
       }
 
-      final Map<TConsensusGroupId, PipeTaskMeta> pipeTaskMetaMapOnConfigNode =
+      final Map<Integer, PipeTaskMeta> pipeTaskMetaMapOnConfigNode =
           pipeMetaOnConfigNode.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
-      final Map<TConsensusGroupId, PipeTaskMeta> pipeTaskMetaMapFromDataNode =
+      final Map<Integer, PipeTaskMeta> pipeTaskMetaMapFromDataNode =
           pipeMetaFromDataNode.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
-      for (final Map.Entry<TConsensusGroupId, PipeTaskMeta> runtimeMetaOnConfigNode :
+      for (final Map.Entry<Integer, PipeTaskMeta> runtimeMetaOnConfigNode :
           pipeTaskMetaMapOnConfigNode.entrySet()) {
         if (runtimeMetaOnConfigNode.getValue().getLeaderNodeId() != dataNodeId) {
           continue;

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.task.stage;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
@@ -38,7 +37,7 @@ public class PipeTaskExtractorStage extends PipeTaskStage {
       String pipeName,
       long creationTime,
       PipeParameters extractorParameters,
-      TConsensusGroupId dataRegionId,
+      int dataRegionId,
       PipeTaskMeta pipeTaskMeta) {
     pipeExtractor = PipeAgent.plugin().reflectExtractor(extractorParameters);
 
@@ -52,7 +51,7 @@ public class PipeTaskExtractorStage extends PipeTaskStage {
       final PipeTaskRuntimeConfiguration runtimeConfiguration =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskExtractorRuntimeEnvironment(
-                  pipeName, creationTime, dataRegionId.getId(), pipeTaskMeta));
+                  pipeName, creationTime, dataRegionId, pipeTaskMeta));
       pipeExtractor.customize(extractorParameters, runtimeConfiguration);
     } catch (Exception e) {
       throw new PipeException(e.getMessage(), e);

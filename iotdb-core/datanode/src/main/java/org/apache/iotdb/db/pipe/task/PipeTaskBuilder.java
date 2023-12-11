@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.task;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.task.stage.PipeTaskConnectorStage;
@@ -29,11 +28,11 @@ import org.apache.iotdb.db.pipe.task.stage.PipeTaskProcessorStage;
 public class PipeTaskBuilder {
 
   private final PipeStaticMeta pipeStaticMeta;
-  private final TConsensusGroupId dataRegionId;
+  private final int dataRegionId;
   private final PipeTaskMeta pipeTaskMeta;
 
   public PipeTaskBuilder(
-      PipeStaticMeta pipeStaticMeta, TConsensusGroupId dataRegionId, PipeTaskMeta pipeTaskMeta) {
+      PipeStaticMeta pipeStaticMeta, int dataRegionId, PipeTaskMeta pipeTaskMeta) {
     this.pipeStaticMeta = pipeStaticMeta;
     this.dataRegionId = dataRegionId;
     this.pipeTaskMeta = pipeTaskMeta;

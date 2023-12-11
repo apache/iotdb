@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
@@ -100,7 +98,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             createPipeRequest.getProcessorAttributes(),
             createPipeRequest.getConnectorAttributes());
 
-    final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMap = new HashMap<>();
+    final Map<Integer, PipeTaskMeta> consensusGroupIdToTaskMetaMap = new HashMap<>();
     env.getConfigManager()
         .getLoadManager()
         .getRegionLeaderMap()
@@ -111,15 +109,14 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
               if (databaseName != null && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)) {
                 // Pipe only collect user's data, filter metric database here.
                 consensusGroupIdToTaskMetaMap.put(
-                    regionGroupId,
+                    regionGroupId.getId(),
                     new PipeTaskMeta(MinimumProgressIndex.INSTANCE, regionLeaderNodeId));
               }
             });
     // Though the configRegion's id is 0, here we still use Integer.MIN_VALUE to tell from
     // SchemaRegion and DataRegion's Ids since their ids start from 0 together.
     consensusGroupIdToTaskMetaMap.put(
-        new TConsensusGroupId(TConsensusGroupType.ConfigRegion, Integer.MIN_VALUE),
-        new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 0));
+        Integer.MIN_VALUE, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 0));
     pipeRuntimeMeta = new PipeRuntimeMeta(consensusGroupIdToTaskMetaMap);
   }
 

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.task;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 
 import java.util.HashMap;
@@ -27,7 +26,7 @@ import java.util.Map;
 
 public class PipeTaskManager {
 
-  private final Map<PipeStaticMeta, Map<TConsensusGroupId, PipeTask>> pipeMap = new HashMap<>();
+  private final Map<PipeStaticMeta, Map<Integer, PipeTask>> pipeMap = new HashMap<>();
 
   /**
    * Leader data region count in this data node. We simply update it when adding pipe task but not
@@ -38,8 +37,8 @@ public class PipeTaskManager {
 
   /** Add pipe task by pipe static meta and consensus group id. */
   public synchronized void addPipeTask(
-      PipeStaticMeta pipeStaticMeta, TConsensusGroupId consensusGroupId, PipeTask pipeTask) {
-    final Map<TConsensusGroupId, PipeTask> dataRegionId2PipeTask =
+      PipeStaticMeta pipeStaticMeta, int consensusGroupId, PipeTask pipeTask) {
+    final Map<Integer, PipeTask> dataRegionId2PipeTask =
         pipeMap.computeIfAbsent(pipeStaticMeta, k -> new HashMap<>());
     dataRegionId2PipeTask.put(consensusGroupId, pipeTask);
 
@@ -49,8 +48,8 @@ public class PipeTaskManager {
 
   /** Add pipe tasks by pipe static meta. */
   public synchronized void addPipeTasks(
-      PipeStaticMeta pipeStaticMeta, Map<TConsensusGroupId, PipeTask> pipeTasks) {
-    final Map<TConsensusGroupId, PipeTask> dataRegionId2PipeTask =
+      PipeStaticMeta pipeStaticMeta, Map<Integer, PipeTask> pipeTasks) {
+    final Map<Integer, PipeTask> dataRegionId2PipeTask =
         pipeMap.computeIfAbsent(pipeStaticMeta, k -> new HashMap<>());
     dataRegionId2PipeTask.putAll(pipeTasks);
 
@@ -65,9 +64,8 @@ public class PipeTaskManager {
    * @param consensusGroupId consensus group id
    * @return pipe task if exists, null otherwise
    */
-  public synchronized PipeTask removePipeTask(
-      PipeStaticMeta pipeStaticMeta, TConsensusGroupId consensusGroupId) {
-    Map<TConsensusGroupId, PipeTask> consensusGroupIdPipeTaskMap = pipeMap.get(pipeStaticMeta);
+  public synchronized PipeTask removePipeTask(PipeStaticMeta pipeStaticMeta, int consensusGroupId) {
+    Map<Integer, PipeTask> consensusGroupIdPipeTaskMap = pipeMap.get(pipeStaticMeta);
     if (consensusGroupIdPipeTaskMap != null) {
       return consensusGroupIdPipeTaskMap.remove(consensusGroupId);
     }
@@ -80,8 +78,7 @@ public class PipeTaskManager {
    * @param pipeStaticMeta pipe static meta
    * @return pipe tasks if exists, null otherwise
    */
-  public synchronized Map<TConsensusGroupId, PipeTask> removePipeTasks(
-      PipeStaticMeta pipeStaticMeta) {
+  public synchronized Map<Integer, PipeTask> removePipeTasks(PipeStaticMeta pipeStaticMeta) {
     return pipeMap.remove(pipeStaticMeta);
   }
 
@@ -92,9 +89,8 @@ public class PipeTaskManager {
    * @param consensusGroupId consensus group id
    * @return pipe task if exists, null otherwise
    */
-  public synchronized PipeTask getPipeTask(
-      PipeStaticMeta pipeStaticMeta, TConsensusGroupId consensusGroupId) {
-    Map<TConsensusGroupId, PipeTask> consensusGroupIdPipeTaskMap = pipeMap.get(pipeStaticMeta);
+  public synchronized PipeTask getPipeTask(PipeStaticMeta pipeStaticMeta, int consensusGroupId) {
+    Map<Integer, PipeTask> consensusGroupIdPipeTaskMap = pipeMap.get(pipeStaticMeta);
     if (consensusGroupIdPipeTaskMap != null) {
       return consensusGroupIdPipeTaskMap.get(consensusGroupId);
     }
@@ -107,7 +103,7 @@ public class PipeTaskManager {
    * @param pipeStaticMeta pipe static meta
    * @return pipe tasks if exists, null otherwise
    */
-  public synchronized Map<TConsensusGroupId, PipeTask> getPipeTasks(PipeStaticMeta pipeStaticMeta) {
+  public synchronized Map<Integer, PipeTask> getPipeTasks(PipeStaticMeta pipeStaticMeta) {
     return pipeMap.get(pipeStaticMeta);
   }
 

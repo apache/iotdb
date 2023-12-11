@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.agent.task;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
@@ -282,16 +281,16 @@ public class PipeTaskAgent {
       @NotNull PipeRuntimeMeta runtimeMetaFromConfigNode,
       @NotNull PipeRuntimeMeta runtimeMetaOnDataNode) {
     // 1. Handle data region group leader changed first
-    final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMapFromConfigNode =
+    final Map<Integer, PipeTaskMeta> consensusGroupIdToTaskMetaMapFromConfigNode =
         runtimeMetaFromConfigNode.getConsensusGroupId2TaskMetaMap();
-    final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMapOnDataNode =
+    final Map<Integer, PipeTaskMeta> consensusGroupIdToTaskMetaMapOnDataNode =
         runtimeMetaOnDataNode.getConsensusGroupId2TaskMetaMap();
 
     // 1.1 Iterate over all consensus group ids in config node's pipe runtime meta, decide if we
     // need to drop and create a new task for each consensus group id
-    for (final Map.Entry<TConsensusGroupId, PipeTaskMeta> entryFromConfigNode :
+    for (final Map.Entry<Integer, PipeTaskMeta> entryFromConfigNode :
         consensusGroupIdToTaskMetaMapFromConfigNode.entrySet()) {
-      final TConsensusGroupId consensusGroupIdFromConfigNode = entryFromConfigNode.getKey();
+      final Integer consensusGroupIdFromConfigNode = entryFromConfigNode.getKey();
 
       final PipeTaskMeta taskMetaFromConfigNode = entryFromConfigNode.getValue();
       final PipeTaskMeta taskMetaOnDataNode =
@@ -328,9 +327,9 @@ public class PipeTaskAgent {
     // 1.2 Iterate over all consensus group ids on data node's pipe runtime meta, decide if we need
     // to drop any task. we do not need to create any new task here because we have already done
     // that in 1.1.
-    for (final Map.Entry<TConsensusGroupId, PipeTaskMeta> entryOnDataNode :
+    for (final Map.Entry<Integer, PipeTaskMeta> entryOnDataNode :
         consensusGroupIdToTaskMetaMapOnDataNode.entrySet()) {
-      final TConsensusGroupId consensusGroupIdOnDataNode = entryOnDataNode.getKey();
+      final int consensusGroupIdOnDataNode = entryOnDataNode.getKey();
       final PipeTaskMeta taskMetaFromConfigNode =
           consensusGroupIdToTaskMetaMapFromConfigNode.get(consensusGroupIdOnDataNode);
       if (taskMetaFromConfigNode == null) {
@@ -563,8 +562,7 @@ public class PipeTaskAgent {
     }
 
     // Create pipe tasks and trigger create() method for each pipe task
-    final Map<TConsensusGroupId, PipeTask> pipeTasks =
-        new PipeBuilder(pipeMetaFromConfigNode).build();
+    final Map<Integer, PipeTask> pipeTasks = new PipeBuilder(pipeMetaFromConfigNode).build();
     for (PipeTask pipeTask : pipeTasks.values()) {
       pipeTask.create();
     }
@@ -611,7 +609,7 @@ public class PipeTaskAgent {
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
 
     // Drop pipe tasks and trigger drop() method for each pipe task
-    final Map<TConsensusGroupId, PipeTask> pipeTasks =
+    final Map<Integer, PipeTask> pipeTasks =
         pipeTaskManager.removePipeTasks(existedPipeMeta.getStaticMeta());
     if (pipeTasks == null) {
       LOGGER.info(
@@ -644,7 +642,7 @@ public class PipeTaskAgent {
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
 
     // Drop pipe tasks and trigger drop() method for each pipe task
-    final Map<TConsensusGroupId, PipeTask> pipeTasks =
+    final Map<Integer, PipeTask> pipeTasks =
         pipeTaskManager.removePipeTasks(existedPipeMeta.getStaticMeta());
     if (pipeTasks == null) {
       LOGGER.info(
@@ -718,7 +716,7 @@ public class PipeTaskAgent {
     }
 
     // Trigger start() method for each pipe task
-    final Map<TConsensusGroupId, PipeTask> pipeTasks =
+    final Map<Integer, PipeTask> pipeTasks =
         pipeTaskManager.getPipeTasks(existedPipeMeta.getStaticMeta());
     if (pipeTasks == null) {
       LOGGER.info(
@@ -799,7 +797,7 @@ public class PipeTaskAgent {
     }
 
     // Trigger stop() method for each pipe task
-    final Map<TConsensusGroupId, PipeTask> pipeTasks =
+    final Map<Integer, PipeTask> pipeTasks =
         pipeTaskManager.getPipeTasks(existedPipeMeta.getStaticMeta());
     if (pipeTasks == null) {
       LOGGER.info(
@@ -820,9 +818,7 @@ public class PipeTaskAgent {
   ///////////////////////// Manage by dataRegionGroupId /////////////////////////
 
   private void createPipeTask(
-      TConsensusGroupId consensusGroupId,
-      PipeStaticMeta pipeStaticMeta,
-      PipeTaskMeta pipeTaskMeta) {
+      int consensusGroupId, PipeStaticMeta pipeStaticMeta, PipeTaskMeta pipeTaskMeta) {
     pipeMetaKeeper
         .getPipeMeta(pipeStaticMeta.getPipeName())
         .getRuntimeMeta()
@@ -831,7 +827,7 @@ public class PipeTaskAgent {
 
     // Currently disable schemaRegion tasks
     if (StorageEngine.getInstance().getAllDataRegionIds().stream()
-        .noneMatch(dataRegionId -> dataRegionId.getId() == consensusGroupId.getId())) {
+        .noneMatch(dataRegionId -> dataRegionId.getId() == consensusGroupId)) {
       return;
     }
     if (pipeTaskMeta.getLeaderNodeId() == CONFIG.getDataNodeId()) {
@@ -842,7 +838,7 @@ public class PipeTaskAgent {
     }
   }
 
-  private void dropPipeTask(TConsensusGroupId dataRegionGroupId, PipeStaticMeta pipeStaticMeta) {
+  private void dropPipeTask(int dataRegionGroupId, PipeStaticMeta pipeStaticMeta) {
     pipeMetaKeeper
         .getPipeMeta(pipeStaticMeta.getPipeName())
         .getRuntimeMeta()
@@ -851,7 +847,7 @@ public class PipeTaskAgent {
 
     // Currently disable schemaRegion tasks
     if (StorageEngine.getInstance().getAllDataRegionIds().stream()
-        .noneMatch(dataRegionId -> dataRegionId.getId() == dataRegionGroupId.getId())) {
+        .noneMatch(dataRegionId -> dataRegionId.getId() == dataRegionGroupId)) {
       return;
     }
     final PipeTask pipeTask = pipeTaskManager.removePipeTask(pipeStaticMeta, dataRegionGroupId);
@@ -860,10 +856,10 @@ public class PipeTaskAgent {
     }
   }
 
-  private void startPipeTask(TConsensusGroupId dataRegionGroupId, PipeStaticMeta pipeStaticMeta) {
+  private void startPipeTask(int dataRegionGroupId, PipeStaticMeta pipeStaticMeta) {
     // Currently disable schemaRegion tasks
     if (StorageEngine.getInstance().getAllDataRegionIds().stream()
-        .noneMatch(dataRegionId -> dataRegionId.getId() == dataRegionGroupId.getId())) {
+        .noneMatch(dataRegionId -> dataRegionId.getId() == dataRegionGroupId)) {
       return;
     }
     final PipeTask pipeTask = pipeTaskManager.getPipeTask(pipeStaticMeta, dataRegionGroupId);

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.persistence.pipe;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
@@ -354,25 +353,25 @@ public class PipeTaskInfo implements SnapshotProcessor {
                     .getPipeMetaList()
                     .forEach(
                         pipeMeta -> {
-                          final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMap =
+                          final Map<Integer, PipeTaskMeta> consensusGroupIdToTaskMetaMap =
                               pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
 
-                          if (consensusGroupIdToTaskMetaMap.containsKey(consensusGroupId)) {
+                          if (consensusGroupIdToTaskMetaMap.containsKey(consensusGroupId.getId())) {
                             // If the data region leader is -1, it means the data region is
                             // removed
                             if (newLeader != -1) {
                               consensusGroupIdToTaskMetaMap
-                                  .get(consensusGroupId)
+                                  .get(consensusGroupId.getId())
                                   .setLeaderNodeId(newLeader);
                             } else {
-                              consensusGroupIdToTaskMetaMap.remove(consensusGroupId);
+                              consensusGroupIdToTaskMetaMap.remove(consensusGroupId.getId());
                             }
                           } else {
                             // If CN does not contain the data region group, it means the data
                             // region group is newly added.
                             if (newLeader != -1) {
                               consensusGroupIdToTaskMetaMap.put(
-                                  consensusGroupId,
+                                  consensusGroupId.getId(),
                                   new PipeTaskMeta(MinimumProgressIndex.INSTANCE, newLeader));
                             }
                             // else:

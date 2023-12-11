@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.task;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
@@ -40,19 +39,18 @@ public class PipeBuilder {
     this.pipeMeta = pipeMeta;
   }
 
-  public Map<TConsensusGroupId, PipeTask> build() {
+  public Map<Integer, PipeTask> build() {
     final PipeStaticMeta pipeStaticMeta = pipeMeta.getStaticMeta();
 
-    final Map<TConsensusGroupId, PipeTask> consensusGroupIdToPipeTaskMap = new HashMap<>();
+    final Map<Integer, PipeTask> consensusGroupIdToPipeTaskMap = new HashMap<>();
 
     final PipeRuntimeMeta pipeRuntimeMeta = pipeMeta.getRuntimeMeta();
-    for (Map.Entry<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToPipeTaskMeta :
+    for (Map.Entry<Integer, PipeTaskMeta> consensusGroupIdToPipeTaskMeta :
         pipeRuntimeMeta.getConsensusGroupId2TaskMetaMap().entrySet()) {
       // Currently disable schemaRegion tasks
       if (StorageEngine.getInstance().getAllDataRegionIds().stream()
           .noneMatch(
-              dataRegionId ->
-                  dataRegionId.getId() == consensusGroupIdToPipeTaskMeta.getKey().getId())) {
+              dataRegionId -> dataRegionId.getId() == consensusGroupIdToPipeTaskMeta.getKey())) {
         continue;
       }
       if (consensusGroupIdToPipeTaskMeta.getValue().getLeaderNodeId() == CONFIG.getDataNodeId()) {
