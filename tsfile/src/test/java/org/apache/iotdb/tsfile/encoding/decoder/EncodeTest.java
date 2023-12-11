@@ -92,7 +92,7 @@ public class EncodeTest {
 
       String Input = Inputs[idx];
       String Output = Outputs[idx];
-      int repeatTime = 1; // set repeat time
+      int repeatTime = 3; // set repeat time
 
       String[] dataTypeNames = {"FLOAT", "DOUBLE"};
       // select encoding algorithms
@@ -340,7 +340,7 @@ public class EncodeTest {
                         for (long val : tmp) encoder.encode(val, buffer);
                         encoder.flush(buffer);
                         long e = System.nanoTime();
-                        encodeTime += (e - s);
+                        if (i != 0) encodeTime += (e - s);
 
                         // test compress time
                         // byte[] elemsIndex = bufferIndex.toByteArray();
@@ -349,7 +349,7 @@ public class EncodeTest {
                         // byte[] compressedIndex = compressorIndex.compress(elemsIndex);
                         byte[] compressed = compressor.compress(elems);
                         e = System.nanoTime();
-                        compressTime += (e - s);
+                        if (i != 0) compressTime += (e - s);
 
                         // test compression ratio and compressed size
                         // compressed_size += compressedIndex.length;
@@ -366,7 +366,7 @@ public class EncodeTest {
                         // byte[] xIndex = unCompressorIndex.uncompress(compressedIndex);
                         byte[] x = unCompressor.uncompress(compressed);
                         e = System.nanoTime();
-                        uncompressTime += (e - s);
+                        if (i != 0) uncompressTime += (e - s);
 
                         // test decode time
                         // ByteBuffer ebufferIndex = ByteBuffer.wrap(bufferIndex.toByteArray());
@@ -379,17 +379,17 @@ public class EncodeTest {
                           decoder.readLong(ebuffer);
                         }
                         e = System.nanoTime();
-                        decodeTime += (e - s);
+                        if (i != 0) decodeTime += (e - s);
 
                         buffer.close();
                       }
 
                       ratio /= repeatTime;
                       compressed_size /= repeatTime;
-                      encodeTime /= repeatTime;
-                      decodeTime /= repeatTime;
-                      compressTime /= repeatTime;
-                      uncompressTime /= repeatTime;
+                      encodeTime /= repeatTime - 1;
+                      decodeTime /= repeatTime - 1;
+                      compressTime /= repeatTime - 1;
+                      uncompressTime /= repeatTime - 1;
 
                       String[] record = {
                         f.toString().replaceAll("^/home/ubuntu/", ""),
@@ -417,8 +417,7 @@ public class EncodeTest {
                   // tmpIndex.add(Long.valueOf(valueIndex));
                   // }
                   int len = findMostFrequentDecimalDigits(data);
-                  if(len > 16)
-                    len = 16;
+                  if (len > 16) len = 16;
                   for (String value : data) {
                     tmp.add(Double.valueOf(value));
                   }
@@ -466,7 +465,7 @@ public class EncodeTest {
                         for (double val : tmp) encoder.encode(val, buffer);
                         encoder.flush(buffer);
                         long e = System.nanoTime();
-                        encodeTime += (e - s);
+                        if (i != 0) encodeTime += (e - s);
 
                         // test compress time
                         // byte[] elemsIndex = bufferIndex.toByteArray();
@@ -475,7 +474,7 @@ public class EncodeTest {
                         // byte[] compressedIndex = compressorIndex.compress(elemsIndex);
                         byte[] compressed = compressor.compress(elems);
                         e = System.nanoTime();
-                        compressTime += (e - s);
+                        if (i != 0) compressTime += (e - s);
 
                         // test compression ratio and compressed size
                         // compressed_size += compressedIndex.length;
@@ -492,7 +491,7 @@ public class EncodeTest {
                         // byte[] xIndex = unCompressorIndex.uncompress(compressedIndex);
                         byte[] x = unCompressor.uncompress(compressed);
                         e = System.nanoTime();
-                        uncompressTime += (e - s);
+                        if (i != 0) uncompressTime += (e - s);
 
                         // test decode time
                         // ByteBuffer ebufferIndex = ByteBuffer.wrap(bufferIndex.toByteArray());
@@ -505,17 +504,17 @@ public class EncodeTest {
                           decoder.readDouble(ebuffer);
                         }
                         e = System.nanoTime();
-                        decodeTime += (e - s);
+                        if (i != 0) decodeTime += (e - s);
 
                         buffer.close();
                       }
 
                       ratio /= repeatTime;
                       compressed_size /= repeatTime;
-                      encodeTime /= repeatTime;
-                      decodeTime /= repeatTime;
-                      compressTime /= repeatTime;
-                      uncompressTime /= repeatTime;
+                      encodeTime /= repeatTime - 1;
+                      decodeTime /= repeatTime - 1;
+                      compressTime /= repeatTime - 1;
+                      uncompressTime /= repeatTime - 1;
 
                       String[] record = {
                         f.toString().replaceAll("^/home/ubuntu/", ""),
@@ -543,8 +542,7 @@ public class EncodeTest {
                   // tmpIndex.add(Long.valueOf(valueIndex));
                   // }
                   int len = findMostFrequentDecimalDigits(data);
-                  if(len > 8)
-                    len = 8;
+                  if (len > 8) len = 8;
                   // System.out.println(len);
                   for (String value : data) {
                     tmp.add(Float.valueOf(value));
