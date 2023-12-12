@@ -80,7 +80,6 @@ public class LazyPageLoader extends PageLoader {
   public void flushToTimeChunkWriter(AlignedChunkWriterImpl alignedChunkWriter)
       throws PageException {
     ((LazyAlignedChunkWriterImpl) alignedChunkWriter).writePageLoaderIntoTimeBuff(this);
-    clear();
   }
 
   @Override
@@ -93,7 +92,6 @@ public class LazyPageLoader extends PageLoader {
       ((LazyAlignedChunkWriterImpl) alignedChunkWriter)
           .writePageLoaderIntoValueBuff(this, valueColumnIndex);
     }
-    clear();
   }
 
   @Override

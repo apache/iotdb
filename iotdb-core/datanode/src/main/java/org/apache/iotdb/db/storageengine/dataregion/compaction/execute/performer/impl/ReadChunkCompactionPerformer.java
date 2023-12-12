@@ -131,7 +131,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
     writer.startChunkGroup(device);
     ReadChunkAlignedSeriesCompactionExecutor compactionExecutor =
         new ReadChunkAlignedSeriesCompactionExecutor(
-            device, targetResource, readerAndChunkMetadataList, writer, summary, false);
+            device, targetResource, readerAndChunkMetadataList, writer, summary, true);
     compactionExecutor.execute();
     for (ChunkMetadata chunkMetadata : writer.getChunkMetadataListOfCurrentDeviceInMemory()) {
       if (chunkMetadata.getMeasurementUid().isEmpty()) {

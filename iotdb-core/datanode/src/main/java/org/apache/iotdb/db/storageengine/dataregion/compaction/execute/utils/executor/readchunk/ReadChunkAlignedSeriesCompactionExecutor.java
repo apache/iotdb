@@ -46,13 +46,11 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.page.AlignedPageReader;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -104,7 +102,8 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     this.summary = summary;
     collectValueColumnSchemaList();
     this.saveMemory = saveMemory;
-    int compactionFileLevel = Integer.parseInt(targetResource.getTsFile().getName().split("-")[2]);
+    int compactionFileLevel =
+        Integer.parseInt(this.targetResource.getTsFile().getName().split("-")[2]);
     flushPolicy = new FlushDataBlockPolicy(compactionFileLevel);
     if (saveMemory) {
       this.chunkWriter = new LazyAlignedChunkWriterImpl(schemaList);
@@ -354,24 +353,13 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
             true);
     alignedPageReader.setDeleteIntervalList(deleteIntervalLists);
     int processedPointNum = 0;
-    if (true) {
-      IPointReader lazyPointReader = alignedPageReader.getLazyPointReader();
-      while (lazyPointReader.hasNextTimeValuePair()) {
-        TimeValuePair timeValuePair = lazyPointReader.nextTimeValuePair();
-        long currentTime = timeValuePair.getTimestamp();
-        chunkWriter.write(currentTime, timeValuePair.getValue().getVector());
-        checkAndUpdatePreviousTimestamp(currentTime);
-        processedPointNum++;
-      }
-    } else {
-      BatchData batchData = alignedPageReader.getAllSatisfiedPageData();
-      while (batchData.hasCurrent()) {
-        long currentTime = batchData.currentTime();
-        chunkWriter.write(currentTime, (TsPrimitiveType[]) batchData.currentValue());
-        checkAndUpdatePreviousTimestamp(currentTime);
-        batchData.next();
-      }
-      processedPointNum = batchData.length();
+    IPointReader lazyPointReader = alignedPageReader.getLazyPointReader();
+    while (lazyPointReader.hasNextTimeValuePair()) {
+      TimeValuePair timeValuePair = lazyPointReader.nextTimeValuePair();
+      long currentTime = timeValuePair.getTimestamp();
+      chunkWriter.write(currentTime, timeValuePair.getValue().getVector());
+      checkAndUpdatePreviousTimestamp(currentTime);
+      processedPointNum++;
     }
     summary.increaseProcessPointNum(processedPointNum);
     rateLimiter.acquire(processedPointNum);
