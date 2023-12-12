@@ -27,14 +27,11 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.Alt
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.BatchActivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.DeactivateTemplateNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalBatchActivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalCreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.MeasurementGroup;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.DeleteLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
@@ -43,12 +40,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTim
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DeactivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogicalViewStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.DeleteLogicalViewStatement;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -150,13 +144,6 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
     return statement;
   }
 
-  // TODO: add the Template name
-  @Override
-  public DeactivateTemplateStatement visitDeactivateTemplate(
-      DeactivateTemplateNode node, Void context) {
-    return new DeactivateTemplateStatement();
-  }
-
   @Override
   public BatchActivateTemplateStatement visitInternalBatchActivateTemplate(
       InternalBatchActivateTemplateNode node, Void context) {
@@ -168,11 +155,6 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
   public InternalCreateMultiTimeSeriesStatement visitInternalCreateMultiTimeSeries(
       InternalCreateMultiTimeSeriesNode node, Void context) {
     return new InternalCreateMultiTimeSeriesStatement(node.getDeviceMap());
-  }
-
-  @Override
-  public DeleteTimeSeriesStatement visitDeleteTimeseries(DeleteTimeSeriesNode node, Void context) {
-    return new DeleteTimeSeriesStatement(node.getPatternTree().getAllDevicePaths());
   }
 
   @Override
@@ -189,12 +171,6 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
     statement.setTargetFullPaths(node.getViewPathList());
     statement.setViewExpressions(new ArrayList<>(node.getViewPathToSourceExpressionMap().values()));
     return statement;
-  }
-
-  @Override
-  public DeleteLogicalViewStatement visitDeleteLogicalView(
-      DeleteLogicalViewNode node, Void context) {
-    return new DeleteLogicalViewStatement(node.getPatternTree().getAllPathPatterns());
   }
 
   // We do not support AlterLogicalViewNode parsing and use direct rpc instead
