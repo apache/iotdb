@@ -317,7 +317,7 @@ public class CommonDescriptor {
     config.setPipeConnectorTransferTimeoutMs(
         Long.parseLong(
             properties.getProperty(
-                "pipe_connector_transfer_timeout_ms",
+                "pipe_connector_timeout_ms",
                 String.valueOf(config.getPipeConnectorTransferTimeoutMs()))));
     config.setPipeConnectorReadFileBufferSize(
         Integer.parseInt(

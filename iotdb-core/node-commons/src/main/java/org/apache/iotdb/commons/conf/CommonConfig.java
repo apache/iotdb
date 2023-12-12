@@ -162,7 +162,7 @@ public class CommonConfig {
   private long pipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes = 50; // 50B
   private int pipeExtractorMatcherCacheSize = 1024;
 
-  private long pipeConnectorHandshakeTimeoutMs = 30 * 1000L; // 30 seconds
+  private long pipeConnectorHandshakeTimeoutMs = 10 * 1000L; // 10 seconds
   private long pipeConnectorTransferTimeoutMs = 15 * 60 * 1000L; // 15 minutes
   private int pipeConnectorReadFileBufferSize = 8388608;
   private long pipeConnectorRetryIntervalMs = 1000L;
