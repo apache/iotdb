@@ -33,6 +33,9 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -40,6 +43,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
@@ -695,5 +700,25 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
         senderEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
     TestUtils.assertDataOnEnv(
         receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+  }
+
+  @Test
+  public void testCreatePipePermission() {
+    try (Connection connection = senderEnv.getConnection("test", "test123");
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create pipe testPipe\n"
+              + "with connector (\n"
+              + "  'connector'='iotdb-thrift-connector',\n"
+              + "  'connector.ip'='127.0.0.1',\n"
+              + "  'connector.port'='6668'\n"
+              + ")");
+      fail("No exception!");
+    } catch (SQLException e) {
+      Assert.assertTrue(
+          e.getMessage(),
+          e.getMessage()
+              .contains("803: No permissions for this operation, please add privilege USE_PIPE"));
+    }
   }
 }

@@ -190,16 +190,8 @@ public class IoTDBSystemPermissionIT {
 
   @Test
   public void managePipe() {
-    assertNonQueryTestFail(
-        "create pipe testPipe\n"
-            + "with connector (\n"
-            + "  'connector'='iotdb-thrift-connector',\n"
-            + "  'connector.ip'='127.0.0.1',\n"
-            + "  'connector.port'='6668'\n"
-            + ")",
-        "803: No permissions for this operation, please add privilege USE_PIPE",
-        "test",
-        "test123");
+    // We test create pipe permission in IoTDBPipeLifeCycleIT because a fake or self receiver
+    // will surely lead to premature failure
     assertNonQueryTestFail(
         "drop pipe testPipe",
         "803: No permissions for this operation, please add privilege USE_PIPE",
