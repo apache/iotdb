@@ -22,8 +22,6 @@ package org.apache.iotdb.session;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.isession.SessionDataSet;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.StatementExecutionException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,6 +79,7 @@ public class NodesSupplier implements INodeSupplier, Runnable {
 
   private ThriftConnection client;
 
+  @SuppressWarnings("unsafeThreadSchedule")
   public static NodesSupplier createNodeSupplier(
       List<TEndPoint> endPointList,
       ScheduledExecutorService executorService,
@@ -183,7 +182,7 @@ public class NodesSupplier implements INodeSupplier, Runnable {
           zoneId,
           version);
       return true;
-    } catch (IoTDBConnectionException e) {
+    } catch (Exception e) {
       LOGGER.warn("Failed to create connection with {}.", endPoint, e);
       close();
       return false;
@@ -213,7 +212,7 @@ public class NodesSupplier implements INodeSupplier, Runnable {
       // replace the older ones.
       availableNodes = new CopyOnWriteArraySet<>(res);
       return true;
-    } catch (IoTDBConnectionException | StatementExecutionException e) {
+    } catch (Exception e) {
       LOGGER.warn("Failed to fetch data node list from {}.", client.endPoint, e);
       return false;
     }
