@@ -22,6 +22,7 @@ package org.apache.iotdb.session;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -182,7 +183,7 @@ public class NodesSupplier implements INodeSupplier, Runnable {
           zoneId,
           version);
       return true;
-    } catch (Exception e) {
+    } catch (IoTDBConnectionException e) {
       LOGGER.warn("Failed to create connection with {}.", endPoint, e);
       close();
       return false;
