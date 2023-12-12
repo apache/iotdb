@@ -692,6 +692,13 @@ struct TCreatePipeReq {
     4: required map<string, string> connectorAttributes
 }
 
+// Deprecated, restored for compatibility
+struct TPipeSinkInfo {
+  1: required string pipeSinkName
+  2: required string pipeSinkType
+  3: optional map<string, string> attributes
+}
+
 struct TShowPipeReq {
   1: optional string pipeName
   2: optional bool whereClause
