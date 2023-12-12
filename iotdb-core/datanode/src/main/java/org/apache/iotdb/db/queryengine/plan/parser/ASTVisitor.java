@@ -2487,6 +2487,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   @Override
+  public Statement visitShowClusterId(IoTDBSqlParser.ShowClusterIdContext ctx) {
+    return new
+  }
+
+  @Override
   public Statement visitDropDatabase(IoTDBSqlParser.DropDatabaseContext ctx) {
     DeleteDatabaseStatement dropDatabaseStatement = new DeleteDatabaseStatement();
     List<IoTDBSqlParser.PrefixPathContext> prefixPathContexts = ctx.prefixPath();
