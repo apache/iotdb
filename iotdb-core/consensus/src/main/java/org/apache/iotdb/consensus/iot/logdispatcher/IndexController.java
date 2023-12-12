@@ -20,7 +20,6 @@
 package org.apache.iotdb.consensus.iot.logdispatcher;
 
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.iot.IoTConsensus;
 import org.apache.iotdb.consensus.ratis.utils.Utils;
 
 import org.apache.commons.io.FileUtils;
@@ -56,13 +55,17 @@ public class IndexController {
   private final long initialIndex;
 
   private final long checkpointGap;
+  private final long updateInterval;
+
   private long updateTime = System.nanoTime();
 
-  public IndexController(String storageDir, Peer peer, long initialIndex, long checkpointGap) {
+  public IndexController(
+      String storageDir, Peer peer, long initialIndex, long checkpointGap, long updateInterval) {
     this.storageDir = storageDir;
     this.peer = peer;
     this.prefix = peer.getNodeId() + SEPARATOR;
     this.checkpointGap = checkpointGap;
+    this.updateInterval = updateInterval;
     this.initialIndex = initialIndex;
     // This is because we changed the name of the version file in version 1.0.1. In order to ensure
     // compatibility with version 1.0.0, we need to add this function. We will remove this function
@@ -104,7 +107,7 @@ public class IndexController {
   private void checkPersist(boolean forcePersist) {
     if (forcePersist
         || currentIndex - lastFlushedIndex >= checkpointGap
-        || System.nanoTime() - updateTime >= IoTConsensus.READER_UPDATE_INTERVAL_IN_NS) {
+        || System.nanoTime() - updateTime >= updateInterval) {
       persist();
     }
   }
