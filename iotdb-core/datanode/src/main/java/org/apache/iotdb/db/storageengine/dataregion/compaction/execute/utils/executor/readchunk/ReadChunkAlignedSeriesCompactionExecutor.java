@@ -330,8 +330,8 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
 
   private boolean canFlushPage(PageLoader timePage, List<PageLoader> valuePages) {
     boolean largeEnough =
-        timePage.getHeader().getUncompressedSize() > targetPageSize
-            || timePage.getHeader().getStatistics().getCount() > targetPagePointNum;
+        timePage.getHeader().getUncompressedSize() >= targetPageSize
+            || timePage.getHeader().getStatistics().getCount() >= targetPagePointNum;
 
     for (int i = 0; i < valuePages.size(); i++) {
       PageLoader valuePage = valuePages.get(i);
@@ -346,7 +346,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       if (valuePage.getModifiedStatus() == ModifiedStatus.PARTIAL_DELETED) {
         return false;
       }
-      if (valuePage.getHeader().getUncompressedSize() > targetPageSize) {
+      if (valuePage.getHeader().getUncompressedSize() >= targetPageSize) {
         largeEnough = true;
       }
     }
