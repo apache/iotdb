@@ -73,24 +73,21 @@ import java.util.stream.Collectors;
 
 public class ReadChunkAlignedSeriesCompactionExecutor {
 
-  protected final String device;
-  protected final LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
+  private final String device;
+  private final LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
       readerAndChunkMetadataList;
-  protected final TsFileResource targetResource;
-  protected final CompactionTsFileWriter writer;
+  private final TsFileResource targetResource;
+  private final CompactionTsFileWriter writer;
 
-  protected final AlignedChunkWriterImpl chunkWriter;
-  protected List<IMeasurementSchema> schemaList;
-  protected Map<String, Integer> measurementSchemaListIndexMap;
-  protected final CompactionTaskSummary summary;
-  protected final RateLimiter rateLimiter;
+  private final AlignedChunkWriterImpl chunkWriter;
+  private List<IMeasurementSchema> schemaList;
+  private Map<String, Integer> measurementSchemaListIndexMap;
+  private final FlushDataBlockPolicy flushPolicy;
+  private final CompactionTaskSummary summary;
+  private final RateLimiter rateLimiter;
 
-  protected final long targetChunkPointNum;
-  protected final long targetChunkSize;
-  protected final long targetPagePointNum;
-  protected final long targetPageSize;
-  protected final boolean saveMemory;
-  protected long lastWriteTimestamp = Long.MIN_VALUE;
+  private final boolean saveMemory;
+  private long lastWriteTimestamp = Long.MIN_VALUE;
 
   public ReadChunkAlignedSeriesCompactionExecutor(
       String device,
@@ -107,16 +104,13 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     this.summary = summary;
     collectValueColumnSchemaList();
     this.saveMemory = saveMemory;
+    int compactionFileLevel = Integer.parseInt(targetResource.getTsFile().getName().split("-")[2]);
+    flushPolicy = new FlushDataBlockPolicy(compactionFileLevel);
     if (saveMemory) {
       this.chunkWriter = new LazyAlignedChunkWriterImpl(schemaList);
     } else {
       this.chunkWriter = new AlignedChunkWriterImpl(schemaList);
     }
-    this.targetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
-    this.targetChunkPointNum = IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
-    this.targetPageSize = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
-    this.targetPagePointNum =
-        TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
     this.rateLimiter = CompactionTaskManager.getInstance().getProcessPointRateLimiter();
   }
 
@@ -202,7 +196,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       int idx = measurementSchemaListIndexMap.get(chunkMetadata.getMeasurementUid());
       valueChunks.set(idx, valueChunk);
     }
-    if (canFlushCurrentChunkWriter() && canFlushChunk(timeChunk, valueChunks)) {
+    if (flushPolicy.canCompactCurrentChunkByDirectlyFlush(timeChunk, valueChunks)) {
       flushCurrentChunkWriter();
       compactAlignedChunkByFlush(timeChunk, valueChunks);
     } else {
@@ -226,38 +220,9 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     }
   }
 
-  private boolean canFlushCurrentChunkWriter() {
-    return chunkWriter.checkIsChunkSizeOverThreshold(targetChunkSize, targetChunkPointNum, true);
-  }
-
   private void flushCurrentChunkWriter() throws IOException {
     chunkWriter.sealCurrentPage();
     writer.writeChunk(chunkWriter);
-  }
-
-  private boolean canFlushChunk(ChunkLoader timeChunk, List<ChunkLoader> valueChunks)
-      throws IOException {
-    boolean largeEnough =
-        timeChunk.getHeader().getDataSize() > targetChunkSize
-            || timeChunk.getChunkMetadata().getNumOfPoints() > targetChunkPointNum;
-    for (int i = 0; i < valueChunks.size(); i++) {
-      ChunkLoader valueChunk = valueChunks.get(i);
-      if (valueChunk.isEmpty()) {
-        continue;
-      }
-      IMeasurementSchema schema = schemaList.get(i);
-      if (schema.getEncodingType() != valueChunk.getHeader().getEncodingType()
-          || schema.getCompressor() != valueChunk.getHeader().getCompressionType()) {
-        return false;
-      }
-      if (valueChunk.getModifiedStatus() == ModifiedStatus.PARTIAL_DELETED) {
-        return false;
-      }
-      if (valueChunk.getHeader().getDataSize() > targetChunkSize) {
-        largeEnough = true;
-      }
-    }
-    return largeEnough;
   }
 
   private void compactAlignedChunkByFlush(ChunkLoader timeChunk, List<ChunkLoader> valueChunks)
@@ -311,7 +276,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
             pageListOfValueColumn.isEmpty() ? getEmptyPage() : pageListOfValueColumn.get(i));
       }
 
-      if (canSealCurrentPageWriter() && canFlushPage(timePage, valuePages)) {
+      if (flushPolicy.canCompactCurrentPageByDirectlyFlush(timePage, valuePages)) {
         chunkWriter.sealCurrentPage();
         compactAlignedPageByFlush(timePage, valuePages);
       } else {
@@ -322,35 +287,6 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
 
   private PageLoader getEmptyPage() {
     return saveMemory ? new LazyPageLoader() : new InstantPageLoader();
-  }
-
-  private boolean canSealCurrentPageWriter() {
-    return chunkWriter.checkIsUnsealedPageOverThreshold(targetPageSize, targetPagePointNum, true);
-  }
-
-  private boolean canFlushPage(PageLoader timePage, List<PageLoader> valuePages) {
-    boolean largeEnough =
-        timePage.getHeader().getUncompressedSize() >= targetPageSize
-            || timePage.getHeader().getStatistics().getCount() >= targetPagePointNum;
-
-    for (int i = 0; i < valuePages.size(); i++) {
-      PageLoader valuePage = valuePages.get(i);
-      if (valuePage.isEmpty()) {
-        continue;
-      }
-      IMeasurementSchema schema = schemaList.get(i);
-      if (schema.getCompressor() != valuePage.getCompressionType()
-          || schema.getEncodingType() != valuePage.getEncoding()) {
-        return false;
-      }
-      if (valuePage.getModifiedStatus() == ModifiedStatus.PARTIAL_DELETED) {
-        return false;
-      }
-      if (valuePage.getHeader().getUncompressedSize() >= targetPageSize) {
-        largeEnough = true;
-      }
-    }
-    return largeEnough;
   }
 
   private void compactAlignedPageByFlush(PageLoader timePage, List<PageLoader> valuePageLoaders)
@@ -447,6 +383,95 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
           device, currentWritingTimestamp, lastWriteTimestamp);
     } else {
       lastWriteTimestamp = currentWritingTimestamp;
+    }
+  }
+
+  private class FlushDataBlockPolicy {
+    private final int compactionFileLevel;
+    private final long targetChunkPointNum;
+    private final long targetChunkSize;
+    private final long targetPagePointNum;
+    private final long targetPageSize;
+
+    public FlushDataBlockPolicy(int compactionFileLevel) {
+      this.compactionFileLevel = compactionFileLevel;
+      this.targetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
+      this.targetChunkPointNum = IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
+      this.targetPageSize = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+      this.targetPagePointNum =
+          TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+    }
+
+    public boolean canCompactCurrentChunkByDirectlyFlush(
+        ChunkLoader timeChunk, List<ChunkLoader> valueChunks) throws IOException {
+      return canFlushCurrentChunkWriter() && canFlushChunk(timeChunk, valueChunks);
+    }
+
+    private boolean canFlushCurrentChunkWriter() {
+      return chunkWriter.checkIsChunkSizeOverThreshold(targetChunkSize, targetChunkPointNum, true);
+    }
+
+    private boolean canFlushChunk(ChunkLoader timeChunk, List<ChunkLoader> valueChunks)
+        throws IOException {
+      boolean largeEnough =
+          timeChunk.getHeader().getDataSize() > targetChunkSize
+              || timeChunk.getChunkMetadata().getNumOfPoints() > targetChunkPointNum;
+      for (int i = 0; i < valueChunks.size(); i++) {
+        ChunkLoader valueChunk = valueChunks.get(i);
+        if (valueChunk.isEmpty()) {
+          continue;
+        }
+        IMeasurementSchema schema = schemaList.get(i);
+        if (schema.getEncodingType() != valueChunk.getHeader().getEncodingType()
+            || schema.getCompressor() != valueChunk.getHeader().getCompressionType()) {
+          return false;
+        }
+        if (valueChunk.getModifiedStatus() == ModifiedStatus.PARTIAL_DELETED) {
+          return false;
+        }
+        if (valueChunk.getHeader().getDataSize() > targetChunkSize) {
+          largeEnough = true;
+        }
+      }
+      return largeEnough;
+    }
+
+    private boolean canCompactCurrentPageByDirectlyFlush(
+        PageLoader timePage, List<PageLoader> valuePages) {
+      if (compactionFileLevel <= 2) {
+        return canSealCurrentPageWriter() && canFlushPage(timePage, valuePages);
+      } else {
+        return canFlushPage(timePage, valuePages);
+      }
+    }
+
+    private boolean canSealCurrentPageWriter() {
+      return chunkWriter.checkIsUnsealedPageOverThreshold(targetPageSize, targetPagePointNum, true);
+    }
+
+    private boolean canFlushPage(PageLoader timePage, List<PageLoader> valuePages) {
+      boolean largeEnough =
+          timePage.getHeader().getUncompressedSize() >= targetPageSize
+              || timePage.getHeader().getStatistics().getCount() >= targetPagePointNum;
+
+      for (int i = 0; i < valuePages.size(); i++) {
+        PageLoader valuePage = valuePages.get(i);
+        if (valuePage.isEmpty()) {
+          continue;
+        }
+        IMeasurementSchema schema = schemaList.get(i);
+        if (schema.getCompressor() != valuePage.getCompressionType()
+            || schema.getEncodingType() != valuePage.getEncoding()) {
+          return false;
+        }
+        if (valuePage.getModifiedStatus() == ModifiedStatus.PARTIAL_DELETED) {
+          return false;
+        }
+        if (valuePage.getHeader().getUncompressedSize() >= targetPageSize) {
+          largeEnough = true;
+        }
+      }
+      return largeEnough;
     }
   }
 }
