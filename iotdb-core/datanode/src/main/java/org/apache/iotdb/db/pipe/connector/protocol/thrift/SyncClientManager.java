@@ -48,89 +48,39 @@ public class SyncClientManager {
 
   private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
 
-  private final List<TEndPoint> endPoints;
+  private final boolean useSSL;
+  private final String trustStore;
+  private final String trustStorePwd;
   private final boolean useLeaderCache;
 
+  private final List<TEndPoint> endPoints;
   private final Map<TEndPoint, Pair<IoTDBThriftSyncConnectorClient, Boolean>> endPoint2client =
       new ConcurrentHashMap<>();
+
   private final LeaderCacheManager leaderCacheManager = new LeaderCacheManager();
 
   private long currentClientIndex = 0;
 
-  public SyncClientManager(List<TEndPoint> endPoints, boolean useLeaderCache) {
-    this.endPoints = endPoints;
+  public SyncClientManager(
+      List<TEndPoint> endPoints,
+      boolean useSSL,
+      String trustStore,
+      String trustStorePwd,
+      boolean useLeaderCache) {
+    this.useSSL = useSSL;
+    this.trustStore = trustStore;
+    this.trustStorePwd = trustStorePwd;
     this.useLeaderCache = useLeaderCache;
-
-    for (TEndPoint endPoint : endPoints) {
-      endPoint2client.putIfAbsent(endPoint, new Pair<>(null, false));
-    }
+    this.endPoints = endPoints;
   }
 
-  public void initClients(boolean useSSL, String trustStore, String trustStorePwd)
-      throws IOException, TTransportException {
-    for (TEndPoint nodeUrl : endPoint2client.keySet()) {
-      Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus = endPoint2client.get(nodeUrl);
-
-      if (Boolean.TRUE.equals(clientAndStatus.right)) {
-        continue;
-      }
-
-      final String ip = nodeUrl.getIp();
-      final int port = nodeUrl.getPort();
-
-      // Close the client if necessary
-      if (clientAndStatus.getLeft() != null) {
-        try {
-          clientAndStatus.getLeft().close();
-          clientAndStatus.setLeft(null);
-        } catch (Exception e) {
-          LOGGER.warn(
-              "Failed to close client with target server ip: {}, port: {}, because: {}. Ignore it.",
-              ip,
-              port,
-              e.getMessage());
-        }
-      }
-
-      clientAndStatus.setLeft(
-          new IoTDBThriftSyncConnectorClient(
-              new ThriftClientProperty.Builder()
-                  .setConnectionTimeoutMs((int) PIPE_CONFIG.getPipeConnectorTimeoutMs())
-                  .setRpcThriftCompressionEnabled(
-                      PIPE_CONFIG.isPipeConnectorRPCThriftCompressionEnabled())
-                  .build(),
-              ip,
-              port,
-              useSSL,
-              trustStore,
-              trustStorePwd));
-
-      try {
-        final TPipeTransferResp resp =
-            clientAndStatus
-                .getLeft()
-                .pipeTransfer(
-                    PipeTransferHandshakeReq.toTPipeTransferReq(
-                        CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
-        if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          LOGGER.warn(
-              "Handshake error with target server ip: {}, port: {}, because: {}.",
-              ip,
-              port,
-              resp.status);
-        } else {
-          clientAndStatus.setRight(true);
-          LOGGER.info("Handshake success. Target server ip: {}, port: {}", ip, port);
-        }
-      } catch (TException e) {
-        LOGGER.warn(
-            "Handshake error with target server ip: {}, port: {}, because: {}.",
-            ip,
-            port,
-            e.getMessage());
-      }
+  public void initClients() throws IOException, TTransportException {
+    // init clients
+    for (TEndPoint endPoint : endPoints) {
+      Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus = initAndGetClient(endPoint);
+      endPoint2client.put(endPoint, clientAndStatus);
     }
-
+    // check whether any clients are available
     for (TEndPoint nodeUrl : endPoint2client.keySet()) {
       if (Boolean.TRUE.equals(endPoint2client.get(nodeUrl).getRight())) {
         return;
@@ -159,7 +109,10 @@ public class SyncClientManager {
   public Pair<IoTDBThriftSyncConnectorClient, Boolean> getClientAndStatusByEvent(
       PipeInsertNodeTabletInsertionEvent event) {
     TEndPoint endPoint = leaderCacheManager.parseEndPoint(event);
-    return endPoint == null || endPoint2client.containsKey(endPoint) || !useLeaderCache
+    return endPoint == null
+            || !useLeaderCache
+            || (endPoint2client.containsKey(endPoint)
+                && Boolean.TRUE.equals(endPoint2client.get(endPoint).getRight()))
         ? getOneConnectedClientAndStatus()
         : endPoint2client.get(endPoint);
   }
@@ -167,7 +120,10 @@ public class SyncClientManager {
   public Pair<IoTDBThriftSyncConnectorClient, Boolean> getClientAndStatusByEvent(
       PipeRawTabletInsertionEvent event) {
     TEndPoint endPoint = leaderCacheManager.parseEndPoint(event);
-    return endPoint == null || endPoint2client.containsKey(endPoint) || !useLeaderCache
+    return endPoint == null
+            || !useLeaderCache
+            || (endPoint2client.containsKey(endPoint)
+                && Boolean.TRUE.equals(endPoint2client.get(endPoint).getRight()))
         ? getOneConnectedClientAndStatus()
         : endPoint2client.get(endPoint);
   }
@@ -177,7 +133,23 @@ public class SyncClientManager {
     return getOneConnectedClientAndStatus();
   }
 
-  public void updateOrCreate() {}
+  public void updateOrCreate(String deviceId, TEndPoint endPoint) {
+    try {
+      if (!endPoint2client.containsKey(endPoint)) {
+        endPoints.add(endPoint);
+        Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus = initAndGetClient(endPoint);
+        endPoint2client.put(endPoint, clientAndStatus);
+      }
+    } catch (TTransportException e) {
+      LOGGER.warn(
+          "Failed to create client with datanode {}:{}, because :{}",
+          endPoint.getIp(),
+          endPoint.getPort(),
+          e);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
 
   public void clean() {
     for (TEndPoint endPoint : endPoint2client.keySet()) {
@@ -188,10 +160,54 @@ public class SyncClientManager {
           endPoint2client.get(endPoint).setRight(null);
         }
       } catch (Exception e) {
-        LOGGER.warn("Failed to close client {}:{}.", endPoint.getIp(), endPoint.getPort(), e);
+        LOGGER.warn(
+            "Failed to close client {}:{}, because: {}.", endPoint.getIp(), endPoint.getPort(), e);
       } finally {
         endPoint2client.get(endPoint).setRight(false);
       }
     }
+  }
+
+  private Pair<IoTDBThriftSyncConnectorClient, Boolean> initAndGetClient(TEndPoint endPoint)
+      throws TTransportException, IOException {
+    IoTDBThriftSyncConnectorClient client =
+        new IoTDBThriftSyncConnectorClient(
+            new ThriftClientProperty.Builder()
+                .setConnectionTimeoutMs((int) PIPE_CONFIG.getPipeConnectorTimeoutMs())
+                .setRpcThriftCompressionEnabled(
+                    PIPE_CONFIG.isPipeConnectorRPCThriftCompressionEnabled())
+                .build(),
+            endPoint.getIp(),
+            endPoint.port,
+            useSSL,
+            trustStore,
+            trustStorePwd);
+    boolean status = true;
+    try {
+      TPipeTransferResp resp =
+          client.pipeTransfer(
+              PipeTransferHandshakeReq.toTPipeTransferReq(
+                  CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
+      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        status = false;
+        LOGGER.warn(
+            "Handshake error with target server ip: {}, port: {}, because: {}.",
+            endPoint.getIp(),
+            endPoint.getPort(),
+            resp.status);
+      } else {
+        LOGGER.info(
+            "Handshake success. Target server ip: {}, port: {}",
+            endPoint.getIp(),
+            endPoint.getPort());
+      }
+    } catch (TException e) {
+      LOGGER.warn(
+          "Handshake error with target server ip: {}, port: {}, because: {}.",
+          endPoint.getIp(),
+          endPoint.getPort(),
+          e.getMessage());
+    }
+    return new Pair<>(client, status);
   }
 }

@@ -39,6 +39,7 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -145,12 +146,13 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
             Arrays.asList(SINK_LEADER_CACHE_ENABLE_KEY, CONNECTOR_LEADER_CACHE_ENABLE_KEY),
             CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE);
 
-    clientManager = new SyncClientManager(nodeUrls, useLeaderCache);
+    clientManager =
+        new SyncClientManager(nodeUrls, useSSL, trustStore, trustStorePwd, useLeaderCache);
   }
 
   @Override
   public void handshake() throws Exception {
-    clientManager.initClients(useSSL, trustStore, trustStorePwd);
+    clientManager.initClients();
   }
 
   @Override
@@ -306,6 +308,14 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
               "Transfer PipeInsertNodeTabletInsertionEvent %s error, result status %s",
               pipeInsertNodeTabletInsertionEvent, resp.status));
     }
+
+    if (resp.getStatus().isSetRedirectNode() && useLeaderCache) {
+      InsertNode insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
+      if (insertNode != null) {
+        clientManager.updateOrCreate(
+            insertNode.getDevicePath().getFullPath(), resp.getStatus().getRedirectNode());
+      }
+    }
   }
 
   private void doTransfer(PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
@@ -335,6 +345,11 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
           String.format(
               "Transfer PipeRawTabletInsertionEvent %s error, result status %s",
               pipeRawTabletInsertionEvent, resp.status));
+    }
+
+    if (useLeaderCache && resp.getStatus().isSetRedirectNode()) {
+      clientManager.updateOrCreate(
+          pipeRawTabletInsertionEvent.getDeviceId(), resp.getStatus().getRedirectNode());
     }
   }
 

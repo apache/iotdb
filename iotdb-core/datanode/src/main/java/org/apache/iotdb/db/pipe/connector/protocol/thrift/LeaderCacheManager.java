@@ -28,7 +28,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class LeaderCacheManager {
-  private Map<String, TEndPoint> device2endpoint = new ConcurrentHashMap<>();
+  private final Map<String, TEndPoint> device2endpoint = new ConcurrentHashMap<>();
 
   public TEndPoint getEndPointByDeviceId(String deviceId) {
     return device2endpoint.getOrDefault(deviceId, null);
@@ -43,5 +43,13 @@ public class LeaderCacheManager {
 
   public TEndPoint parseEndPoint(PipeRawTabletInsertionEvent event) {
     return getEndPointByDeviceId(event.getDeviceId());
+  }
+
+  public void updateOrCreate(String deviceId, TEndPoint endPoint) {
+    if (device2endpoint.containsKey(deviceId)) {
+      device2endpoint.replace(deviceId, endPoint);
+    } else {
+      device2endpoint.put(deviceId, endPoint);
+    }
   }
 }
