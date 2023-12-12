@@ -350,7 +350,6 @@ public class FragmentInstanceContext extends QueryContext {
         addUsedFilesForQuery(sharedQueryDataSource);
       }
     } finally {
-      LOGGER.warn("");
       dataRegion.readUnlock();
     }
   }
