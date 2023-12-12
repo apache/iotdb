@@ -67,9 +67,11 @@ public class SizeTieredCompactionSelector
   protected boolean sequence;
   protected TsFileManager tsFileManager;
   protected boolean hasNextTimePartition;
-  private static final long MODS_FILE_SIZE_THRESHOLD = 1024 * 1024 * 50L;
+  private static final long MODS_FILE_SIZE_THRESHOLD =
+      config.getInnerCompactionTaskSelectionModsFileThreshold();
 
-  private static final double DISK_REDUNDANCY = 0.05;
+  private static final double DISK_REDUNDANCY =
+      config.getInnerCompactionTaskSelectionDiskRedundancy();
 
   public SizeTieredCompactionSelector(
       String storageGroupName,
