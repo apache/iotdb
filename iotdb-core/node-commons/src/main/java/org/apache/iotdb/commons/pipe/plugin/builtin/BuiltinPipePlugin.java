@@ -29,8 +29,10 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.connector.OpcUaConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.WebSocketConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.WriteBackConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.schema.IoTDBConfigRegionConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.schema.IoTDBSchemaRegionConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.IoTDBExtractor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.schema.IoTDBConfigRegionExtractor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.schema.IoTDBSchemaRegionExtractor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.DoNothingProcessor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.DownSamplingProcessor;
 
@@ -77,7 +79,15 @@ public enum BuiltinPipePlugin {
 
   IOTDB_CONFIG_REGION_CONNECTOR("iotdb-config-region-connector", IoTDBConfigRegionConnector.class),
 
-  IOTDB_CONFIG_REGION_SINK("iotdb-config-region-sink", IoTDBConfigRegionConnector.class);
+  IOTDB_CONFIG_REGION_SINK("iotdb-config-region-sink", IoTDBConfigRegionConnector.class),
+
+  IOTDB_SCHEMA_REGION_EXTRACTOR("iotdb-schema-region-extractor", IoTDBSchemaRegionExtractor.class),
+
+  IOTDB_SCHEMA_REGION_SOURCE("iotdb-schema-region-source", IoTDBSchemaRegionExtractor.class),
+
+  IOTDB_SCHEMA_REGION_CONNECTOR("iotdb-schema-region-connector", IoTDBSchemaRegionConnector.class),
+
+  IOTDB_SCHEMA_REGION_SINK("iotdb-schema-region-sink", IoTDBSchemaRegionConnector.class);
 
   private final String pipePluginName;
   private final Class<?> pipePluginClass;

@@ -62,7 +62,7 @@ public class PipeConfigRegionExtractorConstructor extends PipePluginConstructor 
 
   @Override
   protected final PipePlugin reflectPluginByKey(String pluginKey) {
-    // currently only support IOTDB_SCHEMA_SOURCE
+    // currently only support IOTDB_CONFIG_REGION_SOURCE
     return PLUGIN_CONSTRUCTORS
         .get(BuiltinPipePlugin.IOTDB_CONFIG_REGION_SOURCE.getPipePluginName())
         .get();
