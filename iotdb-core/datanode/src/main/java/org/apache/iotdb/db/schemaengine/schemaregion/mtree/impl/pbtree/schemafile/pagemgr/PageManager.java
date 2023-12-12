@@ -94,6 +94,7 @@ public abstract class PageManager implements IPageManager {
 
   // flush strategy is dependent on consensus protocol, only check protocol on init
   protected FlushPageStrategy flushDirtyPagesStrategy;
+  protected SinglePageFlushStrategy singlePageFlushStrategy;
 
   PageManager(FileChannel channel, File pmtFile, int lastPageIndex, String logPath)
       throws IOException, MetadataException {
@@ -118,12 +119,14 @@ public abstract class PageManager implements IPageManager {
       logCounter = new AtomicInteger();
       logWriter = null;
       flushDirtyPagesStrategy = this::flushDirtyPagesWithoutLogging;
+      singlePageFlushStrategy = this::flushSinglePageWithoutLogging;
     } else {
       // without RATIS, utilize physical logging for integrity
       int pageAcc = (int) recoverFromLog(logPath) / SchemaFileConfig.PAGE_LENGTH;
       this.logWriter = new SchemaFileLogWriter(logPath);
       logCounter = new AtomicInteger(pageAcc);
       flushDirtyPagesStrategy = this::flushDirtyPagesWithLogging;
+      singlePageFlushStrategy = this::flushSinglePageWithLogging;
     }
 
     // construct first page if file to init
@@ -167,7 +170,10 @@ public abstract class PageManager implements IPageManager {
       while (pageInstCache.size() > SchemaFileConfig.PAGE_CACHE_SIZE) {
         try {
           // try to evict by LRU
-          int removeCnt = pageInstCache.size() > 5 ? (int) (0.2 * pageInstCache.size()) : 1;
+          int removeCnt =
+              (pageInstCache.size() > 5 ? (int) (0.2 * pageInstCache.size()) : 1)
+                  + pageInstCache.size()
+                  - SchemaFileConfig.PAGE_CACHE_SIZE;
           List<Integer> rmvIds = new ArrayList<>(pageInstCache.keySet()).subList(0, removeCnt);
 
           for (Integer id : rmvIds) {
@@ -176,8 +182,10 @@ public abstract class PageManager implements IPageManager {
             }
           }
 
-          // wait until another operation finished and released pages
-          cacheFull.await();
+          if (pageInstCache.size() > SchemaFileConfig.PAGE_CACHE_SIZE) {
+            // wait until another operation finished and released pages
+            cacheFull.await();
+          }
         } catch (InterruptedException e) {
           logger.warn(
               "Interrupted during page cache eviction. Consider increasing cache size, "
@@ -270,6 +278,20 @@ public abstract class PageManager implements IPageManager {
     }
   }
 
+  /**
+   * when page prepares to insert, compare it with lastLeaf from context. if not same, then flush
+   * the lastLeaf, unlock, deref, and remove it from dirtyPages. lastLeafPage only initiated at
+   * overflowOperation
+   */
+  private void interleavedFlush(ISchemaPage page, SchemaPageContext cxt) throws IOException {
+    if (cxt.lastLeafPage == null || cxt.lastLeafPage.getPageIndex() == page.getPageIndex()) {
+      return;
+    }
+    singlePageFlushStrategy.apply(cxt.lastLeafPage);
+    // this lastLeaf shall only be lock once
+    cxt.updateLastLeaf(page);
+  }
+
   // region Framework Methods
   private void writeNewChildren(ICachedMNode node, SchemaPageContext cxt)
       throws MetadataException, IOException {
@@ -320,6 +342,7 @@ public abstract class PageManager implements IPageManager {
         curPage
             .getAsSegmentedPage()
             .write(SchemaFile.getSegIndex(actualAddress), entry.getKey(), childBuffer);
+        interleavedFlush(curPage, cxt);
         cxt.markDirty(curPage);
 
         subIndex = subIndexRootPage(curSegAddr, cxt);
@@ -430,6 +453,7 @@ public abstract class PageManager implements IPageManager {
         curPage
             .getAsSegmentedPage()
             .update(SchemaFile.getSegIndex(actualAddress), entry.getKey(), childBuffer);
+        interleavedFlush(curPage, cxt);
         cxt.markDirty(curPage);
 
         subIndex = subIndexRootPage(curSegAddr, cxt);
@@ -544,6 +568,11 @@ public abstract class PageManager implements IPageManager {
     void apply(SchemaPageContext cxt) throws IOException;
   }
 
+  @FunctionalInterface
+  interface SinglePageFlushStrategy {
+    void apply(ISchemaPage page) throws IOException;
+  }
+
   private void flushDirtyPagesWithLogging(SchemaPageContext cxt) throws IOException {
     if (logCounter.get() > SchemaFileConfig.SCHEMA_FILE_LOG_SIZE) {
       logWriter = logWriter.renew();
@@ -563,6 +592,20 @@ public abstract class PageManager implements IPageManager {
     logWriter.commit();
   }
 
+  private void flushSinglePageWithLogging(ISchemaPage page) throws IOException {
+    if (logCounter.get() > SchemaFileConfig.SCHEMA_FILE_LOG_SIZE) {
+      logWriter = logWriter.renew();
+      logCounter.set(0);
+    }
+
+    logCounter.addAndGet(1);
+    page.syncPageBuffer();
+    logWriter.write(page);
+    logWriter.prepare();
+    page.flushPageToChannel(channel);
+    logWriter.commit();
+  }
+
   private void flushDirtyPagesWithoutLogging(SchemaPageContext cxt) throws IOException {
     for (ISchemaPage page : cxt.dirtyPages.values()) {
       page.syncPageBuffer();
@@ -570,13 +613,18 @@ public abstract class PageManager implements IPageManager {
     }
   }
 
+  private void flushSinglePageWithoutLogging(ISchemaPage page) throws IOException {
+    page.syncPageBuffer();
+    page.flushPageToChannel(channel);
+  }
+
   public synchronized void flushDirtyPages(SchemaPageContext cxt) throws IOException {
     if (cxt.dirtyPages.size() == 0) {
       return;
     }
     flushDirtyPagesStrategy.apply(cxt);
-    // TODO FIXME flush by phase
-    // cxt.dirtyPages.clear();
+    cxt.appendBucketIndex(pageIndexBuckets);
+    cxt.dirtyPages.clear();
   }
 
   @Override
@@ -864,18 +912,22 @@ public abstract class PageManager implements IPageManager {
   protected static class SchemaPageContext {
     // referred, locked, and dirty pages ALL reside in page cache
     final Set<Integer> referredPages;
-    final List<Integer> lockTraces;
+    final Set<Integer> lockTraces;
     final Map<Integer, ISchemaPage> dirtyPages;
     final PageIndexSortBuckets indexBuckets;
     // track B+Tree traversal trace
     final int[] treeTrace;
+
+    // flush B+Tree leaf before operation finished since all records are ordered
+    ISegmentedPage lastLeafPage;
 
     public SchemaPageContext() {
       referredPages = new HashSet<>();
       dirtyPages = new HashMap<>();
       indexBuckets = new PageIndexSortBuckets(SchemaFileConfig.SEG_SIZE_LST, dirtyPages);
       treeTrace = new int[16];
-      lockTraces = new ArrayList<>();
+      lockTraces = new HashSet<>();
+      lastLeafPage = null;
     }
 
     public void markDirty(ISchemaPage page) {
@@ -901,6 +953,24 @@ public abstract class PageManager implements IPageManager {
       if (!referredPages.contains(page.getPageIndex())) {
         page.getRefCnt().incrementAndGet();
         referredPages.add(page.getPageIndex());
+      }
+    }
+
+    private void updateLastLeaf(ISchemaPage page) {
+      lastLeafPage.getLock().writeLock().unlock();
+      lastLeafPage.getRefCnt().decrementAndGet();
+
+      // can be reclaimed only with check on pageInstCache
+      dirtyPages.remove(lastLeafPage.getPageIndex());
+      lockTraces.remove(lastLeafPage.getPageIndex());
+      referredPages.remove(lastLeafPage.getPageIndex());
+
+      lastLeafPage = page.getAsSegmentedPage();
+    }
+
+    private void appendBucketIndex(PageIndexSortBuckets pisb) {
+      for (int i = 0; i < indexBuckets.buckets.length; i++) {
+        pisb.buckets[i].addAll(indexBuckets.buckets[i]);
       }
     }
   }

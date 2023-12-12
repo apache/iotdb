@@ -69,7 +69,7 @@ public class BTreePageManager extends PageManager {
   protected void multiPageUpdateOverflowOperation(
       ISchemaPage curPage, String key, ByteBuffer childBuffer, SchemaPageContext cxt)
       throws MetadataException, IOException {
-    // split and update higer nodes
+    // even split and update higher nodes
     ISegmentedPage splPage = getMinApplSegmentedPageInMem(SchemaFileConfig.SEG_MAX_SIZ, cxt);
     splPage.allocNewSegment(SchemaFileConfig.SEG_MAX_SIZ);
     String sk = curPage.getAsSegmentedPage().splitWrappedSegment(null, null, splPage, false);
@@ -244,6 +244,7 @@ public class BTreePageManager extends PageManager {
       repPage
           .getAsInternalPage()
           .setNextSegAddress(getGlobalIndex(trsPage.getPageIndex(), (short) 0));
+      cxt.lastLeafPage = trsPage.getAsSegmentedPage();
       replacePageInCache(repPage, cxt);
     } else {
       insertIndexEntryRecursiveUpwards(cxt.treeTrace[0], sk, splPage.getPageIndex(), cxt);
