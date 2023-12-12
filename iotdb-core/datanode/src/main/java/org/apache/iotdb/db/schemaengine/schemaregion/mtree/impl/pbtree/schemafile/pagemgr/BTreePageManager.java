@@ -61,7 +61,7 @@ public class BTreePageManager extends PageManager {
     curPage
         .getAsSegmentedPage()
         .setNextSegAddress((short) 0, getGlobalIndex(newPage.getPageIndex(), (short) 0));
-    markDirty(curPage, cxt);
+    cxt.markDirty(curPage);
     insertIndexEntryEntrance(curPage, newPage, sk, cxt);
   }
 
@@ -192,7 +192,9 @@ public class BTreePageManager extends PageManager {
             ISchemaPage.initInternalPage(
                 ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH),
                 tarPage.getPageIndex(),
-                trsPage.getPageIndex());
+                trsPage.getPageIndex(),
+                tarPage.getRefCnt(),
+                tarPage.getLock());
 
         if (0 > repPage.getAsInternalPage().insertRecord(sk, splPage.getPageIndex())) {
           throw new ColossalRecordException(sk, alias);
@@ -230,12 +232,15 @@ public class BTreePageManager extends PageManager {
           ISchemaPage.initInternalPage(
               ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH),
               curPage.getPageIndex(),
-              trsPage.getPageIndex());
+              trsPage.getPageIndex(),
+              curPage.getRefCnt(),
+              curPage.getLock());
 
       if (0 > repPage.getAsInternalPage().insertRecord(sk, splPage.getPageIndex())) {
         throw new ColossalRecordException(sk);
       }
 
+      // setNextSegment of root as the left-most leaf
       repPage
           .getAsInternalPage()
           .setNextSegAddress(getGlobalIndex(trsPage.getPageIndex(), (short) 0));
@@ -274,7 +279,7 @@ public class BTreePageManager extends PageManager {
         ByteBuffer splBuffer = ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH);
         ByteBuffer trsBuffer = ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH);
 
-        // idxPage shall be split, and reserved as root of B+Tree
+        // idxPage splits and transplants, and remains to be root of B+Tree
         String splitKey =
             idxPage
                 .getAsInternalPage()
@@ -294,20 +299,21 @@ public class BTreePageManager extends PageManager {
             .setNextSegAddress(trsPage.getAsInternalPage().getNextSegAddress());
       }
     }
-    markDirty(idxPage, cxt);
-    addPageToCache(idxPage.getPageIndex(), idxPage);
+    cxt.markDirty(idxPage);
   }
 
   @Override
   public void delete(ICachedMNode node) throws IOException, MetadataException {
+    cacheGuardian();
     SchemaPageContext cxt = new SchemaPageContext();
-    entrantLock(node, cxt);
+    // node is the record deleted from its segment
+    entrantLock(node.getParent(), cxt);
     try {
       // remove corresponding record
       long recSegAddr = getNodeAddress(node.getParent());
       recSegAddr = getTargetSegmentAddress(recSegAddr, node.getName(), cxt);
       ISchemaPage tarPage = getPageInstance(getPageIndex(recSegAddr), cxt);
-      markDirty(tarPage, cxt);
+      cxt.markDirty(tarPage);
       tarPage.getAsSegmentedPage().removeRecord(getSegIndex(recSegAddr), node.getName());
 
       // remove segments belongs to node
@@ -318,17 +324,19 @@ public class BTreePageManager extends PageManager {
 
         if (tarPage.getAsSegmentedPage() != null) {
           // TODO: may produce fractured page
-          markDirty(tarPage, cxt);
+          cxt.markDirty(tarPage);
           tarPage.getAsSegmentedPage().deleteSegment(getSegIndex(delSegAddr));
           if (tarPage.getAsSegmentedPage().validSegments() == 0) {
             tarPage.getAsSegmentedPage().purgeSegments();
+            cxt.indexBuckets.sortIntoBucket(tarPage, (short) -1);
           }
         }
 
         if (tarPage.getAsInternalPage() != null) {
-          // If the deleted one points to an Internal (root of BTree), there are two BTrees to
-          // handle:
-          //  one mapping node names to record buffers, and another mapping aliases to names. </br>
+          // If the deleted one points to an Internal (root of BTree),
+          //  there are two BTrees to handle:
+          //  one mapping node names to record buffers,
+          //  and another mapping aliases to names. <br>
           // All of those are turned into SegmentedPage.
           Deque<Integer> cascadePages =
               new ArrayDeque<>(tarPage.getAsInternalPage().getAllRecords());
@@ -342,8 +350,8 @@ public class BTreePageManager extends PageManager {
             tarPage = getPageInstance(cascadePages.poll(), cxt);
             if (tarPage.getAsSegmentedPage() != null) {
               tarPage.getAsSegmentedPage().purgeSegments();
-              markDirty(tarPage, cxt);
-              addPageToCache(tarPage.getPageIndex(), tarPage);
+              cxt.markDirty(tarPage);
+              cxt.indexBuckets.sortIntoBucket(tarPage, (short) -1);
               continue;
             }
 
@@ -353,7 +361,10 @@ public class BTreePageManager extends PageManager {
 
             tarPage =
                 ISchemaPage.initSegmentedPage(
-                    ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH), tarPage.getPageIndex());
+                    ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH),
+                    tarPage.getPageIndex(),
+                    tarPage.getRefCnt(),
+                    tarPage.getLock());
             replacePageInCache(tarPage, cxt);
           }
         }
@@ -361,6 +372,7 @@ public class BTreePageManager extends PageManager {
       flushDirtyPages(cxt);
     } finally {
       releaseLocks(cxt);
+      releaseReferent(cxt);
     }
   }
 
@@ -376,13 +388,13 @@ public class BTreePageManager extends PageManager {
               "Node [%s] has no valid segment address in pbtree file.", parent.getFullPath()));
     }
 
-    // a single read lock is sufficient
+    // a single read lock on initial page is sufficient to mutex write, no need to trace it
     int initIndex = getPageIndex(getNodeAddress(parent));
-    pageLocks.getLock(initIndex).readLock().lock();
+    getPageInstance(initIndex, cxt).getLock().readLock().lock();
     try {
       long actualSegAddr = getTargetSegmentAddress(getNodeAddress(parent), childName, cxt);
       ICachedMNode child =
-          getPageInstance(getPageIndex(actualSegAddr), null)
+          getPageInstance(getPageIndex(actualSegAddr), cxt)
               .getAsSegmentedPage()
               .read(getSegIndex(actualSegAddr), childName);
 
@@ -401,7 +413,8 @@ public class BTreePageManager extends PageManager {
       }
       return child;
     } finally {
-      pageLocks.getLock(initIndex).readLock().unlock();
+      getPageInstance(initIndex, cxt).getLock().readLock().unlock();
+      releaseReferent(cxt);
     }
   }
 
@@ -411,7 +424,7 @@ public class BTreePageManager extends PageManager {
     SchemaPageContext cxt = new SchemaPageContext();
 
     long srtAddr = getNodeAddress(par);
-    ISchemaPage page = getPageInstance(getPageIndex(srtAddr), null);
+    ISchemaPage page = getPageInstance(getPageIndex(srtAddr), cxt);
 
     if (page.getAsInternalPage() == null || page.getSubIndex() < 0) {
       return null;
@@ -429,54 +442,61 @@ public class BTreePageManager extends PageManager {
   @Override
   public Iterator<ICachedMNode> getChildren(ICachedMNode parent)
       throws MetadataException, IOException {
+    SchemaPageContext cxt = new SchemaPageContext();
     int pageIdx = getPageIndex(getNodeAddress(parent));
 
-    pageLocks.getLock(pageIdx).readLock().lock();
     short segId = getSegIndex(getNodeAddress(parent));
-    ISchemaPage page = getPageInstance(pageIdx, null);
+    ISchemaPage page = getPageInstance(pageIdx, cxt);
+    page.getLock().readLock().lock();
 
-    while (page.getAsSegmentedPage() == null) {
-      page = getPageInstance(getPageIndex(page.getAsInternalPage().getNextSegAddress()), null);
-    }
+    try {
+      while (page.getAsSegmentedPage() == null) {
+        page = getPageInstance(getPageIndex(page.getAsInternalPage().getNextSegAddress()), cxt);
+      }
 
-    long actualSegAddr = page.getAsSegmentedPage().getNextSegAddress(segId);
-    Queue<ICachedMNode> initChildren = page.getAsSegmentedPage().getChildren(segId);
+      long actualSegAddr = page.getAsSegmentedPage().getNextSegAddress(segId);
+      Queue<ICachedMNode> initChildren = page.getAsSegmentedPage().getChildren(segId);
 
-    // safety of iterator should be guaranteed by upper layer
-    pageLocks.getLock(pageIdx).readLock().unlock();
-    return new Iterator<ICachedMNode>() {
-      long nextSeg = actualSegAddr;
-      Queue<ICachedMNode> children = initChildren;
+      return new Iterator<ICachedMNode>() {
+        long nextSeg = actualSegAddr;
+        Queue<ICachedMNode> children = initChildren;
 
-      @Override
-      public boolean hasNext() {
-        if (!children.isEmpty()) {
-          return true;
-        }
-        if (nextSeg < 0) {
-          return false;
-        }
-
-        try {
-          ISchemaPage nPage;
-          while (children.isEmpty() && nextSeg >= 0) {
-            nPage = getPageInstance(getPageIndex(nextSeg), null);
-            children = nPage.getAsSegmentedPage().getChildren(getSegIndex(nextSeg));
-            nextSeg = nPage.getAsSegmentedPage().getNextSegAddress(getSegIndex(nextSeg));
+        @Override
+        public boolean hasNext() {
+          if (!children.isEmpty()) {
+            return true;
           }
-        } catch (MetadataException | IOException e) {
-          logger.error(e.getMessage());
-          return false;
+          if (nextSeg < 0) {
+            return false;
+          }
+
+          try {
+            ISchemaPage nPage;
+            while (children.isEmpty() && nextSeg >= 0) {
+              nPage = getPageInstance(getPageIndex(nextSeg), cxt);
+              children = nPage.getAsSegmentedPage().getChildren(getSegIndex(nextSeg));
+              nextSeg = nPage.getAsSegmentedPage().getNextSegAddress(getSegIndex(nextSeg));
+              // children iteration need not pin page, consistency is guaranteed by upper layer
+              nPage.getRefCnt().decrementAndGet();
+            }
+          } catch (MetadataException | IOException e) {
+            logger.error(e.getMessage());
+            return false;
+          }
+
+          return !children.isEmpty();
         }
 
-        return !children.isEmpty();
-      }
-
-      @Override
-      public ICachedMNode next() {
-        return children.poll();
-      }
-    };
+        @Override
+        public ICachedMNode next() {
+          return children.poll();
+        }
+      };
+    } finally {
+      // safety of iterator should be guaranteed by upper layer
+      getPageInstance(pageIdx, cxt).getLock().readLock().unlock();
+      releaseReferent(cxt);
+    }
   }
 
   /** Seek non-InternalPage by name, syntax sugar of {@linkplain #getTargetSegmentAddress}. */

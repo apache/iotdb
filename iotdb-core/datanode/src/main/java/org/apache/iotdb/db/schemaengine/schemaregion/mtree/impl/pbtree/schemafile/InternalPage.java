@@ -26,6 +26,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.Queue;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReadWriteLock;
 
 /**
  * A page which acts like a segment, manages index entry of the b+ tree constructed by MNode with
@@ -63,6 +65,13 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
    */
   public InternalPage(ByteBuffer pageBuffer) {
     super(pageBuffer);
+    firstLeaf = ReadWriteIOUtils.readLong(pageBuffer);
+    subIndexPage = ReadWriteIOUtils.readInt(pageBuffer);
+  }
+
+  /** compatible constructor for replacement */
+  public InternalPage(ByteBuffer pageBuffer, AtomicInteger ai, ReadWriteLock rwl) {
+    super(pageBuffer, ai, rwl);
     firstLeaf = ReadWriteIOUtils.readLong(pageBuffer);
     subIndexPage = ReadWriteIOUtils.readInt(pageBuffer);
   }

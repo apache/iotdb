@@ -50,20 +50,26 @@ public abstract class SchemaPage implements ISchemaPage {
 
   protected volatile boolean dirtyFlag = false; // any modification turns it true
 
-  protected SchemaPage(ByteBuffer pageBuffer) {
+  /** for replacement page state transfer * */
+  protected SchemaPage(ByteBuffer pageBuffer, AtomicInteger ai, ReadWriteLock rwl) {
     this.pageBuffer = pageBuffer;
 
     this.pageBuffer
         .limit(this.pageBuffer.capacity())
         .position(SchemaFileConfig.PAGE_HEADER_INDEX_OFFSET);
 
-    refCnt = new AtomicInteger();
-    lock = new ReentrantReadWriteLock();
+    refCnt = ai;
+    lock = rwl;
 
     pageIndex = ReadWriteIOUtils.readInt(this.pageBuffer);
     spareOffset = ReadWriteIOUtils.readShort(this.pageBuffer);
     spareSize = ReadWriteIOUtils.readShort(this.pageBuffer);
     memberNum = ReadWriteIOUtils.readShort(this.pageBuffer);
+  }
+
+  /** compatible constructor with no existing ref or lock */
+  protected SchemaPage(ByteBuffer pageBuffer) {
+    this(pageBuffer, new AtomicInteger(), new ReentrantReadWriteLock());
   }
 
   @Override
@@ -91,6 +97,16 @@ public abstract class SchemaPage implements ISchemaPage {
     this.pageBuffer.clear();
     channel.write(pageBuffer, SchemaFile.getPageAddress(pageIndex));
     dirtyFlag = false;
+  }
+
+  @Override
+  public boolean isDirtyPage() {
+    return dirtyFlag;
+  }
+
+  @Override
+  public void setDirtyFlag() {
+    this.dirtyFlag = true;
   }
 
   @Override
