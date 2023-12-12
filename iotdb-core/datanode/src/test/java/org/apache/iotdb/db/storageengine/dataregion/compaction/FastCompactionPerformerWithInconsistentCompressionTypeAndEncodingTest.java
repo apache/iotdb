@@ -666,7 +666,7 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
   }
 
   private void validatePages(Chunk timeChunk, List<Chunk> valueChunks) throws IOException {
-    AlignedChunkReader chunkReader = new AlignedChunkReader(timeChunk, valueChunks, null);
+    AlignedChunkReader chunkReader = new AlignedChunkReader(timeChunk, valueChunks);
     while (chunkReader.hasNextSatisfiedPage()) {
       BatchData batchData = chunkReader.nextPageData();
     }

@@ -56,6 +56,10 @@ public class ChunkReader extends AbstractChunkReader {
     initAllPageReaders(chunk.getChunkStatistic());
   }
 
+  public ChunkReader(Chunk chunk) throws IOException {
+    this(chunk, Long.MIN_VALUE, null);
+  }
+
   public ChunkReader(Chunk chunk, Filter queryFilter) throws IOException {
     this(chunk, Long.MIN_VALUE, queryFilter);
   }

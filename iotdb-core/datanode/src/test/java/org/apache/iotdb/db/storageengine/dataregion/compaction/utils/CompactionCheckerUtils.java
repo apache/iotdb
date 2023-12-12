@@ -125,7 +125,7 @@ public class CompactionCheckerUtils {
           modifyChunkMetaData(chunkMetadataList, seriesModifications);
           for (ChunkMetadata chunkMetadata : chunkMetadataList) {
             Chunk chunk = reader.readMemChunk(chunkMetadata);
-            ChunkReader chunkReader = new ChunkReader(chunk, null);
+            ChunkReader chunkReader = new ChunkReader(chunk);
             while (chunkReader.hasNextSatisfiedPage()) {
               BatchData batchData = chunkReader.nextPageData();
               IBatchDataIterator batchDataIterator = batchData.getBatchDataIterator();

@@ -71,6 +71,10 @@ public class AlignedChunkReader extends AbstractChunkReader {
     initAllPageReaders(timeChunk.getChunkStatistic(), valueChunkStatisticsList);
   }
 
+  public AlignedChunkReader(Chunk timeChunk, List<Chunk> valueChunkList) throws IOException {
+    this(timeChunk, valueChunkList, Long.MIN_VALUE, null);
+  }
+
   public AlignedChunkReader(Chunk timeChunk, List<Chunk> valueChunkList, Filter queryFilter)
       throws IOException {
     this(timeChunk, valueChunkList, Long.MIN_VALUE, queryFilter);
