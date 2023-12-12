@@ -1144,7 +1144,7 @@ public class SeriesScanUtil {
 
   protected ITimeSeriesMetadata loadTimeSeriesMetadata(
       TsFileResource resource, PartialPath seriesPath, QueryContext context) throws IOException {
-    return FileLoaderUtils.loadTimeSeriesMetadata(
+    return FileLoaderUtils.loadAlignedTimeSeriesMetadata(
         resource,
         seriesPath,
         context,

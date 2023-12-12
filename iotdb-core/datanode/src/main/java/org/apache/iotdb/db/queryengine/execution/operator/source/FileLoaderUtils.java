@@ -60,7 +60,7 @@ public class FileLoaderUtils {
       SeriesScanCostMetricSet.getInstance();
 
   private FileLoaderUtils() {
-    // empty constructor
+    // util class
   }
 
   /**
@@ -72,7 +72,7 @@ public class FileLoaderUtils {
    * @param globalTimeFilter global time filter, only used to check time range
    * @throws IOException may be thrown while reading it from disk.
    */
-  public static TimeseriesMetadata loadTimeSeriesMetadata(
+  public static TimeseriesMetadata loadAlignedTimeSeriesMetadata(
       TsFileResource resource,
       PartialPath seriesPath,
       QueryContext context,
@@ -148,7 +148,7 @@ public class FileLoaderUtils {
    *     [root.sg1.d1.vector.s1, root.sg1.d1.vector.s2])
    * @throws IOException IOException may be thrown while reading it from disk.
    */
-  public static AlignedTimeSeriesMetadata loadTimeSeriesMetadata(
+  public static AlignedTimeSeriesMetadata loadAlignedTimeSeriesMetadata(
       TsFileResource resource,
       AlignedPath alignedPath,
       QueryContext context,
@@ -160,7 +160,8 @@ public class FileLoaderUtils {
       AlignedTimeSeriesMetadata alignedTimeSeriesMetadata;
       // If the tsfile is closed, we need to load from tsfile
       if (resource.isClosed()) {
-        alignedTimeSeriesMetadata = loadFromDisk(resource, alignedPath, context, globalTimeFilter);
+        alignedTimeSeriesMetadata =
+            loadAlignedTimeSeriesMetadataFromDisk(resource, alignedPath, context, globalTimeFilter);
       } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
         loadFromMem = true;
         alignedTimeSeriesMetadata =
@@ -197,7 +198,7 @@ public class FileLoaderUtils {
     }
   }
 
-  private static AlignedTimeSeriesMetadata loadFromDisk(
+  private static AlignedTimeSeriesMetadata loadAlignedTimeSeriesMetadataFromDisk(
       TsFileResource resource,
       AlignedPath alignedPath,
       QueryContext context,

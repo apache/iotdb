@@ -90,7 +90,7 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
   @Override
   protected AlignedTimeSeriesMetadata loadTimeSeriesMetadata(
       TsFileResource resource, PartialPath seriesPath, QueryContext context) throws IOException {
-    return FileLoaderUtils.loadTimeSeriesMetadata(
+    return FileLoaderUtils.loadAlignedTimeSeriesMetadata(
         resource, (AlignedPath) seriesPath, context, scanOptions.getGlobalTimeFilter());
   }
 
