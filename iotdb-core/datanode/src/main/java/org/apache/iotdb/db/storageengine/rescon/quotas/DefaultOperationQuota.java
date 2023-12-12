@@ -94,10 +94,10 @@ public class DefaultOperationQuota implements OperationQuota {
   protected void updateEstimateConsumeQuota(int numWrites, int numReads, Statement s) {
     if (numWrites > 0) {
       long avgSize = 0;
-      final StatementType statementType =
-          s.getType() == StatementType.PIPE_ENRICHED
-              ? ((PipeEnrichedStatement) s).getInnerStatement().getType()
-              : s.getType();
+      if (s.getType() == StatementType.PIPE_ENRICHED) {
+        s = ((PipeEnrichedStatement) s).getInnerStatement();
+      }
+      final StatementType statementType = s.getType();
       switch (statementType) {
         case INSERT:
           // InsertStatement  InsertRowStatement
