@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle;
 import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
+import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
@@ -92,6 +93,7 @@ import static com.google.common.base.Throwables.throwIfUnchecked;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.WAIT_FOR_RESULT;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.DISTRIBUTION_PLANNER;
+import static org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet.QUERY_FRAGMENT_INSTANCE_COUNT;
 
 /**
  * QueryExecution stores all the status of a query which is being prepared or running inside the MPP
@@ -382,6 +384,10 @@ public class QueryExecution implements IQueryExecution {
           distributedPlan.getInstances().size(),
           printFragmentInstances(distributedPlan.getInstances()));
     }
+
+    QueryRelatedResourceMetricSet.getInstance()
+        .recordExecutionCount(QUERY_FRAGMENT_INSTANCE_COUNT, distributedPlan.getInstances().size());
+
     // check timeout after building distribution plan because it could be time-consuming in some
     // cases.
     checkTimeOutForQuery();

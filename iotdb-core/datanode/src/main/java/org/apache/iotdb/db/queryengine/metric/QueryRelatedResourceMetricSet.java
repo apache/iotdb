@@ -27,14 +27,25 @@ import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.metrics.AbstractMetricService;
+import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
+import static org.apache.iotdb.commons.service.metric.enums.Metric.FRAGMENT_INSTANCE_STATISTICS;
+
 public class QueryRelatedResourceMetricSet implements IMetricSet {
+
+  private static final QueryRelatedResourceMetricSet INSTANCE = new QueryRelatedResourceMetricSet();
+
+  private QueryRelatedResourceMetricSet() {
+    // empty constructor
+  }
+
   // Coordinator
   private static final Coordinator coordinator = Coordinator.getInstance();
-  private static final String COORDINATOR = Metric.COORDINATOR.toString();
+  private static final String METRIC_COORDINATOR = Metric.COORDINATOR.toString();
   private static final String QUERY_EXECUTION_MAP_SIZE = "query_execution_map_size";
 
   // FragmentInstanceManager
@@ -63,11 +74,25 @@ public class QueryRelatedResourceMetricSet implements IMetricSet {
   private static final String LOCAL_EXECUTION_PLANNER = Metric.LOCAL_EXECUTION_PLANNER.toString();
   private static final String FREE_MEMORY_FOR_OPERATORS = "free_memory_for_operators";
 
+  // FragmentInstanceStatistics
+  public static final String QUERY_FRAGMENT_INSTANCE_COUNT = "query_fragment_instance_count";
+  private Gauge fragmentInstanceCountGauge = DoNothingMetricManager.DO_NOTHING_GAUGE;
+
+  public void recordExecutionCount(String stage, long count) {
+    switch (stage) {
+      case QUERY_FRAGMENT_INSTANCE_COUNT:
+        fragmentInstanceCountGauge.set(count);
+        break;
+      default:
+        break;
+    }
+  }
+
   @Override
   public void bindTo(AbstractMetricService metricService) {
     // Coordinator
     metricService.createAutoGauge(
-        COORDINATOR,
+        METRIC_COORDINATOR,
         MetricLevel.IMPORTANT,
         coordinator,
         Coordinator::getQueryExecutionMapSize,
@@ -124,13 +149,21 @@ public class QueryRelatedResourceMetricSet implements IMetricSet {
         LocalExecutionPlanner::getFreeMemoryForOperators,
         Tag.NAME.toString(),
         FREE_MEMORY_FOR_OPERATORS);
+
+    // FragmentInstanceStatistics
+    fragmentInstanceCountGauge =
+        metricService.getOrCreateGauge(
+            FRAGMENT_INSTANCE_STATISTICS.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            QUERY_FRAGMENT_INSTANCE_COUNT);
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     // Coordinator
     metricService.remove(
-        MetricType.AUTO_GAUGE, COORDINATOR, Tag.NAME.toString(), QUERY_EXECUTION_MAP_SIZE);
+        MetricType.AUTO_GAUGE, METRIC_COORDINATOR, Tag.NAME.toString(), QUERY_EXECUTION_MAP_SIZE);
 
     // FragmentInstanceManager
     metricService.remove(
@@ -158,5 +191,16 @@ public class QueryRelatedResourceMetricSet implements IMetricSet {
         LOCAL_EXECUTION_PLANNER,
         Tag.NAME.toString(),
         FREE_MEMORY_FOR_OPERATORS);
+
+    // FragmentInstanceStatistics
+    metricService.remove(
+        MetricType.GAUGE,
+        FRAGMENT_INSTANCE_STATISTICS.toString(),
+        Tag.NAME.toString(),
+        QUERY_FRAGMENT_INSTANCE_COUNT);
+  }
+
+  public static QueryRelatedResourceMetricSet getInstance() {
+    return INSTANCE;
   }
 }
