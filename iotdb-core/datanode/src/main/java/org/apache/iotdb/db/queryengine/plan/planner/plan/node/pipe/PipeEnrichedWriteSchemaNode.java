@@ -48,8 +48,8 @@ import java.util.stream.Collectors;
 
 /**
  * This class aims to mark the {@link WritePlanNode} of schema writing to selectively forward pipe
- * schema operations, {@link Statement}s of which passing through {@link
- * SchemaExecutionVisitor}. The handling logic is defined in:
+ * schema operations, {@link Statement}s of which passing through {@link SchemaExecutionVisitor}.
+ * The handling logic is defined in:
  *
  * <p>1.{@link RegionWriteExecutor}, to serialize and reach the target schema region.
  *
