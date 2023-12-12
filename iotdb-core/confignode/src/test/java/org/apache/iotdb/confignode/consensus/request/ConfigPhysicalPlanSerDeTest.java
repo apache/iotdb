@@ -1111,8 +1111,8 @@ public class ConfigPhysicalPlanSerDeTest {
     processorAttributes.put("processor", "org.apache.iotdb.pipe.processor.SDTFilterProcessor");
     connectorAttributes.put("connector", "org.apache.iotdb.pipe.protocal.ThriftTransporter");
     PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
-    Map<TConsensusGroupId, PipeTaskMeta> pipeTasks = new HashMap<>();
-    pipeTasks.put(new TConsensusGroupId(DataRegion, 1), pipeTaskMeta);
+    Map<Integer, PipeTaskMeta> pipeTasks = new HashMap<>();
+    pipeTasks.put(1, pipeTaskMeta);
     PipeStaticMeta pipeStaticMeta =
         new PipeStaticMeta(
             "testPipe", 121, extractorAttributes, processorAttributes, connectorAttributes);
@@ -1221,15 +1221,11 @@ public class ConfigPhysicalPlanSerDeTest {
             new HashMap<String, String>() {});
     PipeRuntimeMeta pipeRuntimeMeta =
         new PipeRuntimeMeta(
-            new HashMap<TConsensusGroupId, PipeTaskMeta>() {
+            new HashMap<Integer, PipeTaskMeta>() {
               {
                 // Do not test ConfigRegion or SchemaRegion here
-                put(
-                    new TConsensusGroupId(TConsensusGroupType.DataRegion, 456),
-                    new PipeTaskMeta(new IoTProgressIndex(1, 2L), 987));
-                put(
-                    new TConsensusGroupId(TConsensusGroupType.DataRegion, 123),
-                    new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 789));
+                put(456, new PipeTaskMeta(new IoTProgressIndex(1, 2L), 987));
+                put(123, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 789));
               }
             });
     pipeMetaList.add(new PipeMeta(pipeStaticMeta, pipeRuntimeMeta));

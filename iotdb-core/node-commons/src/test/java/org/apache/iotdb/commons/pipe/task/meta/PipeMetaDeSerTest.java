@@ -19,12 +19,11 @@
 
 package org.apache.iotdb.commons.pipe.task.meta;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.consensus.index.impl.HybridProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.SchemaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
@@ -67,25 +66,18 @@ public class PipeMetaDeSerTest {
 
     PipeRuntimeMeta pipeRuntimeMeta =
         new PipeRuntimeMeta(
-            new HashMap<TConsensusGroupId, PipeTaskMeta>() {
+            new HashMap<Integer, PipeTaskMeta>() {
               {
                 // Do not test ConfigRegion or SchemaRegion here
+                put(123, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 987));
+                put(234, new PipeTaskMeta(new IoTProgressIndex(1, 2L), 789));
+                put(345, new PipeTaskMeta(new SimpleProgressIndex(3, 4), 789));
+                put(456, new PipeTaskMeta(hybridProgressIndex, 789));
                 put(
-                    new TConsensusGroupId(TConsensusGroupType.DataRegion, 123),
-                    new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 987));
-                put(
-                    new TConsensusGroupId(TConsensusGroupType.DataRegion, 234),
-                    new PipeTaskMeta(new IoTProgressIndex(1, 2L), 789));
-                put(
-                    new TConsensusGroupId(TConsensusGroupType.DataRegion, 345),
-                    new PipeTaskMeta(new SimpleProgressIndex(3, 4), 789));
-                put(
-                    new TConsensusGroupId(TConsensusGroupType.DataRegion, 456),
-                    new PipeTaskMeta(hybridProgressIndex, 789));
-                put(
-                    new TConsensusGroupId(TConsensusGroupType.DataRegion, 567),
+                    567,
                     new PipeTaskMeta(
                         new RecoverProgressIndex(1, new SimpleProgressIndex(1, 9)), 123));
+                put(Integer.MIN_VALUE, new PipeTaskMeta(new SchemaProgressIndex(987), 0));
               }
             });
     ByteBuffer runtimeByteBuffer = pipeRuntimeMeta.serialize();
@@ -114,7 +106,7 @@ public class PipeMetaDeSerTest {
         .put(345, new PipeRuntimeCriticalException("test345"));
     pipeRuntimeMeta
         .getConsensusGroupId2TaskMetaMap()
-        .get(new TConsensusGroupId(TConsensusGroupType.DataRegion, 456))
+        .get(456)
         .trackExceptionMessage(new PipeRuntimeConnectorCriticalException("test456"));
 
     runtimeByteBuffer = pipeRuntimeMeta.serialize();
