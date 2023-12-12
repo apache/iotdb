@@ -966,6 +966,7 @@ public class SessionConnection {
     for (int i = 1; i <= SessionConfig.RETRY_NUM; i++) {
       if (transport != null) {
         transport.close();
+        endPointList = availableNodes.get();
         int currHostIndex = random.nextInt(endPointList.size());
         int tryHostNum = 0;
         for (int j = currHostIndex; j < endPointList.size(); j++) {

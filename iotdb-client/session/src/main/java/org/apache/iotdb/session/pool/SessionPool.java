@@ -367,7 +367,7 @@ public class SessionPool implements ISessionPool {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.formattedNodeUrls = String.format("%s:%s", host, port);
-    this.executorService = Executors.newSingleThreadScheduledExecutor();
+    initThreadPool();
     this.availableNodes =
         NodesSupplier.createNodeSupplier(
             Collections.singletonList(new TEndPoint(host, port)),
@@ -425,7 +425,7 @@ public class SessionPool implements ISessionPool {
     this.useSSL = useSSL;
     this.trustStore = trustStore;
     this.trustStorePwd = trustStorePwd;
-    this.executorService = Executors.newSingleThreadScheduledExecutor();
+    initThreadPool();
     this.availableNodes =
         NodesSupplier.createNodeSupplier(
             Collections.singletonList(new TEndPoint(host, port)),
@@ -477,7 +477,7 @@ public class SessionPool implements ISessionPool {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.formattedNodeUrls = nodeUrls.toString();
-    this.executorService = Executors.newSingleThreadScheduledExecutor();
+    initThreadPool();
     this.availableNodes =
         NodesSupplier.createNodeSupplier(
             SessionUtils.parseSeedNodeUrls(nodeUrls),
@@ -511,36 +511,51 @@ public class SessionPool implements ISessionPool {
     this.version = builder.version;
     this.thriftDefaultBufferSize = builder.thriftDefaultBufferSize;
     this.thriftMaxFrameSize = builder.thriftMaxFrameSize;
+    initThreadPool();
     if (builder.nodeUrls != null && builder.nodeUrls.size() > 0) {
       this.nodeUrls = builder.nodeUrls;
       this.host = null;
       this.port = -1;
       this.formattedNodeUrls = builder.nodeUrls.toString();
+      this.availableNodes =
+          NodesSupplier.createNodeSupplier(
+              SessionUtils.parseSeedNodeUrls(nodeUrls),
+              executorService,
+              user,
+              password,
+              zoneId,
+              thriftDefaultBufferSize,
+              thriftMaxFrameSize,
+              connectionTimeoutInMs,
+              useSSL,
+              trustStore,
+              trustStorePwd,
+              enableCompression,
+              version.toString());
     } else {
       this.host = builder.host;
       this.port = builder.port;
       this.nodeUrls = null;
       this.formattedNodeUrls = String.format("%s:%s", host, port);
+      this.availableNodes =
+          NodesSupplier.createNodeSupplier(
+              Collections.singletonList(new TEndPoint(host, port)),
+              executorService,
+              user,
+              password,
+              zoneId,
+              thriftDefaultBufferSize,
+              thriftMaxFrameSize,
+              connectionTimeoutInMs,
+              useSSL,
+              trustStore,
+              trustStorePwd,
+              enableCompression,
+              version.toString());
     }
     this.useSSL = builder.useSSL;
     this.trustStore = builder.trustStore;
     this.trustStorePwd = builder.trustStorePwd;
-    this.executorService = Executors.newSingleThreadScheduledExecutor();
-    this.availableNodes =
-        NodesSupplier.createNodeSupplier(
-            SessionUtils.parseSeedNodeUrls(nodeUrls),
-            executorService,
-            user,
-            password,
-            zoneId,
-            thriftDefaultBufferSize,
-            thriftMaxFrameSize,
-            connectionTimeoutInMs,
-            useSSL,
-            trustStore,
-            trustStorePwd,
-            enableCompression,
-            version.toString());
   }
 
   private Session constructNewSession() {
@@ -583,6 +598,23 @@ public class SessionPool implements ISessionPool {
     }
     session.setEnableQueryRedirection(enableQueryRedirection);
     return session;
+  }
+
+  private void initThreadPool() {
+    this.executorService =
+        Executors.newSingleThreadScheduledExecutor(
+            r -> {
+              Thread t =
+                  new Thread(
+                      Thread.currentThread().getThreadGroup(), r, "PeriodicalUpdateDNList", 0);
+              if (!t.isDaemon()) {
+                t.setDaemon(true);
+              }
+              if (t.getPriority() != Thread.NORM_PRIORITY) {
+                t.setPriority(Thread.NORM_PRIORITY);
+              }
+              return t;
+            });
   }
 
   // if this method throws an exception, either the server is broken, or the ip/port/user/password

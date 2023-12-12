@@ -180,7 +180,7 @@ public class ThriftConnection {
       try {
         client.closeSession(new TSCloseSessionReq(sessionId));
       } catch (TException e) {
-        LOGGER.warn("Closing Session-{} with {} failed", sessionId, endPoint, e);
+        LOGGER.warn("Closing Session-{} with {} failed.", sessionId, endPoint);
         if (transport.isOpen()) {
           transport.close();
         }

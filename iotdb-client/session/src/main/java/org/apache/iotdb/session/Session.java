@@ -459,7 +459,7 @@ public class Session implements ISession {
       this.availableNodes = null;
     }
 
-    this.executorService = Executors.newSingleThreadScheduledExecutor();
+    initThreadPool();
     this.availableNodes =
         NodesSupplier.createNodeSupplier(
             getNodeUrls(),
@@ -485,6 +485,23 @@ public class Session implements ISession {
       endPointToSessionConnection = new ConcurrentHashMap<>();
       endPointToSessionConnection.put(defaultEndPoint, defaultSessionConnection);
     }
+  }
+
+  private void initThreadPool() {
+    this.executorService =
+        Executors.newSingleThreadScheduledExecutor(
+            r -> {
+              Thread t =
+                  new Thread(
+                      Thread.currentThread().getThreadGroup(), r, "PeriodicalUpdateDNList", 0);
+              if (!t.isDaemon()) {
+                t.setDaemon(true);
+              }
+              if (t.getPriority() != Thread.NORM_PRIORITY) {
+                t.setPriority(Thread.NORM_PRIORITY);
+              }
+              return t;
+            });
   }
 
   private List<TEndPoint> getNodeUrls() {

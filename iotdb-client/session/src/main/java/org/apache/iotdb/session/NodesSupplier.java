@@ -138,7 +138,7 @@ public class NodesSupplier implements INodeSupplier, Runnable {
     this.trustStore = trustStore;
     this.trustStorePwd = trustStorePwd;
     this.enableRPCCompression = enableRPCCompression;
-    this.zoneId = zoneId;
+    this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
@@ -183,7 +183,7 @@ public class NodesSupplier implements INodeSupplier, Runnable {
           version);
       return true;
     } catch (Exception e) {
-      LOGGER.warn("Failed to create connection with {}.", endPoint, e);
+      LOGGER.warn("Failed to create connection with {}.", endPoint);
       close();
       return false;
     }
@@ -201,8 +201,10 @@ public class NodesSupplier implements INodeSupplier, Runnable {
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       List<TEndPoint> res = new ArrayList<>();
       while (iterator.next()) {
-        if (RUNNING_STATUS.equals(iterator.getString(STATUS_COLUMN_NAME))) {
-          String ip = iterator.getString(IP_COLUMN_NAME);
+        String ip = iterator.getString(IP_COLUMN_NAME);
+        // ignore 0.0.0.0 and not running DN
+        if (RUNNING_STATUS.equals(iterator.getString(STATUS_COLUMN_NAME))
+            && !"0.0.0.0".equals(ip)) {
           String port = iterator.getString(PORT_COLUMN_NAME);
           if (ip != null && port != null) {
             res.add(new TEndPoint(ip, Integer.parseInt(port)));
@@ -210,10 +212,12 @@ public class NodesSupplier implements INodeSupplier, Runnable {
         }
       }
       // replace the older ones.
-      availableNodes = new CopyOnWriteArraySet<>(res);
+      if (!res.isEmpty()) {
+        availableNodes = new CopyOnWriteArraySet<>(res);
+      }
       return true;
     } catch (Exception e) {
-      LOGGER.warn("Failed to fetch data node list from {}.", client.endPoint, e);
+      LOGGER.warn("Failed to fetch data node list from {}.", client.endPoint);
       return false;
     }
   }
