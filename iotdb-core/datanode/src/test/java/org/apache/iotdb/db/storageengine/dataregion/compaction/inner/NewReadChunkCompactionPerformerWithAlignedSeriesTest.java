@@ -88,6 +88,7 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
             new TimeRange[] {new TimeRange(100000, 200000), new TimeRange(300000, 500000)},
             TSEncoding.PLAIN,
             CompressionType.LZ4,
+            Arrays.asList(false, false, false),
             true);
     seqResources.add(seqResource1);
 
@@ -98,6 +99,7 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
             new TimeRange[] {new TimeRange(600000, 700000), new TimeRange(800000, 900000)},
             TSEncoding.PLAIN,
             CompressionType.LZ4,
+            Arrays.asList(false, false, false),
             true);
     seqResources.add(seqResource2);
 
@@ -119,6 +121,48 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
   }
 
   @Test
+  public void testSimpleCompactionWithNullColumnByFlushChunk()
+      throws IOException, StorageEngineException, InterruptedException, MetadataException {
+    TsFileResource seqResource1 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[] {new TimeRange(100000, 200000), new TimeRange(300000, 500000)},
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, true),
+            true);
+    seqResources.add(seqResource1);
+
+    TsFileResource seqResource2 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[] {new TimeRange(600000, 700000), new TimeRange(800000, 900000)},
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, false),
+            true);
+    seqResources.add(seqResource2);
+
+    tsFileManager.addAll(seqResources, true);
+    TsFileResource targetResource =
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(seqResources, true);
+
+    ReadChunkCompactionPerformer performer = new ReadChunkCompactionPerformer();
+    CompactionTaskSummary summary = new CompactionTaskSummary();
+    performer.setSummary(summary);
+    performer.setSourceFiles(seqResources);
+    performer.setTargetFiles(Collections.singletonList(targetResource));
+    performer.perform();
+    CompactionUtils.moveTargetFile(
+        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+    Assert.assertEquals(14, summary.getDirectlyFlushChunkNum());
+    Assert.assertEquals(0, summary.getDeserializeChunkCount());
+    TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
+  }
+
+  @Test
   public void testSimpleCompactionByFlushPage()
       throws IOException, StorageEngineException, InterruptedException, MetadataException {
     TsFileResource seqResource1 =
@@ -128,6 +172,7 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
             new TimeRange[] {new TimeRange(10000, 20000), new TimeRange(30000, 40000)},
             TSEncoding.PLAIN,
             CompressionType.LZ4,
+            Arrays.asList(false, false, false),
             true);
     seqResources.add(seqResource1);
 
@@ -138,6 +183,7 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
             new TimeRange[] {new TimeRange(60000, 70000), new TimeRange(80000, 90000)},
             TSEncoding.PLAIN,
             CompressionType.LZ4,
+            Arrays.asList(false, false, false),
             true);
     seqResources.add(seqResource2);
 
@@ -168,6 +214,7 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
             new TimeRange[] {new TimeRange(1000, 2000), new TimeRange(3000, 4000)},
             TSEncoding.PLAIN,
             CompressionType.LZ4,
+            Arrays.asList(false, false, false),
             true);
     seqResources.add(seqResource1);
 
@@ -178,6 +225,7 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
             new TimeRange[] {new TimeRange(6000, 7000), new TimeRange(8000, 9000)},
             TSEncoding.PLAIN,
             CompressionType.LZ4,
+            Arrays.asList(false, false, false),
             true);
     seqResources.add(seqResource2);
 
@@ -208,6 +256,7 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
             new TimeRange[] {new TimeRange(100000, 200000), new TimeRange(300000, 500000)},
             TSEncoding.PLAIN,
             CompressionType.LZ4,
+            Arrays.asList(false, false, false),
             true);
     seqResources.add(seqResource1);
 
@@ -218,6 +267,7 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
             new TimeRange[] {new TimeRange(600000, 700000), new TimeRange(800000, 900000)},
             TSEncoding.PLAIN,
             CompressionType.SNAPPY,
+            Arrays.asList(false, false, false),
             true);
     seqResources.add(seqResource2);
 
@@ -228,6 +278,7 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
             new TimeRange[] {new TimeRange(1600000, 1700000), new TimeRange(1800000, 1900000)},
             TSEncoding.PLAIN,
             CompressionType.SNAPPY,
+            Arrays.asList(false, false, false),
             true);
     seqResources.add(seqResource3);
 
@@ -254,13 +305,14 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
       TimeRange[] chunkTimeRanges,
       TSEncoding encoding,
       CompressionType compressionType,
+      List<Boolean> nullValues,
       boolean isSeq)
       throws IOException {
     TsFileResource seqResource1 = createEmptyFileAndResource(isSeq);
     CompactionTestFileWriter writer1 = new CompactionTestFileWriter(seqResource1);
     writer1.startChunkGroup(device);
-    writer1.generateSimpleAlignedSeriesToCurrentDevice(
-        measurement, chunkTimeRanges, encoding, compressionType);
+    writer1.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
+        measurement, chunkTimeRanges, encoding, compressionType, nullValues);
     writer1.endChunkGroup();
     writer1.endFile();
     writer1.close();
@@ -273,13 +325,14 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
       TimeRange[][] chunkTimeRanges,
       TSEncoding encoding,
       CompressionType compressionType,
+      List<Boolean> nullValues,
       boolean isSeq)
       throws IOException {
     TsFileResource seqResource1 = createEmptyFileAndResource(isSeq);
     CompactionTestFileWriter writer1 = new CompactionTestFileWriter(seqResource1);
     writer1.startChunkGroup(device);
-    writer1.generateSimpleAlignedSeriesToCurrentDevice(
-        measurement, chunkTimeRanges, encoding, compressionType);
+    writer1.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
+        measurement, chunkTimeRanges, encoding, compressionType, nullValues);
     writer1.endChunkGroup();
     writer1.endFile();
     writer1.close();
@@ -292,13 +345,14 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
       TimeRange[][][] chunkTimeRanges,
       TSEncoding encoding,
       CompressionType compressionType,
+      List<Boolean> nullValues,
       boolean isSeq)
       throws IOException {
     TsFileResource seqResource1 = createEmptyFileAndResource(isSeq);
     CompactionTestFileWriter writer1 = new CompactionTestFileWriter(seqResource1);
     writer1.startChunkGroup(device);
-    writer1.generateSimpleAlignedSeriesToCurrentDevice(
-        measurement, chunkTimeRanges, encoding, compressionType);
+    writer1.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
+        measurement, chunkTimeRanges, encoding, compressionType, nullValues);
     writer1.endChunkGroup();
     writer1.endFile();
     writer1.close();

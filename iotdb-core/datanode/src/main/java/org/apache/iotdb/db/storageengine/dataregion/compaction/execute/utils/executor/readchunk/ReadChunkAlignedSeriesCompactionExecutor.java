@@ -263,12 +263,15 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
   private void compactAlignedChunkByFlush(ChunkLoader timeChunk, List<ChunkLoader> valueChunks)
       throws IOException {
     writer.markStartingWritingAligned();
+    checkAndUpdatePreviousTimestamp(timeChunk.getChunkMetadata().getStartTime());
+    checkAndUpdatePreviousTimestamp(timeChunk.getChunkMetadata().getEndTime());
     writer.writeChunk(timeChunk.getChunk(), timeChunk.getChunkMetadata());
+    timeChunk.clear();
     int nonEmptyChunkNum = 1;
     for (int i = 0; i < valueChunks.size(); i++) {
       ChunkLoader valueChunk = valueChunks.get(i);
       if (valueChunk.isEmpty()) {
-        IMeasurementSchema schema = schemaList.get(i + 1);
+        IMeasurementSchema schema = schemaList.get(i);
         writer.writeEmptyValueChunk(
             schema.getMeasurementId(),
             schema.getCompressor(),
@@ -283,8 +286,6 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     }
     summary.increaseDirectlyFlushChunkNum(nonEmptyChunkNum);
     writer.markEndingWritingAligned();
-    checkAndUpdatePreviousTimestamp(timeChunk.getChunkMetadata().getStartTime());
-    checkAndUpdatePreviousTimestamp(timeChunk.getChunkMetadata().getEndTime());
   }
 
   private void compactAlignedChunkByDeserialize(
@@ -355,6 +356,8 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
   private void compactAlignedPageByFlush(PageLoader timePage, List<PageLoader> valuePageLoaders)
       throws PageException, IOException {
     int nonEmptyPage = 1;
+    checkAndUpdatePreviousTimestamp(timePage.getHeader().getStartTime());
+    checkAndUpdatePreviousTimestamp(timePage.getHeader().getEndTime());
     timePage.flushToTimeChunkWriter(chunkWriter);
     for (int i = 0; i < valuePageLoaders.size(); i++) {
       PageLoader valuePage = valuePageLoaders.get(i);
@@ -364,8 +367,6 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       valuePage.flushToValueChunkWriter(chunkWriter, i);
     }
     summary.increaseDirectlyFlushPageNum(nonEmptyPage);
-    checkAndUpdatePreviousTimestamp(timePage.getHeader().getStartTime());
-    checkAndUpdatePreviousTimestamp(timePage.getHeader().getEndTime());
   }
 
   private void compactAlignedPageByDeserialize(PageLoader timePage, List<PageLoader> valuePages)
