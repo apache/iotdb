@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
-import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
@@ -209,13 +208,6 @@ public class MTreeBelowSGCachedImpl {
     storageGroupMNode = null;
   }
 
-  protected void replaceStorageGroupMNode(IDatabaseMNode<ICachedMNode> newMNode) {
-    this.storageGroupMNode
-        .getParent()
-        .replaceChild(this.storageGroupMNode.getName(), newMNode.getAsMNode());
-    this.storageGroupMNode = newMNode.getAsMNode();
-  }
-
   public boolean createSnapshot(File snapshotDir) {
     return store.createSnapshot(snapshotDir);
   }
@@ -317,9 +309,6 @@ public class MTreeBelowSGCachedImpl {
             entityMNode = device.getAsDeviceMNode();
           } else {
             entityMNode = store.setToEntity(device);
-            if (entityMNode.isDatabase()) {
-              replaceStorageGroupMNode(entityMNode.getAsDatabaseMNode());
-            }
             device = entityMNode.getAsMNode();
           }
 
@@ -407,9 +396,6 @@ public class MTreeBelowSGCachedImpl {
           } else {
             entityMNode = store.setToEntity(device);
             entityMNode.setAligned(true);
-            if (entityMNode.isDatabase()) {
-              replaceStorageGroupMNode(entityMNode.getAsDatabaseMNode());
-            }
             device = entityMNode.getAsMNode();
           }
 
@@ -642,9 +628,6 @@ public class MTreeBelowSGCachedImpl {
       if (!hasMeasurement) {
         synchronized (this) {
           curNode = store.setToInternal(entityMNode);
-          if (curNode.isDatabase()) {
-            replaceStorageGroupMNode(curNode.getAsDatabaseMNode());
-          }
         }
       } else if (!hasNonViewMeasurement) {
         // has some measurement but they are all logical view
@@ -970,9 +953,6 @@ public class MTreeBelowSGCachedImpl {
             entityMNode = device.getAsDeviceMNode();
           } else {
             entityMNode = store.setToEntity(device);
-            if (entityMNode.isDatabase()) {
-              replaceStorageGroupMNode(entityMNode.getAsDatabaseMNode());
-            }
             // this parent has no measurement before. The leafName is his first child who is a
             // logical
             // view.
@@ -1095,9 +1075,6 @@ public class MTreeBelowSGCachedImpl {
           entityMNode = cur.getAsDeviceMNode();
         } else {
           entityMNode = store.setToEntity(cur);
-          if (entityMNode.isDatabase()) {
-            replaceStorageGroupMNode(entityMNode.getAsDatabaseMNode());
-          }
         }
 
         if (entityMNode.isUseTemplate()) {
@@ -1144,9 +1121,6 @@ public class MTreeBelowSGCachedImpl {
         entityMNode = cur.getAsDeviceMNode();
       } else {
         entityMNode = store.setToEntity(cur);
-        if (entityMNode.isDatabase()) {
-          replaceStorageGroupMNode(entityMNode.getAsDatabaseMNode());
-        }
       }
 
       store.updateMNode(
@@ -1438,7 +1412,7 @@ public class MTreeBelowSGCachedImpl {
 
           protected INodeSchemaInfo collectMNode(ICachedMNode node) {
             return new ShowNodesResult(
-                getPartialPathFromRootToNode(node).getFullPath(), node.getMNodeType(false));
+                getPartialPathFromRootToNode(node).getFullPath(), node.getMNodeType());
           }
         };
     collector.setTargetLevel(showNodesPlan.getLevel());

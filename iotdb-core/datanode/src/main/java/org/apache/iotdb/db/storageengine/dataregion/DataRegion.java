@@ -2322,6 +2322,7 @@ public class DataRegion implements IDataRegionForQuery {
       // the name of this variable is trySubmitCount, because the task submitted to the queue could
       // be
       // evicted due to the low priority of the task
+      CompactionScheduler.lockCompactionSelection();
       try {
         for (long timePartition : timePartitions) {
           trySubmitCount +=
@@ -2329,6 +2330,8 @@ public class DataRegion implements IDataRegionForQuery {
         }
       } catch (Throwable e) {
         logger.error("Meet error in compaction schedule.", e);
+      } finally {
+        CompactionScheduler.unlockCompactionSelection();
       }
     }
     if (summary.hasSubmitTask()) {
@@ -2349,6 +2352,7 @@ public class DataRegion implements IDataRegionForQuery {
 
   protected int executeInsertionCompaction(List<Long> timePartitions) {
     int trySubmitCount = 0;
+    CompactionScheduler.lockCompactionSelection();
     try {
       while (true) {
         int currentSubmitCount = 0;
@@ -2367,6 +2371,8 @@ public class DataRegion implements IDataRegionForQuery {
       }
     } catch (Throwable e) {
       logger.error("Meet error in compaction schedule.", e);
+    } finally {
+      CompactionScheduler.unlockCompactionSelection();
     }
     return trySubmitCount;
   }

@@ -18,47 +18,18 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
-import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
-import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaUtils;
 
 import org.junit.Test;
 
-import java.util.List;
-
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertSame;
 
 public class MNodeTest {
 
   private final IMNodeFactory<IMemMNode> nodeFactory =
-      MNodeFactoryLoader.getInstance().getMemMNodeIMNodeFactory();;
-
-  @Test
-  public void testReplaceChild() {
-    IMemMNode rootNode = nodeFactory.createInternalMNode(null, "root");
-
-    IDeviceMNode<IMemMNode> aNode = nodeFactory.createDeviceMNode(rootNode, "a");
-    rootNode.addChild(aNode.getName(), aNode.getAsMNode());
-
-    IMeasurementMNode<IMemMNode> bNode = nodeFactory.createMeasurementMNode(aNode, "b", null, null);
-
-    aNode.addChild(bNode.getName(), bNode.getAsMNode());
-    aNode.addAlias("aliasOfb", bNode);
-
-    IDeviceMNode<IMemMNode> newANode = nodeFactory.createDeviceMNode(null, "a");
-    rootNode.replaceChild(aNode.getName(), newANode.getAsMNode());
-
-    List<String> multiFullPaths = MetaUtils.getMultiFullPaths(rootNode);
-    assertEquals("root.a.b", multiFullPaths.get(0));
-    assertEquals("root.a.b", rootNode.getChild("a").getChild("aliasOfb").getFullPath());
-    assertNotSame(aNode, rootNode.getChild("a"));
-    assertSame(newANode, rootNode.getChild("a"));
-  }
+      MNodeFactoryLoader.getInstance().getMemMNodeIMNodeFactory();
 
   @Test
   public void testAddChild() {

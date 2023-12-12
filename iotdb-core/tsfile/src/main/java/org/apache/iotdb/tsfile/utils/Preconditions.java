@@ -17,13 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.read.reader;
+package org.apache.iotdb.tsfile.utils;
 
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+public class Preconditions {
 
-public interface IAlignedPageReader {
+  private Preconditions() {
+    // private constructor for utility class
+  }
 
-  Statistics getStatistics(int index);
+  public static void checkArgument(boolean expression) {
+    if (!expression) {
+      throw new IllegalArgumentException();
+    }
+  }
 
-  Statistics getTimeStatistics();
+  public static void checkArgument(boolean expression, String errorMessage) {
+    if (!expression) {
+      throw new IllegalArgumentException(errorMessage);
+    }
+  }
 }

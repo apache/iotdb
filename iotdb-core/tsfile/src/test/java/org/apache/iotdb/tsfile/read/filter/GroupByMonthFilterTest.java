@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.tsfile.read.filter;
 
+import org.apache.iotdb.tsfile.file.metadata.IMetadata;
 import org.apache.iotdb.tsfile.file.metadata.statistics.LongStatistics;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.filter.factory.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilterApi;
 import org.apache.iotdb.tsfile.read.filter.operator.GroupByMonthFilter;
 import org.apache.iotdb.tsfile.utils.TimeDuration;
 
@@ -29,6 +29,7 @@ import org.junit.Test;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.iotdb.tsfile.read.filter.FilterTestUtil.newMetadata;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -43,7 +44,7 @@ public class GroupByMonthFilterTest {
   @Test
   public void TestSatisfy1() {
     GroupByMonthFilter filter =
-        TimeFilter.groupByMonth(
+        TimeFilterApi.groupByMonth(
             0,
             END_TIME,
             new TimeDuration(1, 0),
@@ -83,7 +84,7 @@ public class GroupByMonthFilterTest {
   @Test
   public void TestSatisfy2() {
     GroupByMonthFilter filter =
-        TimeFilter.groupByMonth(
+        TimeFilterApi.groupByMonth(
             0,
             END_TIME,
             new TimeDuration(1, 0),
@@ -120,7 +121,7 @@ public class GroupByMonthFilterTest {
   @Test
   public void TestSatisfy3() {
     GroupByMonthFilter filter =
-        TimeFilter.groupByMonth(
+        TimeFilterApi.groupByMonth(
             0,
             END_TIME,
             new TimeDuration(0, MS_TO_DAY),
@@ -157,7 +158,7 @@ public class GroupByMonthFilterTest {
   @Test
   public void TestSatisfy4() {
     GroupByMonthFilter filter =
-        TimeFilter.groupByMonth(
+        TimeFilterApi.groupByMonth(
             0,
             END_TIME,
             new TimeDuration(1, 0),
@@ -182,7 +183,7 @@ public class GroupByMonthFilterTest {
   @Test
   public void TestSatisfyStartEndTime() {
     GroupByMonthFilter filter =
-        TimeFilter.groupByMonth(
+        TimeFilterApi.groupByMonth(
             0,
             END_TIME,
             new TimeDuration(0, MS_TO_DAY),
@@ -191,40 +192,42 @@ public class GroupByMonthFilterTest {
             TimeUnit.MILLISECONDS);
 
     // 1970-01-01 08:00:00 - 1970-01-02 08:00:00, timezone = GMT+08:00
-    Statistics statistics = new LongStatistics();
+    LongStatistics statistics = new LongStatistics();
     statistics.setStartTime(0);
     statistics.setEndTime(MS_TO_DAY);
-    assertTrue(filter.satisfy(statistics));
+    IMetadata metadata = newMetadata(statistics);
+
+    assertFalse(filter.canSkip(metadata));
 
     // 1970-01-01 20:00:00 - 1970-01-02 08:00:00
     statistics.setStartTime(MS_TO_DAY / 2);
     statistics.setEndTime(MS_TO_DAY);
-    assertTrue(filter.satisfy(statistics));
+    assertFalse(filter.canSkip(metadata));
 
     // 1970-01-01 20:00:00 - 1970-01-03 08:00:00
     statistics.setStartTime(MS_TO_DAY / 2);
     statistics.setEndTime(MS_TO_DAY * 2);
-    assertTrue(filter.satisfy(statistics));
+    assertFalse(filter.canSkip(metadata));
 
     // 1970-01-02 08:00:00 - 1970-01-03 08:00:00
     statistics.setStartTime(MS_TO_DAY);
     statistics.setEndTime(MS_TO_DAY * 2);
-    assertFalse(filter.satisfy(statistics));
+    assertTrue(filter.canSkip(metadata));
 
     // 1970-02-28 08:00:00 - 1970-03-01 07:59:59
     statistics.setStartTime(5011200000L);
     statistics.setEndTime(5097599000L);
-    assertFalse(filter.satisfy(statistics));
+    assertTrue(filter.canSkip(metadata));
 
     // 1970-03-01 09:00:00 - 1970-03-01 10:00:00
     statistics.setStartTime(5101200000L);
     statistics.setEndTime(5104800000L);
-    assertTrue(filter.satisfy(statistics));
+    assertFalse(filter.canSkip(metadata));
 
     // 1970-05-01 07:00:00 - 1970-05-01 08:00:00
     statistics.setStartTime(10364400000L);
     statistics.setEndTime(10368000000L);
-    assertTrue(filter.satisfy(statistics));
+    assertFalse(filter.canSkip(metadata));
 
     // 1970-01-02 07:59:59
     assertTrue(filter.satisfy(86399000L, null));
@@ -234,7 +237,7 @@ public class GroupByMonthFilterTest {
   @Test
   public void TestContainStartEndTime() {
     GroupByMonthFilter filter =
-        TimeFilter.groupByMonth(
+        TimeFilterApi.groupByMonth(
             0,
             END_TIME,
             new TimeDuration(0, MS_TO_DAY),
