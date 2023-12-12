@@ -131,4 +131,24 @@ public class ThriftConfigNodeSerDeUtils {
     }
     return configNodeLocation;
   }
+
+  // Deprecated, restored for compatibility
+  public static void serializeTPipeSinkInfo(TPipeSinkInfo pipeSinkInfo, DataOutputStream stream) {
+    try {
+      pipeSinkInfo.write(generateWriteProtocol(stream));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Write TPipeSinkInfo failed: ", e);
+    }
+  }
+
+  // Deprecated, restored for compatibility
+  public static TPipeSinkInfo deserializeTPipeSinkInfo(ByteBuffer buffer) {
+    TPipeSinkInfo pipeSinkInfo = new TPipeSinkInfo();
+    try {
+      pipeSinkInfo.read(generateReadProtocol(buffer));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Read TPipeSinkInfo failed: ", e);
+    }
+    return pipeSinkInfo;
+  }
 }
