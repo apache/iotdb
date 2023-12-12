@@ -479,8 +479,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
         .getPipeMetaList()
         .forEach(
             pipeMeta -> {
-              if (pipeMeta.getRuntimeMeta().getShouldBeRunning()) {
-                pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
+              PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
+              if (runtimeMeta.getShouldBeRunning()
+                  && runtimeMeta.getStatus().get().equals(PipeStatus.STOPPED)) {
+                runtimeMeta.getStatus().set(PipeStatus.RUNNING);
 
                 needRestart.set(true);
                 pipeToRestart.add(pipeMeta.getStaticMeta().getPipeName());
