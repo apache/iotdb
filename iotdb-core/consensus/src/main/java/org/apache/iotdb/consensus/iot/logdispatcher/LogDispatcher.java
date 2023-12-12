@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
-import org.apache.iotdb.consensus.iot.IoTConsensus;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.consensus.iot.client.AsyncIoTConsensusServiceClient;
 import org.apache.iotdb.consensus.iot.client.DispatchLogHandler;
@@ -164,7 +163,7 @@ public class LogDispatcher {
     threads.forEach(
         thread -> {
           IndexController controller = thread.getController();
-          controller.update(controller.getCurrentIndex(), false);
+          controller.update(controller.getCurrentIndex(), true);
         });
     reader.setSafelyDeletedSearchIndex(impl.getMinFlushedSyncIndex());
   }
@@ -234,8 +233,7 @@ public class LogDispatcher {
               impl.getStorageDir(),
               peer,
               initialSyncIndex,
-              config.getReplication().getCheckpointGap(),
-              IoTConsensus.READER_UPDATE_INTERVAL_IN_NS);
+              config.getReplication().getCheckpointGap());
       this.syncStatus = new SyncStatus(controller, config);
       this.walEntryIterator = reader.getReqIterator(START_INDEX);
       this.logDispatcherThreadMetrics = new LogDispatcherThreadMetrics(this);

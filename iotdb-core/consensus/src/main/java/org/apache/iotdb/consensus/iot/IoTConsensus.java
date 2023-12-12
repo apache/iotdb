@@ -56,7 +56,6 @@ import org.apache.iotdb.consensus.iot.service.IoTConsensusRPCServiceProcessor;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.ratis.util.TimeDuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,9 +76,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class IoTConsensus implements IConsensus {
 
-  public static final long READER_UPDATE_INTERVAL_IN_NS =
-      TimeDuration.valueOf(1, TimeUnit.MINUTES).to(TimeUnit.NANOSECONDS).getDuration();
-
+  private static final long READER_UPDATE_INTERVAL_IN_MINUTES = 3;
   private final Logger logger = LoggerFactory.getLogger(IoTConsensus.class);
 
   private final TEndPoint thisNode;
@@ -138,9 +135,9 @@ public class IoTConsensus implements IConsensus {
                   stateMachineMap
                       .values()
                       .forEach(impl -> impl.getLogDispatcher().checkAndFlushIndex()),
-              READER_UPDATE_INTERVAL_IN_NS,
-              READER_UPDATE_INTERVAL_IN_NS,
-              TimeUnit.NANOSECONDS);
+              READER_UPDATE_INTERVAL_IN_MINUTES,
+              READER_UPDATE_INTERVAL_IN_MINUTES,
+              TimeUnit.MINUTES);
     }
   }
 

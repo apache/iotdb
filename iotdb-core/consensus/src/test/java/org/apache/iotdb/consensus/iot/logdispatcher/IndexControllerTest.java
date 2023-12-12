@@ -56,7 +56,7 @@ public class IndexControllerTest {
   @Test
   public void testRestart() {
     IndexController controller =
-        new IndexController(storageDir.getAbsolutePath(), peer, 0, CHECK_POINT_GAP, Long.MAX_VALUE);
+        new IndexController(storageDir.getAbsolutePath(), peer, 0, CHECK_POINT_GAP);
     Assert.assertEquals(0, controller.getCurrentIndex());
     Assert.assertEquals(0, controller.getLastFlushedIndex());
 
@@ -64,8 +64,7 @@ public class IndexControllerTest {
     Assert.assertEquals(CHECK_POINT_GAP - 1, controller.getCurrentIndex());
     Assert.assertEquals(0, controller.getLastFlushedIndex());
 
-    controller =
-        new IndexController(storageDir.getAbsolutePath(), peer, 0, CHECK_POINT_GAP, Long.MAX_VALUE);
+    controller = new IndexController(storageDir.getAbsolutePath(), peer, 0, CHECK_POINT_GAP);
     Assert.assertEquals(0, controller.getCurrentIndex());
     Assert.assertEquals(0, controller.getLastFlushedIndex());
 
@@ -73,8 +72,7 @@ public class IndexControllerTest {
     Assert.assertEquals(CHECK_POINT_GAP - 1, controller.getCurrentIndex());
     Assert.assertEquals(CHECK_POINT_GAP - 1, controller.getLastFlushedIndex());
 
-    controller =
-        new IndexController(storageDir.getAbsolutePath(), peer, 0, CHECK_POINT_GAP, Long.MAX_VALUE);
+    controller = new IndexController(storageDir.getAbsolutePath(), peer, 0, CHECK_POINT_GAP);
     Assert.assertEquals(CHECK_POINT_GAP - 1, controller.getCurrentIndex());
     Assert.assertEquals(CHECK_POINT_GAP - 1, controller.getLastFlushedIndex());
 
@@ -82,15 +80,15 @@ public class IndexControllerTest {
     Assert.assertEquals(CHECK_POINT_GAP * 2, controller.getCurrentIndex());
     Assert.assertEquals(CHECK_POINT_GAP * 2, controller.getLastFlushedIndex());
 
-    controller = new IndexController(storageDir.getAbsolutePath(), peer, 0, CHECK_POINT_GAP, 0);
+    controller = new IndexController(storageDir.getAbsolutePath(), peer, 0, CHECK_POINT_GAP);
     Assert.assertEquals(CHECK_POINT_GAP * 2, controller.getCurrentIndex());
     Assert.assertEquals(CHECK_POINT_GAP * 2, controller.getLastFlushedIndex());
 
-    controller.update(CHECK_POINT_GAP * 2 - 1, false);
+    controller.update(CHECK_POINT_GAP * 2 - 1, true);
     Assert.assertEquals(CHECK_POINT_GAP * 2, controller.getCurrentIndex());
     Assert.assertEquals(CHECK_POINT_GAP * 2, controller.getLastFlushedIndex());
 
-    controller.update(CHECK_POINT_GAP * 2 + 1, false);
+    controller.update(CHECK_POINT_GAP * 2 + 1, true);
     Assert.assertEquals(CHECK_POINT_GAP * 2 + 1, controller.getCurrentIndex());
     Assert.assertEquals(CHECK_POINT_GAP * 2 + 1, controller.getLastFlushedIndex());
   }
@@ -104,7 +102,7 @@ public class IndexControllerTest {
     Files.createFile(oldFile.toPath());
 
     IndexController controller =
-        new IndexController(storageDir.getAbsolutePath(), peer, 0, CHECK_POINT_GAP, Long.MAX_VALUE);
+        new IndexController(storageDir.getAbsolutePath(), peer, 0, CHECK_POINT_GAP);
     Assert.assertEquals(100, controller.getCurrentIndex());
 
     File newFile = new File(storageDir, peer.getNodeId() + IndexController.SEPARATOR + 100);
