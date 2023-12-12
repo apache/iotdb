@@ -1549,7 +1549,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
     // Validate before creation
     try {
-      PipeAgent.plugin().validate(createPipeStatement);
+      PipeAgent.plugin()
+          .validate(
+              createPipeStatement.getExtractorAttributes(),
+              createPipeStatement.getProcessorAttributes(),
+              createPipeStatement.getConnectorAttributes());
     } catch (Exception e) {
       future.setException(
           new IoTDBException(e.getMessage(), TSStatusCode.PIPE_ERROR.getStatusCode()));

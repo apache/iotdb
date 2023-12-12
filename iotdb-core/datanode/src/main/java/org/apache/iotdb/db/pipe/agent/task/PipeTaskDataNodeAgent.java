@@ -23,8 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
-import org.apache.iotdb.commons.pipe.task.meta.PipeMetaKeeper;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
@@ -75,48 +75,15 @@ import java.util.stream.Collectors;
  *
  * <p>Other transitions are not allowed, will be ignored when received in the pipe task agent.
  */
-public class PipeTaskAgent {
+public class PipeTaskDataNodeAgent extends PipeTaskAgent {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskAgent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskDataNodeAgent.class);
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-
-  private static final String MESSAGE_UNKNOWN_PIPE_STATUS = "Unknown pipe status %s for pipe %s";
-  private static final String MESSAGE_UNEXPECTED_PIPE_STATUS = "Unexpected pipe status %s: ";
-
-  private final PipeMetaKeeper pipeMetaKeeper;
   private final PipeTaskManager pipeTaskManager;
 
-  public PipeTaskAgent() {
-    pipeMetaKeeper = new PipeMetaKeeper();
+  public PipeTaskDataNodeAgent() {
+    super();
     pipeTaskManager = new PipeTaskManager();
-  }
-
-  ////////////////////////// PipeMeta Lock Control //////////////////////////
-
-  private void acquireReadLock() {
-    pipeMetaKeeper.acquireReadLock();
-  }
-
-  public boolean tryReadLockWithTimeOut(long timeOutInSeconds) {
-    try {
-      return pipeMetaKeeper.tryReadLock(timeOutInSeconds);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      LOGGER.warn("Interruption during requiring pipeMetaKeeper lock.", e);
-      return false;
-    }
-  }
-
-  private void releaseReadLock() {
-    pipeMetaKeeper.releaseReadLock();
-  }
-
-  private void acquireWriteLock() {
-    pipeMetaKeeper.acquireWriteLock();
-  }
-
-  private void releaseWriteLock() {
-    pipeMetaKeeper.releaseWriteLock();
   }
 
   ////////////////////////// Pipe Task Management Entry //////////////////////////
@@ -521,37 +488,8 @@ public class PipeTaskAgent {
 
     final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
     if (existedPipeMeta != null) {
-      if (existedPipeMeta.getStaticMeta().getCreationTime() == creationTime) {
-        final PipeStatus status = existedPipeMeta.getRuntimeMeta().getStatus().get();
-        switch (status) {
-          case STOPPED:
-          case RUNNING:
-            if (LOGGER.isInfoEnabled()) {
-              LOGGER.info(
-                  "Pipe {} (creation time = {}) has already been created. "
-                      + "Current status = {}. Skip creating.",
-                  pipeName,
-                  creationTime,
-                  status.name());
-            }
-            return false;
-          case DROPPED:
-            if (LOGGER.isInfoEnabled()) {
-              LOGGER.info(
-                  "Pipe {} (creation time = {}) has already been dropped, "
-                      + "but the pipe task meta has not been cleaned up. "
-                      + "Current status = {}. Try dropping the pipe and recreating it.",
-                  pipeName,
-                  creationTime,
-                  status.name());
-            }
-            // Break to drop the pipe and recreate it
-            break;
-          default:
-            throw new IllegalStateException(
-                MESSAGE_UNEXPECTED_PIPE_STATUS
-                    + existedPipeMeta.getRuntimeMeta().getStatus().get().name());
-        }
+      if (!checkBeforeCreatePipe(existedPipeMeta, pipeName, creationTime)) {
+        return false;
       }
 
       // Drop the pipe if
@@ -586,21 +524,7 @@ public class PipeTaskAgent {
   private void dropPipe(String pipeName, long creationTime) {
     final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
 
-    if (existedPipeMeta == null) {
-      LOGGER.info(
-          "Pipe {} (creation time = {}) has already been dropped or has not been created. "
-              + "Skip dropping.",
-          pipeName,
-          creationTime);
-      return;
-    }
-    if (existedPipeMeta.getStaticMeta().getCreationTime() != creationTime) {
-      LOGGER.info(
-          "Pipe {} (creation time = {}) has been created but does not match "
-              + "the creation time ({}) in dropPipe request. Skip dropping.",
-          pipeName,
-          existedPipeMeta.getStaticMeta().getCreationTime(),
-          creationTime);
+    if (!checkBeforeDropPipe(existedPipeMeta, pipeName, creationTime)) {
       return;
     }
 
@@ -631,9 +555,7 @@ public class PipeTaskAgent {
   private void dropPipe(String pipeName) {
     final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
 
-    if (existedPipeMeta == null) {
-      LOGGER.info(
-          "Pipe {} has already been dropped or has not been created. Skip dropping.", pipeName);
+    if (!checkBeforeDropPipe(existedPipeMeta, pipeName)) {
       return;
     }
 
@@ -661,59 +583,8 @@ public class PipeTaskAgent {
   private void startPipe(String pipeName, long creationTime) {
     final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
 
-    if (existedPipeMeta == null) {
-      LOGGER.info(
-          "Pipe {} (creation time = {}) has already been dropped or has not been created. "
-              + "Skip starting.",
-          pipeName,
-          creationTime);
+    if (!checkBeforeStartPipe(existedPipeMeta, pipeName, creationTime)) {
       return;
-    }
-    if (existedPipeMeta.getStaticMeta().getCreationTime() != creationTime) {
-      LOGGER.info(
-          "Pipe {} (creation time = {}) has been created but does not match "
-              + "the creation time ({}) in startPipe request. Skip starting.",
-          pipeName,
-          existedPipeMeta.getStaticMeta().getCreationTime(),
-          creationTime);
-      return;
-    }
-
-    final PipeStatus status = existedPipeMeta.getRuntimeMeta().getStatus().get();
-    switch (status) {
-      case STOPPED:
-        if (LOGGER.isInfoEnabled()) {
-          LOGGER.info(
-              "Pipe {} (creation time = {}) has been created. Current status = {}. Starting.",
-              pipeName,
-              creationTime,
-              status.name());
-        }
-        break;
-      case RUNNING:
-        if (LOGGER.isInfoEnabled()) {
-          LOGGER.info(
-              "Pipe {} (creation time = {}) has already been started. Current status = {}. "
-                  + "Skip starting.",
-              pipeName,
-              creationTime,
-              status.name());
-        }
-        return;
-      case DROPPED:
-        if (LOGGER.isInfoEnabled()) {
-          LOGGER.info(
-              "Pipe {} (creation time = {}) has already been dropped. Current status = {}. "
-                  + "Skip starting.",
-              pipeName,
-              creationTime,
-              status.name());
-        }
-        return;
-      default:
-        throw new IllegalStateException(
-            MESSAGE_UNEXPECTED_PIPE_STATUS
-                + existedPipeMeta.getRuntimeMeta().getStatus().get().name());
     }
 
     // Trigger start() method for each pipe task
@@ -744,57 +615,8 @@ public class PipeTaskAgent {
   private void stopPipe(String pipeName, long creationTime) {
     final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
 
-    if (existedPipeMeta == null) {
-      LOGGER.info(
-          "Pipe {} (creation time = {}) has already been dropped or has not been created. "
-              + "Skip stopping.",
-          pipeName,
-          creationTime);
+    if (!checkBeforeStopPipe(existedPipeMeta, pipeName, creationTime)) {
       return;
-    }
-    if (existedPipeMeta.getStaticMeta().getCreationTime() != creationTime) {
-      LOGGER.info(
-          "Pipe {} (creation time = {}) has been created but does not match "
-              + "the creation time ({}) in stopPipe request. Skip stopping.",
-          pipeName,
-          existedPipeMeta.getStaticMeta().getCreationTime(),
-          creationTime);
-      return;
-    }
-
-    final PipeStatus status = existedPipeMeta.getRuntimeMeta().getStatus().get();
-    switch (status) {
-      case STOPPED:
-        if (LOGGER.isInfoEnabled()) {
-          LOGGER.info(
-              "Pipe {} (creation time = {}) has already been stopped. Current status = {}. "
-                  + "Skip stopping.",
-              pipeName,
-              creationTime,
-              status.name());
-        }
-        return;
-      case RUNNING:
-        if (LOGGER.isInfoEnabled()) {
-          LOGGER.info(
-              "Pipe {} (creation time = {}) has been started. Current status = {}. Stopping.",
-              pipeName,
-              creationTime,
-              status.name());
-        }
-        break;
-      case DROPPED:
-        if (LOGGER.isInfoEnabled()) {
-          LOGGER.info(
-              "Pipe {} (creation time = {}) has already been dropped. Current status = {}. "
-                  + "Skip stopping.",
-              pipeName,
-              creationTime,
-              status.name());
-        }
-        return;
-      default:
-        throw new IllegalStateException(MESSAGE_UNEXPECTED_PIPE_STATUS + status.name());
     }
 
     // Trigger stop() method for each pipe task

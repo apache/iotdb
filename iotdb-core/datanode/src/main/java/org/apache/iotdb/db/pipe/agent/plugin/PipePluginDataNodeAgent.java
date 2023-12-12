@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.pipe.agent.plugin;
 
+import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginAgent;
 import org.apache.iotdb.commons.pipe.plugin.meta.DataNodePipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoaderManager;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.PipePlugin;
@@ -39,35 +39,22 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.Map;
 
-public class PipePluginAgent {
+public class PipePluginDataNodeAgent extends PipePluginAgent {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipePluginAgent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipePluginDataNodeAgent.class);
 
-  private final ReentrantLock lock = new ReentrantLock();
-
-  private final DataNodePipePluginMetaKeeper pipePluginMetaKeeper;
-
+  protected DataNodePipePluginMetaKeeper pipePluginMetaKeeper;
   private final PipeDataRegionExtractorConstructor pipeExtractorConstructor;
   private final PipeDataRegionProcessorConstructor pipeProcessorConstructor;
   private final PipeDataRegionConnectorConstructor pipeConnectorConstructor;
 
-  public PipePluginAgent() {
+  public PipePluginDataNodeAgent() {
     this.pipePluginMetaKeeper = new DataNodePipePluginMetaKeeper();
     this.pipeExtractorConstructor = new PipeDataRegionExtractorConstructor(pipePluginMetaKeeper);
     this.pipeProcessorConstructor = new PipeDataRegionProcessorConstructor(pipePluginMetaKeeper);
     this.pipeConnectorConstructor = new PipeDataRegionConnectorConstructor(pipePluginMetaKeeper);
-  }
-
-  /////////////////////////////// Lock ///////////////////////////////
-
-  public void acquireLock() {
-    lock.lock();
-  }
-
-  public void releaseLock() {
-    lock.unlock();
   }
 
   /////////////////////////////// Pipe Plugin Management ///////////////////////////////
@@ -208,9 +195,12 @@ public class PipePluginAgent {
    * Validation should have the granularity of "DataNode level", not "DataRegion level", because a
    * DataNode may have no DataRegion at all when creating pipe
    */
-  public void validate(CreatePipeStatement createPipeStatement) throws Exception {
-    final PipeParameters extractorParameters =
-        new PipeParameters(createPipeStatement.getExtractorAttributes());
+  public void validate(
+      Map<String, String> extractorAttributes,
+      Map<String, String> processorAttributes,
+      Map<String, String> connectorAttributes)
+      throws Exception {
+    final PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
     final PipeExtractor temporaryExtractor = reflectExtractor(extractorParameters);
     try {
       temporaryExtractor.validate(new PipeParameterValidator(extractorParameters));
@@ -222,8 +212,7 @@ public class PipePluginAgent {
       }
     }
 
-    final PipeParameters processorParameters =
-        new PipeParameters(createPipeStatement.getProcessorAttributes());
+    final PipeParameters processorParameters = new PipeParameters(processorAttributes);
     final PipeProcessor temporaryProcessor = reflectProcessor(processorParameters);
     try {
       temporaryProcessor.validate(new PipeParameterValidator(processorParameters));
@@ -235,8 +224,7 @@ public class PipePluginAgent {
       }
     }
 
-    final PipeParameters connectorParameters =
-        new PipeParameters(createPipeStatement.getConnectorAttributes());
+    final PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
     final PipeConnector temporaryConnector = reflectConnector(connectorParameters);
     try {
       temporaryConnector.validate(new PipeParameterValidator(connectorParameters));
@@ -249,14 +237,17 @@ public class PipePluginAgent {
     }
   }
 
+  @Override
   public PipeExtractor reflectExtractor(PipeParameters extractorParameters) {
     return pipeExtractorConstructor.reflectPlugin(extractorParameters);
   }
 
+  @Override
   public PipeProcessor reflectProcessor(PipeParameters processorParameters) {
     return pipeProcessorConstructor.reflectPlugin(processorParameters);
   }
 
+  @Override
   public PipeConnector reflectConnector(PipeParameters connectorParameters) {
     return pipeConnectorConstructor.reflectPlugin(connectorParameters);
   }

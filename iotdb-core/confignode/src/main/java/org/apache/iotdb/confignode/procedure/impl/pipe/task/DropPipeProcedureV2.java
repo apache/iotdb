@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
-import org.apache.iotdb.confignode.manager.pipe.execution.PipeConfigNodeSubtaskExecutor;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
@@ -75,14 +74,6 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   protected void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
       throws PipeException {
     LOGGER.info("DropPipeProcedureV2: executeFromWriteConfigNodeConsensus({})", pipeName);
-
-    // Drop subtask of schema pipe here
-    try {
-      PipeConfigNodeSubtaskExecutor.getInstance().deregister(pipeName);
-    } catch (Exception e) {
-      throw new PipeException(
-          String.format("Failed to drop subtask for schema pipe %s.", pipeName), e);
-    }
 
     TSStatus response;
     try {

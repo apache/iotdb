@@ -39,7 +39,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
 
-public class PipePluginAgentTest {
+public class PipePluginDataNodeAgentTest {
   private static final String TMP_DIR = "PipePluginAgentTest_libroot";
 
   @Before
@@ -63,7 +63,7 @@ public class PipePluginAgentTest {
 
   @Test
   public void testPipePluginAgent() {
-    PipePluginAgent agent = new PipePluginAgent();
+    PipePluginDataNodeAgent agent = new PipePluginDataNodeAgent();
     try {
       agent.register(
           new PipePluginMeta(
