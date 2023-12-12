@@ -21,6 +21,7 @@ package org.apache.iotdb.session;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
@@ -90,7 +91,9 @@ import java.util.Map.Entry;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -145,6 +148,11 @@ public class Session implements ISession {
 
   @SuppressWarnings("squid:S3077") // Non-primitive fields should not be "volatile"
   protected volatile Map<TEndPoint, SessionConnection> endPointToSessionConnection;
+
+  // used to update datanodeList periodically
+  protected volatile ScheduledExecutorService executorService;
+
+  protected INodeSupplier availableNodes;
 
   protected boolean enableQueryRedirection = false;
 
@@ -442,6 +450,31 @@ public class Session implements ISession {
       return;
     }
 
+    if (this.executorService != null) {
+      this.executorService.shutdown();
+      this.executorService = null;
+    }
+    if (this.availableNodes != null) {
+      this.availableNodes.close();
+      this.availableNodes = null;
+    }
+
+    this.executorService = Executors.newSingleThreadScheduledExecutor();
+    this.availableNodes =
+        NodesSupplier.createNodeSupplier(
+            getNodeUrls(),
+            executorService,
+            username,
+            password,
+            zoneId,
+            thriftDefaultBufferSize,
+            thriftMaxFrameSize,
+            connectionTimeoutInMs,
+            useSSL,
+            trustStore,
+            trustStorePwd,
+            enableRPCCompression,
+            version.toString());
     this.enableRPCCompression = enableRPCCompression;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
     defaultSessionConnection = constructSessionConnection(this, defaultEndPoint, zoneId);
@@ -454,16 +487,26 @@ public class Session implements ISession {
     }
   }
 
+  private List<TEndPoint> getNodeUrls() {
+    if (defaultEndPoint != null) {
+      return Collections.singletonList(defaultEndPoint);
+    } else {
+      return SessionUtils.parseSeedNodeUrls(nodeUrls);
+    }
+  }
+
   @Override
   public synchronized void open(
       boolean enableRPCCompression,
       int connectionTimeoutInMs,
-      Map<String, TEndPoint> deviceIdToEndpoint)
+      Map<String, TEndPoint> deviceIdToEndpoint,
+      INodeSupplier nodesSupplier)
       throws IoTDBConnectionException {
     if (!isClosed) {
       return;
     }
 
+    this.availableNodes = nodesSupplier;
     this.enableRPCCompression = enableRPCCompression;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
     defaultSessionConnection = constructSessionConnection(this, defaultEndPoint, zoneId);
@@ -490,6 +533,14 @@ public class Session implements ISession {
         defaultSessionConnection.close();
       }
     } finally {
+      // if executorService is null, it means that availableNodes is got from SessionPool and we
+      // shouldn't clean that
+      if (this.executorService != null) {
+        this.executorService.shutdown();
+        this.executorService = null;
+        this.availableNodes.close();
+        this.availableNodes = null;
+      }
       isClosed = true;
     }
   }
@@ -497,9 +548,9 @@ public class Session implements ISession {
   public SessionConnection constructSessionConnection(
       Session session, TEndPoint endpoint, ZoneId zoneId) throws IoTDBConnectionException {
     if (endpoint == null) {
-      return new SessionConnection(session, zoneId);
+      return new SessionConnection(session, zoneId, availableNodes);
     }
-    return new SessionConnection(session, endpoint, zoneId);
+    return new SessionConnection(session, endpoint, zoneId, availableNodes);
   }
 
   @Override
@@ -1131,7 +1182,7 @@ public class Session implements ISession {
   }
 
   // TODO https://issues.apache.org/jira/browse/IOTDB-1399
-  private void removeBrokenSessionConnection(SessionConnection sessionConnection) {
+  public void removeBrokenSessionConnection(SessionConnection sessionConnection) {
     // remove the cached broken leader session
     if (enableRedirection) {
       TEndPoint endPoint = null;

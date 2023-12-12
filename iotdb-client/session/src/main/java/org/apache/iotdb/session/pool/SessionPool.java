@@ -21,6 +21,7 @@ package org.apache.iotdb.session.pool;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
@@ -32,7 +33,9 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
+import org.apache.iotdb.session.NodesSupplier;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.util.SessionUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -44,11 +47,14 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.ZoneId;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 
 /**
  * SessionPool is a wrapper of a Session Set. Using SessionPool, the user do not need to consider
@@ -133,6 +139,11 @@ public class SessionPool implements ISessionPool {
 
   // formatted nodeUrls for logging e.g. "host:port" or "[host:port, host:port, host:port]"
   private final String formattedNodeUrls;
+
+  // used to update datanodeList periodically
+  protected volatile ScheduledExecutorService executorService;
+
+  protected INodeSupplier availableNodes;
 
   private static final String INSERT_RECORD_FAIL = "insertRecord failed";
 
@@ -356,6 +367,22 @@ public class SessionPool implements ISessionPool {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.formattedNodeUrls = String.format("%s:%s", host, port);
+    this.executorService = Executors.newSingleThreadScheduledExecutor();
+    this.availableNodes =
+        NodesSupplier.createNodeSupplier(
+            Collections.singletonList(new TEndPoint(host, port)),
+            executorService,
+            user,
+            password,
+            zoneId,
+            thriftDefaultBufferSize,
+            thriftMaxFrameSize,
+            connectionTimeoutInMs,
+            useSSL,
+            trustStore,
+            trustStorePwd,
+            enableCompression,
+            version.toString());
   }
 
   public SessionPool(
@@ -398,6 +425,22 @@ public class SessionPool implements ISessionPool {
     this.useSSL = useSSL;
     this.trustStore = trustStore;
     this.trustStorePwd = trustStorePwd;
+    this.executorService = Executors.newSingleThreadScheduledExecutor();
+    this.availableNodes =
+        NodesSupplier.createNodeSupplier(
+            Collections.singletonList(new TEndPoint(host, port)),
+            executorService,
+            user,
+            password,
+            zoneId,
+            thriftDefaultBufferSize,
+            thriftMaxFrameSize,
+            connectionTimeoutInMs,
+            useSSL,
+            trustStore,
+            trustStorePwd,
+            enableCompression,
+            version.toString());
   }
 
   @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
@@ -434,6 +477,22 @@ public class SessionPool implements ISessionPool {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.formattedNodeUrls = nodeUrls.toString();
+    this.executorService = Executors.newSingleThreadScheduledExecutor();
+    this.availableNodes =
+        NodesSupplier.createNodeSupplier(
+            SessionUtils.parseSeedNodeUrls(nodeUrls),
+            executorService,
+            user,
+            password,
+            zoneId,
+            thriftDefaultBufferSize,
+            thriftMaxFrameSize,
+            connectionTimeoutInMs,
+            useSSL,
+            trustStore,
+            trustStorePwd,
+            enableCompression,
+            version.toString());
   }
 
   public SessionPool(Builder builder) {
@@ -466,6 +525,22 @@ public class SessionPool implements ISessionPool {
     this.useSSL = builder.useSSL;
     this.trustStore = builder.trustStore;
     this.trustStorePwd = builder.trustStorePwd;
+    this.executorService = Executors.newSingleThreadScheduledExecutor();
+    this.availableNodes =
+        NodesSupplier.createNodeSupplier(
+            SessionUtils.parseSeedNodeUrls(nodeUrls),
+            executorService,
+            user,
+            password,
+            zoneId,
+            thriftDefaultBufferSize,
+            thriftMaxFrameSize,
+            connectionTimeoutInMs,
+            useSSL,
+            trustStore,
+            trustStorePwd,
+            enableCompression,
+            version.toString());
   }
 
   private Session constructNewSession() {
@@ -580,7 +655,7 @@ public class SessionPool implements ISessionPool {
       session = constructNewSession();
 
       try {
-        session.open(enableCompression, connectionTimeoutInMs, deviceIdToEndpoint);
+        session.open(enableCompression, connectionTimeoutInMs, deviceIdToEndpoint, availableNodes);
         // avoid someone has called close() the session pool
         synchronized (this) {
           if (closed) {
@@ -651,6 +726,14 @@ public class SessionPool implements ISessionPool {
         LOGGER.warn(CLOSE_THE_SESSION_FAILED, e);
       }
     }
+    if (this.executorService != null) {
+      this.executorService.shutdown();
+      this.executorService = null;
+    }
+    if (availableNodes != null) {
+      this.availableNodes.close();
+      this.availableNodes = null;
+    }
     LOGGER.info("closing the session pool, cleaning queues...");
     this.closed = true;
     queue.clear();
@@ -677,7 +760,7 @@ public class SessionPool implements ISessionPool {
   private void tryConstructNewSession() {
     Session session = constructNewSession();
     try {
-      session.open(enableCompression, connectionTimeoutInMs, deviceIdToEndpoint);
+      session.open(enableCompression, connectionTimeoutInMs, deviceIdToEndpoint, availableNodes);
       // avoid someone has called close() the session pool
       synchronized (this) {
         if (closed) {
