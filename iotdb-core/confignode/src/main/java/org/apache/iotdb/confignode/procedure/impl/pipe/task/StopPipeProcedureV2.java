@@ -84,7 +84,7 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     LOGGER.info("StopPipeProcedureV2: executeFromWriteConfigNodeConsensus({})", pipeName);
 
     if (canSkipSubsequentStages) {
-      LOGGER.info("Pipe status is STOPPED, skip executeFromWriteConfigNodeConsensus({})", pipeName);
+      LOGGER.warn("Pipe status is STOPPED, skip executeFromWriteConfigNodeConsensus({})", pipeName);
       return;
     }
 
@@ -109,7 +109,7 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     LOGGER.info("StopPipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 
     if (canSkipSubsequentStages) {
-      LOGGER.info("Pipe status is STOPPED, skip executeFromOperateOnDataNodes({})", pipeName);
+      LOGGER.warn("Pipe status is STOPPED, skip executeFromOperateOnDataNodes({})", pipeName);
       return;
     }
 
