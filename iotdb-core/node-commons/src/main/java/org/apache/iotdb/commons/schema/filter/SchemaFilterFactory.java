@@ -45,7 +45,7 @@ public class SchemaFilterFactory {
     return new ViewTypeFilter(viewType);
   }
 
-  public static SchemaFilter createTemplateIdFilter(String templateName, boolean isEqual) {
+  public static SchemaFilter createTemplateNameFilter(String templateName, boolean isEqual) {
     return new TemplateFilter(templateName, isEqual);
   }
 

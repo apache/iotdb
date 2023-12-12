@@ -38,6 +38,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.util.List;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.STRING_NULL;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
 
 public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
@@ -98,7 +99,7 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
         .getColumnBuilder(0)
         .writeBinary(new Binary(device.getFullPath(), TSFileConfig.STRING_CHARSET));
 
-    String TemplateName = "null";
+    String TemplateName = STRING_NULL;
     int TemplateId = device.getTemplateId();
     if (TemplateId != -1) {
       TemplateName = ClusterTemplateManager.getInstance().getTemplate(TemplateId).getName();
