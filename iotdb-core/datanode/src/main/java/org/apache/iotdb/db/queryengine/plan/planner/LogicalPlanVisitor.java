@@ -564,7 +564,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     WritePlanNode node =
         (WritePlanNode) pipeEnrichedStatement.getInnerStatement().accept(this, context);
 
-    if (node instanceof InsertNode) {
+    if (node instanceof LoadTsFileNode) {
+      return node;
+    } else if (node instanceof InsertNode) {
       return new PipeEnrichedInsertNode((InsertNode) node);
     } else if (node instanceof DeleteDataNode) {
       return new PipeEnrichedDeleteDataNode((DeleteDataNode) node);

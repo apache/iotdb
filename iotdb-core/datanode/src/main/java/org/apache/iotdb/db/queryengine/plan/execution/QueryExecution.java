@@ -318,9 +318,11 @@ public class QueryExecution implements IQueryExecution {
 
   private void schedule() {
     final long startTime = System.nanoTime();
-    if (rawStatement instanceof PipeEnrichedStatement
-        && ((PipeEnrichedStatement) rawStatement).getInnerStatement()
-            instanceof LoadTsFileStatement) {
+    boolean isPipeEnrichedTsFileLoad =
+        rawStatement instanceof PipeEnrichedStatement
+            && ((PipeEnrichedStatement) rawStatement).getInnerStatement()
+                instanceof LoadTsFileStatement;
+    if (rawStatement instanceof LoadTsFileStatement || isPipeEnrichedTsFileLoad) {
       this.scheduler =
           new LoadTsFileScheduler(
               distributedPlan,
@@ -328,7 +330,7 @@ public class QueryExecution implements IQueryExecution {
               stateMachine,
               syncInternalServiceClientManager,
               partitionFetcher,
-              true);
+              isPipeEnrichedTsFileLoad);
       this.scheduler.start();
       return;
     }

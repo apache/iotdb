@@ -37,8 +37,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * This class aims to mark the {@link DeleteDataNode} to prevent forwarding pipe deletion. The
- * handling logic is defined in:
+ * This class aims to mark the {@link DeleteDataNode} to enable selectively forwarding pipe
+ * deletion. The handling logic is defined in:
  *
  * <p>1.{@link RegionWriteExecutor}, to serialize and reach the target data region.
  *

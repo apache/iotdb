@@ -30,6 +30,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.Dea
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.AlterLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.DeleteLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -37,9 +39,10 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 /**
- * This class aims to mark the {@link PlanNode} of schema deletion to prevent forwarding pipe
- * deletions. The handling logic is defined only in {@link SchemaExecutionVisitor} to execute
- * deletion logic and mark it as received, since the request does not need to pass {@link
+ * This class aims to mark the {@link PlanNode} of schema operation assigned by configNode to
+ * selectively forward the operations, {@link Statement}s of which extending {@link
+ * IConfigStatement}. The handling logic is defined only in {@link SchemaExecutionVisitor} to
+ * execute deletion logic and mark it as received, since the request does not need to pass {@link
  * RegionWriteExecutor} and is assigned directly to regions by configNode.
  *
  * <p>
@@ -55,104 +58,104 @@ import java.util.List;
  * <p>Intermediate nodes like {@link ConstructSchemaBlackListNode} will not be included since they
  * will not be collected by pipe.
  */
-public class PipeEnrichedDeleteSchemaNode extends PlanNode {
+public class PipeEnrichedConfigSchemaNode extends PlanNode {
 
-  private final PlanNode deleteSchemaNode;
+  private final PlanNode configSchemaNode;
 
-  public PipeEnrichedDeleteSchemaNode(PlanNode schemaWriteNode) {
-    super(schemaWriteNode.getPlanNodeId());
-    this.deleteSchemaNode = schemaWriteNode;
+  public PipeEnrichedConfigSchemaNode(PlanNode configSchemaNode) {
+    super(configSchemaNode.getPlanNodeId());
+    this.configSchemaNode = configSchemaNode;
   }
 
-  public PlanNode getDeleteSchemaNode() {
-    return deleteSchemaNode;
+  public PlanNode getConfigSchemaNode() {
+    return configSchemaNode;
   }
 
   @Override
   public boolean isGeneratedByPipe() {
-    return deleteSchemaNode.isGeneratedByPipe();
+    return configSchemaNode.isGeneratedByPipe();
   }
 
   @Override
   public void markAsGeneratedByPipe() {
-    deleteSchemaNode.markAsGeneratedByPipe();
+    configSchemaNode.markAsGeneratedByPipe();
   }
 
   @Override
   public PlanNodeId getPlanNodeId() {
-    return deleteSchemaNode.getPlanNodeId();
+    return configSchemaNode.getPlanNodeId();
   }
 
   @Override
   public void setPlanNodeId(PlanNodeId id) {
-    deleteSchemaNode.setPlanNodeId(id);
+    configSchemaNode.setPlanNodeId(id);
   }
 
   @Override
   public List<PlanNode> getChildren() {
-    return deleteSchemaNode.getChildren();
+    return configSchemaNode.getChildren();
   }
 
   @Override
   public void addChild(PlanNode child) {
-    deleteSchemaNode.addChild(child);
+    configSchemaNode.addChild(child);
   }
 
   @Override
   public PlanNode clone() {
-    return new PipeEnrichedDeleteSchemaNode(deleteSchemaNode.clone());
+    return new PipeEnrichedConfigSchemaNode(configSchemaNode.clone());
   }
 
   @Override
   public PlanNode createSubNode(int subNodeId, int startIndex, int endIndex) {
-    return new PipeEnrichedDeleteSchemaNode(
-        deleteSchemaNode.createSubNode(subNodeId, startIndex, endIndex));
+    return new PipeEnrichedConfigSchemaNode(
+        configSchemaNode.createSubNode(subNodeId, startIndex, endIndex));
   }
 
   @Override
   public PlanNode cloneWithChildren(List<PlanNode> children) {
-    return new PipeEnrichedDeleteSchemaNode(deleteSchemaNode.cloneWithChildren(children));
+    return new PipeEnrichedConfigSchemaNode(configSchemaNode.cloneWithChildren(children));
   }
 
   @Override
   public int allowedChildCount() {
-    return deleteSchemaNode.allowedChildCount();
+    return configSchemaNode.allowedChildCount();
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return deleteSchemaNode.getOutputColumnNames();
+    return configSchemaNode.getOutputColumnNames();
   }
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitPipeEnrichedDeleteSchema(this, context);
+    return visitor.visitPipeEnrichedConfigSchema(this, context);
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.PIPE_ENRICHED_DELETE_SCHEMA.serialize(byteBuffer);
-    deleteSchemaNode.serialize(byteBuffer);
+    configSchemaNode.serialize(byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.PIPE_ENRICHED_DELETE_SCHEMA.serialize(stream);
-    deleteSchemaNode.serialize(stream);
+    configSchemaNode.serialize(stream);
   }
 
-  public static PipeEnrichedDeleteSchemaNode deserialize(ByteBuffer buffer) {
-    return new PipeEnrichedDeleteSchemaNode(PlanNodeType.deserialize(buffer));
+  public static PipeEnrichedConfigSchemaNode deserialize(ByteBuffer buffer) {
+    return new PipeEnrichedConfigSchemaNode(PlanNodeType.deserialize(buffer));
   }
 
   @Override
   public boolean equals(Object o) {
-    return o instanceof PipeEnrichedDeleteSchemaNode
-        && deleteSchemaNode.equals(((PipeEnrichedDeleteSchemaNode) o).deleteSchemaNode);
+    return o instanceof PipeEnrichedConfigSchemaNode
+        && configSchemaNode.equals(((PipeEnrichedConfigSchemaNode) o).configSchemaNode);
   }
 
   @Override
   public int hashCode() {
-    return deleteSchemaNode.hashCode();
+    return configSchemaNode.hashCode();
   }
 }

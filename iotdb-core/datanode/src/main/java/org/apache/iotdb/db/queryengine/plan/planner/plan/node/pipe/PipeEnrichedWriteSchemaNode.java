@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.Int
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalCreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -46,8 +47,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * This class aims to mark the {@link WritePlanNode} of schema writing to prevent forwarding pipe
- * insertions. The handling logic is defined in:
+ * This class aims to mark the {@link WritePlanNode} of schema writing to selectively forward pipe
+ * schema operations, {@link Statement}s of which passing through {@link
+ * SchemaExecutionVisitor}. The handling logic is defined in:
  *
  * <p>1.{@link RegionWriteExecutor}, to serialize and reach the target schema region.
  *
