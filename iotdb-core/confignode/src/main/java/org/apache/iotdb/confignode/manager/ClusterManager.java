@@ -51,6 +51,10 @@ public class ClusterManager {
     generateClusterId();
   }
 
+  public String getClusterId() {
+    return clusterInfo.getClusterId();
+  }
+
   private void generateClusterId() {
     String clusterId = String.valueOf(UUID.randomUUID());
     UpdateClusterIdPlan updateClusterIdPlan = new UpdateClusterIdPlan(clusterId);

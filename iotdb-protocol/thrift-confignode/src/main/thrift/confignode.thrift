@@ -21,6 +21,12 @@ include "common.thrift"
 namespace java org.apache.iotdb.confignode.rpc.thrift
 namespace py iotdb.thrift.confignode
 
+// Cluster
+struct TGetClusterIdResp {
+  1: required common.TSStatus status
+  2: required string clusterId
+}
+
 // DataNode
 struct TSystemConfigurationResp {
   1: required common.TSStatus status
@@ -812,6 +818,15 @@ enum TActivationControl {
 
 
 service IConfigNodeRPCService {
+
+  // ======================================================
+  // Cluster
+  // ======================================================
+
+  /**
+   * Get cluster ID
+   */
+  TGetClusterIdResp getClusterId()
 
   // ======================================================
   // DataNode

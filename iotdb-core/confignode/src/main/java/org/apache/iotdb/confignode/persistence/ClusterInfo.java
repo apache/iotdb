@@ -91,5 +91,7 @@ public class ClusterInfo implements SnapshotProcessor {
     try (FileInputStream fileInputStream = new FileInputStream(snapshotFile)) {
       clusterId = ReadWriteIOUtils.readString(fileInputStream);
     }
+
+    LOGGER.info("clusterID has been recovered from snapshot: {}", clusterId);
   }
 }
