@@ -19,11 +19,10 @@
 
 package org.apache.iotdb.tsfile.read.filter.operator;
 
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.file.metadata.IMetadata;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.OperatorType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -32,7 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class Not implements Filter {
+public class Not extends Filter {
 
   private final Filter filter;
 
@@ -45,7 +44,7 @@ public class Not implements Filter {
   }
 
   public Not(ByteBuffer buffer) {
-    this(Filter.deserialize(buffer));
+    this.filter = Objects.requireNonNull(Filter.deserialize(buffer), "filter cannot be null");
   }
 
   @Override
@@ -54,23 +53,32 @@ public class Not implements Filter {
   }
 
   @Override
-  public boolean satisfy(Statistics statistics) {
-    throw new UnsupportedOperationException(CONTAIN_NOT_ERR_MSG + this);
+  public boolean satisfyRow(long time, Object[] values) {
+    return !filter.satisfyRow(time, values);
   }
 
   @Override
-  public boolean allSatisfy(Statistics statistics) {
-    throw new UnsupportedOperationException(CONTAIN_NOT_ERR_MSG + this);
+  public boolean canSkip(IMetadata metadata) {
+    // [not filter.canSkip(block)] is not equivalent to [notFilter.canSkip(block)]
+    // e.g. block min = 5, max = 15, filter = [value > 10], notFilter = [value <= 10)]
+    //  not filter.canSkip(block) = true (expected false), notFilter.canSkip(block) = false
+    throw new IllegalArgumentException(CONTAIN_NOT_ERR_MSG + this);
+  }
+
+  @Override
+  public boolean allSatisfy(IMetadata metadata) {
+    // same as canSkip
+    throw new IllegalArgumentException(CONTAIN_NOT_ERR_MSG + this);
   }
 
   @Override
   public boolean satisfyStartEndTime(long startTime, long endTime) {
-    throw new UnsupportedOperationException(CONTAIN_NOT_ERR_MSG + this);
+    throw new IllegalArgumentException(CONTAIN_NOT_ERR_MSG + this);
   }
 
   @Override
   public boolean containStartEndTime(long startTime, long endTime) {
-    throw new UnsupportedOperationException(CONTAIN_NOT_ERR_MSG + this);
+    throw new IllegalArgumentException(CONTAIN_NOT_ERR_MSG + this);
   }
 
   public Filter getFilter() {
@@ -113,7 +121,7 @@ public class Not implements Filter {
 
   @Override
   public void serialize(DataOutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(getOperatorType().ordinal(), outputStream);
+    super.serialize(outputStream);
     filter.serialize(outputStream);
   }
 

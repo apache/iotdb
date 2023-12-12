@@ -33,8 +33,8 @@ import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.read.filter.factory.TimeFilter;
-import org.apache.iotdb.tsfile.read.filter.factory.ValueFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilterApi;
+import org.apache.iotdb.tsfile.read.filter.factory.ValueFilterApi;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
@@ -73,8 +73,8 @@ public class QueryExecutorTest {
 
   @Test
   public void query1() throws IOException {
-    Filter filter = TimeFilter.lt(1480562618100L);
-    Filter filter2 = ValueFilter.gt(new Binary("dog", TSFileConfig.STRING_CHARSET));
+    Filter filter = TimeFilterApi.lt(1480562618100L);
+    Filter filter2 = ValueFilterApi.gt(new Binary("dog", TSFileConfig.STRING_CHARSET));
 
     IExpression IExpression =
         BinaryExpression.and(
@@ -131,7 +131,8 @@ public class QueryExecutorTest {
 
     IExpression IExpression =
         new GlobalTimeExpression(
-            FilterFactory.and(TimeFilter.gtEq(1480562618100L), TimeFilter.lt(1480562618200L)));
+            FilterFactory.and(
+                TimeFilterApi.gtEq(1480562618100L), TimeFilterApi.lt(1480562618200L)));
     QueryExpression queryExpression =
         QueryExpression.create()
             .addSelectedPath(new Path("d1", "s1", true))

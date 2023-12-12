@@ -17,34 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.read.filter.operator.base;
+package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception;
 
-import java.util.Objects;
-import java.util.Set;
+public class CompactionLastTimeCheckFailedException extends RuntimeException {
 
-/* base class for In, NotIn */
-public abstract class ColumnSetFilter<T> {
-
-  protected final Set<T> candidates;
-
-  protected ColumnSetFilter(Set<T> candidates) {
-    this.candidates = Objects.requireNonNull(candidates, "candidates cannot be null");
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    ColumnSetFilter<?> that = (ColumnSetFilter<?>) o;
-    return candidates.equals(that.candidates);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(candidates);
+  public CompactionLastTimeCheckFailedException(
+      String path, long currentTimestamp, long lastTimestamp) {
+    super(
+        "Timestamp of the current point of "
+            + path
+            + " is "
+            + currentTimestamp
+            + ", which should be later than the last time "
+            + lastTimestamp);
   }
 }

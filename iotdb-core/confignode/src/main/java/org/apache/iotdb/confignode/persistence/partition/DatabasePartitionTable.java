@@ -49,6 +49,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
@@ -591,6 +592,13 @@ public class DatabasePartitionTable {
       }
     }
     return dataRegionIds;
+  }
+
+  public Optional<TConsensusGroupType> getRegionType(int regionId) {
+    return regionGroupMap.keySet().stream()
+        .filter(tConsensusGroupId -> tConsensusGroupId.getId() == regionId)
+        .map(TConsensusGroupId::getType)
+        .findFirst();
   }
 
   /**

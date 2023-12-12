@@ -365,7 +365,7 @@ public class LimitOffsetPushDownTest {
   public void testGroupByTimePushDown10() {
     String sql =
         "select avg(s1),sum(s2) from root.** group by ([4, 899), 50ms, 25ms) offset 2 limit 3";
-    checkGroupByTimePushDown(sql, 54, 154, 0, 0);
+    checkGroupByTimePushDown(sql, 54, 154, 3, 0);
   }
 
   @Test
@@ -461,7 +461,7 @@ public class LimitOffsetPushDownTest {
         "select avg(s1) from root.** group by ([4, 199), 50ms, 25ms) offset 9 limit 5 align by device";
     List<String> deviceSet = new ArrayList<>();
     deviceSet.add("root.sg.d2");
-    checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 0, 0, 29, 179);
+    checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 5, 0, 29, 179);
   }
 
   @Test
@@ -510,7 +510,7 @@ public class LimitOffsetPushDownTest {
         "select avg(s1) from root.** group by ([4, 199), 50ms, 25ms) order by device, time desc offset 9 limit 5 align by device";
     List<String> deviceSet = new ArrayList<>();
     deviceSet.add("root.sg.d2");
-    checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 0, 0, 54, 199);
+    checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 5, 0, 54, 199);
   }
 
   @Test
@@ -519,7 +519,7 @@ public class LimitOffsetPushDownTest {
         "select avg(s1) from root.** group by ([4, 199), 50ms, 25ms) order by device desc, time desc offset 9 limit 5 align by device";
     List<String> deviceSet = new ArrayList<>();
     deviceSet.add("root.sg.d2");
-    checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 0, 0, 54, 199);
+    checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 5, 0, 54, 199);
   }
 
   @Test
@@ -555,7 +555,7 @@ public class LimitOffsetPushDownTest {
         "select avg(s1) from root.** group by ([4, 199), 50ms, 25ms) order by device desc limit 1 offset 8 align by device";
     List<String> deviceSet = new ArrayList<>();
     deviceSet.add("root.sg.d2");
-    checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 0, 0, 4, 54);
+    checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 1, 0, 4, 54);
   }
 
   @Test

@@ -66,9 +66,9 @@ import java.util.stream.Collectors;
  * State transition diagram of a pipe task:
  *
  * <p><code>
- * |----------------|                     |---------| --> start pipe --> |---------|                   |---------|
- * | initial status | --> create pipe --> | STOPPED |                    | RUNNING | --> drop pipe --> | DROPPED |
- * |----------------|                     |---------| <-- stop  pipe <-- |---------|                   |---------|
+ * |----------------|                     |---------| --> stop  pipe --> |---------|                   |---------|
+ * | initial status | --> create pipe --> | RUNNING |                    | STOPPED | --> drop pipe --> | DROPPED |
+ * |----------------|                     |---------| <-- start pipe <-- |---------|                   |---------|
  *                                             |                                                            |
  *                                             | ----------------------> drop pipe -----------------------> |
  * </code>

@@ -691,6 +691,18 @@ public class IoTDBDescriptor {
                 "candidate_compaction_task_queue_size",
                 Integer.toString(conf.getCandidateCompactionTaskQueueSize()))));
 
+    conf.setInnerCompactionTaskSelectionDiskRedundancy(
+        Double.parseDouble(
+            properties.getProperty(
+                "inner_compaction_task_selection_disk_redundancy",
+                Double.toString(conf.getInnerCompactionTaskSelectionDiskRedundancy()))));
+
+    conf.setInnerCompactionTaskSelectionModsFileThreshold(
+        Long.parseLong(
+            properties.getProperty(
+                "inner_compaction_task_selection_mods_file_threshold",
+                Long.toString(conf.getInnerCompactionTaskSelectionModsFileThreshold()))));
+
     conf.setEnablePartialInsert(
         Boolean.parseBoolean(
             properties.getProperty(
@@ -1197,6 +1209,18 @@ public class IoTDBDescriptor {
     conf.setEnableCrossSpaceCompaction(newConfigEnableCrossSpaceCompaction);
     conf.setEnableSeqSpaceCompaction(newConfigEnableSeqSpaceCompaction);
     conf.setEnableUnseqSpaceCompaction(newConfigEnableUnseqSpaceCompaction);
+
+    conf.setInnerCompactionTaskSelectionDiskRedundancy(
+        Double.parseDouble(
+            properties.getProperty(
+                "inner_compaction_task_selection_disk_redundancy",
+                Double.toString(conf.getInnerCompactionTaskSelectionDiskRedundancy()))));
+
+    conf.setInnerCompactionTaskSelectionModsFileThreshold(
+        Long.parseLong(
+            properties.getProperty(
+                "inner_compaction_task_selection_mods_file_threshold",
+                Long.toString(conf.getInnerCompactionTaskSelectionModsFileThreshold()))));
   }
 
   private void loadWALHotModifiedProps(Properties properties) {

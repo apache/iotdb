@@ -267,11 +267,10 @@ public class LimitOffsetPushDown implements PlanOptimizer {
     long endTime = groupByTimeComponent.getEndTime();
     long step = groupByTimeComponent.getSlidingStep().nonMonthDuration;
     long interval = groupByTimeComponent.getInterval().nonMonthDuration;
-
+    long limitSize = queryStatement.getRowLimit();
+    long offsetSize = queryStatement.getRowOffset();
     long size = (endTime - startTime + step - 1) / step;
-    if (size > queryStatement.getRowOffset()) {
-      long limitSize = queryStatement.getRowLimit();
-      long offsetSize = queryStatement.getRowOffset();
+    if (size > offsetSize) {
       if (queryStatement.getResultTimeOrder() == Ordering.ASC) {
         startTime = startTime + offsetSize * step;
       } else {
@@ -287,7 +286,9 @@ public class LimitOffsetPushDown implements PlanOptimizer {
       // finish the query, resultSet is empty
       queryStatement.setResultSetEmpty(true);
     }
-    queryStatement.setRowLimit(0);
+    // If windows overlap, we need to keep LIMIT because the window size can be less than interval
+    // which may result in more windows than we need in the target time range.
+    queryStatement.setRowLimit(interval > step ? limitSize : 0);
     queryStatement.setRowOffset(0);
   }
 
