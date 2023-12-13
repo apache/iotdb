@@ -59,6 +59,15 @@ public class TimeDuration implements Serializable {
         + nonMonthDuration;
   }
 
+  public boolean isGreaterThan(TimeDuration right) {
+    if (this.monthDuration > right.monthDuration) {
+      return true;
+    } else if (this.monthDuration == right.monthDuration) {
+      return this.nonMonthDuration > right.nonMonthDuration;
+    }
+    return false;
+  }
+
   /** Think month as 28 days. */
   public long getMinTotalDuration(TimeUnit currPrecision) {
     return currPrecision.convert(monthDuration * 28 * 86400_000L, TimeUnit.MILLISECONDS)
