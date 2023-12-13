@@ -106,8 +106,6 @@ public class DataNodeRegionManager {
   public TSStatus createSchemaRegion(TRegionReplicaSet regionReplicaSet, String storageGroup) {
     TSStatus tsStatus;
     SchemaRegionId schemaRegionId = new SchemaRegionId(regionReplicaSet.getRegionId().getId());
-    final String failMessagePattern = "Create Schema Region {} failed because {}.";
-    String failReason;
     try {
       PartialPath storageGroupPartitionPath = new PartialPath(storageGroup);
       schemaEngine.createSchemaRegion(storageGroupPartitionPath, schemaRegionId);

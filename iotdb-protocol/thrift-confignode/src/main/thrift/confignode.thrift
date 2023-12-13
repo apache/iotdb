@@ -392,7 +392,6 @@ struct TClusterParameters {
   16: optional string schemaEngineMode
   17: optional i32 tagAttributeTotalSize
   18: optional i32 databaseLimitThreshold
-  19: optional string clusterId
 }
 
 struct TConfigNodeRegisterReq {
