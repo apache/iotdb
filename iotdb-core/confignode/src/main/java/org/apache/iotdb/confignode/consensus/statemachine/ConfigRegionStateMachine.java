@@ -236,7 +236,6 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     configManager.checkUserPathPrivilege();
     // Add Metric after leader ready
     configManager.addMetrics();
-    configManager.getClusterManager().checkClusterId();
 
     // we do cq recovery async for two reasons:
     // 1. For performance: cq recovery may be time-consuming, we use another thread to do it in
@@ -249,6 +248,10 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         () -> configManager.getPipeManager().getPipeRuntimeCoordinator().startPipeMetaSync());
     threadPool.submit(
         () -> configManager.getPipeManager().getPipeRuntimeCoordinator().startPipeHeartbeat());
+
+    // To adapt old version, we check cluster ID after state machine has been fully recovered.
+    // Do check async because sync will be slow and block every other things.
+    threadPool.submit(() -> configManager.getClusterManager().checkClusterId());
   }
 
   @Override

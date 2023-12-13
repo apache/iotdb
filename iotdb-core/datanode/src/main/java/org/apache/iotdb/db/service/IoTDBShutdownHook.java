@@ -55,7 +55,7 @@ public class IoTDBShutdownHook extends Thread {
 
   @Override
   public void run() {
-    logger.info("IoTDB exiting...");
+    logger.info("DataNode exiting...");
     // stop external rpc service firstly.
     RPCService.getInstance().stop();
 
@@ -137,7 +137,7 @@ public class IoTDBShutdownHook extends Thread {
 
     if (logger.isInfoEnabled()) {
       logger.info(
-          "IoTDB exits. Jvm memory usage: {}",
+          "DataNode exits. Jvm memory usage: {}",
           MemUtils.bytesCntToStr(
               Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()));
     }

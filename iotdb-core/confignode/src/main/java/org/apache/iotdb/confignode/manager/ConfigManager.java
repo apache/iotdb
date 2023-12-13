@@ -204,15 +204,16 @@ public class ConfigManager implements IManager {
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private static final CommonConfig COMMON_CONF = CommonDescriptor.getInstance().getConfig();
 
-  private final ClusterManager clusterManager;
-
   /** Manage PartitionTable read/write requests through the ConsensusLayer. */
   private final AtomicReference<ConsensusManager> consensusManager = new AtomicReference<>();
+
+  /** Manage cluster-level info */
+  private final ClusterManager clusterManager;
 
   /** Manage cluster node. */
   private final NodeManager nodeManager;
 
-  /** Manage cluster schemaengine. */
+  /** Manage cluster schema engine. */
   private final ClusterSchemaManager clusterSchemaManager;
 
   /** Manage cluster regions and partitions. */
@@ -277,8 +278,8 @@ public class ConfigManager implements IManager {
             quotaInfo);
     this.stateMachine = new ConfigRegionStateMachine(this, executor);
 
-    this.clusterManager = new ClusterManager(this, clusterInfo);
     // Build the manager module
+    this.clusterManager = new ClusterManager(this, clusterInfo);
     this.nodeManager = new NodeManager(this, nodeInfo);
     this.clusterSchemaManager =
         new ClusterSchemaManager(
