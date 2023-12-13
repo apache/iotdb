@@ -499,7 +499,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
-          Collections.singleton(succeedNum.get() + ","));
+          Collections.singleton(succeedNum.get() + ","),
+          1200);
     }
   }
 

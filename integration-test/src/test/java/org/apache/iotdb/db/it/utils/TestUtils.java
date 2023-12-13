@@ -630,11 +630,20 @@ public class TestUtils {
 
   public static void assertDataOnEnv(
       BaseEnv env, String sql, String expectedHeader, Set<String> expectedResSet) {
+    assertDataOnEnv(env, sql, expectedHeader, expectedResSet, 600);
+  }
+
+  public static void assertDataOnEnv(
+      BaseEnv env,
+      String sql,
+      String expectedHeader,
+      Set<String> expectedResSet,
+      long timeoutSeconds) {
     try (Connection connection = env.getConnection();
         Statement statement = connection.createStatement()) {
       // Keep retrying if there are execution failure
       await()
-          .atMost(600, TimeUnit.SECONDS)
+          .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
                 try {
