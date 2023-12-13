@@ -351,7 +351,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                     aggregationExpressions,
                     sourceTransformExpressions,
                     analysis.getCrossGroupByExpressions(),
-                    deviceViewInputIndexes);
+                    deviceViewInputIndexes,
+                    queryStatement.isOutputEndTime());
       }
 
       if (queryStatement.isGroupByTime() && queryStatement.isOutputEndTime()) {

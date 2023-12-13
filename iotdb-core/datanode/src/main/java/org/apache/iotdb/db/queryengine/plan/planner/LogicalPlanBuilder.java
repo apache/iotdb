@@ -450,9 +450,10 @@ public class LogicalPlanBuilder {
       Set<Expression> aggregationExpressions,
       Set<Expression> sourceTransformExpressions,
       LinkedHashMap<Expression, Set<Expression>> crossGroupByExpressions,
-      List<Integer> deviceViewInputIndexes) {
+      List<Integer> deviceViewInputIndexes,
+      boolean outputEndTime) {
     checkArgument(
-        aggregationExpressions.size() == deviceViewInputIndexes.size(),
+        aggregationExpressions.size() <= deviceViewInputIndexes.size(),
         "Each aggregate should correspond to a column of output.");
 
     boolean needCheckAscending = groupByTimeParameter == null;
@@ -461,7 +462,8 @@ public class LogicalPlanBuilder {
     Map<AggregationDescriptor, Integer> aggregationToIndexMap = new HashMap<>();
     Map<PartialPath, List<AggregationDescriptor>> countTimeAggregations = new HashMap<>();
 
-    int index = 0;
+    // If need output endTime, the first index is used by __endTime
+    int index = outputEndTime ? 1 : 0;
     for (Expression aggregationExpression : aggregationExpressions) {
       AggregationDescriptor aggregationDescriptor =
           createAggregationDescriptor(
@@ -489,6 +491,9 @@ public class LogicalPlanBuilder {
     if (!curStep.isOutputPartial()) {
       // update measurementIndexes
       deviceViewInputIndexes.clear();
+      if (outputEndTime) {
+        deviceViewInputIndexes.add(1);
+      }
       deviceViewInputIndexes.addAll(
           sourceNodeList.stream()
               .map(
