@@ -41,17 +41,12 @@ public class ChunkReader extends AbstractChunkReader {
   private final ByteBuffer chunkDataBuffer;
   private final List<TimeRange> deleteIntervalList;
 
-  private final Decoder valueDecoder;
-
   @SuppressWarnings("unchecked")
   public ChunkReader(Chunk chunk, long readStopTime, Filter queryFilter) throws IOException {
     super(readStopTime, queryFilter);
     this.chunkHeader = chunk.getHeader();
     this.chunkDataBuffer = chunk.getData();
     this.deleteIntervalList = chunk.getDeleteIntervalList();
-
-    this.valueDecoder =
-        Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
 
     initAllPageReaders(chunk.getChunkStatistic());
   }
@@ -138,7 +133,7 @@ public class ChunkReader extends AbstractChunkReader {
             pageHeader,
             pageData,
             chunkHeader.getDataType(),
-            valueDecoder,
+            Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType()),
             defaultTimeDecoder,
             queryFilter);
     reader.setDeleteIntervalList(deleteIntervalList);
