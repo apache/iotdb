@@ -16,18 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode;
 
-import org.apache.iotdb.commons.schema.node.IMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.CacheEntry;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockEntry;
+package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock;
 
-public interface ICachedMNode extends IMNode<ICachedMNode> {
-  CacheEntry getCacheEntry();
+import java.util.concurrent.atomic.AtomicInteger;
 
-  void setCacheEntry(CacheEntry cacheEntry);
+public class LockEntry {
 
-  LockEntry getLockEntry();
+  private final AtomicInteger pinSemaphore = new AtomicInteger(0);
 
-  void setLockEntry(LockEntry lockEntry);
+  private final StampedWriterPreferredLock lock = new StampedWriterPreferredLock();
+
+  public void pin() {
+    pinSemaphore.getAndIncrement();
+  }
+
+  public void unpin() {
+    pinSemaphore.getAndDecrement();
+  }
+
+  public boolean isPinned() {
+    return pinSemaphore.get() > 0;
+  }
+
+  public StampedWriterPreferredLock getLock() {
+    return lock;
+  }
 }

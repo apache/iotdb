@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.CachedMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.ICacheManager;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.IReleaseFlushStrategy;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaFile;
@@ -101,12 +102,15 @@ public class Scheduler {
                               int regionId = entry.getKey();
                               ICacheManager cacheManager = store.getCacheManager();
                               ISchemaFile file = store.getSchemaFile();
+                              LockManager lockManager = store.getLockManager();
                               long startTime = System.currentTimeMillis();
                               PBTreeFlushExecutor flushExecutor;
                               IDatabaseMNode<ICachedMNode> dbNode =
                                   cacheManager.collectUpdatedStorageGroupMNodes();
                               if (dbNode != null) {
-                                flushExecutor = new PBTreeFlushExecutor(dbNode, cacheManager, file);
+                                flushExecutor =
+                                    new PBTreeFlushExecutor(
+                                        dbNode, cacheManager, file, lockManager);
                                 try {
                                   flushExecutor.flushDatabase();
                                 } catch (IOException e) {
@@ -119,7 +123,10 @@ public class Scheduler {
                               }
                               flushExecutor =
                                   new PBTreeFlushExecutor(
-                                      cacheManager.collectVolatileSubtrees(), cacheManager, file);
+                                      cacheManager.collectVolatileSubtrees(),
+                                      cacheManager,
+                                      file,
+                                      lockManager);
                               try {
                                 flushExecutor.flushVolatileNodes();
                               } catch (MetadataException e) {
@@ -196,13 +203,14 @@ public class Scheduler {
             CachedMTreeStore store = regionToStore.get(regionId);
             ICacheManager cacheManager = store.getCacheManager();
             ISchemaFile file = store.getSchemaFile();
+            LockManager lockManager = store.getLockManager();
             List<ICachedMNode> nodesToFlush = new ArrayList<>();
             PBTreeFlushExecutor flushExecutor;
             long startTime = System.currentTimeMillis();
             try {
               IDatabaseMNode<ICachedMNode> dbNode = cacheManager.collectUpdatedStorageGroupMNodes();
               if (dbNode != null) {
-                flushExecutor = new PBTreeFlushExecutor(dbNode, cacheManager, file);
+                flushExecutor = new PBTreeFlushExecutor(dbNode, cacheManager, file, lockManager);
                 flushExecutor.flushDatabase();
                 remainToFlush.decrementAndGet();
               }
@@ -213,7 +221,8 @@ public class Scheduler {
                   break;
                 }
               }
-              flushExecutor = new PBTreeFlushExecutor(nodesToFlush, cacheManager, file);
+              flushExecutor =
+                  new PBTreeFlushExecutor(nodesToFlush.iterator(), cacheManager, file, lockManager);
               flushExecutor.flushVolatileNodes();
             } catch (MetadataException | IOException e) {
               LOGGER.warn(

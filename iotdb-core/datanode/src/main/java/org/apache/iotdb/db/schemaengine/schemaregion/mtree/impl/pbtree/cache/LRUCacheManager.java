@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache;
 
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.MemManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
@@ -33,8 +34,8 @@ public class LRUCacheManager extends CacheManager {
 
   private final LRUCacheList[] lruCacheLists = new LRUCacheList[NUM_OF_LIST];
 
-  public LRUCacheManager(MemManager memManager) {
-    super(memManager);
+  public LRUCacheManager(MemManager memManager, LockManager lockManager) {
+    super(memManager, lockManager);
     for (int i = 0; i < NUM_OF_LIST; i++) {
       lruCacheLists[i] = new LRUCacheList();
     }
@@ -46,13 +47,6 @@ public class LRUCacheManager extends CacheManager {
     getTargetCacheList(lruCacheEntry).updateCacheStatusAfterAccess(lruCacheEntry);
   }
 
-  // MNode update operation like node replace may reset the mapping between cacheEntry and node,
-  // thus it should be updated
-  @Override
-  protected void updateCacheStatusAfterUpdate(CacheEntry cacheEntry, ICachedMNode node) {
-    getAsLRUCacheEntry(cacheEntry).setNode(node);
-  }
-
   @Override
   protected void initCacheEntryForNode(ICachedMNode node) {
     LRUCacheEntry cacheEntry = new LRUCacheEntry(node);
@@ -60,15 +54,9 @@ public class LRUCacheManager extends CacheManager {
   }
 
   @Override
-  protected boolean isInNodeCache(CacheEntry cacheEntry) {
-    LRUCacheEntry lruCacheEntry = getAsLRUCacheEntry(cacheEntry);
-    return getTargetCacheList(lruCacheEntry).isInCacheList(lruCacheEntry);
-  }
-
-  @Override
   protected void addToNodeCache(CacheEntry cacheEntry, ICachedMNode node) {
     LRUCacheEntry lruCacheEntry = getAsLRUCacheEntry(cacheEntry);
-    getTargetCacheList(lruCacheEntry).addToCacheList(lruCacheEntry, node);
+    getTargetCacheList(lruCacheEntry).addToCacheList(lruCacheEntry);
   }
 
   @Override
@@ -121,9 +109,7 @@ public class LRUCacheManager extends CacheManager {
   @SuppressWarnings("java:S3077")
   private static class LRUCacheEntry extends CacheEntry {
 
-    // although the node instance may be replaced, the name and full path of the node won't be
-    // changed, which means the cacheEntry always map to only one logic node
-    protected volatile ICachedMNode node;
+    protected final ICachedMNode node;
 
     private volatile LRUCacheEntry pre = null;
 
@@ -135,10 +121,6 @@ public class LRUCacheManager extends CacheManager {
 
     public ICachedMNode getNode() {
       return node;
-    }
-
-    public void setNode(ICachedMNode node) {
-      this.node = node;
     }
 
     LRUCacheEntry getPre() {
@@ -195,12 +177,15 @@ public class LRUCacheManager extends CacheManager {
       }
     }
 
-    private void addToCacheList(LRUCacheEntry lruCacheEntry, ICachedMNode node) {
+    private void addToCacheList(LRUCacheEntry lruCacheEntry) {
       lock.lock();
       try {
-        lruCacheEntry.setNode(node);
-        moveToFirst(lruCacheEntry);
-        size.getAndIncrement();
+        if (isInCacheList(lruCacheEntry)) {
+          moveToFirst(lruCacheEntry);
+        } else {
+          moveToFirst(lruCacheEntry);
+          size.getAndIncrement();
+        }
       } finally {
         lock.unlock();
       }
@@ -209,8 +194,10 @@ public class LRUCacheManager extends CacheManager {
     private void removeFromCacheList(LRUCacheEntry lruCacheEntry) {
       lock.lock();
       try {
-        removeOne(lruCacheEntry);
-        size.getAndDecrement();
+        if (isInCacheList(lruCacheEntry)) {
+          removeOne(lruCacheEntry);
+          size.getAndDecrement();
+        }
       } finally {
         lock.unlock();
       }

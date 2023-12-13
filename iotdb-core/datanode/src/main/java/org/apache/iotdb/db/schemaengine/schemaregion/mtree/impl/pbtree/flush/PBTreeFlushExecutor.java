@@ -22,6 +22,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.flush;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.ICacheManager;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaFile;
 
@@ -41,34 +42,41 @@ public class PBTreeFlushExecutor {
   private static final Logger logger = LoggerFactory.getLogger(PBTreeFlushExecutor.class);
 
   private final Iterator<ICachedMNode> subtreeRoots;
+
   private final ICacheManager cacheManager;
   private final ISchemaFile file;
-  private final List<Exception> exceptions = new ArrayList<>();
+  private final LockManager lockManager;
 
   public PBTreeFlushExecutor(
-      List<ICachedMNode> subtreeRoots, ICacheManager cacheManager, ISchemaFile file) {
-    this.subtreeRoots = subtreeRoots.iterator();
-    this.cacheManager = cacheManager;
-    this.file = file;
-  }
-
-  public PBTreeFlushExecutor(
-      IDatabaseMNode<ICachedMNode> databaseMNode, ICacheManager cacheManager, ISchemaFile file) {
-    this.subtreeRoots = Collections.singletonList(databaseMNode.getAsMNode()).iterator();
-    this.cacheManager = cacheManager;
-    this.file = file;
-  }
-
-  public PBTreeFlushExecutor(
-      Iterator<ICachedMNode> subtreeRoots, ICacheManager cacheManager, ISchemaFile file) {
+      Iterator<ICachedMNode> subtreeRoots,
+      ICacheManager cacheManager,
+      ISchemaFile file,
+      LockManager lockManager) {
     this.subtreeRoots = subtreeRoots;
     this.cacheManager = cacheManager;
     this.file = file;
+    this.lockManager = lockManager;
+  }
+
+  public PBTreeFlushExecutor(
+      IDatabaseMNode<ICachedMNode> databaseMNode,
+      ICacheManager cacheManager,
+      ISchemaFile file,
+      LockManager lockManager) {
+    this.subtreeRoots = Collections.singletonList(databaseMNode.getAsMNode()).iterator();
+    this.cacheManager = cacheManager;
+    this.file = file;
+    this.lockManager = lockManager;
   }
 
   public void flushVolatileNodes() throws MetadataException {
+    List<Exception> exceptions = new ArrayList<>();
     while (subtreeRoots.hasNext()) {
-      processFlushNonDatabase(subtreeRoots.next());
+      try {
+        processFlushNonDatabase(subtreeRoots.next());
+      } catch (Exception e) {
+        exceptions.add(e);
+      }
     }
     if (!exceptions.isEmpty()) {
       throw new MetadataException(
@@ -80,46 +88,6 @@ public class PBTreeFlushExecutor {
     while (subtreeRoots.hasNext()) {
       ICachedMNode subtreeRoot = subtreeRoots.next();
       processFlushDatabase(subtreeRoot.getAsDatabaseMNode());
-    }
-  }
-
-  private void processFlushNonDatabase(ICachedMNode subtreeRoot) {
-    try {
-      file.writeMNode(subtreeRoot);
-    } catch (MetadataException | IOException e) {
-      logger.warn(
-          "Error occurred during MTree flush, current node is {}", subtreeRoot.getFullPath(), e);
-      cacheManager.updateCacheStatusAfterFlushFailure(subtreeRoot);
-      exceptions.add(e);
-      return;
-    }
-
-    Deque<Iterator<ICachedMNode>> volatileSubtreeStack = new ArrayDeque<>();
-    volatileSubtreeStack.push(
-        cacheManager.updateCacheStatusAndRetrieveSubtreeAfterPersist(subtreeRoot));
-
-    Iterator<ICachedMNode> subtreeIterator;
-    while (!volatileSubtreeStack.isEmpty()) {
-      subtreeIterator = volatileSubtreeStack.peek();
-      if (!subtreeIterator.hasNext()) {
-        volatileSubtreeStack.pop();
-        continue;
-      }
-
-      subtreeRoot = subtreeIterator.next();
-
-      try {
-        file.writeMNode(subtreeRoot);
-      } catch (MetadataException | IOException e) {
-        logger.warn(
-            "Error occurred during MTree flush, current node is {}", subtreeRoot.getFullPath(), e);
-        processNotFlushedSubtrees(subtreeRoot, volatileSubtreeStack);
-        exceptions.add(e);
-        return;
-      }
-
-      volatileSubtreeStack.push(
-          cacheManager.updateCacheStatusAndRetrieveSubtreeAfterPersist(subtreeRoot));
     }
   }
 
@@ -136,14 +104,72 @@ public class PBTreeFlushExecutor {
     }
   }
 
+  private void processFlushNonDatabase(ICachedMNode subtreeRoot)
+      throws MetadataException, IOException {
+    Iterator<ICachedMNode> volatileSubtreeIterator;
+    List<ICachedMNode> collectedVolatileSubtrees;
+    try {
+      file.writeMNode(subtreeRoot);
+      collectedVolatileSubtrees = new ArrayList<>();
+      volatileSubtreeIterator =
+          cacheManager.updateCacheStatusAndRetrieveSubtreeAfterPersist(subtreeRoot);
+      while (volatileSubtreeIterator.hasNext()) {
+        collectedVolatileSubtrees.add(volatileSubtreeIterator.next());
+      }
+    } catch (MetadataException | IOException e) {
+      logger.warn(
+          "Error occurred during MTree flush, current node is {}", subtreeRoot.getFullPath(), e);
+      cacheManager.updateCacheStatusAfterFlushFailure(subtreeRoot);
+      throw e;
+    } finally {
+      lockManager.writeUnlock(subtreeRoot);
+    }
+
+    Deque<Iterator<ICachedMNode>> volatileSubtreeStack = new ArrayDeque<>();
+    volatileSubtreeStack.push(collectedVolatileSubtrees.iterator());
+
+    Iterator<ICachedMNode> subtreeIterator;
+    while (!volatileSubtreeStack.isEmpty()) {
+      subtreeIterator = volatileSubtreeStack.peek();
+      if (!subtreeIterator.hasNext()) {
+        volatileSubtreeStack.pop();
+        continue;
+      }
+
+      subtreeRoot = subtreeIterator.next();
+
+      try {
+        file.writeMNode(subtreeRoot);
+        collectedVolatileSubtrees = new ArrayList<>();
+        volatileSubtreeIterator =
+            cacheManager.updateCacheStatusAndRetrieveSubtreeAfterPersist(subtreeRoot);
+        while (volatileSubtreeIterator.hasNext()) {
+          collectedVolatileSubtrees.add(volatileSubtreeIterator.next());
+        }
+      } catch (MetadataException | IOException e) {
+        logger.warn(
+            "Error occurred during MTree flush, current node is {}", subtreeRoot.getFullPath(), e);
+        processNotFlushedSubtrees(subtreeRoot, volatileSubtreeStack);
+        throw e;
+      } finally {
+        lockManager.writeUnlock(subtreeRoot);
+      }
+
+      volatileSubtreeStack.push(collectedVolatileSubtrees.iterator());
+    }
+  }
+
   private void processNotFlushedSubtrees(
       ICachedMNode currentNode, Deque<Iterator<ICachedMNode>> volatileSubtreeStack) {
     cacheManager.updateCacheStatusAfterFlushFailure(currentNode);
     Iterator<ICachedMNode> subtreeIterator;
+    ICachedMNode node;
     while (!volatileSubtreeStack.isEmpty()) {
       subtreeIterator = volatileSubtreeStack.pop();
       while (subtreeIterator.hasNext()) {
-        cacheManager.updateCacheStatusAfterFlushFailure(subtreeIterator.next());
+        node = subtreeIterator.next();
+        cacheManager.updateCacheStatusAfterFlushFailure(node);
+        lockManager.writeUnlock(node);
       }
     }
   }

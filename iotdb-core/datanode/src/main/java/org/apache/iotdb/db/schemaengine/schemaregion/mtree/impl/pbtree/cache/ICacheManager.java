@@ -39,8 +39,16 @@ public interface ICacheManager {
 
   IDatabaseMNode<ICachedMNode> collectUpdatedStorageGroupMNodes();
 
+  /**
+   * The returned node by iterator will automatically take the write lock. Please unlock the node
+   * after process.
+   */
   Iterator<ICachedMNode> collectVolatileSubtrees();
 
+  /**
+   * The returned node by iterator will automatically take the write lock. Please unlock the node
+   * after process.
+   */
   Iterator<ICachedMNode> updateCacheStatusAndRetrieveSubtreeAfterPersist(ICachedMNode subtreeRoot);
 
   void updateCacheStatusAfterFlushFailure(ICachedMNode subtreeRoot);

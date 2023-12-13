@@ -16,18 +16,33 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode;
 
-import org.apache.iotdb.commons.schema.node.IMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.CacheEntry;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockEntry;
+package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache;
 
-public interface ICachedMNode extends IMNode<ICachedMNode> {
-  CacheEntry getCacheEntry();
+import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
-  void setCacheEntry(CacheEntry cacheEntry);
+import java.util.Iterator;
 
-  LockEntry getLockEntry();
+public interface INodeBuffer {
 
-  void setLockEntry(LockEntry lockEntry);
+  IDatabaseMNode<ICachedMNode> getUpdatedDatabaseMNode();
+
+  void updateDatabaseNodeAfterStatusUpdate(IDatabaseMNode<ICachedMNode> updatedDatabaseMNode);
+
+  void removeUpdatedDatabaseNode();
+
+  void addNewNodeToBuffer(ICachedMNode node);
+
+  void addUpdatedNodeToBuffer(ICachedMNode node);
+
+  void addBackToBufferAfterFlushFailure(ICachedMNode subTreeRoot);
+
+  void remove(CacheEntry cacheEntry);
+
+  long getBufferNodeNum();
+
+  void clear();
+
+  Iterator<ICachedMNode> iterator();
 }
