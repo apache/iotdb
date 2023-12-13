@@ -29,7 +29,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
+import java.util.function.LongUnaryOperator;
 
 public class PipeMemoryBlock implements AutoCloseable {
 
@@ -41,9 +41,9 @@ public class PipeMemoryBlock implements AutoCloseable {
 
   private final AtomicLong memoryUsageInBytes = new AtomicLong(0);
 
-  private final AtomicReference<Function<Long, Long>> shrinkMethod = new AtomicReference<>();
+  private final AtomicReference<LongUnaryOperator> shrinkMethod = new AtomicReference<>();
   private final AtomicReference<BiConsumer<Long, Long>> shrinkCallback = new AtomicReference<>();
-  private final AtomicReference<Function<Long, Long>> expandMethod = new AtomicReference<>();
+  private final AtomicReference<LongUnaryOperator> expandMethod = new AtomicReference<>();
   private final AtomicReference<BiConsumer<Long, Long>> expandCallback = new AtomicReference<>();
 
   private volatile boolean isReleased = false;
@@ -60,7 +60,7 @@ public class PipeMemoryBlock implements AutoCloseable {
     this.memoryUsageInBytes.set(memoryUsageInBytes);
   }
 
-  public PipeMemoryBlock setShrinkMethod(Function<Long, Long> shrinkMethod) {
+  public PipeMemoryBlock setShrinkMethod(LongUnaryOperator shrinkMethod) {
     this.shrinkMethod.set(shrinkMethod);
     return this;
   }
@@ -70,7 +70,7 @@ public class PipeMemoryBlock implements AutoCloseable {
     return this;
   }
 
-  public PipeMemoryBlock setExpandMethod(Function<Long, Long> extendMethod) {
+  public PipeMemoryBlock setExpandMethod(LongUnaryOperator extendMethod) {
     this.expandMethod.set(extendMethod);
     return this;
   }
@@ -97,7 +97,7 @@ public class PipeMemoryBlock implements AutoCloseable {
     }
 
     final long oldMemorySizeInBytes = memoryUsageInBytes.get();
-    final long newMemorySizeInBytes = shrinkMethod.get().apply(memoryUsageInBytes.get());
+    final long newMemorySizeInBytes = shrinkMethod.get().applyAsLong(memoryUsageInBytes.get());
 
     final long memoryInBytesCanBeReleased = oldMemorySizeInBytes - newMemorySizeInBytes;
     if (memoryInBytesCanBeReleased <= 0
@@ -132,7 +132,7 @@ public class PipeMemoryBlock implements AutoCloseable {
     }
 
     final long oldMemorySizeInBytes = memoryUsageInBytes.get();
-    final long newMemorySizeInBytes = expandMethod.get().apply(memoryUsageInBytes.get());
+    final long newMemorySizeInBytes = expandMethod.get().applyAsLong(memoryUsageInBytes.get());
 
     final long memoryInBytesNeededToBeAllocated = newMemorySizeInBytes - oldMemorySizeInBytes;
     if (memoryInBytesNeededToBeAllocated <= 0
@@ -165,7 +165,7 @@ public class PipeMemoryBlock implements AutoCloseable {
         if (lock.tryLock(50, TimeUnit.MICROSECONDS)) {
           try {
             pipeMemoryManager.release(this);
-            return;
+            break;
           } finally {
             lock.unlock();
           }

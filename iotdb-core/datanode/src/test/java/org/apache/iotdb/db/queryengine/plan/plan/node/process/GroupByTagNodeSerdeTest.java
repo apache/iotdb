@@ -34,8 +34,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.CrossSeriesAg
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
-import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 import org.junit.Assert;
@@ -51,6 +49,10 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.gt;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.longValue;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.time;
 
 public class GroupByTagNodeSerdeTest {
 
@@ -105,8 +107,7 @@ public class GroupByTagNodeSerdeTest {
                     new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
                     Arrays.asList(s1MaxTimePartial, s1AvgTimePartial),
                     Ordering.ASC,
-                    TimeFilter.gt(100L),
-                    ValueFilter.gt(100),
+                    gt(time(), longValue(100)),
                     groupByTimeParameter,
                     null)),
             groupByTimeParameter,

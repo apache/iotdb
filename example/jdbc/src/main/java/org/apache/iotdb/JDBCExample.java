@@ -32,7 +32,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 public class JDBCExample {
-  private static Logger logger = LoggerFactory.getLogger(JDBCExample.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(JDBCExample.class);
 
   public static void main(String[] args) throws ClassNotFoundException, SQLException {
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
@@ -67,7 +67,7 @@ public class JDBCExample {
               "select count(**) from root where time >= 1 and time <= 100 group by ([0, 100), 20ms, 20ms)");
       outputResult(resultSet);
     } catch (IoTDBSQLException e) {
-      logger.error("IoTDB Jdbc example error", e);
+      LOGGER.error("IoTDB Jdbc example error", e);
     }
   }
 

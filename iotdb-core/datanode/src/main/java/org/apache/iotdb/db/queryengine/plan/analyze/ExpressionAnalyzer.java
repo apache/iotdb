@@ -29,7 +29,6 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
-import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.UnknownExpressionTypeException;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
@@ -39,9 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.other.CaseWhenThenExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.ternary.TernaryExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.UnaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.BindTypeForTimeSeriesOperandVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.CollectAggregationExpressionsVisitor;
@@ -49,7 +46,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.CollectSourceExpr
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionNormalizeVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.GetMeasurementExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.LowercaseNormalizeVisitor;
-import org.apache.iotdb.db.queryengine.plan.expression.visitor.RemoveRootPrefixVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ReplaceRawPathWithGroupedPathVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.BindSchemaForExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.BindSchemaForPredicateVisitor;
@@ -59,11 +55,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.ConcatE
 import org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -71,12 +62,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.checkConstantSatisfy;
-import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.constructTimeFilter;
-import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.getPairFromBetweenTimeFirst;
-import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.getPairFromBetweenTimeSecond;
-import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.getPairFromBetweenTimeThird;
 
 public class ExpressionAnalyzer {
 
@@ -475,174 +460,6 @@ public class ExpressionAnalyzer {
   }
 
   /**
-   * Extract global time filter from query filter.
-   *
-   * @param predicate raw query filter
-   * @param canRewrite determined by the father of current expression
-   * @param isFirstOr whether it is the first LogicOrExpression encountered
-   * @return global time filter
-   */
-  public static Pair<Filter, Boolean> extractGlobalTimeFilter(
-      Expression predicate, boolean canRewrite, boolean isFirstOr) {
-    if (predicate.getExpressionType().equals(ExpressionType.LOGIC_AND)) {
-      Pair<Filter, Boolean> leftResultPair =
-          extractGlobalTimeFilter(
-              ((BinaryExpression) predicate).getLeftExpression(), canRewrite, isFirstOr);
-      Pair<Filter, Boolean> rightResultPair =
-          extractGlobalTimeFilter(
-              ((BinaryExpression) predicate).getRightExpression(), canRewrite, isFirstOr);
-
-      // rewrite predicate to avoid duplicate calculation on time filter
-      // If Left-child or Right-child does not contain value filter
-      // We can set it to true in Predicate Tree
-      if (canRewrite) {
-        if (leftResultPair.left != null && !leftResultPair.right) {
-          ((BinaryExpression) predicate)
-              .setLeftExpression(new ConstantOperand(TSDataType.BOOLEAN, "true"));
-        }
-        if (rightResultPair.left != null && !rightResultPair.right) {
-          ((BinaryExpression) predicate)
-              .setRightExpression(new ConstantOperand(TSDataType.BOOLEAN, "true"));
-        }
-      }
-
-      if (leftResultPair.left != null && rightResultPair.left != null) {
-        return new Pair<>(
-            FilterFactory.and(leftResultPair.left, rightResultPair.left),
-            leftResultPair.right || rightResultPair.right);
-      } else if (leftResultPair.left != null) {
-        return new Pair<>(leftResultPair.left, true);
-      } else if (rightResultPair.left != null) {
-        return new Pair<>(rightResultPair.left, true);
-      }
-      return new Pair<>(null, true);
-    } else if (predicate.getExpressionType().equals(ExpressionType.LOGIC_OR)) {
-      Pair<Filter, Boolean> leftResultPair =
-          extractGlobalTimeFilter(((BinaryExpression) predicate).getLeftExpression(), false, false);
-      Pair<Filter, Boolean> rightResultPair =
-          extractGlobalTimeFilter(
-              ((BinaryExpression) predicate).getRightExpression(), false, false);
-
-      if (leftResultPair.left != null && rightResultPair.left != null) {
-        if (Boolean.TRUE.equals(isFirstOr && !leftResultPair.right && !rightResultPair.right)) {
-          ((BinaryExpression) predicate)
-              .setLeftExpression(new ConstantOperand(TSDataType.BOOLEAN, "true"));
-          ((BinaryExpression) predicate)
-              .setRightExpression(new ConstantOperand(TSDataType.BOOLEAN, "true"));
-        }
-        return new Pair<>(
-            FilterFactory.or(leftResultPair.left, rightResultPair.left),
-            leftResultPair.right || rightResultPair.right);
-      }
-      return new Pair<>(null, true);
-    } else if (predicate.getExpressionType().equals(ExpressionType.LOGIC_NOT)) {
-      Pair<Filter, Boolean> childResultPair =
-          extractGlobalTimeFilter(
-              ((UnaryExpression) predicate).getExpression(), canRewrite, isFirstOr);
-      if (childResultPair.left != null) {
-        return new Pair<>(FilterFactory.not(childResultPair.left), childResultPair.right);
-      }
-      return new Pair<>(null, true);
-    } else if (predicate.isCompareBinaryExpression()) {
-      Filter timeInLeftFilter =
-          constructTimeFilter(
-              predicate.getExpressionType(),
-              ((BinaryExpression) predicate).getLeftExpression(),
-              ((BinaryExpression) predicate).getRightExpression());
-      if (timeInLeftFilter != null) {
-        return new Pair<>(timeInLeftFilter, false);
-      }
-      Filter timeInRightFilter =
-          constructTimeFilter(
-              predicate.getExpressionType(),
-              ((BinaryExpression) predicate).getRightExpression(),
-              ((BinaryExpression) predicate).getLeftExpression());
-      if (timeInRightFilter != null) {
-        return new Pair<>(timeInRightFilter, false);
-      }
-      return new Pair<>(null, true);
-    } else if (predicate.getExpressionType().equals(ExpressionType.LIKE)
-        || predicate.getExpressionType().equals(ExpressionType.REGEXP)) {
-      return new Pair<>(null, true);
-    } else if (predicate.getExpressionType().equals(ExpressionType.BETWEEN)) {
-      Expression firstExpression = ((TernaryExpression) predicate).getFirstExpression();
-      Expression secondExpression = ((TernaryExpression) predicate).getSecondExpression();
-      Expression thirdExpression = ((TernaryExpression) predicate).getThirdExpression();
-      if (firstExpression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
-        return getPairFromBetweenTimeFirst(
-            secondExpression, thirdExpression, ((BetweenExpression) predicate).isNotBetween());
-      } else if (secondExpression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
-        if (checkConstantSatisfy(firstExpression, thirdExpression)) {
-          return getPairFromBetweenTimeSecond((BetweenExpression) predicate, firstExpression);
-        } else {
-          return new Pair<>(null, true); // TODO return Filter.True/False
-        }
-      } else if (thirdExpression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
-        if (checkConstantSatisfy(secondExpression, firstExpression)) {
-          return getPairFromBetweenTimeThird((BetweenExpression) predicate, firstExpression);
-        } else {
-          return new Pair<>(null, true); // TODO return Filter.True/False
-        }
-      }
-      return new Pair<>(null, true);
-    } else if (predicate.getExpressionType().equals(ExpressionType.IS_NULL)) {
-      return new Pair<>(null, true);
-    } else if (predicate.getExpressionType().equals(ExpressionType.IN)) {
-      Expression timeExpression = ((InExpression) predicate).getExpression();
-      if (timeExpression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
-        boolean not = ((InExpression) predicate).isNotIn();
-        Set<Long> values =
-            ((InExpression) predicate)
-                .getValues().stream().map(Long::parseLong).collect(Collectors.toSet());
-        return new Pair<>(not ? TimeFilter.notIn(values) : TimeFilter.in(values), false);
-      }
-      return new Pair<>(null, true);
-    } else if (predicate.getExpressionType().equals(ExpressionType.TIMESERIES)
-        || predicate.getExpressionType().equals(ExpressionType.CONSTANT)
-        || predicate.getExpressionType().equals(ExpressionType.NULL)) {
-      return new Pair<>(null, true);
-    } else if (predicate.getExpressionType().equals(ExpressionType.CASE_WHEN_THEN)) {
-      return new Pair<>(null, true);
-    } else {
-      throw new UnknownExpressionTypeException(predicate.getExpressionType());
-    }
-  }
-
-  public static boolean checkIfTimeFilterExist(Expression predicate) {
-    if (predicate instanceof TernaryExpression) {
-      return checkIfTimeFilterExist(((TernaryExpression) predicate).getFirstExpression())
-          || checkIfTimeFilterExist(((TernaryExpression) predicate).getSecondExpression())
-          || checkIfTimeFilterExist(((TernaryExpression) predicate).getThirdExpression());
-    } else if (predicate instanceof BinaryExpression) {
-      return checkIfTimeFilterExist(((BinaryExpression) predicate).getLeftExpression())
-          || checkIfTimeFilterExist(((BinaryExpression) predicate).getRightExpression());
-    } else if (predicate instanceof UnaryExpression) {
-      return checkIfTimeFilterExist(((UnaryExpression) predicate).getExpression());
-    } else if (predicate instanceof FunctionExpression) {
-      boolean timeFilterExist = false;
-      for (Expression childExpression : predicate.getExpressions()) {
-        timeFilterExist = timeFilterExist || checkIfTimeFilterExist(childExpression);
-      }
-      return timeFilterExist;
-    } else if (predicate instanceof CaseWhenThenExpression) {
-      for (Expression childExpression : predicate.getExpressions()) {
-        if (checkIfTimeFilterExist(childExpression)) {
-          return true;
-        }
-      }
-      return false;
-    } else if (predicate instanceof TimeSeriesOperand
-        || predicate instanceof ConstantOperand
-        || predicate instanceof NullOperand) {
-      return false;
-    } else if (predicate instanceof TimestampOperand) {
-      return true;
-    } else {
-      throw new UnknownExpressionTypeException(predicate.getExpressionType());
-    }
-  }
-
-  /**
    * Search for subexpressions that can be queried natively, including all time series.
    *
    * @param expression expression to be searched
@@ -720,36 +537,6 @@ public class ExpressionAnalyzer {
 
   public static Expression getMeasurementExpression(Expression expression, Analysis analysis) {
     return new GetMeasurementExpressionVisitor().process(expression, analysis);
-  }
-
-  public static Expression evaluatePredicate(Expression predicate) {
-    if (predicate.getExpressionType().equals(ExpressionType.LOGIC_AND)) {
-      Expression left = evaluatePredicate(((BinaryExpression) predicate).getLeftExpression());
-      Expression right = evaluatePredicate(((BinaryExpression) predicate).getRightExpression());
-      boolean isLeftTrue =
-          left.isConstantOperand() && Boolean.parseBoolean(left.getExpressionString());
-      boolean isRightTrue =
-          right.isConstantOperand() && Boolean.parseBoolean(right.getExpressionString());
-      if (isLeftTrue && isRightTrue) {
-        return new ConstantOperand(TSDataType.BOOLEAN, "true");
-      } else if (isLeftTrue) {
-        return right;
-      } else if (isRightTrue) {
-        return left;
-      }
-      return predicate;
-    } else if (predicate.getExpressionType().equals(ExpressionType.LOGIC_OR)) {
-      Expression left = evaluatePredicate(((BinaryExpression) predicate).getLeftExpression());
-      Expression right = evaluatePredicate(((BinaryExpression) predicate).getRightExpression());
-      boolean isLeftTrue =
-          left.isConstantOperand() && Boolean.parseBoolean(left.getExpressionString());
-      boolean isRightTrue =
-          right.isConstantOperand() && Boolean.parseBoolean(right.getExpressionString());
-      if (isRightTrue || isLeftTrue) {
-        return new ConstantOperand(TSDataType.BOOLEAN, "true");
-      }
-    }
-    return predicate;
   }
 
   /**
@@ -846,9 +633,5 @@ public class ExpressionAnalyzer {
     } else {
       throw new UnknownExpressionTypeException(expression.getExpressionType());
     }
-  }
-
-  public static Expression removeRootPrefix(Expression expression) {
-    return new RemoveRootPrefixVisitor().process(expression, null);
   }
 }

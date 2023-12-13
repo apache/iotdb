@@ -37,6 +37,7 @@ import org.mockito.Mockito;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 import static org.apache.iotdb.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
 import static org.junit.Assert.assertEquals;
@@ -83,11 +84,7 @@ public class MemAlignedChunkLoaderTest {
 
     Mockito.when(chunkMetadata1.getStatistics()).thenReturn(timeStatistics);
     Mockito.when(chunkMetadata1.getTimeStatistics()).thenReturn(timeStatistics);
-    Mockito.when(chunkMetadata1.getStatistics(0)).thenReturn(statistics1);
-    Mockito.when(chunkMetadata1.getValueStatisticsList())
-        .thenReturn(
-            Arrays.asList(
-                statistics1, statistics2, statistics3, statistics4, statistics5, statistics6));
+    Mockito.when(chunkMetadata1.getMeasurementStatistics(0)).thenReturn(Optional.of(statistics1));
 
     MemAlignedChunkReader chunkReader =
         (MemAlignedChunkReader) memAlignedChunkLoader.getChunkReader(chunkMetadata1, null);
@@ -137,7 +134,7 @@ public class MemAlignedChunkLoaderTest {
     assertEquals(2L, tsBlock.getTimeColumn().getLong(1));
 
     assertEquals(timeStatistics, pageReader.getStatistics());
-    assertEquals(statistics1, pageReader.getStatistics(0));
+    assertEquals(statistics1, pageReader.getMeasurementStatistics(0).orElse(null));
     assertEquals(timeStatistics, pageReader.getTimeStatistics());
     assertFalse(pageReader.isModified());
     pageReader.setLimitOffset(UNLIMITED_PAGINATION_CONTROLLER);

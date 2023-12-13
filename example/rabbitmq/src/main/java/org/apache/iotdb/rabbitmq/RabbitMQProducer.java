@@ -32,7 +32,7 @@ import java.util.concurrent.TimeoutException;
 /** The class is to show how to send data to RabbitMQ. */
 public class RabbitMQProducer {
 
-  private static final Logger logger = LoggerFactory.getLogger(RabbitMQProducer.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(RabbitMQProducer.class);
 
   public static void main(String[] args) throws IOException, TimeoutException {
     Channel channel = RabbitMQChannelUtils.getChannelInstance(Constant.CONNECTION_NAME);
@@ -43,7 +43,7 @@ public class RabbitMQProducer {
       String key = String.format("%s.%s", "IoTDB", Objects.toString(i));
       channel.basicPublish(
           Constant.TOPIC, key, false, basicProperties, Constant.ALL_DATA[i].getBytes());
-      logger.info(Constant.ALL_DATA[i]);
+      LOGGER.info(Constant.ALL_DATA[i]);
     }
   }
 }

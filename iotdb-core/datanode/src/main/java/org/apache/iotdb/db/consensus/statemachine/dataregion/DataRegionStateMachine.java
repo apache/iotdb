@@ -36,7 +36,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiT
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
@@ -192,25 +191,17 @@ public class DataRegionStateMachine extends BaseStateMachine {
       }
       result =
           new InsertMultiTabletsNode(insertNodes.get(0).getPlanNodeId(), index, insertTabletNodes);
-    } else { // merge to InsertRowsNode or InsertRowsOfOneDeviceNode
-      boolean sameDevice = true;
+    } else { // merge to InsertRowsNode
       PartialPath device = insertNodes.get(0).getDevicePath();
       List<Integer> index = new ArrayList<>(size);
       List<InsertRowNode> insertRowNodes = new ArrayList<>(size);
       int i = 0;
       for (InsertNode insertNode : insertNodes) {
-        if (sameDevice && !insertNode.getDevicePath().equals(device)) {
-          sameDevice = false;
-        }
         insertRowNodes.add((InsertRowNode) insertNode);
         index.add(i);
         i++;
       }
-      result =
-          sameDevice
-              ? new InsertRowsOfOneDeviceNode(
-                  insertNodes.get(0).getPlanNodeId(), index, insertRowNodes)
-              : new InsertRowsNode(insertNodes.get(0).getPlanNodeId(), index, insertRowNodes);
+      result = new InsertRowsNode(insertNodes.get(0).getPlanNodeId(), index, insertRowNodes);
     }
     result.setSearchIndex(insertNodes.get(0).getSearchIndex());
     result.setDevicePath(insertNodes.get(0).getDevicePath());

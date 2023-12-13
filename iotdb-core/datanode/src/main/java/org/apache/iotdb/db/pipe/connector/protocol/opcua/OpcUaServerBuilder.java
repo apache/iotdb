@@ -70,9 +70,9 @@ import static org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned.
  * Eclipse Milo.
  */
 public class OpcUaServerBuilder {
+  private static final Logger LOGGER = LoggerFactory.getLogger(OpcUaServerBuilder.class);
 
   private static final String WILD_CARD_ADDRESS = "0.0.0.0";
-  private final Logger logger = LoggerFactory.getLogger(OpcUaServerBuilder.class);
 
   private int tcpBindPort;
   private int httpsBindPort;
@@ -133,7 +133,7 @@ public class OpcUaServerBuilder {
         new DefaultCertificateManager(loader.getServerKeyPair(), loader.getServerCertificate());
 
     DefaultTrustListManager trustListManager = new DefaultTrustListManager(pkiDir);
-    logger.info(
+    LOGGER.info(
         "Certificate directory is: {}, Please move certificates from the reject dir to the trusted directory to allow encrypted access",
         pkiDir.getAbsolutePath());
 

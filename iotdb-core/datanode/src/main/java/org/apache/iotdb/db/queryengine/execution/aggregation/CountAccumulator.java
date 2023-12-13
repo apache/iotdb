@@ -67,6 +67,15 @@ public class CountAccumulator implements Accumulator {
   }
 
   @Override
+  public void removeIntermediate(Column[] input) {
+    checkArgument(input.length == 1, "input of Count should be 1");
+    if (input[0].isNull(0)) {
+      return;
+    }
+    countValue -= input[0].getLong(0);
+  }
+
+  @Override
   public void addStatistics(Statistics statistics) {
     if (statistics == null) {
       return;

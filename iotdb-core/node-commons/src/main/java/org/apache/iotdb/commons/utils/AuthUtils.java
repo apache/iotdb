@@ -20,7 +20,9 @@ package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
+import org.apache.iotdb.commons.auth.entity.PriPrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -371,7 +373,12 @@ public class AuthUtils {
     while (it.hasNext()) {
       PathPrivilege pathPri = it.next();
       if (pathPri.getPath().equals(path)) {
-        pathPri.revokePrivilege(privilegeId);
+        if (privilegeId != PriPrivilegeType.ALL.ordinal()) {
+          pathPri.revokePrivilege(privilegeId);
+        } else {
+          it.remove();
+          return;
+        }
         if (pathPri.getPrivileges().isEmpty()) {
           it.remove();
         }
@@ -443,5 +450,44 @@ public class AuthUtils {
       paths.add((PartialPath) PathDeserializeUtil.deserialize(buffer));
     }
     return paths;
+  }
+
+  public static void checkAndRefreshPri(Role role) {
+    if (role.getServiceReady()) {
+      return;
+    }
+    Set<Integer> sysPriCopy = role.getSysPrivilege();
+    List<PathPrivilege> priCopy = role.getPathPrivilegeList();
+    role.setSysPrivilegeSet(new HashSet<>());
+    role.setPrivilegeList(new ArrayList<>());
+
+    // Pre version's privileges were stored in path list;
+    for (PathPrivilege pathPri : priCopy) {
+      PartialPath path = pathPri.getPath();
+      for (int prePri : pathPri.getPrivileges()) {
+        PriPrivilegeType type = PriPrivilegeType.values()[prePri];
+        if (type.isAccept()) {
+          for (PrivilegeType curType : type.getSubPri()) {
+            if (curType.isPathRelevant()) {
+              try {
+                AuthUtils.validatePatternPath(path);
+              } catch (AuthException e) {
+                try {
+                  path = AuthUtils.convertPatternPath(path);
+                } catch (IllegalPathException illegalE) {
+                  // will never get here
+                  String[] str = {"root", "**"};
+                  path = new PartialPath(str);
+                }
+              }
+              role.addPathPrivilege(path, curType.ordinal(), false);
+            } else {
+              role.addSysPrivilege(curType.ordinal());
+            }
+          }
+        }
+      }
+    }
+    role.setServiceReady(true);
   }
 }

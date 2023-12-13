@@ -82,6 +82,7 @@ class AutoCreateSchemaExecutor {
   }
 
   private ExecutionResult executeStatement(Statement statement, MPPQueryContext context) {
+
     return coordinator.execute(
         statement,
         SessionManager.getInstance().requestQueryId(),
@@ -535,9 +536,14 @@ class AutoCreateSchemaExecutor {
   }
 
   private void internalActivateTemplate(PartialPath devicePath, MPPQueryContext context) {
-    ExecutionResult executionResult =
-        executeStatement(new ActivateTemplateStatement(devicePath), context);
-    TSStatus status = executionResult.status;
+    ActivateTemplateStatement statement = new ActivateTemplateStatement(devicePath);
+    TSStatus status =
+        AuthorityChecker.checkAuthority(statement, context.getSession().getUserName());
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+    }
+    ExecutionResult executionResult = executeStatement(statement, context);
+    status = executionResult.status;
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && status.getCode() != TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode()) {
       throw new SemanticException(new IoTDBException(status.getMessage(), status.getCode()));
@@ -547,10 +553,15 @@ class AutoCreateSchemaExecutor {
   private void internalActivateTemplate(
       Map<PartialPath, Pair<Template, PartialPath>> devicesNeedActivateTemplate,
       MPPQueryContext context) {
-    ExecutionResult executionResult =
-        executeStatement(
-            new InternalBatchActivateTemplateStatement(devicesNeedActivateTemplate), context);
-    TSStatus status = executionResult.status;
+    InternalBatchActivateTemplateStatement statement =
+        new InternalBatchActivateTemplateStatement(devicesNeedActivateTemplate);
+    TSStatus status =
+        AuthorityChecker.checkAuthority(statement, context.getSession().getUserName());
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+    }
+    ExecutionResult executionResult = executeStatement(statement, context);
+    status = executionResult.status;
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         || status.getCode() == TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode()) {
       return;

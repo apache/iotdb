@@ -32,6 +32,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
+import org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -41,7 +42,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
-import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 
 import com.google.common.collect.ImmutableList;
 import org.junit.Test;
@@ -72,7 +72,7 @@ public class FragmentInstanceSerdeTest {
         new FragmentInstance(
             new PlanFragment(planFragmentId, constructPlanNodeTree()),
             planFragmentId.genFragmentInstanceId(),
-            new GroupByFilter(1, 2, 3, 4),
+            ExpressionFactory.groupByTime(1, 2, 3, 4),
             QueryType.READ,
             config.getQueryTimeoutThreshold(),
             sessionInfo);

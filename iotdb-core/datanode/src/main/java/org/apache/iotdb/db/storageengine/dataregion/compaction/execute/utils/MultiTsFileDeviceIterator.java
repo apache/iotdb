@@ -28,7 +28,6 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFil
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
@@ -393,7 +392,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       valueSeriesPaths.add(
           valueChunkMetadata == null
               ? null
-              : new PartialPath(currentDevice.left, valueChunkMetadata.getMeasurementUid()));
+              : CompactionPathUtils.getPath(
+                  currentDevice.left, valueChunkMetadata.getMeasurementUid()));
     }
 
     for (Modification modification : modifications) {
@@ -548,8 +548,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
 
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>>
           readerAndChunkMetadataForThisSeries = new LinkedList<>();
-      String pathStr = device + TsFileConstant.PATH_SEPARATOR + currentCompactingSeries;
-      PartialPath path = new PartialPath(pathStr.split("\\."));
+      PartialPath path = CompactionPathUtils.getPath(device, currentCompactingSeries);
 
       for (TsFileResource resource : tsFileResourcesSortedByAsc) {
         TsFileSequenceReader reader = readerMap.get(resource);

@@ -47,7 +47,7 @@ import static org.apache.iotdb.tsfile.Constant.SENSOR_3;
 /** An example of writing data with Tablet to TsFile */
 public class TsFileWriteWithTablet {
 
-  private static final Logger logger = LoggerFactory.getLogger(TsFileWriteWithTablet.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileWriteWithTablet.class);
 
   public static void main(String[] args) {
     try {
@@ -70,7 +70,7 @@ public class TsFileWriteWithTablet {
         writeWithTablet(tsFileWriter, DEVICE_1, measurementSchemas, 10000, 0, 0);
       }
     } catch (Exception e) {
-      logger.error("meet error in TsFileWrite with tablet", e);
+      LOGGER.error("meet error in TsFileWrite with tablet", e);
     }
   }
 

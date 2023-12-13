@@ -46,6 +46,7 @@ public class PathPatternTree {
   // set the default value to TRUE to ensure correctness
   private boolean useWildcard = true;
   private boolean containWildcard = false;
+  private boolean containFullPath = false;
 
   public PathPatternTree(boolean useWildcard) {
     this();
@@ -59,6 +60,10 @@ public class PathPatternTree {
 
   public boolean isContainWildcard() {
     return containWildcard;
+  }
+
+  public boolean isContainFullPath() {
+    return containFullPath;
   }
 
   public PathPatternNode<Void, VoidSerializer> getRoot() {
@@ -148,6 +153,9 @@ public class PathPatternTree {
   private void processNodeName(String nodeName) {
     if (!containWildcard) {
       containWildcard = PathPatternUtil.hasWildcard(nodeName);
+    }
+    if (!containFullPath) {
+      containFullPath = !PathPatternUtil.hasWildcard(nodeName);
     }
   }
 

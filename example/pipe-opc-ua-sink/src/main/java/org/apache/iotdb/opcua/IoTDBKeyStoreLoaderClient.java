@@ -22,8 +22,6 @@ package org.apache.iotdb.opcua;
 import org.eclipse.milo.opcua.sdk.server.util.HostnameUtil;
 import org.eclipse.milo.opcua.stack.core.util.SelfSignedCertificateBuilder;
 import org.eclipse.milo.opcua.stack.core.util.SelfSignedCertificateGenerator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -45,8 +43,6 @@ class IoTDBKeyStoreLoaderClient {
 
   private static final String CLIENT_ALIAS = "client-ai";
   private static final char[] PASSWORD = "root".toCharArray();
-
-  private final Logger logger = LoggerFactory.getLogger(getClass());
 
   private X509Certificate[] clientCertificateChain;
   private X509Certificate clientCertificate;

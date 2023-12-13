@@ -25,7 +25,6 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContex
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTaskId;
-import org.apache.iotdb.db.queryengine.execution.timer.RuleBasedTimeSliceAllocator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 
 import java.util.ArrayList;
@@ -39,7 +38,6 @@ public class DriverContext {
   private final FragmentInstanceContext fragmentInstanceContext;
   private final List<OperatorContext> operatorContexts = new ArrayList<>();
   private ISink sink;
-  private final RuleBasedTimeSliceAllocator timeSliceAllocator;
 
   private int dependencyDriverIndex = -1;
   private ExchangeOperator downstreamOperator;
@@ -50,13 +48,11 @@ public class DriverContext {
   @TestOnly
   public DriverContext() {
     this.fragmentInstanceContext = null;
-    this.timeSliceAllocator = null;
   }
 
   public DriverContext(FragmentInstanceContext fragmentInstanceContext, int pipelineId) {
     this.fragmentInstanceContext = fragmentInstanceContext;
     this.driverTaskID = new DriverTaskId(fragmentInstanceContext.getId(), pipelineId);
-    this.timeSliceAllocator = new RuleBasedTimeSliceAllocator();
   }
 
   public OperatorContext addOperatorContext(
@@ -106,10 +102,6 @@ public class DriverContext {
 
   public List<OperatorContext> getOperatorContexts() {
     return operatorContexts;
-  }
-
-  public RuleBasedTimeSliceAllocator getTimeSliceAllocator() {
-    return timeSliceAllocator;
   }
 
   public int getPipelineId() {

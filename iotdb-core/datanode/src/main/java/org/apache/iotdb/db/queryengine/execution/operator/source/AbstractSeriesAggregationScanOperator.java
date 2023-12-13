@@ -29,7 +29,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
@@ -59,10 +58,9 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   // But in facing of statistics, it will invoke another method processStatistics()
   protected final List<Aggregator> aggregators;
 
-  // Using for building result tsBlock
-  protected final TsBlockBuilder resultTsBlockBuilder;
-
   protected boolean finished = false;
+
+  protected final boolean outputEndTime;
 
   private final long cachedRawDataSize;
 
@@ -78,6 +76,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
       List<Aggregator> aggregators,
       ITimeRangeIterator timeRangeIterator,
       boolean ascending,
+      boolean outputEndTime,
       GroupByTimeParameter groupByTimeParameter,
       long maxReturnSize) {
     this.sourceId = sourceId;
@@ -89,15 +88,10 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
     this.aggregators = aggregators;
     this.timeRangeIterator = timeRangeIterator;
 
-    List<TSDataType> dataTypes = new ArrayList<>();
-    for (Aggregator aggregator : aggregators) {
-      dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
-    }
-    this.resultTsBlockBuilder = new TsBlockBuilder(dataTypes);
-
     this.cachedRawDataSize =
         (1L + subSensorSize) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
     this.maxReturnSize = maxReturnSize;
+    this.outputEndTime = outputEndTime;
   }
 
   @Override
@@ -206,8 +200,16 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   }
 
   protected void updateResultTsBlock() {
-    appendAggregationResult(
-        resultTsBlockBuilder, aggregators, timeRangeIterator.currentOutputTime());
+    if (!outputEndTime) {
+      appendAggregationResult(
+          resultTsBlockBuilder, aggregators, timeRangeIterator.currentOutputTime());
+    } else {
+      appendAggregationResult(
+          resultTsBlockBuilder,
+          aggregators,
+          timeRangeIterator.currentOutputTime(),
+          curTimeRange.getMax());
+    }
   }
 
   protected boolean calcFromCachedData() {
@@ -388,5 +390,17 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
     return !seriesScanUtil.isPageOverlapped()
         && currentPageStatistics.containedByTimeFilter(seriesScanUtil.getGlobalTimeFilter())
         && !seriesScanUtil.currentPageModified();
+  }
+
+  @Override
+  protected List<TSDataType> getResultDataTypes() {
+    List<TSDataType> dataTypes = new ArrayList<>();
+    if (outputEndTime) {
+      dataTypes.add(TSDataType.INT64);
+    }
+    for (Aggregator aggregator : aggregators) {
+      dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
+    }
+    return dataTypes;
   }
 }

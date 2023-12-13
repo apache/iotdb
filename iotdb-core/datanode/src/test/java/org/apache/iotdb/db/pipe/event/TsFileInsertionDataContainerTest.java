@@ -194,7 +194,7 @@ public class TsFileInsertionDataContainerTest {
     try (final TsFileInsertionDataContainer alignedContainer =
             new TsFileInsertionDataContainer(alignedTsFile, "root", startTime, endTime);
         final TsFileInsertionDataContainer nonalignedContainer =
-            new TsFileInsertionDataContainer(nonalignedTsFile, "root", startTime, endTime); ) {
+            new TsFileInsertionDataContainer(nonalignedTsFile, "root", startTime, endTime)) {
       AtomicInteger count1 = new AtomicInteger(0);
       AtomicInteger count2 = new AtomicInteger(0);
       AtomicInteger count3 = new AtomicInteger(0);

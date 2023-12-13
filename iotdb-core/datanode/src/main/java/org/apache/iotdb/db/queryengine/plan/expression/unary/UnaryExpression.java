@@ -94,8 +94,6 @@ public abstract class UnaryExpression extends Expression {
     return expression.isMappable(expressionTypes);
   }
 
-  protected abstract Expression constructExpression(Expression childExpression);
-
   @Override
   protected void serialize(ByteBuffer byteBuffer) {
     Expression.serialize(expression, byteBuffer);

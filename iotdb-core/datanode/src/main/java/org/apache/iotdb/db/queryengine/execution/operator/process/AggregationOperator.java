@@ -53,17 +53,22 @@ public class AggregationOperator extends AbstractConsumeAllOperator {
 
   private final long maxRetainedSize;
   private final long childrenRetainedSize;
+  private final boolean outputEndTime;
 
   public AggregationOperator(
       OperatorContext operatorContext,
       List<Aggregator> aggregators,
       ITimeRangeIterator timeRangeIterator,
       List<Operator> children,
+      boolean outputEndTime,
       long maxReturnSize) {
     super(operatorContext, children);
     this.aggregators = aggregators;
     this.timeRangeIterator = timeRangeIterator;
     List<TSDataType> dataTypes = new ArrayList<>();
+    if (outputEndTime) {
+      dataTypes.add(TSDataType.INT64);
+    }
     for (Aggregator aggregator : aggregators) {
       dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
     }
@@ -75,7 +80,7 @@ public class AggregationOperator extends AbstractConsumeAllOperator {
         childrenRetainedSize == 0
             ? 0
             : children.stream().mapToLong(Operator::calculateMaxReturnSize).sum();
-
+    this.outputEndTime = outputEndTime;
     this.maxReturnSize = maxReturnSize;
   }
 
@@ -158,8 +163,16 @@ public class AggregationOperator extends AbstractConsumeAllOperator {
   }
 
   private void updateResultTsBlock() {
+    if (!outputEndTime) {
+      appendAggregationResult(
+          resultTsBlockBuilder, aggregators, timeRangeIterator.currentOutputTime());
+    } else {
+      appendAggregationResult(
+          resultTsBlockBuilder,
+          aggregators,
+          timeRangeIterator.currentOutputTime(),
+          curTimeRange.getMax());
+    }
     curTimeRange = null;
-    appendAggregationResult(
-        resultTsBlockBuilder, aggregators, timeRangeIterator.currentOutputTime());
   }
 }

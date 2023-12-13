@@ -30,7 +30,10 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.connector.WebSocketConnector
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.WriteBackConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.IoTDBExtractor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.DoNothingProcessor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.DownSamplingProcessor;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -43,6 +46,7 @@ public enum BuiltinPipePlugin {
 
   // processors
   DO_NOTHING_PROCESSOR("do-nothing-processor", DoNothingProcessor.class),
+  DOWN_SAMPLING_PROCESSOR("down-sampling-processor", DownSamplingProcessor.class),
 
   // connectors
   DO_NOTHING_CONNECTOR("do-nothing-connector", DoNothingConnector.class),
@@ -88,24 +92,27 @@ public enum BuiltinPipePlugin {
     return className;
   }
 
-  public static final Set<String> SHOW_PIPE_PLUGINS_BLACKLIST = new HashSet<>();
-
-  static {
-    SHOW_PIPE_PLUGINS_BLACKLIST.add(IOTDB_EXTRACTOR.getPipePluginName().toUpperCase());
-
-    SHOW_PIPE_PLUGINS_BLACKLIST.add(DO_NOTHING_CONNECTOR.getPipePluginName().toUpperCase());
-    SHOW_PIPE_PLUGINS_BLACKLIST.add(IOTDB_THRIFT_CONNECTOR.getPipePluginName().toUpperCase());
-    SHOW_PIPE_PLUGINS_BLACKLIST.add(IOTDB_THRIFT_SYNC_CONNECTOR.getPipePluginName().toUpperCase());
-    SHOW_PIPE_PLUGINS_BLACKLIST.add(IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName().toUpperCase());
-    SHOW_PIPE_PLUGINS_BLACKLIST.add(IOTDB_LEGACY_PIPE_CONNECTOR.getPipePluginName().toUpperCase());
-    SHOW_PIPE_PLUGINS_BLACKLIST.add(IOTDB_AIR_GAP_CONNECTOR.getPipePluginName().toUpperCase());
-    SHOW_PIPE_PLUGINS_BLACKLIST.add(WEBSOCKET_CONNECTOR.getPipePluginName().toUpperCase());
-    SHOW_PIPE_PLUGINS_BLACKLIST.add(OPC_UA_CONNECTOR.getPipePluginName().toUpperCase());
-    SHOW_PIPE_PLUGINS_BLACKLIST.add(WRITE_BACK_CONNECTOR.getPipePluginName().toUpperCase());
-
-    SHOW_PIPE_PLUGINS_BLACKLIST.add(IOTDB_THRIFT_SYNC_SINK.getPipePluginName().toUpperCase());
-    SHOW_PIPE_PLUGINS_BLACKLIST.add(IOTDB_THRIFT_ASYNC_SINK.getPipePluginName().toUpperCase());
-    SHOW_PIPE_PLUGINS_BLACKLIST.add(IOTDB_LEGACY_PIPE_SINK.getPipePluginName().toUpperCase());
-    SHOW_PIPE_PLUGINS_BLACKLIST.add(WEBSOCKET_SINK.getPipePluginName().toUpperCase());
-  }
+  public static final Set<String> SHOW_PIPE_PLUGINS_BLACKLIST =
+      Collections.unmodifiableSet(
+          new HashSet<>(
+              Arrays.asList(
+                  // Extractors
+                  IOTDB_EXTRACTOR.getPipePluginName().toUpperCase(),
+                  // Processors
+                  DOWN_SAMPLING_PROCESSOR.getPipePluginName().toUpperCase(),
+                  // Connectors
+                  DO_NOTHING_CONNECTOR.getPipePluginName().toUpperCase(),
+                  IOTDB_THRIFT_CONNECTOR.getPipePluginName().toUpperCase(),
+                  IOTDB_THRIFT_SYNC_CONNECTOR.getPipePluginName().toUpperCase(),
+                  IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName().toUpperCase(),
+                  IOTDB_LEGACY_PIPE_CONNECTOR.getPipePluginName().toUpperCase(),
+                  IOTDB_AIR_GAP_CONNECTOR.getPipePluginName().toUpperCase(),
+                  WEBSOCKET_CONNECTOR.getPipePluginName().toUpperCase(),
+                  OPC_UA_CONNECTOR.getPipePluginName().toUpperCase(),
+                  WRITE_BACK_CONNECTOR.getPipePluginName().toUpperCase(),
+                  // Sinks
+                  IOTDB_THRIFT_SYNC_SINK.getPipePluginName().toUpperCase(),
+                  IOTDB_THRIFT_ASYNC_SINK.getPipePluginName().toUpperCase(),
+                  IOTDB_LEGACY_PIPE_SINK.getPipePluginName().toUpperCase(),
+                  WEBSOCKET_SINK.getPipePluginName().toUpperCase())));
 }

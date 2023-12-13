@@ -19,10 +19,9 @@
 package org.apache.iotdb.commons.auth.role;
 
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.entity.PathPrivilege;
+import org.apache.iotdb.commons.auth.entity.PriPrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.concurrent.HashLock;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -46,7 +45,6 @@ public abstract class BasicRoleManager implements IRoleManager {
   protected Map<String, Role> roleMap;
   protected IRoleAccessor accessor;
   protected HashLock lock;
-
   private boolean preVersion = false;
 
   BasicRoleManager(LocalFileRoleAccessor accessor) {
@@ -97,19 +95,29 @@ public abstract class BasicRoleManager implements IRoleManager {
         throw new AuthException(
             TSStatusCode.ROLE_NOT_EXIST, String.format("No such role %s", rolename));
       }
-      if (path != null) {
-        if (preVersion) {
-          AuthUtils.validatePath(path);
-          if (role.getServiceReady()) {
-            try {
-              AuthUtils.validatePatternPath(path);
-            } catch (AuthException e) {
-              role.setServiceReady(false);
-            }
+
+      // Pre version's operation:
+      // all privileges are stored in path privileges.
+      // global privileges will come with root.**
+      // need to handle privileges ALL there.
+      if (preVersion) {
+        AuthUtils.validatePath(path);
+        if (privilegeId == PriPrivilegeType.ALL.ordinal()) {
+          for (PriPrivilegeType type : PriPrivilegeType.values()) {
+            role.addPathPrivilege(path, type.ordinal(), false);
           }
         } else {
-          AuthUtils.validatePatternPath(path);
+          role.addPathPrivilege(path, privilegeId, false);
         }
+        // mark that the user has pre Version's privilege.
+        if (role.getServiceReady()) {
+          role.setServiceReady(false);
+        }
+        return;
+      }
+
+      if (path != null) {
+        AuthUtils.validatePatternPath(path);
         role.addPathPrivilege(path, privilegeId, grantOpt);
       } else {
         role.getSysPrivilege().add(privilegeId);
@@ -133,29 +141,22 @@ public abstract class BasicRoleManager implements IRoleManager {
             TSStatusCode.ROLE_NOT_EXIST, String.format("No such role %s", rolename));
       }
       if (preVersion) {
-        if (path != null) {
-          if (!AuthUtils.hasPrivilege(path, privilegeId, role.getPathPrivilegeList())) {
-            return false;
-          }
-          AuthUtils.validatePath(path);
-          AuthUtils.removePrivilegePre(path, privilegeId, role.getPathPrivilegeList());
-        } else {
-          if (role.getSysPrivilege().contains(privilegeId)) {
-            return false;
-          }
-          role.getSysPrivilege().remove(privilegeId);
-        }
-      } else {
-        if (!role.hasPrivilegeToRevoke(path, privilegeId)) {
+        if (!AuthUtils.hasPrivilege(path, privilegeId, role.getPathPrivilegeList())) {
           return false;
         }
-        if (path != null) {
-          AuthUtils.validatePatternPath(path);
-          role.removePathPrivilege(path, privilegeId);
-        } else {
-          role.getSysPrivilege().remove(privilegeId);
-          role.getSysPriGrantOpt().remove(privilegeId);
-        }
+        AuthUtils.removePrivilegePre(path, privilegeId, role.getPathPrivilegeList());
+        return true;
+      }
+
+      if (!role.hasPrivilegeToRevoke(path, privilegeId)) {
+        return false;
+      }
+      if (path != null) {
+        AuthUtils.validatePatternPath(path);
+        role.removePathPrivilege(path, privilegeId);
+      } else {
+        role.getSysPrivilege().remove(privilegeId);
+        role.getSysPriGrantOpt().remove(privilegeId);
       }
       return true;
     } finally {
@@ -216,27 +217,8 @@ public abstract class BasicRoleManager implements IRoleManager {
   @Override
   public void checkAndRefreshPathPri() {
     roleMap.forEach(
-        (rolename, role) -> {
-          if (!role.getServiceReady()) {
-            List<PathPrivilege> priCopy = new ArrayList<>();
-            for (PathPrivilege pathPri : role.getPathPrivilegeList()) {
-              try {
-                AuthUtils.validatePatternPath(pathPri.getPath());
-                priCopy.add(pathPri);
-              } catch (AuthException e) {
-                PartialPath path = pathPri.getPath();
-                try {
-                  for (Integer pri : pathPri.getPrivileges()) {
-                    AuthUtils.addPrivilege(AuthUtils.convertPatternPath(path), pri, priCopy, false);
-                  }
-                } catch (IllegalPathException illegalE) {
-                  //
-                }
-              }
-            }
-            role.setPrivilegeList(priCopy);
-          }
-          role.setServiceReady(true);
+        (rolename, user) -> {
+          AuthUtils.checkAndRefreshPri(user);
         });
   }
 }

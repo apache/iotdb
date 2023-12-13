@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
+import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.Checkpoint;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.utils.SerializedSize;
 
@@ -65,6 +66,8 @@ public abstract class WALEntry implements SerializedSize {
       this.type = WALEntryType.INSERT_TABLET_NODE;
     } else if (value instanceof DeleteDataNode) {
       this.type = WALEntryType.DELETE_DATA_NODE;
+    } else if (value instanceof Checkpoint) {
+      this.type = WALEntryType.MEMORY_TABLE_CHECKPOINT;
     } else {
       throw new RuntimeException("Unknown WALEntry type");
     }

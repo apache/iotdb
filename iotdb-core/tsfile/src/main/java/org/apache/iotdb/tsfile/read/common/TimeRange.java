@@ -22,7 +22,7 @@ package org.apache.iotdb.tsfile.read.common;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilterApi;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -388,15 +388,15 @@ public class TimeRange implements Comparable<TimeRange> {
     IExpression left;
     IExpression right;
     if (leftClose) {
-      left = new GlobalTimeExpression(TimeFilter.gtEq(min));
+      left = new GlobalTimeExpression(TimeFilterApi.gtEq(min));
     } else {
-      left = new GlobalTimeExpression(TimeFilter.gt(min));
+      left = new GlobalTimeExpression(TimeFilterApi.gt(min));
     }
 
     if (rightClose) {
-      right = new GlobalTimeExpression(TimeFilter.ltEq(max));
+      right = new GlobalTimeExpression(TimeFilterApi.ltEq(max));
     } else {
-      right = new GlobalTimeExpression(TimeFilter.lt(max));
+      right = new GlobalTimeExpression(TimeFilterApi.lt(max));
     }
 
     return BinaryExpression.and(left, right);

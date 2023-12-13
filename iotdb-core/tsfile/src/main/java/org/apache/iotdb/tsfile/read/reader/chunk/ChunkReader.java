@@ -114,10 +114,10 @@ public class ChunkReader implements IChunkReader {
         pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
       }
       // if the current page satisfies
-      if (pageSatisfied(pageHeader)) {
-        pageReaderList.add(constructPageReaderForNextPage(pageHeader));
-      } else {
+      if (pageCanSkip(pageHeader)) {
         skipBytesInStreamByLength(pageHeader.getCompressedSize());
+      } else {
+        pageReaderList.add(constructPageReaderForNextPage(pageHeader));
       }
     }
   }
@@ -146,22 +146,22 @@ public class ChunkReader implements IChunkReader {
     chunkDataBuffer.position(chunkDataBuffer.position() + length);
   }
 
-  protected boolean pageSatisfied(PageHeader pageHeader) {
+  protected boolean pageCanSkip(PageHeader pageHeader) {
     if (currentTimestamp > pageHeader.getEndTime()) {
       // used for chunk reader by timestamp
-      return false;
+      return true;
     }
     if (deleteIntervalList != null) {
       for (TimeRange range : deleteIntervalList) {
         if (range.contains(pageHeader.getStartTime(), pageHeader.getEndTime())) {
-          return false;
+          return true;
         }
         if (range.overlaps(new TimeRange(pageHeader.getStartTime(), pageHeader.getEndTime()))) {
           pageHeader.setModified(true);
         }
       }
     }
-    return filter == null || filter.satisfy(pageHeader.getStatistics());
+    return filter != null && filter.canSkip(pageHeader);
   }
 
   private PageReader constructPageReaderForNextPage(PageHeader pageHeader) throws IOException {

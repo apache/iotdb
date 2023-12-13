@@ -40,11 +40,6 @@ public class NegationExpression extends UnaryExpression {
   }
 
   @Override
-  protected Expression constructExpression(Expression childExpression) {
-    return new NegationExpression(childExpression);
-  }
-
-  @Override
   public String getExpressionStringInternal() {
     return expression instanceof TimeSeriesOperand
             || expression instanceof FunctionExpression

@@ -18,6 +18,11 @@
  */
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.impl;
 
+import org.apache.iotdb.commons.schema.node.MNodeType;
+import org.apache.iotdb.commons.schema.node.common.DeviceMNodeWrapper;
+import org.apache.iotdb.commons.schema.node.info.IDeviceInfo;
+import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
+import org.apache.iotdb.commons.schema.node.role.IInternalMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.basic.CachedBasicMNode;
@@ -27,7 +32,8 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.con
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
  * Metadata Tree
  */
-public class CachedBasicInternalMNode extends CachedBasicMNode {
+public class CachedBasicInternalMNode extends CachedBasicMNode
+    implements IInternalMNode<ICachedMNode> {
 
   /**
    * suppress warnings reason: volatile for double synchronized check
@@ -37,6 +43,9 @@ public class CachedBasicInternalMNode extends CachedBasicMNode {
   @SuppressWarnings("squid:S3077")
   private transient volatile IMNodeContainer<ICachedMNode> children = null;
 
+  @SuppressWarnings("squid:S3077")
+  private volatile IDeviceInfo<ICachedMNode> deviceInfo = null;
+
   /** Constructor of MNode. */
   public CachedBasicInternalMNode(ICachedMNode parent, String name) {
     super(parent, name);
@@ -45,7 +54,11 @@ public class CachedBasicInternalMNode extends CachedBasicMNode {
   /** check whether the MNode has a child with the name */
   @Override
   public boolean hasChild(String name) {
-    return (children != null && children.containsKey(name));
+    return (children != null && children.containsKey(name)) || hasChildInDeviceInfo(name);
+  }
+
+  private boolean hasChildInDeviceInfo(String name) {
+    return deviceInfo != null && deviceInfo.hasAliasChild(name);
   }
 
   /** get the child with the name */
@@ -54,6 +67,9 @@ public class CachedBasicInternalMNode extends CachedBasicMNode {
     ICachedMNode child = null;
     if (children != null) {
       child = children.get(name);
+    }
+    if (child == null && deviceInfo != null) {
+      child = deviceInfo.getAliasChild(name);
     }
     return child;
   }
@@ -124,37 +140,6 @@ public class CachedBasicInternalMNode extends CachedBasicMNode {
     return null;
   }
 
-  /**
-   * Replace a child of this mnode. New child's name must be the same as old child's name.
-   *
-   * @param oldChildName measurement name
-   * @param newChildNode new child node
-   */
-  @Override
-  public synchronized void replaceChild(String oldChildName, ICachedMNode newChildNode) {
-    if (!oldChildName.equals(newChildNode.getName())) {
-      throw new RuntimeException("New child's name must be the same as old child's name!");
-    }
-    ICachedMNode oldChildNode = this.getChild(oldChildName);
-    if (oldChildNode == null) {
-      return;
-    }
-
-    oldChildNode.moveDataToNewMNode(newChildNode);
-
-    children.replace(newChildNode.getName(), newChildNode);
-  }
-
-  @Override
-  public void moveDataToNewMNode(ICachedMNode newMNode) {
-    super.moveDataToNewMNode(newMNode);
-
-    if (children != null) {
-      newMNode.setChildren(children);
-      children.forEach((childName, childNode) -> childNode.setParent(newMNode));
-    }
-  }
-
   @Override
   public IMNodeContainer<ICachedMNode> getChildren() {
     if (children == null) {
@@ -177,15 +162,51 @@ public class CachedBasicInternalMNode extends CachedBasicMNode {
    *   <li>three map reference (1 cache and 2 buffer), 8 * 3 = 24B
    *   <li>estimate occupation of map implementation, minus the basic container occupation, 80 * 3 -
    *       80 = 160B
+   *   <li>reference for deviceInfo
+   *   <li>deviceInfo's size
    * </ol>
    */
   @Override
   public int estimateSize() {
-    return 8 + 80 + 192 + super.estimateSize();
+    return 8
+        + 80
+        + 192
+        + super.estimateSize()
+        + 8
+        + (deviceInfo == null ? 0 : deviceInfo.estimateSize());
   }
 
   @Override
-  public ICachedMNode getAsMNode() {
+  public boolean isDevice() {
+    return getDeviceInfo() != null;
+  }
+
+  @Override
+  public MNodeType getMNodeType() {
+    return deviceInfo == null ? MNodeType.INTERNAL : MNodeType.DEVICE;
+  }
+
+  @Override
+  public IInternalMNode<ICachedMNode> getAsInternalMNode() {
     return this;
+  }
+
+  @Override
+  public IDeviceMNode<ICachedMNode> getAsDeviceMNode() {
+    if (isDevice()) {
+      return new DeviceMNodeWrapper<>(this);
+    } else {
+      throw new UnsupportedOperationException("Wrong node type");
+    }
+  }
+
+  @Override
+  public IDeviceInfo<ICachedMNode> getDeviceInfo() {
+    return deviceInfo;
+  }
+
+  @Override
+  public void setDeviceInfo(IDeviceInfo<ICachedMNode> deviceInfo) {
+    this.deviceInfo = deviceInfo;
   }
 }

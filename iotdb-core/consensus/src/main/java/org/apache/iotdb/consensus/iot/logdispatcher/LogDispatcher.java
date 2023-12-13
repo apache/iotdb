@@ -153,6 +153,10 @@ public class LogDispatcher {
     return threads.stream().mapToLong(LogDispatcherThread::getCurrentSyncIndex).min();
   }
 
+  public synchronized OptionalLong getMinFlushedSyncIndex() {
+    return threads.stream().mapToLong(LogDispatcherThread::getLastFlushedSyncIndex).min();
+  }
+
   public void offer(IndexedConsensusRequest request) {
     // we don't need to serialize and offer request when replicaNum is 1.
     if (!threads.isEmpty()) {
@@ -231,6 +235,10 @@ public class LogDispatcher {
 
     public long getCurrentSyncIndex() {
       return controller.getCurrentIndex();
+    }
+
+    public long getLastFlushedSyncIndex() {
+      return controller.getLastFlushedIndex();
     }
 
     public Peer getPeer() {
@@ -343,8 +351,10 @@ public class LogDispatcher {
     public void updateSafelyDeletedSearchIndex() {
       // update safely deleted search index to delete outdated info,
       // indicating that insert nodes whose search index are before this value can be deleted
-      // safely
-      long currentSafelyDeletedSearchIndex = impl.getCurrentSafelyDeletedSearchIndex();
+      // safely.
+      //
+      // Use minFlushedSyncIndex here to reserve the WAL which are not flushed and support kill -9.
+      long currentSafelyDeletedSearchIndex = impl.getMinFlushedSyncIndex();
       reader.setSafelyDeletedSearchIndex(currentSafelyDeletedSearchIndex);
       // notify
       if (impl.unblockWrite()) {

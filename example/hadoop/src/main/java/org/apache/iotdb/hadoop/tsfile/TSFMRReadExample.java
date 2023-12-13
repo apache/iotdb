@@ -41,13 +41,13 @@ import java.io.IOException;
  */
 public class TSFMRReadExample {
 
-  private static Logger logger = LoggerFactory.getLogger(TSFMRReadExample.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TSFMRReadExample.class);
 
   public static void main(String[] args)
       throws IOException, ClassNotFoundException, TSFHadoopException {
 
     if (args.length != 3) {
-      logger.info("Please give hdfs url, input path, output path");
+      LOGGER.info("Please give hdfs url, input path, output path");
       return;
     }
     Path inputPath = new Path(args[1]);
@@ -97,9 +97,9 @@ public class TSFMRReadExample {
       throw new IOException(e.getMessage());
     }
     if (isSuccess) {
-      logger.info("Execute successfully");
+      LOGGER.info("Execute successfully");
     } else {
-      logger.info("Execute unsuccessfully");
+      LOGGER.info("Execute unsuccessfully");
     }
   }
 

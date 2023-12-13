@@ -41,7 +41,7 @@ import java.util.stream.Collectors;
 /** The example of reading TsFile via Flink DataSet API. */
 public class FlinkTsFileBatchSource {
 
-  private static Logger logger = LoggerFactory.getLogger(FlinkTsFileBatchSource.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(FlinkTsFileBatchSource.class);
 
   public static void main(String[] args) throws Exception {
     String path = "test.tsfile";
@@ -75,7 +75,7 @@ public class FlinkTsFileBatchSource {
     DataSet<Row> source = env.createInput(inputFormat);
     List<String> result = source.map(Row::toString).collect();
     for (String s : result) {
-      logger.info(s);
+      LOGGER.info(s);
     }
   }
 }

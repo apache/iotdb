@@ -32,7 +32,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -43,12 +43,14 @@ import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static org.apache.iotdb.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
+import static org.apache.iotdb.tsfile.utils.Preconditions.checkArgument;
 
 public class PageReader implements IPageReader {
 
-  private PageHeader pageHeader;
+  private final PageHeader pageHeader;
 
   protected TSDataType dataType;
 
@@ -116,7 +118,7 @@ public class PageReader implements IPageReader {
   @Override
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
     BatchData pageData = BatchDataFactory.createBatchData(dataType, ascending, false);
-    if (filter == null || filter.satisfy(getStatistics())) {
+    if (filter == null || !filter.canSkip(this)) {
       while (timeDecoder.hasNext(timeBuffer)) {
         long timestamp = timeDecoder.readLong(timeBuffer);
         switch (dataType) {
@@ -164,27 +166,38 @@ public class PageReader implements IPageReader {
     return pageData.flip();
   }
 
-  private boolean pageSatisfy() {
-    Statistics statistics = getStatistics();
-    if (filter == null || filter.allSatisfy(statistics)) {
-      long rowCount = statistics.getCount();
+  private boolean pageCanSkip() {
+    if (filter == null || filter.allSatisfy(this)) {
+      long rowCount = getStatistics().getCount();
       if (paginationController.hasCurOffset(rowCount)) {
         paginationController.consumeOffset(rowCount);
-        return false;
-      } else {
         return true;
+      } else {
+        return false;
       }
     } else {
-      return filter.satisfy(statistics);
+      return filter.canSkip(this);
     }
   }
 
   @Override
   public TsBlock getAllSatisfiedData() throws IOException {
-    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(dataType));
+    TsBlockBuilder builder;
+    if (paginationController.hasCurLimit()) {
+      builder =
+          new TsBlockBuilder(
+              (int)
+                  Math.min(
+                      paginationController.getCurLimit(), pageHeader.getStatistics().getCount()),
+              Collections.singletonList(dataType));
+    } else {
+      builder =
+          new TsBlockBuilder(
+              (int) pageHeader.getStatistics().getCount(), Collections.singletonList(dataType));
+    }
     TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
     ColumnBuilder valueBuilder = builder.getColumnBuilder(0);
-    if (pageSatisfy()) {
+    if (!pageCanSkip()) {
       switch (dataType) {
         case BOOLEAN:
           while (timeDecoder.hasNext(timeBuffer)) {
@@ -325,11 +338,30 @@ public class PageReader implements IPageReader {
   }
 
   @Override
+  public Statistics<? extends Serializable> getTimeStatistics() {
+    return getStatistics();
+  }
+
+  @Override
+  public Optional<Statistics<? extends Serializable>> getMeasurementStatistics(
+      int measurementIndex) {
+    checkArgument(
+        measurementIndex == 0,
+        "Non-aligned page only has one measurement, but measurementIndex is " + measurementIndex);
+    return Optional.ofNullable(getStatistics());
+  }
+
+  @Override
+  public boolean hasNullValue(int measurementIndex) {
+    return false;
+  }
+
+  @Override
   public void setFilter(Filter filter) {
     if (this.filter == null) {
       this.filter = filter;
     } else {
-      this.filter = new AndFilter(this.filter, filter);
+      this.filter = FilterFactory.and(this.filter, filter);
     }
   }
 

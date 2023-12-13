@@ -26,8 +26,8 @@ import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 
 import java.io.OutputStream;
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class AlignedChunkMetadata implements IChunkMetadata {
 
@@ -52,21 +52,39 @@ public class AlignedChunkMetadata implements IChunkMetadata {
         : timeChunkMetadata.getStatistics();
   }
 
-  public Statistics<? extends Serializable> getStatistics(int index) {
-    IChunkMetadata v = valueChunkMetadataList.get(index);
-    return v == null ? null : v.getStatistics();
-  }
-
-  public List<Statistics<? extends Serializable>> getValueStatisticsList() {
-    List<Statistics<? extends Serializable>> valueStatisticsList = new ArrayList<>();
-    for (IChunkMetadata v : valueChunkMetadataList) {
-      valueStatisticsList.add(v == null ? null : v.getStatistics());
-    }
-    return valueStatisticsList;
-  }
-
+  @Override
   public Statistics<? extends Serializable> getTimeStatistics() {
     return timeChunkMetadata.getStatistics();
+  }
+
+  @Override
+  public Optional<Statistics<? extends Serializable>> getMeasurementStatistics(
+      int measurementIndex) {
+    IChunkMetadata chunkMetadata = valueChunkMetadataList.get(measurementIndex);
+    return Optional.ofNullable(chunkMetadata == null ? null : chunkMetadata.getStatistics());
+  }
+
+  @Override
+  public boolean hasNullValue(int measurementIndex) {
+    long rowCount = getTimeStatistics().getCount();
+    Optional<Statistics<? extends Serializable>> statistics =
+        getMeasurementStatistics(measurementIndex);
+    return statistics.map(stat -> stat.hasNullValue(rowCount)).orElse(true);
+  }
+
+  public int getMeasurementCount() {
+    return valueChunkMetadataList.size();
+  }
+
+  public boolean timeAllSelected() {
+    for (int index = 0; index < getMeasurementCount(); index++) {
+      if (!hasNullValue(index)) {
+        // When there is any value page point number that is the same as the time page,
+        // it means that all timestamps in time page will be selected.
+        return true;
+      }
+    }
+    return false;
   }
 
   @Override

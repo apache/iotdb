@@ -247,8 +247,8 @@ public class SeriesScanLimitOffsetPushDownTest {
 
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
     scanOptionsBuilder.withAllSensors(Collections.singleton(scanPath.getMeasurement()));
-    scanOptionsBuilder.withLimit(limit);
-    scanOptionsBuilder.withOffset(offset);
+    scanOptionsBuilder.withPushDownLimit(limit);
+    scanOptionsBuilder.withPushDownOffset(offset);
     SeriesScanUtil seriesScanUtil =
         new SeriesScanUtil(
             scanPath,

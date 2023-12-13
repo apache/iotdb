@@ -23,7 +23,12 @@ import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.event.Event;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorSubtaskLifeCycle.class);
 
   private final PipeConnectorSubtaskExecutor executor;
   private final PipeConnectorSubtask subtask;
@@ -56,51 +61,89 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
     if (aliveTaskCount < 0) {
       throw new IllegalStateException("aliveTaskCount < 0");
     }
+
     if (aliveTaskCount == 0) {
       executor.register(subtask);
       runningTaskCount = 0;
     }
+
     aliveTaskCount++;
+    LOGGER.info(
+        "Register subtask {}. runningTaskCount: {}, aliveTaskCount: {}",
+        subtask,
+        runningTaskCount,
+        aliveTaskCount);
   }
 
   /**
    * Deregister the subtask. If the subtask is the last one, close the subtask.
    *
+   * <p>Note that this method should be called after the subtask is stopped. Otherwise, the
+   * runningTaskCount might be inconsistent with the aliveTaskCount because of parallel connector
+   * scheduling.
+   *
+   * @param pipeNameToDeregister pipe name
    * @return true if the subtask is out of life cycle, indicating that the subtask should never be
    *     used again
    * @throws IllegalStateException if aliveTaskCount <= 0
    */
-  public synchronized boolean deregister() {
+  public synchronized boolean deregister(String pipeNameToDeregister) {
     if (aliveTaskCount <= 0) {
       throw new IllegalStateException("aliveTaskCount <= 0");
     }
-    if (aliveTaskCount == 1) {
+
+    subtask.discardEventsOfPipe(pipeNameToDeregister);
+
+    try {
+      if (aliveTaskCount > 1) {
+        return false;
+      }
+
       close();
       // This subtask is out of life cycle, should never be used again
       return true;
+    } finally {
+      aliveTaskCount--;
+      LOGGER.info(
+          "Deregister subtask {}. runningTaskCount: {}, aliveTaskCount: {}",
+          subtask,
+          runningTaskCount,
+          aliveTaskCount);
     }
-    aliveTaskCount--;
-    return false;
   }
 
   public synchronized void start() {
     if (runningTaskCount < 0) {
       throw new IllegalStateException("runningTaskCount < 0");
     }
+
     if (runningTaskCount == 0) {
       executor.start(subtask.getTaskID());
     }
+
     runningTaskCount++;
+    LOGGER.info(
+        "Start subtask {}. runningTaskCount: {}, aliveTaskCount: {}",
+        subtask,
+        runningTaskCount,
+        aliveTaskCount);
   }
 
   public synchronized void stop() {
     if (runningTaskCount <= 0) {
       throw new IllegalStateException("runningTaskCount <= 0");
     }
+
     if (runningTaskCount == 1) {
       executor.stop(subtask.getTaskID());
     }
+
     runningTaskCount--;
+    LOGGER.info(
+        "Stop subtask {}. runningTaskCount: {}, aliveTaskCount: {}",
+        subtask,
+        runningTaskCount,
+        aliveTaskCount);
   }
 
   @Override
