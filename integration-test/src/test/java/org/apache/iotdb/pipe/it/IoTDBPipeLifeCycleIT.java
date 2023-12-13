@@ -20,6 +20,7 @@
 package org.apache.iotdb.pipe.it;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
@@ -33,9 +34,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -44,7 +42,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.junit.Assert.fail;
+import static org.apache.iotdb.db.it.utils.TestUtils.assertNonQueryTestFail;
+import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
+import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
+import static org.apache.iotdb.db.it.utils.TestUtils.executeQueryWithRetry;
+import static org.apache.iotdb.db.it.utils.TestUtils.grantUserSystemPrivileges;
+import static org.apache.iotdb.db.it.utils.TestUtils.tryExecuteNonQueriesWithRetry;
+import static org.apache.iotdb.db.it.utils.TestUtils.tryExecuteNonQueryWithRetry;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
@@ -703,22 +707,90 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
   }
 
   @Test
-  public void testCreatePipePermission() {
-    try (Connection connection = senderEnv.getConnection("test", "test123");
-        Statement statement = connection.createStatement()) {
-      statement.execute(
-          "create pipe testPipe\n"
-              + "with connector (\n"
-              + "  'connector'='iotdb-thrift-connector',\n"
-              + "  'connector.ip'='127.0.0.1',\n"
-              + "  'connector.port'='6668'\n"
-              + ")");
-      fail("No exception!");
-    } catch (SQLException e) {
-      Assert.assertTrue(
-          e.getMessage(),
-          e.getMessage()
-              .contains("803: No permissions for this operation, please add privilege USE_PIPE"));
-    }
+  public void testPermission() {
+    createUser(senderEnv, "test", "test123");
+
+    assertNonQueryTestFail(
+        senderEnv,
+        "create pipe testPipe\n"
+            + "with connector (\n"
+            + "  'connector'='iotdb-thrift-connector',\n"
+            + "  'connector.ip'='127.0.0.1',\n"
+            + "  'connector.port'='6668'\n"
+            + ")",
+        "803: No permissions for this operation, please add privilege USE_PIPE",
+        "test",
+        "test123");
+    assertNonQueryTestFail(
+        senderEnv,
+        "drop pipe testPipe",
+        "803: No permissions for this operation, please add privilege USE_PIPE",
+        "test",
+        "test123");
+    assertTestFail(
+        senderEnv,
+        "show pipes",
+        "803: No permissions for this operation, please add privilege USE_PIPE",
+        "test",
+        "test123");
+    assertNonQueryTestFail(
+        senderEnv,
+        "start pipe testPipe",
+        "803: No permissions for this operation, please add privilege USE_PIPE",
+        "test",
+        "test123");
+    assertNonQueryTestFail(
+        senderEnv,
+        "stop pipe testPipe",
+        "803: No permissions for this operation, please add privilege USE_PIPE",
+        "test",
+        "test123");
+
+    assertNonQueryTestFail(
+        senderEnv,
+        "create pipePlugin TestProcessor as 'org.apache.iotdb.db.pipe.example.TestProcessor' USING URI 'xxx'",
+        "803: No permissions for this operation, please add privilege USE_PIPE",
+        "test",
+        "test123");
+    assertNonQueryTestFail(
+        senderEnv,
+        "drop pipePlugin TestProcessor",
+        "803: No permissions for this operation, please add privilege USE_PIPE",
+        "test",
+        "test123");
+    assertTestFail(
+        senderEnv,
+        "show pipe plugins",
+        "803: No permissions for this operation, please add privilege USE_PIPE",
+        "test",
+        "test123");
+
+    grantUserSystemPrivileges("test", PrivilegeType.USE_PIPE);
+
+    tryExecuteNonQueryWithRetry(
+        senderEnv,
+        "create pipe testPipe\n"
+            + "with connector (\n"
+            + "  'connector'='iotdb-thrift-connector',\n"
+            + "  'connector.ip'='127.0.0.1',\n"
+            + "  'connector.port'='6668'\n"
+            + ")",
+        "test",
+        "test123");
+    executeQueryWithRetry(senderEnv, "show pipes", "test", "test123");
+    tryExecuteNonQueriesWithRetry(
+        senderEnv,
+        Arrays.asList("start pipe testPipe", "stop pipe testPipe", "drop pipe testPipe"),
+        "test",
+        "test123");
+
+    assertNonQueryTestFail(
+        senderEnv,
+        "create pipePlugin TestProcessor as 'org.apache.iotdb.db.pipe.example.TestProcessor' USING URI 'xxx'",
+        "1603: The scheme of URI is not set, please specify the scheme of URI.",
+        "test",
+        "test123");
+    tryExecuteNonQueryWithRetry(senderEnv, "drop pipePlugin TestProcessor", "test", "test123");
+    executeQueryWithRetry(senderEnv, "show pipe plugins", "test", "test123");
   }
 }
