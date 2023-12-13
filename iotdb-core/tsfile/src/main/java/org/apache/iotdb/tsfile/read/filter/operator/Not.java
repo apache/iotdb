@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.read.filter.operator;
 
 import org.apache.iotdb.tsfile.file.metadata.IMetadata;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.OperatorType;
 
@@ -55,6 +56,11 @@ public class Not extends Filter {
   @Override
   public boolean satisfyRow(long time, Object[] values) {
     return !filter.satisfyRow(time, values);
+  }
+
+  @Override
+  public boolean[] satisfyTsBlock(TsBlock tsBlock) {
+    return filter.satisfyTsBlock(tsBlock);
   }
 
   @Override

@@ -22,6 +22,8 @@ package org.apache.iotdb.tsfile.read.filter.basic;
 import org.apache.iotdb.tsfile.file.metadata.IMetadata;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -56,6 +58,21 @@ public abstract class ValueFilter extends Filter {
   @Override
   public boolean satisfyRow(long time, Object[] values) {
     return satisfy(time, values[measurementIndex]);
+  }
+
+  @Override
+  public boolean[] satisfyTsBlock(TsBlock tsBlock) {
+    Column valueColumn = tsBlock.getValueColumns()[measurementIndex];
+    boolean[] satisfyInfo = new boolean[tsBlock.getPositionCount()];
+    for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+      if (valueColumn.isNull(i)) {
+        // null not satisfy any filter, except IS NULL
+        satisfyInfo[i] = false;
+      } else {
+        satisfyInfo[i] = valueSatisfy(valueColumn.getObject(i));
+      }
+    }
+    return satisfyInfo;
   }
 
   protected abstract boolean valueSatisfy(Object value);

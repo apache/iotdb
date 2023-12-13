@@ -47,6 +47,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.LOAD_TIMESERIES_METADATA_ALIGNED_DISK;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.LOAD_TIMESERIES_METADATA_ALIGNED_MEM;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.LOAD_TIMESERIES_METADATA_NONALIGNED_DISK;
@@ -309,9 +310,8 @@ public class FileLoaderUtils {
    */
   public static List<IPageReader> loadPageReaderList(
       IChunkMetadata chunkMetaData, Filter globalTimeFilter) throws IOException {
-    if (chunkMetaData == null) {
-      throw new IOException("Can't init null chunkMeta");
-    }
+    checkArgument(chunkMetaData != null, "Can't init null chunkMeta");
+
     IChunkLoader chunkLoader = chunkMetaData.getChunkLoader();
     IChunkReader chunkReader = chunkLoader.getChunkReader(chunkMetaData, globalTimeFilter);
     return chunkReader.loadPageReaderList();

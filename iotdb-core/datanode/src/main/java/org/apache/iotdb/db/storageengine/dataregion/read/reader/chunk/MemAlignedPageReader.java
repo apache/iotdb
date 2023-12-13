@@ -36,6 +36,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -67,11 +68,12 @@ public class MemAlignedPageReader implements IPageReader {
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
     BatchData batchData = BatchDataFactory.createBatchData(TSDataType.VECTOR, ascending, false);
 
-    for (int rowIndex = 0; rowIndex < tsBlock.getPositionCount(); rowIndex++) {
-      long time = tsBlock.getTimeByIndex(rowIndex);
-      Object[] rowValues = tsBlock.getRowValues(rowIndex);
+    boolean[] satisfyInfo = buildSatisfyInfoArray();
+    boolean[] hasValue = buildHasValueArray();
 
-      if (satisfyRecordFilter(time, rowValues)) {
+    for (int rowIndex = 0; rowIndex < tsBlock.getPositionCount(); rowIndex++) {
+      if (satisfyInfo[rowIndex] && hasValue[rowIndex]) {
+        long time = tsBlock.getTimeByIndex(rowIndex);
         TsPrimitiveType[] values = new TsPrimitiveType[tsBlock.getValueColumnCount()];
         for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
           if (tsBlock.getColumn(column) != null && !tsBlock.getColumn(column).isNull(rowIndex)) {
@@ -84,16 +86,11 @@ public class MemAlignedPageReader implements IPageReader {
     return batchData.flip();
   }
 
-  private boolean satisfyRecordFilter(long time, Object[] values) {
-    return recordFilter == null || recordFilter.satisfyRow(time, values);
-  }
-
   @Override
   public TsBlock getAllSatisfiedData() {
     builder.reset();
 
     boolean[] satisfyInfo = buildSatisfyInfoArray();
-
     boolean[] hasValue = buildHasValueArray();
 
     // build time column
@@ -106,15 +103,12 @@ public class MemAlignedPageReader implements IPageReader {
   }
 
   private boolean[] buildSatisfyInfoArray() {
-    boolean[] satisfyInfo = new boolean[tsBlock.getPositionCount()];
-
-    for (int rowIndex = 0; rowIndex < tsBlock.getPositionCount(); rowIndex++) {
-      long time = tsBlock.getTimeByIndex(rowIndex);
-      Object[] rowValues = tsBlock.getRowValues(rowIndex);
-
-      satisfyInfo[rowIndex] = satisfyRecordFilter(time, rowValues);
+    if (recordFilter == null || recordFilter.allSatisfy(this)) {
+      boolean[] satisfyInfo = new boolean[tsBlock.getPositionCount()];
+      Arrays.fill(satisfyInfo, true);
+      return satisfyInfo;
     }
-    return satisfyInfo;
+    return recordFilter.satisfyTsBlock(tsBlock);
   }
 
   private boolean[] buildHasValueArray() {
