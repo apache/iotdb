@@ -32,7 +32,6 @@ import org.apache.iotdb.db.pipe.connector.protocol.websocket.WebSocketConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.writeback.WriteBackConnector;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
-import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import java.util.Arrays;
 
@@ -95,13 +94,6 @@ public class PipeConnectorConstructor extends PipePluginConstructor {
 
   @Override
   PipeConnector reflectPlugin(PipeParameters connectorParameters) {
-    if (!connectorParameters.hasAnyAttributes(
-        PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY)) {
-      throw new PipeException(
-          "Failed to reflect PipeConnector instance because "
-              + "'connector' is not specified in the parameters.");
-    }
-
     return (PipeConnector)
         reflectPluginByKey(
             connectorParameters
