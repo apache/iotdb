@@ -17,20 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.receiver.thrift;
+package org.apache.iotdb.commons.pipe.connector.payload.request;
 
-import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
-import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
-import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
-import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
+public enum IoTDBConnectorRequestVersion {
+  VERSION_1((byte) 1),
+  ;
 
-public interface IoTDBThriftReceiver {
+  private final byte version;
 
-  IoTDBConnectorRequestVersion getVersion();
+  IoTDBConnectorRequestVersion(byte type) {
+    this.version = type;
+  }
 
-  TPipeTransferResp receive(
-      TPipeTransferReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher);
-
-  void handleExit();
+  public byte getVersion() {
+    return version;
+  }
 }
