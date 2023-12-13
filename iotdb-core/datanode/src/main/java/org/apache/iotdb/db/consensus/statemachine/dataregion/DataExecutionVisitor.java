@@ -94,7 +94,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
     try {
       dataRegion.insert(node);
       return StatusUtils.OK;
-    } catch (BatchProcessException e) {
+    } catch (WriteProcessException e) {
       LOGGER.warn("Batch failure in executing a InsertRowsNode.");
       TSStatus firstStatus = null;
       // for each error

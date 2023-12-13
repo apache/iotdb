@@ -3077,7 +3077,7 @@ public class DataRegion implements IDataRegionForQuery {
    *
    * @param insertRowsNode batch of rows belongs to multiple devices
    */
-  public void insert(InsertRowsNode insertRowsNode) throws BatchProcessException {
+  public void insertOld(InsertRowsNode insertRowsNode) throws BatchProcessException {
     for (int i = 0; i < insertRowsNode.getInsertRowNodeList().size(); i++) {
       InsertRowNode insertRowNode = insertRowsNode.getInsertRowNodeList().get(i);
       try {
@@ -3092,7 +3092,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  public void insertNew(InsertRowsNode insertRowsNode) throws WriteProcessException {
+  public void insert(InsertRowsNode insertRowsNode) throws WriteProcessException {
     if (enableMemControl) {
       StorageEngine.blockInsertionIfReject(null);
     }
