@@ -503,9 +503,11 @@ public class MTreeBelowSGMemoryImpl {
     IMeasurementMNode<IMemMNode> deletedNode = getMeasurementMNode(path);
     IMemMNode parent = deletedNode.getParent();
     // delete the last node of path
-    store.deleteChild(parent, path.getMeasurement());
-    if (deletedNode.getAlias() != null) {
-      parent.getAsDeviceMNode().deleteAliasChild(deletedNode.getAlias());
+    synchronized (this) {
+      store.deleteChild(parent, path.getMeasurement());
+      if (deletedNode.getAlias() != null) {
+        parent.getAsDeviceMNode().deleteAliasChild(deletedNode.getAlias());
+      }
     }
     deleteEmptyInternalMNode(parent.getAsDeviceMNode());
     return deletedNode;
@@ -541,13 +543,19 @@ public class MTreeBelowSGMemoryImpl {
     }
 
     // delete all empty ancestors except database and MeasurementMNode
-    while (isEmptyInternalMNode(curNode)) {
+    while (true) {
       // if current database has no time series, return the database name
       if (curNode.isDatabase()) {
         return;
       }
-      store.deleteChild(curNode.getParent(), curNode.getName());
-      curNode = curNode.getParent();
+
+      synchronized (this) {
+        if (!isEmptyInternalMNode(curNode)) {
+          break;
+        }
+        store.deleteChild(curNode.getParent(), curNode.getName());
+        curNode = curNode.getParent();
+      }
     }
   }
 

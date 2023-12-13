@@ -587,9 +587,11 @@ public class MTreeBelowSGCachedImpl {
     IMeasurementMNode<ICachedMNode> deletedNode = getMeasurementMNode(path);
     ICachedMNode parent = deletedNode.getParent();
     // delete the last node of path
-    store.deleteChild(parent, path.getMeasurement());
-    if (deletedNode.getAlias() != null) {
-      parent.getAsDeviceMNode().deleteAliasChild(deletedNode.getAlias());
+    synchronized (this) {
+      store.deleteChild(parent, path.getMeasurement());
+      if (deletedNode.getAlias() != null) {
+        parent.getAsDeviceMNode().deleteAliasChild(deletedNode.getAlias());
+      }
     }
     deleteAndUnpinEmptyInternalMNode(parent.getAsDeviceMNode());
     return deletedNode;
@@ -605,44 +607,50 @@ public class MTreeBelowSGCachedImpl {
       throws MetadataException {
     ICachedMNode curNode = entityMNode.getAsMNode();
     if (!entityMNode.isUseTemplate()) {
-      boolean hasMeasurement = false;
-      boolean hasNonViewMeasurement = false;
-      ICachedMNode child;
-      IMNodeIterator<ICachedMNode> iterator = store.getChildrenIterator(curNode);
-      try {
-        while (iterator.hasNext()) {
-          child = iterator.next();
-          unPinMNode(child);
-          if (child.isMeasurement()) {
-            hasMeasurement = true;
-            if (!child.getAsMeasurementMNode().isLogicalView()) {
-              hasNonViewMeasurement = true;
-              break;
+      synchronized (this) {
+        boolean hasMeasurement = false;
+        boolean hasNonViewMeasurement = false;
+        ICachedMNode child;
+        IMNodeIterator<ICachedMNode> iterator = store.getChildrenIterator(curNode);
+        try {
+          while (iterator.hasNext()) {
+            child = iterator.next();
+            unPinMNode(child);
+            if (child.isMeasurement()) {
+              hasMeasurement = true;
+              if (!child.getAsMeasurementMNode().isLogicalView()) {
+                hasNonViewMeasurement = true;
+                break;
+              }
             }
           }
+        } finally {
+          iterator.close();
         }
-      } finally {
-        iterator.close();
-      }
 
-      if (!hasMeasurement) {
-        synchronized (this) {
+        if (!hasMeasurement) {
           curNode = store.setToInternal(entityMNode);
+        } else if (!hasNonViewMeasurement) {
+          // has some measurement but they are all logical view
+          store.updateMNode(entityMNode.getAsMNode(), o -> o.getAsDeviceMNode().setAligned(null));
         }
-      } else if (!hasNonViewMeasurement) {
-        // has some measurement but they are all logical view
-        store.updateMNode(entityMNode.getAsMNode(), o -> o.getAsDeviceMNode().setAligned(null));
       }
     }
 
     // delete all empty ancestors except database and MeasurementMNode
-    while (isEmptyInternalMNode(curNode)) {
+    while (true) {
       // if current database has no time series, return the database name
       if (curNode.isDatabase()) {
         return;
       }
-      store.deleteChild(curNode.getParent(), curNode.getName());
-      curNode = curNode.getParent();
+
+      synchronized (this) {
+        if (!isEmptyInternalMNode(curNode)) {
+          break;
+        }
+        store.deleteChild(curNode.getParent(), curNode.getName());
+        curNode = curNode.getParent();
+      }
     }
     unPinMNode(curNode);
   }
