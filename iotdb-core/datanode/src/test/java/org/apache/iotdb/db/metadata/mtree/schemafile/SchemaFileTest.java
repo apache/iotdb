@@ -230,7 +230,6 @@ public class SchemaFileTest {
     nsf.writeMNode(vt4);
 
     Assert.assertEquals(11111L, nsf.init().getAsDatabaseMNode().getDataTTL());
-
     nsf.close();
   }
 
@@ -262,7 +261,7 @@ public class SchemaFileTest {
 
     ICachedMNode node = nodeFactory.createInternalMNode(null, "test");
     ICachedMNodeContainer.getCachedMNodeContainer(node)
-        .setSegmentAddress(SchemaFile.getGlobalIndex(5, (short) 0));
+        .setSegmentAddress(SchemaFile.getGlobalIndex(2, (short) 0));
     ISchemaFile sf = SchemaFile.loadSchemaFile("root.test.vRoot1", TEST_SCHEMA_REGION_ID);
 
     Iterator<ICachedMNode> res = sf.getChildren(node);
@@ -725,7 +724,7 @@ public class SchemaFileTest {
         getSegAddr(sf, getSegAddrInContainer(ent2), "e2m0") + 65536,
         getSegAddr(sf, getSegAddrInContainer(ent3), "e3m0"));
     Assert.assertEquals(
-        getSegAddr(sf, getSegAddrInContainer(ent2), "e2m0") + 65536 * 2,
+        getSegAddr(sf, getSegAddrInContainer(ent2), "e2m0") + 2,
         getSegAddr(sf, getSegAddrInContainer(ent4), "e4m0"));
 
     root.getChildren().clear();

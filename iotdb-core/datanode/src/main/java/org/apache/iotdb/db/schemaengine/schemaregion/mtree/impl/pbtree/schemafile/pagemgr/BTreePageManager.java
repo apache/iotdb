@@ -207,6 +207,7 @@ public class BTreePageManager extends PageManager {
         replacePageInCache(repPage, cxt);
         return repPage;
       } else {
+        // no interleaved flush implemented since alias of the incoming records are NOT ordered
         insertIndexEntryRecursiveUpwards(cxt.treeTrace[0], sk, splPage.getPageIndex(), cxt);
         return getPageInstance(cxt.treeTrace[1], cxt);
       }
@@ -225,9 +226,14 @@ public class BTreePageManager extends PageManager {
       ISchemaPage curPage, ISchemaPage splPage, String sk, SchemaPageContext cxt)
       throws MetadataException, IOException {
     if (cxt.treeTrace[0] < 1) {
+      // To make parent pointer valid after the btree established, curPage need to be transformed
+      //  into an InternalPage. Since NOW page CANNOT transform in place, a substitute InternalPage
+      //  inherits index from curPage initiated.
       ISegmentedPage trsPage = getMinApplSegmentedPageInMem(SchemaFileConfig.SEG_MAX_SIZ, cxt);
       trsPage.transplantSegment(
           curPage.getAsSegmentedPage(), (short) 0, SchemaFileConfig.SEG_MAX_SIZ);
+
+      // repPage inherits lock and referent from curPage, which is always locked by entrant.
       ISchemaPage repPage =
           ISchemaPage.initInternalPage(
               ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH),
@@ -236,6 +242,7 @@ public class BTreePageManager extends PageManager {
               curPage.getRefCnt(),
               curPage.getLock());
 
+      // link right child of the initiated InternalPage
       if (0 > repPage.getAsInternalPage().insertRecord(sk, splPage.getPageIndex())) {
         throw new ColossalRecordException(sk);
       }
@@ -244,9 +251,13 @@ public class BTreePageManager extends PageManager {
       repPage
           .getAsInternalPage()
           .setNextSegAddress(getGlobalIndex(trsPage.getPageIndex(), (short) 0));
-      cxt.lastLeafPage = trsPage.getAsSegmentedPage();
+
+      // mark the left-most child for interleaved flush, given the write operation is ordered
+      cxt.invokeLastLeaf(trsPage);
       replacePageInCache(repPage, cxt);
     } else {
+      // if the write starts from non-left-most leaf, it shall be recorded as well
+      cxt.invokeLastLeaf(curPage);
       insertIndexEntryRecursiveUpwards(cxt.treeTrace[0], sk, splPage.getPageIndex(), cxt);
     }
   }
