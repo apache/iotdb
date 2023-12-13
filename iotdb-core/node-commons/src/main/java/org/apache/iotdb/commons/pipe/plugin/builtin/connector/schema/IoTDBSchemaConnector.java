@@ -171,7 +171,7 @@ public abstract class IoTDBSchemaConnector extends IoTDBConnector {
           i,
           new IoTDBThriftSyncConnectorClient(
               new ThriftClientProperty.Builder()
-                  .setConnectionTimeoutMs((int) PIPE_CONFIG.getPipeConnectorTimeoutMs())
+                  .setConnectionTimeoutMs((int) PIPE_CONFIG.getPipeConnectorHandshakeTimeoutMs())
                   .setRpcThriftCompressionEnabled(
                       PIPE_CONFIG.isPipeConnectorRPCThriftCompressionEnabled())
                   .build(),
@@ -183,6 +183,7 @@ public abstract class IoTDBSchemaConnector extends IoTDBConnector {
 
       // TODO: validate client connectivity here, just like in ThriftSync.
       isClientAlive.set(i, true);
+      clients.get(i).setTimeout((int) PipeConfig.getInstance().getPipeConnectorTransferTimeoutMs());
       LOGGER.info("Handshake success. Target server ip: {}, port: {}", ip, port);
     }
 
