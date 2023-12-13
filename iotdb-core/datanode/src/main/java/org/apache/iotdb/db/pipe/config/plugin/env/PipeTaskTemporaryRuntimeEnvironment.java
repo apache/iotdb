@@ -17,20 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.receiver.thrift;
+package org.apache.iotdb.db.pipe.config.plugin.env;
 
-import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
-import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
-import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
-import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
 
-public interface IoTDBThriftReceiver {
+/** For temporary use when validating during creating a new pipe. */
+public class PipeTaskTemporaryRuntimeEnvironment extends PipeTaskRuntimeEnvironment {
 
-  IoTDBConnectorRequestVersion getVersion();
-
-  TPipeTransferResp receive(
-      TPipeTransferReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher);
-
-  void handleExit();
+  public PipeTaskTemporaryRuntimeEnvironment(CreatePipeStatement createPipeStatement) {
+    super(createPipeStatement.getPipeName(), System.currentTimeMillis(), -1);
+  }
 }

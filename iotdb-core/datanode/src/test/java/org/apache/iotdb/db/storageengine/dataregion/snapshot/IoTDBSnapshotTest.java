@@ -77,8 +77,11 @@ public class IoTDBSnapshotTest {
               + "0"
               + File.separator
               + String.format("%d-%d-0-0.tsfile", i + 1, i + 1);
+      File newFile = new File(filePath);
+      Assert.assertTrue(newFile.getParentFile().exists() || newFile.getParentFile().mkdirs());
       TsFileGeneratorUtils.generateMixTsFile(filePath, 5, 5, 10, i * 100, (i + 1) * 100, 10, 10);
       TsFileResource resource = new TsFileResource(new File(filePath));
+      Assert.assertTrue(new File(filePath).exists());
       resources.add(resource);
       for (int idx = 0; idx < 5; idx++) {
         resource.updateStartTime(testSgName + PATH_SEPARATOR + "d" + i, i * 100);
@@ -135,6 +138,7 @@ public class IoTDBSnapshotTest {
       List<TsFileResource> resources = writeTsFiles();
       resources.subList(50, 100).forEach(x -> x.setStatusForTest(TsFileResourceStatus.UNCLOSED));
       DataRegion region = new DataRegion(testSgName, "0");
+      region.setAllowCompaction(false);
       region.getTsFileManager().addAll(resources, true);
       File snapshotDir = new File("target" + File.separator + "snapshot");
       Assert.assertTrue(snapshotDir.exists() || snapshotDir.mkdirs());

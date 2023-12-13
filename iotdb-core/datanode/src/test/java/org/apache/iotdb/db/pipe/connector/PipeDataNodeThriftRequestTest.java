@@ -20,17 +20,24 @@
 package org.apache.iotdb.db.pipe.connector;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.connector.payload.request.PipeTransferSnapshotPieceReq;
+import org.apache.iotdb.commons.pipe.connector.payload.request.PipeTransferSnapshotSealReq;
+import org.apache.iotdb.commons.pipe.connector.payload.response.PipeTransferSnapshotPieceResp;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaPlanReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -39,9 +46,10 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
-public class PipeThriftRequestTest {
+public class PipeDataNodeThriftRequestTest {
 
   private static final String TIME_PRECISION = "ms";
 
@@ -83,6 +91,30 @@ public class PipeThriftRequestTest {
     List<PartialPath> paths = new ArrayList<>();
     paths.add(new PartialPath(new String[] {"root", "sg", "d", "s"}));
     Assert.assertEquals(statement.getPaths(), paths);
+  }
+
+  @Test
+  public void testPipeTransferSchemaPlanReq() {
+    PipeTransferSchemaPlanReq req =
+        PipeTransferSchemaPlanReq.toTPipeTransferReq(
+            new CreateAlignedTimeSeriesNode(
+                new PlanNodeId(""),
+                new PartialPath(new String[] {"root", "sg", "d"}),
+                Collections.singletonList("s"),
+                Collections.singletonList(TSDataType.INT32),
+                Collections.singletonList(TSEncoding.PLAIN),
+                Collections.singletonList(CompressionType.UNCOMPRESSED),
+                null,
+                null,
+                null));
+
+    PipeTransferSchemaPlanReq deserializeReq = PipeTransferSchemaPlanReq.fromTPipeTransferReq(req);
+
+    Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
+    Assert.assertEquals(req.getType(), deserializeReq.getType());
+    Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
+
+    Assert.assertEquals(req.getPlanNode(), deserializeReq.getPlanNode());
   }
 
   @Test
@@ -143,6 +175,25 @@ public class PipeThriftRequestTest {
   }
 
   @Test
+  public void testPipeTransferSnapshotPieceReq() throws IOException {
+    byte[] body = "testPipeTransferSnapshotPieceReq".getBytes();
+    String fileName = "1.temp";
+
+    PipeTransferSnapshotPieceReq req =
+        PipeTransferSnapshotPieceReq.toTPipeTransferReq(fileName, 0, body);
+    PipeTransferSnapshotPieceReq deserializeReq =
+        PipeTransferSnapshotPieceReq.fromTPipeTransferReq(req);
+
+    Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
+    Assert.assertEquals(req.getType(), deserializeReq.getType());
+    Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
+
+    Assert.assertEquals(req.getSnapshotName(), deserializeReq.getSnapshotName());
+    Assert.assertEquals(req.getStartWritingOffset(), deserializeReq.getStartWritingOffset());
+    Assert.assertArrayEquals(req.getSnapshotPiece(), deserializeReq.getSnapshotPiece());
+  }
+
+  @Test
   public void testPipeTransferFileSealReq() throws IOException {
     String fileName = "1.tsfile";
 
@@ -158,11 +209,38 @@ public class PipeThriftRequestTest {
   }
 
   @Test
+  public void testPipeTransferSnapshotSealReq() throws IOException {
+    String fileName = "1.temp";
+
+    PipeTransferSnapshotSealReq req = PipeTransferSnapshotSealReq.toTPipeTransferReq(fileName, 100);
+    PipeTransferSnapshotSealReq deserializeReq =
+        PipeTransferSnapshotSealReq.fromTPipeTransferReq(req);
+
+    Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
+    Assert.assertEquals(req.getType(), deserializeReq.getType());
+    Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
+
+    Assert.assertEquals(req.getSnapshotName(), deserializeReq.getSnapshotName());
+    Assert.assertEquals(req.getSnapshotLength(), deserializeReq.getSnapshotLength());
+  }
+
+  @Test
   public void testPIpeTransferFilePieceResp() throws IOException {
     PipeTransferFilePieceResp resp =
         PipeTransferFilePieceResp.toTPipeTransferResp(RpcUtils.SUCCESS_STATUS, 100);
     PipeTransferFilePieceResp deserializeResp =
         PipeTransferFilePieceResp.fromTPipeTransferResp(resp);
+
+    Assert.assertEquals(resp.getStatus(), deserializeResp.getStatus());
+    Assert.assertEquals(resp.getEndWritingOffset(), deserializeResp.getEndWritingOffset());
+  }
+
+  @Test
+  public void testPipeTransferSnapshotPieceResp() throws IOException {
+    PipeTransferSnapshotPieceResp resp =
+        PipeTransferSnapshotPieceResp.toTPipeTransferResp(RpcUtils.SUCCESS_STATUS, 100);
+    PipeTransferSnapshotPieceResp deserializeResp =
+        PipeTransferSnapshotPieceResp.fromTPipeTransferResp(resp);
 
     Assert.assertEquals(resp.getStatus(), deserializeResp.getStatus());
     Assert.assertEquals(resp.getEndWritingOffset(), deserializeResp.getEndWritingOffset());

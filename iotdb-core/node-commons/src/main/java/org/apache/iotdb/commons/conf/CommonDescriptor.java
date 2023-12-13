@@ -20,7 +20,6 @@
 package org.apache.iotdb.commons.conf;
 
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
-import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 
@@ -56,7 +55,7 @@ public class CommonDescriptor {
     config.setProcedureWalFolder(systemDir + File.separator + "procedure");
   }
 
-  public void loadCommonProps(Properties properties) throws BadNodeUrlException {
+  public void loadCommonProps(Properties properties) {
     config.setAuthorizerProvider(
         properties.getProperty("authorizer_provider_class", config.getAuthorizerProvider()).trim());
     // if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
@@ -310,10 +309,16 @@ public class CommonDescriptor {
                 "pipe_extractor_matcher_cache_size",
                 String.valueOf(config.getPipeExtractorMatcherCacheSize()))));
 
-    config.setPipeConnectorTimeoutMs(
+    config.setPipeConnectorHandshakeTimeoutMs(
         Long.parseLong(
             properties.getProperty(
-                "pipe_connector_timeout_ms", String.valueOf(config.getPipeConnectorTimeoutMs()))));
+                "pipe_connector_handshake_timeout_ms",
+                String.valueOf(config.getPipeConnectorHandshakeTimeoutMs()))));
+    config.setPipeConnectorTransferTimeoutMs(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_connector_timeout_ms",
+                String.valueOf(config.getPipeConnectorTransferTimeoutMs()))));
     config.setPipeConnectorReadFileBufferSize(
         Integer.parseInt(
             properties.getProperty(

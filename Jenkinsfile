@@ -112,6 +112,10 @@ pipeline {
                     junit(testResults: '**/surefire-reports/*.xml', allowEmptyResults: true)
                     junit(testResults: '**/failsafe-reports/*.xml', allowEmptyResults: true)
                 }
+                failure {
+                    archiveArtifacts 'integration-test/target/cluster-logs/**'
+                    archiveArtifacts 'integration-test/target/pipeIT-logs/**'
+                }
             }
         }
 
