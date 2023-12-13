@@ -19,9 +19,13 @@
 
 package org.apache.iotdb.commons.pipe.agent.task;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.commons.pipe.task.PipeTaskManager;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMetaKeeper;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,38 +36,10 @@ public abstract class PipeTaskAgent {
   protected static final String MESSAGE_UNKNOWN_PIPE_STATUS = "Unknown pipe status %s for pipe %s";
   protected static final String MESSAGE_UNEXPECTED_PIPE_STATUS = "Unexpected pipe status %s: ";
 
-  protected final PipeMetaKeeper pipeMetaKeeper;
+  protected final PipeTaskManager pipeTaskManager;
 
   protected PipeTaskAgent() {
-    this.pipeMetaKeeper = new PipeMetaKeeper();
-  }
-
-  ////////////////////////// PipeMeta Lock Control //////////////////////////
-
-  protected void acquireReadLock() {
-    pipeMetaKeeper.acquireReadLock();
-  }
-
-  public boolean tryReadLockWithTimeOut(long timeOutInSeconds) {
-    try {
-      return pipeMetaKeeper.tryReadLock(timeOutInSeconds);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      LOGGER.warn("Interruption during requiring pipeMetaKeeper lock.", e);
-      return false;
-    }
-  }
-
-  protected void releaseReadLock() {
-    pipeMetaKeeper.releaseReadLock();
-  }
-
-  protected void acquireWriteLock() {
-    pipeMetaKeeper.acquireWriteLock();
-  }
-
-  protected void releaseWriteLock() {
-    pipeMetaKeeper.releaseWriteLock();
+    pipeTaskManager = new PipeTaskManager();
   }
 
   /**
@@ -280,4 +256,20 @@ public abstract class PipeTaskAgent {
     }
     return true;
   }
+
+  ///////////////////////// Manage by dataRegionGroupId /////////////////////////
+
+  protected abstract void createPipeTask(
+      PipeMetaKeeper metaKeeper,
+      TConsensusGroupId consensusGroupId,
+      PipeStaticMeta pipeStaticMeta,
+      PipeTaskMeta pipeTaskMeta);
+
+  protected abstract void dropPipeTask(
+      PipeMetaKeeper metaKeeper,
+      TConsensusGroupId dataRegionGroupId,
+      PipeStaticMeta pipeStaticMeta);
+
+  protected abstract void startPipeTask(
+      TConsensusGroupId dataRegionGroupId, PipeStaticMeta pipeStaticMeta);
 }

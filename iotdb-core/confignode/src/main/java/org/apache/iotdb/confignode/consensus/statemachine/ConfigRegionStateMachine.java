@@ -34,7 +34,6 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
-import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
 import org.apache.iotdb.confignode.writelog.io.SingleFileLogReader;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -215,8 +214,6 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       configManager.getPartitionManager().stopRegionCleaner();
       configManager.getCQManager().stopCQScheduler();
       configManager.getClusterSchemaManager().clearSchemaQuotaCache();
-
-      PipeConfigNodeAgent.task().handleLeaderChanged();
       // Remove Metric after leader change
       configManager.removeMetrics();
     }
@@ -251,8 +248,6 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         () -> configManager.getPipeManager().getPipeRuntimeCoordinator().startPipeMetaSync());
     threadPool.submit(
         () -> configManager.getPipeManager().getPipeRuntimeCoordinator().startPipeHeartbeat());
-
-    threadPool.submit(() -> PipeConfigNodeAgent.task().handleLeaderReady());
   }
 
   @Override

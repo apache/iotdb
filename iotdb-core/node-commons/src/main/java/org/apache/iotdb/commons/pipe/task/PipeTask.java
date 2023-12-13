@@ -17,28 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task;
+package org.apache.iotdb.commons.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.db.pipe.task.stage.PipeTaskStage;
+import org.apache.iotdb.commons.pipe.task.stage.PipeTaskStage;
 
 public class PipeTask {
 
-  private final String pipeName;
-  private final TConsensusGroupId dataRegionId;
+  protected final String pipeName;
+  protected final TConsensusGroupId regionId;
 
   private final PipeTaskStage extractorStage;
   private final PipeTaskStage processorStage;
   private final PipeTaskStage connectorStage;
 
-  PipeTask(
+  public PipeTask(
       String pipeName,
-      TConsensusGroupId dataRegionId,
+      TConsensusGroupId regionId,
       PipeTaskStage extractorStage,
       PipeTaskStage processorStage,
       PipeTaskStage connectorStage) {
     this.pipeName = pipeName;
-    this.dataRegionId = dataRegionId;
+    this.regionId = regionId;
 
     this.extractorStage = extractorStage;
     this.processorStage = processorStage;
@@ -69,8 +69,8 @@ public class PipeTask {
     connectorStage.stop();
   }
 
-  public TConsensusGroupId getDataRegionId() {
-    return dataRegionId;
+  public TConsensusGroupId getRegionId() {
+    return regionId;
   }
 
   public String getPipeName() {

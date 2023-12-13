@@ -36,7 +36,6 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipeP
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
-import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleMetaChangeProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -70,7 +69,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
   private final PipeTaskInfoVersion pipeTaskInfoVersion;
 
   public PipeTaskInfo() {
-    this.pipeMetaKeeper = PipeConfigNodeAgent.task().getPipeMetaKeeper();
+    this.pipeMetaKeeper = new PipeMetaKeeper();
     this.pipeTaskInfoVersion = new PipeTaskInfoVersion();
   }
 

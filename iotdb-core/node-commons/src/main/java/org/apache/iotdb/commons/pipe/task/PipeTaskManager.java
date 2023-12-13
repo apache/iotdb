@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task;
+package org.apache.iotdb.commons.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
@@ -30,21 +30,20 @@ public class PipeTaskManager {
   private final Map<PipeStaticMeta, Map<TConsensusGroupId, PipeTask>> pipeMap = new HashMap<>();
 
   /**
-   * Leader data region count in this data node. We simply update it when adding pipe task but not
-   * remove it when removing pipe task. So it may be larger than the actual leader data region count
-   * in this data node.
+   * Leader region count in this node. We simply update it when adding pipe task but not remove it
+   * when removing pipe task. So it may be larger than the actual leader region count in this node.
    */
-  private volatile int leaderDataRegionCount = 0;
+  private volatile int leaderRegionCount = 0;
 
   /** Add pipe task by pipe static meta and consensus group id. */
   public synchronized void addPipeTask(
       PipeStaticMeta pipeStaticMeta, TConsensusGroupId consensusGroupId, PipeTask pipeTask) {
-    final Map<TConsensusGroupId, PipeTask> dataRegionId2PipeTask =
+    final Map<TConsensusGroupId, PipeTask> regionId2PipeTask =
         pipeMap.computeIfAbsent(pipeStaticMeta, k -> new HashMap<>());
-    dataRegionId2PipeTask.put(consensusGroupId, pipeTask);
+    regionId2PipeTask.put(consensusGroupId, pipeTask);
 
     // update leader data region count
-    leaderDataRegionCount = Math.max(leaderDataRegionCount, dataRegionId2PipeTask.size());
+    leaderRegionCount = Math.max(leaderRegionCount, regionId2PipeTask.size());
   }
 
   /** Add pipe tasks by pipe static meta. */
@@ -55,7 +54,7 @@ public class PipeTaskManager {
     dataRegionId2PipeTask.putAll(pipeTasks);
 
     // update leader data region count
-    leaderDataRegionCount = Math.max(leaderDataRegionCount, dataRegionId2PipeTask.size());
+    leaderRegionCount = Math.max(leaderRegionCount, dataRegionId2PipeTask.size());
   }
 
   /**
@@ -112,11 +111,11 @@ public class PipeTaskManager {
   }
 
   /**
-   * Get leader data region count in this data node.
+   * Get leader region count in this node.
    *
-   * @return leader data region count
+   * @return leader region count
    */
-  public int getLeaderDataRegionCount() {
-    return leaderDataRegionCount;
+  public int getLeaderRegionCount() {
+    return leaderRegionCount;
   }
 }

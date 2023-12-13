@@ -24,7 +24,9 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalExcep
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
+import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeMetaKeeper;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
@@ -34,9 +36,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.extractor.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.task.PipeBuilder;
-import org.apache.iotdb.db.pipe.task.PipeTask;
 import org.apache.iotdb.db.pipe.task.PipeTaskDataRegionBuilder;
-import org.apache.iotdb.db.pipe.task.PipeTaskManager;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
@@ -79,17 +79,46 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskDataNodeAgent.class);
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-  private final PipeTaskManager pipeTaskManager;
+
+  private final PipeMetaKeeper pipeMetaKeeper;
 
   public PipeTaskDataNodeAgent() {
     super();
-    pipeTaskManager = new PipeTaskManager();
+    pipeMetaKeeper = new PipeMetaKeeper();
+  }
+
+  ////////////////////////// PipeMeta Lock Control //////////////////////////
+
+  private void acquireReadLock() {
+    pipeMetaKeeper.acquireReadLock();
+  }
+
+  private boolean tryReadLockWithTimeOut(long timeOutInSeconds) {
+    try {
+      return pipeMetaKeeper.tryReadLock(timeOutInSeconds);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.warn("Interruption during requiring pipeMetaKeeper lock.", e);
+      return false;
+    }
+  }
+
+  private void releaseReadLock() {
+    pipeMetaKeeper.releaseReadLock();
+  }
+
+  private void acquireWriteLock() {
+    pipeMetaKeeper.acquireWriteLock();
+  }
+
+  private void releaseWriteLock() {
+    pipeMetaKeeper.releaseWriteLock();
   }
 
   ////////////////////////// Pipe Task Management Entry //////////////////////////
 
   public int getLeaderDataRegionCount() {
-    return pipeTaskManager.getLeaderDataRegionCount();
+    return pipeTaskManager.getLeaderRegionCount();
   }
 
   public synchronized TPushPipeMetaRespExceptionMessage handleSinglePipeMetaChanges(
@@ -265,7 +294,8 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
 
       // If task meta does not exist on data node, create a new task
       if (taskMetaOnDataNode == null) {
-        createPipeTask(consensusGroupIdFromConfigNode, pipeStaticMeta, taskMetaFromConfigNode);
+        createPipeTask(
+            pipeMetaKeeper, consensusGroupIdFromConfigNode, pipeStaticMeta, taskMetaFromConfigNode);
         // We keep the new created task's status consistent with the status recorded in data node's
         // pipe runtime meta. please note that the status recorded in data node's pipe runtime meta
         // is not reliable, but we will have a check later to make sure the status is correct.
@@ -280,8 +310,9 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
       final int dataNodeIdOnDataNode = taskMetaOnDataNode.getLeaderDataNodeId();
 
       if (dataNodeIdFromConfigNode != dataNodeIdOnDataNode) {
-        dropPipeTask(consensusGroupIdFromConfigNode, pipeStaticMeta);
-        createPipeTask(consensusGroupIdFromConfigNode, pipeStaticMeta, taskMetaFromConfigNode);
+        dropPipeTask(pipeMetaKeeper, consensusGroupIdFromConfigNode, pipeStaticMeta);
+        createPipeTask(
+            pipeMetaKeeper, consensusGroupIdFromConfigNode, pipeStaticMeta, taskMetaFromConfigNode);
         // We keep the new created task's status consistent with the status recorded in data node's
         // pipe runtime meta. please note that the status recorded in data node's pipe runtime meta
         // is not reliable, but we will have a check later to make sure the status is correct.
@@ -300,7 +331,7 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
       final PipeTaskMeta taskMetaFromConfigNode =
           consensusGroupIdToTaskMetaMapFromConfigNode.get(consensusGroupIdOnDataNode);
       if (taskMetaFromConfigNode == null) {
-        dropPipeTask(consensusGroupIdOnDataNode, pipeStaticMeta);
+        dropPipeTask(pipeMetaKeeper, consensusGroupIdOnDataNode, pipeStaticMeta);
       }
     }
 
@@ -640,7 +671,9 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
 
   ///////////////////////// Manage by dataRegionGroupId /////////////////////////
 
-  private void createPipeTask(
+  @Override
+  protected void createPipeTask(
+      PipeMetaKeeper metaKeeper,
       TConsensusGroupId consensusGroupId,
       PipeStaticMeta pipeStaticMeta,
       PipeTaskMeta pipeTaskMeta) {
@@ -650,15 +683,19 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
       pipeTask.create();
       pipeTaskManager.addPipeTask(pipeStaticMeta, consensusGroupId, pipeTask);
     }
-    pipeMetaKeeper
+    metaKeeper
         .getPipeMeta(pipeStaticMeta.getPipeName())
         .getRuntimeMeta()
         .getConsensusGroupId2TaskMetaMap()
         .put(consensusGroupId, pipeTaskMeta);
   }
 
-  private void dropPipeTask(TConsensusGroupId dataRegionGroupId, PipeStaticMeta pipeStaticMeta) {
-    pipeMetaKeeper
+  @Override
+  protected void dropPipeTask(
+      PipeMetaKeeper metaKeeper,
+      TConsensusGroupId dataRegionGroupId,
+      PipeStaticMeta pipeStaticMeta) {
+    metaKeeper
         .getPipeMeta(pipeStaticMeta.getPipeName())
         .getRuntimeMeta()
         .getConsensusGroupId2TaskMetaMap()
@@ -669,7 +706,8 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
     }
   }
 
-  private void startPipeTask(TConsensusGroupId dataRegionGroupId, PipeStaticMeta pipeStaticMeta) {
+  @Override
+  protected void startPipeTask(TConsensusGroupId dataRegionGroupId, PipeStaticMeta pipeStaticMeta) {
     final PipeTask pipeTask = pipeTaskManager.getPipeTask(pipeStaticMeta, dataRegionGroupId);
     if (pipeTask != null) {
       pipeTask.start();

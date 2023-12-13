@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.stage;
+package org.apache.iotdb.commons.pipe.task.stage;
 
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.pipe.api.exception.PipeException;

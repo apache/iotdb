@@ -19,19 +19,20 @@
 
 package org.apache.iotdb.confignode.manager.pipe.agent.task;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
+import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMetaKeeper;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.confignode.manager.pipe.execution.PipeConfigNodeSubtask;
-import org.apache.iotdb.confignode.manager.pipe.execution.PipeConfigNodeSubtaskExecutor;
-import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.manager.pipe.task.PipeConfigNodeTask;
+import org.apache.iotdb.confignode.manager.pipe.task.stage.PipeConfigNodeTaskStage;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * State transition diagram of a pipe task:
@@ -54,148 +55,108 @@ public class PipeTaskConfigNodeAgent extends PipeTaskAgent {
     super();
   }
 
-  /** Should only be called by PipeTaskInfo. */
-  public PipeMetaKeeper getPipeMetaKeeper() {
-    return pipeMetaKeeper;
+  ///////////////////////// Manage by dataRegionGroupId /////////////////////////
+
+  @Override
+  public void createPipeTask(
+      PipeMetaKeeper pipeMetaKeeper,
+      TConsensusGroupId consensusGroupId,
+      PipeStaticMeta pipeStaticMeta,
+      PipeTaskMeta pipeTaskMeta) {
+    if (pipeTaskManager.getPipeTask(pipeStaticMeta, consensusGroupId) != null) {
+      LOGGER.warn(
+          "Pipe task {} has already been created, skip creating it again",
+          pipeStaticMeta.getPipeName());
+      return;
+    }
+
+    if (pipeTaskMeta.getLeaderDataNodeId()
+        == ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()) {
+      final PipeConfigNodeTask configNodeTask =
+          new PipeConfigNodeTask(
+              pipeStaticMeta.getPipeName(),
+              consensusGroupId,
+              new PipeConfigNodeTaskStage(
+                  pipeStaticMeta.getPipeName(),
+                  pipeStaticMeta.getCreationTime(),
+                  pipeStaticMeta.getExtractorParameters().getAttribute(),
+                  pipeStaticMeta.getConnectorParameters().getAttribute(),
+                  consensusGroupId));
+      configNodeTask.create();
+      pipeTaskManager.addPipeTask(pipeStaticMeta, consensusGroupId, configNodeTask);
+    }
+
+    pipeMetaKeeper
+        .getPipeMeta(pipeStaticMeta.getPipeName())
+        .getRuntimeMeta()
+        .getConsensusGroupId2TaskMetaMap()
+        .put(consensusGroupId, pipeTaskMeta);
   }
 
-  public boolean createPipe(PipeMeta newPipeMeta) {
-    acquireWriteLock();
-    try {
-      final String pipeName = newPipeMeta.getStaticMeta().getPipeName();
-      final long creationTime = newPipeMeta.getStaticMeta().getCreationTime();
-      final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
-      if (existedPipeMeta != null) {
-        if (!checkBeforeCreatePipe(existedPipeMeta, pipeName, creationTime)) {
-          return false;
-        }
+  @Override
+  public void dropPipeTask(
+      PipeMetaKeeper pipeMetaKeeper,
+      TConsensusGroupId regionGroupId,
+      PipeStaticMeta pipeStaticMeta) {
+    if (pipeTaskManager.getPipeTask(pipeStaticMeta, regionGroupId) == null) {
+      LOGGER.warn(
+          "Pipe task {} has already been dropped, skip dropping it again",
+          pipeStaticMeta.getPipeName());
+      return;
+    }
 
-        // Drop the pipe if
-        // 1. The pipe with the same name but with different creation time has been created before
-        // 2. The pipe with the same name and the same creation time has been dropped before, but
-        // the
-        //  pipe task meta has not been cleaned up
-        dropPipe(pipeName, existedPipeMeta.getStaticMeta().getCreationTime());
-      }
-      PipeConfigNodeSubtaskExecutor.getInstance()
-          .register(
-              new PipeConfigNodeSubtask(
-                  newPipeMeta.getStaticMeta().getPipeName(),
-                  newPipeMeta.getStaticMeta().getCreationTime(),
-                  newPipeMeta.getStaticMeta().getExtractorParameters().getAttribute(),
-                  newPipeMeta.getStaticMeta().getConnectorParameters().getAttribute()));
-
-      // No matter the pipe status is RUNNING or STOPPED, we always set the status of pipe meta
-      // to STOPPED when it is created. The STOPPED status should always be the initial status
-      // of a pipe, which makes the status transition logic simpler.
-      final AtomicReference<PipeStatus> pipeStatus = newPipeMeta.getRuntimeMeta().getStatus();
-      final boolean needToStartPipe = pipeStatus.get() == PipeStatus.RUNNING;
-      pipeStatus.set(PipeStatus.STOPPED);
-
-      pipeMetaKeeper.addPipeMeta(pipeName, newPipeMeta);
-
-      // If the pipe status from config node is RUNNING, we will start the pipe later.
-      return needToStartPipe;
-    } catch (Exception e) {
-      throw new PipeException(
-          String.format(
-              "failed to create subtask for schema pipe %s, because: %s",
-              newPipeMeta.getStaticMeta().getPipeName(), e.getMessage()),
-          e);
-    } finally {
-      releaseWriteLock();
+    pipeMetaKeeper
+        .getPipeMeta(pipeStaticMeta.getPipeName())
+        .getRuntimeMeta()
+        .getConsensusGroupId2TaskMetaMap()
+        .remove(regionGroupId);
+    final PipeTask pipeTask = pipeTaskManager.removePipeTask(pipeStaticMeta, regionGroupId);
+    if (pipeTask != null) {
+      pipeTask.drop();
     }
   }
 
-  public void dropPipe(String pipeName, long creationTime) {
-    acquireWriteLock();
-    try {
-      final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
-      if (!checkBeforeDropPipe(existedPipeMeta, pipeName, creationTime)) {
-        return;
-      }
-
-      existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
-
-      PipeConfigNodeSubtaskExecutor.getInstance().deregister(pipeName);
-
-      // Remove pipe meta from pipe meta keeper
-      pipeMetaKeeper.removePipeMeta(pipeName);
-    } finally {
-      releaseWriteLock();
+  @Override
+  public void startPipeTask(TConsensusGroupId regionGroupId, PipeStaticMeta pipeStaticMeta) {
+    final PipeTask pipeTask = pipeTaskManager.getPipeTask(pipeStaticMeta, regionGroupId);
+    if (pipeTask != null) {
+      pipeTask.start();
     }
   }
 
-  public void dropPipe(String pipeName) {
-    acquireWriteLock();
-    try {
-      final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
-      if (!checkBeforeDropPipe(existedPipeMeta, pipeName)) {
-        return;
-      }
-
-      existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
-
-      PipeConfigNodeSubtaskExecutor.getInstance().deregister(pipeName);
-
-      // Remove pipe meta from pipe meta keeper
-      pipeMetaKeeper.removePipeMeta(pipeName);
-    } finally {
-      releaseWriteLock();
+  public void stopPipeTask(TConsensusGroupId regionGroupId, PipeStaticMeta pipeStaticMeta) {
+    final PipeTask pipeTask = pipeTaskManager.getPipeTask(pipeStaticMeta, regionGroupId);
+    if (pipeTask != null) {
+      pipeTask.stop();
     }
   }
 
-  public void startPipe(String pipeName, long creationTime) {
-    acquireWriteLock();
-    try {
-      final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
-
-      if (!checkBeforeStartPipe(existedPipeMeta, pipeName, creationTime)) {
-        return;
-      }
-
-      PipeConfigNodeSubtaskExecutor.getInstance().start(pipeName);
-
-      // Set pipe meta status to RUNNING
-      existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
-      // Clear exception messages if started successfully
-      existedPipeMeta
-          .getRuntimeMeta()
-          .getConsensusGroupId2TaskMetaMap()
-          .values()
-          .forEach(PipeTaskMeta::clearExceptionMessages);
-    } finally {
-      releaseWriteLock();
-    }
-  }
-
-  public void stopPipe(String pipeName, long creationTime) {
-    acquireWriteLock();
-    try {
-      final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
-
-      if (!checkBeforeStopPipe(existedPipeMeta, pipeName, creationTime)) {
-        return;
-      }
-
-      PipeConfigNodeSubtaskExecutor.getInstance().stop(pipeName);
-
-      // Set pipe meta status to STOPPED
-      existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
-    } finally {
-      releaseWriteLock();
-    }
-  }
-
-  public void handleSinglePipeMetaChange(PipeMeta newPipeMeta) {
+  public void handleSinglePipeMetaChanges(PipeMetaKeeper pipeMetaKeeper, PipeMeta newPipeMeta) {
     // TODO
   }
 
-  public void handleLeaderChanged() {
-    // TODO
+  public void handleLeaderChanged(PipeMetaKeeper pipeMetaKeeper) {
+    pipeMetaKeeper
+        .getPipeMetaList()
+        .forEach(
+            pipeMeta ->
+                pipeTaskManager
+                    .getPipeTasks(pipeMeta.getStaticMeta())
+                    .values()
+                    .forEach(PipeTask::stop));
   }
 
-  public void handleLeaderReady() {
-    // TODO
+  public void handleLeaderReady(PipeMetaKeeper pipeMetaKeeper) {
+    pipeMetaKeeper
+        .getPipeMetaList()
+        .forEach(
+            pipeMeta -> {
+              if (pipeMeta.getRuntimeMeta().getStatus().get() == PipeStatus.RUNNING) {
+                pipeTaskManager
+                    .getPipeTasks(pipeMeta.getStaticMeta())
+                    .values()
+                    .forEach(PipeTask::start);
+              }
+            });
   }
 }
