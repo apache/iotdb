@@ -166,7 +166,8 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
         try {
           compactWithAlignedChunk(reader, alignedChunkMetadata);
         } catch (Exception e) {
-          throw new RuntimeException("Meet errors when compact aligned series", e);
+          throw new RuntimeException(
+              "Meet errors when compact aligned series of device: " + device, e);
         }
       }
       if (reader instanceof CompactionTsFileReader) {

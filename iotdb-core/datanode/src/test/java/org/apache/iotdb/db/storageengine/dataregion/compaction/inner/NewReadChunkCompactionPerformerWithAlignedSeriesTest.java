@@ -37,6 +37,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 import org.junit.After;
@@ -221,6 +222,56 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
   }
 
   @Test
+  public void testSimpleCompactionWithNotExistColumnByFlushChunk()
+      throws IOException, StorageEngineException, InterruptedException, MetadataException {
+    TsFileResource seqResource1 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1"),
+            new TimeRange[] {new TimeRange(100000, 200000), new TimeRange(300000, 500000)},
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, false),
+            true);
+    seqResources.add(seqResource1);
+    seqResource1
+        .getModFile()
+        .write(
+            new Deletion(new PartialPath("root.testsg.d0", "s2"), Long.MAX_VALUE, Long.MAX_VALUE));
+
+    TsFileResource seqResource2 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[] {new TimeRange(600000, 700000), new TimeRange(800000, 900000)},
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, false),
+            true);
+    seqResources.add(seqResource2);
+
+    tsFileManager.addAll(seqResources, true);
+    TsFileResource targetResource =
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(seqResources, true);
+
+    ReadChunkCompactionPerformer performer = new ReadChunkCompactionPerformer();
+    CompactionTaskSummary summary = new CompactionTaskSummary();
+    performer.setSummary(summary);
+    performer.setSourceFiles(seqResources);
+    performer.setTargetFiles(Collections.singletonList(targetResource));
+    performer.perform();
+    CompactionUtils.moveTargetFile(
+        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+    Assert.assertEquals(14, summary.getDirectlyFlushChunkNum());
+    Assert.assertEquals(0, summary.getDeserializeChunkCount());
+    TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
+    Assert.assertEquals(
+        CompactionCheckerUtils.readFiles(seqResources),
+        CompactionCheckerUtils.readFiles(Collections.singletonList(targetResource)));
+  }
+
+
+  @Test
   public void testSimpleCompactionWithPartialDeletedColumnByFlushChunk()
       throws IOException, StorageEngineException, InterruptedException, MetadataException {
     TsFileResource seqResource1 =
@@ -269,7 +320,7 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
   }
 
   @Test
-  public void testSimpleCompactionWithPartialDeletedByFlushPage() throws Exception {
+  public void testSimpleCompactionWithAllDeletedPageByFlushPage() throws Exception {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
             "d0",
@@ -320,7 +371,7 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
   }
 
   @Test
-  public void testSimpleCompactionWithPartialDeletedByWritePoint()
+  public void testSimpleCompactionWithPartialDeletedPageByWritePoint()
       throws IOException, MetadataException, StorageEngineException, InterruptedException {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
