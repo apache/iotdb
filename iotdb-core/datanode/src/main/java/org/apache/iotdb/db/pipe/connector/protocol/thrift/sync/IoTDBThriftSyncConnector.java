@@ -412,7 +412,9 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
 
   @Override
   public void close() {
-    clientManager.clean();
+    if (clientManager != null) {
+      clientManager.clean();
+    }
 
     if (tabletBatchBuilder != null) {
       tabletBatchBuilder.close();

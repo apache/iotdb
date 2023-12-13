@@ -177,7 +177,7 @@ public class SyncClientManager {
     IoTDBThriftSyncConnectorClient client =
         new IoTDBThriftSyncConnectorClient(
             new ThriftClientProperty.Builder()
-                .setConnectionTimeoutMs((int) PIPE_CONFIG.getPipeConnectorTimeoutMs())
+                .setConnectionTimeoutMs((int) PIPE_CONFIG.getPipeConnectorTransferTimeoutMs())
                 .setRpcThriftCompressionEnabled(
                     PIPE_CONFIG.isPipeConnectorRPCThriftCompressionEnabled())
                 .build(),
