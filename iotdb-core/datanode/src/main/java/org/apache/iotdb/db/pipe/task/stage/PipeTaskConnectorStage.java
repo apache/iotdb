@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.pipe.task.stage;
 
-import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskConnectorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutorManager;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtaskManager;
@@ -29,12 +30,19 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 public class PipeTaskConnectorStage extends PipeTaskStage {
 
+  private final String pipeName;
+  private final int dataRegionId;
   protected final PipeParameters pipeConnectorParameters;
 
   protected String connectorSubtaskId;
 
   public PipeTaskConnectorStage(
-      String pipeName, long creationTime, PipeParameters pipeConnectorParameters) {
+      String pipeName,
+      long creationTime,
+      PipeParameters pipeConnectorParameters,
+      TConsensusGroupId dataRegionId) {
+    this.pipeName = pipeName;
+    this.dataRegionId = dataRegionId.getId();
     this.pipeConnectorParameters = pipeConnectorParameters;
 
     connectorSubtaskId =
@@ -42,7 +50,8 @@ public class PipeTaskConnectorStage extends PipeTaskStage {
             .register(
                 PipeSubtaskExecutorManager.getInstance().getConnectorSubtaskExecutor(),
                 pipeConnectorParameters,
-                new PipeTaskRuntimeEnvironment(pipeName, creationTime));
+                new PipeTaskConnectorRuntimeEnvironment(
+                    this.pipeName, creationTime, this.dataRegionId));
   }
 
   @Override
@@ -62,7 +71,7 @@ public class PipeTaskConnectorStage extends PipeTaskStage {
 
   @Override
   public void dropSubtask() throws PipeException {
-    PipeConnectorSubtaskManager.instance().deregister(connectorSubtaskId);
+    PipeConnectorSubtaskManager.instance().deregister(pipeName, dataRegionId, connectorSubtaskId);
   }
 
   public BoundedBlockingPendingQueue<Event> getPipeConnectorPendingQueue() {

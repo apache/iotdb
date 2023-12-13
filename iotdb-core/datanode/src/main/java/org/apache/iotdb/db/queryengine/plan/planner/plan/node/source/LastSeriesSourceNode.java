@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.source;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 
 import java.util.Objects;
@@ -59,5 +60,11 @@ public abstract class LastSeriesSourceNode extends SeriesSourceNode {
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), dataNodeSeriesScanNum);
+  }
+
+  @Override
+  public Expression getPushDownPredicate() {
+    // unsupported
+    return null;
   }
 }

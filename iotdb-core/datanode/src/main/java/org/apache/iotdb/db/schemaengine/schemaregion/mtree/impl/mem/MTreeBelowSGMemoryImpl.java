@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
-import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
@@ -158,13 +157,6 @@ public class MTreeBelowSGMemoryImpl {
     storageGroupMNode = null;
   }
 
-  protected void replaceStorageGroupMNode(IDatabaseMNode<IMemMNode> newMNode) {
-    this.storageGroupMNode
-        .getParent()
-        .replaceChild(this.storageGroupMNode.getName(), newMNode.getAsMNode());
-    this.storageGroupMNode = newMNode.getAsMNode();
-  }
-
   public synchronized boolean createSnapshot(File snapshotDir) {
     return store.createSnapshot(snapshotDir);
   }
@@ -256,9 +248,6 @@ public class MTreeBelowSGMemoryImpl {
         entityMNode = device.getAsDeviceMNode();
       } else {
         entityMNode = store.setToEntity(device);
-        if (entityMNode.isDatabase()) {
-          replaceStorageGroupMNode(entityMNode.getAsDatabaseMNode());
-        }
       }
 
       // create a non-aligned timeseries
@@ -344,9 +333,6 @@ public class MTreeBelowSGMemoryImpl {
       } else {
         entityMNode = store.setToEntity(device);
         entityMNode.setAligned(true);
-        if (entityMNode.isDatabase()) {
-          replaceStorageGroupMNode(entityMNode.getAsDatabaseMNode());
-        }
       }
 
       // create a aligned timeseries
@@ -547,9 +533,6 @@ public class MTreeBelowSGMemoryImpl {
       if (!hasMeasurement) {
         synchronized (this) {
           curNode = store.setToInternal(entityMNode);
-          if (curNode.isDatabase()) {
-            replaceStorageGroupMNode(curNode.getAsDatabaseMNode());
-          }
         }
       } else if (!hasNonViewMeasurement) {
         // has some measurement but they are all logical view
@@ -698,7 +681,10 @@ public class MTreeBelowSGMemoryImpl {
 
   // region Interfaces and Implementation for metadata info Query
   public ClusterSchemaTree fetchSchema(
-      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
+      PartialPath pathPattern,
+      Map<Integer, Template> templateMap,
+      boolean withTags,
+      boolean withTemplate)
       throws MetadataException {
     ClusterSchemaTree schemaTree = new ClusterSchemaTree();
     try (MeasurementCollector<Void, IMemMNode> collector =
@@ -707,7 +693,7 @@ public class MTreeBelowSGMemoryImpl {
           protected Void collectMeasurement(IMeasurementMNode<IMemMNode> node) {
             IDeviceMNode<IMemMNode> deviceMNode = getParentOfNextMatchedNode().getAsDeviceMNode();
             int templateId = deviceMNode.getSchemaTemplateIdWithState();
-            if (templateId >= 0) {
+            if (withTemplate && templateId >= 0) {
               schemaTree.appendTemplateDevice(
                   deviceMNode.getPartialPath(), deviceMNode.isAligned(), templateId, null);
               skipTemplateChildren(deviceMNode);
@@ -733,7 +719,10 @@ public class MTreeBelowSGMemoryImpl {
   }
 
   public ClusterSchemaTree fetchSchemaWithoutWildcard(
-      PathPatternTree patternTree, Map<Integer, Template> templateMap, boolean withTags)
+      PathPatternTree patternTree,
+      Map<Integer, Template> templateMap,
+      boolean withTags,
+      boolean withTemplate)
       throws MetadataException {
     ClusterSchemaTree schemaTree = new ClusterSchemaTree();
     try (MeasurementCollector<Void, IMemMNode> collector =
@@ -742,7 +731,7 @@ public class MTreeBelowSGMemoryImpl {
           protected Void collectMeasurement(IMeasurementMNode<IMemMNode> node) {
             IDeviceMNode<IMemMNode> deviceMNode = getParentOfNextMatchedNode().getAsDeviceMNode();
             int templateId = deviceMNode.getSchemaTemplateIdWithState();
-            if (templateId >= 0) {
+            if (withTemplate && templateId >= 0) {
               schemaTree.appendTemplateDevice(
                   deviceMNode.getPartialPath(), deviceMNode.isAligned(), templateId, null);
               skipTemplateChildren(deviceMNode);
@@ -822,9 +811,6 @@ public class MTreeBelowSGMemoryImpl {
         entityMNode = cur.getAsDeviceMNode();
       } else {
         entityMNode = store.setToEntity(cur);
-        if (entityMNode.isDatabase()) {
-          replaceStorageGroupMNode(entityMNode.getAsDatabaseMNode());
-        }
       }
     }
 
@@ -927,9 +913,6 @@ public class MTreeBelowSGMemoryImpl {
       entityMNode = cur.getAsDeviceMNode();
     } else {
       entityMNode = store.setToEntity(cur);
-      if (entityMNode.isDatabase()) {
-        replaceStorageGroupMNode(entityMNode.getAsDatabaseMNode());
-      }
     }
 
     if (!entityMNode.isAligned()) {
@@ -1111,7 +1094,7 @@ public class MTreeBelowSGMemoryImpl {
 
           protected INodeSchemaInfo collectMNode(IMemMNode node) {
             return new ShowNodesResult(
-                getPartialPathFromRootToNode(node).getFullPath(), node.getMNodeType(false));
+                getPartialPathFromRootToNode(node).getFullPath(), node.getMNodeType());
           }
         };
     collector.setTargetLevel(showNodesPlan.getLevel());
@@ -1188,9 +1171,6 @@ public class MTreeBelowSGMemoryImpl {
         entityMNode = device.getAsDeviceMNode();
       } else {
         entityMNode = store.setToEntity(device);
-        if (entityMNode.isDatabase()) {
-          replaceStorageGroupMNode(entityMNode.getAsDatabaseMNode());
-        }
         // this parent has no measurement before. The leafName is his first child who is a logical
         // view.
         entityMNode.setAligned(null);

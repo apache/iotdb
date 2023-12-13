@@ -35,6 +35,7 @@ import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeCo
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,6 +73,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private static final Map<Integer, Long> DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP = new HashMap<>();
   private static final long PIPE_MIN_FLUSH_INTERVAL_IN_MS = 2000;
 
+  private String pipeName;
   private PipeTaskMeta pipeTaskMeta;
   private ProgressIndex startIndex;
 
@@ -91,7 +93,38 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   @Override
   public void validate(PipeParameterValidator validator) {
-    // Do nothing
+    PipeParameters parameters = validator.getParameters();
+
+    // User may set the EXTRACTOR_HISTORY_START_TIME and EXTRACTOR_HISTORY_END_TIME without
+    // enabling the historical data extraction, which may affect the realtime data extraction.
+    final boolean isHistoricalExtractorEnabledByUser =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(EXTRACTOR_HISTORY_ENABLE_KEY, SOURCE_HISTORY_ENABLE_KEY),
+            EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE);
+
+    try {
+      historicalDataExtractionStartTime =
+          isHistoricalExtractorEnabledByUser
+                  && parameters.hasAnyAttributes(
+                      EXTRACTOR_HISTORY_START_TIME_KEY, SOURCE_HISTORY_START_TIME_KEY)
+              ? DateTimeUtils.convertDatetimeStrToLong(
+                  parameters.getStringByKeys(
+                      EXTRACTOR_HISTORY_START_TIME_KEY, SOURCE_HISTORY_START_TIME_KEY),
+                  ZoneId.systemDefault())
+              : Long.MIN_VALUE;
+      historicalDataExtractionEndTime =
+          isHistoricalExtractorEnabledByUser
+                  && parameters.hasAnyAttributes(
+                      EXTRACTOR_HISTORY_END_TIME_KEY, SOURCE_HISTORY_END_TIME_KEY)
+              ? DateTimeUtils.convertDatetimeStrToLong(
+                  parameters.getStringByKeys(
+                      EXTRACTOR_HISTORY_END_TIME_KEY, SOURCE_HISTORY_END_TIME_KEY),
+                  ZoneId.systemDefault())
+              : Long.MAX_VALUE;
+    } catch (Exception e) {
+      // compatible with the current validation framework
+      throw new PipeParameterNotValidException(e.getMessage());
+    }
   }
 
   @Override
@@ -100,6 +133,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     final PipeTaskExtractorRuntimeEnvironment environment =
         (PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment();
 
+    pipeName = environment.getPipeName();
     pipeTaskMeta = environment.getPipeTaskMeta();
     startIndex = environment.getPipeTaskMeta().getProgressIndex();
 
@@ -122,31 +156,6 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
         isDbNameCoveredByPattern = true;
       }
     }
-
-    // User may set the EXTRACTOR_HISTORY_START_TIME and EXTRACTOR_HISTORY_END_TIME without
-    // enabling the historical data extraction, which may affect the realtime data extraction.
-    final boolean isHistoricalExtractorEnabledByUser =
-        parameters.getBooleanOrDefault(
-            Arrays.asList(EXTRACTOR_HISTORY_ENABLE_KEY, SOURCE_HISTORY_ENABLE_KEY),
-            EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE);
-    historicalDataExtractionStartTime =
-        isHistoricalExtractorEnabledByUser
-                && parameters.hasAnyAttributes(
-                    EXTRACTOR_HISTORY_START_TIME_KEY, SOURCE_HISTORY_START_TIME_KEY)
-            ? DateTimeUtils.convertDatetimeStrToLong(
-                parameters.getStringByKeys(
-                    EXTRACTOR_HISTORY_START_TIME_KEY, SOURCE_HISTORY_START_TIME_KEY),
-                ZoneId.systemDefault())
-            : Long.MIN_VALUE;
-    historicalDataExtractionEndTime =
-        isHistoricalExtractorEnabledByUser
-                && parameters.hasAnyAttributes(
-                    EXTRACTOR_HISTORY_END_TIME_KEY, SOURCE_HISTORY_END_TIME_KEY)
-            ? DateTimeUtils.convertDatetimeStrToLong(
-                parameters.getStringByKeys(
-                    EXTRACTOR_HISTORY_END_TIME_KEY, SOURCE_HISTORY_END_TIME_KEY),
-                ZoneId.systemDefault())
-            : Long.MAX_VALUE;
 
     // Enable historical extractor by default
     historicalDataExtractionTimeLowerBound =
@@ -351,6 +360,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             resource,
             false,
             false,
+            pipeName,
             pipeTaskMeta,
             pattern,
             historicalDataExtractionStartTime,

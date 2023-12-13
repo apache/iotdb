@@ -75,6 +75,15 @@ public class SumAccumulator implements Accumulator {
   }
 
   @Override
+  public void removeIntermediate(Column[] input) {
+    checkArgument(input.length == 1, "input of Sum should be 1");
+    if (input[0].isNull(0)) {
+      return;
+    }
+    sumValue -= input[0].getDouble(0);
+  }
+
+  @Override
   public void addStatistics(Statistics statistics) {
     if (statistics == null) {
       return;

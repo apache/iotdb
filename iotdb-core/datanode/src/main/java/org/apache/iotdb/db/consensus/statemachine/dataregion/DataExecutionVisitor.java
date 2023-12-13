@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.consensus.statemachine.dataregion;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.exception.BatchProcessException;
@@ -191,11 +192,25 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
   public TSStatus visitDeleteData(DeleteDataNode node, DataRegion dataRegion) {
     try {
       for (PartialPath path : node.getPathList()) {
-        dataRegion.deleteByDevice(
-            path, node.getDeleteStartTime(), node.getDeleteEndTime(), node.getSearchIndex());
+        PartialPath databaseToDelete = new PartialPath(dataRegion.getDatabaseName() + ".**");
+        if (path.matchFullPath(databaseToDelete)
+            || path.getFullPath().equals(databaseToDelete.getFullPath())) {
+          LOGGER.info(
+              "now try to delete directly, databasePath: {}, deletePath:{}",
+              databaseToDelete.getFullPath(),
+              path.getFullPath());
+          dataRegion.deleteDataDirectly(
+              databaseToDelete,
+              node.getDeleteStartTime(),
+              node.getDeleteEndTime(),
+              node.getSearchIndex());
+        } else {
+          dataRegion.deleteByDevice(
+              path, node.getDeleteStartTime(), node.getDeleteEndTime(), node.getSearchIndex());
+        }
       }
       return StatusUtils.OK;
-    } catch (IOException e) {
+    } catch (IOException | IllegalPathException e) {
       LOGGER.error("Error in executing plan node: {}", node, e);
       return new TSStatus(TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode());
     }

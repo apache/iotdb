@@ -381,9 +381,6 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     TopKNode rootNode = (TopKNode) node;
     Map<TRegionReplicaSet, TopKNode> regionTopKNodeMap = new HashMap<>();
     for (PlanNode child : visitedChildren) {
-      if (child instanceof SingleDeviceViewNode) {
-        ((SingleDeviceViewNode) child).setCacheOutputColumnNames(true);
-      }
       TRegionReplicaSet region = context.getNodeDistribution(child.getPlanNodeId()).region;
       regionTopKNodeMap
           .computeIfAbsent(
@@ -465,24 +462,29 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     // Step 2: return the RegionReplicaSet with max node count
     long maxCount = -1;
     TRegionReplicaSet result = DataPartition.NOT_ASSIGNED;
-    for (Map.Entry<TRegionReplicaSet, Long> entry : groupByRegion.entrySet()) {
-      TRegionReplicaSet region = entry.getKey();
-      if (DataPartition.NOT_ASSIGNED.equals(region)) {
-        continue;
-      }
-      if (region.equals(context.queryContext.getMainFragmentLocatedRegion())) {
-        return context.queryContext.getMainFragmentLocatedRegion();
-      }
-      if (region.equals(context.getMostlyUsedDataRegion())) {
-        return region;
-      }
-      long planNodeCount = entry.getValue();
-      if (planNodeCount > maxCount) {
-        maxCount = planNodeCount;
-        result = region;
-      } else if (planNodeCount == maxCount
-          && region.getRegionId().getId() < result.getRegionId().getId()) {
-        result = region;
+    // use MainFragmentLocatedRegion firstly,
+    // if MainFragmentLocatedRegion is not exist, use MostlyUsedDataRegion,
+    // otherwise use region which has most plan nodes.
+    if (context.queryContext.getMainFragmentLocatedRegion() != null
+        && groupByRegion.containsKey(context.queryContext.getMainFragmentLocatedRegion())) {
+      return context.queryContext.getMainFragmentLocatedRegion();
+    } else if (context.getMostlyUsedDataRegion() != null
+        && groupByRegion.containsKey(context.getMostlyUsedDataRegion())) {
+      return context.getMostlyUsedDataRegion();
+    } else {
+      for (Map.Entry<TRegionReplicaSet, Long> entry : groupByRegion.entrySet()) {
+        TRegionReplicaSet region = entry.getKey();
+        if (DataPartition.NOT_ASSIGNED.equals(region)) {
+          continue;
+        }
+        long planNodeCount = entry.getValue();
+        if (planNodeCount > maxCount) {
+          maxCount = planNodeCount;
+          result = region;
+        } else if (planNodeCount == maxCount
+            && region.getRegionId().getId() < result.getRegionId().getId()) {
+          result = region;
+        }
       }
     }
     return result;

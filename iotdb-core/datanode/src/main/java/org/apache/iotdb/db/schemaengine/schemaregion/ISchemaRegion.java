@@ -196,7 +196,10 @@ public interface ISchemaRegion {
   MeasurementPath fetchMeasurementPath(PartialPath fullPath) throws MetadataException;
 
   ClusterSchemaTree fetchSchema(
-      PathPatternTree patternTree, Map<Integer, Template> templateMap, boolean withTags)
+      PathPatternTree patternTree,
+      Map<Integer, Template> templateMap,
+      boolean withTags,
+      boolean withTemplate)
       throws MetadataException;
 
   // endregion

@@ -45,7 +45,7 @@ public class PulsarConsumer {
   private static final int CONSUMER_NUM = 3;
   private List<Consumer<?>> consumerList;
   private static SessionPool pool;
-  private static final Logger logger = LoggerFactory.getLogger(PulsarConsumer.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PulsarConsumer.class);
 
   public PulsarConsumer(List<Consumer<?>> consumerList) {
     this.consumerList = consumerList;
@@ -69,7 +69,7 @@ public class PulsarConsumer {
         createTimeseries(sql);
       }
     } catch (IoTDBConnectionException | StatementExecutionException e) {
-      logger.error(e.getMessage());
+      LOGGER.error(e.getMessage());
     }
   }
 

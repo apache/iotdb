@@ -25,19 +25,19 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class SeriesScanOperator extends AbstractDataSourceOperator {
 
-  private final TsBlockBuilder builder;
   private boolean finished = false;
 
   public SeriesScanOperator(
@@ -52,7 +52,6 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
         new SeriesScanUtil(seriesPath, scanOrder, seriesScanOptions, context.getInstanceContext());
     this.maxReturnSize =
         Math.min(maxReturnSize, TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
-    this.builder = new TsBlockBuilder(seriesScanUtil.getTsDataTypeList());
   }
 
   @Override
@@ -60,8 +59,8 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
     if (retainedTsBlock != null) {
       return getResultFromRetainedTsBlock();
     }
-    resultTsBlock = builder.build();
-    builder.reset();
+    resultTsBlock = resultTsBlockBuilder.build();
+    resultTsBlockBuilder.reset();
     return checkTsBlockSizeAndGetResult();
   }
 
@@ -87,9 +86,9 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
         if (!readPageData() && !readChunkData() && !readFileData()) {
           break;
         }
-      } while (System.nanoTime() - start < maxRuntime && !builder.isFull());
+      } while (System.nanoTime() - start < maxRuntime && !resultTsBlockBuilder.isFull());
 
-      finished = builder.isEmpty();
+      finished = resultTsBlockBuilder.isEmpty();
 
       return !finished;
     } catch (IOException e) {
@@ -148,9 +147,9 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
   }
 
   private void appendToBuilder(TsBlock tsBlock) {
-    TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
+    TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
     TimeColumn timeColumn = tsBlock.getTimeColumn();
-    ColumnBuilder columnBuilder = builder.getColumnBuilder(0);
+    ColumnBuilder columnBuilder = resultTsBlockBuilder.getColumnBuilder(0);
     Column column = tsBlock.getColumn(0);
 
     if (column.mayHaveNull()) {
@@ -161,18 +160,23 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
         } else {
           columnBuilder.write(column, i);
         }
-        builder.declarePosition();
+        resultTsBlockBuilder.declarePosition();
       }
     } else {
       for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++) {
         timeColumnBuilder.writeLong(timeColumn.getLong(i));
         columnBuilder.write(column, i);
-        builder.declarePosition();
+        resultTsBlockBuilder.declarePosition();
       }
     }
   }
 
   private boolean isEmpty(TsBlock tsBlock) {
     return tsBlock == null || tsBlock.isEmpty();
+  }
+
+  @Override
+  protected List<TSDataType> getResultDataTypes() {
+    return seriesScanUtil.getTsDataTypeList();
   }
 }

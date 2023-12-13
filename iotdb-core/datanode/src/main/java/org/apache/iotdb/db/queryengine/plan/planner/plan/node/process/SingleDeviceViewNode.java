@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.process;
 
+import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -159,6 +160,33 @@ public class SingleDeviceViewNode extends SingleChildProcessNode {
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new SingleDeviceViewNode(
         planNodeId, cacheOutputColumnNames, outputColumnNames, device, deviceToMeasurementIndexes);
+  }
+
+  @Override
+  public void serializeUseTemplate(DataOutputStream stream, TypeProvider typeProvider)
+      throws IOException {
+    PlanNodeType.SINGLE_DEVICE_VIEW.serialize(stream);
+    id.serialize(stream);
+    ReadWriteIOUtils.write(device, stream);
+    ReadWriteIOUtils.write(cacheOutputColumnNames, stream);
+    ReadWriteIOUtils.write(getChildren().size(), stream);
+    for (PlanNode planNode : getChildren()) {
+      planNode.serializeUseTemplate(stream, typeProvider);
+    }
+  }
+
+  public static SingleDeviceViewNode deserializeUseTemplate(
+      ByteBuffer byteBuffer, TypeProvider typeProvider) {
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    String device = ReadWriteIOUtils.readString(byteBuffer);
+    boolean cacheOutputColumnNames = ReadWriteIOUtils.readBool(byteBuffer);
+
+    return new SingleDeviceViewNode(
+        planNodeId,
+        cacheOutputColumnNames,
+        typeProvider.getTemplatedInfo().getSelectMeasurements(),
+        device,
+        typeProvider.getTemplatedInfo().getDeviceToMeasurementIndexes());
   }
 
   @Override

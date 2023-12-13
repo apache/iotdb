@@ -31,11 +31,10 @@ public class PipeTransferTabletRawEventHandler
     extends PipeTransferTabletInsertionEventHandler<TPipeTransferResp> {
 
   public PipeTransferTabletRawEventHandler(
-      long requestCommitId,
       PipeRawTabletInsertionEvent event,
       TPipeTransferReq req,
       IoTDBThriftAsyncConnector connector) {
-    super(requestCommitId, event, req, connector);
+    super(event, req, connector);
   }
 
   @Override

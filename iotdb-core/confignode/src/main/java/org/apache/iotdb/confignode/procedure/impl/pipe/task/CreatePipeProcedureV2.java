@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
@@ -120,6 +121,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
               }
             });
     pipeRuntimeMeta = new PipeRuntimeMeta(consensusGroupIdToTaskMetaMap);
+    pipeRuntimeMeta.getStatus().set(PipeStatus.RUNNING);
   }
 
   @Override
@@ -146,18 +148,17 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
-      throws PipeException, IOException {
+  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
     final String pipeName = createPipeRequest.getPipeName();
     LOGGER.info("CreatePipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 
     String exceptionMessage =
         parsePushPipeMetaExceptionForPipe(pipeName, pushSinglePipeMetaToDataNodes(pipeName, env));
     if (!exceptionMessage.isEmpty()) {
-      throw new PipeException(
-          String.format(
-              "Failed to create pipe %s, details: %s",
-              createPipeRequest.getPipeName(), exceptionMessage));
+      LOGGER.warn(
+          "Failed to create pipe {}, details: {}, metadata will be synchronized later.",
+          createPipeRequest.getPipeName(),
+          exceptionMessage);
     }
   }
 
@@ -209,10 +210,10 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         parsePushPipeMetaExceptionForPipe(
             createPipeRequest.getPipeName(), pushPipeMetaToDataNodes(env));
     if (!exceptionMessage.isEmpty()) {
-      throw new PipeException(
-          String.format(
-              "Failed to rollback create pipe %s, details: %s",
-              createPipeRequest.getPipeName(), exceptionMessage));
+      LOGGER.warn(
+          "Failed to rollback create pipe {}, details: {}, metadata will be synchronized later.",
+          createPipeRequest.getPipeName(),
+          exceptionMessage);
     }
   }
 

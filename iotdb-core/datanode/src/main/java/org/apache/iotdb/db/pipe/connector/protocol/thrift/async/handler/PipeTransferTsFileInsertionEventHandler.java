@@ -48,7 +48,6 @@ public class PipeTransferTsFileInsertionEventHandler
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeTransferTsFileInsertionEventHandler.class);
 
-  private final long requestCommitId;
   private final PipeTsFileInsertionEvent event;
   private final IoTDBThriftAsyncConnector connector;
 
@@ -64,9 +63,8 @@ public class PipeTransferTsFileInsertionEventHandler
   private AsyncPipeDataTransferServiceClient client;
 
   public PipeTransferTsFileInsertionEventHandler(
-      long requestCommitId, PipeTsFileInsertionEvent event, IoTDBThriftAsyncConnector connector)
+      PipeTsFileInsertionEvent event, IoTDBThriftAsyncConnector connector)
       throws FileNotFoundException {
-    this.requestCommitId = requestCommitId;
     this.event = event;
     this.connector = connector;
 
@@ -79,7 +77,7 @@ public class PipeTransferTsFileInsertionEventHandler
 
     isSealSignalSent = new AtomicBoolean(false);
 
-    event.increaseReferenceCount(PipeTransferTabletInsertionEventHandler.class.getName());
+    event.increaseReferenceCount(PipeTransferTsFileInsertionEventHandler.class.getName());
   }
 
   public void transfer(AsyncPipeDataTransferServiceClient client) throws TException, IOException {
@@ -124,10 +122,13 @@ public class PipeTransferTsFileInsertionEventHandler
       } catch (IOException e) {
         LOGGER.warn("Failed to close file reader when successfully transferred file.", e);
       } finally {
-        connector.commit(requestCommitId, event);
+        event.decreaseReferenceCount(PipeTransferTsFileInsertionEventHandler.class.getName(), true);
 
         LOGGER.info(
-            "Successfully transferred file {}. Request commit id is {}.", tsFile, requestCommitId);
+            "Successfully transferred file {} (committer key={}, commit id={}).",
+            tsFile,
+            event.getCommitterKey(),
+            event.getCommitId());
 
         if (client != null) {
           client.setShouldReturnSelf(true);
@@ -164,9 +165,10 @@ public class PipeTransferTsFileInsertionEventHandler
   @Override
   public void onError(Exception exception) {
     LOGGER.warn(
-        "Failed to transfer TsFileInsertionEvent {} (request commit id {}).",
+        "Failed to transfer TsFileInsertionEvent {} (committer key {}, commit id {}).",
         tsFile,
-        requestCommitId,
+        event.getCommitterKey(),
+        event.getCommitId(),
         exception);
 
     try {
@@ -176,7 +178,7 @@ public class PipeTransferTsFileInsertionEventHandler
     } catch (IOException e) {
       LOGGER.warn("Failed to close file reader when failed to transfer file.", e);
     } finally {
-      connector.addFailureEventToRetryQueue(requestCommitId, event);
+      connector.addFailureEventToRetryQueue(event);
 
       if (client != null) {
         client.setShouldReturnSelf(true);

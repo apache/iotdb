@@ -32,10 +32,11 @@ import java.nio.charset.StandardCharsets;
 
 public class RocketMQProducer {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(RocketMQProducer.class);
+
   private DefaultMQProducer producer;
   private String producerGroup;
   private String serverAddresses;
-  private static final Logger logger = LoggerFactory.getLogger(RocketMQProducer.class);
 
   public RocketMQProducer(String producerGroup, String serverAddresses) {
     this.producerGroup = producerGroup;
@@ -63,7 +64,7 @@ public class RocketMQProducer {
               },
               Utils.convertStringToInteger(Utils.getTimeSeries(sql)));
       String result = sendResult.toString();
-      logger.info(result);
+      LOGGER.info(result);
     }
   }
 

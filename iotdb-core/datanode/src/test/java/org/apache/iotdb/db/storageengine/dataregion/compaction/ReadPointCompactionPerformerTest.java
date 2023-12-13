@@ -5814,7 +5814,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     Map<String, Long> measurementMaxTime = new HashMap<>();
 
     for (int i = 0; i < 4; i++) {
-      TSDataType tsDataType = i < 2 ? TSDataType.TEXT : TSDataType.INT64;
+      TSDataType tsDataType = (i < 2 || i == 3) ? TSDataType.TEXT : TSDataType.INT64;
       for (int j = 0; j < 7; j++) {
         measurementMaxTime.putIfAbsent(
             COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,

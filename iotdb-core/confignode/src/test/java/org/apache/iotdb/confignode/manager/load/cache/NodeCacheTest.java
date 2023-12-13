@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.manager.load.cache.node.ConfigNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.DataNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
-import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
+import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -41,7 +41,7 @@ public class NodeCacheTest {
     long currentTime = System.currentTimeMillis() - 2000;
     dataNodeHeartbeatCache.forceUpdate(
         new NodeHeartbeatSample(
-            new THeartbeatResp(currentTime, NodeStatus.Running.getStatus()), currentTime));
+            new TDataNodeHeartbeatResp(currentTime, NodeStatus.Running.getStatus()), currentTime));
     Assert.assertEquals(NodeStatus.Running, dataNodeHeartbeatCache.getNodeStatus());
     Assert.assertEquals(0, dataNodeHeartbeatCache.getLoadScore());
 
@@ -49,7 +49,7 @@ public class NodeCacheTest {
     currentTime += 2000;
     dataNodeHeartbeatCache.forceUpdate(
         new NodeHeartbeatSample(
-            new THeartbeatResp(currentTime, NodeStatus.ReadOnly.getStatus()), currentTime));
+            new TDataNodeHeartbeatResp(currentTime, NodeStatus.ReadOnly.getStatus()), currentTime));
     Assert.assertEquals(NodeStatus.ReadOnly, dataNodeHeartbeatCache.getNodeStatus());
     Assert.assertEquals(Long.MAX_VALUE, dataNodeHeartbeatCache.getLoadScore());
   }
@@ -61,7 +61,7 @@ public class NodeCacheTest {
     long currentTime = System.currentTimeMillis();
     dataNodeHeartbeatCache.cacheHeartbeatSample(
         new NodeHeartbeatSample(
-            new THeartbeatResp(currentTime, NodeStatus.Running.getStatus()), currentTime));
+            new TDataNodeHeartbeatResp(currentTime, NodeStatus.Running.getStatus()), currentTime));
     Assert.assertTrue(dataNodeHeartbeatCache.periodicUpdate());
     Assert.assertEquals(NodeStatus.Running, dataNodeHeartbeatCache.getNodeStatus());
     Assert.assertEquals(0, dataNodeHeartbeatCache.getLoadScore());

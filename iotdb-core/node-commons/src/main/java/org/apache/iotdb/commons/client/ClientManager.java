@@ -31,7 +31,7 @@ import java.util.Optional;
 
 public class ClientManager<K, V> implements IClientManager<K, V> {
 
-  private static final Logger logger = LoggerFactory.getLogger(ClientManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ClientManager.class);
 
   private final KeyedObjectPool<K, V> pool;
 
@@ -69,8 +69,7 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
               try {
                 pool.returnObject(node, client);
               } catch (Exception e) {
-                logger.warn(
-                    String.format("Return client %s for node %s to pool failed.", client, node), e);
+                LOGGER.warn("Return client {} for node {} to pool failed.", client, node, e);
               }
             });
   }
@@ -83,7 +82,7 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
               try {
                 pool.clear(node);
               } catch (Exception e) {
-                logger.warn(String.format("Clear all client in pool for node %s failed.", node), e);
+                LOGGER.warn("Clear all client in pool for node {} failed.", node, e);
               }
             });
   }

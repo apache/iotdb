@@ -218,7 +218,7 @@ public class PipePluginAgent {
       try {
         temporaryExtractor.close();
       } catch (Exception e) {
-        LOGGER.warn("Failed to close temporary extractor: {}", e.getMessage());
+        LOGGER.warn("Failed to close temporary extractor: {}", e.getMessage(), e);
       }
     }
 
@@ -231,7 +231,7 @@ public class PipePluginAgent {
       try {
         temporaryProcessor.close();
       } catch (Exception e) {
-        LOGGER.warn("Failed to close temporary processor: {}", e.getMessage());
+        LOGGER.warn("Failed to close temporary processor: {}", e.getMessage(), e);
       }
     }
 
@@ -244,7 +244,7 @@ public class PipePluginAgent {
       try {
         temporaryConnector.close();
       } catch (Exception e) {
-        LOGGER.warn("Failed to close temporary connector: {}", e.getMessage());
+        LOGGER.warn("Failed to close temporary connector: {}", e.getMessage(), e);
       }
     }
   }

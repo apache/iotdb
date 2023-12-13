@@ -57,7 +57,7 @@ import java.util.function.Consumer;
 
 public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
-  private static final Logger logger = LoggerFactory.getLogger(CachedMTreeStore.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(CachedMTreeStore.class);
 
   private final int schemaRegionId;
 
@@ -348,40 +348,37 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
   @Override
   public IDeviceMNode<ICachedMNode> setToEntity(ICachedMNode node) {
-    AtomicReference<IDeviceMNode<ICachedMNode>> resultReference = new AtomicReference<>(null);
-    updateMNode(
-        node,
-        o -> {
-          IDeviceMNode<ICachedMNode> result = MNodeUtils.setToEntity(node, nodeFactory);
-          resultReference.getAndSet(result);
-        });
+    int rawSize = node.estimateSize();
+    AtomicReference<Boolean> resultReference = new AtomicReference<>(false);
+    updateMNode(node, o -> resultReference.getAndSet(MNodeUtils.setToEntity(node)));
 
-    IDeviceMNode<ICachedMNode> result = resultReference.get();
-    if (result != node) {
+    boolean isSuccess = resultReference.get();
+    if (isSuccess) {
       regionStatistics.addDevice();
-      memManager.updatePinnedSize(result.estimateSize() - node.estimateSize());
+      memManager.updatePinnedSize(node.estimateSize() - rawSize);
     }
 
-    return result;
+    return node.getAsDeviceMNode();
   }
 
   @Override
   public ICachedMNode setToInternal(IDeviceMNode<ICachedMNode> entityMNode) {
-    AtomicReference<ICachedMNode> resultReference = new AtomicReference<>(null);
+    int rawSize = entityMNode.estimateSize();
+    AtomicReference<Boolean> resultReference = new AtomicReference<>(false);
+    // the entityMNode is just a wrapper, the actual CachedMNode instance shall be the same before
+    // and after
+    // setToInternal
+    ICachedMNode internalMNode = entityMNode.getAsMNode();
     updateMNode(
-        entityMNode.getAsMNode(),
-        o -> {
-          ICachedMNode result = MNodeUtils.setToInternal(entityMNode, nodeFactory);
-          resultReference.getAndSet(result);
-        });
+        internalMNode, o -> resultReference.getAndSet(MNodeUtils.setToInternal(entityMNode)));
 
-    ICachedMNode result = resultReference.get();
-    if (result != entityMNode) {
+    boolean isSuccess = resultReference.get();
+    if (isSuccess) {
       regionStatistics.deleteDevice();
-      memManager.updatePinnedSize(result.estimateSize() - entityMNode.estimateSize());
+      memManager.updatePinnedSize(internalMNode.estimateSize() - rawSize);
     }
 
-    return result;
+    return internalMNode;
   }
 
   @Override
@@ -497,7 +494,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
           file.clear();
           file.close();
         } catch (MetadataException | IOException e) {
-          logger.error(String.format("Error occurred during PBTree clear, %s", e.getMessage()));
+          LOGGER.error("Error occurred during PBTree clear, {}", e.getMessage());
         }
       }
       file = null;
@@ -601,7 +598,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
         logger.debug("It takes {}ms to flush MTree in SchemaRegion {}", time, schemaRegionId);
       }
     } catch (Throwable e) {
-      logger.error(
+      LOGGER.error(
           "Error occurred during MTree flush, current SchemaRegionId is {}", schemaRegionId, e);
     }
   }
@@ -653,7 +650,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
         try {
           readNext();
         } catch (MetadataException e) {
-          logger.error(String.format("Error occurred during readNext, %s", e.getMessage()));
+          LOGGER.error("Error occurred during readNext, {}", e.getMessage());
           return false;
         }
         return nextNode != null;

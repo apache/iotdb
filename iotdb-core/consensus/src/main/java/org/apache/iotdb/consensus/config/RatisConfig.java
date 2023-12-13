@@ -1123,7 +1123,7 @@ public class RatisConfig {
     }
 
     public static class Builder {
-      private Read.Option readOption = Option.LINEARIZABLE;
+      private Read.Option readOption = Option.DEFAULT;
       private TimeDuration readTimeout = TimeDuration.valueOf(10, TimeUnit.SECONDS);
 
       public Read.Builder setReadOption(Read.Option readOption) {

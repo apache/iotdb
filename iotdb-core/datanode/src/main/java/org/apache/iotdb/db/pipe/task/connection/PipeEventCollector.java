@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.task.connection;
 
+import org.apache.iotdb.db.pipe.commit.PipeEventCommitManager;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
@@ -33,10 +34,13 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
 
   private final EnrichedDeque<Event> bufferQueue;
 
+  private final int dataRegionId;
+
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
 
-  public PipeEventCollector(BoundedBlockingPendingQueue<Event> pendingQueue) {
+  public PipeEventCollector(BoundedBlockingPendingQueue<Event> pendingQueue, int dataRegionId) {
     this.pendingQueue = pendingQueue;
+    this.dataRegionId = dataRegionId;
     bufferQueue = new EnrichedDeque<>(new LinkedList<>());
   }
 
@@ -44,6 +48,10 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
   public synchronized void collect(Event event) {
     if (event instanceof EnrichedEvent) {
       ((EnrichedEvent) event).increaseReferenceCount(PipeEventCollector.class.getName());
+
+      // Assign a commit id for this event in order to report progress in order.
+      PipeEventCommitManager.getInstance()
+          .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, dataRegionId);
     }
     if (event instanceof PipeHeartbeatEvent) {
       ((PipeHeartbeatEvent) event).recordBufferQueueSize(bufferQueue);

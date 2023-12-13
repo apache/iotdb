@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.config.RatisConfig;
-import org.apache.iotdb.consensus.exception.RatisUnderRecoveryException;
+import org.apache.iotdb.consensus.exception.RatisReadUnavailableException;
 
 import org.apache.ratis.util.TimeDuration;
 import org.junit.After;
@@ -102,6 +102,11 @@ public class RecoverReadTest {
                             .setFirstElectionTimeoutMin(TimeDuration.valueOf(1, TimeUnit.SECONDS))
                             .setFirstElectionTimeoutMax(TimeDuration.valueOf(2, TimeUnit.SECONDS))
                             .setRequestTimeout(TimeDuration.valueOf(20, TimeUnit.SECONDS))
+                            .build())
+                    .setImpl(
+                        RatisConfig.Impl.newBuilder()
+                            .setRetryTimesMax(1)
+                            .setRetryWaitMillis(500)
                             .build())
                     .build())
             .create();
@@ -198,7 +203,8 @@ public class RecoverReadTest {
     // restart the cluster
     miniCluster.restart();
 
-    Assert.assertEquals(10, miniCluster.mustRead(0));
+    // query during redo: get exception that ratis is under recovery
+    Assert.assertThrows(RatisReadUnavailableException.class, () -> miniCluster.readThrough(0));
   }
 
   @Test
@@ -228,6 +234,6 @@ public class RecoverReadTest {
     miniCluster.waitUntilActiveLeader();
 
     // query during redo: get exception that ratis is under recovery
-    Assert.assertThrows(RatisUnderRecoveryException.class, () -> miniCluster.readThrough(0));
+    Assert.assertThrows(RatisReadUnavailableException.class, () -> miniCluster.readThrough(0));
   }
 }

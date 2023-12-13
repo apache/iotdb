@@ -46,7 +46,7 @@ import java.util.stream.Collectors;
 /** The example of writing to TsFile via Flink DataSet API. */
 public class FlinkTsFileBatchSink {
 
-  private static Logger logger = LoggerFactory.getLogger(FlinkTsFileBatchSink.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(FlinkTsFileBatchSink.class);
 
   public static final String DEFAULT_TEMPLATE = "template";
 
@@ -122,7 +122,7 @@ public class FlinkTsFileBatchSink {
             .collect(Collectors.toList());
     String[] result = TsFileUtils.readTsFile(path, paths);
     for (String row : result) {
-      logger.info(row);
+      LOGGER.info(row);
     }
   }
 }

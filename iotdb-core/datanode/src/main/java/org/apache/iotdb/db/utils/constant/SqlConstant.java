@@ -56,6 +56,12 @@ public class SqlConstant {
   public static final String COUNT_IF = "count_if";
   public static final String TIME_DURATION = "time_duration";
   public static final String MODE = "mode";
+  public static final String STDDEV = "stddev";
+  public static final String STDDEV_POP = "stddev_pop";
+  public static final String STDDEV_SAMP = "stddev_samp";
+  public static final String VARIANCE = "variance";
+  public static final String VAR_POP = "var_pop";
+  public static final String VAR_SAMP = "var_samp";
 
   public static final String COUNT_TIME = "count_time";
   public static final String COUNT_TIME_HEADER = "count_time(*)";

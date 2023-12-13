@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
+import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -31,8 +32,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.Aggregatio
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
@@ -45,7 +44,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 /**
  * This node is responsible to do the aggregation calculation for one series. It will read the
@@ -94,14 +92,32 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
       MeasurementPath seriesPath,
       List<AggregationDescriptor> aggregationDescriptorList,
       Ordering scanOrder,
-      @Nullable Filter timeFilter,
-      @Nullable Filter valueFilter,
+      @Nullable Expression pushDownPredicate,
       @Nullable GroupByTimeParameter groupByTimeParameter,
       TRegionReplicaSet dataRegionReplicaSet) {
     this(id, seriesPath, aggregationDescriptorList, scanOrder, groupByTimeParameter);
-    this.timeFilter = timeFilter;
-    this.valueFilter = valueFilter;
+    this.pushDownPredicate = pushDownPredicate;
     this.regionReplicaSet = dataRegionReplicaSet;
+  }
+
+  public SeriesAggregationScanNode(
+      PlanNodeId id,
+      MeasurementPath seriesPath,
+      List<AggregationDescriptor> aggregationDescriptorList,
+      Ordering scanOrder,
+      boolean outputEndTime,
+      @Nullable Expression pushDownPredicate,
+      @Nullable GroupByTimeParameter groupByTimeParameter,
+      TRegionReplicaSet dataRegionReplicaSet) {
+    this(
+        id,
+        seriesPath,
+        aggregationDescriptorList,
+        scanOrder,
+        pushDownPredicate,
+        groupByTimeParameter,
+        dataRegionReplicaSet);
+    setOutputEndTime(outputEndTime);
   }
 
   @Override
@@ -135,18 +151,10 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
         getSeriesPath(),
         getAggregationDescriptorList(),
         getScanOrder(),
-        getTimeFilter(),
-        getValueFilter(),
+        isOutputEndTime(),
+        getPushDownPredicate(),
         getGroupByTimeParameter(),
         getRegionReplicaSet());
-  }
-
-  @Override
-  public List<String> getOutputColumnNames() {
-    return aggregationDescriptorList.stream()
-        .map(AggregationDescriptor::getOutputColumnNames)
-        .flatMap(List::stream)
-        .collect(Collectors.toList());
   }
 
   @Override
@@ -179,17 +187,12 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
       aggregationDescriptor.serialize(byteBuffer);
     }
     ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
-    if (timeFilter == null) {
+    ReadWriteIOUtils.write(isOutputEndTime(), byteBuffer);
+    if (pushDownPredicate == null) {
       ReadWriteIOUtils.write((byte) 0, byteBuffer);
     } else {
       ReadWriteIOUtils.write((byte) 1, byteBuffer);
-      timeFilter.serialize(byteBuffer);
-    }
-    if (valueFilter == null) {
-      ReadWriteIOUtils.write((byte) 0, byteBuffer);
-    } else {
-      ReadWriteIOUtils.write((byte) 1, byteBuffer);
-      valueFilter.serialize(byteBuffer);
+      Expression.serialize(pushDownPredicate, byteBuffer);
     }
     if (groupByTimeParameter == null) {
       ReadWriteIOUtils.write((byte) 0, byteBuffer);
@@ -208,17 +211,12 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
       aggregationDescriptor.serialize(stream);
     }
     ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
-    if (timeFilter == null) {
+    ReadWriteIOUtils.write(isOutputEndTime(), stream);
+    if (pushDownPredicate == null) {
       ReadWriteIOUtils.write((byte) 0, stream);
     } else {
       ReadWriteIOUtils.write((byte) 1, stream);
-      timeFilter.serialize(stream);
-    }
-    if (valueFilter == null) {
-      ReadWriteIOUtils.write((byte) 0, stream);
-    } else {
-      ReadWriteIOUtils.write((byte) 1, stream);
-      valueFilter.serialize(stream);
+      Expression.serialize(pushDownPredicate, stream);
     }
     if (groupByTimeParameter == null) {
       ReadWriteIOUtils.write((byte) 0, stream);
@@ -236,15 +234,11 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
       aggregationDescriptorList.add(AggregationDescriptor.deserialize(byteBuffer));
     }
     Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    boolean outputEndTime = ReadWriteIOUtils.readBool(byteBuffer);
     byte isNull = ReadWriteIOUtils.readByte(byteBuffer);
-    Filter timeFilter = null;
+    Expression pushDownPredicate = null;
     if (isNull == 1) {
-      timeFilter = FilterFactory.deserialize(byteBuffer);
-    }
-    isNull = ReadWriteIOUtils.readByte(byteBuffer);
-    Filter valueFilter = null;
-    if (isNull == 1) {
-      valueFilter = FilterFactory.deserialize(byteBuffer);
+      pushDownPredicate = Expression.deserialize(byteBuffer);
     }
     isNull = ReadWriteIOUtils.readByte(byteBuffer);
     GroupByTimeParameter groupByTimeParameter = null;
@@ -257,8 +251,8 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
         partialPath,
         aggregationDescriptorList,
         scanOrder,
-        timeFilter,
-        valueFilter,
+        outputEndTime,
+        pushDownPredicate,
         groupByTimeParameter,
         null);
   }
@@ -286,12 +280,7 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
 
   @Override
   public PartialPath getPartitionPath() {
-    return seriesPath;
-  }
-
-  @Override
-  public Filter getPartitionTimeFilter() {
-    return timeFilter;
+    return getSeriesPath();
   }
 
   @Override
