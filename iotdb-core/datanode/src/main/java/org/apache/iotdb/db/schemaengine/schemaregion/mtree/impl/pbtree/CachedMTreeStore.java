@@ -593,9 +593,9 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       flushExecutor.flushVolatileNodes();
       long time = System.currentTimeMillis() - startTime;
       if (time > 10_000) {
-        logger.info("It takes {}ms to flush MTree in SchemaRegion {}", time, schemaRegionId);
+        LOGGER.info("It takes {}ms to flush MTree in SchemaRegion {}", time, schemaRegionId);
       } else {
-        logger.debug("It takes {}ms to flush MTree in SchemaRegion {}", time, schemaRegionId);
+        LOGGER.debug("It takes {}ms to flush MTree in SchemaRegion {}", time, schemaRegionId);
       }
     } catch (Throwable e) {
       LOGGER.error(
