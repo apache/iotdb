@@ -77,6 +77,8 @@ public class IoTDBSnapshotTest {
               + "0"
               + File.separator
               + String.format("%d-%d-0-0.tsfile", i + 1, i + 1);
+      File newFile = new File(filePath);
+      Assert.assertTrue(newFile.getParentFile().exists() || newFile.getParentFile().mkdirs());
       TsFileGeneratorUtils.generateMixTsFile(filePath, 5, 5, 10, i * 100, (i + 1) * 100, 10, 10);
       TsFileResource resource = new TsFileResource(new File(filePath));
       Assert.assertTrue(new File(filePath).exists());
