@@ -84,6 +84,6 @@ public class SetPipeStatusPlanV2 extends ConfigPhysicalPlan {
 
   @Override
   public String toString() {
-    return "SetPipeStatusPlanV2{" + "pipeName='" + pipeName + "', status=" + status + "'}";
+    return "SetPipeStatusPlanV2{" + "pipeName='" + pipeName + "', status='" + status + "'}";
   }
 }

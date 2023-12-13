@@ -87,7 +87,7 @@ public class CreatePipePlanV2 extends ConfigPhysicalPlan {
     return "CreatePipePlanV2{"
         + "pipeStaticMeta='"
         + pipeStaticMeta
-        + "', pipeRuntimeMeta="
+        + "', pipeRuntimeMeta='"
         + pipeRuntimeMeta
         + "'}";
   }
