@@ -19,20 +19,47 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata;
 
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
 import org.apache.iotdb.confignode.rpc.thrift.TGetClusterIdResp;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
+import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.utils.Binary;
+
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class ShowClusterIdTask implements IConfigTask {
-    public static void buildTSBlock(TGetClusterIdResp getClusterIdResp, SettableFuture<ConfigTaskResult> future) {
+  public static void buildTSBlock(
+      TGetClusterIdResp getClusterIdResp, SettableFuture<ConfigTaskResult> future) {
+    List<TSDataType> outputDataTypes =
+        ColumnHeaderConstant.showClusterIdColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
+    TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
 
-    }
+    String clusterId = getClusterIdResp.getClusterId();
+    builder.getTimeColumnBuilder().writeLong(0L);
+    builder.getColumnBuilder(0).writeBinary(new Binary(clusterId, TSFileConfig.STRING_CHARSET));
+    builder.declarePosition();
 
-    @Override
-    public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor) throws InterruptedException {
-        return configTaskExecutor.showClusterId();
-    }
+    DatasetHeader datasetHeader = DatasetHeaderFactory.getShowClusterIdHeader();
+    future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
+  }
+
+  @Override
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+      throws InterruptedException {
+    return configTaskExecutor.showClusterId();
+  }
 }

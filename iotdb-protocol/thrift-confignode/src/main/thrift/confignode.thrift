@@ -21,12 +21,6 @@ include "common.thrift"
 namespace java org.apache.iotdb.confignode.rpc.thrift
 namespace py iotdb.thrift.confignode
 
-// Cluster
-struct TGetClusterIdResp {
-  1: required common.TSStatus status
-  2: required string clusterId
-}
-
 // DataNode
 struct TSystemConfigurationResp {
   1: required common.TSStatus status
@@ -398,6 +392,7 @@ struct TClusterParameters {
   16: optional string schemaEngineMode
   17: optional i32 tagAttributeTotalSize
   18: optional i32 databaseLimitThreshold
+  19: optional string clusterId
 }
 
 struct TConfigNodeRegisterReq {
@@ -531,6 +526,11 @@ struct TShowClusterResp {
   3: required list<common.TDataNodeLocation> dataNodeList
   4: required map<i32, string> nodeStatus
   5: required map<i32, TNodeVersionInfo> nodeVersionInfo
+}
+
+struct TGetClusterIdResp {
+  1: required common.TSStatus status
+  2: required string clusterId
 }
 
 struct TNodeVersionInfo {

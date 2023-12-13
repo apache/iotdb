@@ -24,15 +24,13 @@ import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 
 public class ShowClusterIdStatement extends ShowStatement implements IConfigStatement {
-    @Override
-    public QueryType getQueryType() {
-        return QueryType.READ;
-    }
+  @Override
+  public QueryType getQueryType() {
+    return QueryType.READ;
+  }
 
-    // TODO: Authority ?
-
-    @Override
-    public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-        return visitor.visitShowClusterId(this, context);
-    }
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitShowClusterId(this, context);
+  }
 }

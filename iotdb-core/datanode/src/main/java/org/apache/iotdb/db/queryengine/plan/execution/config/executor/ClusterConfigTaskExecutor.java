@@ -1129,7 +1129,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TGetClusterIdResp getClusterIdResp = new TGetClusterIdResp();
     try (ConfigNodeClient client =
-                 CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       getClusterIdResp = client.getClusterId();
     } catch (ClientManagerException | TException e) {
       future.setException(e);
