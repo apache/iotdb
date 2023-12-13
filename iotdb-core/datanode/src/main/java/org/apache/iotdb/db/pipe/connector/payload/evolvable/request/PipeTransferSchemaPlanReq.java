@@ -21,68 +21,63 @@ package org.apache.iotdb.db.pipe.connector.payload.evolvable.request;
 
 import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class PipeTransferHandshakeReq extends TPipeTransferReq {
+public class PipeTransferSchemaPlanReq extends TPipeTransferReq {
 
-  private transient String timestampPrecision;
+  private transient PlanNode planNode;
 
-  private PipeTransferHandshakeReq() {
-    // Empty constructor
+  private PipeTransferSchemaPlanReq() {
+    // Do nothing
   }
 
-  public String getTimestampPrecision() {
-    return timestampPrecision;
+  public PlanNode getPlanNode() {
+    return planNode;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeTransferHandshakeReq toTPipeTransferReq(String timestampPrecision)
-      throws IOException {
-    final PipeTransferHandshakeReq handshakeReq = new PipeTransferHandshakeReq();
+  public static PipeTransferSchemaPlanReq toTPipeTransferReq(PlanNode planNode) {
+    final PipeTransferSchemaPlanReq req = new PipeTransferSchemaPlanReq();
 
-    handshakeReq.timestampPrecision = timestampPrecision;
+    req.planNode = planNode;
 
-    handshakeReq.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
-    handshakeReq.type = PipeRequestType.HANDSHAKE.getType();
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
-        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      ReadWriteIOUtils.write(timestampPrecision, outputStream);
-      handshakeReq.body =
-          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-    }
+    req.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
+    req.type = PipeRequestType.TRANSFER_SCHEMA_PLAN.getType();
+    req.body = planNode.serializeToByteBuffer();
 
-    return handshakeReq;
+    return req;
   }
 
-  public static PipeTransferHandshakeReq fromTPipeTransferReq(TPipeTransferReq transferReq) {
-    final PipeTransferHandshakeReq handshakeReq = new PipeTransferHandshakeReq();
+  public static PipeTransferSchemaPlanReq fromTPipeTransferReq(TPipeTransferReq transferReq) {
+    final PipeTransferSchemaPlanReq planNodeReq = new PipeTransferSchemaPlanReq();
 
-    handshakeReq.timestampPrecision = ReadWriteIOUtils.readString(transferReq.body);
+    planNodeReq.planNode = PlanNodeType.deserialize(transferReq.body);
 
-    handshakeReq.version = transferReq.version;
-    handshakeReq.type = transferReq.type;
-    handshakeReq.body = transferReq.body;
+    planNodeReq.version = transferReq.version;
+    planNodeReq.type = transferReq.type;
+    planNodeReq.body = transferReq.body;
 
-    return handshakeReq;
+    return planNodeReq;
   }
 
   /////////////////////////////// Air Gap ///////////////////////////////
-
-  public static byte[] toTransferHandshakeBytes(String timestampPrecision) throws IOException {
+  public static byte[] toTransferInsertNodeBytes(PlanNode planNode) throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
-      ReadWriteIOUtils.write(PipeRequestType.HANDSHAKE.getType(), outputStream);
-      ReadWriteIOUtils.write(timestampPrecision, outputStream);
-      return byteArrayOutputStream.toByteArray();
+      ReadWriteIOUtils.write(PipeRequestType.TRANSFER_SCHEMA_PLAN.getType(), outputStream);
+      return BytesUtils.concatByteArray(
+          byteArrayOutputStream.toByteArray(), planNode.serializeToByteBuffer().array());
     }
   }
 
@@ -96,8 +91,8 @@ public class PipeTransferHandshakeReq extends TPipeTransferReq {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeTransferHandshakeReq that = (PipeTransferHandshakeReq) obj;
-    return timestampPrecision.equals(that.timestampPrecision)
+    PipeTransferSchemaPlanReq that = (PipeTransferSchemaPlanReq) obj;
+    return planNode.equals(that.planNode)
         && version == that.version
         && type == that.type
         && body.equals(that.body);
@@ -105,6 +100,6 @@ public class PipeTransferHandshakeReq extends TPipeTransferReq {
 
   @Override
   public int hashCode() {
-    return Objects.hash(timestampPrecision, version, type, body);
+    return Objects.hash(planNode, version, type, body);
   }
 }
