@@ -52,6 +52,8 @@ public class GroupByMonthFilter extends GroupByFilter {
   private final long originalEndTime;
 
   private final TimeUnit currPrecision;
+  private boolean isLastDayOfMonth;
+  private int minDay;
 
   private long[] startTimes;
 
@@ -74,6 +76,12 @@ public class GroupByMonthFilter extends GroupByFilter {
       this.slidingStep = slidingStep.nonMonthDuration;
     }
     this.currPrecision = currPrecision;
+
+    if (interval.containsMonth() || slidingStep.containsMonth()) {
+      this.isLastDayOfMonth =
+          calendar.get(Calendar.DAY_OF_MONTH) == calendar.getActualMaximum(Calendar.DAY_OF_MONTH);
+      this.minDay = calendar.get(Calendar.DAY_OF_MONTH);
+    }
     initMonthGroupByParameters(timeZone);
   }
 
@@ -161,7 +169,9 @@ public class GroupByMonthFilter extends GroupByFilter {
                       ((originalEndTime - originalStartTime)
                           / (double) originalSlidingStep.getMinTotalDuration(currPrecision))),
               timeZone,
-              currPrecision);
+              currPrecision,
+              this.isLastDayOfMonth,
+              this.minDay);
     }
     getNthTimeInterval(0);
   }
@@ -186,14 +196,22 @@ public class GroupByMonthFilter extends GroupByFilter {
       }
       this.startTime = startTimes[n];
       this.slidingStep =
-          calcPositiveIntervalByMonth(startTime, originalSlidingStep, 1, timeZone, currPrecision)
+          calcPositiveIntervalByMonth(
+                  startTime,
+                  originalSlidingStep,
+                  1,
+                  timeZone,
+                  currPrecision,
+                  isLastDayOfMonth,
+                  minDay)
               - startTime;
     } else {
       startTime = originalStartTime + n * slidingStep;
     }
     if (originalInterval.containsMonth()) {
       this.interval =
-          calcPositiveIntervalByMonth(startTime, originalInterval, 1, timeZone, currPrecision)
+          calcPositiveIntervalByMonth(
+                  startTime, originalInterval, 1, timeZone, currPrecision, isLastDayOfMonth, minDay)
               - startTime;
     }
   }
