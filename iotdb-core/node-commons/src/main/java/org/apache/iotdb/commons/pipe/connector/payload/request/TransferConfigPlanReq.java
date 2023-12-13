@@ -17,19 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.protocol;
+package org.apache.iotdb.commons.pipe.connector.payload.request;
 
-public enum IoTDBConnectorRequestVersion {
-  VERSION_1((byte) 1),
-  ;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
-  private final byte version;
-
-  IoTDBConnectorRequestVersion(byte type) {
-    this.version = type;
-  }
-
-  public byte getVersion() {
-    return version;
-  }
-}
+public abstract class TransferConfigPlanReq extends TPipeTransferReq {}
