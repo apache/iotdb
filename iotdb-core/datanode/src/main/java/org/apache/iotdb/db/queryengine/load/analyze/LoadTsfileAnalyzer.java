@@ -105,7 +105,7 @@ public class LoadTsfileAnalyzer {
   private final SchemaAutoCreatorAndVerifier schemaAutoCreatorAndVerifier =
       new SchemaAutoCreatorAndVerifier();
 
-  LoadTsfileAnalyzer(
+  public LoadTsfileAnalyzer(
       LoadTsFileStatement loadTsFileStatement,
       MPPQueryContext context,
       IPartitionFetcher partitionFetcher,
