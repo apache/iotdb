@@ -338,7 +338,7 @@ public class IOTDBLoadTsFileIT {
 
     assertNonQueryTestFail(
         String.format("load \"%s\" sgLevel=2", tmpDir.getAbsolutePath()),
-        "Auto create or verify schema error when executing statement LoadTsFileStatement",
+        "No permissions for this operation, please add privilege MANAGE_DATABASE",
         "test",
         "test123");
 

@@ -538,6 +538,21 @@ public class IoTDBConfig {
   /** The size of candidate compaction task queue. */
   private int candidateCompactionTaskQueueSize = 50;
 
+  /**
+   * When the size of the mods file corresponding to TsFile exceeds this value, inner compaction
+   * tasks containing mods files are selected first.
+   */
+  private long innerCompactionTaskSelectionModsFileThreshold = 50 * 1024 * 1024L;
+  /**
+   * When disk availability is lower than the sum of (disk_space_warning_threshold +
+   * inner_compaction_task_selection_disk_redundancy), inner compaction tasks containing mods files
+   * are selected first.
+   */
+  private double innerCompactionTaskSelectionDiskRedundancy = 0.05;
+
+  /** The size of global compaction estimation file info cahce. */
+  private int globalCompactionFileInfoCacheSize = 1000;
+
   /** whether to cache meta data(ChunkMetaData and TsFileMetaData) or not. */
   private boolean metaDataCacheEnable = true;
 
@@ -3668,6 +3683,14 @@ public class IoTDBConfig {
     this.candidateCompactionTaskQueueSize = candidateCompactionTaskQueueSize;
   }
 
+  public int getGlobalCompactionFileInfoCacheSize() {
+    return globalCompactionFileInfoCacheSize;
+  }
+
+  public void setGlobalCompactionFileInfoCacheSize(int globalCompactionFileInfoCacheSize) {
+    this.globalCompactionFileInfoCacheSize = globalCompactionFileInfoCacheSize;
+  }
+
   public boolean isEnableAuditLog() {
     return enableAuditLog;
   }
@@ -3776,5 +3799,24 @@ public class IoTDBConfig {
 
   public void setEnableTsFileValidation(boolean enableTsFileValidation) {
     this.enableTsFileValidation = enableTsFileValidation;
+  }
+
+  public long getInnerCompactionTaskSelectionModsFileThreshold() {
+    return innerCompactionTaskSelectionModsFileThreshold;
+  }
+
+  public void setInnerCompactionTaskSelectionModsFileThreshold(
+      long innerCompactionTaskSelectionModsFileThreshold) {
+    this.innerCompactionTaskSelectionModsFileThreshold =
+        innerCompactionTaskSelectionModsFileThreshold;
+  }
+
+  public double getInnerCompactionTaskSelectionDiskRedundancy() {
+    return innerCompactionTaskSelectionDiskRedundancy;
+  }
+
+  public void setInnerCompactionTaskSelectionDiskRedundancy(
+      double innerCompactionTaskSelectionDiskRedundancy) {
+    this.innerCompactionTaskSelectionDiskRedundancy = innerCompactionTaskSelectionDiskRedundancy;
   }
 }
