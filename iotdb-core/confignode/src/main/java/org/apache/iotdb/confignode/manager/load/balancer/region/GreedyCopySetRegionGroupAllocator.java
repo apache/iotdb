@@ -147,9 +147,8 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
       int lastIndex,
       int currentReplica,
       int[] currentReplicaSet,
-      int regionSum, // 现有选中的dn上面一共多少个region
-      int intersectionSum // 现有的交集数
-  ) {
+      int regionSum,
+      int intersectionSum) {
     if (regionSum > optimalRegionSum || intersectionSum > optimalRegionSum) {
       // Pruning: no needs for further searching when either the first key or the second key
       // is bigger than the historical optimal result
