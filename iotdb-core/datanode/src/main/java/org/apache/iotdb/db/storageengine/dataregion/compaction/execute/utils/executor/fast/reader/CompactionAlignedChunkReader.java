@@ -67,7 +67,11 @@ public class CompactionAlignedChunkReader {
         });
   }
 
-  /** Read data from compressed page data. Uncompress the page and decode it to tsblock data. */
+  /**
+   * Read data from compressed page data. Uncompress the page and decode it to tsblock data.
+   *
+   * @throws IOException exception thrown when reading page data
+   */
   public IPointReader getPagePointReader(
       PageHeader timePageHeader,
       List<PageHeader> valuePageHeaders,

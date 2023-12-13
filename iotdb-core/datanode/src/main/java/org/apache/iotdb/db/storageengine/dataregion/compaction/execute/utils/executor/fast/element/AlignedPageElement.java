@@ -39,6 +39,7 @@ public class AlignedPageElement extends PageElement {
 
   private final CompactionAlignedChunkReader chunkReader;
 
+  @SuppressWarnings("squid:S107")
   public AlignedPageElement(
       PageHeader timePageHeader,
       List<PageHeader> valuePageHeaders,

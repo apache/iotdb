@@ -66,6 +66,7 @@ public class CompactionChunkReader {
    * Read page data without uncompressing it.
    *
    * @return compressed page data
+   * @throws IOException exception thrown when reading page data
    */
   public ByteBuffer readPageDataWithoutUncompressing(PageHeader pageHeader) throws IOException {
     return readCompressedPageData(pageHeader, chunkDataBuffer);
@@ -75,6 +76,7 @@ public class CompactionChunkReader {
    * Read data from compressed page data. Uncompress the page and decode it to batch data.
    *
    * @param compressedPageData Compressed page data
+   * @throws IOException exception thrown when reading page data
    */
   public TsBlock readPageData(PageHeader pageHeader, ByteBuffer compressedPageData)
       throws IOException {
