@@ -67,9 +67,6 @@ public class SizeTieredCompactionSelector
   protected boolean sequence;
   protected TsFileManager tsFileManager;
   protected boolean hasNextTimePartition;
-  private static final long MODS_FILE_SIZE_THRESHOLD = 1024 * 1024 * 50L;
-
-  private static final double DISK_REDUNDANCY = 0.05;
 
   public SizeTieredCompactionSelector(
       String storageGroupName,
@@ -196,8 +193,12 @@ public class SizeTieredCompactionSelector
       if (Objects.isNull(modFile) || !modFile.exists()) {
         continue;
       }
-      if (modFile.getSize() > MODS_FILE_SIZE_THRESHOLD
-          || !CompactionUtils.isDiskHasSpace(DISK_REDUNDANCY)) {
+      if (tsFileResource.getStatus() != TsFileResourceStatus.NORMAL) {
+        continue;
+      }
+      if (modFile.getSize() > config.getInnerCompactionTaskSelectionModsFileThreshold()
+          || !CompactionUtils.isDiskHasSpace(
+              config.getInnerCompactionTaskSelectionDiskRedundancy())) {
         taskList.add(
             createCompactionTask(
                 Collections.singletonList(tsFileResource), CompactionTaskPriorityType.MOD_SETTLE));

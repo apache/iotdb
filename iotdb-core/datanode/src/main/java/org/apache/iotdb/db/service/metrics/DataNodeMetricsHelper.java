@@ -29,7 +29,7 @@ import org.apache.iotdb.commons.service.metric.JvmGcMonitorMetrics;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.metric.PipeMetrics;
+import org.apache.iotdb.db.pipe.metric.PipeDataNodeMetrics;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet;
 import org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet;
@@ -84,7 +84,7 @@ public class DataNodeMetricsHelper {
     MetricService.getInstance().addMetricSet(JvmGcMonitorMetrics.getInstance());
 
     // bind pipe related metrics
-    MetricService.getInstance().addMetricSet(PipeMetrics.getInstance());
+    MetricService.getInstance().addMetricSet(PipeDataNodeMetrics.getInstance());
   }
 
   private static void initSystemMetrics() {

@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
+import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -220,7 +220,7 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
           "CQ: Specifying time range in GROUP BY TIME clause is prohibited.");
     }
     if (queryBodyStatement.getWhereCondition() != null
-        && ExpressionAnalyzer.checkIfTimeFilterExist(
+        && PredicateUtils.checkIfTimeFilterExist(
             queryBodyStatement.getWhereCondition().getPredicate())) {
       throw new SemanticException("CQ: Specifying time filters in the query body is prohibited.");
     }

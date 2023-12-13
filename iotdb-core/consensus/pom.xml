@@ -87,7 +87,7 @@
         </dependency>
         <dependency>
             <groupId>org.apache.ratis</groupId>
-            <artifactId>ratis-metrics</artifactId>
+            <artifactId>ratis-metrics-api</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.ratis</groupId>
@@ -116,14 +116,6 @@
         <dependency>
             <groupId>com.google.code.findbugs</groupId>
             <artifactId>jsr305</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.dropwizard.metrics</groupId>
-            <artifactId>metrics-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.dropwizard.metrics</groupId>
-            <artifactId>metrics-jmx</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>

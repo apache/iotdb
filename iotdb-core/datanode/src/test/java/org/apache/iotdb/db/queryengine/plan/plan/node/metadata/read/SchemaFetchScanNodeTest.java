@@ -44,6 +44,7 @@ public class SchemaFetchScanNodeTest {
             new PartialPath("root.sg"),
             patternTree,
             Collections.emptyMap(),
+            true,
             true);
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024 * 1024);
     schemaFetchScanNode.serialize(byteBuffer);
@@ -53,5 +54,6 @@ public class SchemaFetchScanNodeTest {
     Assert.assertEquals(
         "root.sg.**.*", recoveredNode.getPatternTree().getAllPathPatterns().get(0).getFullPath());
     Assert.assertTrue(recoveredNode.isWithTags());
+    Assert.assertTrue(recoveredNode.isWithTemplate());
   }
 }

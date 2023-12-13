@@ -36,7 +36,7 @@ public class ChunkGroupHeader {
   private final String deviceID;
 
   // this field does not need to be serialized.
-  private int serializedSize;
+  private final int serializedSize;
 
   /**
    * constructor of CHUNK_GROUP_HEADER.

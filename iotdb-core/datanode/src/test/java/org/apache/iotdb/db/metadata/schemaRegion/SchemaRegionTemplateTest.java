@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ISchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
@@ -53,6 +54,35 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
 
   public SchemaRegionTemplateTest(SchemaRegionTestParams testParams) {
     super(testParams);
+  }
+
+  @Test
+  public void testFetchNestedTemplateDevice() throws Exception {
+    ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
+    int templateId = 1;
+    Template template =
+        new Template(
+            "t1",
+            Arrays.asList("s1", "s2"),
+            Arrays.asList(TSDataType.DOUBLE, TSDataType.INT32),
+            Arrays.asList(TSEncoding.RLE, TSEncoding.RLE),
+            Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
+    template.setId(templateId);
+    schemaRegion.activateSchemaTemplate(
+        SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
+            new PartialPath("root.sg.d1"), 2, templateId),
+        template);
+    schemaRegion.activateSchemaTemplate(
+        SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
+            new PartialPath("root.sg.d1.GPS"), 3, templateId),
+        template);
+    ClusterSchemaTree schemaTree =
+        schemaRegion.fetchSchema(
+            ALL_MATCH_SCOPE, Collections.singletonMap(templateId, template), true, true);
+    Assert.assertEquals(2, schemaTree.getAllDevices().size());
+    for (DeviceSchemaInfo deviceSchemaInfo : schemaTree.getAllDevices()) {
+      Assert.assertEquals(templateId, deviceSchemaInfo.getTemplateId());
+    }
   }
 
   /** Test {@link ISchemaRegion#activateSchemaTemplate}. */
@@ -182,7 +212,8 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
             "root.sg.wf02.s2");
 
     // check fetch schema
-    ClusterSchemaTree schemaTree = schemaRegion.fetchSchema(ALL_MATCH_SCOPE, templateMap, true);
+    ClusterSchemaTree schemaTree =
+        schemaRegion.fetchSchema(ALL_MATCH_SCOPE, templateMap, true, true);
     schemaTree.setTemplateMap(templateMap);
     List<MeasurementPath> schemas = schemaTree.searchMeasurementPaths(ALL_MATCH_PATTERN).left;
     Assert.assertEquals(expectedTimeseries.size(), schemas.size());
@@ -228,7 +259,7 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
 
     ClusterSchemaTree schemaTree =
         schemaRegion.fetchSchema(
-            patternTree, Collections.singletonMap(templateId, template), false);
+            patternTree, Collections.singletonMap(templateId, template), false, true);
     schemaTree.setTemplateMap(Collections.singletonMap(templateId, template));
     Assert.assertEquals(
         1, schemaTree.searchMeasurementPaths(new PartialPath("root.db.d1.s1")).left.size());
@@ -236,7 +267,7 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
     patternTree.appendFullPath(new PartialPath("root.db.d1.s3"));
     schemaTree =
         schemaRegion.fetchSchema(
-            patternTree, Collections.singletonMap(templateId, template), false);
+            patternTree, Collections.singletonMap(templateId, template), false, true);
     schemaTree.setTemplateMap(Collections.singletonMap(templateId, template));
     Assert.assertEquals(
         0, schemaTree.searchMeasurementPaths(new PartialPath("root.db.d1.s3")).left.size());

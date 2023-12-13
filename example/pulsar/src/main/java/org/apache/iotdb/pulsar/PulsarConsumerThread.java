@@ -37,7 +37,7 @@ import java.util.List;
 @SuppressWarnings({"squid:S1144"})
 public class PulsarConsumerThread implements Runnable {
 
-  private static final Logger logger = LoggerFactory.getLogger(PulsarConsumerThread.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PulsarConsumerThread.class);
 
   private final Consumer<?> consumer;
 
@@ -155,7 +155,7 @@ public class PulsarConsumerThread implements Runnable {
         consumer.acknowledge(messages);
       } while (true);
     } catch (Exception e) {
-      logger.error(e.getMessage());
+      LOGGER.error(e.getMessage());
     }
   }
 }

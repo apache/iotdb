@@ -41,13 +41,12 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 class OpcUaKeyStoreLoader {
+  private static final Logger LOGGER = LoggerFactory.getLogger(OpcUaKeyStoreLoader.class);
 
   private static final Pattern IP_ADDR_PATTERN =
       Pattern.compile("^(([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.){3}([01]?\\d\\d?|2[0-4]\\d|25[0-5])$");
 
   private static final String SERVER_ALIAS = "server-ai";
-
-  private final Logger logger = LoggerFactory.getLogger(getClass());
 
   private X509Certificate serverCertificate;
   private KeyPair serverKeyPair;
@@ -57,7 +56,7 @@ class OpcUaKeyStoreLoader {
 
     File serverKeyStore = baseDir.resolve("iotdb-server.pfx").toFile();
 
-    logger.info("Loading KeyStore at {}", serverKeyStore);
+    LOGGER.info("Loading KeyStore at {}", serverKeyStore);
 
     if (!serverKeyStore.exists()) {
       keyStore.load(null, password);

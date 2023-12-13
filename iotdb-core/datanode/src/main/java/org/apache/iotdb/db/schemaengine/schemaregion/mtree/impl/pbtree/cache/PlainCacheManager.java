@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache;
 
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.MemManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
@@ -32,24 +33,12 @@ public class PlainCacheManager extends CacheManager {
   @SuppressWarnings("java:S3077")
   private volatile Map<CacheEntry, ICachedMNode> nodeCache = new ConcurrentHashMap<>();
 
-  public PlainCacheManager(MemManager memManager) {
-    super(memManager);
+  public PlainCacheManager(MemManager memManager, LockManager lockManager) {
+    super(memManager, lockManager);
   }
 
   @Override
   protected void updateCacheStatusAfterAccess(CacheEntry cacheEntry) {}
-
-  // MNode update operation like node replace may reset the mapping between cacheEntry and node,
-  // thus it should be updated
-  @Override
-  protected void updateCacheStatusAfterUpdate(CacheEntry cacheEntry, ICachedMNode node) {
-    nodeCache.replace(cacheEntry, node);
-  }
-
-  @Override
-  protected boolean isInNodeCache(CacheEntry cacheEntry) {
-    return nodeCache.containsKey(cacheEntry);
-  }
 
   @Override
   protected void addToNodeCache(CacheEntry cacheEntry, ICachedMNode node) {

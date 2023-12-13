@@ -51,7 +51,9 @@ public abstract class AbstractOperator implements Operator {
     } else {
       this.maxTupleSizeOfTsBlock = (int) (maxReturnSize / oneTupleSize);
     }
-    LOGGER.debug("maxTupleSizeOfTsBlock is：{}", maxTupleSizeOfTsBlock);
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("maxTupleSizeOfTsBlock is：{}", maxTupleSizeOfTsBlock);
+    }
   }
 
   public TsBlock checkTsBlockSizeAndGetResult() {
@@ -86,7 +88,9 @@ public abstract class AbstractOperator implements Operator {
       res = retainedTsBlock.getRegion(startOffset, maxTupleSizeOfTsBlock);
       startOffset += maxTupleSizeOfTsBlock;
     }
-    LOGGER.debug("Current tsBlock size is : {}", res.getRetainedSizeInBytes());
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("Current tsBlock size is : {}", res.getRetainedSizeInBytes());
+    }
     return res;
   }
 

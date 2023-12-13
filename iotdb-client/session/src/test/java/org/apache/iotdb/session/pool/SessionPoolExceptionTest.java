@@ -43,6 +43,7 @@ import org.powermock.reflect.Whitebox;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,6 +51,7 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -261,6 +263,16 @@ public class SessionPoolExceptionTest {
       sessionPool.insertRecords(deviceIds, timeList, measurementsList, typesList, valuesList);
     } catch (IoTDBConnectionException e) {
       assertTrue(e instanceof IoTDBConnectionException);
+    }
+  }
+
+  @Test
+  public void testEmptyNodeUrls() {
+    try {
+      ISessionPool failedSession = new SessionPool(Collections.emptyList(), "root", "root", 1);
+      fail();
+    } catch (IllegalArgumentException e) {
+      assertEquals("nodeUrls shouldn't be empty.", e.getMessage());
     }
   }
 }

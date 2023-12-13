@@ -107,7 +107,8 @@ public class ChunkCacheTest {
               new ChunkCache.ChunkCacheKey(
                   tsFileResource.getTsFilePath(),
                   tsFileResource.getTsFileID(),
-                  firstChunkMetadata.getOffsetOfChunkHeader()),
+                  firstChunkMetadata.getOffsetOfChunkHeader(),
+                  true),
               firstChunkMetadata.getDeleteIntervalList(),
               firstChunkMetadata.getStatistics(),
               false);
@@ -122,7 +123,8 @@ public class ChunkCacheTest {
               new ChunkCache.ChunkCacheKey(
                   tsFileResource.getTsFilePath(),
                   tsFileResource.getTsFileID(),
-                  chunkMetadataKey.getOffsetOfChunkHeader()),
+                  chunkMetadataKey.getOffsetOfChunkHeader(),
+                  true),
               chunkMetadataKey.getDeleteIntervalList(),
               chunkMetadataKey.getStatistics(),
               false);

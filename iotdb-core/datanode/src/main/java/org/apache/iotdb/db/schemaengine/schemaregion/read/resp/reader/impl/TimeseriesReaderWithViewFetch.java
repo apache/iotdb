@@ -240,7 +240,8 @@ public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesS
     // clear cachedViewList, all cached view will be added in the last step
     cachedViewList.clear();
 
-    ISchemaTree schemaTree = ClusterSchemaFetcher.getInstance().fetchSchema(patternTree, null);
+    ISchemaTree schemaTree =
+        ClusterSchemaFetcher.getInstance().fetchSchema(patternTree, true, null);
     // process each view expression and get data type
     TransformToExpressionVisitor transformToExpressionVisitor = new TransformToExpressionVisitor();
     CompleteMeasurementSchemaVisitor completeMeasurementSchemaVisitor =

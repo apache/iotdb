@@ -160,6 +160,11 @@ public class PipeRow implements Row {
   }
 
   @Override
+  public String getColumnName(int columnIndex) {
+    return columnNameStringList[columnIndex];
+  }
+
+  @Override
   public List<Type> getColumnTypes() {
     return PipeDataTypeTransformer.transformToPipeDataTypeList(Arrays.asList(valueColumnTypes));
   }

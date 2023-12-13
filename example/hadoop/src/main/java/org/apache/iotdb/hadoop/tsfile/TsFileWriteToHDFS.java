@@ -38,9 +38,9 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 
 public class TsFileWriteToHDFS {
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileWriteToHDFS.class);
 
   private static TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
-  private static final Logger logger = LoggerFactory.getLogger(TsFileWriteToHDFS.class);
 
   public static void main(String[] args) {
     config.setTSFileStorageFs(new FSType[] {FSType.HDFS});
@@ -72,7 +72,7 @@ public class TsFileWriteToHDFS {
         tsFileWriter.write(tsRecord);
       }
     } catch (Exception e) {
-      logger.error("Failed to write TsFile on HDFS. {}", e.getMessage());
+      LOGGER.error("Failed to write TsFile on HDFS. {}", e.getMessage());
     }
   }
 }

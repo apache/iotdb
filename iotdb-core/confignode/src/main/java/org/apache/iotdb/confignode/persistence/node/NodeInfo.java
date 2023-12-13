@@ -224,6 +224,24 @@ public class NodeInfo implements SnapshotProcessor {
     return result;
   }
 
+  /** Return the number of registered Nodes. */
+  public int getRegisteredNodeCount() {
+    int result;
+    dataNodeInfoReadWriteLock.readLock().lock();
+    try {
+      result = registeredDataNodes.size();
+    } finally {
+      dataNodeInfoReadWriteLock.readLock().unlock();
+    }
+    configNodeInfoReadWriteLock.readLock().lock();
+    try {
+      result += registeredConfigNodes.size();
+    } finally {
+      configNodeInfoReadWriteLock.readLock().unlock();
+    }
+    return result;
+  }
+
   /** Return the number of registered DataNodes. */
   public int getRegisteredDataNodeCount() {
     int result;
@@ -236,8 +254,17 @@ public class NodeInfo implements SnapshotProcessor {
     return result;
   }
 
+  public int getDataNodeCpuCoreCount(int dataNodeId) {
+    try {
+      return registeredDataNodes.get(dataNodeId).getResource().getCpuCoreNum();
+    } catch (Exception e) {
+      LOGGER.warn("Get DataNode {} cpu core fail, will be treated as zero.", dataNodeId, e);
+      return 0;
+    }
+  }
+
   /** Return the number of total cpu cores in online DataNodes. */
-  public int getTotalCpuCoreCount() {
+  public int getDataNodeTotalCpuCoreCount() {
     int result = 0;
     dataNodeInfoReadWriteLock.readLock().lock();
     try {

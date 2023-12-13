@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 
+import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.DevicesCountNode;
@@ -56,6 +57,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.vie
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.DeleteLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.RollbackLogicalViewBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewIntoNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
@@ -186,7 +188,8 @@ public enum PlanNodeType {
   // NodeId 80 is used by IoTDB-ML which shouldn't be used.
 
   LAST_QUERY_TRANSFORM((short) 81),
-  TOP_K((short) 82);
+  TOP_K((short) 82),
+  COLUMN_INJECT((short) 83);
 
   public static final int BYTES = Short.BYTES;
 
@@ -238,6 +241,10 @@ public enum PlanNodeType {
 
   public static PlanNode deserialize(ByteBuffer buffer) {
     short nodeType = buffer.getShort();
+    return deserialize(buffer, nodeType);
+  }
+
+  public static PlanNode deserialize(ByteBuffer buffer, short nodeType) {
     switch (nodeType) {
       case 0:
         return AggregationNode.deserialize(buffer);
@@ -395,8 +402,22 @@ public enum PlanNodeType {
         return LastQueryTransformNode.deserialize(buffer);
       case 82:
         return TopKNode.deserialize(buffer);
+      case 83:
+        return ColumnInjectNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
+    }
+  }
+
+  public static PlanNode deserializeWithTemplate(ByteBuffer buffer, TypeProvider typeProvider) {
+    short nodeType = buffer.getShort();
+    switch (nodeType) {
+      case 33:
+        return AlignedSeriesScanNode.deserializeUseTemplate(buffer, typeProvider);
+      case 65:
+        return SingleDeviceViewNode.deserializeUseTemplate(buffer, typeProvider);
+      default:
+        return deserialize(buffer, nodeType);
     }
   }
 }

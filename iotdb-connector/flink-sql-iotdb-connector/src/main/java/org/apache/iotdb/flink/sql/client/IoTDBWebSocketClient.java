@@ -33,10 +33,21 @@ import java.nio.ByteBuffer;
 public class IoTDBWebSocketClient extends WebSocketClient {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBWebSocketClient.class);
   private final IoTDBCDCSourceFunction function;
+  private transient Status status = Status.WAITING;
 
   public IoTDBWebSocketClient(URI uri, IoTDBCDCSourceFunction function) {
     super(uri);
     this.function = function;
+  }
+
+  public Status getStatus() {
+    return status;
+  }
+
+  public enum Status {
+    WAITING,
+    READY,
+    ERROR
   }
 
   @Override
@@ -48,7 +59,11 @@ public class IoTDBWebSocketClient extends WebSocketClient {
 
   @Override
   public void onMessage(String s) {
-    // Do nothing
+    if ("READY".equals(s)) {
+      status = Status.READY;
+    } else if ("ERROR".equals(s)) {
+      status = Status.ERROR;
+    }
   }
 
   @Override
@@ -61,7 +76,8 @@ public class IoTDBWebSocketClient extends WebSocketClient {
 
   @Override
   public void onClose(int i, String s, boolean b) {
-    LOGGER.info("The connection to {}:{} has been closed.", uri.getHost(), uri.getPort());
+    LOGGER.info(
+        "The connection to {}:{} has been closed. Because {}", uri.getHost(), uri.getPort(), s);
   }
 
   @Override

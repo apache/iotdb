@@ -57,14 +57,13 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
   @Test
   public void testPBTreeMemoryStatistics() throws Exception {
     ISchemaRegion schemaRegion1 = getSchemaRegion("root.sg1", 0);
-    ISchemaRegion schemaRegion2 = getSchemaRegion("root.sg2", 0);
     ISchemaEngineStatistics engineStatistics =
         SchemaEngine.getInstance().getSchemaEngineStatistics();
 
     SchemaRegionTestUtil.createSimpleTimeseriesByList(
         schemaRegion1, Arrays.asList("root.sg1.n.s0", "root.sg1.n.v.d1.s1", "root.sg1.n.v.d2.s2"));
     SchemaRegionTestUtil.createSimpleTimeseriesByList(
-        schemaRegion2, Arrays.asList("root.sg2.d0.s0"));
+        schemaRegion1, Arrays.asList("root.sg1.d0.s0"));
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(new PartialPath("root.**.s1"));
     patternTree.appendPathPattern(new PartialPath("root.**.s2"));

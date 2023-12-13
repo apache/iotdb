@@ -128,7 +128,8 @@ public class AlignedSeriesScanOperatorTest {
               alignedPath,
               Ordering.ASC,
               getDefaultSeriesScanOptions(alignedPath),
-              false);
+              false,
+              null);
       seriesScanOperator.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator
           .getOperatorContext()
@@ -222,7 +223,8 @@ public class AlignedSeriesScanOperatorTest {
               alignedPath1,
               Ordering.ASC,
               getDefaultSeriesScanOptions(alignedPath1),
-              false);
+              false,
+              null);
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator1
           .getOperatorContext()
@@ -244,7 +246,8 @@ public class AlignedSeriesScanOperatorTest {
               alignedPath2,
               Ordering.ASC,
               getDefaultSeriesScanOptions(alignedPath2),
-              false);
+              false,
+              null);
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator2
           .getOperatorContext()
@@ -514,7 +517,8 @@ public class AlignedSeriesScanOperatorTest {
               alignedPath1,
               Ordering.DESC,
               getDefaultSeriesScanOptions(alignedPath1),
-              false);
+              false,
+              null);
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator1
           .getOperatorContext()
@@ -536,7 +540,8 @@ public class AlignedSeriesScanOperatorTest {
               alignedPath2,
               Ordering.DESC,
               getDefaultSeriesScanOptions(alignedPath2),
-              false);
+              false,
+              null);
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator2
           .getOperatorContext()

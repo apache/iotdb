@@ -45,6 +45,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.other.CaseWhenThenExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.other.GroupByTimeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.InExpression;
@@ -207,5 +208,9 @@ public abstract class ExpressionVisitor<R, C> {
 
   public R visitWhenThenExpression(WhenThenExpression whenThenExpression, C context) {
     return visitBinaryExpression(whenThenExpression, context);
+  }
+
+  public R visitGroupByTimeExpression(GroupByTimeExpression groupByTimeExpression, C context) {
+    throw new UnsupportedOperationException();
   }
 }

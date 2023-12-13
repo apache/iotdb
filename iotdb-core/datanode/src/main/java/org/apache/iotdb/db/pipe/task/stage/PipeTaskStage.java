@@ -130,7 +130,11 @@ public abstract class PipeTaskStage {
       return;
     }
 
-    // status == PipeStatus.RUNNING or PipeStatus.STOPPED, drop the connector
+    // MUST stop the subtask before dropping it, otherwise
+    // the subtask might be in an inconsistent state!
+    stop();
+
+    // status == PipeStatus.STOPPED, drop the connector
     dropSubtask();
 
     status = PipeStatus.DROPPED;

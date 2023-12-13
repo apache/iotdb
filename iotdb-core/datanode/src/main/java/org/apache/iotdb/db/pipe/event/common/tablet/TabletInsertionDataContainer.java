@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.event.common.tablet;
 
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRowCollector;
@@ -64,10 +65,6 @@ public class TabletInsertionDataContainer {
 
   private Tablet tablet;
 
-  public TabletInsertionDataContainer(InsertNode insertNode, String pattern) {
-    this(null, null, insertNode, pattern);
-  }
-
   public TabletInsertionDataContainer(
       PipeTaskMeta pipeTaskMeta, EnrichedEvent sourceEvent, InsertNode insertNode, String pattern) {
     this.pipeTaskMeta = pipeTaskMeta;
@@ -93,6 +90,11 @@ public class TabletInsertionDataContainer {
     this.sourceEvent = sourceEvent;
 
     parse(tablet, isAligned, pattern);
+  }
+
+  @TestOnly
+  public TabletInsertionDataContainer(InsertNode insertNode, String pattern) {
+    this(null, null, insertNode, pattern);
   }
 
   //////////////////////////// parse ////////////////////////////

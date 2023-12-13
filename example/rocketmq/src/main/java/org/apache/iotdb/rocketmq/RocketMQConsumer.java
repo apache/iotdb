@@ -41,7 +41,7 @@ import java.util.List;
 
 public class RocketMQConsumer {
 
-  private static final Logger logger = LoggerFactory.getLogger(RocketMQConsumer.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(RocketMQConsumer.class);
   private Session session;
   private DefaultMQPushConsumer consumer;
   private String producerGroup;
@@ -172,14 +172,14 @@ public class RocketMQConsumer {
         (MessageListenerOrderly)
             (msgs, context) -> {
               for (MessageExt msg : msgs) {
-                logger.info(
+                LOGGER.info(
                     String.format(
                         "%s Receive New Messages: %s %n",
                         Thread.currentThread().getName(), new String(msg.getBody())));
                 try {
                   insert(new String(msg.getBody()));
                 } catch (Exception e) {
-                  logger.error(e.getMessage());
+                  LOGGER.error(e.getMessage());
                 }
               }
               return ConsumeOrderlyStatus.SUCCESS;

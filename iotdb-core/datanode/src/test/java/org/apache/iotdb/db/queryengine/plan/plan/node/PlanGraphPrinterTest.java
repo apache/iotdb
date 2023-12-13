@@ -62,7 +62,7 @@ public class PlanGraphPrinterTest {
     topKNode.addChild(deviceViewNode);
 
     List<String> result = getGraph(topKNode);
-    assertEquals(19, result.size());
+    assertEquals(18, result.size());
     assertEquals("│TopK-1                                 │", result.get(1));
     assertEquals("            │DeviceView-2  │             ", result.get(8));
     assertEquals("        │SeriesScan-3           │        ", result.get(14));

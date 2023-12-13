@@ -1757,7 +1757,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendFullPath(oldName);
     patternTree.constructTree();
-    ISchemaTree schemaTree = ClusterSchemaFetcher.getInstance().fetchSchema(patternTree, null);
+    ISchemaTree schemaTree =
+        ClusterSchemaFetcher.getInstance().fetchSchema(patternTree, true, null);
     List<MeasurementPath> measurementPathList = schemaTree.searchMeasurementPaths(oldName).left;
     if (measurementPathList.isEmpty()) {
       future.setException(new PathNotExistException(oldName.getFullPath()));
