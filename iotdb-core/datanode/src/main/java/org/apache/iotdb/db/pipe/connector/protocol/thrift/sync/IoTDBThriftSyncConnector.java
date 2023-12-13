@@ -75,10 +75,6 @@ import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SIN
 public class IoTDBThriftSyncConnector extends IoTDBConnector {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftSyncConnector.class);
 
-  private boolean useSSL;
-  private String trustStore;
-  private String trustStorePwd;
-
   private boolean useLeaderCache;
 
   private IoTDBThriftSyncPipeTransferBatchReqBuilder tabletBatchBuilder;
@@ -137,9 +133,9 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       tabletBatchBuilder = new IoTDBThriftSyncPipeTransferBatchReqBuilder(parameters);
     }
 
-    useSSL = parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false);
-    trustStore = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY);
-    trustStorePwd = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY);
+    boolean useSSL = parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false);
+    String trustStore = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY);
+    String trustStorePwd = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY);
 
     useLeaderCache =
         parameters.getBooleanOrDefault(

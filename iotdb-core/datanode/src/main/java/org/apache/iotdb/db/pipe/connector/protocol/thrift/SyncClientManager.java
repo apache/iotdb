@@ -77,8 +77,11 @@ public class SyncClientManager {
   public void initClients() throws IOException, TTransportException {
     // init clients
     for (TEndPoint endPoint : endPoints) {
+      if (endPoint2client.containsKey(endPoint)) {
+        continue;
+      }
       Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus = initAndGetClient(endPoint);
-      endPoint2client.put(endPoint, clientAndStatus);
+      endPoint2client.putIfAbsent(endPoint, clientAndStatus);
     }
     // check whether any clients are available
     for (TEndPoint nodeUrl : endPoint2client.keySet()) {
@@ -111,8 +114,8 @@ public class SyncClientManager {
     TEndPoint endPoint = leaderCacheManager.parseEndPoint(event);
     return endPoint == null
             || !useLeaderCache
-            || (endPoint2client.containsKey(endPoint)
-                && Boolean.TRUE.equals(endPoint2client.get(endPoint).getRight()))
+            || !endPoint2client.containsKey(endPoint)
+            || Boolean.FALSE.equals(endPoint2client.get(endPoint).getRight())
         ? getOneConnectedClientAndStatus()
         : endPoint2client.get(endPoint);
   }
@@ -122,8 +125,8 @@ public class SyncClientManager {
     TEndPoint endPoint = leaderCacheManager.parseEndPoint(event);
     return endPoint == null
             || !useLeaderCache
-            || (endPoint2client.containsKey(endPoint)
-                && Boolean.TRUE.equals(endPoint2client.get(endPoint).getRight()))
+            || !endPoint2client.containsKey(endPoint)
+            || Boolean.FALSE.equals(endPoint2client.get(endPoint).getRight())
         ? getOneConnectedClientAndStatus()
         : endPoint2client.get(endPoint);
   }
@@ -139,6 +142,7 @@ public class SyncClientManager {
         endPoints.add(endPoint);
         Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus = initAndGetClient(endPoint);
         endPoint2client.put(endPoint, clientAndStatus);
+        leaderCacheManager.updateOrCreate(deviceId, endPoint);
       }
     } catch (TTransportException e) {
       LOGGER.warn(
