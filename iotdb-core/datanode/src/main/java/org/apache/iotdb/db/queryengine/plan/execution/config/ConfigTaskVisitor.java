@@ -98,6 +98,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotList
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.MigrateRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowConfigNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowContinuousQueriesStatement;
@@ -213,6 +214,11 @@ public class ConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQueryCon
     } else {
       return new ShowClusterTask(showClusterStatement);
     }
+  }
+
+  @Override
+  public IConfigTask visitShowClusterId(ShowClusterIdStatement showClusterIdStatement, MPPQueryContext context) {
+    return super.visitShowClusterId(showClusterIdStatement, context);
   }
 
   @Override

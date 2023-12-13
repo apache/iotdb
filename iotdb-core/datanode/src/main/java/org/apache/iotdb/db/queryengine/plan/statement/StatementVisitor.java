@@ -60,6 +60,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.MigrateRegionStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildPathsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowConfigNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowContinuousQueriesStatement;
@@ -198,6 +199,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowCluster(ShowClusterStatement showClusterStatement, C context) {
     return visitStatement(showClusterStatement, context);
+  }
+
+  public R visitShowClusterId(ShowClusterIdStatement showClusterIdStatement, C context) {
+    return visitStatement(showClusterIdStatement, context);
   }
 
   // UDF
