@@ -120,6 +120,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         Integer.MIN_VALUE, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 0));
     pipeRuntimeMeta = new PipeRuntimeMeta(consensusGroupIdToTaskMetaMap);
     pipeRuntimeMeta.getStatus().set(PipeStatus.RUNNING);
+    pipeRuntimeMeta.setShouldBeRunning(true);
   }
 
   @Override
