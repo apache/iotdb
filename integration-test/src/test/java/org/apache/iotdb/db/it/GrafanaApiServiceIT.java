@@ -88,18 +88,28 @@ public class GrafanaApiServiceIT {
 
   @Test
   public void login() {
-    try {
-      Thread.sleep(1000 * 30);
-    } catch (InterruptedException e) {
-      throw new RuntimeException(e);
-    }
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
     HttpGet httpGet = new HttpGet("http://127.0.0.1:" + port + "/grafana/v1/login");
     CloseableHttpResponse response = null;
     try {
       String authorization = getAuthorization("root", "root");
       httpGet.setHeader("Authorization", authorization);
-      response = httpClient.execute(httpGet);
+      for (int i = 0; i < 30; i++) {
+        try {
+          response = httpClient.execute(httpGet);
+          break;
+        } catch (Exception e) {
+          if (i == 29) {
+            throw e;
+          }
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+        }
+      }
+
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, "utf-8");
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();
@@ -129,7 +139,21 @@ public class GrafanaApiServiceIT {
       String json =
           "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s4\",\"s5\"],\"dataTypes\":[\"INT32\",\"INT32\"],\"values\":[[11,2],[15,13]],\"isAligned\":false,\"deviceId\":\"root.sg25\"}";
       httpPost.setEntity(new StringEntity(json, Charset.defaultCharset()));
-      response = httpClient.execute(httpPost);
+      for (int i = 0; i < 30; i++) {
+        try {
+          response = httpClient.execute(httpPost);
+          break;
+        } catch (Exception e) {
+          if (i == 29) {
+            throw e;
+          }
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+        }
+      }
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, "utf-8");
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();
@@ -190,7 +214,22 @@ public class GrafanaApiServiceIT {
       String sql =
           "{\"expression\":[\"s4\",\"s5\"],\"prefixPath\":[\"root.sg25\"],\"startTime\":1635232133960,\"endTime\":1635232163960}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
-      response = httpClient.execute(httpPost);
+      for (int i = 0; i < 30; i++) {
+        try {
+          response = httpClient.execute(httpPost);
+          break;
+        } catch (Exception e) {
+          if (i == 29) {
+            throw e;
+          }
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+        }
+      }
+
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, "utf-8");
       ObjectMapper mapper = new ObjectMapper();
@@ -228,7 +267,23 @@ public class GrafanaApiServiceIT {
       String sql =
           "{\"expression\":[\"sum(s4)\",\"avg(s5)\"],\"prefixPath\":[\"root.sg25\"],\"startTime\":1635232133960,\"endTime\":1635232163960,\"control\":\"group by([1635232133960,1635232163960),20s)\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
-      response = httpClient.execute(httpPost);
+
+      for (int i = 0; i < 30; i++) {
+        try {
+          response = httpClient.execute(httpPost);
+          break;
+        } catch (Exception e) {
+          if (i == 29) {
+            throw e;
+          }
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+        }
+      }
+
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, "utf-8");
       ObjectMapper mapper = new ObjectMapper();
@@ -266,7 +321,21 @@ public class GrafanaApiServiceIT {
       String sql =
           "{\"expression\":[\"sum(s4)\",\"avg(s5)\"],\"prefixPath\":[\"root.sg25\"],\"condition\":\"timestamp=1635232143960\",\"startTime\":1635232133960,\"endTime\":1635232163960,\"control\":\"group by([1635232133960,1635232163960),20s)\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
-      response = httpClient.execute(httpPost);
+      for (int i = 0; i < 30; i++) {
+        try {
+          response = httpClient.execute(httpPost);
+          break;
+        } catch (Exception e) {
+          if (i == 29) {
+            throw e;
+          }
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+        }
+      }
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, "utf-8");
       ObjectMapper mapper = new ObjectMapper();
@@ -326,11 +395,6 @@ public class GrafanaApiServiceIT {
 
   @Test
   public void expressionWithConditionControlTest() {
-    try {
-      Thread.sleep(1000 * 30);
-    } catch (InterruptedException e) {
-      throw new RuntimeException(e);
-    }
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
     rightInsertTablet(httpClient);
     expressionWithConditionControl(httpClient);
@@ -344,11 +408,6 @@ public class GrafanaApiServiceIT {
 
   @Test
   public void expressionTest() {
-    try {
-      Thread.sleep(1000 * 30);
-    } catch (InterruptedException e) {
-      throw new RuntimeException(e);
-    }
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
     rightInsertTablet(httpClient);
     expression(httpClient);
@@ -363,11 +422,6 @@ public class GrafanaApiServiceIT {
 
   @Test
   public void expressionWithControlTest() {
-    try {
-      Thread.sleep(1000 * 30);
-    } catch (InterruptedException e) {
-      throw new RuntimeException(e);
-    }
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
     rightInsertTablet(httpClient);
     expressionWithControl(httpClient);
@@ -381,11 +435,6 @@ public class GrafanaApiServiceIT {
 
   @Test
   public void variableTest() {
-    try {
-      Thread.sleep(1000 * 30);
-    } catch (InterruptedException e) {
-      throw new RuntimeException(e);
-    }
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
     rightInsertTablet(httpClient);
     variable(httpClient);
