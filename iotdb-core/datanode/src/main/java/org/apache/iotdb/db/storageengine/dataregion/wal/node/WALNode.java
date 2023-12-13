@@ -77,6 +77,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 /**
  * This class encapsulates {@link IWALBuffer} and {@link CheckpointManager}. If search is enabled,
@@ -253,10 +254,16 @@ public class WALNode implements IWALNode {
       // Do nothing
     }
 
-    private void init() {
+    private boolean initAndCheckIfNeedContinue() {
+      rollWalFileIfHaveNoActiveMemTable();
       File[] allWalFilesOfOneNode = WALFileUtils.listAllWALFiles(logDirectory);
-      if (allWalFilesOfOneNode == null) {
-        allWalFilesOfOneNode = new File[0];
+      if (allWalFilesOfOneNode == null || allWalFilesOfOneNode.length <= 1) {
+        if (logger.isDebugEnabled()) {
+          logger.debug(
+              "wal node-{}:no wal file or wal file number less than or equal to one was found",
+              identifier);
+        }
+        return false;
       }
       WALFileUtils.ascSortByVersionId(allWalFilesOfOneNode);
       this.sortedWalFilesExcludingLast =
@@ -268,6 +275,21 @@ public class WALNode implements IWALNode {
       this.fileIndexAfterFilterSafelyDeleteIndex = initFileIndexAfterFilterSafelyDeleteIndex();
       this.successfullyDeleted = new ArrayList<>();
       this.deleteFileSize = 0;
+      return true;
+    }
+
+    /**
+     * This means that the relevant memTable in the file has been successfully flushed, so we should
+     * scroll through a new wal file so that the current file can be deleted
+     */
+    public void rollWalFileIfHaveNoActiveMemTable() {
+      long firstVersionId = checkpointManager.getFirstValidWALVersionId();
+      if (firstVersionId == Long.MIN_VALUE) {
+        // roll wal log writer to delete current wal file
+        if (buffer.getCurrentWALFileSize() > 0) {
+          rollWALFile();
+        }
+      }
     }
 
     private List<Long> initPinnedMemTableIds() {
@@ -289,8 +311,11 @@ public class WALNode implements IWALNode {
       // The intent of the loop execution here is to try to get as many memTable flush or snapshot
       // as possible when the valid information ratio is less than the configured value.
       while (recursionTime < MAX_RECURSION_TIME) {
-        // init delete outdated file task fields
-        init();
+        // init delete outdated file task fields, if the number of wal files is less than one, the
+        // subsequent logic is not executed
+        if (!initAndCheckIfNeedContinue()) {
+          continue;
+        }
 
         // delete outdated WAL files and record which delete successfully and which delete failed.
         deleteOutdatedFilesAndUpdateMetric();
@@ -329,13 +354,6 @@ public class WALNode implements IWALNode {
     }
 
     private void summarizeExecuteResult() {
-      if (sortedWalFilesExcludingLast.length == 0) {
-        if (logger.isDebugEnabled()) {
-          logger.debug("wal node-{}:no wal file was found that should be deleted", identifier);
-        }
-        return;
-      }
-
       if (!pinnedMemTableIds.isEmpty()
           || fileIndexAfterFilterSafelyDeleteIndex < sortedWalFilesExcludingLast.length) {
         if (logger.isDebugEnabled()) {
@@ -379,9 +397,6 @@ public class WALNode implements IWALNode {
 
     /** Delete obsolete wal files while recording which succeeded or failed */
     private void deleteOutdatedFilesAndUpdateMetric() {
-      if (sortedWalFilesExcludingLast.length == 0) {
-        return;
-      }
       for (File currentWal : sortedWalFilesExcludingLast) {
         long searchIndex = WALFileUtils.parseStartSearchIndex(currentWal.getName());
         WALFileStatus walFileStatus = WALFileUtils.parseStatusCode(currentWal.getName());
@@ -586,14 +601,11 @@ public class WALNode implements IWALNode {
       if (memTableIdsOfCurrentWal.isEmpty()) {
         return true;
       }
-      for (MemTableInfo memTableInfo : activeOrPinnedMemTables) {
-        for (Long memTableId : memTableIdsOfCurrentWal) {
-          if (memTableId.equals(memTableInfo.getMemTableId())) {
-            return true;
-          }
-        }
-      }
-      return false;
+      return !Collections.disjoint(
+          activeOrPinnedMemTables.stream()
+              .map(MemTableInfo::getMemTableId)
+              .collect(Collectors.toSet()),
+          memTableIdsOfCurrentWal);
     }
 
     private boolean canDeleteFile(long searchIndex, WALFileStatus walFileStatus, long versionId) {
