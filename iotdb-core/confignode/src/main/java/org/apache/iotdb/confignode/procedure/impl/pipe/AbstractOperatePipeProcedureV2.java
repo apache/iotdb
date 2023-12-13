@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -203,6 +204,7 @@ public abstract class AbstractOperatePipeProcedureV2
         case VALIDATE_TASK:
           if (executeFromValidateTask(env)) {
             // TODO: set msg
+            this.setResult("no-op".getBytes(StandardCharsets.UTF_8));
             return Flow.NO_MORE_STATE;
           }
           setNextState(OperatePipeTaskState.CALCULATE_INFO_FOR_TASK);

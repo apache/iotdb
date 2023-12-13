@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeTaskCoordinator {
@@ -121,8 +122,8 @@ public class PipeTaskCoordinator {
     final boolean isStoppedByRuntimeException = pipeTaskInfo.isStoppedByRuntimeException(pipeName);
     final TSStatus status = configManager.getProcedureManager().stopPipe(pipeName);
     if (status == RpcUtils.SUCCESS_STATUS) {
-      if (isStoppedByRuntimeException) {
-        // Even if return status is success, it doesn't imply the success of the
+      if (isStoppedByRuntimeException && Objects.isNull(status.getMessage())) {
+        // Even if the return status is success, it doesn't imply the success of the
         // `executeFromOperateOnDataNodes` phase of stopping pipe. However, we still need to set
         // `isStoppedByRuntimeException` to false to avoid auto-restart. Meanwhile,
         // `isStoppedByRuntimeException` does not need to be synchronized with DNs.
@@ -138,17 +139,11 @@ public class PipeTaskCoordinator {
 
   /** Caller should ensure that the method is called in the lock {@link #tryLock()}. */
   public TSStatus dropPipe(String pipeName) {
-    final boolean isPipeExistedBeforeDrop = pipeTaskInfo.isPipeExisted(pipeName);
     final TSStatus status = configManager.getProcedureManager().dropPipe(pipeName);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn("Failed to drop pipe {}. Result status: {}.", pipeName, status);
     }
-    return isPipeExistedBeforeDrop
-        ? status
-        : RpcUtils.getStatus(
-            TSStatusCode.PIPE_NOT_EXIST_ERROR,
-            String.format(
-                "Failed to drop pipe %s. Failures: %s does not exist.", pipeName, pipeName));
+    return status;
   }
 
   public TShowPipeResp showPipes(TShowPipeReq req) {
