@@ -60,6 +60,8 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
 
   protected boolean finished = false;
 
+  protected final boolean outputEndTime;
+
   private final long cachedRawDataSize;
 
   /** Time slice for one next call in total, shared by the inner methods of the next() method */
@@ -74,6 +76,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
       List<Aggregator> aggregators,
       ITimeRangeIterator timeRangeIterator,
       boolean ascending,
+      boolean outputEndTime,
       GroupByTimeParameter groupByTimeParameter,
       long maxReturnSize) {
     this.sourceId = sourceId;
@@ -88,6 +91,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
     this.cachedRawDataSize =
         (1L + subSensorSize) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
     this.maxReturnSize = maxReturnSize;
+    this.outputEndTime = outputEndTime;
   }
 
   @Override
@@ -196,8 +200,16 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   }
 
   protected void updateResultTsBlock() {
-    appendAggregationResult(
-        resultTsBlockBuilder, aggregators, timeRangeIterator.currentOutputTime());
+    if (!outputEndTime) {
+      appendAggregationResult(
+          resultTsBlockBuilder, aggregators, timeRangeIterator.currentOutputTime());
+    } else {
+      appendAggregationResult(
+          resultTsBlockBuilder,
+          aggregators,
+          timeRangeIterator.currentOutputTime(),
+          curTimeRange.getMax());
+    }
   }
 
   protected boolean calcFromCachedData() {
@@ -383,6 +395,9 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   @Override
   protected List<TSDataType> getResultDataTypes() {
     List<TSDataType> dataTypes = new ArrayList<>();
+    if (outputEndTime) {
+      dataTypes.add(TSDataType.INT64);
+    }
     for (Aggregator aggregator : aggregators) {
       dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
     }

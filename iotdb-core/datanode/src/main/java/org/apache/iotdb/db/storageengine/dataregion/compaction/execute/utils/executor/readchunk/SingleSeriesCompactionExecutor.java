@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.ex
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -57,6 +58,7 @@ public class SingleSeriesCompactionExecutor {
   // record the min time and max time to update the target resource
   private long minStartTimestamp = Long.MAX_VALUE;
   private long maxEndTimestamp = Long.MIN_VALUE;
+  private long lastWriteTimestamp = Long.MIN_VALUE;
   private long pointCountInChunkWriter = 0;
   private final CompactionTaskSummary summary;
 
@@ -263,6 +265,7 @@ public class SingleSeriesCompactionExecutor {
       IPointReader batchIterator = chunkReader.nextPageData().getBatchDataIterator();
       while (batchIterator.hasNextTimeValuePair()) {
         TimeValuePair timeValuePair = batchIterator.nextTimeValuePair();
+        checkAndUpdatePreviousTimestamp(timeValuePair.getTimestamp());
         writeTimeAndValueToChunkWriter(timeValuePair);
         if (timeValuePair.getTimestamp() > maxEndTimestamp) {
           maxEndTimestamp = timeValuePair.getTimestamp();
@@ -324,6 +327,7 @@ public class SingleSeriesCompactionExecutor {
   }
 
   private void flushChunkToFileWriter(Chunk chunk, ChunkMetadata chunkMetadata) throws IOException {
+    checkAndUpdatePreviousTimestamp(chunkMetadata.getStartTime());
     if (chunkMetadata.getStartTime() < minStartTimestamp) {
       minStartTimestamp = chunkMetadata.getStartTime();
     }
@@ -353,5 +357,14 @@ public class SingleSeriesCompactionExecutor {
   private void flushChunkWriter() throws IOException {
     fileWriter.writeChunk(chunkWriter);
     pointCountInChunkWriter = 0L;
+  }
+
+  private void checkAndUpdatePreviousTimestamp(long currentWritingTimestamp) {
+    if (currentWritingTimestamp <= lastWriteTimestamp) {
+      throw new CompactionLastTimeCheckFailedException(
+          series.getFullPath(), currentWritingTimestamp, lastWriteTimestamp);
+    } else {
+      lastWriteTimestamp = currentWritingTimestamp;
+    }
   }
 }
