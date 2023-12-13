@@ -402,8 +402,8 @@ public class WALNode implements IWALNode {
         WALFileStatus walFileStatus = WALFileUtils.parseStatusCode(currentWal.getName());
         long versionId = WALFileUtils.parseVersionId(currentWal.getName());
         if (canDeleteFile(searchIndex, walFileStatus, versionId)) {
+          long fileSize = currentWal.length();
           if (currentWal.delete()) {
-            long fileSize = currentWal.length();
             deleteFileSize += fileSize;
             Long memTableRamCostSum = walFileVersionId2MemTablesTotalCost.remove(versionId);
             if (memTableRamCostSum != null) {
