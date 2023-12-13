@@ -84,7 +84,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
   private final CompactionTaskSummary summary;
   private final RateLimiter rateLimiter;
 
-  private final boolean saveMemory;
+  private final boolean lazyLoadChunkOrPage;
   private long lastWriteTimestamp = Long.MIN_VALUE;
 
   public ReadChunkAlignedSeriesCompactionExecutor(
@@ -92,8 +92,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       TsFileResource targetResource,
       LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList,
       CompactionTsFileWriter writer,
-      CompactionTaskSummary summary,
-      boolean saveMemory)
+      CompactionTaskSummary summary)
       throws IOException {
     this.device = device;
     this.readerAndChunkMetadataList = readerAndChunkMetadataList;
@@ -101,11 +100,12 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     this.targetResource = targetResource;
     this.summary = summary;
     collectValueColumnSchemaList();
-    this.saveMemory = saveMemory;
     int compactionFileLevel =
         Integer.parseInt(this.targetResource.getTsFile().getName().split("-")[2]);
     flushPolicy = new FlushDataBlockPolicy(compactionFileLevel);
-    if (saveMemory) {
+    this.lazyLoadChunkOrPage =
+        IoTDBDescriptor.getInstance().getConfig().isEnableLazyLoadForAlignedSeriesCompaction();
+    if (lazyLoadChunkOrPage) {
       this.chunkWriter = new LazyAlignedChunkWriterImpl(schemaList);
     } else {
       this.chunkWriter = new AlignedChunkWriterImpl(schemaList);
@@ -206,7 +206,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
 
   private ChunkLoader getChunkLoader(TsFileSequenceReader reader, ChunkMetadata chunkMetadata)
       throws IOException {
-    if (saveMemory) {
+    if (lazyLoadChunkOrPage) {
       if (chunkMetadata == null || chunkMetadata.getStatistics().getCount() == 0) {
         return new LazyChunkLoader();
       }
@@ -286,7 +286,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
   }
 
   private PageLoader getEmptyPage() {
-    return saveMemory ? new LazyPageLoader() : new InstantPageLoader();
+    return lazyLoadChunkOrPage ? new LazyPageLoader() : new InstantPageLoader();
   }
 
   private void compactAlignedPageByFlush(PageLoader timePage, List<PageLoader> valuePageLoaders)
@@ -363,7 +363,9 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       processedPointNum++;
     }
     summary.increaseProcessPointNum(processedPointNum);
-    rateLimiter.acquire(processedPointNum);
+    if (rateLimiter != null) {
+      rateLimiter.acquire(processedPointNum);
+    }
   }
 
   private void checkAndUpdatePreviousTimestamp(long currentWritingTimestamp) {

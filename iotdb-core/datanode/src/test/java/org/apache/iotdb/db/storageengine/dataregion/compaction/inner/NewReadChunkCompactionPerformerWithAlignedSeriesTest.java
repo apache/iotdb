@@ -37,7 +37,6 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 import org.junit.After;
@@ -269,7 +268,6 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
         CompactionCheckerUtils.readFiles(seqResources),
         CompactionCheckerUtils.readFiles(Collections.singletonList(targetResource)));
   }
-
 
   @Test
   public void testSimpleCompactionWithPartialDeletedColumnByFlushChunk()

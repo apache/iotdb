@@ -515,6 +515,12 @@ public class IoTDBDescriptor {
                 "enable_compaction_mem_control",
                 Boolean.toString(conf.isEnableCompactionMemControl()))));
 
+    conf.setEnableLazyLoadForAlignedSeriesCompaction(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_lazy_load_for_aligned_series_compaction",
+                Boolean.toString(conf.isEnableLazyLoadForAlignedSeriesCompaction()))));
+
     int subtaskNum =
         Integer.parseInt(
             properties.getProperty(
@@ -1112,6 +1118,12 @@ public class IoTDBDescriptor {
     loadCompactionIsEnabledHotModifiedProps(properties);
 
     boolean restartCompactionTaskManager = loadCompactionThreadCountHotModifiedProps(properties);
+
+    conf.setEnableLazyLoadForAlignedSeriesCompaction(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_lazy_load_for_aligned_series_compaction",
+                Boolean.toString(conf.isEnableLazyLoadForAlignedSeriesCompaction()))));
 
     restartCompactionTaskManager |= loadCompactionSubTaskCountHotModifiedProps(properties);
 

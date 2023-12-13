@@ -52,9 +52,7 @@ public class LazyChunkLoader extends ChunkLoader {
       return null;
     }
     if (chunkHeader == null) {
-      this.chunk = reader.readMemChunk(chunkMetadata);
-      this.chunkHeader = this.chunk.getHeader();
-      return this.chunk;
+      chunkHeader = reader.readChunkHeader(chunkMetadata.getOffsetOfChunkHeader());
     }
     ByteBuffer buffer =
         reader.readChunk(

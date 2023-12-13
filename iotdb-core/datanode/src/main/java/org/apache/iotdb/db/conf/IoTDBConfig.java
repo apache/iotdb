@@ -474,6 +474,13 @@ public class IoTDBConfig {
    */
   private boolean enableCompactionMemControl = true;
 
+  /**
+   * Enable lazy load chunk or page for aligned series inner sequence space compaction. This can
+   * reduce the memory usage of aligned series compaction in some cases but may affect compaction
+   * performance.
+   */
+  private boolean enableLazyLoadForAlignedSeriesCompaction = false;
+
   private double chunkMetadataSizeProportion = 0.1;
 
   /** The target tsfile size in compaction, 2 GB by default */
@@ -2757,6 +2764,15 @@ public class IoTDBConfig {
 
   public void setEnableCompactionMemControl(boolean enableCompactionMemControl) {
     this.enableCompactionMemControl = enableCompactionMemControl;
+  }
+
+  public boolean isEnableLazyLoadForAlignedSeriesCompaction() {
+    return enableLazyLoadForAlignedSeriesCompaction;
+  }
+
+  public void setEnableLazyLoadForAlignedSeriesCompaction(
+      boolean enableLazyLoadForAlignedSeriesCompaction) {
+    this.enableLazyLoadForAlignedSeriesCompaction = enableLazyLoadForAlignedSeriesCompaction;
   }
 
   public long getTargetCompactionFileSize() {
