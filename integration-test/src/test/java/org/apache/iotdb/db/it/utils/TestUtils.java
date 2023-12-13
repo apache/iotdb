@@ -37,6 +37,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.DateFormat;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -258,7 +259,12 @@ public class TestUtils {
   }
 
   public static void assertTestFail(String sql, String errMsg, String userName, String password) {
-    try (Connection connection = EnvFactory.getEnv().getConnection(userName, password);
+    assertTestFail(EnvFactory.getEnv(), sql, errMsg, userName, password);
+  }
+
+  public static void assertTestFail(
+      BaseEnv env, String sql, String errMsg, String userName, String password) {
+    try (Connection connection = env.getConnection(userName, password);
         Statement statement = connection.createStatement()) {
       statement.executeQuery(sql);
       fail("No exception!");
@@ -273,7 +279,12 @@ public class TestUtils {
 
   public static void assertNonQueryTestFail(
       String sql, String errMsg, String userName, String password) {
-    try (Connection connection = EnvFactory.getEnv().getConnection(userName, password);
+    assertNonQueryTestFail(EnvFactory.getEnv(), sql, errMsg, userName, password);
+  }
+
+  public static void assertNonQueryTestFail(
+      BaseEnv env, String sql, String errMsg, String userName, String password) {
+    try (Connection connection = env.getConnection(userName, password);
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
       fail("No exception!");
@@ -388,35 +399,26 @@ public class TestUtils {
     }
   }
 
-  // This method will not throw failure given that a failure is encountered.
-  // Instead, it return a flag to indicate the result of the execution.
   public static boolean tryExecuteNonQueryWithRetry(BaseEnv env, String sql) {
-    for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
-      try (Connection connection = env.getConnection();
-          Statement statement = connection.createStatement()) {
-        statement.execute(sql);
-        return true;
-      } catch (SQLException e) {
-        if (retryCountLeft > 0) {
-          try {
-            Thread.sleep(10000);
-          } catch (InterruptedException ignored) {
-          }
-        } else {
-          e.printStackTrace();
-          return false;
-        }
-      }
-    }
-    return false;
+    return tryExecuteNonQueryWithRetry(env, sql, "root", "root");
+  }
+
+  public static boolean tryExecuteNonQueryWithRetry(
+      BaseEnv env, String sql, String userName, String password) {
+    return tryExecuteNonQueriesWithRetry(env, Collections.singletonList(sql), userName, password);
+  }
+
+  public static boolean tryExecuteNonQueriesWithRetry(BaseEnv env, List<String> sqlList) {
+    return tryExecuteNonQueriesWithRetry(env, sqlList, "root", "root");
   }
 
   // This method will not throw failure given that a failure is encountered.
   // Instead, it return a flag to indicate the result of the execution.
-  public static boolean tryExecuteNonQueriesWithRetry(BaseEnv env, List<String> sqlList) {
+  public static boolean tryExecuteNonQueriesWithRetry(
+      BaseEnv env, List<String> sqlList, String userName, String password) {
     int lastIndex = 0;
     for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
-      try (Connection connection = env.getConnection();
+      try (Connection connection = env.getConnection(userName, password);
           Statement statement = connection.createStatement()) {
         for (int i = lastIndex; i < sqlList.size(); ++i) {
           statement.execute(sqlList.get(i));
@@ -463,24 +465,8 @@ public class TestUtils {
   // Instead, it return a flag to indicate the result of the execution.
   public static boolean tryExecuteNonQueryOnSpecifiedDataNodeWithRetry(
       BaseEnv env, DataNodeWrapper wrapper, String sql) {
-    for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
-      try (Connection connection = env.getConnectionWithSpecifiedDataNode(wrapper);
-          Statement statement = connection.createStatement()) {
-        statement.execute(sql);
-        return true;
-      } catch (SQLException e) {
-        if (retryCountLeft > 0) {
-          try {
-            Thread.sleep(10000);
-          } catch (InterruptedException ignored) {
-          }
-        } else {
-          e.printStackTrace();
-          return false;
-        }
-      }
-    }
-    return false;
+    return tryExecuteNonQueriesOnSpecifiedDataNodeWithRetry(
+        env, wrapper, Collections.singletonList(sql));
   }
 
   public static boolean tryExecuteNonQueriesOnSpecifiedDataNodeWithRetry(
@@ -517,6 +503,31 @@ public class TestUtils {
     try (Connection connection = EnvFactory.getEnv().getConnection(userName, password);
         Statement statement = connection.createStatement()) {
       statement.executeQuery(sql);
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void executeQueryWithRetry(
+      BaseEnv env, String sql, String userName, String password) {
+    try (Connection connection = env.getConnection(userName, password);
+        Statement statement = connection.createStatement()) {
+      for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
+        try {
+          statement.executeQuery(sql);
+        } catch (SQLException e) {
+          if (retryCountLeft > 0) {
+            try {
+              Thread.sleep(10000);
+            } catch (InterruptedException ignored) {
+            }
+          } else {
+            e.printStackTrace();
+            fail(e.getMessage());
+          }
+        }
+      }
     } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -569,7 +580,11 @@ public class TestUtils {
   }
 
   public static void createUser(String userName, String password) {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    createUser(EnvFactory.getEnv(), userName, password);
+  }
+
+  public static void createUser(BaseEnv env, String userName, String password) {
+    try (Connection connection = env.getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(String.format("create user %s '%s'", userName, password));
     } catch (SQLException e) {
@@ -579,7 +594,12 @@ public class TestUtils {
   }
 
   public static void grantUserSystemPrivileges(String userName, PrivilegeType privilegeType) {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    grantUserSystemPrivileges(EnvFactory.getEnv(), userName, privilegeType);
+  }
+
+  public static void grantUserSystemPrivileges(
+      BaseEnv env, String userName, PrivilegeType privilegeType) {
+    try (Connection connection = env.getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(String.format("grant %s on root.** to user %s", privilegeType, userName));
     } catch (SQLException e) {
