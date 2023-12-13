@@ -81,16 +81,26 @@ public class IoTDBRestServiceIT {
 
   @Test
   public void ping() {
-    try {
-      Thread.sleep(1000 * 30);
-    } catch (InterruptedException e) {
-      throw new RuntimeException(e);
-    }
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
     HttpGet httpGet = new HttpGet("http://127.0.0.1:" + port + "/ping");
     CloseableHttpResponse response = null;
     try {
-      response = httpClient.execute(httpGet);
+      for (int i = 0; i < 30; i++) {
+        try {
+          response = httpClient.execute(httpGet);
+          break;
+        } catch (Exception e) {
+          if (i == 29) {
+            throw e;
+          }
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+        }
+      }
+
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, "utf-8");
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();
@@ -259,7 +269,19 @@ public class IoTDBRestServiceIT {
       String json =
           "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"isAligned\":false,\"deviceId\":\"root.sg25\"}";
       httpPost.setEntity(new StringEntity(json, Charset.defaultCharset()));
-      response = httpClient.execute(httpPost);
+      for (int i = 0; i < 30; i++) {
+        try {
+          response = httpClient.execute(httpPost);
+          break;
+        } catch (Exception e) {
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+        }
+      }
+
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, "utf-8");
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();
@@ -306,11 +328,6 @@ public class IoTDBRestServiceIT {
 
   @Test
   public void errorInsertTablet() {
-    try {
-      Thread.sleep(1000 * 30);
-    } catch (InterruptedException e) {
-      throw new RuntimeException(e);
-    }
     CloseableHttpResponse response = null;
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
     try {
@@ -318,7 +335,22 @@ public class IoTDBRestServiceIT {
       String json =
           "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"isAligned\":false,\"deviceId\":\"root.sg25\"}";
       httpPost.setEntity(new StringEntity(json, Charset.defaultCharset()));
-      response = httpClient.execute(httpPost);
+      for (int i = 0; i < 30; i++) {
+        try {
+          response = httpClient.execute(httpPost);
+          break;
+        } catch (Exception e) {
+          if (i == 29) {
+            throw e;
+          }
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+        }
+      }
+
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, "utf-8");
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();
@@ -348,12 +380,6 @@ public class IoTDBRestServiceIT {
 
   @Test
   public void insertAndQuery() {
-
-    try {
-      Thread.sleep(1000 * 30);
-    } catch (InterruptedException e) {
-      throw new RuntimeException(e);
-    }
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
     //
     rightInsertTablet(httpClient);
@@ -700,18 +726,28 @@ public class IoTDBRestServiceIT {
   public void queryWithUnsetAuthorization() {
     CloseableHttpResponse response = null;
     try {
-      try {
-        Thread.sleep(1000 * 30);
-      } catch (InterruptedException e) {
-        throw new RuntimeException(e);
-      }
       CloseableHttpClient httpClient = HttpClientBuilder.create().build();
       HttpPost httpPost = new HttpPost("http://127.0.0.1:" + port + "/rest/v1/query");
       httpPost.addHeader("Content-type", "application/json; charset=utf-8");
       httpPost.setHeader("Accept", "application/json");
       String sql = "{\"sql\":\"select *,s4+1,s4+1 from root.sg25\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
-      response = httpClient.execute(httpPost);
+      for (int i = 0; i < 30; i++) {
+        try {
+          response = httpClient.execute(httpPost);
+          break;
+        } catch (Exception e) {
+          if (i == 29) {
+            throw e;
+          }
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+        }
+      }
+
       Assert.assertEquals(401, response.getStatusLine().getStatusCode());
       String message = EntityUtils.toString(response.getEntity(), "utf-8");
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();
@@ -735,11 +771,6 @@ public class IoTDBRestServiceIT {
   public void queryWithWrongAuthorization() {
     CloseableHttpResponse response = null;
     try {
-      try {
-        Thread.sleep(1000 * 30);
-      } catch (InterruptedException e) {
-        throw new RuntimeException(e);
-      }
       CloseableHttpClient httpClient = HttpClientBuilder.create().build();
       HttpPost httpPost = new HttpPost("http://127.0.0.1:" + port + "/rest/v1/query");
       httpPost.addHeader("Content-type", "application/json; charset=utf-8");
@@ -748,7 +779,22 @@ public class IoTDBRestServiceIT {
       httpPost.setHeader("Authorization", authorization);
       String sql = "{\"sql\":\"select *,s4+1,s4+1 from root.sg25\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
-      response = httpClient.execute(httpPost);
+      for (int i = 0; i < 30; i++) {
+        try {
+          response = httpClient.execute(httpPost);
+          break;
+        } catch (Exception e) {
+          if (i == 29) {
+            throw e;
+          }
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+        }
+      }
+
       Assert.assertEquals(401, response.getStatusLine().getStatusCode());
       String message = EntityUtils.toString(response.getEntity(), "utf-8");
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();

@@ -428,8 +428,9 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
               + "lib"
               + File.separator;
       File directory = new File(libPath);
+      String osName = System.getProperty("os.name").toLowerCase();
       String server_node_lib_path = "";
-      if (directory.exists() && directory.isDirectory()) {
+      if (directory.exists() && directory.isDirectory() && !osName.contains("win")) {
         File[] files = directory.listFiles();
         for (File file : files) {
           if (file.getName().startsWith("iotdb-server")) {
@@ -437,6 +438,8 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
             break;
           }
         }
+      } else {
+        server_node_lib_path = TEMPLATE_NODE_LIB_PATH;
       }
       startCmd.addAll(
           Arrays.asList(
