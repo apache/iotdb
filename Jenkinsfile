@@ -113,6 +113,12 @@ pipeline {
                     junit(testResults: '**/failsafe-reports/*.xml', allowEmptyResults: true)
                 }
             }
+            post {
+                failure {
+                    archiveArtifacts 'integration-test/target/cluster-logs/**'
+                    archiveArtifacts 'integration-test/target/pipeIT-logs/**'
+                }
+            }
         }
 
         stage('Deploy Prepare') {
