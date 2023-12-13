@@ -51,6 +51,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -385,7 +386,7 @@ public class IoTDBClusterAuthorityIT {
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      assertEquals(null, authorizerResp.getPermissionInfo().getUserInfo());
+      assertNull(authorizerResp.getPermissionInfo().getUserInfo());
       assertEquals(1, authorizerResp.getPermissionInfo().getRoleInfoSize());
       assertEquals(
           0,
@@ -440,7 +441,7 @@ public class IoTDBClusterAuthorityIT {
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      assertEquals(null, authorizerResp.getMemberInfo());
+      assertNull(authorizerResp.getMemberInfo());
       assertEquals(new HashMap<>(), authorizerResp.getPermissionInfo().getRoleInfo());
       assertEquals(
           new ArrayList<>(), authorizerResp.getPermissionInfo().getUserInfo().getRoleList());

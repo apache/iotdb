@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.payload.evolvable;
+package org.apache.iotdb.commons.pipe.connector.payload.request;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -34,6 +34,12 @@ public enum PipeRequestType {
 
   TRANSFER_TABLET_BATCH((short) 6),
   TRANSFER_TABLET_BINARY((short) 7),
+
+  TRANSFER_SCHEMA_PLAN((short) 8),
+  TRANSFER_CONFIG_PLAN((short) 9),
+
+  TRANSFER_SNAPSHOT_PIECE((short) 10),
+  TRANSFER_SNAPSHOT_SEAL((short) 11),
   ;
 
   private final short type;

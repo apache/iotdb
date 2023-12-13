@@ -188,79 +188,8 @@ public class IoTDBSystemPermissionIT {
     executeQuery("show CQs", "test", "test123");
   }
 
-  @Test
-  public void managePipe() {
-    assertNonQueryTestFail(
-        "create pipe testPipe\n"
-            + "with connector (\n"
-            + "  'connector'='iotdb-thrift-connector',\n"
-            + "  'connector.ip'='127.0.0.1',\n"
-            + "  'connector.port'='6668'\n"
-            + ")",
-        "803: No permissions for this operation, please add privilege USE_PIPE",
-        "test",
-        "test123");
-    assertNonQueryTestFail(
-        "drop pipe testPipe",
-        "803: No permissions for this operation, please add privilege USE_PIPE",
-        "test",
-        "test123");
-    assertTestFail(
-        "show pipes",
-        "803: No permissions for this operation, please add privilege USE_PIPE",
-        "test",
-        "test123");
-    assertNonQueryTestFail(
-        "start pipe testPipe",
-        "803: No permissions for this operation, please add privilege USE_PIPE",
-        "test",
-        "test123");
-    assertNonQueryTestFail(
-        "stop pipe testPipe",
-        "803: No permissions for this operation, please add privilege USE_PIPE",
-        "test",
-        "test123");
-
-    assertNonQueryTestFail(
-        "create pipePlugin TestProcessor as 'org.apache.iotdb.db.pipe.example.TestProcessor' USING URI 'xxx'",
-        "803: No permissions for this operation, please add privilege USE_PIPE",
-        "test",
-        "test123");
-    assertNonQueryTestFail(
-        "drop pipePlugin TestProcessor",
-        "803: No permissions for this operation, please add privilege USE_PIPE",
-        "test",
-        "test123");
-    assertTestFail(
-        "show pipe plugins",
-        "803: No permissions for this operation, please add privilege USE_PIPE",
-        "test",
-        "test123");
-
-    grantUserSystemPrivileges("test", PrivilegeType.USE_PIPE);
-
-    executeNonQuery(
-        "create pipe testPipe\n"
-            + "with connector (\n"
-            + "  'connector'='iotdb-thrift-connector',\n"
-            + "  'connector.ip'='127.0.0.1',\n"
-            + "  'connector.port'='6668'\n"
-            + ")",
-        "test",
-        "test123");
-    executeQuery("show pipes", "test", "test123");
-    executeNonQuery("start pipe testPipe", "test", "test123");
-    executeNonQuery("stop pipe testPipe", "test", "test123");
-    executeNonQuery("drop pipe testPipe", "test", "test123");
-
-    assertNonQueryTestFail(
-        "create pipePlugin TestProcessor as 'org.apache.iotdb.db.pipe.example.TestProcessor' USING URI 'xxx'",
-        "1603: The scheme of URI is not set, please specify the scheme of URI.",
-        "test",
-        "test123");
-    executeNonQuery("drop pipePlugin TestProcessor", "test", "test123");
-    executeQuery("show pipe plugins", "test", "test123");
-  }
+  // We test pipe permission in IoTDBPipeLifeCycleIT because a fake or self receiver
+  // will surely lead to premature failure
 
   @Test
   public void maintainOperationsTest() {
