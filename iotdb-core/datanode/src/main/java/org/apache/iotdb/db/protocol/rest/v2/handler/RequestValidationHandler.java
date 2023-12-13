@@ -53,7 +53,7 @@ public class RequestValidationHandler {
     for (int i = 0; i < insertTabletRequest.getMeasurements().size(); i++) {
       String dataType = insertTabletRequest.getDataTypes().get(i);
       String measurement = insertTabletRequest.getMeasurements().get(i);
-      if (isDataType(dataType.toUpperCase())) {
+      if (isDataType(dataType)) {
         errorMessages.add(
             "The " + dataType + " data type of " + device + "." + measurement + " is illegal");
       }
@@ -79,7 +79,7 @@ public class RequestValidationHandler {
       for (int c = 0; c < insertRecordsRequest.getDataTypesList().get(i).size(); c++) {
         String dataType = insertRecordsRequest.getDataTypesList().get(i).get(c);
         String measurement = measurements.get(c);
-        if (isDataType(dataType.toUpperCase())) {
+        if (isDataType(dataType)) {
           errorMessages.add(
               "The " + dataType + " data type of " + device + "." + measurement + " is illegal");
         }
