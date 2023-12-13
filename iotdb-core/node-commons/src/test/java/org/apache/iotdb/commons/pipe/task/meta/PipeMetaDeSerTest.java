@@ -68,7 +68,6 @@ public class PipeMetaDeSerTest {
         new PipeRuntimeMeta(
             new HashMap<Integer, PipeTaskMeta>() {
               {
-                // Do not test ConfigRegion or SchemaRegion here
                 put(123, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 987));
                 put(234, new PipeTaskMeta(new IoTProgressIndex(1, 2L), 789));
                 put(345, new PipeTaskMeta(new SimpleProgressIndex(3, 4), 789));

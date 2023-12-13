@@ -1223,7 +1223,6 @@ public class ConfigPhysicalPlanSerDeTest {
         new PipeRuntimeMeta(
             new HashMap<Integer, PipeTaskMeta>() {
               {
-                // Do not test ConfigRegion or SchemaRegion here
                 put(456, new PipeTaskMeta(new IoTProgressIndex(1, 2L), 987));
                 put(123, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 789));
               }
