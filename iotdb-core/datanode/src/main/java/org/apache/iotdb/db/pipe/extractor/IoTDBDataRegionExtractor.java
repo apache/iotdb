@@ -59,9 +59,11 @@ import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXT
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_LOG_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_STREAM_MODE_VALUE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.SOURCE_END_TIME_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_ENABLE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.SOURCE_REALTIME_ENABLE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.SOURCE_REALTIME_MODE_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.SOURCE_START_TIME_KEY;
 
 public class IoTDBDataRegionExtractor implements PipeExtractor {
 
@@ -110,10 +112,11 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
 
     // Validate extractor.realtime.mode
     if (validator
-        .getParameters()
-        .getBooleanOrDefault(
-            Arrays.asList(EXTRACTOR_REALTIME_ENABLE_KEY, SOURCE_REALTIME_ENABLE_KEY),
-            EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE)) {
+            .getParameters()
+            .getBooleanOrDefault(
+                Arrays.asList(EXTRACTOR_REALTIME_ENABLE_KEY, SOURCE_REALTIME_ENABLE_KEY),
+                EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE)
+        || validator.getParameters().hasAnyAttributes(SOURCE_START_TIME_KEY, SOURCE_END_TIME_KEY)) {
       validator.validateAttributeValueRange(
           validator.getParameters().hasAttribute(EXTRACTOR_REALTIME_MODE_KEY)
               ? EXTRACTOR_REALTIME_MODE_KEY
@@ -125,6 +128,19 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
           EXTRACTOR_REALTIME_MODE_FORCED_LOG_VALUE,
           EXTRACTOR_REALTIME_MODE_STREAM_MODE_VALUE,
           EXTRACTOR_REALTIME_MODE_BATCH_MODE_VALUE);
+    }
+
+    // Validate source.start-time and source.end-time
+    if (validator.getParameters().hasAnyAttributes(SOURCE_START_TIME_KEY, SOURCE_END_TIME_KEY)) {
+      if (validator
+          .getParameters()
+          .hasAnyAttributes(
+              EXTRACTOR_HISTORY_ENABLE_KEY,
+              EXTRACTOR_REALTIME_ENABLE_KEY,
+              SOURCE_HISTORY_ENABLE_KEY,
+              SOURCE_REALTIME_ENABLE_KEY)) {
+        LOGGER.warn("...");
+      }
     }
 
     constructHistoricalExtractor();

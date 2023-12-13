@@ -134,6 +134,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     return tsFile;
   }
 
+  public TsFileResource getTsFileResource() {
+    return resource;
+  }
+
   public boolean getIsLoaded() {
     return isLoaded;
   }
