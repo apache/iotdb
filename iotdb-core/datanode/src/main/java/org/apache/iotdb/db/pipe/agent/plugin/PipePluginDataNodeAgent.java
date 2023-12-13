@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoaderManager
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
 import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskTemporaryRuntimeEnvironment;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.PipePlugin;
@@ -199,6 +198,7 @@ public class PipePluginDataNodeAgent extends PipePluginAgent {
    * DataNode may have no DataRegion at all when creating pipe
    */
   public void validate(
+      String pipeName,
       Map<String, String> extractorAttributes,
       Map<String, String> processorAttributes,
       Map<String, String> connectorAttributes)
@@ -233,8 +233,7 @@ public class PipePluginDataNodeAgent extends PipePluginAgent {
       temporaryConnector.validate(new PipeParameterValidator(connectorParameters));
       temporaryConnector.customize(
           connectorParameters,
-          new PipeTaskRuntimeConfiguration(
-              new PipeTaskTemporaryRuntimeEnvironment(createPipeStatement)));
+          new PipeTaskRuntimeConfiguration(new PipeTaskTemporaryRuntimeEnvironment(pipeName)));
       temporaryConnector.handshake();
     } finally {
       try {

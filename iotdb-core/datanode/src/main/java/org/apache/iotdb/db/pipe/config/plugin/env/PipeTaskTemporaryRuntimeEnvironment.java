@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.pipe.config.plugin.env;
 
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
 
 /** For temporary use when validating during creating a new pipe. */
 public class PipeTaskTemporaryRuntimeEnvironment extends PipeTaskRuntimeEnvironment {
 
-  public PipeTaskTemporaryRuntimeEnvironment(CreatePipeStatement createPipeStatement) {
-    super(createPipeStatement.getPipeName(), System.currentTimeMillis(), -1);
+  public PipeTaskTemporaryRuntimeEnvironment(String pipeName) {
+    super(pipeName, System.currentTimeMillis(), -1);
   }
 }

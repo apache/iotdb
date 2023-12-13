@@ -1551,6 +1551,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try {
       PipeAgent.plugin()
           .validate(
+              createPipeStatement.getPipeName(),
               createPipeStatement.getExtractorAttributes(),
               createPipeStatement.getProcessorAttributes(),
               createPipeStatement.getConnectorAttributes());
