@@ -177,7 +177,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
           i,
           new IoTDBThriftSyncConnectorClient(
               new ThriftClientProperty.Builder()
-                  .setConnectionTimeoutMs((int) PIPE_CONFIG.getPipeConnectorTimeoutMs())
+                  .setConnectionTimeoutMs((int) PIPE_CONFIG.getPipeConnectorHandshakeTimeoutMs())
                   .setRpcThriftCompressionEnabled(
                       PIPE_CONFIG.isPipeConnectorRPCThriftCompressionEnabled())
                   .build(),
@@ -186,7 +186,6 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
               useSSL,
               trustStore,
               trustStorePwd));
-
       try {
         final TPipeTransferResp resp =
             clients
@@ -202,6 +201,9 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
               resp.status);
         } else {
           isClientAlive.set(i, true);
+          clients
+              .get(i)
+              .setTimeout((int) PipeConfig.getInstance().getPipeConnectorTransferTimeoutMs());
           LOGGER.info("Handshake success. Target server ip: {}, port: {}", ip, port);
         }
       } catch (TException e) {
