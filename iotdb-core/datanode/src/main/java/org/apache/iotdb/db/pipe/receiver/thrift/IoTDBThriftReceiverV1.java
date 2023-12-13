@@ -21,22 +21,26 @@ package org.apache.iotdb.db.pipe.receiver.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
+import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
+import org.apache.iotdb.commons.pipe.connector.payload.request.PipeTransferSnapshotPieceReq;
+import org.apache.iotdb.commons.pipe.connector.payload.request.PipeTransferSnapshotSealReq;
+import org.apache.iotdb.commons.pipe.connector.payload.request.TransferConfigPlanReq;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.PipeRequestType;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaPlanReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
-import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -139,6 +143,14 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
           case TRANSFER_FILE_SEAL:
             return handleTransferFileSeal(
                 PipeTransferFileSealReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
+          case TRANSFER_CONFIG_PLAN:
+            return handleTransferConfigPlan((TransferConfigPlanReq) req);
+          case TRANSFER_SCHEMA_PLAN:
+            return handleTransferSchemaPlan((PipeTransferSchemaPlanReq) req);
+          case TRANSFER_SNAPSHOT_PIECE:
+            return handleTransferSnapshotPiece((PipeTransferSnapshotPieceReq) req);
+          case TRANSFER_SNAPSHOT_SEAL:
+            return handleTransferSnapshotSeal((PipeTransferSnapshotSealReq) req);
           default:
             break;
         }
@@ -501,6 +513,26 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
       closeCurrentWritingFileWriter();
       deleteCurrentWritingFile();
     }
+  }
+
+  private TPipeTransferResp handleTransferConfigPlan(TransferConfigPlanReq req) {
+    // TODO
+    return new TPipeTransferResp();
+  }
+
+  private TPipeTransferResp handleTransferSchemaPlan(PipeTransferSchemaPlanReq req) {
+    // TODO
+    return new TPipeTransferResp();
+  }
+
+  private TPipeTransferResp handleTransferSnapshotPiece(PipeTransferSnapshotPieceReq req) {
+    // TODO
+    return new TPipeTransferResp();
+  }
+
+  private TPipeTransferResp handleTransferSnapshotSeal(PipeTransferSnapshotSealReq req) {
+    // TODO
+    return new TPipeTransferResp();
   }
 
   private boolean isWritingFileAvailable() {

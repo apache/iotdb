@@ -381,6 +381,9 @@ public class Session implements ISession {
       int thriftMaxFrameSize,
       boolean enableRedirection,
       Version version) {
+    if (nodeUrls.isEmpty()) {
+      throw new IllegalArgumentException("nodeUrls shouldn't be empty.");
+    }
     this.nodeUrls = nodeUrls;
     this.username = username;
     this.password = password;
@@ -393,7 +396,10 @@ public class Session implements ISession {
   }
 
   public Session(Builder builder) {
-    if (builder.nodeUrls != null && builder.nodeUrls.size() > 0) {
+    if (builder.nodeUrls != null) {
+      if (builder.nodeUrls.isEmpty()) {
+        throw new IllegalArgumentException("nodeUrls shouldn't be empty.");
+      }
       this.nodeUrls = builder.nodeUrls;
       this.enableQueryRedirection = true;
     } else {

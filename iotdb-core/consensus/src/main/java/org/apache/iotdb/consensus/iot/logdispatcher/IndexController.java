@@ -69,7 +69,7 @@ public class IndexController {
     restore();
   }
 
-  public long updateAndGet(long index, boolean forcePersist) {
+  public void update(long index, boolean forcePersist) {
     try {
       lock.writeLock().lock();
       long newCurrentIndex = Math.max(currentIndex, index);
@@ -81,7 +81,6 @@ public class IndexController {
           storageDir);
       currentIndex = newCurrentIndex;
       checkPersist(forcePersist);
-      return currentIndex;
     } finally {
       lock.writeLock().unlock();
     }

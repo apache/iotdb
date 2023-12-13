@@ -17,20 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.receiver.thrift;
+package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception;
 
-import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
-import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
-import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
-import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
+public class CompactionLastTimeCheckFailedException extends RuntimeException {
 
-public interface IoTDBThriftReceiver {
-
-  IoTDBConnectorRequestVersion getVersion();
-
-  TPipeTransferResp receive(
-      TPipeTransferReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher);
-
-  void handleExit();
+  public CompactionLastTimeCheckFailedException(
+      String path, long currentTimestamp, long lastTimestamp) {
+    super(
+        "Timestamp of the current point of "
+            + path
+            + " is "
+            + currentTimestamp
+            + ", which should be later than the last time "
+            + lastTimestamp);
+  }
 }

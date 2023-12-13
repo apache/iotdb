@@ -461,6 +461,9 @@ public class SessionPool implements ISessionPool {
     this.maxSize = maxSize;
     this.host = null;
     this.port = -1;
+    if (nodeUrls.isEmpty()) {
+      throw new IllegalArgumentException("nodeUrls shouldn't be empty.");
+    }
     this.nodeUrls = nodeUrls;
     this.user = user;
     this.password = password;
@@ -512,7 +515,10 @@ public class SessionPool implements ISessionPool {
     this.thriftDefaultBufferSize = builder.thriftDefaultBufferSize;
     this.thriftMaxFrameSize = builder.thriftMaxFrameSize;
     initThreadPool();
-    if (builder.nodeUrls != null && builder.nodeUrls.size() > 0) {
+    if (builder.nodeUrls != null) {
+      if (builder.nodeUrls.isEmpty()) {
+        throw new IllegalArgumentException("nodeUrls shouldn't be empty.");
+      }
       this.nodeUrls = builder.nodeUrls;
       this.host = null;
       this.port = -1;
