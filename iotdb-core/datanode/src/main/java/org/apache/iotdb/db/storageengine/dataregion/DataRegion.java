@@ -1141,7 +1141,7 @@ public class DataRegion implements IDataRegionForQuery {
 
     if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
       if ((!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
-          || insertRowNode.isSyncFromLeaderWhenUsingIoTConsensus())) {
+          || !insertRowNode.isSyncFromLeaderWhenUsingIoTConsensus())) {
         // disable updating last cache on follower
         long startTime = System.nanoTime();
         tryToUpdateInsertRowLastCache(insertRowNode, globalLatestFlushTime);
