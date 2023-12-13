@@ -175,6 +175,7 @@ public abstract class PageManager implements IPageManager {
               (pageInstCache.size() > 5 ? (int) (0.2 * pageInstCache.size()) : 1)
                   + pageInstCache.size()
                   - SchemaFileConfig.PAGE_CACHE_SIZE;
+          removeCnt = (int) Math.max(pageInstCache.size() * 0.4, removeCnt);
           List<Integer> rmvIds = new ArrayList<>(pageInstCache.keySet()).subList(0, removeCnt);
 
           for (Integer id : rmvIds) {
