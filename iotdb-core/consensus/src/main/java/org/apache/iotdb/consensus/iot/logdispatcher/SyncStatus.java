@@ -65,7 +65,7 @@ public class SyncStatus {
         Iterator<Batch> iterator = pendingBatches.iterator();
         Batch current = iterator.next();
         while (current.isSynced()) {
-          controller.updateAndGet(current.getEndIndex(), false);
+          controller.update(current.getEndIndex(), false);
           iterator.remove();
           iotConsensusMemoryManager.free(current.getSerializedSize(), false);
           if (iterator.hasNext()) {
@@ -86,7 +86,7 @@ public class SyncStatus {
       size += pendingBatch.getSerializedSize();
     }
     pendingBatches.clear();
-    controller.updateAndGet(0L, true);
+    controller.update(0L, true);
     iotConsensusMemoryManager.free(size, false);
   }
 

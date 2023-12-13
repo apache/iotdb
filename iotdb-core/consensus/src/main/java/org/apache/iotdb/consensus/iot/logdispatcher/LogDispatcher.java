@@ -62,6 +62,7 @@ public class LogDispatcher {
   private final IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager;
   private ExecutorService executorService;
 
+  private final ConsensusReqReader reader;
   private boolean stopped = false;
 
   private final AtomicLong logEntriesFromWAL = new AtomicLong(0);
@@ -71,6 +72,7 @@ public class LogDispatcher {
       IoTConsensusServerImpl impl,
       IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager) {
     this.impl = impl;
+    this.reader = (ConsensusReqReader) impl.getStateMachine().read(new GetConsensusReqReaderPlan());
     this.selfPeerId = impl.getThisNode().getNodeId();
     this.clientManager = clientManager;
     this.threads =
@@ -155,6 +157,15 @@ public class LogDispatcher {
 
   public synchronized OptionalLong getMinFlushedSyncIndex() {
     return threads.stream().mapToLong(LogDispatcherThread::getLastFlushedSyncIndex).min();
+  }
+
+  public void checkAndFlushIndex() {
+    threads.forEach(
+        thread -> {
+          IndexController controller = thread.getController();
+          controller.update(controller.getCurrentIndex(), true);
+        });
+    reader.setSafelyDeletedSearchIndex(impl.getMinFlushedSyncIndex());
   }
 
   public void offer(IndexedConsensusRequest request) {

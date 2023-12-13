@@ -110,7 +110,7 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
             thread.getConfig().getReplication().getMaxRetryWaitTimeMs());
     thread
         .getImpl()
-        .getRetryService()
+        .getBackgroundTaskService()
         .schedule(
             () -> {
               if (thread.isStopped()) {
