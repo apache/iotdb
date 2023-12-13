@@ -75,7 +75,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException {
+  protected boolean executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info(
         "CreatePipeProcedureV2: executeFromValidateTask({})", createPipeRequest.getPipeName());
 
@@ -84,7 +84,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         .getPipePluginCoordinator()
         .getPipePluginInfo()
         .checkBeforeCreatePipe(createPipeRequest);
-    pipeTaskInfo.get().checkBeforeCreatePipe(createPipeRequest);
+    return pipeTaskInfo.get().checkBeforeCreatePipe(createPipeRequest);
   }
 
   @Override

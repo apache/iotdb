@@ -162,9 +162,11 @@ public abstract class AbstractOperatePipeProcedureV2
   /**
    * Execute at state {@link OperatePipeTaskState#VALIDATE_TASK}.
    *
+   * @return true if this procedure can skip subsequent stages
    * @throws PipeException if validation for pipe parameters failed
    */
-  protected abstract void executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException;
+  protected abstract boolean executeFromValidateTask(ConfigNodeProcedureEnv env)
+      throws PipeException;
 
   /** Execute at state {@link OperatePipeTaskState#CALCULATE_INFO_FOR_TASK}. */
   protected abstract void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env);
@@ -199,7 +201,10 @@ public abstract class AbstractOperatePipeProcedureV2
     try {
       switch (state) {
         case VALIDATE_TASK:
-          executeFromValidateTask(env);
+          if (executeFromValidateTask(env)) {
+            // TODO: set msg
+            return Flow.NO_MORE_STATE;
+          }
           setNextState(OperatePipeTaskState.CALCULATE_INFO_FOR_TASK);
           break;
         case CALCULATE_INFO_FOR_TASK:
