@@ -205,7 +205,7 @@ public class AlignedPageReader implements IPageReader {
 
       // not included
       int readEndIndex = timeBatch.length;
-      if (paginationController.hasCurLimit()) {
+      if (paginationController.hasCurLimit() && paginationController.getCurLimit() > 0) {
         readEndIndex =
             Math.min(readEndIndex, readStartIndex + (int) paginationController.getCurLimit());
         paginationController.consumeLimit((long) readEndIndex - readStartIndex);
