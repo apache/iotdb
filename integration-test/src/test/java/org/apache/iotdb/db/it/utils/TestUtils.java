@@ -594,7 +594,12 @@ public class TestUtils {
   }
 
   public static void grantUserSystemPrivileges(String userName, PrivilegeType privilegeType) {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    grantUserSystemPrivileges(EnvFactory.getEnv(), userName, privilegeType);
+  }
+
+  public static void grantUserSystemPrivileges(
+      BaseEnv env, String userName, PrivilegeType privilegeType) {
+    try (Connection connection = env.getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(String.format("grant %s on root.** to user %s", privilegeType, userName));
     } catch (SQLException e) {

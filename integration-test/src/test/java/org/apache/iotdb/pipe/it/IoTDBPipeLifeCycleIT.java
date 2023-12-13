@@ -765,7 +765,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
         "test",
         "test123");
 
-    grantUserSystemPrivileges("test", PrivilegeType.USE_PIPE);
+    grantUserSystemPrivileges(senderEnv, "test", PrivilegeType.USE_PIPE);
 
     tryExecuteNonQueryWithRetry(
         senderEnv,
