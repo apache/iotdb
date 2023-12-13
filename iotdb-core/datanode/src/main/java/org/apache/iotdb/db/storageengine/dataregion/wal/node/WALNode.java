@@ -314,7 +314,7 @@ public class WALNode implements IWALNode {
         // init delete outdated file task fields, if the number of wal files is less than one, the
         // subsequent logic is not executed
         if (!initAndCheckIfNeedContinue()) {
-          continue;
+          break;
         }
 
         // delete outdated WAL files and record which delete successfully and which delete failed.

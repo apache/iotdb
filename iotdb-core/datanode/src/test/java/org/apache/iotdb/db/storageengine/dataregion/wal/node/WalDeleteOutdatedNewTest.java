@@ -215,8 +215,7 @@ public class WalDeleteOutdatedNewTest {
     Map<Long, Set<Long>> memTableIdsOfWalAfter = walNode1.getWALBuffer().getMemTableIdsOfWal();
 
     // after deleted
-    Assert.assertEquals(1, memTableIdsOfWalAfter.size());
-    Assert.assertEquals(1, memTableIdsOfWalAfter.get(1L).size());
+    Assert.assertEquals(0, memTableIdsOfWalAfter.size());
     File[] filesAfter = WALFileUtils.listAllWALFiles(new File(logDirectory1));
     Assert.assertEquals(1, filesAfter.length);
   }
@@ -270,7 +269,7 @@ public class WalDeleteOutdatedNewTest {
 
     walNode1.deleteOutdatedFiles();
     Map<Long, Set<Long>> memTableIdsOfWalAfter = walNode1.getWALBuffer().getMemTableIdsOfWal();
-    Assert.assertEquals(1, memTableIdsOfWalAfter.size());
+    Assert.assertEquals(0, memTableIdsOfWalAfter.size());
     Assert.assertEquals(1, WALFileUtils.listAllWALFiles(new File(logDirectory1)).length);
   }
 
@@ -456,7 +455,7 @@ public class WalDeleteOutdatedNewTest {
     Awaitility.await().until(() -> walNode1.isAllWALEntriesConsumed());
     walNode1.deleteOutdatedFiles();
     Map<Long, Set<Long>> memTableIdsOfWalAfterAfter = walNode1.getWALBuffer().getMemTableIdsOfWal();
-    Assert.assertEquals(1, memTableIdsOfWalAfterAfter.size());
+    Assert.assertEquals(0, memTableIdsOfWalAfterAfter.size());
     Assert.assertEquals(1, WALFileUtils.listAllWALFiles(new File(logDirectory1)).length);
   }
 
