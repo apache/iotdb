@@ -346,6 +346,15 @@ public class TestUtils {
       return group;
     }
 
+    void waitUntilActiveLeaderElected() throws InterruptedException {
+      JavaUtils.attemptUntilTrue(
+          () -> servers.stream().anyMatch(server -> server.isLeader(gid)),
+          600,
+          TimeDuration.valueOf(100, TimeUnit.MILLISECONDS),
+          "wait leader elected",
+          null);
+    }
+
     void waitUntilActiveLeaderElectedAndReady() throws InterruptedException {
       JavaUtils.attemptUntilTrue(
           () -> servers.stream().anyMatch(server -> server.isLeaderReady(gid)),
