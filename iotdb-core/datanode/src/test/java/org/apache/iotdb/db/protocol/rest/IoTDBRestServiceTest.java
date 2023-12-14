@@ -754,6 +754,7 @@ public class IoTDBRestServiceTest {
           {
             add("devices");
             add("isAligned");
+            add("Template");
           }
         };
     List<Object> values1 =
@@ -768,6 +769,12 @@ public class IoTDBRestServiceTest {
             add(false);
           }
         };
+    List<String> values3 =
+            new ArrayList<String>() {
+              {
+                add("null");
+              }
+            };
     Assert.assertEquals(columnNames, columnNamesResult);
     Assert.assertEquals(values1, valuesResult.get(0));
     // Assert.assertEquals(values2, valuesResult.get(1));
