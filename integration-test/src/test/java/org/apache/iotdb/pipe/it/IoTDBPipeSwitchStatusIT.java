@@ -155,7 +155,7 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeDualIT {
               new TCreatePipeReq("p1", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)
                   .setProcessorAttributes(processorAttributes));
-      Assert.assertEquals(TSStatusCode.PIPE_ERROR.getStatusCode(), status.getCode());
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
       showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(1, showPipeResult.stream().filter((o) -> o.id.equals("p1")).count());
@@ -291,13 +291,13 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeDualIT {
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("STOPPED")));
 
       Assert.assertEquals(
-          TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode(), client.dropPipe("").getCode());
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("").getCode());
       Assert.assertEquals(
-          TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode(), client.dropPipe("p0").getCode());
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("p0").getCode());
       Assert.assertEquals(
-          TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode(), client.dropPipe("p").getCode());
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("p").getCode());
       Assert.assertEquals(
-          TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode(), client.dropPipe("*").getCode());
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("*").getCode());
       showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertTrue(
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("STOPPED")));
