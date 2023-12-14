@@ -67,8 +67,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.IOTDB_SSL_CONNECTOR;
-import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.IOTDB_SSL_SINK;
+import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_SSL_CONNECTOR;
+import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_SSL_SINK;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_ENABLE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY;
@@ -131,8 +131,8 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
             String.format(
                 "When ssl transport is enabled, %s and %s must be specified",
                 SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY, SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY),
-            IOTDB_SSL_CONNECTOR.getPipePluginName().equals(userSpecifiedConnectorName)
-                || IOTDB_SSL_SINK.getClassName().equals(userSpecifiedConnectorName)
+            IOTDB_THRIFT_SSL_CONNECTOR.getPipePluginName().equals(userSpecifiedConnectorName)
+                || IOTDB_THRIFT_SSL_SINK.getClassName().equals(userSpecifiedConnectorName)
                 || parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false),
             parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY),
             parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY));
@@ -155,8 +155,8 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
     final String userSpecifiedConnectorName =
         parameters.getStringByKeys(CONNECTOR_KEY, SINK_KEY).toLowerCase();
     useSSL =
-        IOTDB_SSL_CONNECTOR.getPipePluginName().equals(userSpecifiedConnectorName)
-            || IOTDB_SSL_SINK.getClassName().equals(userSpecifiedConnectorName)
+        IOTDB_THRIFT_SSL_CONNECTOR.getPipePluginName().equals(userSpecifiedConnectorName)
+            || IOTDB_THRIFT_SSL_SINK.getClassName().equals(userSpecifiedConnectorName)
             || parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false);
     trustStorePath = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY);
     trustStorePwd = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY);

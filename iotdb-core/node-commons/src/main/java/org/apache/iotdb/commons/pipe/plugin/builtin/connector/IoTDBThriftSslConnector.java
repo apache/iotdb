@@ -25,4 +25,4 @@ package org.apache.iotdb.commons.pipe.plugin.builtin.connector;
  * in the server module will replace this class with the real implementation when initializing the
  * IoTDB SSL connector.
  */
-public class IoTDBSslConnector extends PlaceholderConnector {}
+public class IoTDBThriftSslConnector extends PlaceholderConnector {}

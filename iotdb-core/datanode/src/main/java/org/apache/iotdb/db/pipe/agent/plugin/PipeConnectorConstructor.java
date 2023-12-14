@@ -47,6 +47,9 @@ public class PipeConnectorConstructor extends PipePluginConstructor {
         BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName(),
         IoTDBThriftAsyncConnector::new);
     PLUGIN_CONSTRUCTORS.put(
+        BuiltinPipePlugin.IOTDB_THRIFT_SSL_CONNECTOR.getPipePluginName(),
+        IoTDBThriftSyncConnector::new);
+    PLUGIN_CONSTRUCTORS.put(
         BuiltinPipePlugin.IOTDB_THRIFT_SYNC_CONNECTOR.getPipePluginName(),
         IoTDBThriftSyncConnector::new);
     PLUGIN_CONSTRUCTORS.put(
@@ -55,8 +58,6 @@ public class PipeConnectorConstructor extends PipePluginConstructor {
     PLUGIN_CONSTRUCTORS.put(
         BuiltinPipePlugin.IOTDB_LEGACY_PIPE_CONNECTOR.getPipePluginName(),
         IoTDBLegacyPipeConnector::new);
-    PLUGIN_CONSTRUCTORS.put(
-        BuiltinPipePlugin.IOTDB_SSL_CONNECTOR.getPipePluginName(), IoTDBThriftSyncConnector::new);
     PLUGIN_CONSTRUCTORS.put(
         BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName(), IoTDBAirGapConnector::new);
     PLUGIN_CONSTRUCTORS.put(
@@ -71,6 +72,8 @@ public class PipeConnectorConstructor extends PipePluginConstructor {
     PLUGIN_CONSTRUCTORS.put(
         BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName(), IoTDBThriftAsyncConnector::new);
     PLUGIN_CONSTRUCTORS.put(
+        BuiltinPipePlugin.IOTDB_THRIFT_SSL_SINK.getPipePluginName(), IoTDBThriftSyncConnector::new);
+    PLUGIN_CONSTRUCTORS.put(
         BuiltinPipePlugin.IOTDB_THRIFT_SYNC_SINK.getPipePluginName(),
         IoTDBThriftSyncConnector::new);
     PLUGIN_CONSTRUCTORS.put(
@@ -79,8 +82,6 @@ public class PipeConnectorConstructor extends PipePluginConstructor {
     PLUGIN_CONSTRUCTORS.put(
         BuiltinPipePlugin.IOTDB_LEGACY_PIPE_SINK.getPipePluginName(),
         IoTDBLegacyPipeConnector::new);
-    PLUGIN_CONSTRUCTORS.put(
-        BuiltinPipePlugin.IOTDB_SSL_SINK.getPipePluginName(), IoTDBThriftSyncConnector::new);
     PLUGIN_CONSTRUCTORS.put(
         BuiltinPipePlugin.IOTDB_AIR_GAP_SINK.getPipePluginName(), IoTDBAirGapConnector::new);
     PLUGIN_CONSTRUCTORS.put(

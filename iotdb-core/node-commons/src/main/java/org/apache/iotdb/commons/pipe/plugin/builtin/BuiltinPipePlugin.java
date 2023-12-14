@@ -22,9 +22,9 @@ package org.apache.iotdb.commons.pipe.plugin.builtin;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.DoNothingConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBAirGapConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBLegacyPipeConnector;
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBSslConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBThriftAsyncConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBThriftConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBThriftSslConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBThriftSyncConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.OpcUaConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.WebSocketConnector;
@@ -52,10 +52,10 @@ public enum BuiltinPipePlugin {
   // connectors
   DO_NOTHING_CONNECTOR("do-nothing-connector", DoNothingConnector.class),
   IOTDB_THRIFT_CONNECTOR("iotdb-thrift-connector", IoTDBThriftConnector.class),
+  IOTDB_THRIFT_SSL_CONNECTOR("iotdb-thrift-ssl-connector", IoTDBThriftSslConnector.class),
   IOTDB_THRIFT_SYNC_CONNECTOR("iotdb-thrift-sync-connector", IoTDBThriftSyncConnector.class),
   IOTDB_THRIFT_ASYNC_CONNECTOR("iotdb-thrift-async-connector", IoTDBThriftAsyncConnector.class),
   IOTDB_LEGACY_PIPE_CONNECTOR("iotdb-legacy-pipe-connector", IoTDBLegacyPipeConnector.class),
-  IOTDB_SSL_CONNECTOR("iotdb-ssl-connector", IoTDBSslConnector.class),
   IOTDB_AIR_GAP_CONNECTOR("iotdb-air-gap-connector", IoTDBAirGapConnector.class),
   WEBSOCKET_CONNECTOR("websocket-connector", WebSocketConnector.class),
   OPC_UA_CONNECTOR("opc-ua-connector", OpcUaConnector.class),
@@ -63,10 +63,10 @@ public enum BuiltinPipePlugin {
 
   DO_NOTHING_SINK("do-nothing-sink", DoNothingConnector.class),
   IOTDB_THRIFT_SINK("iotdb-thrift-sink", IoTDBThriftConnector.class),
+  IOTDB_THRIFT_SSL_SINK("iotdb-thrift-ssl-sink", IoTDBThriftSslConnector.class),
   IOTDB_THRIFT_SYNC_SINK("iotdb-thrift-sync-sink", IoTDBThriftSyncConnector.class),
   IOTDB_THRIFT_ASYNC_SINK("iotdb-thrift-async-sink", IoTDBThriftAsyncConnector.class),
   IOTDB_LEGACY_PIPE_SINK("iotdb-legacy-pipe-sink", IoTDBLegacyPipeConnector.class),
-  IOTDB_SSL_SINK("iotdb-ssl-sink", IoTDBSslConnector.class),
   IOTDB_AIR_GAP_SINK("iotdb-air-gap-sink", IoTDBAirGapConnector.class),
   WEBSOCKET_SINK("websocket-sink", WebSocketConnector.class),
   OPC_UA_SINK("opc-ua-sink", OpcUaConnector.class),
@@ -106,10 +106,10 @@ public enum BuiltinPipePlugin {
                   // Connectors
                   DO_NOTHING_CONNECTOR.getPipePluginName().toUpperCase(),
                   IOTDB_THRIFT_CONNECTOR.getPipePluginName().toUpperCase(),
+                  IOTDB_THRIFT_SSL_CONNECTOR.getPipePluginName().toUpperCase(),
                   IOTDB_THRIFT_SYNC_CONNECTOR.getPipePluginName().toUpperCase(),
                   IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName().toUpperCase(),
                   IOTDB_LEGACY_PIPE_CONNECTOR.getPipePluginName().toUpperCase(),
-                  IOTDB_SSL_CONNECTOR.getPipePluginName().toUpperCase(),
                   IOTDB_AIR_GAP_CONNECTOR.getPipePluginName().toUpperCase(),
                   WEBSOCKET_CONNECTOR.getPipePluginName().toUpperCase(),
                   OPC_UA_CONNECTOR.getPipePluginName().toUpperCase(),
