@@ -249,7 +249,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
   }
 
-  public boolean isPipeRunning(String pipeName) throws PipeException {
+  public boolean isPipeRunning(String pipeName) {
     acquireReadLock();
     try {
       return pipeMetaKeeper.containsPipeMeta(pipeName)
@@ -259,7 +259,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
   }
 
-  public boolean isPipeStopped(String pipeName) throws PipeException {
+  public boolean isPipeStopped(String pipeName) {
     acquireReadLock();
     try {
       return pipeMetaKeeper.containsPipeMeta(pipeName)
