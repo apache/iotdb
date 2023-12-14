@@ -94,16 +94,13 @@ public class TimeDuration implements Serializable {
       TimeDuration duration,
       int length,
       TimeZone timeZone,
-      TimeUnit currPrecision,
-      boolean isLastDayOfMonth,
-      int minDay) {
+      TimeUnit currPrecision) {
     long[] result = new long[length];
     result[0] = startTime;
     Calendar calendar = Calendar.getInstance();
     calendar.setTimeZone(timeZone);
     for (int i = 1; i < length; i++) {
-      result[i] =
-          getStartTime(result[i - 1], duration, currPrecision, calendar, isLastDayOfMonth, minDay);
+      result[i] = getStartTime(result[i - 1], duration, currPrecision, calendar);
     }
     return result;
   }
@@ -122,37 +119,24 @@ public class TimeDuration implements Serializable {
       TimeDuration duration,
       long times,
       TimeZone timeZone,
-      TimeUnit currPrecision,
-      boolean isLastDayOfMonth,
-      int minDay) {
+      TimeUnit currPrecision) {
     Calendar calendar = Calendar.getInstance();
     calendar.setTimeZone(timeZone);
     for (int i = 0; i < times; i++) {
-      startTime =
-          getStartTime(startTime, duration, currPrecision, calendar, isLastDayOfMonth, minDay);
+      startTime = getStartTime(startTime, duration, currPrecision, calendar);
     }
     return startTime;
   }
 
   private static long getStartTime(
-      long startTime,
-      TimeDuration duration,
-      TimeUnit currPrecision,
-      Calendar calendar,
-      boolean isLastDayOfMonth,
-      int minDay) {
+      long startTime, TimeDuration duration, TimeUnit currPrecision, Calendar calendar) {
     long coarserThanMsPart = getCoarserThanMsPart(startTime, currPrecision);
     calendar.setTimeInMillis(coarserThanMsPart);
+    boolean isLastDayOfMonth =
+        calendar.get(Calendar.DAY_OF_MONTH) == calendar.getActualMaximum(Calendar.DAY_OF_MONTH);
     calendar.add(Calendar.MONTH, duration.monthDuration);
     if (isLastDayOfMonth) {
       calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH));
-    } else {
-      // Intermediate 2-28 will cause the following month end with 28 (like 3-28,4-28) which need
-      // update
-      int curDay = calendar.get(Calendar.DAY_OF_MONTH);
-      if (curDay != calendar.getActualMaximum(Calendar.DAY_OF_MONTH) && curDay < minDay) {
-        calendar.set(Calendar.DAY_OF_MONTH, minDay);
-      }
     }
     return currPrecision.convert(calendar.getTimeInMillis(), TimeUnit.MILLISECONDS)
         + getFinerThanMsPart(startTime, currPrecision)
