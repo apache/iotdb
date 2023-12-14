@@ -770,11 +770,11 @@ public class IoTDBRestServiceTest {
           }
         };
     List<String> values3 =
-            new ArrayList<String>() {
-              {
-                add("null");
-              }
-            };
+        new ArrayList<String>() {
+          {
+            add("null");
+          }
+        };
     Assert.assertEquals(columnNames, columnNamesResult);
     Assert.assertEquals(values1, valuesResult.get(0));
     // Assert.assertEquals(values2, valuesResult.get(1));
