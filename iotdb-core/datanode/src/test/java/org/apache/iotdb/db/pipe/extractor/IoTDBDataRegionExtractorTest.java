@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.extractor;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -51,6 +52,25 @@ public class IoTDBDataRegionExtractorTest {
                   })));
     } catch (Exception e) {
       Assert.fail();
+    }
+  }
+
+  @Test
+  public void testIoTDBDataRegionExtractorWithIllegalPattern() {
+    IoTDBDataRegionExtractor extractor = new IoTDBDataRegionExtractor();
+    try {
+      extractor.validate(
+          new PipeParameterValidator(
+              new PipeParameters(
+                  new HashMap<String, String>() {
+                    {
+                      put(
+                          PipeExtractorConstant.EXTRACTOR_PATTERN_KEY,
+                          "root.a-b");
+                    }
+                  })));
+    } catch (Exception e) {
+      Assert.assertEquals(e.getClass(), IllegalPathException.class);
     }
   }
 }
