@@ -22,19 +22,16 @@ package org.apache.iotdb.db.queryengine.metric;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
-import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
-import org.apache.iotdb.metrics.type.Gauge;
+import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
-
-import static org.apache.iotdb.commons.service.metric.enums.Metric.FRAGMENT_INSTANCE_STATISTICS;
 
 public class QueryRelatedResourceMetricSet implements IMetricSet {
 
@@ -54,12 +51,40 @@ public class QueryRelatedResourceMetricSet implements IMetricSet {
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // FragmentInstanceManager
   /////////////////////////////////////////////////////////////////////////////////////////////////
-  private static final FragmentInstanceManager fragmentInstanceManager =
-      FragmentInstanceManager.getInstance();
-  private static final String FRAGMENT_INSTANCE_MANAGER =
-      Metric.FRAGMENT_INSTANCE_MANAGER.toString();
-  private static final String INSTANCE_CONTEXT_SIZE = "instance_context_size";
-  private static final String INSTANCE_EXECUTION_SIZE = "instance_execution_size";
+  private static final String FRAGMENT_INSTANCE_EXECUTION_TIME = "fragment_instance_execution_time";
+  private static final String FRAGMENT_INSTANCE_CONTEXT_SIZE = "fragment_instance_context_size";
+  private static final String FRAGMENT_INSTANCE_EXECUTION_SIZE = "fragment_instance_execution_size";
+  private static final String FRAGMENT_INSTANCE_DRIVER_SIZE = "fragment_instance_driver_size";
+
+  private Timer fragmentInstanceExecutionTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Histogram fragmentInstanceContextSizeHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram fragmentInstanceExecutionSizeHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram fragmentInstanceDriverSizeHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+
+  public void updateFragmentInstanceCount(
+      long fragmentInstanceContextSize,
+      long fragmentInstanceExecutionSize,
+      long fragmentInstanceDriverSize) {
+
+    System.out.println(
+        "=============== size "
+            + fragmentInstanceContextSize
+            + ","
+            + fragmentInstanceExecutionSize
+            + ","
+            + fragmentInstanceDriverSize);
+
+    fragmentInstanceContextSizeHistogram.update(fragmentInstanceContextSize);
+    fragmentInstanceExecutionSizeHistogram.update(fragmentInstanceExecutionSize);
+    fragmentInstanceDriverSizeHistogram.update(fragmentInstanceDriverSize);
+  }
+
+  public void recordFragmentInstanceExecutionTime(long cost) {
+    fragmentInstanceExecutionTimer.updateMillis(cost);
+  }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // MemoryPool
@@ -83,43 +108,6 @@ public class QueryRelatedResourceMetricSet implements IMetricSet {
   private static final String LOCAL_EXECUTION_PLANNER = Metric.LOCAL_EXECUTION_PLANNER.toString();
   private static final String FREE_MEMORY_FOR_OPERATORS = "free_memory_for_operators";
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-  // FragmentInstanceStatistics
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-  public static final String QUERY_FRAGMENT_INSTANCE_COUNT = "query_fragment_instance_count";
-  public static final String QUERY_FRAGMENT_EXECUTION_TIME =
-      "query_fragment_instance_execution_time";
-  private Gauge fragmentInstanceContextSizeGauge = DoNothingMetricManager.DO_NOTHING_GAUGE;
-  private Gauge fragmentInstanceExecutionSizeGauge = DoNothingMetricManager.DO_NOTHING_GAUGE;
-  private Gauge fragmentInstanceCountGauge = DoNothingMetricManager.DO_NOTHING_GAUGE;
-  private Timer fragmentInstanceExecutionTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-
-  public void updateFragmentInstance(
-      long fragmentInstanceContextSize, long fragmentInstanceExecutionSize) {
-    fragmentInstanceContextSizeGauge.set(fragmentInstanceContextSize);
-    fragmentInstanceExecutionSizeGauge.set(fragmentInstanceExecutionSize);
-  }
-
-  public void recordExecutionCount(String stage, long count) {
-    switch (stage) {
-      case QUERY_FRAGMENT_INSTANCE_COUNT:
-        fragmentInstanceCountGauge.set(count);
-        break;
-      default:
-        break;
-    }
-  }
-
-  public void recordExecutionTimeCost(String type, long cost) {
-    switch (type) {
-      case QUERY_FRAGMENT_EXECUTION_TIME:
-        fragmentInstanceExecutionTimer.updateMillis(cost);
-        break;
-      default:
-        break;
-    }
-  }
-
   @Override
   public void bindTo(AbstractMetricService metricService) {
     // Coordinator
@@ -132,18 +120,30 @@ public class QueryRelatedResourceMetricSet implements IMetricSet {
         QUERY_EXECUTION_MAP_SIZE);
 
     // FragmentInstanceManager
-    fragmentInstanceContextSizeGauge =
-        metricService.getOrCreateGauge(
-            FRAGMENT_INSTANCE_MANAGER,
+    fragmentInstanceExecutionTimer =
+        metricService.getOrCreateTimer(
+            Metric.FRAGMENT_INSTANCE_STATISTICS.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            FRAGMENT_INSTANCE_EXECUTION_TIME);
+    fragmentInstanceContextSizeHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.FRAGMENT_INSTANCE_MANAGER.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            INSTANCE_CONTEXT_SIZE);
-    fragmentInstanceExecutionSizeGauge =
-        metricService.getOrCreateGauge(
-            FRAGMENT_INSTANCE_MANAGER,
+            FRAGMENT_INSTANCE_CONTEXT_SIZE);
+    fragmentInstanceExecutionSizeHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.FRAGMENT_INSTANCE_MANAGER.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            INSTANCE_EXECUTION_SIZE);
+            FRAGMENT_INSTANCE_EXECUTION_SIZE);
+    fragmentInstanceDriverSizeHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.FRAGMENT_INSTANCE_MANAGER.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            FRAGMENT_INSTANCE_DRIVER_SIZE);
 
     // MemoryPool
     metricService
@@ -179,20 +179,6 @@ public class QueryRelatedResourceMetricSet implements IMetricSet {
         LocalExecutionPlanner::getFreeMemoryForOperators,
         Tag.NAME.toString(),
         FREE_MEMORY_FOR_OPERATORS);
-
-    // FragmentInstanceStatistics
-    fragmentInstanceCountGauge =
-        metricService.getOrCreateGauge(
-            FRAGMENT_INSTANCE_STATISTICS.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            QUERY_FRAGMENT_INSTANCE_COUNT);
-    fragmentInstanceExecutionTimer =
-        metricService.getOrCreateTimer(
-            Metric.FRAGMENT_INSTANCE_STATISTICS.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.STAGE.toString(),
-            QUERY_FRAGMENT_EXECUTION_TIME);
   }
 
   @Override
@@ -203,15 +189,25 @@ public class QueryRelatedResourceMetricSet implements IMetricSet {
 
     // FragmentInstanceManager
     metricService.remove(
-        MetricType.AUTO_GAUGE,
-        FRAGMENT_INSTANCE_MANAGER,
+        MetricType.TIMER,
+        Metric.FRAGMENT_INSTANCE_STATISTICS.toString(),
         Tag.NAME.toString(),
-        INSTANCE_CONTEXT_SIZE);
+        FRAGMENT_INSTANCE_EXECUTION_TIME);
     metricService.remove(
-        MetricType.AUTO_GAUGE,
-        FRAGMENT_INSTANCE_MANAGER,
+        MetricType.HISTOGRAM,
+        Metric.FRAGMENT_INSTANCE_MANAGER.toString(),
         Tag.NAME.toString(),
-        INSTANCE_EXECUTION_SIZE);
+        FRAGMENT_INSTANCE_CONTEXT_SIZE);
+    metricService.remove(
+        MetricType.HISTOGRAM,
+        Metric.FRAGMENT_INSTANCE_MANAGER.toString(),
+        Tag.NAME.toString(),
+        FRAGMENT_INSTANCE_EXECUTION_SIZE);
+    metricService.remove(
+        MetricType.HISTOGRAM,
+        Metric.FRAGMENT_INSTANCE_MANAGER.toString(),
+        Tag.NAME.toString(),
+        FRAGMENT_INSTANCE_DRIVER_SIZE);
 
     // MemoryPool
     metricService.remove(MetricType.GAUGE, MEMORY_POOL, Tag.NAME.toString(), MAX_BYTES);
@@ -227,13 +223,6 @@ public class QueryRelatedResourceMetricSet implements IMetricSet {
         LOCAL_EXECUTION_PLANNER,
         Tag.NAME.toString(),
         FREE_MEMORY_FOR_OPERATORS);
-
-    // FragmentInstanceStatistics
-    metricService.remove(
-        MetricType.GAUGE,
-        FRAGMENT_INSTANCE_STATISTICS.toString(),
-        Tag.NAME.toString(),
-        QUERY_FRAGMENT_INSTANCE_COUNT);
   }
 
   public static QueryRelatedResourceMetricSet getInstance() {

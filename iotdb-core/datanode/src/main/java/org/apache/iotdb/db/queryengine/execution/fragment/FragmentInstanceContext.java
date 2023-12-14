@@ -51,8 +51,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet.QUERY_FRAGMENT_EXECUTION_TIME;
-
 public class FragmentInstanceContext extends QueryContext {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FragmentInstanceContext.class);
@@ -457,8 +455,7 @@ public class FragmentInstanceContext extends QueryContext {
 
     // record fragment instance execution time and metadata get time to metrics
     long durationTime = System.currentTimeMillis() - executionStartTime.get();
-    QueryRelatedResourceMetricSet.getInstance()
-        .recordExecutionTimeCost(QUERY_FRAGMENT_EXECUTION_TIME, durationTime);
+    QueryRelatedResourceMetricSet.getInstance().recordFragmentInstanceExecutionTime(durationTime);
     SeriesScanCostMetricSet.getInstance()
         .recordNonAlignedSeriesExecutionTime(
             loadTimeSeriesMetadataDiskSeqTime.get(),
