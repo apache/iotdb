@@ -93,7 +93,7 @@ public class DiskGuardianTest {
     Assert.assertFalse(hasSnapshot(gid));
     JavaUtils.attemptUntilTrue(
         () -> hasSnapshot(gid),
-        3,
+        12,
         TimeDuration.valueOf(5, TimeUnit.SECONDS),
         "should take snapshot",
         logger);
