@@ -1063,6 +1063,10 @@ public abstract class PageManager implements IPageManager {
     }
   }
 
+  /**
+   * * Index buckets affiliated to a page collection. Indexes are sort into buckets according to
+   * spare space of its corresponding page instance.
+   */
   protected static class PageIndexSortBuckets {
     private final short[] bounds;
     private final LinkedList<Integer>[] buckets;
@@ -1113,7 +1117,10 @@ public abstract class PageManager implements IPageManager {
       }
     }
 
-    /** @return the page index will be removed from the bucket. */
+    /**
+     * @param withLock set if page container is a global/shared object
+     * @return the page index will be removed from the bucket.
+     */
     public synchronized ISchemaPage getNearestFitPage(short size, boolean withLock) {
       ISchemaPage targetPage;
       int elemToCheck;
