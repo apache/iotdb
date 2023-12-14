@@ -632,13 +632,17 @@ public class TestUtils {
   }
 
   public static void restartCluster(BaseEnv env) throws Exception {
+    restartCluster(env, 1);
+  }
+
+  public static void restartCluster(BaseEnv env, long waitSeconds) throws Exception {
     for (int i = 0; i < env.getConfigNodeWrapperList().size(); ++i) {
       env.shutdownConfigNode(i);
     }
     for (int i = 0; i < env.getDataNodeWrapperList().size(); ++i) {
       env.shutdownDataNode(i);
     }
-    TimeUnit.SECONDS.sleep(1);
+    TimeUnit.SECONDS.sleep(waitSeconds);
     for (int i = 0; i < env.getConfigNodeWrapperList().size(); ++i) {
       env.startConfigNode(i);
     }

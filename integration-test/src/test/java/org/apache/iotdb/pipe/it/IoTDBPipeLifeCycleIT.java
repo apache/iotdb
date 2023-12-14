@@ -497,7 +497,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
       t.start();
 
       try {
-        TestUtils.restartCluster(receiverEnv);
+        TestUtils.restartCluster(receiverEnv, 10);
       } catch (Exception e) {
         e.printStackTrace();
         return;
@@ -508,8 +508,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
-          Collections.singleton(succeedNum.get() + ","),
-          1200);
+          Collections.singleton(succeedNum.get() + ","));
     }
   }
 

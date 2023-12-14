@@ -51,7 +51,7 @@ public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
     }
 
     // we only care about data region leader change
-    final Map<TConsensusGroupId, Pair<Integer, Integer>> dataRegionGroupToOldAndNewLeaderPairMap =
+    final Map<TConsensusGroupId, Pair<Integer, Integer>> regionGroupToOldAndNewLeaderPairMap =
         new HashMap<>();
     event
         .getLeaderMap()
@@ -66,14 +66,14 @@ public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
                 final int newLeaderDataNodeId = (pair.right == null ? -1 : pair.right);
 
                 if (oldLeaderDataNodeId != newLeaderDataNodeId) {
-                  dataRegionGroupToOldAndNewLeaderPairMap.put(
+                  regionGroupToOldAndNewLeaderPairMap.put(
                       regionGroupId, new Pair<>(oldLeaderDataNodeId, newLeaderDataNodeId));
                 }
               }
             });
 
     // if no data region leader change, return
-    if (dataRegionGroupToOldAndNewLeaderPairMap.isEmpty()) {
+    if (regionGroupToOldAndNewLeaderPairMap.isEmpty()) {
       return;
     }
 
@@ -86,6 +86,6 @@ public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
             () ->
                 configManager
                     .getProcedureManager()
-                    .pipeHandleLeaderChange(dataRegionGroupToOldAndNewLeaderPairMap));
+                    .pipeHandleLeaderChange(regionGroupToOldAndNewLeaderPairMap));
   }
 }
