@@ -40,6 +40,7 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -315,20 +316,13 @@ public class CheckpointManager implements AutoCloseable {
   }
   // endregion
 
-  /** Get MemTableInfo of oldest MemTable, whose first version id is smallest. */
-  public MemTableInfo getOldestMemTableInfo() {
+  /** Get MemTableInfo of oldest unpinned MemTable, whose first version id is smallest. */
+  public MemTableInfo getOldestUnpinnedMemTableInfo() {
     // find oldest memTable
-    List<MemTableInfo> memTableInfos = activeOrPinnedMemTables();
-    if (memTableInfos.isEmpty()) {
-      return null;
-    }
-    MemTableInfo oldestMemTableInfo = memTableInfos.get(0);
-    for (MemTableInfo memTableInfo : memTableInfos) {
-      if (oldestMemTableInfo.getFirstFileVersionId() > memTableInfo.getFirstFileVersionId()) {
-        oldestMemTableInfo = memTableInfo;
-      }
-    }
-    return oldestMemTableInfo;
+    return activeOrPinnedMemTables().stream()
+        .filter(memTableInfo -> !memTableInfo.isPinned())
+        .min(Comparator.comparingLong(MemTableInfo::getMemTableId))
+        .orElse(null);
   }
 
   /**

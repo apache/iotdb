@@ -176,13 +176,11 @@ public class WALEntryHandlerTest {
     // unpin 1
     CheckpointManager checkpointManager = walNode1.getCheckpointManager();
     handler.unpinMemTable();
-    MemTableInfo oldestMemTableInfo = checkpointManager.getOldestMemTableInfo();
-    assertEquals(memTable.getMemTableId(), oldestMemTableInfo.getMemTableId());
-    assertNull(oldestMemTableInfo.getMemTable());
-    assertTrue(oldestMemTableInfo.isPinned());
+    MemTableInfo oldestMemTableInfo = checkpointManager.getOldestUnpinnedMemTableInfo();
+    assertNull(oldestMemTableInfo);
     // unpin 2
     handler.unpinMemTable();
-    assertNull(checkpointManager.getOldestMemTableInfo());
+    assertNull(checkpointManager.getOldestUnpinnedMemTableInfo());
   }
 
   @Test

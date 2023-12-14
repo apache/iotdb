@@ -457,7 +457,7 @@ public class WALNode implements IWALNode {
         return false;
       }
       // find oldest memTable
-      MemTableInfo oldestMemTableInfo = checkpointManager.getOldestMemTableInfo();
+      MemTableInfo oldestMemTableInfo = checkpointManager.getOldestUnpinnedMemTableInfo();
       if (oldestMemTableInfo == null) {
         return false;
       }
@@ -598,7 +598,7 @@ public class WALNode implements IWALNode {
       // If this set is empty, there is a case where WalEntry has been logged but not persisted,
       // because WalEntry is persisted asynchronously. In this case, the file cannot be deleted
       // directly, so it is considered active
-      if (memTableIdsOfCurrentWal.isEmpty()) {
+      if (memTableIdsOfCurrentWal == null || memTableIdsOfCurrentWal.isEmpty()) {
         return true;
       }
       return !Collections.disjoint(
