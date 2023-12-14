@@ -19,16 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view;
 
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
-import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -41,19 +38,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class AlterLogicalViewNode extends WritePlanNode {
+public class AlterLogicalViewNode extends PlanNode {
 
   /**
    * A map from target path to source expression. Yht target path is the name of this logical view,
    * and the source expression is the data source of this view.
    */
   private final Map<PartialPath, ViewExpression> viewPathToSourceMap;
-
-  /**
-   * This variable will be set in function splitByPartition() according to analysis. And it will be
-   * set when creating new split nodes.
-   */
-  private final TRegionReplicaSet regionReplicaSet = null;
 
   public AlterLogicalViewNode(PlanNodeId id, Map<PartialPath, ViewExpression> viewPathToSourceMap) {
     super(id);
@@ -69,11 +60,6 @@ public class AlterLogicalViewNode extends WritePlanNode {
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitAlterLogicalView(this, context);
-  }
-
-  @Override
-  public TRegionReplicaSet getRegionReplicaSet() {
-    return this.regionReplicaSet;
   }
 
   @Override
@@ -159,33 +145,6 @@ public class AlterLogicalViewNode extends WritePlanNode {
     // deserialize PlanNodeId next
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new AlterLogicalViewNode(planNodeId, viewPathToSourceMap);
-  }
-
-  @Override
-  public List<WritePlanNode> splitByPartition(Analysis analysis) {
-    Map<TRegionReplicaSet, Map<PartialPath, ViewExpression>> splitMap = new HashMap<>();
-    for (Map.Entry<PartialPath, ViewExpression> entry : this.viewPathToSourceMap.entrySet()) {
-      // for each entry in the map for target path to source expression,
-      // build a map from TRegionReplicaSet to this entry.
-      // Please note that getSchemaRegionReplicaSet needs a device path as parameter.
-      TRegionReplicaSet regionReplicaSet =
-          analysis.getSchemaPartitionInfo().getSchemaRegionReplicaSet(entry.getKey().getDevice());
-
-      // create a map if the key(regionReplicaSet) is not exists,
-      // then put this entry into this map(from regionReplicaSet to this entry)
-      splitMap
-          .computeIfAbsent(regionReplicaSet, k -> new HashMap<>())
-          .put(entry.getKey(), entry.getValue());
-    }
-
-    // split this node into several nodes according to their regionReplicaSet
-    List<WritePlanNode> result = new ArrayList<>();
-    for (Map.Entry<TRegionReplicaSet, Map<PartialPath, ViewExpression>> entry :
-        splitMap.entrySet()) {
-      // for each entry in splitMap, create a plan node.
-      result.add(new CreateLogicalViewNode(getPlanNodeId(), entry.getValue(), entry.getKey()));
-    }
-    return result;
   }
   // endregion
 }

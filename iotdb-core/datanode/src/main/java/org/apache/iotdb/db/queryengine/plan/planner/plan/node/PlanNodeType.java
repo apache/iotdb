@@ -56,6 +56,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.vie
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.DeleteLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.RollbackLogicalViewBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedConfigSchemaNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWriteSchemaNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceMergeNode;
@@ -97,7 +101,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.PipeEnrichedInsertNode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
@@ -189,7 +192,11 @@ public enum PlanNodeType {
 
   LAST_QUERY_TRANSFORM((short) 81),
   TOP_K((short) 82),
-  COLUMN_INJECT((short) 83);
+  COLUMN_INJECT((short) 83),
+  PIPE_ENRICHED_DELETE_DATA((short) 84),
+  PIPE_ENRICHED_WRITE_SCHEMA((short) 85),
+  PIPE_ENRICHED_DELETE_SCHEMA((short) 86),
+  ;
 
   public static final int BYTES = Short.BYTES;
 
@@ -404,6 +411,13 @@ public enum PlanNodeType {
         return TopKNode.deserialize(buffer);
       case 83:
         return ColumnInjectNode.deserialize(buffer);
+      case 84:
+        return PipeEnrichedDeleteDataNode.deserialize(buffer);
+      case 85:
+        return PipeEnrichedWriteSchemaNode.deserialize(buffer);
+      case 86:
+        return PipeEnrichedConfigSchemaNode.deserialize(buffer);
+
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
