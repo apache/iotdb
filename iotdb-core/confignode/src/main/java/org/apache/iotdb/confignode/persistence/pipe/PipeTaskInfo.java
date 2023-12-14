@@ -135,7 +135,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   /////////////////////////////// Validator ///////////////////////////////
 
-  public void checkBeforeCreatePipe(TCreatePipeReq createPipeRequest) {
+  public void checkBeforeCreatePipe(TCreatePipeReq createPipeRequest) throws PipeException {
     acquireReadLock();
     try {
       checkBeforeCreatePipeInternal(createPipeRequest);
