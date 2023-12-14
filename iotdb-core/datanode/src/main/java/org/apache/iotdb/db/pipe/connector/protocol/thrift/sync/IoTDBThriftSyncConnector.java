@@ -138,7 +138,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
                 "When ssl transport is enabled, %s and %s must be specified",
                 SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY, SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY),
             IOTDB_THRIFT_SSL_CONNECTOR.getPipePluginName().equals(userSpecifiedConnectorName)
-                || IOTDB_THRIFT_SSL_SINK.getClassName().equals(userSpecifiedConnectorName)
+                || IOTDB_THRIFT_SSL_SINK.getPipePluginName().equals(userSpecifiedConnectorName)
                 || parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false),
             parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY),
             parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY));
@@ -166,7 +166,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
             .toLowerCase();
     useSSL =
         IOTDB_THRIFT_SSL_CONNECTOR.getPipePluginName().equals(userSpecifiedConnectorName)
-            || IOTDB_THRIFT_SSL_SINK.getClassName().equals(userSpecifiedConnectorName)
+            || IOTDB_THRIFT_SSL_SINK.getPipePluginName().equals(userSpecifiedConnectorName)
             || parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false);
     trustStorePath = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY);
     trustStorePwd = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY);
