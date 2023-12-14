@@ -88,6 +88,7 @@ public class DiskGuardianTest {
       s.createLocalPeer(gid, members);
     }
 
+    miniCluster.waitUntilActiveLeaderElectedAndReady();
     miniCluster.writeManySerial(0, 10);
     Assert.assertFalse(hasSnapshot(gid));
     JavaUtils.attemptUntilTrue(
