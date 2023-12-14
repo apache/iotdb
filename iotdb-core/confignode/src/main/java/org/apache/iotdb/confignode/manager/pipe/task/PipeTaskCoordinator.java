@@ -120,7 +120,7 @@ public class PipeTaskCoordinator {
   public TSStatus stopPipe(String pipeName) {
     final boolean isStoppedByRuntimeException = pipeTaskInfo.isStoppedByRuntimeException(pipeName);
     final TSStatus status = configManager.getProcedureManager().stopPipe(pipeName);
-    if (status == RpcUtils.SUCCESS_STATUS) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       if (isStoppedByRuntimeException) {
         // Even if the return status is success, it doesn't imply the success of the
         // `executeFromOperateOnDataNodes` phase of stopping pipe. However, we still need to set
