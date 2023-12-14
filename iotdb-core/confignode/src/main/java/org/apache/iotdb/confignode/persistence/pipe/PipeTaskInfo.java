@@ -135,7 +135,6 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   /////////////////////////////// Validator ///////////////////////////////
 
-  /** @return true if pipe is existed before creating the pipe */
   public boolean checkBeforeCreatePipe(TCreatePipeReq createPipeRequest) {
     acquireReadLock();
     try {
@@ -145,16 +144,18 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
   }
 
-  /** @return true if pipe is existed before creating the pipe */
-  private boolean checkBeforeCreatePipeInternal(TCreatePipeReq createPipeRequest) {
+  private boolean checkBeforeCreatePipeInternal(TCreatePipeReq createPipeRequest)
+      throws PipeException {
     if (!isPipeExisted(createPipeRequest.getPipeName())) {
       return false;
     }
 
-    LOGGER.warn(
-        "Failed to create pipe {}, the pipe with the same name has been created",
-        createPipeRequest.getPipeName());
-    return true;
+    final String exceptionMessage =
+        String.format(
+            "Failed to create pipe %s, the pipe with the same name has been created",
+            createPipeRequest.getPipeName());
+    LOGGER.info(exceptionMessage);
+    throw new PipeException(exceptionMessage);
   }
 
   /** @return true if the pipe status is RUNNING before starting the pipe */
@@ -225,7 +226,6 @@ public class PipeTaskInfo implements SnapshotProcessor {
     return false;
   }
 
-  /** @return true if pipe is not existed before dropping the pipe */
   public boolean checkBeforeDropPipe(String pipeName) {
     acquireReadLock();
     try {
@@ -235,14 +235,17 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
   }
 
-  /** @return true if pipe is not existed before dropping the pipe */
   private boolean checkBeforeDropPipeInternal(String pipeName) {
-    if (isPipeExisted(pipeName)) {
-      return false;
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "Check before drop pipe {}, pipe exists: {}.",
+          pipeName,
+          isPipeExisted(pipeName) ? "true" : "false");
     }
-
-    LOGGER.warn("Failed to drop pipe {}, the pipe does not exist", pipeName);
-    return true;
+    // No matter whether the pipe exists, we allow the drop operation executed on all nodes to
+    // ensure the consistency.
+    // DO NOTHING HERE!
+    return false;
   }
 
   public boolean isPipeExisted(String pipeName) {

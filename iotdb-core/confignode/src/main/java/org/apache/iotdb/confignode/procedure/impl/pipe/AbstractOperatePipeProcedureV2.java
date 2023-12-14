@@ -72,6 +72,9 @@ public abstract class AbstractOperatePipeProcedureV2
   // putting it here is just for convenience
   protected AtomicReference<PipeTaskInfo> pipeTaskInfo;
 
+  private static final String SKIP_PIPE_PROCEDURE_MESSAGE =
+      "Try to start a RUNNING pipe or stop a STOPPED pipe, do nothing.";
+
   @Override
   protected ProcedureLockState acquireLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
     LOGGER.info("ProcedureId {} try to acquire pipe lock.", getProcId());
@@ -163,7 +166,8 @@ public abstract class AbstractOperatePipeProcedureV2
   /**
    * Execute at state {@link OperatePipeTaskState#VALIDATE_TASK}.
    *
-   * @return true if this procedure can skip subsequent stages
+   * @return true if this procedure can skip subsequent stages (start RUNNING pipe or stop STOPPED
+   *     pipe)
    * @throws PipeException if validation for pipe parameters failed
    */
   protected abstract boolean executeFromValidateTask(ConfigNodeProcedureEnv env)
@@ -203,8 +207,11 @@ public abstract class AbstractOperatePipeProcedureV2
       switch (state) {
         case VALIDATE_TASK:
           if (executeFromValidateTask(env)) {
-            // TODO: set msg
-            this.setResult("no-op".getBytes(StandardCharsets.UTF_8));
+            LOGGER.warn("ProcedureId {}: {}", getProcId(), SKIP_PIPE_PROCEDURE_MESSAGE);
+            // On client side, the message returned after the successful execution of the pipe
+            // command corresponding to this procedure is "Msg: The statement is executed
+            // successfully."
+            this.setResult(SKIP_PIPE_PROCEDURE_MESSAGE.getBytes(StandardCharsets.UTF_8));
             return Flow.NO_MORE_STATE;
           }
           setNextState(OperatePipeTaskState.CALCULATE_INFO_FOR_TASK);
