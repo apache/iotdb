@@ -819,23 +819,22 @@ public class PipeTaskAgent {
 
   private void createPipeTask(
       int consensusGroupId, PipeStaticMeta pipeStaticMeta, PipeTaskMeta pipeTaskMeta) {
-    pipeMetaKeeper
-        .getPipeMeta(pipeStaticMeta.getPipeName())
-        .getRuntimeMeta()
-        .getConsensusGroupId2TaskMetaMap()
-        .put(consensusGroupId, pipeTaskMeta);
-
     // Currently disable schemaRegion tasks
     if (StorageEngine.getInstance().getAllDataRegionIds().stream()
-        .noneMatch(dataRegionId -> dataRegionId.getId() == consensusGroupId)) {
-      return;
-    }
-    if (pipeTaskMeta.getLeaderNodeId() == CONFIG.getDataNodeId()) {
+        .anyMatch(
+            dataRegionId ->
+                dataRegionId.getId() == consensusGroupId
+                    && pipeTaskMeta.getLeaderNodeId() == CONFIG.getDataNodeId())) {
       final PipeTask pipeTask =
           new PipeTaskBuilder(pipeStaticMeta, consensusGroupId, pipeTaskMeta).build();
       pipeTask.create();
       pipeTaskManager.addPipeTask(pipeStaticMeta, consensusGroupId, pipeTask);
     }
+    pipeMetaKeeper
+        .getPipeMeta(pipeStaticMeta.getPipeName())
+        .getRuntimeMeta()
+        .getConsensusGroupId2TaskMetaMap()
+        .put(consensusGroupId, pipeTaskMeta);
   }
 
   private void dropPipeTask(int dataRegionGroupId, PipeStaticMeta pipeStaticMeta) {
