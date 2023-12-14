@@ -63,7 +63,6 @@ import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXT
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_LOG_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_STREAM_MODE_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_ENABLE_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.SOURCE_REALTIME_ENABLE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.SOURCE_REALTIME_MODE_KEY;
 
@@ -92,9 +91,7 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
     PathUtils.isLegalPath(
         validator
             .getParameters()
-            .getStringOrDefault(
-                Arrays.asList(EXTRACTOR_PATTERN_KEY, SOURCE_PATTERN_KEY),
-                EXTRACTOR_PATTERN_DEFAULT_VALUE));
+            .getStringOrDefault(EXTRACTOR_PATTERN_KEY, EXTRACTOR_PATTERN_DEFAULT_VALUE));
     // Validate extractor.history.enable and extractor.realtime.enable
     validator
         .validateAttributeValueRange(
