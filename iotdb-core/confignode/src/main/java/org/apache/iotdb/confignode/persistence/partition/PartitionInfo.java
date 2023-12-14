@@ -979,7 +979,11 @@ public class PartitionInfo implements SnapshotProcessor {
     return new GetRegionIdResp(
         new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
         databasePartitionTable
-            .getRegionId(plan.getPartitionType(), plan.getSeriesSlotId(), plan.getTimeSlotId())
+            .getRegionId(
+                plan.getPartitionType(),
+                plan.getSeriesSlotId(),
+                plan.getStartTimeSlotId(),
+                plan.getEndTimeSlotId())
             .stream()
             .distinct()
             .sorted(Comparator.comparing(TConsensusGroupId::getId))
