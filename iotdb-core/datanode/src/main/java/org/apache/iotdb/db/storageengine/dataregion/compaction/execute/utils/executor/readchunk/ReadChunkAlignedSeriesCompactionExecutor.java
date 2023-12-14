@@ -378,14 +378,14 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
   }
 
   private class FlushDataBlockPolicy {
-    private final int compactionFileLevel;
+    private final int compactionTargetFileLevel;
     private final long targetChunkPointNum;
     private final long targetChunkSize;
     private final long targetPagePointNum;
     private final long targetPageSize;
 
     public FlushDataBlockPolicy(int compactionFileLevel) {
-      this.compactionFileLevel = compactionFileLevel;
+      this.compactionTargetFileLevel = compactionFileLevel;
       this.targetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
       this.targetChunkPointNum = IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
       this.targetPageSize = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
@@ -429,10 +429,11 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
 
     private boolean canCompactCurrentPageByDirectlyFlush(
         PageLoader timePage, List<PageLoader> valuePages) {
-      if (compactionFileLevel <= 2) {
-        return canSealCurrentPageWriter() && canFlushPage(timePage, valuePages);
-      } else {
+      boolean isHighLevelCompaction = compactionTargetFileLevel > 2;
+      if (isHighLevelCompaction) {
         return canFlushPage(timePage, valuePages);
+      } else {
+        return canSealCurrentPageWriter() && canFlushPage(timePage, valuePages);
       }
     }
 
