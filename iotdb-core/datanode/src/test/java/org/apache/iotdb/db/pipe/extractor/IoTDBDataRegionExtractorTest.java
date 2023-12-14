@@ -64,9 +64,7 @@ public class IoTDBDataRegionExtractorTest {
               new PipeParameters(
                   new HashMap<String, String>() {
                     {
-                      put(
-                          PipeExtractorConstant.EXTRACTOR_PATTERN_KEY,
-                          "root.a-b");
+                      put(PipeExtractorConstant.EXTRACTOR_PATTERN_KEY, "root.a-b");
                     }
                   })));
     } catch (Exception e) {
