@@ -99,10 +99,10 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
         .getColumnBuilder(0)
         .writeBinary(new Binary(device.getFullPath(), TSFileConfig.STRING_CHARSET));
 
-    String TemplateName = STRING_NULL;
-    int TemplateId = device.getTemplateId();
-    if (TemplateId != -1) {
-      TemplateName = ClusterTemplateManager.getInstance().getTemplate(TemplateId).getName();
+    String templateName = STRING_NULL;
+    int templateId = device.getTemplateId();
+    if (templateId != -1) {
+      templateName = ClusterTemplateManager.getInstance().getTemplate(templateId).getName();
     }
 
     if (hasSgCol) {
@@ -112,14 +112,14 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
           .writeBinary(new Binary(String.valueOf(device.isAligned()), TSFileConfig.STRING_CHARSET));
       builder
           .getColumnBuilder(3)
-          .writeBinary(new Binary(String.valueOf(TemplateName), TSFileConfig.STRING_CHARSET));
+          .writeBinary(new Binary(String.valueOf(templateName), TSFileConfig.STRING_CHARSET));
     } else {
       builder
           .getColumnBuilder(1)
           .writeBinary(new Binary(String.valueOf(device.isAligned()), TSFileConfig.STRING_CHARSET));
       builder
           .getColumnBuilder(2)
-          .writeBinary(new Binary(String.valueOf(TemplateName), TSFileConfig.STRING_CHARSET));
+          .writeBinary(new Binary(String.valueOf(templateName), TSFileConfig.STRING_CHARSET));
     }
     builder.declarePosition();
   }
