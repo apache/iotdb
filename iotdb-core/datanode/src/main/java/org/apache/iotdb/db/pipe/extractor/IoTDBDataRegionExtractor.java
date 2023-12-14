@@ -92,6 +92,7 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
         validator
             .getParameters()
             .getStringOrDefault(EXTRACTOR_PATTERN_KEY, EXTRACTOR_PATTERN_DEFAULT_VALUE));
+
     // Validate extractor.history.enable and extractor.realtime.enable
     validator
         .validateAttributeValueRange(
