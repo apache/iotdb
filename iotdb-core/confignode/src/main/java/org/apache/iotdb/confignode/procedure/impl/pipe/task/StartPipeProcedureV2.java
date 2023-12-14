@@ -62,7 +62,10 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   protected boolean executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("StartPipeProcedureV2: executeFromValidateTask({})", pipeName);
 
-    return pipeTaskInfo.get().checkBeforeStartPipe(pipeName);
+    pipeTaskInfo.get().checkBeforeStartPipe(pipeName);
+
+    return pipeTaskInfo.get().isPipeRunning(pipeName)
+        && !pipeTaskInfo.get().isStoppedByRuntimeException(pipeName);
   }
 
   @Override

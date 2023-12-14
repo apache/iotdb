@@ -84,7 +84,9 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         .getPipePluginCoordinator()
         .getPipePluginInfo()
         .checkBeforeCreatePipe(createPipeRequest);
-    return pipeTaskInfo.get().checkBeforeCreatePipe(createPipeRequest);
+    pipeTaskInfo.get().checkBeforeCreatePipe(createPipeRequest);
+
+    return false;
   }
 
   @Override
