@@ -55,10 +55,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.LOAD_TIMESERIES_METADATA_ALIGNED_DISK;
-import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.LOAD_TIMESERIES_METADATA_ALIGNED_MEM;
-import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.LOAD_TIMESERIES_METADATA_NONALIGNED_DISK;
-import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.LOAD_TIMESERIES_METADATA_NONALIGNED_MEM;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.TIMESERIES_METADATA_MODIFICATION_ALIGNED;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.TIMESERIES_METADATA_MODIFICATION_NONALIGNED;
 
@@ -119,6 +115,7 @@ public class FileLoaderUtils {
    * @param seriesPath Timeseries path
    * @param allSensors measurements queried at the same time of this device
    * @param filter any filter, only used to check time range
+   * @param isSeq if it is a sequence file
    * @throws IOException IOException may be thrown while reading it from disk.
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -127,7 +124,8 @@ public class FileLoaderUtils {
       PartialPath seriesPath,
       QueryContext context,
       Filter filter,
-      Set<String> allSensors)
+      Set<String> allSensors,
+      boolean isSeq)
       throws IOException {
     long t1 = System.nanoTime();
     boolean loadFromMem = false;
@@ -185,11 +183,24 @@ public class FileLoaderUtils {
       }
       return timeSeriesMetadata;
     } finally {
-      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-          loadFromMem
-              ? LOAD_TIMESERIES_METADATA_NONALIGNED_MEM
-              : LOAD_TIMESERIES_METADATA_NONALIGNED_DISK,
-          System.nanoTime() - t1);
+      long costTime = System.nanoTime() - t1;
+      if (loadFromMem) {
+        if (isSeq) {
+          context.loadTimeSeriesMetadataMemSeqCount.getAndAdd(1);
+          context.loadTimeSeriesMetadataMemSeqTime.getAndAdd(costTime);
+        } else {
+          context.loadTimeSeriesMetadataMemUnSeqCount.getAndAdd(1);
+          context.loadTimeSeriesMetadataMemUnSeqTime.getAndAdd(costTime);
+        }
+      } else {
+        if (isSeq) {
+          context.loadTimeSeriesMetadataDiskSeqCount.getAndAdd(1);
+          context.loadTimeSeriesMetadataDiskSeqTime.getAndAdd(costTime);
+        } else {
+          context.loadTimeSeriesMetadataDiskUnSeqCount.getAndAdd(1);
+          context.loadTimeSeriesMetadataDiskUnSeqTime.getAndAdd(costTime);
+        }
+      }
     }
   }
 
@@ -206,7 +217,8 @@ public class FileLoaderUtils {
       AlignedPath alignedPath,
       QueryContext context,
       Filter filter,
-      boolean queryAllSensors)
+      boolean queryAllSensors,
+      boolean isSeq)
       throws IOException {
     final long t1 = System.nanoTime();
     boolean loadFromMem = false;
@@ -248,11 +260,24 @@ public class FileLoaderUtils {
       }
       return alignedTimeSeriesMetadata;
     } finally {
-      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-          loadFromMem
-              ? LOAD_TIMESERIES_METADATA_ALIGNED_MEM
-              : LOAD_TIMESERIES_METADATA_ALIGNED_DISK,
-          System.nanoTime() - t1);
+      long costTime = System.nanoTime() - t1;
+      if (loadFromMem) {
+        if (isSeq) {
+          context.loadTimeSeriesMetadataAlignedMemSeqCount.getAndAdd(1);
+          context.loadTimeSeriesMetadataAlignedMemSeqTime.getAndAdd(costTime);
+        } else {
+          context.loadTimeSeriesMetadataAlignedMemUnSeqCount.getAndAdd(1);
+          context.loadTimeSeriesMetadataAlignedMemUnSeqTime.getAndAdd(costTime);
+        }
+      } else {
+        if (isSeq) {
+          context.loadTimeSeriesMetadataAlignedDiskSeqCount.getAndAdd(1);
+          context.loadTimeSeriesMetadataAlignedDiskSeqTime.getAndAdd(costTime);
+        } else {
+          context.loadTimeSeriesMetadataAlignedDiskUnSeqCount.getAndAdd(1);
+          context.loadTimeSeriesMetadataAlignedDiskUnSeqTime.getAndAdd(costTime);
+        }
+      }
     }
   }
 

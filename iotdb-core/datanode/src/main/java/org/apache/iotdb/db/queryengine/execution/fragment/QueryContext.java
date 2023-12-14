@@ -37,9 +37,27 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** QueryContext contains the shared information with in a query. */
 public class QueryContext {
+  public AtomicLong loadTimeSeriesMetadataDiskSeqCount = new AtomicLong(0);
+  public AtomicLong loadTimeSeriesMetadataDiskUnSeqCount = new AtomicLong(0);
+  public AtomicLong loadTimeSeriesMetadataMemSeqCount = new AtomicLong(0);
+  public AtomicLong loadTimeSeriesMetadataMemUnSeqCount = new AtomicLong(0);
+  public AtomicLong loadTimeSeriesMetadataAlignedDiskSeqCount = new AtomicLong(0);
+  public AtomicLong loadTimeSeriesMetadataAlignedDiskUnSeqCount = new AtomicLong(0);
+  public AtomicLong loadTimeSeriesMetadataAlignedMemSeqCount = new AtomicLong(0);
+  public AtomicLong loadTimeSeriesMetadataAlignedMemUnSeqCount = new AtomicLong(0);
+
+  public AtomicLong loadTimeSeriesMetadataDiskSeqTime = new AtomicLong(0);
+  public AtomicLong loadTimeSeriesMetadataDiskUnSeqTime = new AtomicLong(0);
+  public AtomicLong loadTimeSeriesMetadataMemSeqTime = new AtomicLong(0);
+  public AtomicLong loadTimeSeriesMetadataMemUnSeqTime = new AtomicLong(0);
+  public AtomicLong loadTimeSeriesMetadataAlignedDiskSeqTime = new AtomicLong(0);
+  public AtomicLong loadTimeSeriesMetadataAlignedDiskUnSeqTime = new AtomicLong(0);
+  public AtomicLong loadTimeSeriesMetadataAlignedMemSeqTime = new AtomicLong(0);
+  public AtomicLong loadTimeSeriesMetadataAlignedMemUnSeqTime = new AtomicLong(0);
 
   /**
    * The key is the path of a ModificationFile and the value is all Modifications in this file. We

@@ -25,6 +25,8 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
+import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
@@ -48,6 +50,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet.QUERY_FRAGMENT_EXECUTION_TIME;
 
 public class FragmentInstanceContext extends QueryContext {
 
@@ -450,6 +454,23 @@ public class FragmentInstanceContext extends QueryContext {
     sourcePaths = null;
     sharedQueryDataSource = null;
     releaseDataNodeQueryContext();
+
+    // record fragment instance execution time and metadata get time to metrics
+    long durationTime = System.currentTimeMillis() - executionStartTime.get();
+    QueryRelatedResourceMetricSet.getInstance()
+        .recordExecutionTimeCost(QUERY_FRAGMENT_EXECUTION_TIME, durationTime);
+    SeriesScanCostMetricSet.getInstance()
+        .recordNonAlignedSeriesExecutionTime(
+            loadTimeSeriesMetadataDiskSeqTime.get(),
+            loadTimeSeriesMetadataDiskUnSeqTime.get(),
+            loadTimeSeriesMetadataMemSeqTime.get(),
+            loadTimeSeriesMetadataMemUnSeqTime.get());
+    SeriesScanCostMetricSet.getInstance()
+        .recordAlignedSeriesExecutionTime(
+            loadTimeSeriesMetadataAlignedDiskSeqTime.get(),
+            loadTimeSeriesMetadataAlignedDiskUnSeqTime.get(),
+            loadTimeSeriesMetadataAlignedMemSeqTime.get(),
+            loadTimeSeriesMetadataAlignedMemUnSeqTime.get());
   }
 
   private void releaseDataNodeQueryContext() {

@@ -75,7 +75,7 @@ public class DataNodeMetricsHelper {
     MetricService.getInstance().addMetricSet(DataExchangeCostMetricSet.getInstance());
     MetricService.getInstance().addMetricSet(DataExchangeCountMetricSet.getInstance());
     MetricService.getInstance().addMetricSet(DriverSchedulerMetricSet.getInstance());
-    MetricService.getInstance().addMetricSet(new QueryRelatedResourceMetricSet());
+    MetricService.getInstance().addMetricSet(QueryRelatedResourceMetricSet.getInstance());
 
     // bind performance overview related metrics
     MetricService.getInstance().addMetricSet(PerformanceOverviewMetrics.getInstance());

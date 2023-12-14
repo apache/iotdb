@@ -32,6 +32,7 @@ import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.queryengine.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler;
 import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
+import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.PipelineDriverFactory;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
@@ -204,6 +205,8 @@ public class FragmentInstanceManager {
         return createFailedInstanceInfo(instanceId);
       }
     } finally {
+      QueryRelatedResourceMetricSet.getInstance()
+          .updateFragmentInstance(instanceContext.size(), instanceExecution.size());
       QUERY_EXECUTION_METRIC_SET.recordExecutionCost(
           LOCAL_EXECUTION_PLANNER, System.nanoTime() - startTime);
     }
