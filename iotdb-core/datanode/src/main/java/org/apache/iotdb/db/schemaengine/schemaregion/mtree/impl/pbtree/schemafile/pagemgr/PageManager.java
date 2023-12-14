@@ -167,7 +167,10 @@ public abstract class PageManager implements IPageManager {
     return 0L;
   }
 
-  /** Block write operation if page cache oversize */
+  /**
+   * A rough cache size guardian, all threads passed this entrant check will not be limited with
+   * cache size anymore. TODO A better guardian is based on constraint per thread.
+   */
   protected void cacheGuardian() {
     cacheLock.lock();
     try {
@@ -181,7 +184,7 @@ public abstract class PageManager implements IPageManager {
           while (iterator.hasNext()) {
             p = iterator.next();
 
-            if (size < pageSizeLimit) {
+            if (size <= pageSizeLimit) {
               break;
             }
 
@@ -245,7 +248,7 @@ public abstract class PageManager implements IPageManager {
           }
         }
 
-        if (pageInstCache.size() < SchemaFileConfig.PAGE_CACHE_SIZE) {
+        if (pageInstCache.size() <= SchemaFileConfig.PAGE_CACHE_SIZE) {
           cacheFull.signal();
         }
       } finally {
@@ -254,6 +257,7 @@ public abstract class PageManager implements IPageManager {
     }
   }
 
+  /** locking in the order of page index to avoid deadlock. */
   protected void entrantLock(ICachedMNode node, SchemaPageContext cxt)
       throws IOException, MetadataException {
     int initPageIndex = getPageIndex(getNodeAddress(node));
@@ -274,6 +278,15 @@ public abstract class PageManager implements IPageManager {
 
       int minPageIndex = Math.min(initPageIndex, parIndex);
       int maxPageIndex = Math.max(initPageIndex, parIndex);
+
+      // as InternalPage will not transplant, its parent pointer needs no lock
+      page = getPageInstance(initPageIndex, cxt);
+      if (page.getAsInternalPage() != null) {
+        page.getLock().writeLock().lock();
+        cxt.traceLock(page);
+        cxt.indexBuckets.sortIntoBucket(page, (short) -1);
+        return;
+      }
 
       if (minPageIndex > 0) {
         page = getPageInstance(minPageIndex, cxt);
@@ -705,7 +718,8 @@ public abstract class PageManager implements IPageManager {
       return cxt.referredPages.get(pageIdx);
     }
 
-    // lock for no duplicate page with same index from disk
+    // lock for no duplicate page with same index from disk, and guarantees page will not be evicted
+    //  by other thread before referred by current thread
     cacheLock.lock();
     try {
       ISchemaPage page = pageInstCache.get(pageIdx);
