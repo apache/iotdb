@@ -19,4 +19,39 @@
 
 package org.apache.iotdb.db.queryengine.load.scheduler;
 
-public class LoadTsFileSchedulerManager {}
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
+import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
+
+public class LoadTsFileSchedulerManager {
+  private LoadTsFileSplitterManager splitterManager;
+
+  private LoadTsFileSchedulerManager() {}
+
+  public LoadTsFileSchedulerNew submit(
+      DistributedQueryPlan distributedQueryPlan,
+      MPPQueryContext queryContext,
+      QueryStateMachine stateMachine,
+      IPartitionFetcher partitionFetcher,
+      boolean isGeneratedByPipe) {
+    if (splitterManager == null) {
+      splitterManager = new LoadTsFileSplitterManager();
+    }
+    return new LoadTsFileSchedulerNew(
+        distributedQueryPlan,
+        queryContext,
+        stateMachine,
+        partitionFetcher,
+        isGeneratedByPipe,
+        splitterManager);
+  }
+
+  private static class LoadTsFileSchedulerManagerHolder {
+    private static final LoadTsFileSchedulerManager INSTANCE = new LoadTsFileSchedulerManager();
+  }
+
+  public static LoadTsFileSchedulerManager getInstance() {
+    return LoadTsFileSchedulerManagerHolder.INSTANCE;
+  }
+}
