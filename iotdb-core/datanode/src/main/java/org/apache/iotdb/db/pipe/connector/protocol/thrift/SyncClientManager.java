@@ -77,11 +77,15 @@ public class SyncClientManager {
   public void initClients() throws IOException, TTransportException {
     // init clients
     for (TEndPoint endPoint : endPoints) {
-      if (endPoint2client.containsKey(endPoint)) {
-        continue;
+      if (!endPoint2client.containsKey(endPoint)) {
+        // init
+        Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus = initAndGetClient(endPoint);
+        endPoint2client.put(endPoint, clientAndStatus);
+      } else if (Boolean.FALSE.equals(endPoint2client.get(endPoint).getRight())) {
+        // reconnect
+        Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus = initAndGetClient(endPoint);
+        endPoint2client.replace(endPoint, clientAndStatus);
       }
-      Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus = initAndGetClient(endPoint);
-      endPoint2client.putIfAbsent(endPoint, clientAndStatus);
     }
     // check whether any clients are available
     for (TEndPoint nodeUrl : endPoint2client.keySet()) {
