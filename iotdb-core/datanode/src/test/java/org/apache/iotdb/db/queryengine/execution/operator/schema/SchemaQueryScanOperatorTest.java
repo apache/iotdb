@@ -128,7 +128,7 @@ public class SchemaQueryScanOperatorTest {
                 assertEquals("false", tsBlock.getColumn(j).getBinary(i).toString());
                 break;
               case 3:
-                assertEquals("null",tsBlock.getColumn(j).getBinary(i).toString());
+                assertEquals("null", tsBlock.getColumn(j).getBinary(i).toString());
                 break;
               default:
                 break;
