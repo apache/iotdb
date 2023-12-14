@@ -726,9 +726,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualIT {
     connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
     AtomicInteger successCount = new AtomicInteger(0);
-    final int count = 10;
     List<Thread> threads = new ArrayList<>();
-    for (int i = 0; i < count; ++i) {
+    for (int i = 0; i < 10; ++i) {
       Thread t =
           new Thread(
               () -> {
@@ -759,10 +758,10 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualIT {
     for (Thread t : threads) {
       t.join();
     }
-    Assert.assertEquals(count, successCount.get());
+    Assert.assertEquals(1, successCount.get());
 
     successCount.set(0);
-    for (int i = 0; i < count; ++i) {
+    for (int i = 0; i < 10; ++i) {
       Thread t =
           new Thread(
               () -> {
@@ -789,7 +788,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualIT {
       t.join();
     }
 
-    Assert.assertEquals(count, successCount.get());
+    Assert.assertEquals(10, successCount.get());
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;

@@ -928,7 +928,7 @@ public class ProcedureManager {
         if (Objects.nonNull(finishedProcedure.getResult())) {
           statusList.add(
               RpcUtils.getStatus(
-                  TSStatusCode.SUCCESS_STATUS, Arrays.toString(finishedProcedure.getResult())));
+                  StatusUtils.OK.code, Arrays.toString(finishedProcedure.getResult())));
         } else {
           statusList.add(StatusUtils.OK);
         }
