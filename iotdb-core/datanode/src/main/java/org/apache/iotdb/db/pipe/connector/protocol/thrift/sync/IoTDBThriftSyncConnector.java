@@ -53,6 +53,7 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,6 +68,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR;
 import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_SSL_CONNECTOR;
 import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_SSL_SINK;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_KEY;
@@ -104,7 +106,11 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
     final PipeParameters parameters = validator.getParameters();
 
     final String userSpecifiedConnectorName =
-        parameters.getStringByKeys(CONNECTOR_KEY, SINK_KEY).toLowerCase();
+        parameters
+            .getStringOrDefault(
+                ImmutableList.of(CONNECTOR_KEY, SINK_KEY),
+                IOTDB_THRIFT_CONNECTOR.getPipePluginName())
+            .toLowerCase();
     final Set<TEndPoint> givenNodeUrls = parseNodeUrls(parameters);
 
     validator
@@ -153,7 +159,11 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
     }
 
     final String userSpecifiedConnectorName =
-        parameters.getStringByKeys(CONNECTOR_KEY, SINK_KEY).toLowerCase();
+        parameters
+            .getStringOrDefault(
+                ImmutableList.of(CONNECTOR_KEY, SINK_KEY),
+                IOTDB_THRIFT_CONNECTOR.getPipePluginName())
+            .toLowerCase();
     useSSL =
         IOTDB_THRIFT_SSL_CONNECTOR.getPipePluginName().equals(userSpecifiedConnectorName)
             || IOTDB_THRIFT_SSL_SINK.getClassName().equals(userSpecifiedConnectorName)
