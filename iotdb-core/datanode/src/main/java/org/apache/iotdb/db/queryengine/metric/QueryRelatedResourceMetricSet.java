@@ -35,10 +35,8 @@ import org.apache.iotdb.metrics.utils.MetricType;
 
 public class QueryRelatedResourceMetricSet implements IMetricSet {
 
-  private static final QueryRelatedResourceMetricSet INSTANCE = new QueryRelatedResourceMetricSet();
-
-  private QueryRelatedResourceMetricSet() {
-    // empty constructor
+  public static QueryRelatedResourceMetricSet getInstance() {
+    return QueryRelatedResourceMetricSet.InstanceHolder.INSTANCE;
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -51,7 +49,10 @@ public class QueryRelatedResourceMetricSet implements IMetricSet {
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // FragmentInstanceManager
   /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  private static final String FRAGMENT_INSTANCE_TIME = "fragment_instance_time";
   private static final String FRAGMENT_INSTANCE_EXECUTION_TIME = "fragment_instance_execution_time";
+  private static final String FRAGMENT_INSTANCE_SIZE = "fragment_instance_size";
   private static final String FRAGMENT_INSTANCE_CONTEXT_SIZE = "fragment_instance_context_size";
   private static final String FRAGMENT_INSTANCE_EXECUTION_SIZE = "fragment_instance_execution_size";
   private static final String FRAGMENT_INSTANCE_DRIVER_SIZE = "fragment_instance_driver_size";
@@ -68,21 +69,12 @@ public class QueryRelatedResourceMetricSet implements IMetricSet {
       long fragmentInstanceContextSize,
       long fragmentInstanceExecutionSize,
       long fragmentInstanceDriverSize) {
-
-    System.out.println(
-        "=============== size "
-            + fragmentInstanceContextSize
-            + ","
-            + fragmentInstanceExecutionSize
-            + ","
-            + fragmentInstanceDriverSize);
-
     fragmentInstanceContextSizeHistogram.update(fragmentInstanceContextSize);
     fragmentInstanceExecutionSizeHistogram.update(fragmentInstanceExecutionSize);
     fragmentInstanceDriverSizeHistogram.update(fragmentInstanceDriverSize);
   }
 
-  public void recordFragmentInstanceExecutionTime(long cost) {
+  public void updateFragmentInstanceTime(long cost) {
     fragmentInstanceExecutionTimer.updateMillis(cost);
   }
 
@@ -122,26 +114,34 @@ public class QueryRelatedResourceMetricSet implements IMetricSet {
     // FragmentInstanceManager
     fragmentInstanceExecutionTimer =
         metricService.getOrCreateTimer(
-            Metric.FRAGMENT_INSTANCE_STATISTICS.toString(),
+            Metric.FRAGMENT_INSTANCE_MANAGER.toString(),
             MetricLevel.IMPORTANT,
-            Tag.STAGE.toString(),
+            Tag.TYPE.toString(),
+            FRAGMENT_INSTANCE_TIME,
+            Tag.NAME.toString(),
             FRAGMENT_INSTANCE_EXECUTION_TIME);
     fragmentInstanceContextSizeHistogram =
         metricService.getOrCreateHistogram(
             Metric.FRAGMENT_INSTANCE_MANAGER.toString(),
             MetricLevel.IMPORTANT,
+            Tag.TYPE.toString(),
+            FRAGMENT_INSTANCE_SIZE,
             Tag.NAME.toString(),
             FRAGMENT_INSTANCE_CONTEXT_SIZE);
     fragmentInstanceExecutionSizeHistogram =
         metricService.getOrCreateHistogram(
             Metric.FRAGMENT_INSTANCE_MANAGER.toString(),
             MetricLevel.IMPORTANT,
+            Tag.TYPE.toString(),
+            FRAGMENT_INSTANCE_SIZE,
             Tag.NAME.toString(),
             FRAGMENT_INSTANCE_EXECUTION_SIZE);
     fragmentInstanceDriverSizeHistogram =
         metricService.getOrCreateHistogram(
             Metric.FRAGMENT_INSTANCE_MANAGER.toString(),
             MetricLevel.IMPORTANT,
+            Tag.TYPE.toString(),
+            FRAGMENT_INSTANCE_SIZE,
             Tag.NAME.toString(),
             FRAGMENT_INSTANCE_DRIVER_SIZE);
 
@@ -190,22 +190,30 @@ public class QueryRelatedResourceMetricSet implements IMetricSet {
     // FragmentInstanceManager
     metricService.remove(
         MetricType.TIMER,
-        Metric.FRAGMENT_INSTANCE_STATISTICS.toString(),
+        Metric.FRAGMENT_INSTANCE_MANAGER.toString(),
+        Tag.TYPE.toString(),
+        FRAGMENT_INSTANCE_TIME,
         Tag.NAME.toString(),
         FRAGMENT_INSTANCE_EXECUTION_TIME);
     metricService.remove(
         MetricType.HISTOGRAM,
         Metric.FRAGMENT_INSTANCE_MANAGER.toString(),
+        Tag.TYPE.toString(),
+        FRAGMENT_INSTANCE_SIZE,
         Tag.NAME.toString(),
         FRAGMENT_INSTANCE_CONTEXT_SIZE);
     metricService.remove(
         MetricType.HISTOGRAM,
         Metric.FRAGMENT_INSTANCE_MANAGER.toString(),
+        Tag.TYPE.toString(),
+        FRAGMENT_INSTANCE_SIZE,
         Tag.NAME.toString(),
         FRAGMENT_INSTANCE_EXECUTION_SIZE);
     metricService.remove(
         MetricType.HISTOGRAM,
         Metric.FRAGMENT_INSTANCE_MANAGER.toString(),
+        Tag.TYPE.toString(),
+        FRAGMENT_INSTANCE_SIZE,
         Tag.NAME.toString(),
         FRAGMENT_INSTANCE_DRIVER_SIZE);
 
@@ -225,7 +233,14 @@ public class QueryRelatedResourceMetricSet implements IMetricSet {
         FREE_MEMORY_FOR_OPERATORS);
   }
 
-  public static QueryRelatedResourceMetricSet getInstance() {
-    return INSTANCE;
+  private QueryRelatedResourceMetricSet() {
+    // empty constructor
+  }
+
+  private static class InstanceHolder {
+    private InstanceHolder() {}
+
+    private static final QueryRelatedResourceMetricSet INSTANCE =
+        new QueryRelatedResourceMetricSet();
   }
 }

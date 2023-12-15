@@ -86,6 +86,7 @@ public enum Metric {
   OPERATOR_EXECUTION_COST("operator_execution_cost"),
   OPERATOR_EXECUTION_COUNT("operator_execution_count"),
   SERIES_SCAN_COST("series_scan_cost"),
+  METRIC_LOAD_TIME_SERIES_METADATA("metric_load_time_series_metadata"),
   QUERY_METADATA_COST("query_metadata_cost"),
   DISPATCHER("dispatcher"),
   QUERY_EXECUTION("query_execution"),
@@ -97,7 +98,6 @@ public enum Metric {
   DRIVER_SCHEDULER("driver_scheduler"),
   COORDINATOR("coordinator"),
   FRAGMENT_INSTANCE_MANAGER("fragment_instance_manager"),
-  FRAGMENT_INSTANCE_STATISTICS("fragment_instance_statistics"),
   MEMORY_POOL("memory_pool"),
   LOCAL_EXECUTION_PLANNER("local_execution_planner"),
   // file related

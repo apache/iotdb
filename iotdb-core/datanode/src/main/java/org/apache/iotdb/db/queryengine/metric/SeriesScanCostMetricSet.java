@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
@@ -38,7 +39,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
   private static final Logger LOGGER = LoggerFactory.getLogger(SeriesScanCostMetricSet.class);
 
   public static SeriesScanCostMetricSet getInstance() {
-    return INSTANCE;
+    return SeriesScanCostMetricSet.InstanceHolder.INSTANCE;
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -53,6 +54,24 @@ public class SeriesScanCostMetricSet implements IMetricSet {
   public static final String SEQUENCE = "sequence";
   public static final String UNSEQUENCE = "unsequence";
 
+  public Histogram loadTimeSeriesMetadataDiskSeqHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  public Histogram loadTimeSeriesMetadataDiskUnSeqHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  public Histogram loadTimeSeriesMetadataMemSeqHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  public Histogram loadTimeSeriesMetadataMemUnSeqHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+
+  public Histogram loadTimeSeriesMetadataAlignedDiskSeqHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  public Histogram loadTimeSeriesMetadataAlignedDiskUnSeqHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  public Histogram loadTimeSeriesMetadataAlignedMemSeqHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  public Histogram loadTimeSeriesMetadataAlignedMemUnSeqHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+
   public Timer loadTimeSeriesMetadataDiskSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
   public Timer loadTimeSeriesMetadataDiskUnSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
   public Timer loadTimeSeriesMetadataMemSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
@@ -63,11 +82,25 @@ public class SeriesScanCostMetricSet implements IMetricSet {
   public Timer loadTimeSeriesMetadataAlignedMemSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
   public Timer loadTimeSeriesMetadataAlignedMemUnSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
 
+  public void recordNonAlignedSeriesExecutionCount(long c1, long c2, long c3, long c4) {
+    loadTimeSeriesMetadataDiskSeqHistogram.update(c1);
+    loadTimeSeriesMetadataDiskUnSeqHistogram.update(c2);
+    loadTimeSeriesMetadataMemSeqHistogram.update(c3);
+    loadTimeSeriesMetadataMemUnSeqHistogram.update(c4);
+  }
+
   public void recordNonAlignedSeriesExecutionTime(long t1, long t2, long t3, long t4) {
     loadTimeSeriesMetadataDiskSeqTime.updateNanos(t1);
     loadTimeSeriesMetadataDiskUnSeqTime.updateNanos(t2);
     loadTimeSeriesMetadataMemSeqTime.updateNanos(t3);
     loadTimeSeriesMetadataMemUnSeqTime.updateNanos(t4);
+  }
+
+  public void recordAlignedSeriesExecutionCount(long c1, long c2, long c3, long c4) {
+    loadTimeSeriesMetadataAlignedDiskSeqHistogram.update(c1);
+    loadTimeSeriesMetadataAlignedDiskUnSeqHistogram.update(c2);
+    loadTimeSeriesMetadataAlignedMemSeqHistogram.update(c3);
+    loadTimeSeriesMetadataAlignedMemUnSeqHistogram.update(c4);
   }
 
   public void recordAlignedSeriesExecutionTime(long t1, long t2, long t3, long t4) {
@@ -78,6 +111,47 @@ public class SeriesScanCostMetricSet implements IMetricSet {
   }
 
   private void bindTimeseriesMetadata(AbstractMetricService metricService) {
+    loadTimeSeriesMetadataDiskSeqHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.METRIC_LOAD_TIME_SERIES_METADATA.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            LOAD_TIMESERIES_METADATA,
+            Tag.TYPE.toString(),
+            SEQUENCE,
+            Tag.FROM.toString(),
+            DISK);
+    loadTimeSeriesMetadataDiskUnSeqHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.METRIC_LOAD_TIME_SERIES_METADATA.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            LOAD_TIMESERIES_METADATA,
+            Tag.TYPE.toString(),
+            UNSEQUENCE,
+            Tag.FROM.toString(),
+            DISK);
+    loadTimeSeriesMetadataMemSeqHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.METRIC_LOAD_TIME_SERIES_METADATA.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            LOAD_TIMESERIES_METADATA,
+            Tag.TYPE.toString(),
+            SEQUENCE,
+            Tag.FROM.toString(),
+            MEM);
+    loadTimeSeriesMetadataMemUnSeqHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.METRIC_LOAD_TIME_SERIES_METADATA.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            LOAD_TIMESERIES_METADATA,
+            Tag.TYPE.toString(),
+            UNSEQUENCE,
+            Tag.FROM.toString(),
+            MEM);
+
     loadTimeSeriesMetadataDiskSeqTime =
         metricService.getOrCreateTimer(
             Metric.SERIES_SCAN_COST.toString(),
@@ -121,6 +195,47 @@ public class SeriesScanCostMetricSet implements IMetricSet {
   }
 
   private void bindAlignedTimeseriesMetadata(AbstractMetricService metricService) {
+    loadTimeSeriesMetadataAlignedDiskSeqHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.METRIC_LOAD_TIME_SERIES_METADATA.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            LOAD_ALIGNED_TIMESERIES_METADATA,
+            Tag.TYPE.toString(),
+            SEQUENCE,
+            Tag.FROM.toString(),
+            DISK);
+    loadTimeSeriesMetadataAlignedDiskUnSeqHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.METRIC_LOAD_TIME_SERIES_METADATA.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            LOAD_ALIGNED_TIMESERIES_METADATA,
+            Tag.TYPE.toString(),
+            UNSEQUENCE,
+            Tag.FROM.toString(),
+            DISK);
+    loadTimeSeriesMetadataAlignedMemSeqHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.METRIC_LOAD_TIME_SERIES_METADATA.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            LOAD_ALIGNED_TIMESERIES_METADATA,
+            Tag.TYPE.toString(),
+            SEQUENCE,
+            Tag.FROM.toString(),
+            MEM);
+    loadTimeSeriesMetadataAlignedMemUnSeqHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.METRIC_LOAD_TIME_SERIES_METADATA.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            LOAD_ALIGNED_TIMESERIES_METADATA,
+            Tag.TYPE.toString(),
+            UNSEQUENCE,
+            Tag.FROM.toString(),
+            MEM);
+
     loadTimeSeriesMetadataAlignedDiskSeqTime =
         metricService.getOrCreateTimer(
             Metric.SERIES_SCAN_COST.toString(),
@@ -164,6 +279,15 @@ public class SeriesScanCostMetricSet implements IMetricSet {
   }
 
   private void unbindTimeseriesMetadata(AbstractMetricService metricService) {
+    loadTimeSeriesMetadataDiskSeqHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    loadTimeSeriesMetadataDiskUnSeqHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    loadTimeSeriesMetadataMemSeqHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    loadTimeSeriesMetadataMemUnSeqHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    loadTimeSeriesMetadataAlignedDiskSeqHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    loadTimeSeriesMetadataAlignedDiskUnSeqHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    loadTimeSeriesMetadataAlignedMemSeqHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    loadTimeSeriesMetadataAlignedMemUnSeqHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+
     loadTimeSeriesMetadataDiskSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
     loadTimeSeriesMetadataDiskUnSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
     loadTimeSeriesMetadataMemSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
@@ -175,25 +299,27 @@ public class SeriesScanCostMetricSet implements IMetricSet {
 
     for (String type : Arrays.asList(ALIGNED, NON_ALIGNED)) {
       for (String from : Arrays.asList(MEM, DISK)) {
-        metricService.remove(
-            MetricType.TIMER,
-            Metric.SERIES_SCAN_COST.toString(),
-            Tag.STAGE.toString(),
-            LOAD_TIMESERIES_METADATA,
-            Tag.TYPE.toString(),
-            type,
-            Tag.FROM.toString(),
-            from);
+        for (MetricType metricType : Arrays.asList(MetricType.TIMER, MetricType.HISTOGRAM)) {
+          metricService.remove(
+              metricType,
+              Metric.SERIES_SCAN_COST.toString(),
+              Tag.STAGE.toString(),
+              LOAD_TIMESERIES_METADATA,
+              Tag.TYPE.toString(),
+              type,
+              Tag.FROM.toString(),
+              from);
 
-        metricService.remove(
-            MetricType.TIMER,
-            Metric.SERIES_SCAN_COST.toString(),
-            Tag.STAGE.toString(),
-            LOAD_ALIGNED_TIMESERIES_METADATA,
-            Tag.TYPE.toString(),
-            type,
-            Tag.FROM.toString(),
-            from);
+          metricService.remove(
+              metricType,
+              Metric.SERIES_SCAN_COST.toString(),
+              Tag.STAGE.toString(),
+              LOAD_ALIGNED_TIMESERIES_METADATA,
+              Tag.TYPE.toString(),
+              type,
+              Tag.FROM.toString(),
+              from);
+        }
       }
     }
   }
@@ -1041,7 +1167,11 @@ public class SeriesScanCostMetricSet implements IMetricSet {
     }
   }
 
-  private static final SeriesScanCostMetricSet INSTANCE = new SeriesScanCostMetricSet();
+  private static class InstanceHolder {
+    private InstanceHolder() {}
+
+    private static final SeriesScanCostMetricSet INSTANCE = new SeriesScanCostMetricSet();
+  }
 
   private SeriesScanCostMetricSet() {
     // empty constructor

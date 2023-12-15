@@ -455,13 +455,26 @@ public class FragmentInstanceContext extends QueryContext {
 
     // record fragment instance execution time and metadata get time to metrics
     long durationTime = System.currentTimeMillis() - executionStartTime.get();
-    QueryRelatedResourceMetricSet.getInstance().recordFragmentInstanceExecutionTime(durationTime);
+    QueryRelatedResourceMetricSet.getInstance().updateFragmentInstanceTime(durationTime);
+    SeriesScanCostMetricSet.getInstance()
+        .recordNonAlignedSeriesExecutionCount(
+            loadTimeSeriesMetadataDiskSeqCount.get(),
+            loadTimeSeriesMetadataDiskUnSeqCount.get(),
+            loadTimeSeriesMetadataMemSeqCount.get(),
+            loadTimeSeriesMetadataMemUnSeqCount.get());
     SeriesScanCostMetricSet.getInstance()
         .recordNonAlignedSeriesExecutionTime(
             loadTimeSeriesMetadataDiskSeqTime.get(),
             loadTimeSeriesMetadataDiskUnSeqTime.get(),
             loadTimeSeriesMetadataMemSeqTime.get(),
             loadTimeSeriesMetadataMemUnSeqTime.get());
+
+    SeriesScanCostMetricSet.getInstance()
+        .recordAlignedSeriesExecutionCount(
+            loadTimeSeriesMetadataAlignedDiskSeqCount.get(),
+            loadTimeSeriesMetadataAlignedDiskUnSeqCount.get(),
+            loadTimeSeriesMetadataAlignedMemSeqCount.get(),
+            loadTimeSeriesMetadataAlignedMemUnSeqCount.get());
     SeriesScanCostMetricSet.getInstance()
         .recordAlignedSeriesExecutionTime(
             loadTimeSeriesMetadataAlignedDiskSeqTime.get(),
