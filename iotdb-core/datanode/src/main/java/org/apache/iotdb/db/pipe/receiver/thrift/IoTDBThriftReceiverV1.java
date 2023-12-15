@@ -41,12 +41,14 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
+import org.apache.iotdb.db.pipe.receiver.PipePlanToStatementVisitor;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
+import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
@@ -144,7 +146,10 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
           case TRANSFER_CONFIG_PLAN:
             return handleTransferConfigPlan((TransferConfigPlanReq) req);
           case TRANSFER_SCHEMA_PLAN:
-            return handleTransferSchemaPlan((PipeTransferSchemaPlanReq) req);
+            return handleTransferSchemaPlan(
+                PipeTransferSchemaPlanReq.fromTPipeTransferReq(req),
+                partitionFetcher,
+                schemaFetcher);
           case TRANSFER_SNAPSHOT_PIECE:
             return handleTransferSnapshotPiece((PipeTransferSnapshotPieceReq) req);
           case TRANSFER_SNAPSHOT_SEAL:
@@ -514,13 +519,19 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
   }
 
   private TPipeTransferResp handleTransferConfigPlan(TransferConfigPlanReq req) {
-    // TODO
-    return new TPipeTransferResp();
+    return new TPipeTransferResp(
+        ClusterConfigTaskExecutor.getInstance().executeSyncCommand(req.body));
   }
 
-  private TPipeTransferResp handleTransferSchemaPlan(PipeTransferSchemaPlanReq req) {
-    // TODO
-    return new TPipeTransferResp();
+  private TPipeTransferResp handleTransferSchemaPlan(
+      PipeTransferSchemaPlanReq req,
+      IPartitionFetcher partitionFetcher,
+      ISchemaFetcher schemaFetcher) {
+    return new TPipeTransferResp(
+        executeStatement(
+            new PipePlanToStatementVisitor().process(req.getPlanNode(), null),
+            partitionFetcher,
+            schemaFetcher));
   }
 
   private TPipeTransferResp handleTransferSnapshotPiece(PipeTransferSnapshotPieceReq req) {

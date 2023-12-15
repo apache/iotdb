@@ -1680,24 +1680,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> executeSyncCommand(ByteBuffer configPhysicalPlanBinary) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TSStatus tsStatus = configNodeClient.executeSyncCommand(configPhysicalPlanBinary);
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn("Failed to executeSyncCommand, status is {}.", tsStatus);
-        future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
-      } else {
-        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-      }
-    } catch (Exception e) {
-      future.setException(e);
-    }
-    return future;
-  }
-
-  @Override
   public SettableFuture<ConfigTaskResult> deleteTimeSeries(
       String queryId, DeleteTimeSeriesStatement deleteTimeSeriesStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
@@ -2345,5 +2327,21 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       LOGGER.error(e.getMessage());
     }
     return spaceQuotaResp;
+  }
+
+  @Override
+  public TSStatus executeSyncCommand(ByteBuffer configPhysicalPlanBinary) {
+    TSStatus tsStatus;
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      tsStatus = configNodeClient.executeSyncCommand(configPhysicalPlanBinary);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        LOGGER.warn("Failed to executeSyncCommand, status is {}.", tsStatus);
+      }
+    } catch (Exception e) {
+      tsStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      tsStatus.setMessage(e.toString());
+    }
+    return tsStatus;
   }
 }
