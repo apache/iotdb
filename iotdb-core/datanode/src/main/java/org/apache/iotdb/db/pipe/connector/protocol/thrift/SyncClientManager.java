@@ -142,11 +142,13 @@ public class SyncClientManager {
 
   public void updateOrCreate(String deviceId, TEndPoint endPoint) {
     try {
+      Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus = initAndGetClient(endPoint);
       if (!endPoint2client.containsKey(endPoint)) {
         endPoints.add(endPoint);
-        Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus = initAndGetClient(endPoint);
         endPoint2client.put(endPoint, clientAndStatus);
         leaderCacheManager.updateOrCreate(deviceId, endPoint);
+      } else {
+        endPoint2client.replace(endPoint, clientAndStatus);
       }
     } catch (TTransportException e) {
       LOGGER.warn(
