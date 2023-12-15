@@ -74,6 +74,12 @@ public abstract class Filter {
    */
   public abstract boolean satisfyRow(long time, Object[] values);
 
+  /**
+   * To examine whether the page(with many rows) is satisfied with the filter.
+   *
+   * @param tsBlock page data
+   * @return for each row, true if the row is satisfied with the filter, false otherwise
+   */
   public abstract boolean[] satisfyTsBlock(TsBlock tsBlock);
 
   /**

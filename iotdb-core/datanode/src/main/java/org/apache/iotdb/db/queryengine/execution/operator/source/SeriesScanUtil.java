@@ -654,7 +654,7 @@ public class SeriesScanUtil {
         return null;
       }
 
-      firstPageReader.setPushDownFilter(scanOptions.getPushDownFilter());
+      firstPageReader.addPushDownFilter(scanOptions.getPushDownFilter());
       TsBlock tsBlock;
       if (orderUtils.getAscending()) {
         firstPageReader.setLimitOffset(paginationController);
@@ -1136,7 +1136,6 @@ public class SeriesScanUtil {
     ITimeSeriesMetadata timeseriesMetadata =
         loadTimeSeriesMetadata(orderUtils.getNextUnseqFileResource(true), seriesPath, context);
     if (timeseriesMetadata != null) {
-      timeseriesMetadata.setModified(true);
       timeseriesMetadata.setSeq(false);
       unSeqTimeSeriesMetadata.add(timeseriesMetadata);
     }
@@ -1161,7 +1160,7 @@ public class SeriesScanUtil {
   }
 
   protected boolean timeAllSelected(IMetadata metadata) {
-    return metadata.timeAllSelected();
+    return true;
   }
 
   private boolean filterAllSatisfy(Filter filter, IMetadata metadata) {
@@ -1221,7 +1220,7 @@ public class SeriesScanUtil {
       }
     }
 
-    void setPushDownFilter(Filter pushDownFilter) {
+    void addPushDownFilter(Filter pushDownFilter) {
       data.addRecordFilter(pushDownFilter);
     }
 

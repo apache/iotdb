@@ -60,7 +60,11 @@ public class Not extends Filter {
 
   @Override
   public boolean[] satisfyTsBlock(TsBlock tsBlock) {
-    return filter.satisfyTsBlock(tsBlock);
+    boolean[] result = filter.satisfyTsBlock(tsBlock);
+    for (int i = 0; i < result.length; i++) {
+      result[i] = !result[i];
+    }
+    return result;
   }
 
   @Override
