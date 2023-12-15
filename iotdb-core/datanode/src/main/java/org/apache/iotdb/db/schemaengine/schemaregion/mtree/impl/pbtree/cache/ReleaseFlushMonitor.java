@@ -243,6 +243,13 @@ public class ReleaseFlushMonitor {
   }
 
   public void clear() {
+    if (releaseMonitor != null) {
+      releaseMonitor.shutdownNow();
+      while (true) {
+        if (releaseMonitor.isTerminated()) break;
+      }
+      releaseMonitor = null;
+    }
     if (flushMonitor != null) {
       flushMonitor.shutdownNow();
       while (true) {
@@ -361,21 +368,6 @@ public class ReleaseFlushMonitor {
 
     public void setEndTime(Long endTime) {
       this.endTime = endTime;
-    }
-  }
-
-  public static void main(String[] args) {
-    List<Integer> integers = new ArrayList<>();
-    for (int i = 0; i < 5; i++) {
-      integers.add(i);
-    }
-    Iterator<Integer> iterator = integers.iterator();
-    while (iterator.hasNext()) {
-      Integer integer = iterator.next();
-      if (integer == 2) {
-        iterator.remove();
-      }
-      System.out.println(iterator.next());
     }
   }
 }
