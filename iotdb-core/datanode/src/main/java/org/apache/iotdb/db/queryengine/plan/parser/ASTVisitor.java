@@ -223,7 +223,6 @@ import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
-import javafx.util.Pair;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.canPushDownLimitOffsetToGroupByTime;
@@ -3671,38 +3670,17 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       getRegionIdStatement.setDevice(ctx.device.getText());
     }
     long startTime = -1;
-    long endTime = -1;
-    if (ctx.firstTime != null) {
-      long timestamp = parseTimeValue(ctx.firstTime, CommonDateTimeUtils.currentTime());
-      if (timestamp < 0) {
-        throw new SemanticException("time must be greater than or equal to 0");
+    long endTime = Long.MAX_VALUE;
+
+    if (ctx.firstExpression != null) {
+      Expression firstExpression = parseExpression(ctx.firstExpression, true);
+      switch(firstExpression.getExpressionType()){
+        case: ExpressionType.EQUAL_TO
       }
-      if (ctx.OPERATOR_DEQ() != null || ctx.OPERATOR_SEQ() != null) {
-        startTime = timestamp;
-        endTime = timestamp;
-      }
-      if (ctx.OPERATOR_GT() != null) {
-        startTime = timestamp+1;
-        endTime = Long.MAX_VALUE;
-      }
-      if (ctx.OPERATOR_GTE() != null) {
-        startTime = timestamp;
-        endTime = Long.MAX_VALUE;
-      }
-    }
-    if (ctx.secondTime != null) {
-      long timestamp = parseTimeValue(ctx.secondTime, CommonDateTimeUtils.currentTime());
-      if(timestamp < 0) {
-        throw new SemanticException("time must be greater than or equal to 0");
-      }
-      if (ctx.OPERATOR_LTE() != null) {
-          startTime = Math.max(startTime, 0);
-          endTime = Math.min(endTime, timestamp);
-      }
-      if(ctx.OPERATOR_LT() != null) {
-        startTime = Math.max(startTime, 0);
-        endTime = Math.min(endTime, timestamp-1);
-      }
+      ExpressionType tmpType = firstExpression.getExpressionType();
+      List<Expression> result = firstExpression.getExpressions();
+      System.out.println("1");
+
     }
     getRegionIdStatement.setStartTimeStamp(startTime);
     getRegionIdStatement.setEndTimeStamp(endTime);
