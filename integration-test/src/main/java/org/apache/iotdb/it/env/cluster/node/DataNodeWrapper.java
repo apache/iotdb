@@ -29,7 +29,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.CACHE_EXPIRE_IN_SECONDS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.COMMON_PROPERTIES_FILE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATANODE_INIT_HEAP_SIZE;
@@ -54,15 +53,12 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_SYNC_DIR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_SYSTEM_DIR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_TRACING_DIR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_WAL_DIRS;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.ENABLE_REST_SERVICE;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.ENABLE_SWAGGER;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.MAIN_CLASS_NAME;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.MAX_TSBLOCK_SIZE_IN_BYTES;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.MQTT_HOST;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.MQTT_PORT;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.PAGE_SIZE_IN_BYTE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.PIPE_AIR_GAP_RECEIVER_PORT;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.REST_QUERY_DEFAULT_ROW_SIZE_LIMIT;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.REST_SERVICE_PORT;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCHEMA_REPLICATION_FACTOR;
@@ -116,10 +112,6 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
         PIPE_AIR_GAP_RECEIVER_PORT, String.valueOf(this.pipeAirGapReceiverPort));
 
     immutableNodeProperties.setProperty(REST_SERVICE_PORT, String.valueOf(restServicePort));
-    immutableNodeProperties.setProperty(ENABLE_REST_SERVICE, "true");
-    immutableNodeProperties.setProperty(ENABLE_SWAGGER, "false");
-    immutableNodeProperties.setProperty(REST_QUERY_DEFAULT_ROW_SIZE_LIMIT, "10000");
-    immutableNodeProperties.setProperty(CACHE_EXPIRE_IN_SECONDS, "28800");
 
     immutableNodeProperties.setProperty(IoTDBConstant.DN_SEED_CONFIG_NODE, seedConfigNode);
     immutableNodeProperties.setProperty(DN_SYSTEM_DIR, MppBaseConfig.NULL_VALUE);
@@ -195,7 +187,6 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     mutableCommonProperties.setProperty(SCHEMA_REPLICATION_FACTOR, "1");
     mutableCommonProperties.setProperty(DATA_REPLICATION_FACTOR, "1");
 
-    mutableNodeProperties.put(ENABLE_REST_SERVICE, "true");
     mutableNodeProperties.put(REST_SERVICE_PORT, String.valueOf(this.restServicePort));
 
     mutableCommonProperties.put(MAX_TSBLOCK_SIZE_IN_BYTES, "1024");
