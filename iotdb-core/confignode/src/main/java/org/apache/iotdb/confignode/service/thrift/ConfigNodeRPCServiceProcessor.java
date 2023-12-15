@@ -109,6 +109,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetClusterIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
@@ -206,6 +207,20 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
     // Print log to record the ConfigNode that performs the GetConfigurationRequest
     LOGGER.info("Execute GetSystemConfiguration with result {}", resp);
+    return resp;
+  }
+
+  @Override
+  public TGetClusterIdResp getClusterId() throws TException {
+    TGetClusterIdResp resp = new TGetClusterIdResp();
+    String clusterId = configManager.getClusterManager().getClusterId();
+    if (clusterId == null) {
+      LOGGER.error("clusterId not generated yet, should never happen.");
+      return resp.setClusterId("")
+          .setStatus(new TSStatus(TSStatusCode.GET_CLUSTER_ID_ERROR.getStatusCode()));
+    }
+    resp.setClusterId(clusterId).setStatus(RpcUtils.SUCCESS_STATUS);
+    LOGGER.info("Execute getClusterId with result {}", resp);
     return resp;
   }
 

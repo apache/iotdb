@@ -59,7 +59,7 @@ ddlStatement
     // CQ
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
-    | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes
+    | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes | showClusterId
     | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList | migrateRegion
     // Quota
     | setSpaceQuota | showSpaceQuota | setThrottleQuota | showThrottleQuota
@@ -473,6 +473,11 @@ showDataNodes
 // ---- Show Config Nodes
 showConfigNodes
     : SHOW CONFIGNODES
+    ;
+
+// ---- Show Cluster Id
+showClusterId
+    : SHOW CLUSTERID
     ;
 
 // ---- Get Region Id

@@ -527,6 +527,11 @@ struct TShowClusterResp {
   5: required map<i32, TNodeVersionInfo> nodeVersionInfo
 }
 
+struct TGetClusterIdResp {
+  1: required common.TSStatus status
+  2: required string clusterId
+}
+
 struct TNodeVersionInfo {
   1: required string version;
   2: required string buildInfo;
@@ -812,6 +817,15 @@ enum TActivationControl {
 
 
 service IConfigNodeRPCService {
+
+  // ======================================================
+  // Cluster
+  // ======================================================
+
+  /**
+   * Get cluster ID
+   */
+  TGetClusterIdResp getClusterId()
 
   // ======================================================
   // DataNode

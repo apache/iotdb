@@ -65,6 +65,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetClusterIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
@@ -118,6 +119,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.GetRegionI
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.GetSeriesSlotListTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.GetTimeSlotListTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterDetailsTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterIdTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowConfigNodesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowContinuousQueriesTask;
@@ -1118,6 +1120,23 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
     // build TSBlock
     ShowVariablesTask.buildTSBlock(showVariablesResp, future);
+
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showClusterId() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TGetClusterIdResp getClusterIdResp = new TGetClusterIdResp();
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      getClusterIdResp = client.getClusterId();
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
+
+    // build TSBlock
+    ShowClusterIdTask.buildTSBlock(getClusterIdResp, future);
 
     return future;
   }

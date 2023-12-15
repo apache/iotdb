@@ -141,6 +141,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.MigrateRegionStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildPathsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowConfigNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowContinuousQueriesStatement;
@@ -2484,6 +2485,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       showClusterStatement.setDetails(true);
     }
     return showClusterStatement;
+  }
+
+  @Override
+  public Statement visitShowClusterId(IoTDBSqlParser.ShowClusterIdContext ctx) {
+    return new ShowClusterIdStatement();
   }
 
   @Override

@@ -49,6 +49,7 @@ import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerLoca
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateClusterIdPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateVersionInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
@@ -101,6 +102,7 @@ import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTrigger
 import org.apache.iotdb.confignode.consensus.response.partition.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
+import org.apache.iotdb.confignode.persistence.ClusterInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
@@ -139,6 +141,8 @@ public class ConfigPlanExecutor {
    */
   private final List<SnapshotProcessor> snapshotProcessorList;
 
+  private final ClusterInfo clusterInfo;
+
   private final NodeInfo nodeInfo;
 
   private final ClusterSchemaInfo clusterSchemaInfo;
@@ -160,6 +164,7 @@ public class ConfigPlanExecutor {
   private final QuotaInfo quotaInfo;
 
   public ConfigPlanExecutor(
+      ClusterInfo clusterInfo,
       NodeInfo nodeInfo,
       ClusterSchemaInfo clusterSchemaInfo,
       PartitionInfo partitionInfo,
@@ -172,6 +177,9 @@ public class ConfigPlanExecutor {
       QuotaInfo quotaInfo) {
 
     this.snapshotProcessorList = new ArrayList<>();
+
+    this.clusterInfo = clusterInfo;
+    this.snapshotProcessorList.add(clusterInfo);
 
     this.nodeInfo = nodeInfo;
     this.snapshotProcessorList.add(nodeInfo);
@@ -360,6 +368,8 @@ public class ConfigPlanExecutor {
         return nodeInfo.removeConfigNode((RemoveConfigNodePlan) physicalPlan);
       case UpdateVersionInfo:
         return nodeInfo.updateVersionInfo((UpdateVersionInfoPlan) physicalPlan);
+      case UpdateClusterId:
+        return clusterInfo.updateClusterId((UpdateClusterIdPlan) physicalPlan);
       case CreateFunction:
         return udfInfo.addUDFInTable((CreateFunctionPlan) physicalPlan);
       case DropFunction:

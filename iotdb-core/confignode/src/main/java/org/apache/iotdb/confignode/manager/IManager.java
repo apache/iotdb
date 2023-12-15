@@ -114,6 +114,8 @@ import java.util.List;
  */
 public interface IManager {
 
+  ClusterManager getClusterManager();
+
   /**
    * Get DataManager.
    *
