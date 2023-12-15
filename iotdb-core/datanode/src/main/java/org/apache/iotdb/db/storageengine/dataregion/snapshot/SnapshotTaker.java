@@ -203,10 +203,10 @@ public class SnapshotTaker {
 
   private void copyFile(File target, File source) throws IOException {
     if (!target.getParentFile().exists()) {
-      LOGGER.error("Hard link target dir {} doesn't exist", target.getParentFile());
+      LOGGER.error("Copy target dir {} doesn't exist", target.getParentFile());
     }
     if (!source.exists()) {
-      LOGGER.error("Hard link source file {} doesn't exist", source);
+      LOGGER.error("Copy source file {} doesn't exist", source);
     }
     Files.deleteIfExists(target.toPath());
     Files.copy(source.toPath(), target.toPath());
