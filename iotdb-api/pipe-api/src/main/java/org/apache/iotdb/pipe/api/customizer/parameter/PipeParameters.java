@@ -20,21 +20,26 @@
 package org.apache.iotdb.pipe.api.customizer.parameter;
 
 import org.apache.iotdb.pipe.api.PipeConnector;
+import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
- * Used in {@link PipeProcessor#customize(PipeParameters, PipeProcessorRuntimeConfiguration)} and
- * {@link PipeConnector#customize(PipeParameters, PipeConnectorRuntimeConfiguration)}.
+ * Used in {@link PipeExtractor#customize(PipeParameters, PipeExtractorRuntimeConfiguration)} ,
+ * {@link PipeProcessor#customize(PipeParameters, PipeProcessorRuntimeConfiguration)} and {@link
+ * PipeConnector#customize(PipeParameters, PipeConnectorRuntimeConfiguration)}.
  *
- * <p>This class is used to parse the parameters in WITH PROCESSOR and WITH CONNECTOR when creating
- * a pipe.
+ * <p>This class is used to parse the parameters in WITH SOURCE, WITH PROCESSOR and WITH SINK when
+ * creating a pipe.
  *
- * <p>The input parameters is the key-value pair attributes for customization.
+ * <p>The input parameters are the key-value pair attributes for customization.
  */
 public class PipeParameters {
 
@@ -49,12 +54,12 @@ public class PipeParameters {
   }
 
   public boolean hasAttribute(String key) {
-    return attributes.containsKey(key);
+    return attributes.containsKey(key) || attributes.containsKey(KeyReducer.reduce(key));
   }
 
   public boolean hasAnyAttributes(String... keys) {
     for (final String key : keys) {
-      if (attributes.containsKey(key)) {
+      if (hasAttribute(key)) {
         return true;
       }
     }
@@ -62,37 +67,38 @@ public class PipeParameters {
   }
 
   public String getString(String key) {
-    return attributes.get(key);
+    final String value = attributes.get(key);
+    return value != null ? value : attributes.get(KeyReducer.reduce(key));
   }
 
   public Boolean getBoolean(String key) {
-    String value = attributes.get(key);
+    final String value = getString(key);
     return value == null ? null : Boolean.parseBoolean(value);
   }
 
   public Integer getInt(String key) {
-    String value = attributes.get(key);
+    final String value = getString(key);
     return value == null ? null : Integer.parseInt(value);
   }
 
   public Long getLong(String key) {
-    String value = attributes.get(key);
+    final String value = getString(key);
     return value == null ? null : Long.parseLong(value);
   }
 
   public Float getFloat(String key) {
-    String value = attributes.get(key);
+    final String value = getString(key);
     return value == null ? null : Float.parseFloat(value);
   }
 
   public Double getDouble(String key) {
-    String value = attributes.get(key);
+    final String value = getString(key);
     return value == null ? null : Double.parseDouble(value);
   }
 
   public String getStringByKeys(String... keys) {
     for (final String key : keys) {
-      final String value = attributes.get(key);
+      final String value = getString(key);
       if (value != null) {
         return value;
       }
@@ -102,9 +108,9 @@ public class PipeParameters {
 
   public Boolean getBooleanByKeys(String... keys) {
     for (final String key : keys) {
-      final String value = attributes.get(key);
+      final Boolean value = getBoolean(key);
       if (value != null) {
-        return Boolean.parseBoolean(value);
+        return value;
       }
     }
     return null;
@@ -112,9 +118,9 @@ public class PipeParameters {
 
   public Integer getIntByKeys(String... keys) {
     for (final String key : keys) {
-      final String value = attributes.get(key);
+      final Integer value = getInt(key);
       if (value != null) {
-        return Integer.parseInt(value);
+        return value;
       }
     }
     return null;
@@ -122,9 +128,9 @@ public class PipeParameters {
 
   public Long getLongByKeys(String... keys) {
     for (final String key : keys) {
-      final String value = attributes.get(key);
+      final Long value = getLong(key);
       if (value != null) {
-        return Long.parseLong(value);
+        return value;
       }
     }
     return null;
@@ -132,9 +138,9 @@ public class PipeParameters {
 
   public Float getFloatByKeys(String... keys) {
     for (final String key : keys) {
-      final String value = attributes.get(key);
+      final Float value = getFloat(key);
       if (value != null) {
-        return Float.parseFloat(value);
+        return value;
       }
     }
     return null;
@@ -142,47 +148,47 @@ public class PipeParameters {
 
   public Double getDoubleByKeys(String... keys) {
     for (final String key : keys) {
-      final String value = attributes.get(key);
+      final Double value = getDouble(key);
       if (value != null) {
-        return Double.parseDouble(value);
+        return value;
       }
     }
     return null;
   }
 
   public String getStringOrDefault(String key, String defaultValue) {
-    String value = attributes.get(key);
+    final String value = getString(key);
     return value == null ? defaultValue : value;
   }
 
   public boolean getBooleanOrDefault(String key, boolean defaultValue) {
-    String value = attributes.get(key);
+    final String value = getString(key);
     return value == null ? defaultValue : Boolean.parseBoolean(value);
   }
 
   public int getIntOrDefault(String key, int defaultValue) {
-    String value = attributes.get(key);
+    final String value = getString(key);
     return value == null ? defaultValue : Integer.parseInt(value);
   }
 
   public long getLongOrDefault(String key, long defaultValue) {
-    String value = attributes.get(key);
+    final String value = getString(key);
     return value == null ? defaultValue : Long.parseLong(value);
   }
 
   public float getFloatOrDefault(String key, float defaultValue) {
-    String value = attributes.get(key);
+    final String value = getString(key);
     return value == null ? defaultValue : Float.parseFloat(value);
   }
 
   public double getDoubleOrDefault(String key, double defaultValue) {
-    String value = attributes.get(key);
+    final String value = getString(key);
     return value == null ? defaultValue : Double.parseDouble(value);
   }
 
   public String getStringOrDefault(List<String> keys, String defaultValue) {
     for (final String key : keys) {
-      final String value = attributes.get(key);
+      final String value = getString(key);
       if (value != null) {
         return value;
       }
@@ -192,7 +198,7 @@ public class PipeParameters {
 
   public boolean getBooleanOrDefault(List<String> keys, boolean defaultValue) {
     for (final String key : keys) {
-      final String value = attributes.get(key);
+      final String value = getString(key);
       if (value != null) {
         return Boolean.parseBoolean(value);
       }
@@ -202,7 +208,7 @@ public class PipeParameters {
 
   public int getIntOrDefault(List<String> keys, int defaultValue) {
     for (final String key : keys) {
-      final String value = attributes.get(key);
+      final String value = getString(key);
       if (value != null) {
         return Integer.parseInt(value);
       }
@@ -212,7 +218,7 @@ public class PipeParameters {
 
   public long getLongOrDefault(List<String> keys, long defaultValue) {
     for (final String key : keys) {
-      final String value = attributes.get(key);
+      final String value = getString(key);
       if (value != null) {
         return Long.parseLong(value);
       }
@@ -222,7 +228,7 @@ public class PipeParameters {
 
   public float getFloatOrDefault(List<String> keys, float defaultValue) {
     for (final String key : keys) {
-      final String value = attributes.get(key);
+      final String value = getString(key);
       if (value != null) {
         return Float.parseFloat(value);
       }
@@ -232,7 +238,7 @@ public class PipeParameters {
 
   public double getDoubleOrDefault(List<String> keys, double defaultValue) {
     for (final String key : keys) {
-      final String value = attributes.get(key);
+      final String value = getString(key);
       if (value != null) {
         return Double.parseDouble(value);
       }
@@ -260,5 +266,31 @@ public class PipeParameters {
   @Override
   public String toString() {
     return attributes.toString();
+  }
+
+  private static class KeyReducer {
+
+    private static final Set<String> PREFIXES = new HashSet<>();
+
+    static {
+      PREFIXES.add("extractor.");
+      PREFIXES.add("source.");
+      PREFIXES.add("processor.");
+      PREFIXES.add("connector.");
+      PREFIXES.add("sink.");
+    }
+
+    static String reduce(String key) {
+      if (key == null) {
+        return null;
+      }
+      final String lowerCaseKey = key.toLowerCase();
+      for (final String prefix : PREFIXES) {
+        if (lowerCaseKey.startsWith(prefix)) {
+          return key.substring(prefix.length());
+        }
+      }
+      return key;
+    }
   }
 }

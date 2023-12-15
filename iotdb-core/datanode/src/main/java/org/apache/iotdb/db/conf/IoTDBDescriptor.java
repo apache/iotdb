@@ -834,11 +834,10 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "recovery_log_interval_in_ms", String.valueOf(conf.getRecoveryLogIntervalInMs()))));
 
-    conf.setEnableDiscardOutOfOrderData(
+    conf.setEnableSeparateData(
         Boolean.parseBoolean(
             properties.getProperty(
-                "enable_discard_out_of_order_data",
-                Boolean.toString(conf.isEnableDiscardOutOfOrderData()))));
+                "enable_separate_data", Boolean.toString(conf.isEnableSeparateData()))));
 
     conf.setWindowEvaluationThreadCount(
         Integer.parseInt(

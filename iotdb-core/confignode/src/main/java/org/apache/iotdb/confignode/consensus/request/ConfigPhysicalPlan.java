@@ -51,6 +51,7 @@ import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerLoca
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateClusterIdPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateVersionInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
@@ -294,6 +295,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case UpdateVersionInfo:
           plan = new UpdateVersionInfoPlan();
+          break;
+        case UpdateClusterId:
+          plan = new UpdateClusterIdPlan();
           break;
         case CreateFunction:
           plan = new CreateFunctionPlan();

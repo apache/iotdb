@@ -53,6 +53,7 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,9 +68,14 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR;
+import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_SSL_CONNECTOR;
+import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_SSL_SINK;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_ENABLE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_KEY;
 
 public class IoTDBThriftSyncConnector extends IoTDBConnector {
 
@@ -81,7 +87,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
   private final List<Boolean> isClientAlive = new ArrayList<>();
 
   private boolean useSSL;
-  private String trustStore;
+  private String trustStorePath;
   private String trustStorePwd;
 
   private long currentClientIndex = 0;
@@ -98,7 +104,14 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
 
     final IoTDBConfig ioTDBConfig = IoTDBDescriptor.getInstance().getConfig();
     final PipeParameters parameters = validator.getParameters();
-    Set<TEndPoint> givenNodeUrls = parseNodeUrls(parameters);
+
+    final String userSpecifiedConnectorName =
+        parameters
+            .getStringOrDefault(
+                ImmutableList.of(CONNECTOR_KEY, SINK_KEY),
+                IOTDB_THRIFT_CONNECTOR.getPipePluginName())
+            .toLowerCase();
+    final Set<TEndPoint> givenNodeUrls = parseNodeUrls(parameters);
 
     validator
         .validate(
@@ -122,11 +135,11 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
         .validate(
             args -> !((boolean) args[0]) || ((boolean) args[1] && (boolean) args[2]),
             String.format(
-                "When %s is specified to true, %s and %s must be specified",
-                SINK_IOTDB_SSL_ENABLE_KEY,
-                SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY,
-                SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY),
-            parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false),
+                "When ssl transport is enabled, %s and %s must be specified",
+                SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY, SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY),
+            IOTDB_THRIFT_SSL_CONNECTOR.getPipePluginName().equals(userSpecifiedConnectorName)
+                || IOTDB_THRIFT_SSL_SINK.getPipePluginName().equals(userSpecifiedConnectorName)
+                || parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false),
             parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY),
             parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY));
   }
@@ -145,8 +158,17 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       tabletBatchBuilder = new IoTDBThriftSyncPipeTransferBatchReqBuilder(parameters);
     }
 
-    useSSL = parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false);
-    trustStore = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY);
+    final String userSpecifiedConnectorName =
+        parameters
+            .getStringOrDefault(
+                ImmutableList.of(CONNECTOR_KEY, SINK_KEY),
+                IOTDB_THRIFT_CONNECTOR.getPipePluginName())
+            .toLowerCase();
+    useSSL =
+        IOTDB_THRIFT_SSL_CONNECTOR.getPipePluginName().equals(userSpecifiedConnectorName)
+            || IOTDB_THRIFT_SSL_SINK.getPipePluginName().equals(userSpecifiedConnectorName)
+            || parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false);
+    trustStorePath = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY);
     trustStorePwd = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY);
   }
 
@@ -184,7 +206,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
               ip,
               port,
               useSSL,
-              trustStore,
+              trustStorePath,
               trustStorePwd));
       try {
         final TPipeTransferResp resp =

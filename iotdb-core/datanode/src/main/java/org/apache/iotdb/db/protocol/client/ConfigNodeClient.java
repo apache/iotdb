@@ -77,6 +77,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetClusterIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
@@ -353,6 +354,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TSystemConfigurationResp getSystemConfiguration() throws TException {
     return executeRemoteCallWithRetry(
         () -> client.getSystemConfiguration(), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TGetClusterIdResp getClusterId() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.getClusterId(), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
