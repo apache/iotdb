@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.it.cluster;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TGetClusterIdResp;
-import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -41,13 +40,12 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.iotdb.consensus.ConsensusFactory.RATIS_CONSENSUS;
+
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
 public class IoTDBClusterStartIT {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBClusterStartIT.class);
-
-  private static final String ratisConsensusProtocolClass =
-      "org.apache.iotdb.consensus.ratis.RatisConsensus";
 
   private static final int testConfigNodeNum = 3, testDataNodeNum = 0;
 
@@ -56,10 +54,9 @@ public class IoTDBClusterStartIT {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
-        .setConfigNodeConsensusProtocolClass(ratisConsensusProtocolClass)
-        .setSchemaRegionConsensusProtocolClass(ratisConsensusProtocolClass)
-        .setDataRegionConsensusProtocolClass(ratisConsensusProtocolClass)
-        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+        .setConfigNodeConsensusProtocolClass(RATIS_CONSENSUS)
+        .setSchemaRegionConsensusProtocolClass(RATIS_CONSENSUS)
+        .setDataRegionConsensusProtocolClass(RATIS_CONSENSUS);
 
     EnvFactory.getEnv().initClusterEnvironment(testConfigNodeNum, testDataNodeNum);
   }
@@ -80,6 +77,8 @@ public class IoTDBClusterStartIT {
         try {
           TGetClusterIdResp resp = client.getClusterId();
           if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
+            Assert.assertNotNull(resp.getClusterId());
+            Assert.assertNotEquals("", resp.getClusterId());
             return;
           }
         } catch (TException e) {
