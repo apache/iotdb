@@ -17,22 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe;
+package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.consensus.statemachine.dataregion.DataExecutionVisitor;
-import org.apache.iotdb.db.queryengine.execution.executor.RegionWriteExecutor;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IDeviceID;
-import org.apache.iotdb.db.trigger.executor.TriggerFireVisitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -42,17 +38,6 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * This class aims to mark the {@link InsertNode} to prevent forwarding pipe insertions. The
- * handling logic is defined in:
- *
- * <p>1.{@link RegionWriteExecutor}, to serialize and reach the target data region.
- *
- * <p>2.{@link TriggerFireVisitor}, to fire the trigger before writing to data region.
- *
- * <p>3.{@link DataExecutionVisitor}, to actually write data on data region and mark it as received
- * from pipe.
- */
 public class PipeEnrichedInsertNode extends InsertNode {
 
   private final InsertNode insertNode;
@@ -230,7 +215,7 @@ public class PipeEnrichedInsertNode extends InsertNode {
     insertNode.serialize(stream);
   }
 
-  public static PipeEnrichedInsertNode deserialize(ByteBuffer buffer) {
+  public static PlanNode deserialize(ByteBuffer buffer) {
     return new PipeEnrichedInsertNode((InsertNode) PlanNodeType.deserialize(buffer));
   }
 

@@ -29,7 +29,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.PipeEnrichedInsertBaseStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.PipeEnrichedLoadTsFileStatement;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.BitMap;
@@ -94,10 +95,10 @@ public class DefaultOperationQuota implements OperationQuota {
   protected void updateEstimateConsumeQuota(int numWrites, int numReads, Statement s) {
     if (numWrites > 0) {
       long avgSize = 0;
-      if (s.getType() == StatementType.PIPE_ENRICHED) {
-        s = ((PipeEnrichedStatement) s).getInnerStatement();
-      }
-      final StatementType statementType = s.getType();
+      final StatementType statementType =
+          s.getType() == StatementType.PIPE_ENRICHED_INSERT
+              ? ((PipeEnrichedInsertBaseStatement) s).getInsertBaseStatement().getType()
+              : s.getType();
       switch (statementType) {
         case INSERT:
           // InsertStatement  InsertRowStatement
@@ -137,7 +138,10 @@ public class DefaultOperationQuota implements OperationQuota {
           }
           break;
         case MULTI_BATCH_INSERT:
-          // LoadTsFileStatement  InsertMultiTabletsStatement
+          // PipeEnrichedLoadTsFileStatement  LoadTsFileStatement  InsertMultiTabletsStatement
+          if (s instanceof PipeEnrichedLoadTsFileStatement) {
+            s = ((PipeEnrichedLoadTsFileStatement) s).getLoadTsFileStatement();
+          }
           if (s instanceof LoadTsFileStatement) {
             LoadTsFileStatement loadTsFileStatement = (LoadTsFileStatement) s;
             for (int i = 0; i < loadTsFileStatement.getResources().size(); i++) {
