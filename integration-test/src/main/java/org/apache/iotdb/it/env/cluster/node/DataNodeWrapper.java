@@ -281,8 +281,4 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
   public int getRestServicePort() {
     return restServicePort;
   }
-
-  public String getEnableRestService() {
-    return immutableNodeProperties.getProperty(ENABLE_REST_SERVICE);
-  }
 }
