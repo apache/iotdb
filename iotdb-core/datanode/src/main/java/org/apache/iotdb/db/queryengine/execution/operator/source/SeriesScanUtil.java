@@ -199,7 +199,7 @@ public class SeriesScanUtil {
     }
 
     if (firstChunkMetadata != null || !cachedChunkMetadata.isEmpty()) {
-      throw new IOException("all cached chunks should be consumed first");
+      throw new IllegalStateException("all cached chunks should be consumed first");
     }
 
     if (firstTimeSeriesMetadata != null) {
@@ -269,7 +269,7 @@ public class SeriesScanUtil {
     if (!unSeqPageReaders.isEmpty()
         || firstPageReader != null
         || mergeReader.hasNextTimeValuePair()) {
-      throw new IOException(
+      throw new IllegalStateException(
           "all cached pages should be consumed first unSeqPageReaders.isEmpty() is "
               + unSeqPageReaders.isEmpty()
               + " firstPageReader != null is "
