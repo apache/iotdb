@@ -76,7 +76,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
       IMNodeFactory<ICachedMNode> nodeFactory =
           MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
       // wait release and flush task
-      //      Thread.sleep(6000);
+      Thread.sleep(6000);
       // schemaRegion1
       IMNode<ICachedMNode> sg1 =
           nodeFactory.createDatabaseMNode(
@@ -92,7 +92,6 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
             size1 + nodeFactory.createDeviceMNode(sg1.getAsMNode(), "n").estimateSize(),
             schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage());
         ReleaseFlushMonitor.getInstance().forceFlushAndRelease();
-        Thread.sleep(1000);
         Assert.assertEquals(
             size1, schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage());
       }
