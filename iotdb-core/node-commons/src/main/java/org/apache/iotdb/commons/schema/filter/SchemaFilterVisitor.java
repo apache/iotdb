@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.schema.filter.impl.AndFilter;
 import org.apache.iotdb.commons.schema.filter.impl.DataTypeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
 import org.apache.iotdb.commons.schema.filter.impl.TagFilter;
+import org.apache.iotdb.commons.schema.filter.impl.TemplateFilter;
 import org.apache.iotdb.commons.schema.filter.impl.ViewTypeFilter;
 
 /**
@@ -59,6 +60,10 @@ public abstract class SchemaFilterVisitor<C> {
 
   public boolean visitViewTypeFilter(ViewTypeFilter viewTypeFilter, C context) {
     return visitFilter(viewTypeFilter, context);
+  }
+
+  public boolean visitTemplateFilter(TemplateFilter templateFilter, C context) {
+    return visitFilter(templateFilter, context);
   }
 
   public boolean visitAndFilter(AndFilter andFilter, C context) {

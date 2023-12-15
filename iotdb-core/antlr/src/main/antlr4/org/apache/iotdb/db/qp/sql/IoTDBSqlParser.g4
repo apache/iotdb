@@ -210,7 +210,11 @@ countNodes
 
 // ---- Timeseries Where Clause
 devicesWhereClause
-    : WHERE deviceContainsExpression
+    : WHERE (deviceContainsExpression | templateEqualExpression)
+    ;
+
+templateEqualExpression
+    : TEMPLATE (OPERATOR_SEQ | OPERATOR_NEQ)  templateName=identifier
     ;
 
 deviceContainsExpression

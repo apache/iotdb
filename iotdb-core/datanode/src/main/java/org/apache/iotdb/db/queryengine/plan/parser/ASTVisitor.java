@@ -709,8 +709,18 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private SchemaFilter parseDevicesWhereClause(IoTDBSqlParser.DevicesWhereClauseContext ctx) {
     // path contains filter
-    return SchemaFilterFactory.createPathContainsFilter(
-        parseStringLiteral(ctx.deviceContainsExpression().value.getText()));
+    if (ctx.deviceContainsExpression() != null) {
+      return SchemaFilterFactory.createPathContainsFilter(
+          parseStringLiteral(ctx.deviceContainsExpression().value.getText()));
+    } else {
+      if (ctx.templateEqualExpression().OPERATOR_SEQ() != null) {
+        return SchemaFilterFactory.createTemplateNameFilter(
+            parseIdentifier(ctx.templateEqualExpression().templateName.getText()), true);
+      } else {
+        return SchemaFilterFactory.createTemplateNameFilter(
+            parseIdentifier(ctx.templateEqualExpression().templateName.getText()), false);
+      }
+    }
   }
 
   // Count Devices ========================================================================
