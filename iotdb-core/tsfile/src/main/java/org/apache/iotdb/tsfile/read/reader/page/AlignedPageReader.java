@@ -40,6 +40,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import static org.apache.iotdb.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
@@ -145,12 +146,18 @@ public class AlignedPageReader implements IPageReader {
   }
 
   private boolean allPageDataSatisfy() {
-    return !isModified && timeAllSelected() && filterAllSatisfy();
+    return !isModified
+        && timeAllSelected()
+        && globalTimeFilterAllSatisfy()
+        && pushDownFilterAllSatisfy();
   }
 
-  private boolean filterAllSatisfy() {
-    return (globalTimeFilter == null || globalTimeFilter.allSatisfy(this))
-        && (pushDownFilter == null || pushDownFilter.allSatisfy(this));
+  private boolean globalTimeFilterAllSatisfy() {
+    return globalTimeFilter == null || globalTimeFilter.allSatisfy(this);
+  }
+
+  private boolean pushDownFilterAllSatisfy() {
+    return pushDownFilter == null || pushDownFilter.allSatisfy(this);
   }
 
   @Override
@@ -165,15 +172,15 @@ public class AlignedPageReader implements IPageReader {
     // if all the sub sensors' value are null in current row, just discard it
     // if !filter.satisfy, discard this row
     boolean[] keepCurrentRow = new boolean[timeBatch.length];
-    boolean allSatisfy = globalTimeFilter == null || globalTimeFilter.allSatisfy(this);
-    if (allSatisfy) {
+    boolean globalTimeFilterAllSatisfy = globalTimeFilterAllSatisfy();
+    if (globalTimeFilterAllSatisfy) {
       Arrays.fill(keepCurrentRow, true);
     } else {
       updateKeepCurrentRowThroughGlobalTimeFilter(keepCurrentRow, timeBatch);
     }
 
     boolean[][] isDeleted = null;
-    if ((isModified || !allSatisfy || !timeAllSelected()) && valueCount != 0) {
+    if ((isModified || !timeAllSelected()) && valueCount != 0) {
       // using bitMap in valuePageReaders to indicate whether columns of current row are all null.
       byte[] bitmask = new byte[(timeBatch.length - 1) / 8 + 1];
       Arrays.fill(bitmask, (byte) 0x00);
@@ -184,10 +191,16 @@ public class AlignedPageReader implements IPageReader {
       updateKeepCurrentRowThroughBitmask(keepCurrentRow, bitmask);
     }
 
-    buildResult(timeBatch, keepCurrentRow, isDeleted);
+    boolean pushDownFilterAllSatisfy = pushDownFilterAllSatisfy();
 
-    if (pushDownFilter == null) {
-      return paginationController.applyTsBlock(builder.build());
+    // construct time column
+    int readEndIndex = buildTimeColumn(timeBatch, keepCurrentRow, pushDownFilterAllSatisfy);
+
+    // construct value columns
+    buildValueColumns(readEndIndex, keepCurrentRow, isDeleted);
+
+    if (pushDownFilterAllSatisfy) {
+      return builder.build();
     }
     return applyPushDownFilter();
   }
@@ -230,17 +243,58 @@ public class AlignedPageReader implements IPageReader {
     }
   }
 
-  private void buildResult(long[] timeBatch, boolean[] keepCurrentRow, boolean[][] isDeleted) {
-    // construct time column
-    int readEndIndex = buildTimeColumn(timeBatch, keepCurrentRow);
+  private int buildTimeColumn(
+      long[] timeBatch, boolean[] keepCurrentRow, boolean pushDownFilterAllSatisfy) {
+    if (pushDownFilterAllSatisfy) {
+      return buildTimeColumnWithPagination(timeBatch, keepCurrentRow);
+    } else {
+      return buildTimeColumnWithoutPagination(timeBatch, keepCurrentRow);
+    }
+  }
 
-    // construct value columns
+  private int buildTimeColumnWithPagination(long[] timeBatch, boolean[] keepCurrentRow) {
+    int readEndIndex = timeBatch.length;
+    for (int rowIndex = 0; rowIndex < timeBatch.length; rowIndex++) {
+      if (keepCurrentRow[rowIndex]) {
+        if (paginationController.hasCurOffset()) {
+          paginationController.consumeOffset();
+          keepCurrentRow[rowIndex] = false;
+        } else if (paginationController.hasCurLimit()) {
+          builder.getTimeColumnBuilder().writeLong(timeBatch[rowIndex]);
+          builder.declarePosition();
+          paginationController.consumeLimit();
+        } else {
+          readEndIndex = rowIndex;
+          break;
+        }
+      }
+    }
+    return readEndIndex;
+  }
+
+  private int buildTimeColumnWithoutPagination(long[] timeBatch, boolean[] keepCurrentRow) {
+    int readEndIndex = 0;
+    for (int i = 0; i < timeBatch.length; i++) {
+      if (keepCurrentRow[i]) {
+        builder.getTimeColumnBuilder().writeLong(timeBatch[i]);
+        builder.declarePosition();
+        readEndIndex = i;
+      }
+    }
+    return readEndIndex + 1;
+  }
+
+  private void buildValueColumns(
+      int readEndIndex, boolean[] keepCurrentRow, boolean[][] isDeleted) {
     for (int i = 0; i < valueCount; i++) {
       ValuePageReader pageReader = valuePageReaderList.get(i);
       if (pageReader != null) {
-        if (isDeleted != null) {
+        if (pageReader.isModified()) {
           pageReader.writeColumnBuilderWithNextBatch(
-              readEndIndex, builder.getColumnBuilder(i), keepCurrentRow, isDeleted[i]);
+              readEndIndex,
+              builder.getColumnBuilder(i),
+              keepCurrentRow,
+              Objects.requireNonNull(isDeleted)[i]);
         } else {
           pageReader.writeColumnBuilderWithNextBatch(
               readEndIndex, builder.getColumnBuilder(i), keepCurrentRow);
@@ -255,34 +309,29 @@ public class AlignedPageReader implements IPageReader {
     }
   }
 
-  private int buildTimeColumn(long[] timeBatch, boolean[] keepCurrentRow) {
-    int readEndIndex = 0;
-    for (int i = 0; i < timeBatch.length; i++) {
-      if (keepCurrentRow[i]) {
-        builder.getTimeColumnBuilder().writeLong(timeBatch[i]);
-        builder.declarePosition();
-        readEndIndex = i;
-      }
-    }
-    return readEndIndex + 1;
-  }
-
   private void fillIsDeletedAndBitMask(long[] timeBatch, boolean[][] isDeleted, byte[] bitmask) {
     for (int columnIndex = 0; columnIndex < valueCount; columnIndex++) {
       ValuePageReader pageReader = valuePageReaderList.get(columnIndex);
       if (pageReader != null) {
         byte[] bitmap = pageReader.getBitmap();
-        pageReader.fillIsDeleted(timeBatch, isDeleted[columnIndex]);
 
-        for (int i = 0, n = isDeleted[columnIndex].length; i < n; i++) {
-          if (isDeleted[columnIndex][i]) {
-            int shift = i % 8;
-            bitmap[i / 8] = (byte) (bitmap[i / 8] & (~(MASK >>> shift)));
-          }
+        if (pageReader.isModified()) {
+          pageReader.fillIsDeleted(timeBatch, isDeleted[columnIndex]);
+          updateBitmapThroughIsDeleted(bitmap, isDeleted[columnIndex]);
         }
+
         for (int i = 0, n = bitmask.length; i < n; i++) {
           bitmask[i] = (byte) (bitmap[i] | bitmask[i]);
         }
+      }
+    }
+  }
+
+  private void updateBitmapThroughIsDeleted(byte[] bitmap, boolean[] isDeleted) {
+    for (int i = 0, n = isDeleted.length; i < n; i++) {
+      if (isDeleted[i]) {
+        int shift = i % 8;
+        bitmap[i / 8] = (byte) (bitmap[i / 8] & (~(MASK >>> shift)));
       }
     }
   }
