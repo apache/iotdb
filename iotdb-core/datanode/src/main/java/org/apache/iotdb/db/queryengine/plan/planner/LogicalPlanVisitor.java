@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.TransformToViewExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
@@ -43,6 +44,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.Int
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.MeasurementGroup;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWriteSchemaNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
@@ -51,20 +55,16 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.PipeEnrichedInsertBaseStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.PipeEnrichedLoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalBatchActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
@@ -87,6 +87,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchAct
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.ShowLogicalViewStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -558,49 +559,26 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   }
 
   @Override
-  public PlanNode visitPipeEnrichedInsert(
-      PipeEnrichedInsertBaseStatement pipeEnrichedInsertBaseStatement, MPPQueryContext context) {
-    InsertNode insertNode;
+  public PlanNode visitPipeEnrichedStatement(
+      PipeEnrichedStatement pipeEnrichedStatement, MPPQueryContext context) {
+    WritePlanNode node =
+        (WritePlanNode) pipeEnrichedStatement.getInnerStatement().accept(this, context);
 
-    final InsertBaseStatement insertBaseStatement =
-        pipeEnrichedInsertBaseStatement.getInsertBaseStatement();
-    if (insertBaseStatement instanceof InsertRowStatement) {
-      insertNode =
-          (InsertRowNode) visitInsertRow((InsertRowStatement) insertBaseStatement, context);
-    } else if (insertBaseStatement instanceof InsertRowsStatement) {
-      insertNode =
-          (InsertRowsNode) visitInsertRows((InsertRowsStatement) insertBaseStatement, context);
-    } else if (insertBaseStatement instanceof InsertRowsOfOneDeviceStatement) {
-      insertNode =
-          (InsertRowsOfOneDeviceNode)
-              visitInsertRowsOfOneDevice(
-                  (InsertRowsOfOneDeviceStatement) insertBaseStatement, context);
-    } else if (insertBaseStatement instanceof InsertTabletStatement) {
-      insertNode =
-          (InsertTabletNode)
-              visitInsertTablet((InsertTabletStatement) insertBaseStatement, context);
-    } else if (insertBaseStatement instanceof InsertMultiTabletsStatement) {
-      insertNode =
-          (InsertMultiTabletsNode)
-              visitInsertMultiTablets((InsertMultiTabletsStatement) insertBaseStatement, context);
-    } else {
-      throw new UnsupportedOperationException(
-          "Unsupported insert statement type: " + insertBaseStatement.getClass().getName());
+    if (node instanceof LoadTsFileNode) {
+      return node;
+    } else if (node instanceof InsertNode) {
+      return new PipeEnrichedInsertNode((InsertNode) node);
+    } else if (node instanceof DeleteDataNode) {
+      return new PipeEnrichedDeleteDataNode((DeleteDataNode) node);
     }
 
-    return new PipeEnrichedInsertNode(insertNode);
+    return new PipeEnrichedWriteSchemaNode(node);
   }
 
   @Override
   public PlanNode visitLoadFile(LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
     return new LoadTsFileNode(
         context.getQueryId().genPlanNodeId(), loadTsFileStatement.getResources());
-  }
-
-  @Override
-  public PlanNode visitPipeEnrichedLoadFile(
-      PipeEnrichedLoadTsFileStatement pipeEnrichedLoadTsFileStatement, MPPQueryContext context) {
-    return visitLoadFile(pipeEnrichedLoadTsFileStatement.getLoadTsFileStatement(), context);
   }
 
   @Override

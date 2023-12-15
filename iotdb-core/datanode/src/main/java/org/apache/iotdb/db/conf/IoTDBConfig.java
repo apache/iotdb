@@ -839,7 +839,11 @@ public class IoTDBConfig {
   /** the interval to log recover progress of each vsg when starting iotdb */
   private long recoveryLogIntervalInMs = 5_000L;
 
-  private boolean enableDiscardOutOfOrderData = false;
+  /**
+   * Separate sequence and unsequence data or not. If it is false, then all data will be written
+   * into unsequence data dir.
+   */
+  private boolean enableSeparateData = true;
 
   /** the method to transform device path to device id, can be 'Plain' or 'SHA256' */
   private String deviceIDTransformationMethod = "Plain";
@@ -1402,12 +1406,12 @@ public class IoTDBConfig {
     this.rpcPort = rpcPort;
   }
 
-  public boolean isEnableDiscardOutOfOrderData() {
-    return enableDiscardOutOfOrderData;
+  public boolean isEnableSeparateData() {
+    return enableSeparateData;
   }
 
-  public void setEnableDiscardOutOfOrderData(boolean enableDiscardOutOfOrderData) {
-    this.enableDiscardOutOfOrderData = enableDiscardOutOfOrderData;
+  public void setEnableSeparateData(boolean enableSeparateData) {
+    this.enableSeparateData = enableSeparateData;
   }
 
   public String getSystemDir() {
