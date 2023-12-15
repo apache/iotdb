@@ -116,7 +116,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
         PIPE_AIR_GAP_RECEIVER_PORT, String.valueOf(this.pipeAirGapReceiverPort));
 
     immutableNodeProperties.setProperty(REST_SERVICE_PORT, String.valueOf(restServicePort));
-    immutableNodeProperties.setProperty(ENABLE_REST_SERVICE, "true");
+    // immutableNodeProperties.setProperty(ENABLE_REST_SERVICE, "false");
     immutableNodeProperties.setProperty(ENABLE_SWAGGER, "false");
     immutableNodeProperties.setProperty(REST_QUERY_DEFAULT_ROW_SIZE_LIMIT, "10000");
     immutableNodeProperties.setProperty(CACHE_EXPIRE_IN_SECONDS, "28800");
@@ -280,5 +280,9 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
 
   public int getRestServicePort() {
     return restServicePort;
+  }
+
+  public String getEnableRestService() {
+    return immutableNodeProperties.getProperty(ENABLE_REST_SERVICE);
   }
 }
