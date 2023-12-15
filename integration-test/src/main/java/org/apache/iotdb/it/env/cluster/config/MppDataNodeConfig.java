@@ -55,4 +55,10 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
     properties.setProperty("dn_metric_reporter_list", String.join(",", metricReporterTypes));
     return this;
   }
+
+  @Override
+  public DataNodeConfig setEnableRestService(boolean enableRestService) {
+    properties.setProperty("enable_rest_service", String.valueOf(enableRestService));
+    return this;
+  }
 }

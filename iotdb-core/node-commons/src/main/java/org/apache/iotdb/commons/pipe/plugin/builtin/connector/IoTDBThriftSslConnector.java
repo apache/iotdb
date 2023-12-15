@@ -16,20 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.it.env.remote.config;
 
-import org.apache.iotdb.itbase.env.DataNodeConfig;
+package org.apache.iotdb.commons.pipe.plugin.builtin.connector;
 
-import java.util.List;
-
-public class RemoteDataNodeConfig implements DataNodeConfig {
-  @Override
-  public DataNodeConfig setMetricReporterType(List<String> metricReporterTypes) {
-    return this;
-  }
-
-  @Override
-  public DataNodeConfig setEnableRestService(boolean enableRestService) {
-    return this;
-  }
-}
+/**
+ * This class is a placeholder and should not be initialized. It represents the IoTDB SSL connector.
+ * There is a real implementation in the server module but cannot be imported here. The pipe agent
+ * in the server module will replace this class with the real implementation when initializing the
+ * IoTDB SSL connector.
+ */
+public class IoTDBThriftSslConnector extends PlaceholderConnector {}

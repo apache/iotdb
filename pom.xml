@@ -110,6 +110,7 @@
         <jetty.version>9.4.53.v20231009</jetty.version>
         <jjwt.version>0.11.5</jjwt.version>
         <jline.version>3.23.0</jline.version>
+        <jna.version>5.14.0</jna.version>
         <!--
       do not upgrade this package unless we have to...
       Some experiments(https://github.com/jixuan1989/DependencyTest/blob/main/src/main/java/timecho/exp/JolTimeCost.java):
@@ -292,6 +293,11 @@
                 <groupId>org.jline</groupId>
                 <artifactId>jline</artifactId>
                 <version>${jline.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>net.java.dev.jna</groupId>
+                <artifactId>jna</artifactId>
+                <version>${jna.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.commons</groupId>

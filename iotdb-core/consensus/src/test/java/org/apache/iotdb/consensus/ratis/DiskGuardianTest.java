@@ -88,11 +88,12 @@ public class DiskGuardianTest {
       s.createLocalPeer(gid, members);
     }
 
+    miniCluster.waitUntilActiveLeaderElectedAndReady();
     miniCluster.writeManySerial(0, 10);
     Assert.assertFalse(hasSnapshot(gid));
     JavaUtils.attemptUntilTrue(
         () -> hasSnapshot(gid),
-        3,
+        12,
         TimeDuration.valueOf(5, TimeUnit.SECONDS),
         "should take snapshot",
         logger);

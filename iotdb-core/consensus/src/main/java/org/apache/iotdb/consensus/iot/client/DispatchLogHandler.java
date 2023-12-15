@@ -84,7 +84,8 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
   public static boolean needRetry(int statusCode) {
     return statusCode == TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()
         || statusCode == TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()
-        || statusCode == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode();
+        || statusCode == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()
+        || statusCode == TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode();
   }
 
   @Override

@@ -54,81 +54,38 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
    * data point should be put into a sequential file or an unsequential file. Data of some device
    * with timestamp less than or equals to the device's latestFlushedTime should go into an
    * unsequential file.
+   *
+   * <p>It is used to separate sequence and unsequence data.
    */
-  private Map<Long, Map<String, Long>> partitionLatestFlushedTimeForEachDevice = new HashMap<>();
-  /** used to record the latest flush time while upgrading and inserting */
-  private Map<Long, Map<String, Long>> newlyFlushedPartitionLatestFlushedTimeForEachDevice =
+  private final Map<Long, Map<String, Long>> partitionLatestFlushedTimeForEachDevice =
       new HashMap<>();
+
   /**
    * global mapping of device -> largest timestamp of the latest memtable to * be submitted to
    * asyncTryToFlush, globalLatestFlushedTimeForEachDevice is utilized to maintain global
    * latestFlushedTime of devices and will be updated along with
    * partitionLatestFlushedTimeForEachDevice
+   *
+   * <p>It is used to update last cache.
    */
-  private Map<String, Long> globalLatestFlushedTimeForEachDevice = new HashMap<>();
+  private final Map<String, Long> globalLatestFlushedTimeForEachDevice = new HashMap<>();
 
   /** used for recovering flush time from tsfile resource */
   TsFileManager tsFileManager;
 
   /** record memory cost of map for each partitionId */
-  private Map<Long, Long> memCostForEachPartition = new HashMap<>();
+  private final Map<Long, Long> memCostForEachPartition = new HashMap<>();
 
   public HashLastFlushTimeMap(TsFileManager tsFileManager) {
     this.tsFileManager = tsFileManager;
   }
 
   @Override
-  public void setMultiDeviceFlushedTime(long timePartitionId, Map<String, Long> flushedTimeMap) {
+  public void updateOneDeviceFlushedTime(long timePartitionId, String path, long time) {
     Map<String, Long> flushTimeMapForPartition =
-        partitionLatestFlushedTimeForEachDevice.get(timePartitionId);
-    if (flushTimeMapForPartition == null) {
-      return;
-    }
-    long memIncr = 0;
-    for (Map.Entry<String, Long> entry : flushedTimeMap.entrySet()) {
-      if (!flushTimeMapForPartition.containsKey(entry.getKey())) {
-        memIncr += HASHMAP_NODE_BASIC_SIZE + 2L * entry.getKey().length();
-      }
-      flushTimeMapForPartition.merge(entry.getKey(), entry.getValue(), Math::max);
-    }
-    long finalMemIncr = memIncr;
-    memCostForEachPartition.compute(
-        timePartitionId, (k1, v1) -> v1 == null ? finalMemIncr : v1 + finalMemIncr);
-  }
+        partitionLatestFlushedTimeForEachDevice.computeIfAbsent(
+            timePartitionId, id -> new HashMap<>());
 
-  @Override
-  public void setOneDeviceFlushedTime(long timePartitionId, String path, long time) {
-    Map<String, Long> flushTimeMapForPartition =
-        partitionLatestFlushedTimeForEachDevice.get(timePartitionId);
-    if (flushTimeMapForPartition == null) {
-      return;
-    }
-    if (flushTimeMapForPartition.put(path, time) == null) {
-      long memCost = HASHMAP_NODE_BASIC_SIZE + 2L * path.length();
-      memCostForEachPartition.compute(
-          timePartitionId, (k1, v1) -> v1 == null ? memCost : v1 + memCost);
-    }
-  }
-
-  @Override
-  public void setMultiDeviceGlobalFlushedTime(Map<String, Long> globalFlushedTimeMap) {
-    for (Map.Entry<String, Long> entry : globalFlushedTimeMap.entrySet()) {
-      globalLatestFlushedTimeForEachDevice.merge(entry.getKey(), entry.getValue(), Math::max);
-    }
-  }
-
-  @Override
-  public void setOneDeviceGlobalFlushedTime(String path, long time) {
-    globalLatestFlushedTimeForEachDevice.put(path, time);
-  }
-
-  @Override
-  public void updateFlushedTime(long timePartitionId, String path, long time) {
-    Map<String, Long> flushTimeMapForPartition =
-        partitionLatestFlushedTimeForEachDevice.get(timePartitionId);
-    if (flushTimeMapForPartition == null) {
-      return;
-    }
     flushTimeMapForPartition.compute(
         path,
         (k, v) -> {
@@ -146,17 +103,34 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
   }
 
   @Override
-  public void updateGlobalFlushedTime(String path, long time) {
+  public void updateMultiDeviceFlushedTime(long timePartitionId, Map<String, Long> flushedTimeMap) {
+    Map<String, Long> flushTimeMapForPartition =
+        partitionLatestFlushedTimeForEachDevice.computeIfAbsent(
+            timePartitionId, id -> new HashMap<>());
+
+    long memIncr = 0;
+    for (Map.Entry<String, Long> entry : flushedTimeMap.entrySet()) {
+      if (!flushTimeMapForPartition.containsKey(entry.getKey())) {
+        memIncr += HASHMAP_NODE_BASIC_SIZE + 2L * entry.getKey().length();
+      }
+      flushTimeMapForPartition.merge(entry.getKey(), entry.getValue(), Math::max);
+    }
+    long finalMemIncr = memIncr;
+    memCostForEachPartition.compute(
+        timePartitionId, (k1, v1) -> v1 == null ? finalMemIncr : v1 + finalMemIncr);
+  }
+
+  @Override
+  public void updateOneDeviceGlobalFlushedTime(String path, long time) {
     globalLatestFlushedTimeForEachDevice.compute(
         path, (k, v) -> v == null ? time : Math.max(v, time));
   }
 
   @Override
-  public void updateNewlyFlushedPartitionLatestFlushedTimeForEachDevice(
-      long partitionId, String deviceId, long time) {
-    newlyFlushedPartitionLatestFlushedTimeForEachDevice
-        .computeIfAbsent(partitionId, id -> new HashMap<>())
-        .compute(deviceId, (k, v) -> v == null ? time : Math.max(v, time));
+  public void updateMultiDeviceGlobalFlushedTime(Map<String, Long> globalFlushedTimeMap) {
+    for (Map.Entry<String, Long> entry : globalFlushedTimeMap.entrySet()) {
+      globalLatestFlushedTimeForEachDevice.merge(entry.getKey(), entry.getValue(), Math::max);
+    }
   }
 
   @Override
@@ -169,32 +143,11 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
   }
 
   @Override
-  public void applyNewlyFlushedTimeToFlushedTime() {
-    for (Map.Entry<Long, Map<String, Long>> entry :
-        newlyFlushedPartitionLatestFlushedTimeForEachDevice.entrySet()) {
-      long timePartitionId = entry.getKey();
-      Map<String, Long> latestFlushTimeForPartition =
-          partitionLatestFlushedTimeForEachDevice.getOrDefault(timePartitionId, new HashMap<>());
-      for (Map.Entry<String, Long> endTimeMap : entry.getValue().entrySet()) {
-        String device = endTimeMap.getKey();
-        long endTime = endTimeMap.getValue();
-        if (latestFlushTimeForPartition.getOrDefault(device, Long.MIN_VALUE) < endTime) {
-          partitionLatestFlushedTimeForEachDevice
-              .computeIfAbsent(timePartitionId, id -> new HashMap<>())
-              .put(device, endTime);
-        }
-      }
-    }
-  }
-
-  @Override
   public void updateLatestFlushTime(long partitionId, Map<String, Long> updateMap) {
     for (Map.Entry<String, Long> entry : updateMap.entrySet()) {
       partitionLatestFlushedTimeForEachDevice
           .computeIfAbsent(partitionId, id -> new HashMap<>())
           .merge(entry.getKey(), entry.getValue(), Math::max);
-      updateNewlyFlushedPartitionLatestFlushedTimeForEachDevice(
-          partitionId, entry.getKey(), entry.getValue());
       if (globalLatestFlushedTimeForEachDevice.getOrDefault(entry.getKey(), Long.MIN_VALUE)
           < entry.getValue()) {
         globalLatestFlushedTimeForEachDevice.put(entry.getKey(), entry.getValue());
