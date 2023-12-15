@@ -51,9 +51,6 @@ public class IoTDBClusterStartIT {
 
   private static final int testConfigNodeNum = 3, testDataNodeNum = 0;
 
-  private static final long maxTestTime = TimeUnit.SECONDS.toMillis(30);
-  private static final long testInterval = TimeUnit.SECONDS.toMillis(1);
-
   @Before
   public void setUp() {
     EnvFactory.getEnv()
@@ -73,7 +70,9 @@ public class IoTDBClusterStartIT {
   }
 
   @Test
-  public void clusterIdTest() {
+  public void clusterIdTest() throws ClientManagerException, IOException, InterruptedException {
+    final long maxTestTime = TimeUnit.SECONDS.toMillis(30);
+    final long testInterval = TimeUnit.SECONDS.toMillis(1);
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       long startTime = System.currentTimeMillis();
@@ -83,14 +82,13 @@ public class IoTDBClusterStartIT {
           if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
             return;
           }
-        } catch (TException ignore) {
-
+        } catch (TException e) {
+          logger.error("TException:", e);
         }
+        Thread.sleep(testInterval);
       }
       String errorMessage = String.format("Cluster ID failed to generate in %d ms.", maxTestTime);
       Assert.fail(errorMessage);
-    } catch (ClientManagerException | IOException | InterruptedException e) {
-      throw new RuntimeException(e);
     }
   }
 }

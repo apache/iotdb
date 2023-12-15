@@ -94,4 +94,16 @@ public class ClusterInfo implements SnapshotProcessor {
 
     LOGGER.info("clusterID has been recovered from snapshot: {}", clusterId);
   }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    ClusterInfo clusterInfo = (ClusterInfo) o;
+    return clusterId.equals(clusterInfo.getClusterId());
+  }
 }
