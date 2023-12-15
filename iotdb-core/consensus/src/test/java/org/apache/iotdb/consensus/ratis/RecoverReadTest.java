@@ -103,6 +103,11 @@ public class RecoverReadTest {
                             .setFirstElectionTimeoutMax(TimeDuration.valueOf(2, TimeUnit.SECONDS))
                             .setRequestTimeout(TimeDuration.valueOf(20, TimeUnit.SECONDS))
                             .build())
+                    .setImpl(
+                        RatisConfig.Impl.newBuilder()
+                            .setRetryTimesMax(1)
+                            .setRetryWaitMillis(500)
+                            .build())
                     .build())
             .create();
     miniCluster.start();
@@ -198,7 +203,8 @@ public class RecoverReadTest {
     // restart the cluster
     miniCluster.restart();
 
-    Assert.assertEquals(10, miniCluster.mustRead(0));
+    // query during redo: get exception that ratis is under recovery
+    Assert.assertThrows(RatisReadUnavailableException.class, () -> miniCluster.readThrough(0));
   }
 
   @Test

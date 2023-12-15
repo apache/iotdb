@@ -366,7 +366,7 @@ public class TsFileMetrics implements IMetricSet {
             (seq ? SEQUENCE : UNSEQUENCE),
             entry.getKey(),
             innerEntry.getKey(),
-            innerEntry.getValue().getLeft());
+            0);
       }
     }
     for (Map.Entry<String, Map<String, Pair<Long, Gauge>>> entry :
@@ -377,7 +377,7 @@ public class TsFileMetrics implements IMetricSet {
             (seq ? SEQUENCE : UNSEQUENCE),
             entry.getKey(),
             innerEntry.getKey(),
-            innerEntry.getValue().getLeft());
+            0);
       }
     }
     for (Map.Entry<Integer, Pair<Integer, Gauge>> entry :
@@ -386,7 +386,7 @@ public class TsFileMetrics implements IMetricSet {
           seq ? seqLevelTsFileCountMap : unseqLevelTsFileCountMap,
           seq ? SEQUENCE : UNSEQUENCE,
           entry.getKey(),
-          entry.getValue().getLeft());
+          0);
     }
     for (Map.Entry<Integer, Pair<Long, Gauge>> entry :
         (seq ? seqLevelTsFileSizeMap : unseqLevelTsFileSizeMap).entrySet()) {
@@ -394,7 +394,7 @@ public class TsFileMetrics implements IMetricSet {
           seq ? seqLevelTsFileSizeMap : unseqLevelTsFileSizeMap,
           seq ? SEQUENCE : UNSEQUENCE,
           entry.getKey(),
-          entry.getValue().getLeft());
+          0);
     }
   }
 

@@ -69,6 +69,7 @@ public class IoTDBCDCSourceFunction extends RichSourceFunction<RowData> {
   private final List<String> timeseriesList;
   private final BlockingQueue<TabletWrapper> tabletWrappers;
   private final List<Tuple2<String, DataType>> tableSchema;
+  private final String pipeName;
   private transient ExecutorService consumeExecutor;
 
   public IoTDBCDCSourceFunction(ReadableConfig options, SchemaWrapper schemaWrapper) {
@@ -77,12 +78,13 @@ public class IoTDBCDCSourceFunction extends RichSourceFunction<RowData> {
     cdcPort = options.get(Options.CDC_PORT);
     nodeUrls = Arrays.asList(options.get(Options.NODE_URLS).split(","));
     taskName = options.get(Options.CDC_TASK_NAME);
+    pipeName = String.format("flink_cdc_%s", taskName);
     user = options.get(Options.USER);
     password = options.get(Options.PASSWORD);
     timeseriesList =
         tableSchema.stream().map(field -> String.valueOf(field.f0)).collect(Collectors.toList());
 
-    tabletWrappers = new ArrayBlockingQueue<>(nodeUrls.size());
+    tabletWrappers = new ArrayBlockingQueue<>(nodeUrls.size() * 10);
   }
 
   @Override
@@ -91,52 +93,37 @@ public class IoTDBCDCSourceFunction extends RichSourceFunction<RowData> {
     Session session =
         new Session.Builder().username(user).password(password).nodeUrls(nodeUrls).build();
     session.open(false);
-    String pipeName =
-        String.format("`flink_cdc_%s_%s_%d`", taskName, pattern.replace("`", "``"), cdcPort);
-    boolean hasCreatedPipeTask = false;
-    try (SessionDataSet pipes = session.executeQueryStatement("show pipes"); ) {
-      while (pipes.hasNext()) {
-        RowRecord pipe = pipes.next();
-        if (pipeName.equals(pipe.getFields().get(0).getStringValue())) {
-          hasCreatedPipeTask = true;
-          break;
-        }
-      }
-    }
-    if (!hasCreatedPipeTask) {
-      for (String nodeUrl : nodeUrls) {
-        URI uri = new URI(String.format("ws://%s:%d", nodeUrl.split(":")[0], cdcPort));
-        if (Utils.isURIAvailable(uri)) {
+    try (SessionDataSet dataSet =
+        session.executeQueryStatement(String.format("show pipe %s", pipeName))) {
+      if (!dataSet.hasNext()) {
+        String createPipeCommand =
+            String.format(
+                "CREATE PIPE %s\n"
+                    + "WITH EXTRACTOR (\n"
+                    + "'extractor' = 'iotdb-extractor',\n"
+                    + "'extractor.pattern' = '%s',\n"
+                    + ") WITH CONNECTOR (\n"
+                    + "'connector' = 'websocket-connector',\n"
+                    + "'connector.websocket.port' = '%d',\n"
+                    // avoid to reuse the pipe's connector
+                    + "'connector.websocket.id' = '%d'"
+                    + ")",
+                pipeName, pattern, cdcPort, System.currentTimeMillis());
+        session.executeNonQueryStatement(createPipeCommand);
+        session.executeNonQueryStatement(String.format("start pipe %s", pipeName));
+      } else {
+        RowRecord pipe = dataSet.next();
+        String pipePattern = pipe.getFields().get(3).getStringValue().split(",")[0].split("=")[1];
+        if (!pipePattern.equals(this.pattern)) {
           throw new IllegalOptionException(
               String.format(
-                  "The port `%d` has been bound. Please use another one by option `cdc.port`.",
-                  cdcPort));
+                  "The CDC task `%s` has been created by pattern `%s`.",
+                  this.taskName, this.pattern));
         }
-      }
-      String createPipeCommand =
-          String.format(
-              "CREATE PIPE %s\n"
-                  + "WITH EXTRACTOR (\n"
-                  + "'extractor' = 'iotdb-extractor',\n"
-                  + "'extractor.pattern' = '%s',\n"
-                  + ") WITH CONNECTOR (\n"
-                  + "'connector' = 'websocket-connector',\n"
-                  + "'connector.websocket.port' = '%d'"
-                  + ")",
-              pipeName, pattern, cdcPort);
-      session.executeNonQueryStatement(createPipeCommand);
-    }
-    try (SessionDataSet pipes = session.executeQueryStatement("show pipes"); ) {
-      String status = null;
-      while (pipes.hasNext()) {
-        RowRecord pipe = pipes.next();
-        if (pipeName.equals(pipe.getFields().get(0).getStringValue())) {
-          status = pipe.getFields().get(2).getStringValue();
-          break;
+        String status = pipe.getFields().get(2).getStringValue();
+        if ("STOPPED".equals(status)) {
+          session.executeNonQueryStatement(String.format("start pipe %s", pipeName));
         }
-      }
-      if ("STOPPED".equals(status)) {
-        session.executeNonQueryStatement(String.format("start pipe %s", pipeName));
       }
     }
     session.close();
@@ -170,7 +157,7 @@ public class IoTDBCDCSourceFunction extends RichSourceFunction<RowData> {
           while (!socketClient.getReadyState().equals(ReadyState.OPEN)) {
             Thread.sleep(1000);
           }
-          socketClient.send("START");
+          socketClient.send(String.format("BIND:%s", pipeName));
         } else {
           Thread.sleep(1000);
         }
@@ -211,7 +198,14 @@ public class IoTDBCDCSourceFunction extends RichSourceFunction<RowData> {
     while (!client.getReadyState().equals(ReadyState.OPEN)) {
       Thread.sleep(1000);
     }
-    client.send("START");
+    client.send(String.format("BIND:%s", pipeName));
+    while (IoTDBWebSocketClient.Status.WAITING == client.getStatus()) {
+      Thread.sleep(1000);
+    }
+    if (IoTDBWebSocketClient.Status.ERROR == client.getStatus()) {
+      throw new IllegalOptionException(
+          "An exception occurred during binding. The CDC task is running. Please stop it first.");
+    }
     return client;
   }
 

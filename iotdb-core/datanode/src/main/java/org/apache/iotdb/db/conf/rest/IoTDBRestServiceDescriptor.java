@@ -38,7 +38,15 @@ public class IoTDBRestServiceDescriptor {
   private final IoTDBRestServiceConfig conf = new IoTDBRestServiceConfig();
 
   protected IoTDBRestServiceDescriptor() {
-    loadProps();
+    Properties properties = loadProps(IoTDBRestServiceConfig.CONFIG_NAME);
+    if (properties != null) {
+      if (!properties.containsKey("enable_rest_service")) {
+        properties = loadProps(IoTDBRestServiceConfig.OLD_CONFIG_NAME);
+      }
+      if (properties != null) {
+        loadProps(properties);
+      }
+    }
   }
 
   public static IoTDBRestServiceDescriptor getInstance() {
@@ -47,58 +55,17 @@ public class IoTDBRestServiceDescriptor {
 
   /** load an property file. */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private void loadProps() {
-    URL url = getPropsUrl();
+  private Properties loadProps(String configName) {
+    URL url = getPropsUrl(configName);
     if (url == null) {
       logger.warn("Couldn't load the REST Service configuration from any of the known sources.");
-      return;
+      return null;
     }
     try (InputStream inputStream = url.openStream()) {
       logger.info("Start to read config file {}", url);
       Properties properties = new Properties();
       properties.load(inputStream);
-      conf.setEnableRestService(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "enable_rest_service", Boolean.toString(conf.isEnableRestService()))));
-      conf.setRestServicePort(
-          Integer.parseInt(
-              properties.getProperty(
-                  "rest_service_port", Integer.toString(conf.getRestServicePort()))));
-      conf.setRestQueryDefaultRowSizeLimit(
-          Integer.parseInt(
-              properties.getProperty(
-                  "rest_query_default_row_size_limit",
-                  Integer.toString(conf.getRestQueryDefaultRowSizeLimit()))));
-      conf.setEnableSwagger(
-          Boolean.parseBoolean(
-              properties.getProperty("enable_swagger", Boolean.toString(conf.isEnableSwagger()))));
-
-      conf.setEnableHttps(
-          Boolean.parseBoolean(
-              properties.getProperty("enable_https", Boolean.toString(conf.isEnableHttps()))));
-      conf.setClientAuth(
-          Boolean.parseBoolean(
-              properties.getProperty("client_auth", Boolean.toString(conf.isClientAuth()))));
-      conf.setKeyStorePath(properties.getProperty("key_store_path", conf.getKeyStorePath()));
-      conf.setKeyStorePwd(properties.getProperty("key_store_pwd", conf.getKeyStorePwd()));
-      conf.setTrustStorePath(properties.getProperty("trust_store_path", conf.getTrustStorePath()));
-      conf.setTrustStorePwd(properties.getProperty("trust_store_pwd", conf.getTrustStorePwd()));
-      conf.setIdleTimeoutInSeconds(
-          Integer.parseInt(
-              properties.getProperty(
-                  "idle_timeout_in_seconds", Integer.toString(conf.getIdleTimeoutInSeconds()))));
-      conf.setCacheExpireInSeconds(
-          Integer.parseInt(
-              properties.getProperty(
-                  "cache_expire_in_seconds", Integer.toString(conf.getCacheExpireInSeconds()))));
-      conf.setCacheInitNum(
-          Integer.parseInt(
-              properties.getProperty("cache_init_num", Integer.toString(conf.getCacheInitNum()))));
-      conf.setCacheMaxNum(
-          Integer.parseInt(
-              properties.getProperty("cache_max_num", Integer.toString(conf.getCacheMaxNum()))));
-
+      return properties;
     } catch (FileNotFoundException e) {
       logger.warn("REST service fail to find config file {}", url, e);
     } catch (IOException e) {
@@ -106,6 +73,51 @@ public class IoTDBRestServiceDescriptor {
     } catch (Exception e) {
       logger.warn("REST service Incorrect format in config file, use default configuration", e);
     }
+    return null;
+  }
+
+  private void loadProps(Properties properties) {
+    conf.setEnableRestService(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_rest_service", Boolean.toString(conf.isEnableRestService()))));
+    conf.setRestServicePort(
+        Integer.parseInt(
+            properties.getProperty(
+                "rest_service_port", Integer.toString(conf.getRestServicePort()))));
+    conf.setRestQueryDefaultRowSizeLimit(
+        Integer.parseInt(
+            properties.getProperty(
+                "rest_query_default_row_size_limit",
+                Integer.toString(conf.getRestQueryDefaultRowSizeLimit()))));
+    conf.setEnableSwagger(
+        Boolean.parseBoolean(
+            properties.getProperty("enable_swagger", Boolean.toString(conf.isEnableSwagger()))));
+
+    conf.setEnableHttps(
+        Boolean.parseBoolean(
+            properties.getProperty("enable_https", Boolean.toString(conf.isEnableHttps()))));
+    conf.setClientAuth(
+        Boolean.parseBoolean(
+            properties.getProperty("client_auth", Boolean.toString(conf.isClientAuth()))));
+    conf.setKeyStorePath(properties.getProperty("key_store_path", conf.getKeyStorePath()));
+    conf.setKeyStorePwd(properties.getProperty("key_store_pwd", conf.getKeyStorePwd()));
+    conf.setTrustStorePath(properties.getProperty("trust_store_path", conf.getTrustStorePath()));
+    conf.setTrustStorePwd(properties.getProperty("trust_store_pwd", conf.getTrustStorePwd()));
+    conf.setIdleTimeoutInSeconds(
+        Integer.parseInt(
+            properties.getProperty(
+                "idle_timeout_in_seconds", Integer.toString(conf.getIdleTimeoutInSeconds()))));
+    conf.setCacheExpireInSeconds(
+        Integer.parseInt(
+            properties.getProperty(
+                "cache_expire_in_seconds", Integer.toString(conf.getCacheExpireInSeconds()))));
+    conf.setCacheInitNum(
+        Integer.parseInt(
+            properties.getProperty("cache_init_num", Integer.toString(conf.getCacheInitNum()))));
+    conf.setCacheMaxNum(
+        Integer.parseInt(
+            properties.getProperty("cache_max_num", Integer.toString(conf.getCacheMaxNum()))));
   }
 
   /**
@@ -113,29 +125,24 @@ public class IoTDBRestServiceDescriptor {
    *
    * @return url object if location exit, otherwise null.
    */
-  public URL getPropsUrl() {
+  public URL getPropsUrl(String configName) {
     // Check if a config-directory was specified first.
     String urlString = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
     // If it wasn't, check if a home directory was provided (This usually contains a config)
     if (urlString == null) {
       urlString = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
       if (urlString != null) {
-        urlString =
-            urlString
-                + File.separatorChar
-                + "conf"
-                + File.separatorChar
-                + IoTDBRestServiceConfig.CONFIG_NAME;
+        urlString = urlString + File.separatorChar + "conf" + File.separatorChar + configName;
       } else {
         // If this too wasn't provided, try to find a default config in the root of the classpath.
-        URL uri = IoTDBConfig.class.getResource("/" + IoTDBRestServiceConfig.CONFIG_NAME);
+        URL uri = IoTDBConfig.class.getResource("/" + configName);
         if (uri != null) {
           return uri;
         }
         logger.warn(
             "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading "
                 + "config file {}, use default configuration",
-            IoTDBRestServiceConfig.CONFIG_NAME);
+            configName);
         // update all data seriesPath
         return null;
       }
@@ -143,7 +150,7 @@ public class IoTDBRestServiceDescriptor {
     // If a config location was provided, but it doesn't end with a properties file,
     // append the default location.
     else if (!urlString.endsWith(".properties")) {
-      urlString += (File.separatorChar + IoTDBRestServiceConfig.CONFIG_NAME);
+      urlString += (File.separatorChar + configName);
     }
 
     // If the url doesn't start with "file:" or "classpath:", it's provided as a no path.

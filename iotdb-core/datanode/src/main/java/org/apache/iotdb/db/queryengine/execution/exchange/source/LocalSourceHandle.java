@@ -64,9 +64,10 @@ public class LocalSourceHandle implements ISourceHandle {
 
   public LocalSourceHandle(
       SharedTsBlockQueue queue, SourceHandleListener sourceHandleListener, String threadName) {
-    this.queue = Validate.notNull(queue);
+    this.queue = Validate.notNull(queue, "queue can not be null.");
     this.queue.setSourceHandle(this);
-    this.sourceHandleListener = Validate.notNull(sourceHandleListener);
+    this.sourceHandleListener =
+        Validate.notNull(sourceHandleListener, "sourceHandleListener can not be null.");
     this.threadName = threadName;
   }
 
@@ -76,11 +77,13 @@ public class LocalSourceHandle implements ISourceHandle {
       String localPlanNodeId,
       SharedTsBlockQueue queue,
       SourceHandleListener sourceHandleListener) {
-    this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
-    this.localPlanNodeId = Validate.notNull(localPlanNodeId);
-    this.queue = Validate.notNull(queue);
+    this.localFragmentInstanceId =
+        Validate.notNull(localFragmentInstanceId, "localFragmentInstanceId can not be null.");
+    this.localPlanNodeId = Validate.notNull(localPlanNodeId, "localPlanNodeId can not be null.");
+    this.queue = Validate.notNull(queue, "queue can not be null.");
     this.queue.setSourceHandle(this);
-    this.sourceHandleListener = Validate.notNull(sourceHandleListener);
+    this.sourceHandleListener =
+        Validate.notNull(sourceHandleListener, "sourceHandleListener can not be null.");
     this.threadName = createFullIdFrom(localFragmentInstanceId, localPlanNodeId);
   }
 

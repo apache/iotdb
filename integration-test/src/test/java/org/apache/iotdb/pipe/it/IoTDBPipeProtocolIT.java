@@ -29,10 +29,9 @@ import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2;
-import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.pipe.PipeEnvironmentException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -47,22 +46,18 @@ import java.util.Map;
 /** Test pipe's basic functionalities under multiple cluster and consensus protocol settings. */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
-public class IoTDBPipeProtocolIT {
+public class IoTDBPipeProtocolIT extends AbstractPipeDualIT {
 
-  private BaseEnv senderEnv;
-  private BaseEnv receiverEnv;
-
+  @Override
   @Before
-  public void setUp() throws Exception {
-    MultiEnvFactory.createEnv(2);
-    senderEnv = MultiEnvFactory.getEnv(0);
-    receiverEnv = MultiEnvFactory.getEnv(1);
-  }
-
-  @After
-  public void tearDown() {
-    senderEnv.cleanClusterEnvironment();
-    receiverEnv.cleanClusterEnvironment();
+  public void setUp() throws PipeEnvironmentException {
+    try {
+      MultiEnvFactory.createEnv(2);
+      senderEnv = MultiEnvFactory.getEnv(0);
+      receiverEnv = MultiEnvFactory.getEnv(1);
+    } catch (Exception | Error e) {
+      throw new PipeEnvironmentException(e.getMessage(), e);
+    }
   }
 
   private void innerSetUp(

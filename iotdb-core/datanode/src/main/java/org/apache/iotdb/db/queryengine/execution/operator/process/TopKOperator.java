@@ -80,6 +80,8 @@ public class TopKOperator implements ProcessOperator {
   // the data of every childOperator is in order
   private final boolean childrenDataInOrder;
 
+  public static final int OPERATOR_BATCH_UPPER_BOUND = 100000;
+
   public TopKOperator(
       OperatorContext operatorContext,
       List<Operator> deviceOperators,
@@ -98,7 +100,10 @@ public class TopKOperator implements ProcessOperator {
 
     initResultTsBlock();
 
-    deviceBatchStep = 10000 % topValue == 0 ? 10000 / topValue : 10000 / topValue + 1;
+    deviceBatchStep =
+        OPERATOR_BATCH_UPPER_BOUND % topValue == 0
+            ? OPERATOR_BATCH_UPPER_BOUND / topValue
+            : OPERATOR_BATCH_UPPER_BOUND / topValue + 1;
     canCallNext = new boolean[deviceOperators.size()];
   }
 
@@ -137,7 +142,14 @@ public class TopKOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() throws Exception {
-    return !(deviceIndex >= deviceOperators.size() && resultReturnSize >= topKResult.length);
+    if (deviceIndex >= deviceOperators.size()) {
+      if (topKResult == null) {
+        return false;
+      }
+
+      return resultReturnSize < topKResult.length;
+    }
+    return true;
   }
 
   @Override
@@ -207,6 +219,16 @@ public class TopKOperator implements ProcessOperator {
     }
 
     return null;
+  }
+
+  @Override
+  public void close() throws Exception {
+    for (int i = deviceIndex; i < deviceOperators.size(); i++) {
+      final Operator operator = deviceOperators.get(i);
+      if (operator != null) {
+        operator.close();
+      }
+    }
   }
 
   @Override
@@ -289,10 +311,13 @@ public class TopKOperator implements ProcessOperator {
     }
 
     tsBlockBuilder.reset();
+
+    if (topKResult == null || topKResult.length == 0) {
+      return tsBlockBuilder.build();
+    }
+
     ColumnBuilder[] valueColumnBuilders = tsBlockBuilder.getValueColumnBuilders();
-    for (int i = resultReturnSize, size = (topKResult == null ? 0 : topKResult.length);
-        i < size;
-        i++) {
+    for (int i = resultReturnSize; i < topKResult.length; i++) {
       MergeSortKey mergeSortKey = topKResult[i];
       TsBlock targetBlock = mergeSortKey.tsBlock;
       tsBlockBuilder

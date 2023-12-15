@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannel
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown;
+import org.apache.iotdb.db.queryengine.plan.optimization.PlanNodePushDown;
 import org.apache.iotdb.db.queryengine.plan.optimization.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.planner.IFragmentParallelPlaner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
@@ -44,12 +45,15 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 
 import org.apache.commons.lang3.Validate;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode.LIMIT_USE_TOP_K_FOR_ALIGN_BY_DEVICE;
 
 public class DistributionPlanner {
   private final Analysis analysis;
@@ -62,7 +66,14 @@ public class DistributionPlanner {
     this.analysis = analysis;
     this.logicalPlan = logicalPlan;
     this.context = logicalPlan.getContext();
-    this.optimizers = Collections.singletonList(new LimitOffsetPushDown());
+
+    this.optimizers =
+        new ArrayList<PlanOptimizer>() {
+          {
+            add(new LimitOffsetPushDown());
+            add(new PlanNodePushDown());
+          }
+        };
   }
 
   public PlanNode rewriteSource() {
@@ -155,10 +166,21 @@ public class DistributionPlanner {
   private boolean needShuffleSinkNode(
       QueryStatement queryStatement, NodeGroupContext nodeGroupContext) {
     OrderByComponent orderByComponent = queryStatement.getOrderByComponent();
-    return nodeGroupContext.isAlignByDevice()
-        && orderByComponent != null
-        && (!orderByComponent.getSortItemList().isEmpty()
-            && (orderByComponent.isBasedOnTime() && !queryStatement.hasOrderByExpression()));
+
+    if (nodeGroupContext.isAlignByDevice() && orderByComponent != null) {
+
+      // TopKNode will use IdentityNode but not ShuffleSinkNode
+      if (queryStatement.hasLimit()
+          && !queryStatement.isOrderByBasedOnDevice()
+          && queryStatement.getRowLimit() <= LIMIT_USE_TOP_K_FOR_ALIGN_BY_DEVICE) {
+        return false;
+      }
+
+      return !orderByComponent.getSortItemList().isEmpty()
+          && (orderByComponent.isBasedOnTime() && !queryStatement.hasOrderByExpression());
+    }
+
+    return false;
   }
 
   public PlanNode optimize(PlanNode rootWithExchange) {
@@ -179,12 +201,12 @@ public class DistributionPlanner {
     PlanNode rootAfterRewrite = rewriteSource();
 
     PlanNode rootWithExchange = addExchangeNode(rootAfterRewrite);
+    PlanNode optimizedRootWithExchange = optimize(rootWithExchange);
     if (analysis.getStatement() != null && analysis.getStatement().isQuery()) {
       analysis
           .getRespDatasetHeader()
-          .setColumnToTsBlockIndexMap(rootWithExchange.getOutputColumnNames());
+          .setColumnToTsBlockIndexMap(optimizedRootWithExchange.getOutputColumnNames());
     }
-    PlanNode optimizedRootWithExchange = optimize(rootWithExchange);
     SubPlan subPlan = splitFragment(optimizedRootWithExchange);
     // Mark the root Fragment of root SubPlan as `root`
     subPlan.getPlanFragment().setRoot(true);

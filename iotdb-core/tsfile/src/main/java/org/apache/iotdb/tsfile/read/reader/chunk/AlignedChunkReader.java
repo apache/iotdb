@@ -197,22 +197,22 @@ public class AlignedChunkReader implements IChunkReader {
   }
 
   /** used for value page filter */
-  protected boolean pageSatisfied(PageHeader pageHeader, List<TimeRange> valueDeleteInterval) {
+  protected boolean pageCanSkip(PageHeader pageHeader, List<TimeRange> valueDeleteInterval) {
     if (currentTimestamp > pageHeader.getEndTime()) {
       // used for chunk reader by timestamp
-      return false;
+      return true;
     }
     if (valueDeleteInterval != null) {
       for (TimeRange range : valueDeleteInterval) {
         if (range.contains(pageHeader.getStartTime(), pageHeader.getEndTime())) {
-          return false;
+          return true;
         }
         if (range.overlaps(new TimeRange(pageHeader.getStartTime(), pageHeader.getEndTime()))) {
           pageHeader.setModified(true);
         }
       }
     }
-    return filter == null || filter.satisfy(pageHeader.getStatistics());
+    return filter != null && filter.canSkip(pageHeader);
   }
 
   private AlignedPageReader constructPageReaderForNextPage(
@@ -233,9 +233,17 @@ public class AlignedChunkReader implements IChunkReader {
         valuePageDataList.add(null);
         valueDataTypeList.add(null);
         valueDecoderList.add(null);
-      } else if (pageSatisfied(
-          valuePageHeader.get(i),
-          valueDeleteIntervalList.get(i))) { // if the page is satisfied, deserialize it
+      } else if (pageCanSkip(valuePageHeader.get(i), valueDeleteIntervalList.get(i))) {
+        valueChunkDataBufferList
+            .get(i)
+            .position(
+                valueChunkDataBufferList.get(i).position()
+                    + valuePageHeader.get(i).getCompressedSize());
+        valuePageHeaderList.add(null);
+        valuePageDataList.add(null);
+        valueDataTypeList.add(null);
+        valueDecoderList.add(null);
+      } else {
         getPageInfo(
             valuePageHeader.get(i),
             valueChunkDataBufferList.get(i),
@@ -246,16 +254,6 @@ public class AlignedChunkReader implements IChunkReader {
         valueDataTypeList.add(valuePageInfo.dataType);
         valueDecoderList.add(valuePageInfo.decoder);
         exist = true;
-      } else { // if the page is not satisfied, just skip it
-        valueChunkDataBufferList
-            .get(i)
-            .position(
-                valueChunkDataBufferList.get(i).position()
-                    + valuePageHeader.get(i).getCompressedSize());
-        valuePageHeaderList.add(null);
-        valuePageDataList.add(null);
-        valueDataTypeList.add(null);
-        valueDecoderList.add(null);
       }
     }
     if (!exist) {
@@ -363,7 +361,7 @@ public class AlignedChunkReader implements IChunkReader {
     pageInfo.dataType = chunkHeader.getDataType();
     int compressedPageBodyLength = pageHeader.getCompressedSize();
     byte[] compressedPageBody = new byte[compressedPageBodyLength];
-    // doesn't has a complete page body
+    // doesn't have a complete page body
     if (compressedPageBodyLength > chunkBuffer.remaining()) {
       throw new IOException(
           "do not has a complete page body. Expected:"

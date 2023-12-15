@@ -59,11 +59,11 @@ public class WALInsertNodeCache {
   private static final Logger LOGGER = LoggerFactory.getLogger(WALInsertNodeCache.class);
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  // LRU cache, find Pair<ByteBuffer, InsertNode> by WALEntryPosition
   private final PipeMemoryBlock allocatedMemoryBlock;
   // Used to adjust the memory usage of the cache
   private final AtomicDouble memoryUsageCheatFactor = new AtomicDouble(1);
   private final AtomicBoolean isBatchLoadEnabled = new AtomicBoolean(true);
+  // LRU cache, find Pair<ByteBuffer, InsertNode> by WALEntryPosition
   private final LoadingCache<WALEntryPosition, Pair<ByteBuffer, InsertNode>> lruCache;
 
   // ids of all pinned memTables
@@ -80,7 +80,7 @@ public class WALInsertNodeCache {
     allocatedMemoryBlock =
         PipeResourceManager.memory()
             .tryAllocate(requestedAllocateSize)
-            .setShrinkMethod((oldMemory) -> Math.max(oldMemory / 2, 1))
+            .setShrinkMethod(oldMemory -> Math.max(oldMemory / 2, 1))
             .setShrinkCallback(
                 (oldMemory, newMemory) -> {
                   memoryUsageCheatFactor.set(
@@ -93,14 +93,14 @@ public class WALInsertNodeCache {
                       newMemory);
                 })
             .setExpandMethod(
-                (oldMemory) -> Math.min(Math.max(oldMemory, 1) * 2, requestedAllocateSize))
+                oldMemory -> Math.min(Math.max(oldMemory, 1) * 2, requestedAllocateSize))
             .setExpandCallback(
                 (oldMemory, newMemory) -> {
                   memoryUsageCheatFactor.set(
                       memoryUsageCheatFactor.get() / ((double) newMemory / oldMemory));
                   isBatchLoadEnabled.set(newMemory >= CONFIG.getWalFileSizeThresholdInByte());
                   LOGGER.info(
-                      "WALInsertNodeCache allocatedMemoryBlock of dataRegion {} has expanded from {} to {}.",
+                      "WALInsertNodeCache.allocatedMemoryBlock of dataRegion {} has expanded from {} to {}.",
                       dataRegionId,
                       oldMemory,
                       newMemory);

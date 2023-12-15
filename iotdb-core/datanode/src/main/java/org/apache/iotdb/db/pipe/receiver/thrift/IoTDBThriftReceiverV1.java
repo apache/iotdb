@@ -21,22 +21,26 @@ package org.apache.iotdb.db.pipe.receiver.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
+import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
+import org.apache.iotdb.commons.pipe.connector.payload.request.PipeTransferSnapshotPieceReq;
+import org.apache.iotdb.commons.pipe.connector.payload.request.PipeTransferSnapshotSealReq;
+import org.apache.iotdb.commons.pipe.connector.payload.request.TransferConfigPlanReq;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.PipeRequestType;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaPlanReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
-import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -44,13 +48,11 @@ import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.PipeEnrichedInsertBaseStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.PipeEnrichedLoadTsFileStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -139,6 +141,14 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
           case TRANSFER_FILE_SEAL:
             return handleTransferFileSeal(
                 PipeTransferFileSealReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
+          case TRANSFER_CONFIG_PLAN:
+            return handleTransferConfigPlan((TransferConfigPlanReq) req);
+          case TRANSFER_SCHEMA_PLAN:
+            return handleTransferSchemaPlan((PipeTransferSchemaPlanReq) req);
+          case TRANSFER_SNAPSHOT_PIECE:
+            return handleTransferSnapshotPiece((PipeTransferSnapshotPieceReq) req);
+          case TRANSFER_SNAPSHOT_SEAL:
+            return handleTransferSnapshotSeal((PipeTransferSnapshotSealReq) req);
           default:
             break;
         }
@@ -503,6 +513,26 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
     }
   }
 
+  private TPipeTransferResp handleTransferConfigPlan(TransferConfigPlanReq req) {
+    // TODO
+    return new TPipeTransferResp();
+  }
+
+  private TPipeTransferResp handleTransferSchemaPlan(PipeTransferSchemaPlanReq req) {
+    // TODO
+    return new TPipeTransferResp();
+  }
+
+  private TPipeTransferResp handleTransferSnapshotPiece(PipeTransferSnapshotPieceReq req) {
+    // TODO
+    return new TPipeTransferResp();
+  }
+
+  private TPipeTransferResp handleTransferSnapshotSeal(PipeTransferSnapshotSealReq req) {
+    // TODO
+    return new TPipeTransferResp();
+  }
+
   private boolean isWritingFileAvailable() {
     final boolean isWritingFileAvailable =
         writingFile != null && writingFile.exists() && writingFileWriter != null;
@@ -524,11 +554,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
           TSStatusCode.PIPE_TRANSFER_EXECUTE_STATEMENT_ERROR, "Execute null statement.");
     }
 
-    if (statement instanceof InsertBaseStatement) {
-      statement = new PipeEnrichedInsertBaseStatement((InsertBaseStatement) statement);
-    } else if (statement instanceof LoadTsFileStatement) {
-      statement = new PipeEnrichedLoadTsFileStatement((LoadTsFileStatement) statement);
-    }
+    statement = new PipeEnrichedStatement(statement);
 
     final ExecutionResult result =
         Coordinator.getInstance()

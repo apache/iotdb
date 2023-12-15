@@ -36,7 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.PipeEnrichedInsertBaseStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
@@ -159,7 +159,7 @@ public class WriteBackConnector implements PipeConnector {
   private TSStatus executeStatement(InsertBaseStatement statement) {
     return Coordinator.getInstance()
         .execute(
-            new PipeEnrichedInsertBaseStatement(statement),
+            new PipeEnrichedStatement(statement),
             SessionManager.getInstance().requestQueryId(),
             new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault().getId()),
             "",

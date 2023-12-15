@@ -101,6 +101,11 @@ public class SchemaFetchScanOperator implements SourceOperator {
   }
 
   @Override
+  public void close() throws Exception {
+    // do nothing
+  }
+
+  @Override
   public PlanNodeId getSourceId() {
     return sourceId;
   }

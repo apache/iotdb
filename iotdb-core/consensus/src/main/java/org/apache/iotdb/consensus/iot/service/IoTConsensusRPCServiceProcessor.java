@@ -245,7 +245,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
       return;
     }
     long searchIndex = impl.getSearchIndex();
-    long safeIndex = impl.getCurrentSafelyDeletedSearchIndex();
+    long safeIndex = impl.getMinSyncIndex();
     resultHandler.onComplete(
         new TWaitSyncLogCompleteRes(searchIndex == safeIndex, searchIndex, safeIndex));
   }

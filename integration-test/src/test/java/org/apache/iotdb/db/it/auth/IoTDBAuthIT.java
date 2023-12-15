@@ -1180,14 +1180,37 @@ public class IoTDBAuthIT {
 
         adminStmt.execute("CREATE DATABASE root.a");
         adminStmt.execute("create schema template t1 aligned (s_name TEXT)");
+        adminStmt.execute("GRANT EXTEND_TEMPLATE ON root.** TO USER tempuser");
         adminStmt.execute("GRANT WRITE_DATA ON root.a.** TO USER tempuser");
         adminStmt.execute("set schema template t1 to root.a");
 
         // grant privilege to insert
         Assert.assertThrows(
             SQLException.class,
-            () -> userStmt.execute("INSERT INTO root.a.d1(timestamp, s_name) VALUES (1,'IoTDB')"));
+            () ->
+                userStmt.execute(
+                    "INSERT INTO root.a.d1(timestamp, s_name, s_value) VALUES (1,'IoTDB', 2)"));
+
+        adminStmt.execute("GRANT WRITE_SCHEMA ON root.a.d1.** TO USER tempuser");
+        userStmt.execute("INSERT INTO root.a.d1(timestamp, s_name, s_value) VALUES (1,'IoTDB', 2)");
+        adminStmt.execute("REVOKE EXTEND_TEMPLATE ON root.** FROM USER tempuser");
+
+        Assert.assertThrows(
+            SQLException.class,
+            () ->
+                userStmt.execute(
+                    "INSERT INTO root.a.d1(timestamp, s_name, s_value, s_value_2) VALUES (1,'IoTDB', 2, 2)"));
       }
     }
+  }
+
+  @Test
+  public void testCreateRoleIdentifierName() throws SQLException {
+    Connection adminCon = EnvFactory.getEnv().getConnection();
+    Statement adminStmt = adminCon.createStatement();
+    adminStmt.execute("create role head");
+    adminStmt.execute("create user head 'password'");
+    adminStmt.execute("create role tail");
+    adminStmt.execute("create user tail 'password'");
   }
 }

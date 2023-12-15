@@ -36,13 +36,13 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
 import org.apache.iotdb.mpp.rpc.thrift.TFireTriggerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFireTriggerResp;
@@ -253,20 +253,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
   @Override
   public TriggerFireResult visitPipeEnrichedInsert(
       PipeEnrichedInsertNode node, TriggerEvent context) {
-    final InsertNode realInsertNode = node.getInsertNode();
-    if (realInsertNode instanceof InsertRowNode) {
-      return visitInsertRow((InsertRowNode) realInsertNode, context);
-    } else if (realInsertNode instanceof InsertTabletNode) {
-      return visitInsertTablet((InsertTabletNode) realInsertNode, context);
-    } else if (realInsertNode instanceof InsertRowsNode) {
-      return visitInsertRows((InsertRowsNode) realInsertNode, context);
-    } else if (realInsertNode instanceof InsertMultiTabletsNode) {
-      return visitInsertMultiTablets((InsertMultiTabletsNode) realInsertNode, context);
-    } else if (realInsertNode instanceof InsertRowsOfOneDeviceNode) {
-      return visitInsertRowsOfOneDevice((InsertRowsOfOneDeviceNode) realInsertNode, context);
-    } else {
-      return visitPlan(realInsertNode, context);
-    }
+    return node.getInsertNode().accept(this, context);
   }
 
   private Map<String, Integer> constructMeasurementToSchemaIndexMap(

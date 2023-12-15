@@ -42,9 +42,9 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.reader.IAlignedPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.read.reader.page.AlignedPageReader;
 import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
@@ -297,14 +297,13 @@ public class SeriesScanUtil {
   protected void filterFirstChunkMetadata() throws IOException {
     if (firstChunkMetadata != null && !isChunkOverlapped() && !firstChunkMetadata.isModified()) {
       Filter queryFilter = scanOptions.getPushDownFilter();
-      Statistics statistics = firstChunkMetadata.getStatistics();
-      if (queryFilter == null || queryFilter.allSatisfy(statistics)) {
-        long rowCount = statistics.getCount();
+      if (queryFilter == null || queryFilter.allSatisfy(firstChunkMetadata)) {
+        long rowCount = firstChunkMetadata.getStatistics().getCount();
         if (paginationController.hasCurOffset(rowCount)) {
           skipCurrentChunk();
           paginationController.consumeOffset(rowCount);
         }
-      } else if (!queryFilter.satisfy(statistics)) {
+      } else if (queryFilter.canSkip(firstChunkMetadata)) {
         skipCurrentChunk();
       }
     }
@@ -1048,18 +1047,23 @@ public class SeriesScanUtil {
 
   @SuppressWarnings("squid:S3740")
   protected void filterFirstTimeSeriesMetadata() throws IOException {
+    // skip if data type is mismatched which may be caused by delete
+    if (firstTimeSeriesMetadata != null
+        && !firstTimeSeriesMetadata.typeMatch(getTsDataTypeList())) {
+      skipCurrentFile();
+    }
+
     if (firstTimeSeriesMetadata != null
         && !isFileOverlapped()
         && !firstTimeSeriesMetadata.isModified()) {
       Filter queryFilter = scanOptions.getPushDownFilter();
-      Statistics statistics = firstTimeSeriesMetadata.getStatistics();
-      if (queryFilter == null || queryFilter.allSatisfy(statistics)) {
-        long rowCount = statistics.getCount();
+      if (queryFilter == null || queryFilter.allSatisfy(firstTimeSeriesMetadata)) {
+        long rowCount = firstTimeSeriesMetadata.getStatistics().getCount();
         if (paginationController.hasCurOffset(rowCount)) {
           skipCurrentFile();
           paginationController.consumeOffset(rowCount);
         }
-      } else if (!queryFilter.satisfy(statistics)) {
+      } else if (queryFilter.canSkip(firstTimeSeriesMetadata)) {
         skipCurrentFile();
       }
     }
@@ -1142,7 +1146,7 @@ public class SeriesScanUtil {
       this.version = new PriorityMergeReader.MergeReaderPriority(version, offset);
       this.data = data;
       this.isSeq = isSeq;
-      this.isAligned = data instanceof IAlignedPageReader;
+      this.isAligned = data instanceof AlignedPageReader || data instanceof MemAlignedPageReader;
       this.isMem = data instanceof MemPageReader || data instanceof MemAlignedPageReader;
     }
 
@@ -1153,18 +1157,18 @@ public class SeriesScanUtil {
 
     @SuppressWarnings("squid:S3740")
     Statistics getStatistics(int index) throws IOException {
-      if (!(data instanceof IAlignedPageReader)) {
+      if (!isAligned) {
         throw new IOException("Can only get statistics by index from AlignedPageReader");
       }
-      return ((IAlignedPageReader) data).getStatistics(index);
+      return data.getMeasurementStatistics(index).orElse(null);
     }
 
     @SuppressWarnings("squid:S3740")
     Statistics getTimeStatistics() throws IOException {
-      if (!(data instanceof IAlignedPageReader)) {
+      if (!isAligned) {
         throw new IOException("Can only get statistics of time column from AlignedPageReader");
       }
-      return ((IAlignedPageReader) data).getTimeStatistics();
+      return data.getTimeStatistics();
     }
 
     TsBlock getAllSatisfiedPageData(boolean ascending) throws IOException {

@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.consensus.statemachine.dataregion;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.exception.BatchProcessException;
@@ -26,14 +27,14 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -168,36 +169,41 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
 
   @Override
   public TSStatus visitPipeEnrichedInsert(PipeEnrichedInsertNode node, DataRegion context) {
-    final InsertNode realInsertNode = node.getInsertNode();
-
-    realInsertNode.markAsGeneratedByPipe();
-
-    if (realInsertNode instanceof InsertRowNode) {
-      return visitInsertRow((InsertRowNode) realInsertNode, context);
-    } else if (realInsertNode instanceof InsertTabletNode) {
-      return visitInsertTablet((InsertTabletNode) realInsertNode, context);
-    } else if (realInsertNode instanceof InsertRowsNode) {
-      return visitInsertRows((InsertRowsNode) realInsertNode, context);
-    } else if (realInsertNode instanceof InsertMultiTabletsNode) {
-      return visitInsertMultiTablets((InsertMultiTabletsNode) realInsertNode, context);
-    } else if (realInsertNode instanceof InsertRowsOfOneDeviceNode) {
-      return visitInsertRowsOfOneDevice((InsertRowsOfOneDeviceNode) realInsertNode, context);
-    } else {
-      return visitPlan(realInsertNode, context);
-    }
+    node.getInsertNode().markAsGeneratedByPipe();
+    return node.getInsertNode().accept(this, context);
   }
 
   @Override
   public TSStatus visitDeleteData(DeleteDataNode node, DataRegion dataRegion) {
     try {
       for (PartialPath path : node.getPathList()) {
-        dataRegion.deleteByDevice(
-            path, node.getDeleteStartTime(), node.getDeleteEndTime(), node.getSearchIndex());
+        PartialPath databaseToDelete = new PartialPath(dataRegion.getDatabaseName() + ".**");
+        if (path.matchFullPath(databaseToDelete)
+            || path.getFullPath().equals(databaseToDelete.getFullPath())) {
+          LOGGER.info(
+              "now try to delete directly, databasePath: {}, deletePath:{}",
+              databaseToDelete.getFullPath(),
+              path.getFullPath());
+          dataRegion.deleteDataDirectly(
+              databaseToDelete,
+              node.getDeleteStartTime(),
+              node.getDeleteEndTime(),
+              node.getSearchIndex());
+        } else {
+          dataRegion.deleteByDevice(
+              path, node.getDeleteStartTime(), node.getDeleteEndTime(), node.getSearchIndex());
+        }
       }
       return StatusUtils.OK;
-    } catch (IOException e) {
+    } catch (IOException | IllegalPathException e) {
       LOGGER.error("Error in executing plan node: {}", node, e);
       return new TSStatus(TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode());
     }
+  }
+
+  @Override
+  public TSStatus visitPipeEnrichedDeleteData(PipeEnrichedDeleteDataNode node, DataRegion context) {
+    node.getDeleteDataNode().markAsGeneratedByPipe();
+    return visitDeleteData((DeleteDataNode) node.getDeleteDataNode(), context);
   }
 }
