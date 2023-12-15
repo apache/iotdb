@@ -26,11 +26,13 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public class MonitorTest {
-  ReleaseFlushMonitor releaseFlushMonitor;
+  private ReleaseFlushMonitor releaseFlushMonitor;
 
   @Before
   public void setUp() {
@@ -38,7 +40,7 @@ public class MonitorTest {
   }
 
   @After
-  public void tearDown() {
+  public void tearDown() throws IOException {
     releaseFlushMonitor.clear();
   }
 
@@ -63,7 +65,17 @@ public class MonitorTest {
     Assert.assertEquals(4, regions.get(2).intValue());
   }
 
+  @Test
+  public void testGetRegionsToFlush2() {
+    setRecord(1, Arrays.asList(0L, 2000L), Arrays.asList(100L, 7000L));
+    setRecord(2, Collections.singletonList(3000L), Collections.singletonList(3500L));
+    List<Integer> regions = releaseFlushMonitor.getRegionsToFlush(7000);
+    Assert.assertEquals(1, regions.size());
+    Assert.assertEquals(2, regions.get(0).intValue());
+  }
+
   private void setRecord(int regionId, List<Long> startTimes, List<Long> eneTimes) {
+    releaseFlushMonitor.initRecordList(regionId);
     for (int i = 0; i < startTimes.size(); i++) {
       ReleaseFlushMonitor.RecordNode node = releaseFlushMonitor.recordTraverserTime(regionId);
       node.setStartTime(startTimes.get(i));

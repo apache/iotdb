@@ -39,6 +39,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.concurrent.NotThreadSafe;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -192,6 +194,11 @@ public class ReleaseFlushMonitor {
     return regionToTraverserTime.get(regionId).createAndAddToTail();
   }
 
+  @TestOnly
+  public void initRecordList(int regionId) {
+    regionToTraverserTime.computeIfAbsent(regionId, k -> new RecordList());
+  }
+
   public List<Integer> getRegionsToFlush(long windowsEndTime) {
     long windowsStartTime = windowsEndTime - MONITOR_INETRVAL_MILLISECONDS;
     List<Pair<Integer, Long>> regionAndFreeTimeList = new ArrayList<>();
@@ -265,16 +272,17 @@ public class ReleaseFlushMonitor {
 
   private ReleaseFlushMonitor() {}
 
-  private static class GlobalCacheManagerHolder {
+  private static class ReleaseFlushMonitorHolder {
     private static final ReleaseFlushMonitor INSTANCE = new ReleaseFlushMonitor();
 
-    private GlobalCacheManagerHolder() {}
+    private ReleaseFlushMonitorHolder() {}
   }
 
   public static ReleaseFlushMonitor getInstance() {
-    return ReleaseFlushMonitor.GlobalCacheManagerHolder.INSTANCE;
+    return ReleaseFlushMonitor.ReleaseFlushMonitorHolder.INSTANCE;
   }
 
+  @NotThreadSafe
   private static class RecordList {
     // The start time of RecordNode is incremental from head to tail
     private final RecordNode head = new RecordNode();
@@ -308,11 +316,15 @@ public class ReleaseFlushMonitor {
 
     private Iterator<RecordNode> iterator() {
       return new Iterator<RecordNode>() {
+        private RecordNode next = null;
         private RecordNode cur = head;
 
         @Override
         public boolean hasNext() {
-          return cur.next != tail;
+          if (next == null && cur.next != tail) {
+            next = cur.next;
+          }
+          return next != null;
         }
 
         @Override
@@ -320,12 +332,16 @@ public class ReleaseFlushMonitor {
           if (!hasNext()) {
             throw new NoSuchElementException();
           }
-          cur = cur.next;
+          cur = next;
+          next = null;
           return cur;
         }
 
         @Override
         public void remove() {
+          if (next == null && cur.next != tail) {
+            next = cur.next;
+          }
           RecordList.this.remove(cur);
         }
       };
@@ -345,6 +361,21 @@ public class ReleaseFlushMonitor {
 
     public void setEndTime(Long endTime) {
       this.endTime = endTime;
+    }
+  }
+
+  public static void main(String[] args) {
+    List<Integer> integers = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      integers.add(i);
+    }
+    Iterator<Integer> iterator = integers.iterator();
+    while (iterator.hasNext()) {
+      Integer integer = iterator.next();
+      if (integer == 2) {
+        iterator.remove();
+      }
+      System.out.println(iterator.next());
     }
   }
 }
