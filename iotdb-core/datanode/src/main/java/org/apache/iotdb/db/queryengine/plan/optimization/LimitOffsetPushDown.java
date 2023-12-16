@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.optimization;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
@@ -46,7 +45,6 @@ import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -279,30 +277,20 @@ public class LimitOffsetPushDown implements PlanOptimizer {
     long totalStep = slidingStep.getMinTotalDuration(TimeUnit.MILLISECONDS);
     long size = (endTime - startTime + totalStep - 1) / totalStep;
     if (size > offsetSize) {
-      Calendar calendar = Calendar.getInstance(SessionManager.getInstance().getSessionTimeZone());
-      calendar.setTimeInMillis(startTime);
-      boolean isLastDayOfMonth =
-          calendar.get(Calendar.DAY_OF_MONTH) == calendar.getActualMaximum(Calendar.DAY_OF_MONTH);
-      int minDay = calendar.get(Calendar.DAY_OF_MONTH);
       // ordering in group by month must be ascending
-      startTime =
-          DateTimeUtils.calcPositiveIntervalByMonth(
-              startTime, slidingStep, offsetSize, isLastDayOfMonth, minDay);
+      long newStartTime =
+          DateTimeUtils.calcPositiveIntervalByMonth(startTime, slidingStep.multiple(offsetSize));
 
       if (limitSize != 0) {
         endTime =
             Math.min(
                 endTime,
                 DateTimeUtils.calcPositiveIntervalByMonth(
-                    DateTimeUtils.calcPositiveIntervalByMonth(
-                        startTime, slidingStep, limitSize - 1, isLastDayOfMonth, minDay),
-                    interval,
-                    1,
-                    isLastDayOfMonth,
-                    minDay));
+                    startTime,
+                    calculateEndTimeDuration(slidingStep, interval, limitSize, offsetSize)));
       }
       groupByTimeComponent.setEndTime(endTime);
-      groupByTimeComponent.setStartTime(startTime);
+      groupByTimeComponent.setStartTime(newStartTime);
     } else {
       // finish the query, resultSet is empty
       queryStatement.setResultSetEmpty(true);
@@ -311,6 +299,15 @@ public class LimitOffsetPushDown implements PlanOptimizer {
     // which may result in more windows than we need in the target time range.
     queryStatement.setRowLimit(interval.isGreaterThan(slidingStep) ? limitSize : 0);
     queryStatement.setRowOffset(0);
+  }
+
+  private static TimeDuration calculateEndTimeDuration(
+      TimeDuration slidingStep, TimeDuration interval, long limitSize, long offsetSize) {
+    long length = offsetSize + limitSize - 1;
+    // startTime + offsetSize * step + (limitSize - 1) * step + interval
+    int monthDuration = (int) (length * slidingStep.monthDuration + interval.monthDuration);
+    long nonMonthDuration = length * slidingStep.nonMonthDuration + interval.nonMonthDuration;
+    return new TimeDuration(monthDuration, nonMonthDuration);
   }
 
   public static void pushDownLimitOffsetToTimeParameter(QueryStatement queryStatement) {
