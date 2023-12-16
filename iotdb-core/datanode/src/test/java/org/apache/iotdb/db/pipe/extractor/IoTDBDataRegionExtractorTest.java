@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.extractor;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -56,19 +55,30 @@ public class IoTDBDataRegionExtractorTest {
   }
 
   @Test
-  public void testIoTDBDataRegionExtractorWithIllegalPattern() {
-    IoTDBDataRegionExtractor extractor = new IoTDBDataRegionExtractor();
-    try {
+  public void testIoTDBDataRegionExtractorWithPattern() {
+    Assert.assertEquals(
+        testIoTDBDataRegionExtractorWithPattern("root.a-b").getClass(),
+        IllegalArgumentException.class);
+    Assert.assertEquals(
+        testIoTDBDataRegionExtractorWithPattern("root.1.a").getClass(),
+        IllegalArgumentException.class);
+    Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.`a-b`"));
+    Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.1"));
+  }
+
+  public Exception testIoTDBDataRegionExtractorWithPattern(String pattern) {
+    try (IoTDBDataRegionExtractor extractor = new IoTDBDataRegionExtractor()) {
       extractor.validate(
           new PipeParameterValidator(
               new PipeParameters(
                   new HashMap<String, String>() {
                     {
-                      put(PipeExtractorConstant.EXTRACTOR_PATTERN_KEY, "root.a-b");
+                      put(PipeExtractorConstant.EXTRACTOR_PATTERN_KEY, pattern);
                     }
                   })));
     } catch (Exception e) {
-      Assert.assertEquals(e.getClass(), IllegalPathException.class);
+      return e;
     }
+    return null;
   }
 }

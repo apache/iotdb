@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.extractor;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -41,6 +42,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -89,12 +91,27 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
     // Check whether the pattern is legal
-    PathUtils.isLegalPath(
+    String pattern =
         validator
             .getParameters()
             .getStringOrDefault(
                 Arrays.asList(EXTRACTOR_PATTERN_KEY, SOURCE_PATTERN_KEY),
-                EXTRACTOR_PATTERN_DEFAULT_VALUE));
+                EXTRACTOR_PATTERN_DEFAULT_VALUE);
+    try {
+      PathUtils.isLegalPath(pattern);
+    } catch (IllegalPathException e) {
+      try {
+        String[] pathNodes = StringUtils.split(pattern, "\\.");
+        PathUtils.splitPathToDetachedNodes(
+            String.join(".", Arrays.copyOfRange(pathNodes, 0, pathNodes.length - 1)));
+        String lastNode = pathNodes[pathNodes.length - 1];
+        if (!"".equals(lastNode)) {
+          Double.parseDouble(lastNode);
+        }
+      } catch (NumberFormatException | IllegalPathException ignored) {
+        throw new IllegalArgumentException();
+      }
+    }
 
     // Validate extractor.history.enable and extractor.realtime.enable
     validator
