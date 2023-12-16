@@ -31,37 +31,14 @@ import static org.apache.iotdb.tsfile.utils.TimeDuration.calcPositiveIntervalByM
 public class TimeDurationTest {
   @Test
   public void calculateIntervalTest() {
-    // 1mo duration after 2023-01-31
-    long result =
-        calcPositiveIntervalByMonth(
-            Timestamp.valueOf("2023-01-31 00:00:00").getTime(),
-            new TimeDuration(1, 0),
-            1,
-            TimeZone.getDefault(),
-            TimeUnit.MILLISECONDS,
-            true,
-            31);
-    Assert.assertEquals(Timestamp.valueOf("2023-02-28 00:00:00").getTime(), result);
-    result =
-        calcPositiveIntervalByMonth(
-            Timestamp.valueOf("2023-01-31 00:00:00").getTime(),
-            new TimeDuration(1, 0),
-            2,
-            TimeZone.getDefault(),
-            TimeUnit.MILLISECONDS,
-            false,
-            31);
-    Assert.assertEquals(Timestamp.valueOf("2023-03-31 00:00:00").getTime(), result);
     // 1mo1d duration after 2023-01-31
-    result =
+    long result =
         calcPositiveIntervalByMonth(
             Timestamp.valueOf("2023-01-31 00:00:00").getTime(),
             new TimeDuration(1, 86400_000),
             1,
             TimeZone.getDefault(),
-            TimeUnit.MILLISECONDS,
-            true,
-            31);
+            TimeUnit.MILLISECONDS);
     Assert.assertEquals(Timestamp.valueOf("2023-03-01 00:00:00").getTime(), result);
     // 1mo1d duration before 2023-03-01
     result =
@@ -76,9 +53,7 @@ public class TimeDurationTest {
             new TimeDuration(1, 86400_000_000_001L),
             1,
             TimeZone.getDefault(),
-            TimeUnit.NANOSECONDS,
-            true,
-            31);
+            TimeUnit.NANOSECONDS);
     Assert.assertEquals(Timestamp.valueOf("2023-03-01 00:00:00").getTime() * 1000_000 + 1, result);
     // 1mo1d1ns duration before 2023-03-01
     result =
