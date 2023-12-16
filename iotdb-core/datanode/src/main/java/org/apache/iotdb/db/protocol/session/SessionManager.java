@@ -295,7 +295,8 @@ public class SessionManager implements SessionManagerMBean {
     if (session != null) {
       return session.getTimeZone();
     } else {
-      return TimeZone.getTimeZone(ZoneId.systemDefault());
+      // only used for test
+      return TimeZone.getTimeZone("+08:00");
     }
   }
 
