@@ -1725,6 +1725,13 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TSStatus executeSyncCommand(ByteBuffer configPhysicalPlanBinary) {
+    TSStatus status = confirmLeader();
+    // TODO: determine whether to use procedure based on plan type
+    return status;
+  }
+
+  @Override
   public TGetRegionIdResp getRegionId(TGetRegionIdReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
