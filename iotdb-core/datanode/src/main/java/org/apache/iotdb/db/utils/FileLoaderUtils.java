@@ -186,19 +186,19 @@ public class FileLoaderUtils {
       long costTime = System.nanoTime() - t1;
       if (loadFromMem) {
         if (isSeq) {
-          context.loadTimeSeriesMetadataMemSeqCount.getAndAdd(1);
-          context.loadTimeSeriesMetadataMemSeqTime.getAndAdd(costTime);
+          context.getQueryStatistics().loadTimeSeriesMetadataMemSeqCount.getAndAdd(1);
+          context.getQueryStatistics().loadTimeSeriesMetadataMemSeqTime.getAndAdd(costTime);
         } else {
-          context.loadTimeSeriesMetadataMemUnSeqCount.getAndAdd(1);
-          context.loadTimeSeriesMetadataMemUnSeqTime.getAndAdd(costTime);
+          context.getQueryStatistics().loadTimeSeriesMetadataMemUnSeqCount.getAndAdd(1);
+          context.getQueryStatistics().loadTimeSeriesMetadataMemUnSeqTime.getAndAdd(costTime);
         }
       } else {
         if (isSeq) {
-          context.loadTimeSeriesMetadataDiskSeqCount.getAndAdd(1);
-          context.loadTimeSeriesMetadataDiskSeqTime.getAndAdd(costTime);
+          context.getQueryStatistics().loadTimeSeriesMetadataDiskSeqCount.getAndAdd(1);
+          context.getQueryStatistics().loadTimeSeriesMetadataDiskSeqTime.getAndAdd(costTime);
         } else {
-          context.loadTimeSeriesMetadataDiskUnSeqCount.getAndAdd(1);
-          context.loadTimeSeriesMetadataDiskUnSeqTime.getAndAdd(costTime);
+          context.getQueryStatistics().loadTimeSeriesMetadataDiskUnSeqCount.getAndAdd(1);
+          context.getQueryStatistics().loadTimeSeriesMetadataDiskUnSeqTime.getAndAdd(costTime);
         }
       }
     }
@@ -263,19 +263,25 @@ public class FileLoaderUtils {
       long costTime = System.nanoTime() - t1;
       if (loadFromMem) {
         if (isSeq) {
-          context.loadTimeSeriesMetadataAlignedMemSeqCount.getAndAdd(1);
-          context.loadTimeSeriesMetadataAlignedMemSeqTime.getAndAdd(costTime);
+          context.getQueryStatistics().loadTimeSeriesMetadataAlignedMemSeqCount.getAndAdd(1);
+          context.getQueryStatistics().loadTimeSeriesMetadataAlignedMemSeqTime.getAndAdd(costTime);
         } else {
-          context.loadTimeSeriesMetadataAlignedMemUnSeqCount.getAndAdd(1);
-          context.loadTimeSeriesMetadataAlignedMemUnSeqTime.getAndAdd(costTime);
+          context.getQueryStatistics().loadTimeSeriesMetadataAlignedMemUnSeqCount.getAndAdd(1);
+          context
+              .getQueryStatistics()
+              .loadTimeSeriesMetadataAlignedMemUnSeqTime
+              .getAndAdd(costTime);
         }
       } else {
         if (isSeq) {
-          context.loadTimeSeriesMetadataAlignedDiskSeqCount.getAndAdd(1);
-          context.loadTimeSeriesMetadataAlignedDiskSeqTime.getAndAdd(costTime);
+          context.getQueryStatistics().loadTimeSeriesMetadataAlignedDiskSeqCount.getAndAdd(1);
+          context.getQueryStatistics().loadTimeSeriesMetadataAlignedDiskSeqTime.getAndAdd(costTime);
         } else {
-          context.loadTimeSeriesMetadataAlignedDiskUnSeqCount.getAndAdd(1);
-          context.loadTimeSeriesMetadataAlignedDiskUnSeqTime.getAndAdd(costTime);
+          context.getQueryStatistics().loadTimeSeriesMetadataAlignedDiskUnSeqCount.getAndAdd(1);
+          context
+              .getQueryStatistics()
+              .loadTimeSeriesMetadataAlignedDiskUnSeqTime
+              .getAndAdd(costTime);
         }
       }
     }

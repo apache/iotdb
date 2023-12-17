@@ -54,28 +54,28 @@ public class SeriesScanCostMetricSet implements IMetricSet {
   public static final String SEQUENCE = "sequence";
   public static final String UNSEQUENCE = "unsequence";
 
-  public Histogram loadTimeSeriesMetadataDiskSeqHistogram =
+  private Histogram loadTimeSeriesMetadataDiskSeqHistogram =
       DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
-  public Histogram loadTimeSeriesMetadataDiskUnSeqHistogram =
+  private Histogram loadTimeSeriesMetadataDiskUnSeqHistogram =
       DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
-  public Histogram loadTimeSeriesMetadataMemSeqHistogram =
+  private Histogram loadTimeSeriesMetadataMemSeqHistogram =
       DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
-  public Histogram loadTimeSeriesMetadataMemUnSeqHistogram =
-      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
-
-  public Histogram loadTimeSeriesMetadataAlignedDiskSeqHistogram =
-      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
-  public Histogram loadTimeSeriesMetadataAlignedDiskUnSeqHistogram =
-      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
-  public Histogram loadTimeSeriesMetadataAlignedMemSeqHistogram =
-      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
-  public Histogram loadTimeSeriesMetadataAlignedMemUnSeqHistogram =
+  private Histogram loadTimeSeriesMetadataMemUnSeqHistogram =
       DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
 
-  public Timer loadTimeSeriesMetadataDiskSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
-  public Timer loadTimeSeriesMetadataDiskUnSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
-  public Timer loadTimeSeriesMetadataMemSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
-  public Timer loadTimeSeriesMetadataMemUnSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Histogram loadTimeSeriesMetadataAlignedDiskSeqHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram loadTimeSeriesMetadataAlignedDiskUnSeqHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram loadTimeSeriesMetadataAlignedMemSeqHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram loadTimeSeriesMetadataAlignedMemUnSeqHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+
+  private Timer loadTimeSeriesMetadataDiskSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer loadTimeSeriesMetadataDiskUnSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer loadTimeSeriesMetadataMemSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer loadTimeSeriesMetadataMemUnSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
 
   public Timer loadTimeSeriesMetadataAlignedDiskSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
   public Timer loadTimeSeriesMetadataAlignedDiskUnSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;

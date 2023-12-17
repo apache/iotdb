@@ -458,29 +458,29 @@ public class FragmentInstanceContext extends QueryContext {
     QueryRelatedResourceMetricSet.getInstance().updateFragmentInstanceTime(durationTime);
     SeriesScanCostMetricSet.getInstance()
         .recordNonAlignedSeriesExecutionCount(
-            loadTimeSeriesMetadataDiskSeqCount.get(),
-            loadTimeSeriesMetadataDiskUnSeqCount.get(),
-            loadTimeSeriesMetadataMemSeqCount.get(),
-            loadTimeSeriesMetadataMemUnSeqCount.get());
+            getQueryStatistics().loadTimeSeriesMetadataDiskSeqCount.get(),
+            getQueryStatistics().loadTimeSeriesMetadataDiskUnSeqCount.get(),
+            getQueryStatistics().loadTimeSeriesMetadataMemSeqCount.get(),
+            getQueryStatistics().loadTimeSeriesMetadataMemUnSeqCount.get());
     SeriesScanCostMetricSet.getInstance()
         .recordNonAlignedSeriesExecutionTime(
-            loadTimeSeriesMetadataDiskSeqTime.get(),
-            loadTimeSeriesMetadataDiskUnSeqTime.get(),
-            loadTimeSeriesMetadataMemSeqTime.get(),
-            loadTimeSeriesMetadataMemUnSeqTime.get());
+            getQueryStatistics().loadTimeSeriesMetadataDiskSeqTime.get(),
+            getQueryStatistics().loadTimeSeriesMetadataDiskUnSeqTime.get(),
+            getQueryStatistics().loadTimeSeriesMetadataMemSeqTime.get(),
+            getQueryStatistics().loadTimeSeriesMetadataMemUnSeqTime.get());
 
     SeriesScanCostMetricSet.getInstance()
         .recordAlignedSeriesExecutionCount(
-            loadTimeSeriesMetadataAlignedDiskSeqCount.get(),
-            loadTimeSeriesMetadataAlignedDiskUnSeqCount.get(),
-            loadTimeSeriesMetadataAlignedMemSeqCount.get(),
-            loadTimeSeriesMetadataAlignedMemUnSeqCount.get());
+            getQueryStatistics().loadTimeSeriesMetadataAlignedDiskSeqCount.get(),
+            getQueryStatistics().loadTimeSeriesMetadataAlignedDiskUnSeqCount.get(),
+            getQueryStatistics().loadTimeSeriesMetadataAlignedMemSeqCount.get(),
+            getQueryStatistics().loadTimeSeriesMetadataAlignedMemUnSeqCount.get());
     SeriesScanCostMetricSet.getInstance()
         .recordAlignedSeriesExecutionTime(
-            loadTimeSeriesMetadataAlignedDiskSeqTime.get(),
-            loadTimeSeriesMetadataAlignedDiskUnSeqTime.get(),
-            loadTimeSeriesMetadataAlignedMemSeqTime.get(),
-            loadTimeSeriesMetadataAlignedMemUnSeqTime.get());
+            getQueryStatistics().loadTimeSeriesMetadataAlignedDiskSeqTime.get(),
+            getQueryStatistics().loadTimeSeriesMetadataAlignedDiskUnSeqTime.get(),
+            getQueryStatistics().loadTimeSeriesMetadataAlignedMemSeqTime.get(),
+            getQueryStatistics().loadTimeSeriesMetadataAlignedMemUnSeqTime.get());
   }
 
   private void releaseDataNodeQueryContext() {
