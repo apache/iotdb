@@ -31,8 +31,8 @@ import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.IMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.estimator.MNodeSizeEstimator;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.iterator.AbstractTraverserIterator;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.CacheMemoryManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.ICacheManager;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.ReleaseFlushMonitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.flush.PBTreeFlushExecutor;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.MemManager;
@@ -66,10 +66,12 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   private final ICacheManager cacheManager;
   private ISchemaFile file;
   private ICachedMNode root;
+  // TODO: delete it
   private final Runnable flushCallback;
   private final IMNodeFactory<ICachedMNode> nodeFactory =
       MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
   private final CachedSchemaRegionStatistics regionStatistics;
+  private final ReleaseFlushMonitor releaseFlushMonitor = ReleaseFlushMonitor.getInstance();
   private final LockManager lockManager = new LockManager();
 
   public CachedMTreeStore(
@@ -84,8 +86,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     this.regionStatistics = regionStatistics;
     this.memManager = new MemManager(regionStatistics);
     this.flushCallback = flushCallback;
-    this.cacheManager =
-        CacheMemoryManager.getInstance().createLRUCacheManager(this, memManager, lockManager);
+    this.cacheManager = releaseFlushMonitor.createLRUCacheManager(this, memManager, lockManager);
     cacheManager.initRootStatus(root);
     regionStatistics.setCacheManager(cacheManager);
     ensureMemoryStatus();
@@ -106,6 +107,18 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     root.setParent(cur);
     cur.addChild(root);
     return res;
+  }
+
+  public ICacheManager getCacheManager() {
+    return cacheManager;
+  }
+
+  public ISchemaFile getSchemaFile() {
+    return file;
+  }
+
+  public LockManager getLockManager() {
+    return lockManager;
   }
 
   @Override
@@ -519,7 +532,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   public void clear() {
     lockManager.globalWriteLock();
     try {
-      CacheMemoryManager.getInstance().clearCachedMTreeStore(this);
+      releaseFlushMonitor.clearCachedMTreeStore(this);
       regionStatistics.setCacheManager(null);
       cacheManager.clear(root);
       root = null;
@@ -559,6 +572,11 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
         snapshotDir, storageGroup, schemaRegionId, regionStatistics, flushCallback);
   }
 
+  @Override
+  public ReleaseFlushMonitor.RecordNode recordTraverserStatistics() {
+    return releaseFlushMonitor.recordTraverserTime(schemaRegionId);
+  }
+
   private CachedMTreeStore(
       File snapshotDir,
       String storageGroup,
@@ -572,15 +590,14 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     this.regionStatistics = regionStatistics;
     this.memManager = new MemManager(regionStatistics);
     this.flushCallback = flushCallback;
-    this.cacheManager =
-        CacheMemoryManager.getInstance().createLRUCacheManager(this, memManager, lockManager);
+    this.cacheManager = releaseFlushMonitor.createLRUCacheManager(this, memManager, lockManager);
     cacheManager.initRootStatus(root);
     regionStatistics.setCacheManager(cacheManager);
     ensureMemoryStatus();
   }
 
   private void ensureMemoryStatus() {
-    CacheMemoryManager.getInstance().ensureMemoryStatus();
+    releaseFlushMonitor.ensureMemoryStatus();
   }
 
   public CachedSchemaRegionStatistics getRegionStatistics() {
@@ -606,66 +623,33 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       lockManager.globalReadLock();
     }
     try {
-      boolean hasVolatileNodes = flushVolatileDBNode();
+      PBTreeFlushExecutor flushExecutor;
+      IDatabaseMNode<ICachedMNode> updatedStorageGroupMNode =
+          cacheManager.collectUpdatedStorageGroupMNodes();
+      if (updatedStorageGroupMNode != null) {
+        flushExecutor =
+            new PBTreeFlushExecutor(updatedStorageGroupMNode, cacheManager, file, lockManager);
+        flushExecutor.flushDatabase();
+      }
 
       Iterator<ICachedMNode> volatileSubtrees = cacheManager.collectVolatileSubtrees();
-      if (volatileSubtrees.hasNext()) {
-        hasVolatileNodes = true;
 
-        long startTime = System.currentTimeMillis();
-
-        ICachedMNode subtreeRoot;
-        PBTreeFlushExecutor flushExecutor;
-        while (volatileSubtrees.hasNext()) {
-          subtreeRoot = volatileSubtrees.next();
-          flushExecutor =
-              new PBTreeFlushExecutor(subtreeRoot, needLock, cacheManager, file, lockManager);
-          flushExecutor.flushVolatileNodes();
-        }
-
-        long time = System.currentTimeMillis() - startTime;
-        if (time > 10_000) {
-          LOGGER.info("It takes {}ms to flush MTree in SchemaRegion {}", time, schemaRegionId);
-        } else {
-          LOGGER.debug("It takes {}ms to flush MTree in SchemaRegion {}", time, schemaRegionId);
-        }
+      long startTime = System.currentTimeMillis();
+      flushExecutor = new PBTreeFlushExecutor(volatileSubtrees, cacheManager, file, lockManager);
+      flushExecutor.flushVolatileNodes();
+      long time = System.currentTimeMillis() - startTime;
+      if (time > 10_000) {
+        LOGGER.info("It takes {}ms to flush MTree in SchemaRegion {}", time, schemaRegionId);
+      } else {
+        LOGGER.debug("It takes {}ms to flush MTree in SchemaRegion {}", time, schemaRegionId);
       }
-
-      if (hasVolatileNodes) {
-        flushCallback.run();
-      }
-
-      ensureMemoryStatus();
-    } catch (MetadataException | IOException e) {
-      LOGGER.warn(
-          "Exception occurred during MTree flush, current SchemaRegionId is {}", schemaRegionId, e);
     } catch (Throwable e) {
       LOGGER.error(
           "Error occurred during MTree flush, current SchemaRegionId is {}", schemaRegionId, e);
-      e.printStackTrace();
     } finally {
       if (needLock) {
         lockManager.globalReadUnlock();
       }
-    }
-  }
-
-  private boolean flushVolatileDBNode() throws IOException {
-    IDatabaseMNode<ICachedMNode> updatedStorageGroupMNode =
-        cacheManager.collectUpdatedStorageGroupMNodes();
-    if (updatedStorageGroupMNode == null) {
-      return false;
-    }
-
-    try {
-      file.updateDatabaseNode(updatedStorageGroupMNode);
-      return true;
-    } catch (IOException e) {
-      LOGGER.warn(
-          "IOException occurred during updating StorageGroupMNode {}",
-          updatedStorageGroupMNode.getFullPath(),
-          e);
-      throw e;
     }
   }
 
