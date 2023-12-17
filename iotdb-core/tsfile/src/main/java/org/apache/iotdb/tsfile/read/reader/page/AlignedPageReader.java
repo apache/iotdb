@@ -194,12 +194,14 @@ public class AlignedPageReader implements IPageReader {
     boolean pushDownFilterAllSatisfy = pushDownFilterAllSatisfy();
 
     // construct time column
+    // when pushDownFilterAllSatisfy = true, we can skip rows by OFFSET & LIMIT
     int readEndIndex = buildTimeColumn(timeBatch, keepCurrentRow, pushDownFilterAllSatisfy);
 
     // construct value columns
     buildValueColumns(readEndIndex, keepCurrentRow, isDeleted);
 
     if (pushDownFilterAllSatisfy) {
+      // OFFSET & LIMIT has been consumed in buildTimeColumn
       return builder.build();
     }
     return applyPushDownFilter();
