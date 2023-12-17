@@ -72,7 +72,7 @@ public class Scheduler {
     this.workerPool =
         IoTDBThreadPoolFactory.newFixedThreadPool(
             FLUSH_WORKER_NUM,
-            ThreadName.PBTREE_FLUSH_PROCESSOR.getName(),
+            ThreadName.PBTREE_WORKER_POOL.getName(),
             new ThreadPoolExecutor.DiscardPolicy());
     this.flushingRegionSet = flushingRegionSet;
     this.releaseFlushStrategy = releaseFlushStrategy;
@@ -104,32 +104,29 @@ public class Scheduler {
                               ISchemaFile file = store.getSchemaFile();
                               LockManager lockManager = store.getLockManager();
                               long startTime = System.currentTimeMillis();
-                              PBTreeFlushExecutor flushExecutor;
-                              IDatabaseMNode<ICachedMNode> dbNode =
-                                  cacheManager.collectUpdatedStorageGroupMNodes();
-                              if (dbNode != null) {
+                              try {
+                                lockManager.globalReadLock();
+                                if (file == null) {
+                                  // store has been closed
+                                  return;
+                                }
+                                PBTreeFlushExecutor flushExecutor;
+                                IDatabaseMNode<ICachedMNode> dbNode =
+                                    cacheManager.collectUpdatedStorageGroupMNodes();
+                                if (dbNode != null) {
+                                  flushExecutor =
+                                      new PBTreeFlushExecutor(
+                                          dbNode, cacheManager, file, lockManager);
+                                  flushExecutor.flushDatabase();
+                                }
                                 flushExecutor =
                                     new PBTreeFlushExecutor(
-                                        dbNode, cacheManager, file, lockManager);
-                                try {
-                                  flushExecutor.flushDatabase();
-                                } catch (IOException e) {
-                                  LOGGER.warn(
-                                      "Error occurred during MTree flush, current SchemaRegionId is {} because {}",
-                                      regionId,
-                                      e.getMessage(),
-                                      e);
-                                }
-                              }
-                              flushExecutor =
-                                  new PBTreeFlushExecutor(
-                                      cacheManager.collectVolatileSubtrees(),
-                                      cacheManager,
-                                      file,
-                                      lockManager);
-                              try {
+                                        cacheManager.collectVolatileSubtrees(),
+                                        cacheManager,
+                                        file,
+                                        lockManager);
                                 flushExecutor.flushVolatileNodes();
-                              } catch (MetadataException e) {
+                              } catch (IOException | MetadataException e) {
                                 LOGGER.warn(
                                     "Error occurred during MTree flush, current SchemaRegionId is {} because {}",
                                     regionId,
@@ -148,6 +145,7 @@ public class Scheduler {
                                       time,
                                       regionId);
                                 }
+                                lockManager.globalReadUnlock();
                                 flushingRegionSet.remove(regionId);
                               }
                             },
@@ -204,10 +202,16 @@ public class Scheduler {
             ICacheManager cacheManager = store.getCacheManager();
             ISchemaFile file = store.getSchemaFile();
             LockManager lockManager = store.getLockManager();
-            List<ICachedMNode> nodesToFlush = new ArrayList<>();
-            PBTreeFlushExecutor flushExecutor;
             long startTime = System.currentTimeMillis();
+
+            List<ICachedMNode> nodesToFlush = new ArrayList<>();
             try {
+              lockManager.globalReadLock();
+              if (file == null) {
+                // store has been closed
+                return;
+              }
+              PBTreeFlushExecutor flushExecutor;
               IDatabaseMNode<ICachedMNode> dbNode = cacheManager.collectUpdatedStorageGroupMNodes();
               if (dbNode != null) {
                 flushExecutor = new PBTreeFlushExecutor(dbNode, cacheManager, file, lockManager);
@@ -224,6 +228,7 @@ public class Scheduler {
               flushExecutor =
                   new PBTreeFlushExecutor(nodesToFlush.iterator(), cacheManager, file, lockManager);
               flushExecutor.flushVolatileNodes();
+              remainToFlush.addAndGet(-nodesToFlush.size());
             } catch (MetadataException | IOException e) {
               LOGGER.warn(
                   "Error occurred during MTree flush, current SchemaRegionId is {} because {}",
@@ -237,7 +242,7 @@ public class Scheduler {
               } else {
                 LOGGER.debug("It takes {}ms to flush MTree in SchemaRegion {}", time, regionId);
               }
-              remainToFlush.addAndGet(-nodesToFlush.size());
+              lockManager.globalReadUnlock();
               flushingRegionSet.remove(regionId);
             }
           });
