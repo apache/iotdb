@@ -542,7 +542,7 @@ public class IoTDBConfig {
    * When the size of the mods file corresponding to TsFile exceeds this value, inner compaction
    * tasks containing mods files are selected first.
    */
-  private long innerCompactionTaskSelectionModsFileThreshold = 50 * 1024 * 1024L;
+  private long innerCompactionTaskSelectionModsFileThreshold = 10 * 1024 * 1024L;
   /**
    * When disk availability is lower than the sum of (disk_space_warning_threshold +
    * inner_compaction_task_selection_disk_redundancy), inner compaction tasks containing mods files
@@ -839,7 +839,11 @@ public class IoTDBConfig {
   /** the interval to log recover progress of each vsg when starting iotdb */
   private long recoveryLogIntervalInMs = 5_000L;
 
-  private boolean enableDiscardOutOfOrderData = false;
+  /**
+   * Separate sequence and unsequence data or not. If it is false, then all data will be written
+   * into unsequence data dir.
+   */
+  private boolean enableSeparateData = true;
 
   /** the method to transform device path to device id, can be 'Plain' or 'SHA256' */
   private String deviceIDTransformationMethod = "Plain";
@@ -1402,12 +1406,12 @@ public class IoTDBConfig {
     this.rpcPort = rpcPort;
   }
 
-  public boolean isEnableDiscardOutOfOrderData() {
-    return enableDiscardOutOfOrderData;
+  public boolean isEnableSeparateData() {
+    return enableSeparateData;
   }
 
-  public void setEnableDiscardOutOfOrderData(boolean enableDiscardOutOfOrderData) {
-    this.enableDiscardOutOfOrderData = enableDiscardOutOfOrderData;
+  public void setEnableSeparateData(boolean enableSeparateData) {
+    this.enableSeparateData = enableSeparateData;
   }
 
   public String getSystemDir() {

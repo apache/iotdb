@@ -17,11 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info;
+package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
-public interface IDeviceSchemaInfo extends ISchemaInfo {
+import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
+import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 
-  Boolean isAligned();
+public class ShowClusterIdStatement extends ShowStatement implements IConfigStatement {
+  @Override
+  public QueryType getQueryType() {
+    return QueryType.READ;
+  }
 
-  int getTemplateId();
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitShowClusterId(this, context);
+  }
 }
