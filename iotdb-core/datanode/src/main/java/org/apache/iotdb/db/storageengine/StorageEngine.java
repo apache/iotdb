@@ -648,7 +648,6 @@ public class StorageEngine implements IService {
       WRITING_METRICS.removeWalFlushMemTableCounterMetrics(regionId);
       WRITING_METRICS.removeTimedFlushMemTableCounterMetrics(regionId);
       WRITING_METRICS.removeSeriesFullFlushMemTableCounterMetrics(regionId);
-      WRITING_METRICS.removeActiveTimePartitionCounterMetrics(regionId);
       try {
         region.abortCompaction();
         region.syncDeleteDataFiles();

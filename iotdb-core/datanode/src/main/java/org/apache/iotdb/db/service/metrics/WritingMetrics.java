@@ -357,7 +357,7 @@ public class WritingMetrics implements IMetricSet {
     allDataRegionIds.forEach(this::createTimedFlushMemTableCounterMetrics);
     allDataRegionIds.forEach(this::createWalFlushMemTableCounterMetrics);
     allDataRegionIds.forEach(this::createActiveMemtableCounterMetrics);
-    allDataRegionIds.forEach(this::createActiveTimePartitionCounterMetrics);
+    createActiveTimePartitionCounterMetrics();
 
     flushThreholdHistogram =
         MetricService.getInstance()
@@ -386,8 +386,8 @@ public class WritingMetrics implements IMetricSet {
           removeTimedFlushMemTableCounterMetrics(dataRegionId);
           removeWalFlushMemTableCounterMetrics(dataRegionId);
           removeActiveMemtableCounterMetrics(dataRegionId);
-          removeActiveTimePartitionCounterMetrics(dataRegionId);
         });
+    removeActiveTimePartitionCounterMetrics();
     MetricService.getInstance().remove(MetricType.HISTOGRAM, Metric.FLUSH_THRESHOLD.toString());
     MetricService.getInstance().remove(MetricType.HISTOGRAM, Metric.REJECT_THRESHOLD.toString());
     MetricService.getInstance()
@@ -474,7 +474,6 @@ public class WritingMetrics implements IMetricSet {
         .getOrCreateCounter(
             Metric.WAL_FLUSH_MEMTABLE_COUNT.toString(),
             MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
             Tag.REGION.toString(),
             dataRegionId.toString());
   }
@@ -484,7 +483,6 @@ public class WritingMetrics implements IMetricSet {
         .getOrCreateCounter(
             Metric.TIMED_FLUSH_MEMTABLE_COUNT.toString(),
             MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
             Tag.REGION.toString(),
             dataRegionId.toString());
   }
@@ -494,7 +492,6 @@ public class WritingMetrics implements IMetricSet {
         .getOrCreateCounter(
             Metric.SERIES_FULL_FLUSH_MEMTABLE.toString(),
             MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
             Tag.REGION.toString(),
             dataRegionId.toString());
   }
@@ -504,19 +501,13 @@ public class WritingMetrics implements IMetricSet {
         .getOrCreateCounter(
             Metric.ACTIVE_MEMTABLE_COUNT.toString(),
             MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
             Tag.REGION.toString(),
             dataRegionId.toString());
   }
 
-  public void createActiveTimePartitionCounterMetrics(DataRegionId dataRegionId) {
+  public void createActiveTimePartitionCounterMetrics() {
     MetricService.getInstance()
-        .getOrCreateCounter(
-            Metric.ACTIVE_MEMTABLE_COUNT.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            Tag.REGION.toString(),
-            dataRegionId.toString());
+        .getOrCreateCounter(Metric.ACTIVE_MEMTABLE_COUNT.toString(), MetricLevel.IMPORTANT);
   }
 
   public void removeSeriesFullFlushMemTableCounterMetrics(DataRegionId dataRegionId) {
@@ -524,7 +515,6 @@ public class WritingMetrics implements IMetricSet {
         .remove(
             MetricType.COUNTER,
             Metric.SERIES_FULL_FLUSH_MEMTABLE.toString(),
-            Tag.NAME.toString(),
             Tag.REGION.toString(),
             dataRegionId.toString());
   }
@@ -534,7 +524,6 @@ public class WritingMetrics implements IMetricSet {
         .remove(
             MetricType.COUNTER,
             Metric.TIMED_FLUSH_MEMTABLE_COUNT.toString(),
-            Tag.NAME.toString(),
             Tag.REGION.toString(),
             dataRegionId.toString());
   }
@@ -544,7 +533,6 @@ public class WritingMetrics implements IMetricSet {
         .remove(
             MetricType.COUNTER,
             Metric.WAL_FLUSH_MEMTABLE_COUNT.toString(),
-            Tag.NAME.toString(),
             Tag.REGION.toString(),
             dataRegionId.toString());
   }
@@ -554,19 +542,13 @@ public class WritingMetrics implements IMetricSet {
         .remove(
             MetricType.COUNTER,
             Metric.ACTIVE_MEMTABLE_COUNT.toString(),
-            Tag.NAME.toString(),
             Tag.REGION.toString(),
             dataRegionId.toString());
   }
 
-  public void removeActiveTimePartitionCounterMetrics(DataRegionId dataRegionId) {
+  public void removeActiveTimePartitionCounterMetrics() {
     MetricService.getInstance()
-        .remove(
-            MetricType.COUNTER,
-            Metric.ACTIVE_TIME_PARTITION_COUNT.toString(),
-            Tag.NAME.toString(),
-            Tag.REGION.toString(),
-            dataRegionId.toString());
+        .remove(MetricType.COUNTER, Metric.ACTIVE_TIME_PARTITION_COUNT.toString());
   }
 
   public void removeFlushingMemTableStatusMetrics(DataRegionId dataRegionId) {
@@ -800,7 +782,57 @@ public class WritingMetrics implements IMetricSet {
     memtableLiveTimer.updateMillis(durationMillis);
   }
 
-  public void recordTimedFlushMemTableCount(DataRegionId dataRegionId, int number) {}
+  public void recordTimedFlushMemTableCount(String dataRegionId, int number) {
+    MetricService.getInstance()
+        .count(
+            number,
+            Metric.TIMED_FLUSH_MEMTABLE_COUNT.toString(),
+            MetricLevel.CORE,
+            Tag.NAME.toString(),
+            Tag.NAME.toString(),
+            Tag.REGION.toString(),
+            dataRegionId);
+  }
+
+  public void recordWalFlushMemTableCount(String dataRegionId, int number) {
+    MetricService.getInstance()
+        .count(
+            number,
+            Metric.WAL_FLUSH_MEMTABLE_COUNT.toString(),
+            MetricLevel.CORE,
+            Tag.NAME.toString(),
+            Tag.NAME.toString(),
+            Tag.REGION.toString(),
+            dataRegionId);
+  }
+
+  public void recordSeriesFullFlushMemTableCount(String dataRegionId, int number) {
+    MetricService.getInstance()
+        .count(
+            number,
+            Metric.SERIES_FULL_FLUSH_MEMTABLE.toString(),
+            MetricLevel.CORE,
+            Tag.NAME.toString(),
+            Tag.NAME.toString(),
+            Tag.REGION.toString(),
+            dataRegionId);
+  }
+
+  public void recordActiveMemTableCount(String dataRegionId, int number) {
+    MetricService.getInstance()
+        .count(
+            number,
+            Metric.ACTIVE_MEMTABLE_COUNT.toString(),
+            MetricLevel.CORE,
+            Tag.NAME.toString(),
+            Tag.REGION.toString(),
+            dataRegionId);
+  }
+
+  public void recordActiveTimePartitionCount(int number) {
+    MetricService.getInstance()
+        .count(number, Metric.ACTIVE_TIME_PARTITION_COUNT.toString(), MetricLevel.CORE);
+  }
 
   // endregion
 

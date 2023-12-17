@@ -244,6 +244,8 @@ public class TsFileProcessor {
       long startTime = System.nanoTime();
       createNewWorkingMemTable();
       PERFORMANCE_OVERVIEW_METRICS.recordCreateMemtableBlockCost(System.nanoTime() - startTime);
+      WritingMetrics.getInstance()
+          .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), 1);
     }
 
     long[] memIncrements = null;
@@ -802,6 +804,8 @@ public class TsFileProcessor {
           "The avg series points num {} of tsfile {} reaches the threshold",
           workMemTable.getTotalPointsNum() / workMemTable.getSeriesNumber(),
           tsFileResource.getTsFile().getAbsolutePath());
+      WritingMetrics.getInstance()
+          .recordSeriesFullFlushMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), 1);
       return true;
     }
     return false;
@@ -1059,6 +1063,8 @@ public class TsFileProcessor {
     }
     WritingMetrics.getInstance()
         .recordMemTableLiveDuration(System.currentTimeMillis() - getWorkMemTableCreatedTime());
+    WritingMetrics.getInstance()
+        .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), -1);
     workMemTable = null;
     return FlushManager.getInstance().registerTsFileProcessor(this);
   }
