@@ -715,9 +715,15 @@ struct TShowPipeResp {
 }
 
 struct TPipeConfigTransferReq {
-  1:required i8 version
-  2:required i16 type
-  3:required binary body
+  1: required i8 version
+  2: required i16 type
+  3: required binary body
+  4: required bool isAirGap
+}
+
+struct TPipeConfigTransferResp {
+  1: required common.TSStatus status
+  2: optional binary body
 }
 
 struct TDeleteTimeSeriesReq{
@@ -1339,7 +1345,7 @@ service IConfigNodeRPCService {
   TGetAllPipeInfoResp getAllPipeInfo()
 
  /** Execute schema language from external pipes */
-  common.TSStatus handleTransferConfigPlan(TPipeConfigTransferReq req)
+  TPipeConfigTransferResp handleTransferConfigPlan(TPipeConfigTransferReq req)
 
   // ======================================================
   // TestTools

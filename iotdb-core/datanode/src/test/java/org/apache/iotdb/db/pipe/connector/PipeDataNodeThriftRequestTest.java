@@ -20,9 +20,8 @@
 package org.apache.iotdb.db.pipe.connector;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.pipe.connector.payload.response.PipeTransferSnapshotPieceResp;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
+import org.apache.iotdb.commons.pipe.connector.payload.request.PipeTransferHandshakeReq;
+import org.apache.iotdb.commons.pipe.connector.payload.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaPlanReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
@@ -240,10 +239,10 @@ public class PipeDataNodeThriftRequestTest {
 
   @Test
   public void testPipeTransferSnapshotPieceResp() throws IOException {
-    PipeTransferSnapshotPieceResp resp =
-        PipeTransferSnapshotPieceResp.toTPipeTransferResp(RpcUtils.SUCCESS_STATUS, 100);
-    PipeTransferSnapshotPieceResp deserializeResp =
-        PipeTransferSnapshotPieceResp.fromTPipeTransferResp(resp);
+    PipeTransferFilePieceResp resp =
+        PipeTransferFilePieceResp.toTPipeTransferResp(RpcUtils.SUCCESS_STATUS, 100);
+    PipeTransferFilePieceResp deserializeResp =
+        PipeTransferFilePieceResp.fromTPipeTransferResp(resp);
 
     Assert.assertEquals(resp.getStatus(), deserializeResp.getStatus());
     Assert.assertEquals(resp.getEndWritingOffset(), deserializeResp.getEndWritingOffset());

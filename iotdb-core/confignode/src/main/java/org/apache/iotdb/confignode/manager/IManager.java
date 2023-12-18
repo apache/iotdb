@@ -89,6 +89,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferReq;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
@@ -106,7 +108,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.consensus.common.DataSet;
 
-import java.nio.ByteBuffer;
 import java.util.List;
 
 /**
@@ -592,11 +593,11 @@ public interface IManager {
   TGetAllPipeInfoResp getAllPipeInfo();
 
   /**
-   * Execute the config plan received from pipe.
+   * Execute the config req received from pipe.
    *
    * @return The result of the command execution.
    */
-  TSStatus executeSyncCommand(ByteBuffer configPhysicalPlanBinary);
+  TPipeConfigTransferResp handleTransferConfigPlan(TPipeConfigTransferReq req);
 
   /**
    * Get RegionId. used for Show cluster slots information in

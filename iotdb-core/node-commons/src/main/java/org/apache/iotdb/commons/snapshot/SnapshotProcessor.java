@@ -49,4 +49,16 @@ public interface SnapshotProcessor {
    * @throws IOException Exception related to file read and write
    */
   void processLoadSnapshot(File snapshotDir) throws TException, IOException;
+
+  /**
+   * Load Incremental snapshot, i.e. Append the non-conflicting content of the new snapshot to
+   * existing data. The method is only needed by processors receiving pipe requests.
+   *
+   * @return the processor shall judge whether this file belongs to this processor, if yes the
+   *     processor shall try to load this file then return true, and return false otherwise.
+   * @param snapshotFile Snapshot file to load
+   */
+  default boolean processLoadIncrementalSnapShot(File snapshotFile) {
+    return false;
+  }
 }

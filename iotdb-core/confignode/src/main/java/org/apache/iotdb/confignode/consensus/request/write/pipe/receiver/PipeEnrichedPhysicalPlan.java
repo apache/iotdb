@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.write.pipe;
+package org.apache.iotdb.confignode.consensus.request.write.pipe.receiver;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -27,15 +27,15 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class PipeEnrichedPlan extends ConfigPhysicalPlan {
+public class PipeEnrichedPhysicalPlan extends ConfigPhysicalPlan {
 
   private ConfigPhysicalPlan innerPlan;
 
-  public PipeEnrichedPlan() {
+  public PipeEnrichedPhysicalPlan() {
     super(ConfigPhysicalPlanType.PipeEnriched);
   }
 
-  public PipeEnrichedPlan(ConfigPhysicalPlan innerPlan) {
+  public PipeEnrichedPhysicalPlan(ConfigPhysicalPlan innerPlan) {
     super(ConfigPhysicalPlanType.PipeEnriched);
     this.innerPlan = innerPlan;
   }
@@ -63,7 +63,7 @@ public class PipeEnrichedPlan extends ConfigPhysicalPlan {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeEnrichedPlan that = (PipeEnrichedPlan) obj;
+    PipeEnrichedPhysicalPlan that = (PipeEnrichedPhysicalPlan) obj;
     return innerPlan.equals(that.innerPlan);
   }
 

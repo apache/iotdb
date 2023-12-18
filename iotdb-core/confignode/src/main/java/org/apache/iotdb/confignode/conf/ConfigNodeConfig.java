@@ -172,6 +172,10 @@ public class ConfigNodeConfig {
   /** External temporary lib directory for storing downloaded pipe JAR files. */
   private String pipeTemporaryLibDir = pipeDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
 
+  /** initialized as empty, updated based on the latest `systemDir` during querying */
+  private String pipeReceiverFileDir =
+      systemDir + File.separator + "pipe" + File.separator + "receiver";
+
   /** Procedure Evict ttl. */
   private int procedureCompletedEvictTTL = 800;
 
@@ -634,6 +638,14 @@ public class ConfigNodeConfig {
 
   public void updatePipeTemporaryLibDir() {
     this.pipeTemporaryLibDir = pipeDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
+  }
+
+  public void setPipeReceiverFileDir(String pipeReceiverFileDir) {
+    this.pipeReceiverFileDir = pipeReceiverFileDir;
+  }
+
+  public String getPipeReceiverFileDir() {
+    return this.pipeReceiverFileDir;
   }
 
   public int getSchemaReplicationFactor() {

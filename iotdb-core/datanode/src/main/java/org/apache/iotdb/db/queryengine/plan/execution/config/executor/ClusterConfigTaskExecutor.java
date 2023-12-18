@@ -78,6 +78,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferReq;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
@@ -100,6 +101,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -196,6 +198,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.trigger.api.Trigger;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -2322,20 +2325,26 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public TSStatus handleTransferConfigPlan(TPipeTransferReq req) {
-    TSStatus tsStatus;
+  public TPipeTransferResp handleTransferConfigPlan(TPipeTransferReq req) {
     TPipeConfigTransferReq configTransferReq =
-        new TPipeConfigTransferReq(req.version, req.type, req.body);
+        new TPipeConfigTransferReq(
+            req.version, req.type, req.body, req instanceof AirGapPseudoTPipeTransferRequest);
+    TPipeTransferResp result;
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      tsStatus = configNodeClient.handleTransferConfigPlan(configTransferReq);
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn("Failed to executeSyncCommand, status is {}.", tsStatus);
+      TPipeConfigTransferResp pipeConfigTransferResp =
+          configNodeClient.handleTransferConfigPlan(configTransferReq);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          != pipeConfigTransferResp.getStatus().getCode()) {
+        LOGGER.warn("Failed to executeSyncCommand, status is {}.", pipeConfigTransferResp);
       }
+      result = new TPipeTransferResp(pipeConfigTransferResp.status);
+      result.setBody(pipeConfigTransferResp.body);
     } catch (Exception e) {
-      tsStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      TSStatus tsStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       tsStatus.setMessage(e.toString());
+      result = new TPipeTransferResp(tsStatus);
     }
-    return tsStatus;
+    return result;
   }
 }

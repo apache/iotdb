@@ -122,9 +122,7 @@ public class WriteBackConnector implements PipeConnector {
                 .thrift()
                 .receive(
                     PipeTransferTabletBinaryReq.toTPipeTransferReq(
-                        pipeInsertNodeTabletInsertionEvent.getByteBuffer()),
-                    ClusterPartitionFetcher.getInstance(),
-                    ClusterSchemaFetcher.getInstance())
+                        pipeInsertNodeTabletInsertionEvent.getByteBuffer()))
                 .getStatus()
             : executeStatement(
                 PipeTransferTabletInsertNodeReq.toTPipeTransferRawReq(

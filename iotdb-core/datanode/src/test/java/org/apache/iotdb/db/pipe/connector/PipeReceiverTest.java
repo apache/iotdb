@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.connector;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
+import org.apache.iotdb.commons.pipe.connector.payload.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.receiver.thrift.IoTDBThriftReceiverV1;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;

@@ -17,15 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.receiver.thrift;
+package org.apache.iotdb.confignode.manager.pipe.receiver;
 
 import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiverAgent;
 
-public class IoTDBThriftReceiverAgent extends IoTDBReceiverAgent {
+public class PipeReceiverCoordinator extends IoTDBReceiverAgent {
   @Override
   protected void initConstructors() {
     RECEIVER_CONSTRUCTORS.put(
-        IoTDBConnectorRequestVersion.VERSION_1.getVersion(), IoTDBThriftReceiverV1::new);
+        IoTDBConnectorRequestVersion.VERSION_1.getVersion(), IoTDBConfigReceiverV1::new);
   }
 }

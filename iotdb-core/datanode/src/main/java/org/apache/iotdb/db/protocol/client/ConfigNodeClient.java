@@ -98,6 +98,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferReq;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
@@ -888,9 +889,10 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus handleTransferConfigPlan(TPipeConfigTransferReq req) throws TException {
+  public TPipeConfigTransferResp handleTransferConfigPlan(TPipeConfigTransferReq req)
+      throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.handleTransferConfigPlan(req), status -> !updateConfigNodeLeader(status));
+        () -> client.handleTransferConfigPlan(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
