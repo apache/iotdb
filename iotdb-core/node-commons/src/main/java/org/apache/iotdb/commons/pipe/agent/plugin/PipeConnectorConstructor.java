@@ -34,7 +34,7 @@ public abstract class PipeConnectorConstructor extends PipePluginConstructor {
   }
 
   @Override
-  protected final PipeConnector reflectPlugin(PipeParameters connectorParameters) {
+  public final PipeConnector reflectPlugin(PipeParameters connectorParameters) {
     return (PipeConnector)
         reflectPluginByKey(
             connectorParameters

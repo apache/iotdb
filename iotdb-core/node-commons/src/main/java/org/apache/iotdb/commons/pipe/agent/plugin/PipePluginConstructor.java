@@ -49,7 +49,7 @@ public abstract class PipePluginConstructor {
   // New plugins shall be put here
   protected abstract void initConstructors();
 
-  protected abstract PipePlugin reflectPlugin(PipeParameters pipeParameters);
+  public abstract PipePlugin reflectPlugin(PipeParameters pipeParameters);
 
   protected PipePlugin reflectPluginByKey(String pluginKey) {
     return PLUGIN_CONSTRUCTORS.getOrDefault(pluginKey, () -> reflect(pluginKey)).get();

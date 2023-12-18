@@ -32,7 +32,7 @@ public abstract class PipeProcessorConstructor extends PipePluginConstructor {
   }
 
   @Override
-  protected final PipeProcessor reflectPlugin(PipeParameters processorParameters) {
+  public final PipeProcessor reflectPlugin(PipeParameters processorParameters) {
     return (PipeProcessor)
         reflectPluginByKey(
             processorParameters
