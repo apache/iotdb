@@ -20,6 +20,11 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.c
 
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
+/**
+ * NodeCache is used to implement specific cache eviction strategy and help quickly locate the
+ * target nodes tobe evicted. This interface defines the behaviours that an implementation shall
+ * meet.
+ */
 public interface INodeCache {
 
   long getCacheNodeNum();
