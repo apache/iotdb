@@ -900,6 +900,8 @@ public class DataRegionTest {
         IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
+    long finishedCompactionTaskNumWhenTestStart =
+        CompactionTaskManager.getInstance().getFinishedTaskNum();
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
@@ -933,7 +935,8 @@ public class DataRegionTest {
         Assert.fail();
         break;
       }
-    } while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0);
+    } while (CompactionTaskManager.getInstance().getFinishedTaskNum()
+        == finishedCompactionTaskNumWhenTestStart);
 
     QueryDataSource queryDataSource =
         dataRegion.query(
