@@ -31,7 +31,23 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggre
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 
-/** <b>Optimization phase:</b> Distributed plan planning */
+/**
+ * <b>Optimization phase:</b> Distributed plan planning
+ *
+ * <p><b>Rule:</b>
+ * <pre>
+ *        ColumnInject
+ *             |              ->  ColumnInject
+ *  SeriesAggregationSource
+ * <pre>
+ *        ColumnInject
+ *             |              ->  ColumnInject
+ *        Aggregation
+ * <pre>
+ *        ColumnInject
+ *             |              ->  ColumnInject
+ *  SlidingWindowAggregation
+ */
 public class ColumnInjectionPushDown implements PlanOptimizer {
 
   @Override
@@ -54,9 +70,8 @@ public class ColumnInjectionPushDown implements PlanOptimizer {
 
     @Override
     public PlanNode visitPlan(PlanNode node, RewriterContext context) {
-      context.setParent(node);
-      context.setMeetColumnInject(false);
       for (PlanNode child : node.getChildren()) {
+        context.setParent(node);
         child.accept(this, context);
       }
       return node;
@@ -67,7 +82,6 @@ public class ColumnInjectionPushDown implements PlanOptimizer {
       PlanNode parent = context.getParent();
 
       context.setParent(node);
-      context.setMeetColumnInject(true);
       node.getChild().accept(this, context);
 
       if (context.columnInjectPushDown()) {
@@ -88,7 +102,7 @@ public class ColumnInjectionPushDown implements PlanOptimizer {
     @Override
     public PlanNode visitSeriesAggregationSourceNode(
         SeriesAggregationSourceNode node, RewriterContext context) {
-      if (context.meetColumnInject()) {
+      if (context.getParent() instanceof ColumnInjectNode) {
         node.setOutputEndTime(true);
         context.setColumnInjectPushDown(true);
       }
@@ -99,7 +113,7 @@ public class ColumnInjectionPushDown implements PlanOptimizer {
     @Override
     public PlanNode visitSlidingWindowAggregation(
         SlidingWindowAggregationNode node, RewriterContext context) {
-      if (context.meetColumnInject()) {
+      if (context.getParent() instanceof ColumnInjectNode) {
         node.setOutputEndTime(true);
         context.setColumnInjectPushDown(true);
       }
@@ -109,7 +123,7 @@ public class ColumnInjectionPushDown implements PlanOptimizer {
 
     @Override
     public PlanNode visitAggregation(AggregationNode node, RewriterContext context) {
-      if (context.meetColumnInject()) {
+      if (context.getParent() instanceof ColumnInjectNode) {
         node.setOutputEndTime(true);
         context.setColumnInjectPushDown(true);
       }
@@ -122,7 +136,6 @@ public class ColumnInjectionPushDown implements PlanOptimizer {
 
     private PlanNode parent;
 
-    private boolean meetColumnInject = false;
     private boolean columnInjectPushDown = false;
 
     public PlanNode getParent() {
@@ -131,14 +144,6 @@ public class ColumnInjectionPushDown implements PlanOptimizer {
 
     public void setParent(PlanNode parent) {
       this.parent = parent;
-    }
-
-    public boolean meetColumnInject() {
-      return meetColumnInject;
-    }
-
-    public void setMeetColumnInject(boolean meetColumnInject) {
-      this.meetColumnInject = meetColumnInject;
     }
 
     public boolean columnInjectPushDown() {
