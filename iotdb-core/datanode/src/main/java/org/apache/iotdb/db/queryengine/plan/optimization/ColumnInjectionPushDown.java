@@ -54,8 +54,9 @@ public class ColumnInjectionPushDown implements PlanOptimizer {
 
     @Override
     public PlanNode visitPlan(PlanNode node, RewriterContext context) {
+      context.setParent(node);
+      context.setMeetColumnInject(false);
       for (PlanNode child : node.getChildren()) {
-        context.setParent(node);
         child.accept(this, context);
       }
       return node;
@@ -68,6 +69,7 @@ public class ColumnInjectionPushDown implements PlanOptimizer {
       context.setParent(node);
       context.setMeetColumnInject(true);
       node.getChild().accept(this, context);
+
       if (context.columnInjectPushDown()) {
         return concatParentWithChild(parent, node.getChild());
       }
