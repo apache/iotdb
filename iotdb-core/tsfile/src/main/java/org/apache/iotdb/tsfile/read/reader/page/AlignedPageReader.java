@@ -274,6 +274,26 @@ public class AlignedPageReader implements IPageReader {
     return readEndIndex;
   }
 
+  private int buildTimeColumnWithPagination(TsBlock unFilteredBlock, boolean[] keepCurrentRow) {
+    int readEndIndex = unFilteredBlock.getPositionCount();
+    for (int rowIndex = 0; rowIndex < readEndIndex; rowIndex++) {
+      if (keepCurrentRow[rowIndex]) {
+        if (paginationController.hasCurOffset()) {
+          paginationController.consumeOffset();
+          keepCurrentRow[rowIndex] = false;
+        } else if (paginationController.hasCurLimit()) {
+          builder.getTimeColumnBuilder().writeLong(unFilteredBlock.getTimeByIndex(rowIndex));
+          builder.declarePosition();
+          paginationController.consumeLimit();
+        } else {
+          readEndIndex = rowIndex;
+          break;
+        }
+      }
+    }
+    return readEndIndex;
+  }
+
   private int buildTimeColumnWithoutPagination(long[] timeBatch, boolean[] keepCurrentRow) {
     int readEndIndex = 0;
     for (int i = 0; i < timeBatch.length; i++) {
@@ -385,26 +405,6 @@ public class AlignedPageReader implements IPageReader {
       }
     }
     return builder.build();
-  }
-
-  private int buildTimeColumnWithPagination(TsBlock unFilteredBlock, boolean[] keepCurrentRow) {
-    int readEndIndex = unFilteredBlock.getPositionCount();
-    for (int rowIndex = 0; rowIndex < readEndIndex; rowIndex++) {
-      if (keepCurrentRow[rowIndex]) {
-        if (paginationController.hasCurOffset()) {
-          paginationController.consumeOffset();
-          keepCurrentRow[rowIndex] = false;
-        } else if (paginationController.hasCurLimit()) {
-          builder.getTimeColumnBuilder().writeLong(unFilteredBlock.getTimeByIndex(rowIndex));
-          builder.declarePosition();
-          paginationController.consumeLimit();
-        } else {
-          readEndIndex = rowIndex;
-          break;
-        }
-      }
-    }
-    return readEndIndex;
   }
 
   public void setDeleteIntervalList(List<List<TimeRange>> list) {
