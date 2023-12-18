@@ -183,7 +183,7 @@ public abstract class AbstractCompactionTask {
     }
   }
 
-  public abstract long getEstimatedMemoryCost() throws IOException;
+  public abstract long getEstimatedMemoryCost();
 
   public abstract int getProcessedFileNum();
 

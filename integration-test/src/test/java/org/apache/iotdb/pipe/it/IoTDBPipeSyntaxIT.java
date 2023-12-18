@@ -80,7 +80,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualIT {
       for (String pipeName : validPipeNames) {
         Assert.assertTrue(
             showPipeResult.stream()
-                .anyMatch((o) -> o.id.equals(pipeName) && o.state.equals("STOPPED")));
+                .anyMatch((o) -> o.id.equals(pipeName) && o.state.equals("RUNNING")));
       }
 
       for (String pipeName : validPipeNames) {

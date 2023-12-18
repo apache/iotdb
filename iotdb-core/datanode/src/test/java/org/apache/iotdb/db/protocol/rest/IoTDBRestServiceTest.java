@@ -754,6 +754,7 @@ public class IoTDBRestServiceTest {
           {
             add("devices");
             add("isAligned");
+            add("Template");
           }
         };
     List<Object> values1 =
@@ -766,6 +767,12 @@ public class IoTDBRestServiceTest {
         new ArrayList<Boolean>() {
           {
             add(false);
+          }
+        };
+    List<String> values3 =
+        new ArrayList<String>() {
+          {
+            add("null");
           }
         };
     Assert.assertEquals(columnNames, columnNamesResult);
@@ -785,6 +792,7 @@ public class IoTDBRestServiceTest {
             add("devices");
             add("database");
             add("isAligned");
+            add("Template");
           }
         };
     List<Object> values1 =
@@ -805,10 +813,17 @@ public class IoTDBRestServiceTest {
             add("false");
           }
         };
+    List<Object> values4 =
+        new ArrayList<Object>() {
+          {
+            add("null");
+          }
+        };
     Assert.assertEquals(columnNames, columnNamesResult);
     Assert.assertEquals(values1, valuesResult.get(0));
     Assert.assertEquals(values2, valuesResult.get(1));
     Assert.assertEquals(values3, valuesResult.get(2));
+    Assert.assertEquals(values4, valuesResult.get(3));
   }
 
   public void listUser(CloseableHttpClient httpClient) {

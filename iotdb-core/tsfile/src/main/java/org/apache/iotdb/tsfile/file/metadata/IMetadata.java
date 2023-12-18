@@ -33,4 +33,12 @@ public interface IMetadata {
   Optional<Statistics<? extends Serializable>> getMeasurementStatistics(int measurementIndex);
 
   boolean hasNullValue(int measurementIndex);
+
+  default boolean timeAllSelected() {
+    return true;
+  }
+
+  default int getMeasurementCount() {
+    return 1;
+  }
 }

@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
@@ -74,7 +75,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException {
+  protected boolean executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info(
         "CreatePipeProcedureV2: executeFromValidateTask({})", createPipeRequest.getPipeName());
 
@@ -84,6 +85,8 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         .getPipePluginInfo()
         .checkBeforeCreatePipe(createPipeRequest);
     pipeTaskInfo.get().checkBeforeCreatePipe(createPipeRequest);
+
+    return false;
   }
 
   @Override
@@ -120,6 +123,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
               }
             });
     pipeRuntimeMeta = new PipeRuntimeMeta(consensusGroupIdToTaskMetaMap);
+    pipeRuntimeMeta.getStatus().set(PipeStatus.RUNNING);
   }
 
   @Override

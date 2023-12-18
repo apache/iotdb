@@ -24,8 +24,10 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.AlignedPageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.FileElement;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.NonAlignedPageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.PageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.PointPriorityReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
@@ -118,8 +120,10 @@ public abstract class SeriesCompactionExecutor {
     pageQueue =
         new PriorityQueue<>(
             (o1, o2) -> {
-              int timeCompare = Long.compare(o1.startTime, o2.startTime);
-              return timeCompare != 0 ? timeCompare : Long.compare(o2.priority, o1.priority);
+              int timeCompare = Long.compare(o1.getStartTime(), o2.getStartTime());
+              return timeCompare != 0
+                  ? timeCompare
+                  : Long.compare(o2.getPriority(), o1.getPriority());
             });
   }
 
@@ -222,7 +226,7 @@ public abstract class SeriesCompactionExecutor {
   private void compactPages()
       throws IOException, PageException, WriteProcessException, IllegalPathException {
     while (!pageQueue.isEmpty()) {
-      PageElement firstPageElement = getPageFromPageQueue(pageQueue.peek().startTime);
+      PageElement firstPageElement = getPageFromPageQueue(pageQueue.peek().getStartTime());
       ModifiedStatus modifiedStatus = isPageModified(firstPageElement);
 
       if (modifiedStatus == ModifiedStatus.ALL_DELETED) {
@@ -232,12 +236,12 @@ public abstract class SeriesCompactionExecutor {
       }
 
       boolean isPageOverlap =
-          firstPageElement.pageHeader.getEndTime() >= nextPageStartTime
-              || firstPageElement.pageHeader.getEndTime() >= nextChunkStartTime;
+          firstPageElement.getEndTime() >= nextPageStartTime
+              || firstPageElement.getEndTime() >= nextChunkStartTime;
 
       if (isPageOverlap
           || modifiedStatus == ModifiedStatus.PARTIAL_DELETED
-          || firstPageElement.needForceDecoding) {
+          || firstPageElement.needForceDecoding()) {
         // has overlap or modified pages, then deserialize it
         summary.pageOverlapOrModified += 1;
         if (pointPriorityReader.addNewPageIfPageNotEmpty(firstPageElement)) {
@@ -255,17 +259,21 @@ public abstract class SeriesCompactionExecutor {
       throws PageException, IOException, WriteProcessException, IllegalPathException {
     boolean success;
     if (isAligned) {
+      AlignedPageElement alignedPageElement = (AlignedPageElement) pageElement;
       success =
           compactionWriter.flushAlignedPage(
-              pageElement.pageData,
-              pageElement.pageHeader,
-              pageElement.valuePageDatas,
-              pageElement.valuePageHeaders,
+              alignedPageElement.getTimePageData(),
+              alignedPageElement.getTimePageHeader(),
+              alignedPageElement.getValuePageDataList(),
+              alignedPageElement.getValuePageHeaders(),
               subTaskId);
     } else {
+      NonAlignedPageElement nonAlignedPageElement = (NonAlignedPageElement) pageElement;
       success =
           compactionWriter.flushNonAlignedPage(
-              pageElement.pageData, pageElement.pageHeader, subTaskId);
+              nonAlignedPageElement.getPageData(),
+              nonAlignedPageElement.getPageHeader(),
+              subTaskId);
     }
     if (success) {
       // flush the page successfully, then remove this page
@@ -281,7 +289,7 @@ public abstract class SeriesCompactionExecutor {
       TimeValuePair point;
       while (pointPriorityReader.hasNext()) {
         point = pointPriorityReader.currentPoint();
-        if (point.getTimestamp() > pageElement.pageHeader.getEndTime()) {
+        if (point.getTimestamp() > pageElement.getEndTime()) {
           // finish writing this page
           break;
         }
@@ -343,12 +351,12 @@ public abstract class SeriesCompactionExecutor {
     } else {
       // check is next page fake overlap (locates in the gap) or not
       boolean isNextPageOverlap =
-          currentPoint.getTimestamp() <= nextPageElement.pageHeader.getEndTime()
-              || nextPageElement.pageHeader.getEndTime() >= nextPageStartTime
-              || nextPageElement.pageHeader.getEndTime() >= nextChunkStartTime;
+          currentPoint.getTimestamp() <= nextPageElement.getEndTime()
+              || nextPageElement.getEndTime() >= nextPageStartTime
+              || nextPageElement.getEndTime() >= nextChunkStartTime;
       if (isNextPageOverlap
           || nextPageModifiedStatus == ModifiedStatus.PARTIAL_DELETED
-          || nextPageElement.needForceDecoding) {
+          || nextPageElement.needForceDecoding()) {
         // next page is overlapped or modified, then deserialize it
         summary.pageOverlapOrModified++;
         pointPriorityReader.addNewPageIfPageNotEmpty(nextPageElement);
@@ -427,7 +435,7 @@ public abstract class SeriesCompactionExecutor {
       deserializeChunkIntoPageQueue(chunkMetadataElement);
     }
     PageElement page = pageQueue.poll();
-    nextPageStartTime = pageQueue.isEmpty() ? Long.MAX_VALUE : pageQueue.peek().startTime;
+    nextPageStartTime = pageQueue.isEmpty() ? Long.MAX_VALUE : pageQueue.peek().getStartTime();
     return page;
   }
 
@@ -440,9 +448,9 @@ public abstract class SeriesCompactionExecutor {
    */
   private void checkShouldRemoveFile(PageElement pageElement)
       throws IOException, IllegalPathException {
-    if (pageElement.isLastPage && pageElement.chunkMetadataElement.isLastChunk) {
+    if (pageElement.isLastPage() && pageElement.getChunkMetadataElement().isLastChunk) {
       // finish compacting the file, remove it from list
-      removeFile(pageElement.chunkMetadataElement.fileElement);
+      removeFile(pageElement.getChunkMetadataElement().fileElement);
     }
   }
 
