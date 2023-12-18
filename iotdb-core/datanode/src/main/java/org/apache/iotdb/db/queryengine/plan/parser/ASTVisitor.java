@@ -3307,6 +3307,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       List<CompressionType> compressors = new ArrayList<>();
       for (IoTDBSqlParser.TemplateMeasurementClauseContext templateClauseContext :
           ctx.templateMeasurementClause()) {
+        if (templateClauseContext.nodeNameWithoutWildcard().getText().equalsIgnoreCase("null")) {
+          throw new SemanticException("Device Template: measurement's name can not be 'null'.");
+        }
         measurements.add(
             parseNodeNameWithoutWildCard(templateClauseContext.nodeNameWithoutWildcard()));
         parseAttributeClauseForSchemaTemplate(

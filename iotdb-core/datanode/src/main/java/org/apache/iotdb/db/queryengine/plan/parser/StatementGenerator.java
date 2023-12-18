@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
@@ -639,6 +640,10 @@ public class StatementGenerator {
       TSEncoding encoding = TSEncoding.deserialize(ReadWriteIOUtils.readByte(buffer));
       CompressionType compressionType =
           CompressionType.deserialize(ReadWriteIOUtils.readByte(buffer));
+
+      if (measurementName == null || measurementName.isEmpty()) {
+        throw new SemanticException("Device Template: measurement's name can not be 'null'.");
+      }
 
       if (alignedPrefix.containsKey(prefix) && !isAlign) {
         throw new MetadataException("Align designation incorrect at: " + prefix);
