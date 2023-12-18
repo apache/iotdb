@@ -500,18 +500,37 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
     List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
 
-    ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
-    while (buffer.hasRemaining()) {
-      TimeseriesMetadata timeseriesMetadata;
-      try {
-        timeseriesMetadata = TimeseriesMetadata.deserializeFrom(buffer, true);
-      } catch (Exception e) {
-        logger.error(
-            "Something error happened while deserializing TimeseriesMetadata of file {}", file);
-        throw e;
+    try {
+      ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
+      while (buffer.hasRemaining()) {
+        TimeseriesMetadata timeseriesMetadata;
+        try {
+          timeseriesMetadata = TimeseriesMetadata.deserializeFrom(buffer, true);
+        } catch (Exception e) {
+          logger.error(
+              "Something error happened while deserializing TimeseriesMetadata of file {}", file);
+          throw e;
+        }
+        if (allSensors.contains(timeseriesMetadata.getMeasurementId())) {
+          timeseriesMetadataList.add(timeseriesMetadata);
+        }
       }
-      if (allSensors.contains(timeseriesMetadata.getMeasurementId())) {
-        timeseriesMetadataList.add(timeseriesMetadata);
+    } catch (ByteBufferAllocateException e) {
+      // when the buffer length is over than Integer.MAX_VALUE,
+      // using tsFileInput to get timeseriesMetadataList
+      tsFileInput.position(metadataIndexPair.left.getOffset());
+      while (tsFileInput.position() < metadataIndexPair.right) {
+        TimeseriesMetadata timeseriesMetadata;
+        try {
+          timeseriesMetadata = TimeseriesMetadata.deserializeFrom(tsFileInput, true);
+        } catch (Exception e1) {
+          logger.error(
+              "Something error happened while deserializing TimeseriesMetadata of file {}", file);
+          throw e1;
+        }
+        if (allSensors.contains(timeseriesMetadata.getMeasurementId())) {
+          timeseriesMetadataList.add(timeseriesMetadata);
+        }
       }
     }
     return timeseriesMetadataList;
