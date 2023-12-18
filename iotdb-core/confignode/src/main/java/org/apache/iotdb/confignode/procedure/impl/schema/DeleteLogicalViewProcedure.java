@@ -293,14 +293,16 @@ public class DeleteLogicalViewProcedure
     if (o == null || getClass() != o.getClass()) return false;
     DeleteLogicalViewProcedure that = (DeleteLogicalViewProcedure) o;
     return this.getProcId() == that.getProcId()
-        && this.getState() == that.getState()
+        && this.getCurrentState().equals(that.getCurrentState())
+        && this.getCycles() == that.getCycles()
         && isGeneratedByPipe == that.isGeneratedByPipe
         && patternTree.equals(that.patternTree);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(getProcId(), getState(), isGeneratedByPipe, patternTree);
+    return Objects.hash(
+        getProcId(), getCurrentState(), getCycles(), isGeneratedByPipe, patternTree);
   }
 
   private class DeleteLogicalViewRegionTaskExecutor<Q>

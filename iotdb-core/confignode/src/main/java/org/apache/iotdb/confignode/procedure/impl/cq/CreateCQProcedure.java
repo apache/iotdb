@@ -255,7 +255,9 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
     }
     CreateCQProcedure that = (CreateCQProcedure) o;
     return getProcId() == that.getProcId()
-        && getState().equals(that.getState())
+        && getCurrentState().equals(that.getCurrentState())
+        && getCycles() == that.getCycles()
+        && isGeneratedByPipe == that.isGeneratedByPipe
         && firstExecutionTime == that.firstExecutionTime
         && Objects.equals(req, that.req)
         && Objects.equals(md5, that.md5);
@@ -263,6 +265,13 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
 
   @Override
   public int hashCode() {
-    return Objects.hash(getProcId(), getState(), req, md5, firstExecutionTime);
+    return Objects.hash(
+        getProcId(),
+        getCurrentState(),
+        getCycles(),
+        isGeneratedByPipe,
+        req,
+        md5,
+        firstExecutionTime);
   }
 }

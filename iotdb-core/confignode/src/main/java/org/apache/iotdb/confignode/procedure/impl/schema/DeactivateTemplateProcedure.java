@@ -387,7 +387,8 @@ public class DeactivateTemplateProcedure
     if (o == null || getClass() != o.getClass()) return false;
     DeactivateTemplateProcedure that = (DeactivateTemplateProcedure) o;
     return Objects.equals(getProcId(), that.getProcId())
-        && Objects.equals(getState(), that.getState())
+        && Objects.equals(getCurrentState(), that.getCurrentState())
+        && Objects.equals(getCycles(), that.getCycles())
         && Objects.equals(isGeneratedByPipe, that.isGeneratedByPipe)
         && Objects.equals(queryId, that.queryId)
         && Objects.equals(templateSetInfo, that.templateSetInfo);
@@ -395,7 +396,8 @@ public class DeactivateTemplateProcedure
 
   @Override
   public int hashCode() {
-    return Objects.hash(getProcId(), getState(), isGeneratedByPipe, queryId, templateSetInfo);
+    return Objects.hash(
+        getProcId(), getCurrentState(), getCycles(), isGeneratedByPipe, queryId, templateSetInfo);
   }
 
   private class DeactivateTemplateRegionTaskExecutor<Q>

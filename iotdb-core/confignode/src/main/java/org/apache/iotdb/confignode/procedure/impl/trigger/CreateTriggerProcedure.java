@@ -295,7 +295,8 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
     if (that instanceof CreateTriggerProcedure) {
       CreateTriggerProcedure thatProc = (CreateTriggerProcedure) that;
       return thatProc.getProcId() == this.getProcId()
-          && thatProc.getState() == this.getState()
+          && thatProc.getCurrentState().equals(this.getCurrentState())
+          && thatProc.getCycles() == this.getCycles()
           && thatProc.isGeneratedByPipe == this.isGeneratedByPipe
           && thatProc.triggerInformation.equals(this.triggerInformation);
     }
@@ -304,6 +305,7 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
 
   @Override
   public int hashCode() {
-    return Objects.hash(getProcId(), getState(), isGeneratedByPipe, triggerInformation);
+    return Objects.hash(
+        getProcId(), getCurrentState(), getCycles(), isGeneratedByPipe, triggerInformation);
   }
 }

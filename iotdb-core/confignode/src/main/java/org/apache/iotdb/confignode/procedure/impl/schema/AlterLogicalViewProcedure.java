@@ -294,7 +294,8 @@ public class AlterLogicalViewProcedure
     if (!(o instanceof AlterLogicalViewProcedure)) return false;
     AlterLogicalViewProcedure that = (AlterLogicalViewProcedure) o;
     return Objects.equals(getProcId(), that.getProcId())
-        && Objects.equals(getState(), that.getState())
+        && Objects.equals(getCurrentState(), that.getCurrentState())
+        && Objects.equals(getCycles(), that.getCycles())
         && Objects.equals(isGeneratedByPipe, that.isGeneratedByPipe)
         && Objects.equals(queryId, that.queryId)
         && Objects.equals(viewPathToSourceMap, that.viewPathToSourceMap);
@@ -302,7 +303,13 @@ public class AlterLogicalViewProcedure
 
   @Override
   public int hashCode() {
-    return Objects.hash(getProcId(), getState(), isGeneratedByPipe, queryId, viewPathToSourceMap);
+    return Objects.hash(
+        getProcId(),
+        getCurrentState(),
+        getCycles(),
+        isGeneratedByPipe,
+        queryId,
+        viewPathToSourceMap);
   }
 
   private class AlterLogicalViewRegionTaskExecutor<Q>

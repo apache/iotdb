@@ -174,7 +174,8 @@ public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState
     if (that instanceof DropTriggerProcedure) {
       DropTriggerProcedure thatProc = (DropTriggerProcedure) that;
       return thatProc.getProcId() == this.getProcId()
-          && thatProc.getState() == this.getState()
+          && thatProc.getCurrentState().equals(this.getCurrentState())
+          && thatProc.getCycles() == this.getCycles()
           && thatProc.isGeneratedByPipe == this.isGeneratedByPipe
           && (thatProc.triggerName).equals(this.triggerName);
     }
@@ -183,6 +184,7 @@ public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState
 
   @Override
   public int hashCode() {
-    return Objects.hash(getProcId(), getState(), isGeneratedByPipe, triggerName);
+    return Objects.hash(
+        getProcId(), getCurrentState(), getCycles(), isGeneratedByPipe, triggerName);
   }
 }

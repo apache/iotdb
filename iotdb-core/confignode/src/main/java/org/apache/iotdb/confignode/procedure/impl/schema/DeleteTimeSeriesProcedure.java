@@ -335,14 +335,16 @@ public class DeleteTimeSeriesProcedure
     if (o == null || getClass() != o.getClass()) return false;
     DeleteTimeSeriesProcedure that = (DeleteTimeSeriesProcedure) o;
     return this.getProcId() == that.getProcId()
+        && this.getCurrentState().equals(that.getCurrentState())
+        && this.getCycles() == getCycles()
         && this.isGeneratedByPipe == that.isGeneratedByPipe
-        && this.getState() == that.getState()
-        && patternTree.equals(that.patternTree);
+        && this.patternTree.equals(that.patternTree);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(getProcId(), isGeneratedByPipe, getState(), patternTree);
+    return Objects.hash(
+        getProcId(), getCurrentState(), getCycles(), isGeneratedByPipe, patternTree);
   }
 
   private class DeleteTimeSeriesRegionTaskExecutor<Q>

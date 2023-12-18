@@ -58,6 +58,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
@@ -416,5 +417,25 @@ public class UnsetTemplateProcedure
     template.deserialize(byteBuffer);
     path = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
     alreadyRollback = ReadWriteIOUtils.readBool(byteBuffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    UnsetTemplateProcedure that = (UnsetTemplateProcedure) o;
+    return Objects.equals(getProcId(), that.getProcId())
+        && Objects.equals(getCurrentState(), that.getCurrentState())
+        && Objects.equals(getCycles(), that.getCycles())
+        && Objects.equals(isGeneratedByPipe, that.isGeneratedByPipe)
+        && Objects.equals(queryId, that.queryId)
+        && Objects.equals(template, that.template)
+        && Objects.equals(path, that.path);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        getProcId(), getCurrentState(), getCycles(), isGeneratedByPipe, queryId, template, path);
   }
 }

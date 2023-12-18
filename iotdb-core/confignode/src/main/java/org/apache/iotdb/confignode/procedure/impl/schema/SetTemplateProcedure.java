@@ -572,7 +572,8 @@ public class SetTemplateProcedure
     if (o == null || getClass() != o.getClass()) return false;
     SetTemplateProcedure that = (SetTemplateProcedure) o;
     return Objects.equals(getProcId(), that.getProcId())
-        && Objects.equals(getState(), that.getState())
+        && Objects.equals(getCurrentState(), that.getCurrentState())
+        && Objects.equals(getCycles(), that.getCycles())
         && Objects.equals(isGeneratedByPipe, that.isGeneratedByPipe)
         && Objects.equals(templateName, that.templateName)
         && Objects.equals(templateSetPath, that.templateSetPath);
@@ -580,6 +581,12 @@ public class SetTemplateProcedure
 
   @Override
   public int hashCode() {
-    return Objects.hash(getProcId(), getState(), isGeneratedByPipe, templateName, templateSetPath);
+    return Objects.hash(
+        getProcId(),
+        getCurrentState(),
+        getCycles(),
+        isGeneratedByPipe,
+        templateName,
+        templateSetPath);
   }
 }

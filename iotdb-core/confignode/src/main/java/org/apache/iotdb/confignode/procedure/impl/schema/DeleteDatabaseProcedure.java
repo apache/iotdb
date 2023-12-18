@@ -305,7 +305,8 @@ public class DeleteDatabaseProcedure
     if (that instanceof DeleteDatabaseProcedure) {
       DeleteDatabaseProcedure thatProc = (DeleteDatabaseProcedure) that;
       return thatProc.getProcId() == this.getProcId()
-          && thatProc.getState() == this.getState()
+          && thatProc.getCurrentState().equals(this.getCurrentState())
+          && thatProc.getCycles() == this.getCycles()
           && thatProc.isGeneratedByPipe == this.isGeneratedByPipe
           && thatProc.deleteDatabaseSchema.equals(this.getDeleteDatabaseSchema());
     }
@@ -314,6 +315,7 @@ public class DeleteDatabaseProcedure
 
   @Override
   public int hashCode() {
-    return Objects.hash(getProcId(), getState(), isGeneratedByPipe, deleteDatabaseSchema);
+    return Objects.hash(
+        getProcId(), getCurrentState(), getCycles(), isGeneratedByPipe, deleteDatabaseSchema);
   }
 }
