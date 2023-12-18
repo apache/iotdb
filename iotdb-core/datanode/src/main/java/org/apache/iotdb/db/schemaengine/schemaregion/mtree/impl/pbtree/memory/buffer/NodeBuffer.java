@@ -17,9 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache;
+package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.buffer;
 
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.cache.CacheEntry;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
 import java.util.Iterator;
@@ -36,7 +37,7 @@ public class NodeBuffer implements INodeBuffer {
 
   private final Map<Integer, NodeBufferIterator> currentIteratorMap = new ConcurrentHashMap<>();
 
-  NodeBuffer() {
+  public NodeBuffer() {
     for (int i = 0; i < MAP_NUM; i++) {
       maps[i] = new ConcurrentHashMap<>();
     }

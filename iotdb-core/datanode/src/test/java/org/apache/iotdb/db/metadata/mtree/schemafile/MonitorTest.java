@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.metadata.mtree.schemafile;
 
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.ReleaseFlushMonitor;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.ReleaseFlushMonitor;
 
 import org.junit.After;
 import org.junit.Assert;

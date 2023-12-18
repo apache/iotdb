@@ -16,7 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache;
+
+package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory;
 
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
@@ -25,7 +26,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICa
 
 import java.util.Iterator;
 
-public interface ICacheManager {
+public interface IMemoryManager {
 
   void initRootStatus(ICachedMNode root);
 

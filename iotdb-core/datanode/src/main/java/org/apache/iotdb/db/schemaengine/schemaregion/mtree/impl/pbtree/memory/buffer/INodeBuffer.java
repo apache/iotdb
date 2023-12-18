@@ -17,9 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache;
+package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.buffer;
 
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.cache.CacheEntry;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
 import java.util.Iterator;

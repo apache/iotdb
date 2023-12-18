@@ -22,11 +22,11 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaRegionStatistics;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.ICacheManager;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.LRUCacheManager;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.ReleaseFlushMonitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.MemoryStatistics;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.IMemoryManager;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.MemoryManager;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.ReleaseFlushMonitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaFile;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.SchemaFile;
 
@@ -84,8 +84,9 @@ public class PBTreeFactory {
 
     LockManager lockManager = new LockManager();
 
-    ICacheManager cacheManager = new LRUCacheManager(memoryStatistics, lockManager);
-    regionStatistics.setCacheManager(cacheManager);
+    IMemoryManager memoryManager = new MemoryManager(memoryStatistics, lockManager);
+
+    regionStatistics.setMemoryManager(memoryManager);
 
     ReleaseFlushMonitor releaseFlushMonitor = ReleaseFlushMonitor.getInstance();
     CachedMTreeStore cachedMTreeStore =
@@ -94,7 +95,7 @@ public class PBTreeFactory {
             regionStatistics,
             flushCallback,
             schemaFile,
-            cacheManager,
+            memoryManager,
             memoryStatistics,
             lockManager);
     releaseFlushMonitor.registerCachedMTreeStore(cachedMTreeStore);

@@ -17,10 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache;
+package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.cache;
 
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockManager;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.MemoryStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
 import java.util.Objects;
@@ -28,14 +26,13 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class LRUCacheManager extends CacheManager {
+public class LRUNodeCache implements INodeCache {
 
   private static final int NUM_OF_LIST = 17;
 
   private final LRUCacheList[] lruCacheLists = new LRUCacheList[NUM_OF_LIST];
 
-  public LRUCacheManager(MemoryStatistics memoryStatistics, LockManager lockManager) {
-    super(memoryStatistics, lockManager);
+  public LRUNodeCache() {
     for (int i = 0; i < NUM_OF_LIST; i++) {
       lruCacheLists[i] = new LRUCacheList();
     }
@@ -48,25 +45,25 @@ public class LRUCacheManager extends CacheManager {
   }
 
   @Override
-  protected void initCacheEntryForNode(ICachedMNode node) {
+  public void initCacheEntryForNode(ICachedMNode node) {
     LRUCacheEntry cacheEntry = new LRUCacheEntry(node);
     node.setCacheEntry(cacheEntry);
   }
 
   @Override
-  protected void addToNodeCache(CacheEntry cacheEntry, ICachedMNode node) {
+  public void addToNodeCache(CacheEntry cacheEntry, ICachedMNode node) {
     LRUCacheEntry lruCacheEntry = getAsLRUCacheEntry(cacheEntry);
     getTargetCacheList(lruCacheEntry).addToCacheList(lruCacheEntry);
   }
 
   @Override
-  protected void removeFromNodeCache(CacheEntry cacheEntry) {
+  public void removeFromNodeCache(CacheEntry cacheEntry) {
     LRUCacheEntry lruCacheEntry = getAsLRUCacheEntry(cacheEntry);
     getTargetCacheList(lruCacheEntry).removeFromCacheList(lruCacheEntry);
   }
 
   @Override
-  protected ICachedMNode getPotentialNodeTobeEvicted() {
+  public ICachedMNode getPotentialNodeTobeEvicted() {
     ICachedMNode result = null;
     for (LRUCacheList cacheList : lruCacheLists) {
       result = cacheList.getPotentialNodeTobeEvicted();
@@ -78,7 +75,7 @@ public class LRUCacheManager extends CacheManager {
   }
 
   @Override
-  protected void clearNodeCache() {
+  public void clear() {
     for (LRUCacheList lruCacheList : lruCacheLists) {
       lruCacheList.clear();
     }

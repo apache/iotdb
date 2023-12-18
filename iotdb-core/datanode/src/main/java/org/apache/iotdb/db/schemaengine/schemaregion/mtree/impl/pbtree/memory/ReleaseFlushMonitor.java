@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache;
+package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -54,8 +54,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
- * CacheMemoryManager is used to register the CachedMTreeStore and create the CacheManager.
- * CacheMemoryManager provides the {@link ReleaseFlushMonitor#ensureMemoryStatus} interface, which
+ * All instances of CachedMTreeStoreCacheMemoryManager shall be registered in ReleaseFlushMonitor.
+ * ReleaseFlushMonitor provides the {@link ReleaseFlushMonitor#ensureMemoryStatus} interface, which
  * starts asynchronous threads to free and flush the disk when memory usage exceeds a threshold.
  */
 public class ReleaseFlushMonitor {
