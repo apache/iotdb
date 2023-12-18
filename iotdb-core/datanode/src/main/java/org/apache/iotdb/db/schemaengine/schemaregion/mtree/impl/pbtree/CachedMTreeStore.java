@@ -39,7 +39,6 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICa
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.iterator.CachedTraverserIterator;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaFile;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.SchemaFile;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MNodeUtils;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -71,24 +70,31 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
   private final CachedSchemaRegionStatistics regionStatistics;
   private final ReleaseFlushMonitor releaseFlushMonitor = ReleaseFlushMonitor.getInstance();
-  private final LockManager lockManager = new LockManager();
+  private final LockManager lockManager;
 
   public CachedMTreeStore(
-      PartialPath storageGroup,
       int schemaRegionId,
       CachedSchemaRegionStatistics regionStatistics,
-      Runnable flushCallback)
-      throws MetadataException, IOException {
+      Runnable flushCallback,
+      ISchemaFile schemaFile,
+      ICacheManager cacheManager,
+      MemoryStatistics memoryStatistics,
+      LockManager lockManager)
+      throws MetadataException {
     this.schemaRegionId = schemaRegionId;
-    file = SchemaFile.initSchemaFile(storageGroup.getFullPath(), schemaRegionId);
-    root = file.init();
     this.regionStatistics = regionStatistics;
-    this.memoryStatistics = new MemoryStatistics(regionStatistics);
     this.flushCallback = flushCallback;
-    this.cacheManager =
-        releaseFlushMonitor.createLRUCacheManager(this, memoryStatistics, lockManager);
+
+    this.lockManager = lockManager;
+
+    file = schemaFile;
+    root = file.init();
+
+    this.memoryStatistics = memoryStatistics;
+
+    this.cacheManager = cacheManager;
     cacheManager.initRootStatus(root);
-    regionStatistics.setCacheManager(cacheManager);
+
     ensureMemoryStatus();
   }
 
@@ -561,40 +567,9 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     }
   }
 
-  public static CachedMTreeStore loadFromSnapshot(
-      File snapshotDir,
-      String storageGroup,
-      int schemaRegionId,
-      CachedSchemaRegionStatistics regionStatistics,
-      Runnable flushCallback)
-      throws IOException, MetadataException {
-    return new CachedMTreeStore(
-        snapshotDir, storageGroup, schemaRegionId, regionStatistics, flushCallback);
-  }
-
   @Override
   public ReleaseFlushMonitor.RecordNode recordTraverserStatistics() {
     return releaseFlushMonitor.recordTraverserTime(schemaRegionId);
-  }
-
-  private CachedMTreeStore(
-      File snapshotDir,
-      String storageGroup,
-      int schemaRegionId,
-      CachedSchemaRegionStatistics regionStatistics,
-      Runnable flushCallback)
-      throws IOException, MetadataException {
-    this.schemaRegionId = schemaRegionId;
-    file = SchemaFile.loadSnapshot(snapshotDir, storageGroup, schemaRegionId);
-    root = file.init();
-    this.regionStatistics = regionStatistics;
-    this.memoryStatistics = new MemoryStatistics(regionStatistics);
-    this.flushCallback = flushCallback;
-    this.cacheManager =
-        releaseFlushMonitor.createLRUCacheManager(this, memoryStatistics, lockManager);
-    cacheManager.initRootStatus(root);
-    regionStatistics.setCacheManager(cacheManager);
-    ensureMemoryStatus();
   }
 
   private void ensureMemoryStatus() {

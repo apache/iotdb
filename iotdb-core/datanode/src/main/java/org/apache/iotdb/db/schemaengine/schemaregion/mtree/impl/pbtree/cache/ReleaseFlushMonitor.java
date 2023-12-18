@@ -28,9 +28,7 @@ import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaEngineStatistics;
 import org.apache.iotdb.db.schemaengine.rescon.ISchemaEngineStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.CachedMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.flush.Scheduler;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.IReleaseFlushStrategy;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.MemoryStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.ReleaseFlushStrategyNumBasedImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.ReleaseFlushStrategySizeBasedImpl;
 import org.apache.iotdb.db.utils.concurrent.FiniteSemaphore;
@@ -86,18 +84,9 @@ public class ReleaseFlushMonitor {
   private FiniteSemaphore releaseSemaphore;
   private Scheduler scheduler;
 
-  /**
-   * Create and allocate LRUCacheManager to the corresponding CachedMTreeStore.
-   *
-   * @param store CachedMTreeStore
-   * @return LRUCacheManager
-   */
-  public ICacheManager createLRUCacheManager(
-      CachedMTreeStore store, MemoryStatistics memoryStatistics, LockManager lockManager) {
-    ICacheManager cacheManager = new LRUCacheManager(memoryStatistics, lockManager);
+  public void registerCachedMTreeStore(CachedMTreeStore store) {
     regionToStoreMap.put(store.getRegionStatistics().getSchemaRegionId(), store);
     regionToTraverserTime.put(store.getRegionStatistics().getSchemaRegionId(), new RecordList());
-    return cacheManager;
   }
 
   public void clearCachedMTreeStore(CachedMTreeStore store) {
