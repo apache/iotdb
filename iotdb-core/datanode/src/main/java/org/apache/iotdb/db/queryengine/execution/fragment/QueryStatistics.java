@@ -22,8 +22,8 @@ package org.apache.iotdb.db.queryengine.execution.fragment;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Statistic to record the count and time of load timeseriesmetadata, construct chunk readers in the
- * query execution
+ * Statistic to record the count and time of load timeseries metadata, construct chunk readers and
+ * page reader decompress in the query execution
  */
 public class QueryStatistics {
 

@@ -29,14 +29,9 @@ import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.Arrays;
 
 public class SeriesScanCostMetricSet implements IMetricSet {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(SeriesScanCostMetricSet.class);
 
   public static SeriesScanCostMetricSet getInstance() {
     return SeriesScanCostMetricSet.InstanceHolder.INSTANCE;
@@ -299,19 +294,20 @@ public class SeriesScanCostMetricSet implements IMetricSet {
 
     for (String type : Arrays.asList(ALIGNED, NON_ALIGNED)) {
       for (String from : Arrays.asList(MEM, DISK)) {
-        for (MetricType metricType : Arrays.asList(MetricType.TIMER, MetricType.HISTOGRAM)) {
+        for (String stage :
+            Arrays.asList(LOAD_TIMESERIES_METADATA, LOAD_ALIGNED_TIMESERIES_METADATA)) {
           metricService.remove(
-              metricType,
-              Metric.SERIES_SCAN_COST.toString(),
+              MetricType.HISTOGRAM,
+              Metric.METRIC_LOAD_TIME_SERIES_METADATA.toString(),
               Tag.STAGE.toString(),
-              LOAD_TIMESERIES_METADATA,
+              stage,
               Tag.TYPE.toString(),
               type,
               Tag.FROM.toString(),
               from);
 
           metricService.remove(
-              metricType,
+              MetricType.TIMER,
               Metric.SERIES_SCAN_COST.toString(),
               Tag.STAGE.toString(),
               LOAD_ALIGNED_TIMESERIES_METADATA,
