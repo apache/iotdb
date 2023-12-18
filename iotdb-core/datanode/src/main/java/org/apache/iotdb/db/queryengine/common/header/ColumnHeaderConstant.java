@@ -90,6 +90,9 @@ public class ColumnHeaderConstant {
   public static final String SCHEMA_CONSENSUS_PORT = "SchemaConsensusPort";
   public static final String MPP_PORT = "MppPort";
 
+  // column names for show clusterId statement
+  public static final String CLUSTER_ID = "ClusterId";
+
   // column names for show functions statement
   public static final String FUNCTION_NAME = "FunctionName";
   public static final String FUNCTION_TYPE = "FunctionType";
@@ -343,6 +346,9 @@ public class ColumnHeaderConstant {
           new ColumnHeader(DATA_CONSENSUS_PORT, TSDataType.TEXT),
           new ColumnHeader(VERSION, TSDataType.TEXT),
           new ColumnHeader(BUILD_INFO, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showClusterIdColumnHeaders =
+      ImmutableList.of(new ColumnHeader(CLUSTER_ID, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showVariablesColumnHeaders =
       ImmutableList.of(

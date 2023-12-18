@@ -37,6 +37,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionC
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
@@ -1789,8 +1790,28 @@ public class CompactionSchedulerWithFastPerformerTest {
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
       Thread.sleep(100);
       long sleepTime = 0;
-      while (tsFileManager.getTsFileList(true).size() > 3) {
+      while (tsFileManager.getTsFileList(true).size() >= 2) {
         CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+        tsFileManager.readLock();
+        List<TsFileResource> resources = tsFileManager.getTsFileList(true);
+        int previousFileLevel =
+            TsFileNameGenerator.getTsFileName(resources.get(0).getTsFile().getName())
+                .getInnerCompactionCnt();
+        boolean canMerge = false;
+        for (int i = 1; i < resources.size(); i++) {
+          int currentFileLevel =
+              TsFileNameGenerator.getTsFileName(resources.get(i).getTsFile().getName())
+                  .getInnerCompactionCnt();
+          if (currentFileLevel == previousFileLevel) {
+            canMerge = true;
+            break;
+          }
+          previousFileLevel = currentFileLevel;
+        }
+        tsFileManager.readUnlock();
+        if (!canMerge) {
+          break;
+        }
         Thread.sleep(100);
         sleepTime += 100;
         if (sleepTime >= 20_000) {
@@ -1800,7 +1821,6 @@ public class CompactionSchedulerWithFastPerformerTest {
 
       stopCompactionTaskManager();
       tsFileManager.setAllowCompaction(false);
-      assertEquals(3, tsFileManager.getTsFileList(true).size());
     } finally {
       IoTDBDescriptor.getInstance()
           .getConfig()

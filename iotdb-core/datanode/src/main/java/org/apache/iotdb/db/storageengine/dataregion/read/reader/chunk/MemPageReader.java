@@ -27,16 +27,16 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -48,23 +48,25 @@ public class MemPageReader implements IPageReader {
   private final TsBlock tsBlock;
   private final IChunkMetadata chunkMetadata;
 
-  private Filter valueFilter;
+  private Filter recordFilter;
+
   private PaginationController paginationController = UNLIMITED_PAGINATION_CONTROLLER;
 
-  public MemPageReader(TsBlock tsBlock, IChunkMetadata chunkMetadata, Filter filter) {
+  public MemPageReader(TsBlock tsBlock, IChunkMetadata chunkMetadata, Filter recordFilter) {
     this.tsBlock = tsBlock;
     this.chunkMetadata = chunkMetadata;
-    this.valueFilter = filter;
+    this.recordFilter = recordFilter;
   }
 
   @Override
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
     TSDataType dataType = chunkMetadata.getDataType();
     BatchData batchData = BatchDataFactory.createBatchData(dataType, ascending, false);
+
+    boolean[] satisfyInfo = buildSatisfyInfoArray();
+
     for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-      if (valueFilter == null
-          || valueFilter.satisfy(
-              tsBlock.getTimeColumn().getLong(i), tsBlock.getColumn(0).getObject(i))) {
+      if (satisfyInfo[i]) {
         switch (dataType) {
           case BOOLEAN:
             batchData.putBoolean(
@@ -96,231 +98,76 @@ public class MemPageReader implements IPageReader {
     return batchData.flip();
   }
 
-  private boolean pageCanSkip() {
-    if (valueFilter == null || valueFilter.allSatisfy(this)) {
-      long rowCount = getStatistics().getCount();
-      if (paginationController.hasCurOffset(rowCount)) {
-        paginationController.consumeOffset(rowCount);
-        return true;
-      } else {
-        return false;
-      }
-    } else {
-      return valueFilter.canSkip(this);
-    }
-  }
-
   @Override
   public TsBlock getAllSatisfiedData() {
-    TSDataType dataType = chunkMetadata.getDataType();
-    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(dataType));
-    TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
-    ColumnBuilder valueBuilder = builder.getColumnBuilder(0);
-    if (!pageCanSkip()) {
-      switch (dataType) {
-        case BOOLEAN:
-          doWithBoolean(builder, timeBuilder, valueBuilder);
-          break;
-        case INT32:
-          doWithInt32(builder, timeBuilder, valueBuilder);
-          break;
-        case INT64:
-          doWithInt64(builder, timeBuilder, valueBuilder);
-          break;
-        case FLOAT:
-          doWithFloat(builder, timeBuilder, valueBuilder);
-          break;
-        case DOUBLE:
-          doWithDouble(builder, timeBuilder, valueBuilder);
-          break;
-        case TEXT:
-          doWithText(builder, timeBuilder, valueBuilder);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(String.valueOf(dataType));
-      }
-    }
+    TsBlockBuilder builder =
+        new TsBlockBuilder(Collections.singletonList(chunkMetadata.getDataType()));
+
+    boolean[] satisfyInfo = buildSatisfyInfoArray();
+
+    // build time column
+    int readEndIndex = buildTimeColumn(builder, satisfyInfo);
+
+    // build value column
+    buildValueColumn(builder, satisfyInfo, readEndIndex);
+
     return builder.build();
   }
 
-  private void doWithBoolean(
-      TsBlockBuilder builder, TimeColumnBuilder timeBuilder, ColumnBuilder valueBuilder) {
-    int endIndex = tsBlock.getPositionCount();
-    for (int i = 0; i < endIndex; i++) {
-      long time = tsBlock.getTimeColumn().getLong(i);
-      boolean value = tsBlock.getColumn(0).getBoolean(i);
-      if (needCurrentBooleanRow(time, value)) {
-        if (paginationController.hasCurLimit()) {
-          timeBuilder.writeLong(time);
-          valueBuilder.writeBoolean(value);
-          builder.declarePosition();
-          paginationController.consumeLimit();
-        } else {
-          endIndex = i;
-        }
-      }
+  private boolean[] buildSatisfyInfoArray() {
+    if (recordFilter == null || recordFilter.allSatisfy(this)) {
+      boolean[] satisfyInfo = new boolean[tsBlock.getPositionCount()];
+      Arrays.fill(satisfyInfo, true);
+      return satisfyInfo;
     }
+    return recordFilter.satisfyTsBlock(tsBlock);
   }
 
-  private boolean needCurrentBooleanRow(long time, boolean value) {
-    if (valueFilter != null && !valueFilter.satisfy(time, value)) {
-      return false;
+  private int buildTimeColumn(TsBlockBuilder builder, boolean[] satisfyInfo) {
+    int readEndIndex = tsBlock.getPositionCount();
+    for (int rowIndex = 0; rowIndex < readEndIndex; rowIndex++) {
+
+      if (needSkipCurrentRow(satisfyInfo, rowIndex)) {
+        continue;
+      }
+
+      if (paginationController.hasCurLimit()) {
+        builder.getTimeColumnBuilder().writeLong(tsBlock.getTimeByIndex(rowIndex));
+        builder.declarePosition();
+        paginationController.consumeLimit();
+      } else {
+        readEndIndex = rowIndex;
+      }
+    }
+    return readEndIndex;
+  }
+
+  private boolean needSkipCurrentRow(boolean[] satisfyInfo, int rowIndex) {
+    if (!satisfyInfo[rowIndex]) {
+      return true;
     }
     if (paginationController.hasCurOffset()) {
       paginationController.consumeOffset();
-      return false;
+      satisfyInfo[rowIndex] = false;
+      return true;
     }
-    return true;
+    return false;
   }
 
-  private void doWithInt32(
-      TsBlockBuilder builder, TimeColumnBuilder timeBuilder, ColumnBuilder valueBuilder) {
-    int endIndex = tsBlock.getPositionCount();
-    for (int i = 0; i < endIndex; i++) {
-      long time = tsBlock.getTimeColumn().getLong(i);
-      int value = tsBlock.getColumn(0).getInt(i);
-      if (needCurrentInt32Row(time, value)) {
-        if (paginationController.hasCurLimit()) {
-          timeBuilder.writeLong(time);
-          valueBuilder.writeInt(value);
-          builder.declarePosition();
-          paginationController.consumeLimit();
-        } else {
-          endIndex = i;
+  private void buildValueColumn(TsBlockBuilder builder, boolean[] satisfyInfo, int readEndIndex) {
+    for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
+      Column valueColumn = tsBlock.getColumn(column);
+      ColumnBuilder valueBuilder = builder.getColumnBuilder(column);
+      for (int row = 0; row < readEndIndex; row++) {
+        if (satisfyInfo[row]) {
+          if (!valueColumn.isNull(row)) {
+            valueBuilder.write(valueColumn, row);
+          } else {
+            valueBuilder.appendNull();
+          }
         }
       }
     }
-  }
-
-  private boolean needCurrentInt32Row(long time, int value) {
-    if (valueFilter != null && !valueFilter.satisfy(time, value)) {
-      return false;
-    }
-    if (paginationController.hasCurOffset()) {
-      paginationController.consumeOffset();
-      return false;
-    }
-    return true;
-  }
-
-  private void doWithInt64(
-      TsBlockBuilder builder, TimeColumnBuilder timeBuilder, ColumnBuilder valueBuilder) {
-    int endIndex = tsBlock.getPositionCount();
-    for (int i = 0; i < endIndex; i++) {
-      long time = tsBlock.getTimeColumn().getLong(i);
-      long value = tsBlock.getColumn(0).getLong(i);
-      if (needCurrentInt64Row(time, value)) {
-        if (paginationController.hasCurLimit()) {
-          timeBuilder.writeLong(time);
-          valueBuilder.writeLong(value);
-          builder.declarePosition();
-          paginationController.consumeLimit();
-        } else {
-          endIndex = i;
-        }
-      }
-    }
-  }
-
-  private boolean needCurrentInt64Row(long time, long value) {
-    if (valueFilter != null && !valueFilter.satisfy(time, value)) {
-      return false;
-    }
-    if (paginationController.hasCurOffset()) {
-      paginationController.consumeOffset();
-      return false;
-    }
-    return true;
-  }
-
-  private void doWithFloat(
-      TsBlockBuilder builder, TimeColumnBuilder timeBuilder, ColumnBuilder valueBuilder) {
-    int endIndex = tsBlock.getPositionCount();
-    for (int i = 0; i < endIndex; i++) {
-      long time = tsBlock.getTimeColumn().getLong(i);
-      float value = tsBlock.getColumn(0).getFloat(i);
-      if (needCurrentFloatRow(time, value)) {
-        if (paginationController.hasCurLimit()) {
-          timeBuilder.writeLong(time);
-          valueBuilder.writeFloat(value);
-          builder.declarePosition();
-          paginationController.consumeLimit();
-        } else {
-          endIndex = i;
-        }
-      }
-    }
-  }
-
-  private boolean needCurrentFloatRow(long time, float value) {
-    if (valueFilter != null && !valueFilter.satisfy(time, value)) {
-      return false;
-    }
-    if (paginationController.hasCurOffset()) {
-      paginationController.consumeOffset();
-      return false;
-    }
-    return true;
-  }
-
-  private void doWithDouble(
-      TsBlockBuilder builder, TimeColumnBuilder timeBuilder, ColumnBuilder valueBuilder) {
-    int endIndex = tsBlock.getPositionCount();
-    for (int i = 0; i < endIndex; i++) {
-      long time = tsBlock.getTimeColumn().getLong(i);
-      double value = tsBlock.getColumn(0).getDouble(i);
-      if (needCurrentDoubleRow(time, value)) {
-        if (paginationController.hasCurLimit()) {
-          timeBuilder.writeLong(time);
-          valueBuilder.writeDouble(value);
-          builder.declarePosition();
-          paginationController.consumeLimit();
-        } else {
-          endIndex = i;
-        }
-      }
-    }
-  }
-
-  private boolean needCurrentDoubleRow(long time, double value) {
-    if (valueFilter != null && !valueFilter.satisfy(time, value)) {
-      return false;
-    }
-    if (paginationController.hasCurOffset()) {
-      paginationController.consumeOffset();
-      return false;
-    }
-    return true;
-  }
-
-  private void doWithText(
-      TsBlockBuilder builder, TimeColumnBuilder timeBuilder, ColumnBuilder valueBuilder) {
-    int endIndex = tsBlock.getPositionCount();
-    for (int i = 0; i < endIndex; i++) {
-      long time = tsBlock.getTimeColumn().getLong(i);
-      Binary value = tsBlock.getColumn(0).getBinary(i);
-      if (needCurrentTextRow(time, value)) {
-        if (paginationController.hasCurLimit()) {
-          timeBuilder.writeLong(time);
-          valueBuilder.writeBinary(value);
-          builder.declarePosition();
-          paginationController.consumeLimit();
-        } else {
-          endIndex = i;
-        }
-      }
-    }
-  }
-
-  private boolean needCurrentTextRow(long time, Binary value) {
-    if (valueFilter != null && !valueFilter.satisfy(time, value)) {
-      return false;
-    }
-    if (paginationController.hasCurOffset()) {
-      paginationController.consumeOffset();
-      return false;
-    }
-    return true;
   }
 
   @Override
@@ -345,12 +192,8 @@ public class MemPageReader implements IPageReader {
   }
 
   @Override
-  public void setFilter(Filter filter) {
-    if (valueFilter == null) {
-      this.valueFilter = filter;
-    } else {
-      valueFilter = FilterFactory.and(this.valueFilter, filter);
-    }
+  public void addRecordFilter(Filter filter) {
+    this.recordFilter = FilterFactory.and(recordFilter, filter);
   }
 
   @Override

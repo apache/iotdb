@@ -56,7 +56,7 @@ public class CreateLogicalViewStatement extends Statement {
   private QueryStatement queryStatement;
 
   // if not null, all related check and generation will be skipped
-  private ViewExpression viewExpression;
+  private List<ViewExpression> viewExpressions;
 
   public CreateLogicalViewStatement() {
     super();
@@ -129,8 +129,8 @@ public class CreateLogicalViewStatement extends Statement {
     return this.queryStatement;
   }
 
-  public ViewExpression getViewExpression() {
-    return viewExpression;
+  public List<ViewExpression> getViewExpressions() {
+    return viewExpressions;
   }
 
   // set source paths
@@ -194,8 +194,8 @@ public class CreateLogicalViewStatement extends Statement {
     this.targetPaths.generateFullPathsFromPathsGroup();
   }
 
-  public void setViewExpression(ViewExpression viewExpression) {
-    this.viewExpression = viewExpression;
+  public void setViewExpressions(List<ViewExpression> viewExpressions) {
+    this.viewExpressions = viewExpressions;
   }
 
   public void setTargetIntoItem(IntoItem intoItem) {

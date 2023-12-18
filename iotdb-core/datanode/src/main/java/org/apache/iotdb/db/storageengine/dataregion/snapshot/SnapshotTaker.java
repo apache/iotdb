@@ -177,7 +177,7 @@ public class SnapshotTaker {
             new File(snapshotTsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
             new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
         if (resource.getModFile().exists()) {
-          createHardLink(
+          copyFile(
               new File(snapshotTsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX),
               new File(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX));
         }
@@ -198,6 +198,18 @@ public class SnapshotTaker {
     }
     Files.deleteIfExists(target.toPath());
     Files.createLink(target.toPath(), source.toPath());
+    snapshotLogger.logFile(source);
+  }
+
+  private void copyFile(File target, File source) throws IOException {
+    if (!target.getParentFile().exists()) {
+      LOGGER.error("Copy target dir {} doesn't exist", target.getParentFile());
+    }
+    if (!source.exists()) {
+      LOGGER.error("Copy source file {} doesn't exist", source);
+    }
+    Files.deleteIfExists(target.toPath());
+    Files.copy(source.toPath(), target.toPath());
     snapshotLogger.logFile(source);
   }
 
