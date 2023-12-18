@@ -150,12 +150,6 @@ public class SyncClientManager {
       } else {
         endPoint2client.replace(endPoint, clientAndStatus);
       }
-    } catch (TTransportException e) {
-      LOGGER.warn(
-          "Failed to create client with datanode {}:{}, because :{}",
-          endPoint.getIp(),
-          endPoint.getPort(),
-          e);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -179,21 +173,22 @@ public class SyncClientManager {
   }
 
   private Pair<IoTDBThriftSyncConnectorClient, Boolean> initAndGetClient(TEndPoint endPoint)
-      throws TTransportException, IOException {
-    IoTDBThriftSyncConnectorClient client =
-        new IoTDBThriftSyncConnectorClient(
-            new ThriftClientProperty.Builder()
-                .setConnectionTimeoutMs((int) PIPE_CONFIG.getPipeConnectorTransferTimeoutMs())
-                .setRpcThriftCompressionEnabled(
-                    PIPE_CONFIG.isPipeConnectorRPCThriftCompressionEnabled())
-                .build(),
-            endPoint.getIp(),
-            endPoint.port,
-            useSSL,
-            trustStore,
-            trustStorePwd);
+      throws IOException {
+    IoTDBThriftSyncConnectorClient client = null;
     boolean status = true;
     try {
+      client =
+          new IoTDBThriftSyncConnectorClient(
+              new ThriftClientProperty.Builder()
+                  .setConnectionTimeoutMs((int) PIPE_CONFIG.getPipeConnectorTransferTimeoutMs())
+                  .setRpcThriftCompressionEnabled(
+                      PIPE_CONFIG.isPipeConnectorRPCThriftCompressionEnabled())
+                  .build(),
+              endPoint.getIp(),
+              endPoint.port,
+              useSSL,
+              trustStore,
+              trustStorePwd);
       TPipeTransferResp resp =
           client.pipeTransfer(
               PipeTransferHandshakeReq.toTPipeTransferReq(
@@ -211,6 +206,12 @@ public class SyncClientManager {
             endPoint.getIp(),
             endPoint.getPort());
       }
+    } catch (TTransportException e) {
+      LOGGER.warn(
+          "Failed to create client with datanode {}:{}, because :{}",
+          endPoint.getIp(),
+          endPoint.getPort(),
+          e);
     } catch (TException e) {
       LOGGER.warn(
           "Handshake error with target server ip: {}, port: {}, because: {}.",
