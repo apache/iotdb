@@ -55,10 +55,10 @@ public class MemChunkLoader implements IChunkLoader {
   }
 
   @Override
-  public IChunkReader getChunkReader(IChunkMetadata chunkMetaData, Filter timeFilter) {
+  public IChunkReader getChunkReader(IChunkMetadata chunkMetaData, Filter globalTimeFilter) {
     long startTime = System.nanoTime();
     try {
-      return new MemChunkReader(chunk, timeFilter);
+      return new MemChunkReader(chunk, globalTimeFilter);
     } finally {
       long duration = System.nanoTime() - startTime;
       context.getQueryStatistics().constructNonAlignedChunkReadersMemCount.getAndAdd(1);

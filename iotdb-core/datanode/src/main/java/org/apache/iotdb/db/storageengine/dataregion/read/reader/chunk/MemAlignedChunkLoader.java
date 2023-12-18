@@ -36,20 +36,12 @@ public class MemAlignedChunkLoader implements IChunkLoader {
   private final QueryContext context;
   private final AlignedReadOnlyMemChunk chunk;
 
-  // only used for limit and offset push down optimizer, if we select all columns from aligned
-  // device, we
-  // can use statistics to skip.
-  // it's only exact while using limit & offset push down
-  private final boolean queryAllSensors;
-
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
 
-  public MemAlignedChunkLoader(
-      QueryContext context, AlignedReadOnlyMemChunk chunk, boolean queryAllSensors) {
+  public MemAlignedChunkLoader(QueryContext context, AlignedReadOnlyMemChunk chunk) {
     this.context = context;
     this.chunk = chunk;
-    this.queryAllSensors = queryAllSensors;
   }
 
   @Override
@@ -63,10 +55,10 @@ public class MemAlignedChunkLoader implements IChunkLoader {
   }
 
   @Override
-  public IChunkReader getChunkReader(IChunkMetadata chunkMetaData, Filter timeFilter) {
+  public IChunkReader getChunkReader(IChunkMetadata chunkMetaData, Filter globalTimeFilter) {
     long startTime = System.nanoTime();
     try {
-      return new MemAlignedChunkReader(chunk, timeFilter, queryAllSensors);
+      return new MemAlignedChunkReader(chunk, globalTimeFilter);
     } finally {
       long duration = System.nanoTime() - startTime;
       context.getQueryStatistics().constructAlignedChunkReadersMemCount.getAndAdd(1);

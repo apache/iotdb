@@ -24,35 +24,26 @@ import java.util.Map;
 /** This interface manages last time and flush time for sequence and unsequence determination */
 public interface ILastFlushTimeMap {
 
-  // region set
-  void setMultiDeviceFlushedTime(long timePartitionId, Map<String, Long> flushedTimeMap);
-
-  void setOneDeviceFlushedTime(long timePartitionId, String path, long time);
-
-  void setMultiDeviceGlobalFlushedTime(Map<String, Long> globalFlushedTimeMap);
-
-  void setOneDeviceGlobalFlushedTime(String path, long time);
-  // endregion
-
   // region update
+  /** Update partitionLatestFlushedTimeForEachDevice. */
+  void updateOneDeviceFlushedTime(long timePartitionId, String path, long time);
 
-  void updateFlushedTime(long timePartitionId, String path, long time);
+  void updateMultiDeviceFlushedTime(long timePartitionId, Map<String, Long> flushedTimeMap);
 
-  void updateGlobalFlushedTime(String path, long time);
+  /** Update globalLatestFlushedTimeForEachDevice. */
+  void updateOneDeviceGlobalFlushedTime(String path, long time);
 
-  void updateNewlyFlushedPartitionLatestFlushedTimeForEachDevice(
-      long partitionId, String deviceId, long time);
+  void updateMultiDeviceGlobalFlushedTime(Map<String, Long> globalFlushedTimeMap);
+
+  /**
+   * Update both partitionLatestFlushedTimeForEachDevice and globalLatestFlushedTimeForEachDevice.
+   */
+  void updateLatestFlushTime(long partitionId, Map<String, Long> updateMap);
   // endregion
 
   // region ensure
   boolean checkAndCreateFlushedTimePartition(long timePartitionId);
 
-  // endregion
-
-  // region support upgrade methods
-  void applyNewlyFlushedTimeToFlushedTime();
-
-  void updateLatestFlushTime(long partitionId, Map<String, Long> updateMap);
   // endregion
 
   // region read

@@ -37,7 +37,6 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -49,7 +48,6 @@ public class RatisConsensusTest {
   private List<RatisConsensus> servers;
   private List<IStateMachine> stateMachines;
   private ConsensusGroup group;
-  CountDownLatch latch;
 
   private TestUtils.MiniCluster miniCluster;
   private final ExecutorService writeExecutor = Executors.newFixedThreadPool(2);
@@ -104,7 +102,7 @@ public class RatisConsensusTest {
     servers.get(1).createLocalPeer(group.getGroupId(), group.getPeers());
     servers.get(2).createLocalPeer(group.getGroupId(), group.getPeers());
 
-    miniCluster.waitUntilActiveLeader();
+    miniCluster.waitUntilActiveLeaderElectedAndReady();
 
     doConsensus(0, 10, 10);
   }
@@ -127,10 +125,15 @@ public class RatisConsensusTest {
     servers.get(2).createLocalPeer(group.getGroupId(), peers.subList(2, 3));
     servers.get(0).addRemotePeer(group.getGroupId(), peers.get(2));
 
-    miniCluster.waitUntilActiveLeader();
+    miniCluster.waitUntilActiveLeaderElectedAndReady();
 
-    Assert.assertEquals(
-        3, ((TestUtils.IntegerCounter) stateMachines.get(0)).getConfiguration().size());
+    for (int i = 0; i < 3; i++) {
+      if (servers.get(i).isLeaderReady(gid)) {
+        Assert.assertEquals(
+            3, ((TestUtils.IntegerCounter) stateMachines.get(i)).getConfiguration().size());
+      }
+    }
+
     doConsensus(0, 10, 20);
   }
 
@@ -144,7 +147,7 @@ public class RatisConsensusTest {
     servers.get(1).createLocalPeer(group.getGroupId(), group.getPeers());
     servers.get(2).createLocalPeer(group.getGroupId(), group.getPeers());
 
-    miniCluster.waitUntilActiveLeader();
+    miniCluster.waitUntilActiveLeaderElectedAndReady();
     doConsensus(0, 10, 10);
 
     servers.get(0).transferLeader(gid, peers.get(0));
@@ -153,7 +156,7 @@ public class RatisConsensusTest {
     servers.get(0).removeRemotePeer(gid, peers.get(2));
     servers.get(2).deleteLocalPeer(gid);
 
-    miniCluster.waitUntilActiveLeader();
+    miniCluster.waitUntilActiveLeaderElectedAndReady();
     doConsensus(0, 10, 20);
   }
 
@@ -193,14 +196,14 @@ public class RatisConsensusTest {
     servers.get(1).createLocalPeer(group.getGroupId(), group.getPeers());
     servers.get(2).createLocalPeer(group.getGroupId(), group.getPeers());
 
-    miniCluster.waitUntilActiveLeader();
+    miniCluster.waitUntilActiveLeaderElectedAndReady();
     // 200 operation will trigger snapshot & purge
     doConsensus(0, 200, 200);
 
     miniCluster.stop();
     miniCluster.restart();
 
-    miniCluster.waitUntilActiveLeader();
+    miniCluster.waitUntilActiveLeaderElectedAndReady();
     doConsensus(0, 10, 210);
   }
 
@@ -232,7 +235,7 @@ public class RatisConsensusTest {
     servers.get(1).createLocalPeer(gid, peers.subList(1, 2));
     servers.get(0).addRemotePeer(gid, peers.get(1));
 
-    miniCluster.waitUntilActiveLeader();
+    miniCluster.waitUntilActiveLeaderElectedAndReady();
     doConsensus(1, 10, 20);
   }
 

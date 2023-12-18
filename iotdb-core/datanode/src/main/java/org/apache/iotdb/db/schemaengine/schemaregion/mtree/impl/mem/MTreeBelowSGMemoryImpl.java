@@ -949,7 +949,8 @@ public class MTreeBelowSGMemoryImpl {
 
           protected IDeviceSchemaInfo collectEntity(IDeviceMNode<IMemMNode> node) {
             PartialPath device = getPartialPathFromRootToNode(node.getAsMNode());
-            return new ShowDevicesResult(device.getFullPath(), node.isAlignedNullable());
+            return new ShowDevicesResult(
+                device.getFullPath(), node.isAlignedNullable(), node.getSchemaTemplateId());
           }
         };
     if (showDevicesPlan.usingSchemaTemplate()) {

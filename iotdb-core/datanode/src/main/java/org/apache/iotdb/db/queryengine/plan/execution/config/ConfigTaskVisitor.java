@@ -39,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.GetTimeSlo
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.MigrateRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.SetTTLTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterDetailsTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterIdTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowConfigNodesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowContinuousQueriesTask;
@@ -98,6 +99,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotList
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.MigrateRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowConfigNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowContinuousQueriesStatement;
@@ -213,6 +215,12 @@ public class ConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQueryCon
     } else {
       return new ShowClusterTask(showClusterStatement);
     }
+  }
+
+  @Override
+  public IConfigTask visitShowClusterId(
+      ShowClusterIdStatement showClusterIdStatement, MPPQueryContext context) {
+    return new ShowClusterIdTask();
   }
 
   @Override

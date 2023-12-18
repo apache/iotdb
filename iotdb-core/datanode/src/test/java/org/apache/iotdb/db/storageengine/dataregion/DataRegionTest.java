@@ -541,10 +541,10 @@ public class DataRegionTest {
   }
 
   @Test
-  public void testEnableDiscardOutOfOrderDataForInsertRowPlan()
+  public void testDisableSeparateDataForInsertRowPlan()
       throws WriteProcessException, QueryProcessException, IllegalPathException, IOException {
-    boolean defaultValue = config.isEnableDiscardOutOfOrderData();
-    config.setEnableDiscardOutOfOrderData(true);
+    boolean defaultValue = config.isEnableSeparateData();
+    config.setEnableSeparateData(false);
 
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
@@ -573,8 +573,8 @@ public class DataRegionTest {
             deviceId,
             context,
             null);
-    Assert.assertEquals(10, queryDataSource.getSeqResources().size());
-    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
+    Assert.assertEquals(0, queryDataSource.getSeqResources().size());
+    Assert.assertEquals(20, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
@@ -582,15 +582,15 @@ public class DataRegionTest {
       Assert.assertTrue(resource.isClosed());
     }
 
-    config.setEnableDiscardOutOfOrderData(defaultValue);
+    config.setEnableSeparateData(defaultValue);
   }
 
   @Test
-  public void testEnableDiscardOutOfOrderDataForInsertTablet1()
+  public void testDisableSeparateDataForInsertTablet1()
       throws QueryProcessException, IllegalPathException, IOException, WriteProcessException {
-    boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
+    boolean defaultEnableDiscard = config.isEnableSeparateData();
     long defaultTimePartition = COMMON_CONFIG.getTimePartitionInterval();
-    config.setEnableDiscardOutOfOrderData(true);
+    config.setEnableSeparateData(false);
     COMMON_CONFIG.setTimePartitionInterval(100000);
 
     String[] measurements = new String[2];
@@ -663,22 +663,22 @@ public class DataRegionTest {
             context,
             null);
 
-    Assert.assertEquals(2, queryDataSource.getSeqResources().size());
-    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
+    Assert.assertEquals(0, queryDataSource.getSeqResources().size());
+    Assert.assertEquals(2, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
 
-    config.setEnableDiscardOutOfOrderData(defaultEnableDiscard);
+    config.setEnableSeparateData(defaultEnableDiscard);
     COMMON_CONFIG.setTimePartitionInterval(defaultTimePartition);
   }
 
   @Test
-  public void testEnableDiscardOutOfOrderDataForInsertTablet2()
+  public void testDisableSeparateDataForInsertTablet2()
       throws QueryProcessException, IllegalPathException, IOException, WriteProcessException {
-    boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
+    boolean defaultEnableDiscard = config.isEnableSeparateData();
     long defaultTimePartition = COMMON_CONFIG.getTimePartitionInterval();
-    config.setEnableDiscardOutOfOrderData(true);
+    config.setEnableSeparateData(false);
     COMMON_CONFIG.setTimePartitionInterval(1200000);
 
     String[] measurements = new String[2];
@@ -751,22 +751,22 @@ public class DataRegionTest {
             context,
             null);
 
-    Assert.assertEquals(2, queryDataSource.getSeqResources().size());
-    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
+    Assert.assertEquals(0, queryDataSource.getSeqResources().size());
+    Assert.assertEquals(2, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
 
-    config.setEnableDiscardOutOfOrderData(defaultEnableDiscard);
+    config.setEnableSeparateData(defaultEnableDiscard);
     COMMON_CONFIG.setTimePartitionInterval(defaultTimePartition);
   }
 
   @Test
-  public void testEnableDiscardOutOfOrderDataForInsertTablet3()
+  public void testDisableSeparateDataForInsertTablet3()
       throws QueryProcessException, IllegalPathException, IOException, WriteProcessException {
-    boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
+    boolean defaultEnableDiscard = config.isEnableSeparateData();
     long defaultTimePartition = COMMON_CONFIG.getTimePartitionInterval();
-    config.setEnableDiscardOutOfOrderData(true);
+    config.setEnableSeparateData(false);
     COMMON_CONFIG.setTimePartitionInterval(1000000);
 
     String[] measurements = new String[2];
@@ -839,13 +839,13 @@ public class DataRegionTest {
             context,
             null);
 
-    Assert.assertEquals(2, queryDataSource.getSeqResources().size());
-    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
+    Assert.assertEquals(0, queryDataSource.getSeqResources().size());
+    Assert.assertEquals(2, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
 
-    config.setEnableDiscardOutOfOrderData(defaultEnableDiscard);
+    config.setEnableSeparateData(defaultEnableDiscard);
     COMMON_CONFIG.setTimePartitionInterval(defaultTimePartition);
   }
 

@@ -49,6 +49,8 @@ public class ColumnHeaderConstant {
   public static final String DEADBAND = "Deadband";
   public static final String DEADBAND_PARAMETERS = "DeadbandParameters";
   public static final String IS_ALIGNED = "IsAligned";
+  public static final String TEMPLATE = "Template";
+
   public static final String COUNT = "Count";
   public static final String COLUMN_TTL = "TTL";
   public static final String SCHEMA_REPLICATION_FACTOR = "SchemaReplicationFactor";
@@ -87,6 +89,9 @@ public class ColumnHeaderConstant {
   public static final String DATA_CONSENSUS_PORT = "DataConsensusPort";
   public static final String SCHEMA_CONSENSUS_PORT = "SchemaConsensusPort";
   public static final String MPP_PORT = "MppPort";
+
+  // column names for show clusterId statement
+  public static final String CLUSTER_ID = "ClusterId";
 
   // column names for show functions statement
   public static final String FUNCTION_NAME = "FunctionName";
@@ -207,12 +212,14 @@ public class ColumnHeaderConstant {
       ImmutableList.of(
           new ColumnHeader(DEVICE, TSDataType.TEXT),
           new ColumnHeader(DATABASE, TSDataType.TEXT),
-          new ColumnHeader(IS_ALIGNED, TSDataType.TEXT));
+          new ColumnHeader(IS_ALIGNED, TSDataType.TEXT),
+          new ColumnHeader(TEMPLATE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showDevicesColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(DEVICE, TSDataType.TEXT), new ColumnHeader(IS_ALIGNED, TSDataType.TEXT));
-
+          new ColumnHeader(DEVICE, TSDataType.TEXT),
+          new ColumnHeader(IS_ALIGNED, TSDataType.TEXT),
+          new ColumnHeader(TEMPLATE, TSDataType.TEXT));
   public static final List<ColumnHeader> showTTLColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(DATABASE, TSDataType.TEXT),
@@ -339,6 +346,9 @@ public class ColumnHeaderConstant {
           new ColumnHeader(DATA_CONSENSUS_PORT, TSDataType.TEXT),
           new ColumnHeader(VERSION, TSDataType.TEXT),
           new ColumnHeader(BUILD_INFO, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showClusterIdColumnHeaders =
+      ImmutableList.of(new ColumnHeader(CLUSTER_ID, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showVariablesColumnHeaders =
       ImmutableList.of(

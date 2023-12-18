@@ -45,12 +45,6 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
 
   private final List<TSDataType> dataTypes;
 
-  // only used for limit and offset push down optimizer, if we select all columns from aligned
-  // device, we
-  // can use statistics to skip.
-  // it's only exact while using limit & offset push down
-  private boolean queryAllSensors;
-
   /**
    * The constructor for Aligned type.
    *
@@ -155,7 +149,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     }
     IChunkMetadata alignedChunkMetadata =
         new AlignedChunkMetadata(timeChunkMetadata, valueChunkMetadataList);
-    alignedChunkMetadata.setChunkLoader(new MemAlignedChunkLoader(context, this, queryAllSensors));
+    alignedChunkMetadata.setChunkLoader(new MemAlignedChunkLoader(context, this));
     alignedChunkMetadata.setVersion(Long.MAX_VALUE);
     cachedMetaData = alignedChunkMetadata;
   }
@@ -168,9 +162,5 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
   @Override
   public IPointReader getPointReader() {
     return tsBlock.getTsBlockAlignedRowIterator();
-  }
-
-  public void setQueryAllSensors(boolean queryAllSensors) {
-    this.queryAllSensors = queryAllSensors;
   }
 }
