@@ -45,7 +45,6 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.filter.factory.TimeFilterApi;
 import org.apache.iotdb.tsfile.utils.TimeDuration;
 
-import java.time.ZoneId;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.TimeZone;
@@ -232,7 +231,7 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
           endTime,
           interval,
           slidingStep,
-          TimeZone.getTimeZone(ZoneId.systemDefault()),
+          TimeZone.getTimeZone("+00:00"),
           TimestampPrecisionUtils.currPrecision);
     } else {
       return TimeFilterApi.groupBy(
