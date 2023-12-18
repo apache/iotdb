@@ -23,20 +23,16 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.CachedMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.ICacheManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.IReleaseFlushStrategy;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaFile;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -110,23 +106,10 @@ public class Scheduler {
                                   // store has been closed
                                   return;
                                 }
-                                PBTreeFlushExecutor flushExecutor;
-                                IDatabaseMNode<ICachedMNode> dbNode =
-                                    cacheManager.collectUpdatedStorageGroupMNodes();
-                                if (dbNode != null) {
-                                  flushExecutor =
-                                      new PBTreeFlushExecutor(
-                                          dbNode, cacheManager, file, lockManager);
-                                  flushExecutor.flushDatabase();
-                                }
-                                flushExecutor =
-                                    new PBTreeFlushExecutor(
-                                        cacheManager.collectVolatileSubtrees(),
-                                        cacheManager,
-                                        file,
-                                        lockManager);
+                                PBTreeFlushExecutor flushExecutor =
+                                    new PBTreeFlushExecutor(cacheManager, file, lockManager);
                                 flushExecutor.flushVolatileNodes();
-                              } catch (IOException | MetadataException e) {
+                              } catch (MetadataException e) {
                                 LOGGER.warn(
                                     "Error occurred during MTree flush, current SchemaRegionId is {} because {}",
                                     regionId,
@@ -203,33 +186,16 @@ public class Scheduler {
             ISchemaFile file = store.getSchemaFile();
             LockManager lockManager = store.getLockManager();
             long startTime = System.currentTimeMillis();
-
-            List<ICachedMNode> nodesToFlush = new ArrayList<>();
             try {
               lockManager.globalReadLock();
               if (file == null) {
                 // store has been closed
                 return;
               }
-              PBTreeFlushExecutor flushExecutor;
-              IDatabaseMNode<ICachedMNode> dbNode = cacheManager.collectUpdatedStorageGroupMNodes();
-              if (dbNode != null) {
-                flushExecutor = new PBTreeFlushExecutor(dbNode, cacheManager, file, lockManager);
-                flushExecutor.flushDatabase();
-                remainToFlush.decrementAndGet();
-              }
-              Iterator<ICachedMNode> volatileSubtrees = cacheManager.collectVolatileSubtrees();
-              while (volatileSubtrees.hasNext()) {
-                nodesToFlush.add(volatileSubtrees.next());
-                if (nodesToFlush.size() > remainToFlush.get()) {
-                  break;
-                }
-              }
-              flushExecutor =
-                  new PBTreeFlushExecutor(nodesToFlush.iterator(), cacheManager, file, lockManager);
+              PBTreeFlushExecutor flushExecutor =
+                  new PBTreeFlushExecutor(remainToFlush, cacheManager, file, lockManager);
               flushExecutor.flushVolatileNodes();
-              remainToFlush.addAndGet(-nodesToFlush.size());
-            } catch (MetadataException | IOException e) {
+            } catch (MetadataException e) {
               LOGGER.warn(
                   "Error occurred during MTree flush, current SchemaRegionId is {} because {}",
                   regionId,
