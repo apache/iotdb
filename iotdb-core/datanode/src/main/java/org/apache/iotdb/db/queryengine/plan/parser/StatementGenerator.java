@@ -111,6 +111,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.STRING_NULL;
+
 /** Convert SQL and RPC requests to {@link Statement}. */
 public class StatementGenerator {
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
@@ -641,7 +643,9 @@ public class StatementGenerator {
       CompressionType compressionType =
           CompressionType.deserialize(ReadWriteIOUtils.readByte(buffer));
 
-      if (measurementName == null || measurementName.isEmpty()) {
+      if (measurementName == null
+          || measurementName.isEmpty()
+          || STRING_NULL.equals(measurementName)) {
         throw new SemanticException("Device Template: measurement's name can not be 'null'.");
       }
 

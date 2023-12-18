@@ -225,6 +225,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.STRING_NULL;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.canPushDownLimitOffsetToGroupByTime;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.pushDownLimitOffsetToTimeParameter;
@@ -3313,7 +3314,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       List<CompressionType> compressors = new ArrayList<>();
       for (IoTDBSqlParser.TemplateMeasurementClauseContext templateClauseContext :
           ctx.templateMeasurementClause()) {
-        if (templateClauseContext.nodeNameWithoutWildcard().getText().equalsIgnoreCase("null")) {
+        if (templateClauseContext
+            .nodeNameWithoutWildcard()
+            .getText()
+            .equalsIgnoreCase(STRING_NULL)) {
           throw new SemanticException("Device Template: measurement's name can not be 'null'.");
         }
         measurements.add(
