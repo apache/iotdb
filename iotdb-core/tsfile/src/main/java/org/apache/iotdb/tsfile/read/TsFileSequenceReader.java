@@ -1215,14 +1215,25 @@ public class TsFileSequenceReader implements AutoCloseable {
       if (i != metadataIndexEntryList.size() - 1) {
         endOffset = metadataIndexEntryList.get(i + 1).getOffset();
       }
-      ByteBuffer buffer = readData(metadataIndexEntry.getOffset(), endOffset);
-      generateMetadataIndex(
-          metadataIndexEntry,
-          buffer,
-          null,
-          metadataIndexNode.getNodeType(),
-          timeseriesMetadataMap,
-          needChunkMetadata);
+      try {
+        ByteBuffer buffer = readData(metadataIndexEntry.getOffset(), endOffset);
+        generateMetadataIndex(
+            metadataIndexEntry,
+            buffer,
+            null,
+            metadataIndexNode.getNodeType(),
+            timeseriesMetadataMap,
+            needChunkMetadata);
+      } catch (ByteBufferAllocateException e) {
+        generateMetadataIndexUsingTsFileInput(
+            metadataIndexNode.getChildren().get(i),
+            metadataIndexNode.getChildren().get(i).getOffset(),
+            endOffset,
+            null,
+            metadataIndexNode.getNodeType(),
+            timeseriesMetadataMap,
+            needChunkMetadata);
+      }
     }
     return timeseriesMetadataMap;
   }
