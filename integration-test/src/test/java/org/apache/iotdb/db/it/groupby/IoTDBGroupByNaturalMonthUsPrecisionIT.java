@@ -74,11 +74,11 @@ public class IoTDBGroupByNaturalMonthUsPrecisionIT extends IoTDBGroupByNaturalMo
         new String[] {
           // [01-28, 03-01)
           "1674864000000000,1,",
-          // [03-01, 04-02)
+          // [03-01, 03-30)
           "1677628800000000,1,",
-          // [04-02, 05-03)
+          // [03-30, 05-01)
           "1680134400000000,1,",
-          // [05-03, 05-29)
+          // [05-01, 05-29)
           "1682899200000000,1,"
         };
     // the part in timeDuration finer than current time precision will be discarded
