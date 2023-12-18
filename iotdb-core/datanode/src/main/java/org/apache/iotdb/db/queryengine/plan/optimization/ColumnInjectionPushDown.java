@@ -79,13 +79,21 @@ public class ColumnInjectionPushDown implements PlanOptimizer {
 
     @Override
     public PlanNode visitColumnInject(ColumnInjectNode node, RewriterContext context) {
-      PlanNode parent = context.getParent();
+      PlanNode child = node.getChild();
 
-      context.setParent(node);
-      node.getChild().accept(this, context);
+      boolean columnInjectPushDown = true;
+      if (child instanceof SeriesAggregationSourceNode) {
+        ((SeriesAggregationSourceNode) child).setOutputEndTime(true);
+      } else if (child instanceof SlidingWindowAggregationNode) {
+        ((SlidingWindowAggregationNode) child).setOutputEndTime(true);
+      } else if (child instanceof AggregationNode) {
+        ((AggregationNode) child).setOutputEndTime(true);
+      } else {
+        columnInjectPushDown = false;
+      }
 
-      if (context.columnInjectPushDown()) {
-        return concatParentWithChild(parent, node.getChild());
+      if (columnInjectPushDown) {
+        return concatParentWithChild(context.getParent(), child);
       }
       return node;
     }
@@ -98,45 +106,11 @@ public class ColumnInjectionPushDown implements PlanOptimizer {
         return child;
       }
     }
-
-    @Override
-    public PlanNode visitSeriesAggregationSourceNode(
-        SeriesAggregationSourceNode node, RewriterContext context) {
-      if (context.getParent() instanceof ColumnInjectNode) {
-        node.setOutputEndTime(true);
-        context.setColumnInjectPushDown(true);
-      }
-      // meet leaf node, stop visiting
-      return node;
-    }
-
-    @Override
-    public PlanNode visitSlidingWindowAggregation(
-        SlidingWindowAggregationNode node, RewriterContext context) {
-      if (context.getParent() instanceof ColumnInjectNode) {
-        node.setOutputEndTime(true);
-        context.setColumnInjectPushDown(true);
-      }
-      // stop visiting its child
-      return node;
-    }
-
-    @Override
-    public PlanNode visitAggregation(AggregationNode node, RewriterContext context) {
-      if (context.getParent() instanceof ColumnInjectNode) {
-        node.setOutputEndTime(true);
-        context.setColumnInjectPushDown(true);
-      }
-      // stop visiting its children
-      return node;
-    }
   }
 
   private static class RewriterContext {
 
     private PlanNode parent;
-
-    private boolean columnInjectPushDown = false;
 
     public PlanNode getParent() {
       return parent;
@@ -144,14 +118,6 @@ public class ColumnInjectionPushDown implements PlanOptimizer {
 
     public void setParent(PlanNode parent) {
       this.parent = parent;
-    }
-
-    public boolean columnInjectPushDown() {
-      return columnInjectPushDown;
-    }
-
-    public void setColumnInjectPushDown(boolean columnInjectPushDown) {
-      this.columnInjectPushDown = columnInjectPushDown;
     }
   }
 }
