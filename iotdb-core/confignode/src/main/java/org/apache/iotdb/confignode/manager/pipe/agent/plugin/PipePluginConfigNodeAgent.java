@@ -34,6 +34,7 @@ public class PipePluginConfigNodeAgent extends PipePluginAgent {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipePluginConfigNodeAgent.class);
 
   protected ConfigNodePipePluginMetaKeeper pipePluginMetaKeeper;
+
   private final PipeConfigRegionExtractorConstructor pipeExtractorConstructor;
   private final PipeConfigRegionConnectorConstructor pipeConnectorConstructor;
 

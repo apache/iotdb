@@ -19,17 +19,13 @@
 
 package org.apache.iotdb.db.pipe.agent.plugin;
 
-import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginConstructor;
-import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.pipe.agent.plugin.PipeExtractorConstructor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.donothing.DoNothingExtractor;
 import org.apache.iotdb.commons.pipe.plugin.meta.DataNodePipePluginMetaKeeper;
 import org.apache.iotdb.db.pipe.extractor.IoTDBDataRegionExtractor;
-import org.apache.iotdb.pipe.api.PipeExtractor;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
-import java.util.Arrays;
-
-public class PipeDataRegionExtractorConstructor extends PipePluginConstructor {
+public class PipeDataRegionExtractorConstructor extends PipeExtractorConstructor {
 
   PipeDataRegionExtractorConstructor(DataNodePipePluginMetaKeeper pipePluginMetaKeeper) {
     super(pipePluginMetaKeeper);
@@ -38,22 +34,13 @@ public class PipeDataRegionExtractorConstructor extends PipePluginConstructor {
   @Override
   protected void initConstructors() {
     PLUGIN_CONSTRUCTORS.put(
+        BuiltinPipePlugin.DO_NOTHING_EXTRACTOR.getPipePluginName(), DoNothingExtractor::new);
+    PLUGIN_CONSTRUCTORS.put(
         BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName(), IoTDBDataRegionExtractor::new);
+
+    PLUGIN_CONSTRUCTORS.put(
+        BuiltinPipePlugin.DO_NOTHING_SOURCE.getPipePluginName(), DoNothingExtractor::new);
     PLUGIN_CONSTRUCTORS.put(
         BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName(), IoTDBDataRegionExtractor::new);
-  }
-
-  @Override
-  protected PipeExtractor reflectPlugin(PipeParameters extractorParameters) {
-    return (PipeExtractor)
-        reflectPluginByKey(
-            extractorParameters
-                .getStringOrDefault(
-                    Arrays.asList(
-                        PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
-                    BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
-                // Convert the value of `EXTRACTOR_KEY` or `SOURCE_KEY` to lowercase for matching
-                // `IOTDB_EXTRACTOR`
-                .toLowerCase());
   }
 }

@@ -17,17 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.plugin.builtin.connector;
+package org.apache.iotdb.commons.pipe.plugin.builtin.processor.donothing;
 
-import org.apache.iotdb.pipe.api.PipeConnector;
-import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.PipeProcessor;
+import org.apache.iotdb.pipe.api.collector.EventCollector;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
-public class DoNothingConnector implements PipeConnector {
+import java.io.IOException;
+
+public class DoNothingProcessor implements PipeProcessor {
 
   @Override
   public void validate(PipeParameterValidator validator) {
@@ -36,33 +39,25 @@ public class DoNothingConnector implements PipeConnector {
 
   @Override
   public void customize(
-      PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration) {
+      PipeParameters parameters, PipeProcessorRuntimeConfiguration configuration) {
     // do nothing
   }
 
   @Override
-  public void handshake() {
-    // do nothing
+  public void process(TabletInsertionEvent tabletInsertionEvent, EventCollector eventCollector)
+      throws IOException {
+    eventCollector.collect(tabletInsertionEvent);
   }
 
   @Override
-  public void heartbeat() {
-    // do nothing
+  public void process(TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector)
+      throws IOException {
+    eventCollector.collect(tsFileInsertionEvent);
   }
 
   @Override
-  public void transfer(TabletInsertionEvent tabletInsertionEvent) {
-    // do nothing
-  }
-
-  @Override
-  public void transfer(TsFileInsertionEvent tsFileInsertionEvent) {
-    // do nothing
-  }
-
-  @Override
-  public void transfer(Event event) {
-    // do nothing
+  public void process(Event event, EventCollector eventCollector) throws IOException {
+    eventCollector.collect(event);
   }
 
   @Override

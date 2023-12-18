@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.plugin.builtin.connector;
+package org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;

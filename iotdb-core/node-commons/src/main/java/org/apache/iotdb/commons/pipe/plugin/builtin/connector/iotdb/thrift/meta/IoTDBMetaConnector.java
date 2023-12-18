@@ -17,12 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.plugin.builtin.connector.schema;
+package org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.thrift.meta;
 
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorClient;
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.IoTDBConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -51,8 +51,9 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_TTL_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_INCLUSION_KEY;
 
-public abstract class IoTDBSchemaConnector extends IoTDBConnector {
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSchemaConnector.class);
+public abstract class IoTDBMetaConnector extends IoTDBConnector {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBMetaConnector.class);
   private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
 
   private boolean enableSchemaSync = false;
@@ -68,7 +69,7 @@ public abstract class IoTDBSchemaConnector extends IoTDBConnector {
 
   private long currentClientIndex = 0;
 
-  public IoTDBSchemaConnector() {
+  public IoTDBMetaConnector() {
     // Do nothing
   }
 

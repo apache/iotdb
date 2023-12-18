@@ -19,23 +19,24 @@
 
 package org.apache.iotdb.commons.pipe.plugin.builtin;
 
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.DoNothingConnector;
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBAirGapConnector;
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBLegacyPipeConnector;
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBThriftAsyncConnector;
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBThriftConnector;
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBThriftSslConnector;
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBThriftSyncConnector;
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.OpcUaConnector;
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.WebSocketConnector;
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.WriteBackConnector;
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.schema.IoTDBConfigRegionConnector;
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.schema.IoTDBSchemaRegionConnector;
-import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.IoTDBExtractor;
-import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.schema.IoTDBConfigRegionExtractor;
-import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.schema.IoTDBSchemaRegionExtractor;
-import org.apache.iotdb.commons.pipe.plugin.builtin.processor.DoNothingProcessor;
-import org.apache.iotdb.commons.pipe.plugin.builtin.processor.DownSamplingProcessor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.donothing.DoNothingConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.airgap.IoTDBAirGapConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.thrift.data.IoTDBLegacyPipeConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.thrift.data.IoTDBThriftAsyncConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.thrift.data.IoTDBThriftConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.thrift.data.IoTDBThriftSslConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.thrift.data.IoTDBThriftSyncConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.thrift.meta.IoTDBConfigRegionConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.thrift.meta.IoTDBSchemaRegionConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.opcua.OpcUaConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.websocket.WebSocketConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.writeback.WriteBackConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.donothing.DoNothingExtractor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb.IoTDBConfigRegionExtractor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb.IoTDBExtractor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb.IoTDBSchemaRegionExtractor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.donothing.DoNothingProcessor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.downsampling.DownSamplingProcessor;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -45,8 +46,10 @@ import java.util.Set;
 public enum BuiltinPipePlugin {
 
   // extractors
+  DO_NOTHING_EXTRACTOR("do-nothing-extractor", DoNothingExtractor.class),
   IOTDB_EXTRACTOR("iotdb-extractor", IoTDBExtractor.class),
 
+  DO_NOTHING_SOURCE("do-nothing-source", DoNothingExtractor.class),
   IOTDB_SOURCE("iotdb-source", IoTDBExtractor.class),
 
   // processors
@@ -119,7 +122,10 @@ public enum BuiltinPipePlugin {
           new HashSet<>(
               Arrays.asList(
                   // Extractors
+                  DO_NOTHING_EXTRACTOR.getPipePluginName().toUpperCase(),
                   IOTDB_EXTRACTOR.getPipePluginName().toUpperCase(),
+                  // Sources
+                  DO_NOTHING_SOURCE.getPipePluginName().toUpperCase(),
                   // Processors
                   DOWN_SAMPLING_PROCESSOR.getPipePluginName().toUpperCase(),
                   // Connectors

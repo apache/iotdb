@@ -19,52 +19,37 @@
 
 package org.apache.iotdb.confignode.manager.pipe.agent.plugin;
 
-import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginConstructor;
-import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.pipe.agent.plugin.PipeExtractorConstructor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.donothing.DoNothingExtractor;
 import org.apache.iotdb.commons.pipe.plugin.meta.ConfigNodePipePluginMetaKeeper;
 import org.apache.iotdb.confignode.manager.pipe.extractor.IoTDBConfigRegionExtractor;
-import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.PipePlugin;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
-import java.util.Arrays;
+public class PipeConfigRegionExtractorConstructor extends PipeExtractorConstructor {
 
-public class PipeConfigRegionExtractorConstructor extends PipePluginConstructor {
-
-  public PipeConfigRegionExtractorConstructor(ConfigNodePipePluginMetaKeeper pipePluginMetaKeeper) {
+  PipeConfigRegionExtractorConstructor(ConfigNodePipePluginMetaKeeper pipePluginMetaKeeper) {
     super(pipePluginMetaKeeper);
   }
 
   @Override
   protected void initConstructors() {
     PLUGIN_CONSTRUCTORS.put(
+        BuiltinPipePlugin.DO_NOTHING_EXTRACTOR.getPipePluginName(), DoNothingExtractor::new);
+    PLUGIN_CONSTRUCTORS.put(
         BuiltinPipePlugin.IOTDB_CONFIG_REGION_EXTRACTOR.getPipePluginName(),
         IoTDBConfigRegionExtractor::new);
+
+    PLUGIN_CONSTRUCTORS.put(
+        BuiltinPipePlugin.DO_NOTHING_SOURCE.getPipePluginName(), DoNothingExtractor::new);
     PLUGIN_CONSTRUCTORS.put(
         BuiltinPipePlugin.IOTDB_CONFIG_REGION_SOURCE.getPipePluginName(),
         IoTDBConfigRegionExtractor::new);
   }
 
   @Override
-  public PipeExtractor reflectPlugin(PipeParameters extractorParameters) {
-    return (PipeExtractor)
-        reflectPluginByKey(
-            extractorParameters
-                .getStringOrDefault(
-                    Arrays.asList(
-                        PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
-                    BuiltinPipePlugin.IOTDB_CONFIG_REGION_SOURCE.getPipePluginName())
-                // Convert the value of `EXTRACTOR_KEY` or `SOURCE_KEY` to lowercase for matching
-                // `IOTDB_EXTRACTOR`
-                .toLowerCase());
-  }
-
-  @Override
-  protected final PipePlugin reflectPluginByKey(String pluginKey) {
-    // currently only support IOTDB_CONFIG_REGION_SOURCE
-    return PLUGIN_CONSTRUCTORS
-        .get(BuiltinPipePlugin.IOTDB_CONFIG_REGION_SOURCE.getPipePluginName())
-        .get();
+  protected PipePlugin reflectPluginByKey(String pluginKey) {
+    // TODO: support constructing plugin by reflection
+    return PLUGIN_CONSTRUCTORS.getOrDefault(pluginKey, DoNothingExtractor::new).get();
   }
 }

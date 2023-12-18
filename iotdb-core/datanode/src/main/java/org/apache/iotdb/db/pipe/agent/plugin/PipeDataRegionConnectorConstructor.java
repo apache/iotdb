@@ -19,10 +19,9 @@
 
 package org.apache.iotdb.db.pipe.agent.plugin;
 
-import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginConstructor;
-import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
+import org.apache.iotdb.commons.pipe.agent.plugin.PipeConnectorConstructor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.DoNothingConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.donothing.DoNothingConnector;
 import org.apache.iotdb.commons.pipe.plugin.meta.DataNodePipePluginMetaKeeper;
 import org.apache.iotdb.db.pipe.connector.protocol.airgap.IoTDBAirGapConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.legacy.IoTDBLegacyPipeConnector;
@@ -31,12 +30,8 @@ import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsync
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBThriftSyncConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.websocket.WebSocketConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.writeback.WriteBackConnector;
-import org.apache.iotdb.pipe.api.PipeConnector;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
-import java.util.Arrays;
-
-public class PipeDataRegionConnectorConstructor extends PipePluginConstructor {
+public class PipeDataRegionConnectorConstructor extends PipeConnectorConstructor {
 
   PipeDataRegionConnectorConstructor(DataNodePipePluginMetaKeeper pipePluginMetaKeeper) {
     super(pipePluginMetaKeeper);
@@ -92,19 +87,5 @@ public class PipeDataRegionConnectorConstructor extends PipePluginConstructor {
         BuiltinPipePlugin.DO_NOTHING_SINK.getPipePluginName(), DoNothingConnector::new);
     PLUGIN_CONSTRUCTORS.put(
         BuiltinPipePlugin.WRITE_BACK_SINK.getPipePluginName(), WriteBackConnector::new);
-  }
-
-  @Override
-  protected PipeConnector reflectPlugin(PipeParameters connectorParameters) {
-    return (PipeConnector)
-        reflectPluginByKey(
-            connectorParameters
-                .getStringOrDefault(
-                    Arrays.asList(
-                        PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
-                    BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())
-                // Convert the value of `CONNECTOR_KEY` or `SINK_KEY` to lowercase for matching in
-                // `PLUGIN_CONSTRUCTORS`
-                .toLowerCase());
   }
 }

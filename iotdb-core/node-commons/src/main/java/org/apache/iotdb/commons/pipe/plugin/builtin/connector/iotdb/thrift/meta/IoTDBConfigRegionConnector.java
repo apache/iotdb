@@ -17,8 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.plugin.builtin.connector.schema;
+package org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.thrift.meta;
 
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.PlaceholderConnector;
 
-public class IoTDBSchemaRegionConnector extends PlaceholderConnector {}
+public class IoTDBConfigRegionConnector extends PlaceholderConnector {}

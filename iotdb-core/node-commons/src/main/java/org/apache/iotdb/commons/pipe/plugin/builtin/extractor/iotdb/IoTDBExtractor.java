@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.plugin.builtin.extractor;
+package org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb;
 
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
@@ -32,6 +32,7 @@ import org.apache.iotdb.pipe.api.event.Event;
  * implementation when initializing the extractor.
  */
 public class IoTDBExtractor implements PipeExtractor {
+
   private static final String PLACEHOLDER_ERROR_MSG =
       "This class is a placeholder and should not be used.";
 

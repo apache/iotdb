@@ -55,8 +55,8 @@ public abstract class PipePluginConstructor {
     return PLUGIN_CONSTRUCTORS.getOrDefault(pluginKey, () -> reflect(pluginKey)).get();
   }
 
-  protected PipePlugin reflect(String pluginName) {
-    PipePluginMeta information = pipePluginMetaKeeper.getPipePluginMeta(pluginName);
+  protected final PipePlugin reflect(String pluginName) {
+    final PipePluginMeta information = pipePluginMetaKeeper.getPipePluginMeta(pluginName);
     if (information == null) {
       String errorMessage =
           String.format(

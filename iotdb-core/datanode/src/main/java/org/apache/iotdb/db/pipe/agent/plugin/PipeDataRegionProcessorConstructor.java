@@ -19,16 +19,14 @@
 
 package org.apache.iotdb.db.pipe.agent.plugin;
 
-import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginConstructor;
-import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
+import org.apache.iotdb.commons.pipe.agent.plugin.PipeProcessorConstructor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
-import org.apache.iotdb.commons.pipe.plugin.builtin.processor.DoNothingProcessor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.donothing.DoNothingProcessor;
 import org.apache.iotdb.commons.pipe.plugin.meta.DataNodePipePluginMetaKeeper;
 import org.apache.iotdb.db.pipe.processor.downsampling.DownSamplingProcessor;
-import org.apache.iotdb.pipe.api.PipeProcessor;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
-public class PipeDataRegionProcessorConstructor extends PipePluginConstructor {
+public class PipeDataRegionProcessorConstructor extends PipeProcessorConstructor {
+
   PipeDataRegionProcessorConstructor(DataNodePipePluginMetaKeeper pipePluginMetaKeeper) {
     super(pipePluginMetaKeeper);
   }
@@ -39,18 +37,5 @@ public class PipeDataRegionProcessorConstructor extends PipePluginConstructor {
         BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName(), DoNothingProcessor::new);
     PLUGIN_CONSTRUCTORS.put(
         BuiltinPipePlugin.DOWN_SAMPLING_PROCESSOR.getPipePluginName(), DownSamplingProcessor::new);
-  }
-
-  @Override
-  protected PipeProcessor reflectPlugin(PipeParameters processorParameters) {
-    return (PipeProcessor)
-        reflectPluginByKey(
-            processorParameters
-                .getStringOrDefault(
-                    PipeProcessorConstant.PROCESSOR_KEY,
-                    BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName())
-                // Convert the value of `PROCESSOR_KEY` to lowercase for matching
-                // `DO_NOTHING_PROCESSOR`
-                .toLowerCase());
   }
 }

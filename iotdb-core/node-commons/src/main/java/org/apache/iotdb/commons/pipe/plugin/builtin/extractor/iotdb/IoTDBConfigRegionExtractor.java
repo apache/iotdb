@@ -17,8 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.plugin.builtin.extractor.schema;
+package org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb;
 
-import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.IoTDBExtractor;
-
-public class IoTDBSchemaRegionExtractor extends IoTDBExtractor {}
+public class IoTDBConfigRegionExtractor extends IoTDBExtractor {}

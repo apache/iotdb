@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.plugin.builtin.extractor.schema;
+package org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb;
 
 import org.apache.iotdb.commons.pipe.metric.PipeFakeEventCounter;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
@@ -46,9 +46,9 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_TTL_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_INCLUSION_KEY;
 
-public abstract class IoTDBSchemaExtractor implements PipeExtractor {
+public abstract class IoTDBMetaExtractor implements PipeExtractor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSchemaExtractor.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBMetaExtractor.class);
 
   private final AtomicBoolean hasBeenStarted;
   protected final UnboundedBlockingPendingQueue<Event> pendingQueue =
@@ -62,7 +62,7 @@ public abstract class IoTDBSchemaExtractor implements PipeExtractor {
   private boolean enableAuthoritySync = false;
   private boolean atLeastOneEnable = false;
 
-  public IoTDBSchemaExtractor() {
+  public IoTDBMetaExtractor() {
     this.hasBeenStarted = new AtomicBoolean(false);
   }
 

@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.agent.plugin;
 import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginConstructor;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.schema.IoTDBSchemaRegionConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.thrift.meta.IoTDBSchemaRegionConnector;
 import org.apache.iotdb.commons.pipe.plugin.meta.DataNodePipePluginMetaKeeper;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.PipePlugin;

@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.confignode.manager.pipe.connector;
 
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.schema.IoTDBSchemaConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.thrift.meta.IoTDBMetaConnector;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class IoTDBConfigRegionConnector extends IoTDBSchemaConnector {
+public class IoTDBConfigRegionConnector extends IoTDBMetaConnector {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConfigRegionConnector.class);
 }

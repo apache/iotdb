@@ -17,29 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.agent.plugin;
+package org.apache.iotdb.commons.pipe.agent.plugin;
 
-import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginConstructor;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
-import org.apache.iotdb.commons.pipe.plugin.builtin.processor.donothing.DoNothingProcessor;
-import org.apache.iotdb.commons.pipe.plugin.meta.DataNodePipePluginMetaKeeper;
+import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMetaKeeper;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
-public class PipeSchemaRegionProcessorConstructor extends PipePluginConstructor {
-  PipeSchemaRegionProcessorConstructor(DataNodePipePluginMetaKeeper pipePluginMetaKeeper) {
+public abstract class PipeProcessorConstructor extends PipePluginConstructor {
+
+  protected PipeProcessorConstructor(PipePluginMetaKeeper pipePluginMetaKeeper) {
     super(pipePluginMetaKeeper);
   }
 
   @Override
-  protected void initConstructors() {
-    PLUGIN_CONSTRUCTORS.put(
-        BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName(), DoNothingProcessor::new);
-  }
-
-  @Override
-  protected PipeProcessor reflectPlugin(PipeParameters processorParameters) {
+  protected final PipeProcessor reflectPlugin(PipeParameters processorParameters) {
     return (PipeProcessor)
         reflectPluginByKey(
             processorParameters

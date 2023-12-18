@@ -17,12 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.plugin.builtin.processor;
+package org.apache.iotdb.commons.pipe.plugin.builtin.connector.writeback;
+
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.PlaceholderConnector;
 
 /**
- * This class is a placeholder and should not be initialized. It represents the Down Sampling
- * processor. There is a real implementation in the server module but cannot be imported here. The
+ * This class is a placeholder and should not be initialized. It represents the Write Back
+ * connector. There is a real implementation in the server module but cannot be imported here. The
  * pipe agent in the server module will replace this class with the real implementation when
- * initializing the Down Sampling processor.
+ * initializing the Write Back connector.
  */
-public class DownSamplingProcessor extends PlaceHolderProcessor {}
+public class WriteBackConnector extends PlaceholderConnector {}

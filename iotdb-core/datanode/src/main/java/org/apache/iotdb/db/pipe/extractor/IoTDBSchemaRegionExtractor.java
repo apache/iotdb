@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.pipe.extractor;
 
-import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.schema.IoTDBSchemaExtractor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb.IoTDBMetaExtractor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class IoTDBSchemaRegionExtractor extends IoTDBSchemaExtractor {
+public class IoTDBSchemaRegionExtractor extends IoTDBMetaExtractor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSchemaRegionExtractor.class);
 }

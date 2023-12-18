@@ -17,7 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.plugin.builtin.connector;
+package org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.airgap;
+
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.PlaceholderConnector;
 
 /**
  * This class is a placeholder and should not be initialized. It represents the IoTDB Air Gap
