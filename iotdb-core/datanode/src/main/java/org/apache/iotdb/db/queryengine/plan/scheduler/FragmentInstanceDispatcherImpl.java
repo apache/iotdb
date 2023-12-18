@@ -380,9 +380,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                 : readExecutor.execute(groupId, instance);
         if (!readResult.isAccepted()) {
           logger.warn(readResult.getMessage());
-          queryContext.addFailedEndPoint(instance.getHostDataNode().internalEndPoint);
           throw new FragmentInstanceDispatchException(
-              RpcUtils.getStatus(TSStatusCode.DISPATCH_ERROR, readResult.getMessage()));
+              RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, readResult.getMessage()));
         }
         break;
       case WRITE:
