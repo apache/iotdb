@@ -101,7 +101,7 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
   }
 
   /**
-   * Try offer event into cache.
+   * Try offer event into cache if the given event is not duplicated.
    *
    * @param event the given event
    * @return true if the batch can be transferred
@@ -114,17 +114,19 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
     final TPipeTransferReq req = buildTabletInsertionReq(event);
     final long requestCommitId = ((EnrichedEvent) event).getCommitId();
 
-    reqs.add(req);
-    events.add(event);
-    requestCommitIds.add(requestCommitId);
+    if ((events.isEmpty() || !events.get(events.size() - 1).equals(event))) {
+      reqs.add(req);
+      events.add(event);
+      requestCommitIds.add(requestCommitId);
 
-    ((EnrichedEvent) event).increaseReferenceCount(PipeTransferBatchReqBuilder.class.getName());
+      ((EnrichedEvent) event).increaseReferenceCount(PipeTransferBatchReqBuilder.class.getName());
 
-    if (firstEventProcessingTime == Long.MIN_VALUE) {
-      firstEventProcessingTime = System.currentTimeMillis();
+      if (firstEventProcessingTime == Long.MIN_VALUE) {
+        firstEventProcessingTime = System.currentTimeMillis();
+      }
+
+      bufferSize += req.getBody().length;
     }
-
-    bufferSize += req.getBody().length;
 
     return bufferSize >= getMaxBatchSizeInBytes()
         || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs;
