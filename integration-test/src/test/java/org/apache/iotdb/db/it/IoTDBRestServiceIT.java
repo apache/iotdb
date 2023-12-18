@@ -24,6 +24,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.category.RemoteIT;
+import org.apache.iotdb.itbase.env.BaseEnv;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.JsonObject;
@@ -63,8 +64,9 @@ public class IoTDBRestServiceIT {
 
   @Before
   public void setUp() throws Exception {
-
-    EnvFactory.getEnv().initClusterEnvironment();
+    BaseEnv baseEnv = EnvFactory.getEnv();
+    baseEnv.getConfig().getDataNodeConfig().setEnableRestService(true);
+    baseEnv.initClusterEnvironment();
     DataNodeWrapper portConflictDataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
     port = portConflictDataNodeWrapper.getRestServicePort();
   }
@@ -1303,6 +1305,7 @@ public class IoTDBRestServiceIT {
           {
             add("Device");
             add("IsAligned");
+            add("Template");
           }
         };
     List<Object> values1 =
@@ -1315,6 +1318,12 @@ public class IoTDBRestServiceIT {
         new ArrayList<Boolean>() {
           {
             add(false);
+          }
+        };
+    List<String> values3 =
+        new ArrayList<String>() {
+          {
+            add("null");
           }
         };
     Assert.assertEquals(columnNames, columnNamesResult);
@@ -1333,6 +1342,7 @@ public class IoTDBRestServiceIT {
             add("Device");
             add("Database");
             add("IsAligned");
+            add("Template");
           }
         };
     List<Object> values1 =
@@ -1353,10 +1363,17 @@ public class IoTDBRestServiceIT {
             add("false");
           }
         };
+    List<Object> values4 =
+        new ArrayList<Object>() {
+          {
+            add("null");
+          }
+        };
     Assert.assertEquals(columnNames, columnNamesResult);
     Assert.assertEquals(values1, valuesResult.get(0));
     Assert.assertEquals(values2, valuesResult.get(1));
     Assert.assertEquals(values3, valuesResult.get(2));
+    Assert.assertEquals(values4, valuesResult.get(3));
   }
 
   public void listUser(CloseableHttpClient httpClient) {
@@ -1938,6 +1955,7 @@ public class IoTDBRestServiceIT {
           {
             add("Device");
             add("IsAligned");
+            add("Template");
           }
         };
     List<Object> values1 =
@@ -1950,6 +1968,12 @@ public class IoTDBRestServiceIT {
         new ArrayList<Boolean>() {
           {
             add(false);
+          }
+        };
+    List<String> values3 =
+        new ArrayList<String>() {
+          {
+            add("null");
           }
         };
     Assert.assertEquals(columnNames, columnNamesResult);
@@ -1969,6 +1993,7 @@ public class IoTDBRestServiceIT {
             add("Device");
             add("Database");
             add("IsAligned");
+            add("Template");
           }
         };
     List<Object> values1 =
@@ -1989,10 +2014,17 @@ public class IoTDBRestServiceIT {
             add("false");
           }
         };
+    List<Object> values4 =
+        new ArrayList<Object>() {
+          {
+            add("null");
+          }
+        };
     Assert.assertEquals(columnNames, columnNamesResult);
     Assert.assertEquals(values1, valuesResult.get(0));
     Assert.assertEquals(values2, valuesResult.get(1));
     Assert.assertEquals(values3, valuesResult.get(2));
+    Assert.assertEquals(values4, valuesResult.get(3));
   }
 
   public void listUserV2(CloseableHttpClient httpClient) {

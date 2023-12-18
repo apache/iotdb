@@ -105,6 +105,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -753,7 +754,7 @@ public class ProcedureManager {
       boolean isSucceed =
           waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
       if (isSucceed) {
-        return RpcUtils.SUCCESS_STATUS;
+        return statusList.get(0);
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
             .setMessage(statusList.get(0).getMessage());
@@ -770,7 +771,7 @@ public class ProcedureManager {
       boolean isSucceed =
           waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
       if (isSucceed) {
-        return RpcUtils.SUCCESS_STATUS;
+        return statusList.get(0);
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
             .setMessage(statusList.get(0).getMessage());
@@ -787,7 +788,7 @@ public class ProcedureManager {
       boolean isSucceed =
           waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
       if (isSucceed) {
-        return RpcUtils.SUCCESS_STATUS;
+        return statusList.get(0);
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
             .setMessage(statusList.get(0).getMessage());
@@ -804,7 +805,7 @@ public class ProcedureManager {
       boolean isSucceed =
           waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
       if (isSucceed) {
-        return RpcUtils.SUCCESS_STATUS;
+        return statusList.get(0);
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
             .setMessage(statusList.get(0).getMessage());
@@ -924,7 +925,13 @@ public class ProcedureManager {
         continue;
       }
       if (finishedProcedure.isSuccess()) {
-        statusList.add(StatusUtils.OK);
+        if (Objects.nonNull(finishedProcedure.getResult())) {
+          statusList.add(
+              RpcUtils.getStatus(
+                  TSStatusCode.SUCCESS_STATUS, Arrays.toString(finishedProcedure.getResult())));
+        } else {
+          statusList.add(StatusUtils.OK);
+        }
       } else {
         if (finishedProcedure.getException().getCause() instanceof IoTDBException) {
           IoTDBException e = (IoTDBException) finishedProcedure.getException().getCause();

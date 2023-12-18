@@ -145,7 +145,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.Phaser;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -222,8 +221,6 @@ public class DataRegion implements IDataRegionForQuery {
   /** unsequence tsfile processors which are closing. */
   private final CopyOnReadLinkedList<TsFileProcessor> closingUnSequenceTsFileProcessor =
       new CopyOnReadLinkedList<>();
-
-  private final AtomicBoolean isSettling = new AtomicBoolean();
 
   /** data region id. */
   private final String dataRegionId;
@@ -374,14 +371,6 @@ public class DataRegion implements IDataRegionForQuery {
       ret.computeIfAbsent(resource.getTimePartition(), l -> new ArrayList<>()).add(resource);
     }
     return ret;
-  }
-
-  public AtomicBoolean getIsSettling() {
-    return isSettling;
-  }
-
-  public void setSettling(boolean isSettling) {
-    this.isSettling.set(isSettling);
   }
 
   /** this class is used to store recovering context. */
@@ -547,15 +536,17 @@ public class DataRegion implements IDataRegionForQuery {
               false,
               partitionFiles.getKey() == latestPartitionId);
         }
-        TimePartitionManager.getInstance()
-            .registerTimePartitionInfo(
-                new TimePartitionInfo(
-                    new DataRegionId(Integer.parseInt(dataRegionId)),
-                    latestPartitionId,
-                    false,
-                    Long.MAX_VALUE,
-                    lastFlushTimeMap.getMemSize(latestPartitionId),
-                    true));
+        if (config.isEnableSeparateData()) {
+          TimePartitionManager.getInstance()
+              .registerTimePartitionInfo(
+                  new TimePartitionInfo(
+                      new DataRegionId(Integer.parseInt(dataRegionId)),
+                      latestPartitionId,
+                      false,
+                      Long.MAX_VALUE,
+                      lastFlushTimeMap.getMemSize(latestPartitionId),
+                      true));
+        }
       }
       // wait until all unsealed TsFiles have been recovered
       for (WALRecoverListener recoverListener : recoverListeners) {
@@ -609,8 +600,12 @@ public class DataRegion implements IDataRegionForQuery {
       long endTime = resource.getEndTime(deviceId);
       endTimeMap.put(deviceId.intern(), endTime);
     }
-    lastFlushTimeMap.setMultiDeviceFlushedTime(timePartitionId, endTimeMap);
-    lastFlushTimeMap.setMultiDeviceGlobalFlushedTime(endTimeMap);
+    if (config.isEnableSeparateData()) {
+      lastFlushTimeMap.updateMultiDeviceFlushedTime(timePartitionId, endTimeMap);
+    }
+    if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
+      lastFlushTimeMap.updateMultiDeviceGlobalFlushedTime(endTimeMap);
+    }
   }
 
   public void initCompactionSchedule() {
@@ -829,7 +824,7 @@ public class DataRegion implements IDataRegionForQuery {
     for (TsFileResource tsFileResource : resourceList) {
       recoverSealedTsFiles(tsFileResource, context, isSeq);
     }
-    if (isLatestPartition) {
+    if (isLatestPartition && config.isEnableSeparateData()) {
       lastFlushTimeMap.checkAndCreateFlushedTimePartition(partitionId);
       for (TsFileResource tsFileResource : resourceList) {
         updateLastFlushTime(tsFileResource, isSeq);
@@ -875,7 +870,8 @@ public class DataRegion implements IDataRegionForQuery {
       // init map
       long timePartitionId = TimePartitionUtils.getTimePartitionId(insertRowNode.getTime());
 
-      if (!lastFlushTimeMap.checkAndCreateFlushedTimePartition(timePartitionId)) {
+      if (config.isEnableSeparateData()
+          && !lastFlushTimeMap.checkAndCreateFlushedTimePartition(timePartitionId)) {
         TimePartitionManager.getInstance()
             .registerTimePartitionInfo(
                 new TimePartitionInfo(
@@ -888,15 +884,10 @@ public class DataRegion implements IDataRegionForQuery {
       }
 
       boolean isSequence =
-          insertRowNode.getTime()
-              > lastFlushTimeMap.getFlushedTime(
-                  timePartitionId, insertRowNode.getDevicePath().getFullPath());
-
-      // is unsequence and user set config to discard out of order data
-      if (!isSequence
-          && IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData()) {
-        return;
-      }
+          config.isEnableSeparateData()
+              && insertRowNode.getTime()
+                  > lastFlushTimeMap.getFlushedTime(
+                      timePartitionId, insertRowNode.getDevicePath().getFullPath());
 
       // insert to sequence or unSequence file
       insertToTsFileProcessor(insertRowNode, isSequence, timePartitionId);
@@ -962,7 +953,8 @@ public class DataRegion implements IDataRegionForQuery {
           TimePartitionUtils.getTimePartitionId(insertTabletNode.getTimes()[before]);
       // init map
 
-      if (!lastFlushTimeMap.checkAndCreateFlushedTimePartition(beforeTimePartition)) {
+      if (config.isEnableSeparateData()
+          && !lastFlushTimeMap.checkAndCreateFlushedTimePartition(beforeTimePartition)) {
         TimePartitionManager.getInstance()
             .registerTimePartitionInfo(
                 new TimePartitionInfo(
@@ -975,8 +967,10 @@ public class DataRegion implements IDataRegionForQuery {
       }
 
       long lastFlushTime =
-          lastFlushTimeMap.getFlushedTime(
-              beforeTimePartition, insertTabletNode.getDevicePath().getFullPath());
+          config.isEnableSeparateData()
+              ? lastFlushTimeMap.getFlushedTime(
+                  beforeTimePartition, insertTabletNode.getDevicePath().getFullPath())
+              : Long.MAX_VALUE;
 
       // if is sequence
       boolean isSequence = false;
@@ -986,12 +980,10 @@ public class DataRegion implements IDataRegionForQuery {
         // judge if we should insert sequence
         if (!isSequence && time > lastFlushTime) {
           // insert into unsequence and then start sequence
-          if (!IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData()) {
-            noFailure =
-                insertTabletToTsFileProcessor(
-                        insertTabletNode, before, loc, false, results, beforeTimePartition)
-                    && noFailure;
-          }
+          noFailure =
+              insertTabletToTsFileProcessor(
+                      insertTabletNode, before, loc, false, results, beforeTimePartition)
+                  && noFailure;
           before = loc;
           isSequence = true;
         }
@@ -999,18 +991,14 @@ public class DataRegion implements IDataRegionForQuery {
       }
 
       // do not forget last part
-      if (before < loc
-          && (isSequence
-              || !IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData())) {
+      if (before < loc) {
         noFailure =
             insertTabletToTsFileProcessor(
                     insertTabletNode, before, loc, isSequence, results, beforeTimePartition)
                 && noFailure;
       }
-      long globalLatestFlushedTime =
-          lastFlushTimeMap.getGlobalFlushedTime(insertTabletNode.getDevicePath().getFullPath());
       startTime = System.nanoTime();
-      tryToUpdateBatchInsertLastCache(insertTabletNode, globalLatestFlushedTime);
+      tryToUpdateBatchInsertLastCache(insertTabletNode);
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(System.nanoTime() - startTime);
 
       if (!noFailure) {
@@ -1083,13 +1071,15 @@ public class DataRegion implements IDataRegionForQuery {
     return true;
   }
 
-  private void tryToUpdateBatchInsertLastCache(InsertTabletNode node, long latestFlushedTime) {
+  private void tryToUpdateBatchInsertLastCache(InsertTabletNode node) {
     if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable()
         || (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
             && node.isSyncFromLeaderWhenUsingIoTConsensus())) {
       // disable updating last cache on follower
       return;
     }
+    long latestFlushedTime =
+        lastFlushTimeMap.getGlobalFlushedTime(node.getDevicePath().getFullPath());
     String[] measurements = node.getMeasurements();
     MeasurementSchema[] measurementSchemas = node.getMeasurementSchemas();
     String[] rawMeasurements = new String[measurements.length];
@@ -1126,12 +1116,8 @@ public class DataRegion implements IDataRegionForQuery {
     }
 
     tsFileProcessor.insert(insertRowNode);
-
-    long globalLatestFlushTime =
-        lastFlushTimeMap.getGlobalFlushedTime(insertRowNode.getDevicePath().getFullPath());
-
     long startTime = System.nanoTime();
-    tryToUpdateInsertLastCache(insertRowNode, globalLatestFlushTime);
+    tryToUpdateInsertLastCache(insertRowNode);
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(System.nanoTime() - startTime);
 
     // check memtable size and may asyncTryToFlush the work memtable
@@ -1140,13 +1126,15 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  private void tryToUpdateInsertLastCache(InsertRowNode node, long latestFlushedTime) {
+  private void tryToUpdateInsertLastCache(InsertRowNode node) {
     if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable()
         || (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
             && node.isSyncFromLeaderWhenUsingIoTConsensus())) {
       // disable updating last cache on follower
       return;
     }
+    long latestFlushedTime =
+        lastFlushTimeMap.getGlobalFlushedTime(node.getDevicePath().getFullPath());
     String[] measurements = node.getMeasurements();
     MeasurementSchema[] measurementSchemas = node.getMeasurementSchemas();
     String[] rawMeasurements = new String[measurements.length];
@@ -2234,25 +2222,44 @@ public class DataRegion implements IDataRegionForQuery {
 
   private void unsequenceFlushCallback(
       TsFileProcessor processor, Map<String, Long> updateMap, long systemFlushTime) {
-    TimePartitionManager.getInstance()
-        .updateAfterFlushing(
-            new DataRegionId(Integer.valueOf(dataRegionId)),
-            processor.getTimeRangeId(),
-            systemFlushTime,
-            lastFlushTimeMap.getMemSize(processor.getTimeRangeId()),
-            workSequenceTsFileProcessors.get(processor.getTimeRangeId()) != null);
+    if (!config.isEnableSeparateData()
+        && CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
+      // update globalLastFlushTime if and only if isEnableSeparateData is false and
+      // isLastCacheEnable is true
+      lastFlushTimeMap.updateMultiDeviceGlobalFlushedTime(updateMap);
+    }
+    if (config.isEnableSeparateData()) {
+      TimePartitionManager.getInstance()
+          .updateAfterFlushing(
+              new DataRegionId(Integer.valueOf(dataRegionId)),
+              processor.getTimeRangeId(),
+              systemFlushTime,
+              lastFlushTimeMap.getMemSize(processor.getTimeRangeId()),
+              workSequenceTsFileProcessors.get(processor.getTimeRangeId()) != null);
+    }
   }
 
   private void sequenceFlushCallback(
       TsFileProcessor processor, Map<String, Long> updateMap, long systemFlushTime) {
-    lastFlushTimeMap.updateLatestFlushTime(processor.getTimeRangeId(), updateMap);
-    TimePartitionManager.getInstance()
-        .updateAfterFlushing(
-            new DataRegionId(Integer.valueOf(dataRegionId)),
-            processor.getTimeRangeId(),
-            systemFlushTime,
-            lastFlushTimeMap.getMemSize(processor.getTimeRangeId()),
-            workUnsequenceTsFileProcessors.get(processor.getTimeRangeId()) != null);
+    if (config.isEnableSeparateData()
+        && CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
+      // update both partitionLastFlushTime and globalLastFlushTime
+      lastFlushTimeMap.updateLatestFlushTime(processor.getTimeRangeId(), updateMap);
+    } else {
+      // isEnableSeparateData is true and isLastCacheEnable is false, then update
+      // partitionLastFlushTime only
+      lastFlushTimeMap.updateMultiDeviceFlushedTime(processor.getTimeRangeId(), updateMap);
+    }
+
+    if (config.isEnableSeparateData()) {
+      TimePartitionManager.getInstance()
+          .updateAfterFlushing(
+              new DataRegionId(Integer.valueOf(dataRegionId)),
+              processor.getTimeRangeId(),
+              systemFlushTime,
+              lastFlushTimeMap.getMemSize(processor.getTimeRangeId()),
+              workSequenceTsFileProcessors.get(processor.getTimeRangeId()) != null);
+    }
   }
 
   /** put the memtable back to the MemTablePool and make the metadata in writer visible */
@@ -2622,8 +2629,12 @@ public class DataRegion implements IDataRegionForQuery {
     for (String device : newTsFileResource.getDevices()) {
       long endTime = newTsFileResource.getEndTime(device);
       long timePartitionId = TimePartitionUtils.getTimePartitionId(endTime);
-      lastFlushTimeMap.updateFlushedTime(timePartitionId, device, endTime);
-      lastFlushTimeMap.updateGlobalFlushedTime(device, endTime);
+      if (config.isEnableSeparateData()) {
+        lastFlushTimeMap.updateOneDeviceFlushedTime(timePartitionId, device, endTime);
+      }
+      if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
+        lastFlushTimeMap.updateOneDeviceGlobalFlushedTime(device, endTime);
+      }
     }
   }
 
@@ -2954,7 +2965,6 @@ public class DataRegion implements IDataRegionForQuery {
       if (deleted) {
         return;
       }
-      boolean isSequence = false;
       for (int i = 0; i < insertRowsOfOneDeviceNode.getInsertRowNodeList().size(); i++) {
         InsertRowNode insertRowNode = insertRowsOfOneDeviceNode.getInsertRowNodeList().get(i);
         if (!isAlive(insertRowNode.getTime())) {
@@ -2976,7 +2986,8 @@ public class DataRegion implements IDataRegionForQuery {
         // init map
         long timePartitionId = TimePartitionUtils.getTimePartitionId(insertRowNode.getTime());
 
-        if (!lastFlushTimeMap.checkAndCreateFlushedTimePartition(timePartitionId)) {
+        if (config.isEnableSeparateData()
+            && !lastFlushTimeMap.checkAndCreateFlushedTimePartition(timePartitionId)) {
           TimePartitionManager.getInstance()
               .registerTimePartitionInfo(
                   new TimePartitionInfo(
@@ -2988,20 +2999,11 @@ public class DataRegion implements IDataRegionForQuery {
                       tsFileManager.isLatestTimePartition(timePartitionId)));
         }
 
-        // as the plans have been ordered, and we have get the write lock,
-        // So, if a plan is sequenced, then all the rest plans are sequenced.
-        //
-        if (!isSequence) {
-          isSequence =
-              insertRowNode.getTime()
-                  > lastFlushTimeMap.getFlushedTime(
-                      timePartitionId, insertRowNode.getDevicePath().getFullPath());
-        }
-        // is unsequence and user set config to discard out of order data
-        if (!isSequence
-            && IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData()) {
-          return;
-        }
+        boolean isSequence =
+            config.isEnableSeparateData()
+                && insertRowNode.getTime()
+                    > lastFlushTimeMap.getFlushedTime(
+                        timePartitionId, insertRowNode.getDevicePath().getFullPath());
 
         // insert to sequence or unSequence file
         try {
