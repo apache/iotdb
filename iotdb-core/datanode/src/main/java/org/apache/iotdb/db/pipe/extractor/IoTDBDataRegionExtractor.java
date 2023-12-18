@@ -91,27 +91,12 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
     // Check whether the pattern is legal
-    String pattern =
+    validatePattern(
         validator
             .getParameters()
             .getStringOrDefault(
                 Arrays.asList(EXTRACTOR_PATTERN_KEY, SOURCE_PATTERN_KEY),
-                EXTRACTOR_PATTERN_DEFAULT_VALUE);
-    try {
-      PathUtils.isLegalPath(pattern);
-    } catch (IllegalPathException e) {
-      try {
-        String[] pathNodes = StringUtils.split(pattern, "\\.");
-        PathUtils.splitPathToDetachedNodes(
-            String.join(".", Arrays.copyOfRange(pathNodes, 0, pathNodes.length - 1)));
-        String lastNode = pathNodes[pathNodes.length - 1];
-        if (!"".equals(lastNode)) {
-          Double.parseDouble(lastNode);
-        }
-      } catch (NumberFormatException | IllegalPathException ignored) {
-        throw new IllegalArgumentException();
-      }
-    }
+                EXTRACTOR_PATTERN_DEFAULT_VALUE));
 
     // Validate extractor.history.enable and extractor.realtime.enable
     validator
@@ -161,6 +146,32 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
 
     historicalExtractor.validate(validator);
     realtimeExtractor.validate(validator);
+  }
+
+  private void validatePattern(String pattern) {
+    if (!pattern.startsWith("root")) {
+      throw new IllegalArgumentException(
+          "The argument `extractor.pattern` or `source.pattern` is an illegal path.");
+    }
+    if ("root".equals(pattern) || "root.".equals(pattern)) {
+      return;
+    }
+    try {
+      PathUtils.isLegalPath(pattern);
+    } catch (IllegalPathException e) {
+      try {
+        String[] pathNodes = StringUtils.split(pattern, "\\.");
+        PathUtils.splitPathToDetachedNodes(
+            String.join(".", Arrays.copyOfRange(pathNodes, 0, pathNodes.length - 1)));
+        String lastNode = pathNodes[pathNodes.length - 1];
+        if (!"".equals(lastNode)) {
+          Double.parseDouble(lastNode);
+        }
+      } catch (Exception ignored) {
+        throw new IllegalArgumentException(
+            "The argument `extractor.pattern` or `source.pattern` is an illegal path.");
+      }
+    }
   }
 
   private void constructHistoricalExtractor() {
