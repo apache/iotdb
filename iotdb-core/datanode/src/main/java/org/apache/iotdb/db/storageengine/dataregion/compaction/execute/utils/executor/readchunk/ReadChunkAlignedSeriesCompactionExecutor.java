@@ -377,6 +377,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
   }
 
   private class FlushDataBlockPolicy {
+    private static final int largeFileLevelSeparator = 2;
     private final int compactionTargetFileLevel;
     private final long targetChunkPointNum;
     private final long targetChunkSize;
@@ -428,7 +429,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
 
     private boolean canCompactCurrentPageByDirectlyFlush(
         PageLoader timePage, List<PageLoader> valuePages) {
-      boolean isHighLevelCompaction = compactionTargetFileLevel > 2;
+      boolean isHighLevelCompaction = compactionTargetFileLevel > largeFileLevelSeparator;
       if (isHighLevelCompaction) {
         return canFlushPage(timePage, valuePages);
       } else {
