@@ -26,7 +26,7 @@ import org.apache.iotdb.confignode.manager.pipe.connector.IoTDBConfigRegionConne
 
 public class PipeConfigRegionConnectorConstructor extends PipeConnectorConstructor {
 
-  public PipeConfigRegionConnectorConstructor(ConfigNodePipePluginMetaKeeper pipePluginMetaKeeper) {
+  PipeConfigRegionConnectorConstructor(ConfigNodePipePluginMetaKeeper pipePluginMetaKeeper) {
     super(pipePluginMetaKeeper);
   }
 

@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.donothing.DoNothingExtractor;
 import org.apache.iotdb.commons.pipe.plugin.meta.DataNodePipePluginMetaKeeper;
 import org.apache.iotdb.db.pipe.extractor.IoTDBSchemaRegionExtractor;
-import org.apache.iotdb.pipe.api.PipePlugin;
+import org.apache.iotdb.pipe.api.PipeExtractor;
 
 public class PipeSchemaRegionExtractorConstructor extends PipeExtractorConstructor {
 
@@ -46,8 +46,9 @@ public class PipeSchemaRegionExtractorConstructor extends PipeExtractorConstruct
   }
 
   @Override
-  protected PipePlugin reflectPluginByKey(String pluginKey) {
+  protected PipeExtractor reflectPluginByKey(String pluginKey) {
     // TODO: support constructing plugin by reflection
-    return PLUGIN_CONSTRUCTORS.getOrDefault(pluginKey, DoNothingExtractor::new).get();
+    return (PipeExtractor)
+        PLUGIN_CONSTRUCTORS.getOrDefault(pluginKey, DoNothingExtractor::new).get();
   }
 }

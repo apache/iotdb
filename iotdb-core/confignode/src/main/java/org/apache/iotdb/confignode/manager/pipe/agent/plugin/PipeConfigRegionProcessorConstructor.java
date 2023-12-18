@@ -17,17 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.agent.plugin;
+package org.apache.iotdb.confignode.manager.pipe.agent.plugin;
 
 import org.apache.iotdb.commons.pipe.agent.plugin.PipeProcessorConstructor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.donothing.DoNothingProcessor;
-import org.apache.iotdb.commons.pipe.plugin.meta.DataNodePipePluginMetaKeeper;
+import org.apache.iotdb.commons.pipe.plugin.meta.ConfigNodePipePluginMetaKeeper;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 
-public class PipeSchemaRegionProcessorConstructor extends PipeProcessorConstructor {
+public class PipeConfigRegionProcessorConstructor extends PipeProcessorConstructor {
 
-  PipeSchemaRegionProcessorConstructor(DataNodePipePluginMetaKeeper pipePluginMetaKeeper) {
+  PipeConfigRegionProcessorConstructor(ConfigNodePipePluginMetaKeeper pipePluginMetaKeeper) {
     super(pipePluginMetaKeeper);
   }
 
