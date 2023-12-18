@@ -82,28 +82,28 @@ public class SeriesScanCostMetricSet implements IMetricSet {
   public Timer loadTimeSeriesMetadataAlignedMemSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
   public Timer loadTimeSeriesMetadataAlignedMemUnSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
 
-  public void recordNonAlignedSeriesExecutionCount(long c1, long c2, long c3, long c4) {
+  public void recordNonAlignedTimeSeriesMetadataCount(long c1, long c2, long c3, long c4) {
     loadTimeSeriesMetadataDiskSeqHistogram.update(c1);
     loadTimeSeriesMetadataDiskUnSeqHistogram.update(c2);
     loadTimeSeriesMetadataMemSeqHistogram.update(c3);
     loadTimeSeriesMetadataMemUnSeqHistogram.update(c4);
   }
 
-  public void recordNonAlignedSeriesExecutionTime(long t1, long t2, long t3, long t4) {
+  public void recordNonAlignedTimeSeriesMetadataTime(long t1, long t2, long t3, long t4) {
     loadTimeSeriesMetadataDiskSeqTime.updateNanos(t1);
     loadTimeSeriesMetadataDiskUnSeqTime.updateNanos(t2);
     loadTimeSeriesMetadataMemSeqTime.updateNanos(t3);
     loadTimeSeriesMetadataMemUnSeqTime.updateNanos(t4);
   }
 
-  public void recordAlignedSeriesExecutionCount(long c1, long c2, long c3, long c4) {
+  public void recordAlignedTimeSeriesMetadataCount(long c1, long c2, long c3, long c4) {
     loadTimeSeriesMetadataAlignedDiskSeqHistogram.update(c1);
     loadTimeSeriesMetadataAlignedDiskUnSeqHistogram.update(c2);
     loadTimeSeriesMetadataAlignedMemSeqHistogram.update(c3);
     loadTimeSeriesMetadataAlignedMemUnSeqHistogram.update(c4);
   }
 
-  public void recordAlignedSeriesExecutionTime(long t1, long t2, long t3, long t4) {
+  public void recordAlignedTimeSeriesMetadataTime(long t1, long t2, long t3, long t4) {
     loadTimeSeriesMetadataAlignedDiskSeqTime.updateNanos(t1);
     loadTimeSeriesMetadataAlignedDiskUnSeqTime.updateNanos(t2);
     loadTimeSeriesMetadataAlignedMemSeqTime.updateNanos(t3);
@@ -532,7 +532,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
       DoNothingMetricManager.DO_NOTHING_TIMER;
 
   private void bindChunkMetadataModification(AbstractMetricService metricService) {
-    constructChunkReaderAlignedMemTimer =
+    constructChunkReadersAlignedMemTimer =
         metricService.getOrCreateTimer(
             Metric.SERIES_SCAN_COST.toString(),
             MetricLevel.IMPORTANT,
@@ -542,7 +542,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             ALIGNED,
             Tag.FROM.toString(),
             MEM);
-    constructChunkReaderAlignedDiskTimer =
+    constructChunkReadersAlignedDiskTimer =
         metricService.getOrCreateTimer(
             Metric.SERIES_SCAN_COST.toString(),
             MetricLevel.IMPORTANT,
@@ -552,7 +552,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             ALIGNED,
             Tag.FROM.toString(),
             DISK);
-    constructChunkReaderNonAlignedMemTimer =
+    constructChunkReadersNonAlignedMemTimer =
         metricService.getOrCreateTimer(
             Metric.SERIES_SCAN_COST.toString(),
             MetricLevel.IMPORTANT,
@@ -562,7 +562,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             NON_ALIGNED,
             Tag.FROM.toString(),
             MEM);
-    constructChunkReaderNonAlignedDiskTimer =
+    constructChunkReadersNonAlignedDiskTimer =
         metricService.getOrCreateTimer(
             Metric.SERIES_SCAN_COST.toString(),
             MetricLevel.IMPORTANT,
@@ -683,21 +683,84 @@ public class SeriesScanCostMetricSet implements IMetricSet {
   // construct chunk reader
   /////////////////////////////////////////////////////////////////////////////////////////////////
   private static final String CONSTRUCT_CHUNK_READER = "construct_chunk_reader";
-  public static final String CONSTRUCT_CHUNK_READER_ALIGNED_MEM =
-      CONSTRUCT_CHUNK_READER + "_" + ALIGNED + "_" + MEM;
-  public static final String CONSTRUCT_CHUNK_READER_ALIGNED_DISK =
-      CONSTRUCT_CHUNK_READER + "_" + ALIGNED + "_" + DISK;
-  public static final String CONSTRUCT_CHUNK_READER_NONALIGNED_MEM =
-      CONSTRUCT_CHUNK_READER + "_" + NON_ALIGNED + "_" + MEM;
-  public static final String CONSTRUCT_CHUNK_READER_NONALIGNED_DISK =
-      CONSTRUCT_CHUNK_READER + "_" + NON_ALIGNED + "_" + DISK;
-  private Timer constructChunkReaderAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-  private Timer constructChunkReaderAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-  private Timer constructChunkReaderNonAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-  private Timer constructChunkReaderNonAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private static final String HISTOGRAM_CONSTRUCT_CHUNK_READER = "histogram_construct_chunk_reader";
+
+  private Histogram constructChunkReadersAlignedMemHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram constructChunkReadersAlignedDiskHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram constructChunkReadersNonAlignedMemHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram constructChunkReadersNonAlignedDiskHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+
+  private Timer constructChunkReadersAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer constructChunkReadersAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer constructChunkReadersNonAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer constructChunkReadersNonAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+
+  public void recordConstructChunkReadersCount(
+      long alignedMemCount,
+      long alignedDiskCount,
+      long nonAlignedMemCount,
+      long nonAlignedDiskCount) {
+    constructChunkReadersAlignedMemHistogram.update(alignedMemCount);
+    constructChunkReadersAlignedDiskHistogram.update(alignedDiskCount);
+    constructChunkReadersNonAlignedMemHistogram.update(nonAlignedMemCount);
+    constructChunkReadersNonAlignedDiskHistogram.update(nonAlignedDiskCount);
+  }
+
+  public void recordConstructChunkReadersTime(
+      long alignedMemTime, long alignedDiskTime, long nonAlignedMemTime, long nonAlignedDiskTime) {
+    constructChunkReadersAlignedMemTimer.updateNanos(alignedMemTime);
+    constructChunkReadersAlignedDiskTimer.updateNanos(alignedDiskTime);
+    constructChunkReadersNonAlignedMemTimer.updateNanos(nonAlignedMemTime);
+    constructChunkReadersNonAlignedDiskTimer.updateNanos(nonAlignedDiskTime);
+  }
 
   private void bindConstructChunkReader(AbstractMetricService metricService) {
-    constructChunkReaderAlignedMemTimer =
+    constructChunkReadersAlignedMemHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.SERIES_SCAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            HISTOGRAM_CONSTRUCT_CHUNK_READER,
+            Tag.TYPE.toString(),
+            ALIGNED,
+            Tag.FROM.toString(),
+            MEM);
+    constructChunkReadersAlignedDiskHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.SERIES_SCAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            HISTOGRAM_CONSTRUCT_CHUNK_READER,
+            Tag.TYPE.toString(),
+            ALIGNED,
+            Tag.FROM.toString(),
+            DISK);
+    constructChunkReadersNonAlignedMemHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.SERIES_SCAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            HISTOGRAM_CONSTRUCT_CHUNK_READER,
+            Tag.TYPE.toString(),
+            NON_ALIGNED,
+            Tag.FROM.toString(),
+            MEM);
+    constructChunkReadersNonAlignedDiskHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.SERIES_SCAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            HISTOGRAM_CONSTRUCT_CHUNK_READER,
+            Tag.TYPE.toString(),
+            NON_ALIGNED,
+            Tag.FROM.toString(),
+            DISK);
+
+    constructChunkReadersAlignedMemTimer =
         metricService.getOrCreateTimer(
             Metric.SERIES_SCAN_COST.toString(),
             MetricLevel.IMPORTANT,
@@ -707,7 +770,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             ALIGNED,
             Tag.FROM.toString(),
             MEM);
-    constructChunkReaderAlignedDiskTimer =
+    constructChunkReadersAlignedDiskTimer =
         metricService.getOrCreateTimer(
             Metric.SERIES_SCAN_COST.toString(),
             MetricLevel.IMPORTANT,
@@ -717,7 +780,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             ALIGNED,
             Tag.FROM.toString(),
             DISK);
-    constructChunkReaderNonAlignedMemTimer =
+    constructChunkReadersNonAlignedMemTimer =
         metricService.getOrCreateTimer(
             Metric.SERIES_SCAN_COST.toString(),
             MetricLevel.IMPORTANT,
@@ -727,7 +790,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             NON_ALIGNED,
             Tag.FROM.toString(),
             MEM);
-    constructChunkReaderNonAlignedDiskTimer =
+    constructChunkReadersNonAlignedDiskTimer =
         metricService.getOrCreateTimer(
             Metric.SERIES_SCAN_COST.toString(),
             MetricLevel.IMPORTANT,
@@ -740,25 +803,39 @@ public class SeriesScanCostMetricSet implements IMetricSet {
   }
 
   private void unbindConstructChunkReader(AbstractMetricService metricService) {
-    constructChunkReaderAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    constructChunkReaderAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    constructChunkReaderNonAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    constructChunkReaderNonAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    Arrays.asList(ALIGNED, NON_ALIGNED)
-        .forEach(
-            type ->
-                Arrays.asList(MEM, DISK)
-                    .forEach(
-                        from ->
-                            metricService.remove(
-                                MetricType.TIMER,
-                                Metric.SERIES_SCAN_COST.toString(),
-                                Tag.STAGE.toString(),
-                                CONSTRUCT_CHUNK_READER,
-                                Tag.TYPE.toString(),
-                                type,
-                                Tag.FROM.toString(),
-                                from)));
+    constructChunkReadersAlignedMemHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    constructChunkReadersAlignedDiskHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    constructChunkReadersNonAlignedMemHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    constructChunkReadersNonAlignedDiskHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+
+    constructChunkReadersAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    constructChunkReadersAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    constructChunkReadersNonAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    constructChunkReadersNonAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+
+    for (String type : Arrays.asList(ALIGNED, NON_ALIGNED)) {
+      for (String from : Arrays.asList(MEM, DISK)) {
+        metricService.remove(
+            MetricType.HISTOGRAM,
+            Metric.SERIES_SCAN_COST.toString(),
+            Tag.STAGE.toString(),
+            HISTOGRAM_CONSTRUCT_CHUNK_READER,
+            Tag.TYPE.toString(),
+            type,
+            Tag.FROM.toString(),
+            from);
+
+        metricService.remove(
+            MetricType.TIMER,
+            Metric.SERIES_SCAN_COST.toString(),
+            Tag.STAGE.toString(),
+            CONSTRUCT_CHUNK_READER,
+            Tag.TYPE.toString(),
+            type,
+            Tag.FROM.toString(),
+            from);
+      }
+    }
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1119,18 +1196,6 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         break;
       case INIT_CHUNK_READER_NONALIGNED_DISK:
         initChunkReaderNonAlignedDiskTimer.updateNanos(cost);
-        break;
-      case CONSTRUCT_CHUNK_READER_ALIGNED_MEM:
-        constructChunkReaderAlignedMemTimer.updateNanos(cost);
-        break;
-      case CONSTRUCT_CHUNK_READER_ALIGNED_DISK:
-        constructChunkReaderAlignedDiskTimer.updateNanos(cost);
-        break;
-      case CONSTRUCT_CHUNK_READER_NONALIGNED_MEM:
-        constructChunkReaderNonAlignedMemTimer.updateNanos(cost);
-        break;
-      case CONSTRUCT_CHUNK_READER_NONALIGNED_DISK:
-        constructChunkReaderNonAlignedDiskTimer.updateNanos(cost);
         break;
       case BUILD_TSBLOCK_FROM_PAGE_READER_ALIGNED_MEM:
         buildTsBlockFromPageReaderAlignedMemTimer.updateNanos(cost);

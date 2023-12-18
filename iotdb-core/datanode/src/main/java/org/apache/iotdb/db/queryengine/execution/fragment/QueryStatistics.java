@@ -21,7 +21,10 @@ package org.apache.iotdb.db.queryengine.execution.fragment;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-/** Statistic to record the count and time of load timeseriesmetadata in the query execution */
+/**
+ * Statistic to record the count and time of load timeseriesmetadata, construct chunk readers in the
+ * query execution
+ */
 public class QueryStatistics {
 
   // statistics for count and time of load timeseriesmetadata
@@ -42,4 +45,15 @@ public class QueryStatistics {
   public AtomicLong loadTimeSeriesMetadataAlignedDiskUnSeqTime = new AtomicLong(0);
   public AtomicLong loadTimeSeriesMetadataAlignedMemSeqTime = new AtomicLong(0);
   public AtomicLong loadTimeSeriesMetadataAlignedMemUnSeqTime = new AtomicLong(0);
+
+  // statistics for count and time of construct chunk readers
+  public AtomicLong constructNonAlignedChunkReadersDiskCount = new AtomicLong(0);
+  public AtomicLong constructNonAlignedChunkReadersMemCount = new AtomicLong(0);
+  public AtomicLong constructAlignedChunkReadersDiskCount = new AtomicLong(0);
+  public AtomicLong constructAlignedChunkReadersMemCount = new AtomicLong(0);
+
+  public AtomicLong constructNonAlignedChunkReadersDiskTime = new AtomicLong(0);
+  public AtomicLong constructNonAlignedChunkReadersMemTime = new AtomicLong(0);
+  public AtomicLong constructAlignedChunkReadersDiskTime = new AtomicLong(0);
+  public AtomicLong constructAlignedChunkReadersMemTime = new AtomicLong(0);
 }

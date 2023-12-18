@@ -456,31 +456,44 @@ public class FragmentInstanceContext extends QueryContext {
     // record fragment instance execution time and metadata get time to metrics
     long durationTime = System.currentTimeMillis() - executionStartTime.get();
     QueryRelatedResourceMetricSet.getInstance().updateFragmentInstanceTime(durationTime);
+
     SeriesScanCostMetricSet.getInstance()
-        .recordNonAlignedSeriesExecutionCount(
+        .recordNonAlignedTimeSeriesMetadataCount(
             getQueryStatistics().loadTimeSeriesMetadataDiskSeqCount.get(),
             getQueryStatistics().loadTimeSeriesMetadataDiskUnSeqCount.get(),
             getQueryStatistics().loadTimeSeriesMetadataMemSeqCount.get(),
             getQueryStatistics().loadTimeSeriesMetadataMemUnSeqCount.get());
     SeriesScanCostMetricSet.getInstance()
-        .recordNonAlignedSeriesExecutionTime(
+        .recordNonAlignedTimeSeriesMetadataTime(
             getQueryStatistics().loadTimeSeriesMetadataDiskSeqTime.get(),
             getQueryStatistics().loadTimeSeriesMetadataDiskUnSeqTime.get(),
             getQueryStatistics().loadTimeSeriesMetadataMemSeqTime.get(),
             getQueryStatistics().loadTimeSeriesMetadataMemUnSeqTime.get());
-
     SeriesScanCostMetricSet.getInstance()
-        .recordAlignedSeriesExecutionCount(
+        .recordAlignedTimeSeriesMetadataCount(
             getQueryStatistics().loadTimeSeriesMetadataAlignedDiskSeqCount.get(),
             getQueryStatistics().loadTimeSeriesMetadataAlignedDiskUnSeqCount.get(),
             getQueryStatistics().loadTimeSeriesMetadataAlignedMemSeqCount.get(),
             getQueryStatistics().loadTimeSeriesMetadataAlignedMemUnSeqCount.get());
     SeriesScanCostMetricSet.getInstance()
-        .recordAlignedSeriesExecutionTime(
+        .recordAlignedTimeSeriesMetadataTime(
             getQueryStatistics().loadTimeSeriesMetadataAlignedDiskSeqTime.get(),
             getQueryStatistics().loadTimeSeriesMetadataAlignedDiskUnSeqTime.get(),
             getQueryStatistics().loadTimeSeriesMetadataAlignedMemSeqTime.get(),
             getQueryStatistics().loadTimeSeriesMetadataAlignedMemUnSeqTime.get());
+
+    SeriesScanCostMetricSet.getInstance()
+        .recordConstructChunkReadersCount(
+            getQueryStatistics().constructAlignedChunkReadersMemCount.get(),
+            getQueryStatistics().constructAlignedChunkReadersDiskCount.get(),
+            getQueryStatistics().constructNonAlignedChunkReadersMemCount.get(),
+            getQueryStatistics().constructNonAlignedChunkReadersDiskCount.get());
+    SeriesScanCostMetricSet.getInstance()
+        .recordConstructChunkReadersTime(
+            getQueryStatistics().constructAlignedChunkReadersMemTime.get(),
+            getQueryStatistics().constructAlignedChunkReadersDiskTime.get(),
+            getQueryStatistics().constructNonAlignedChunkReadersMemTime.get(),
+            getQueryStatistics().constructNonAlignedChunkReadersDiskTime.get());
   }
 
   private void releaseDataNodeQueryContext() {

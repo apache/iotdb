@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -35,11 +36,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.CONSTRUCT_CHUNK_READER_ALIGNED_DISK;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.INIT_CHUNK_READER_ALIGNED_DISK;
 
 public class DiskAlignedChunkLoader implements IChunkLoader {
 
+  private final QueryContext context;
   private final boolean debug;
 
   // only used for limit and offset push down optimizer, if we select all columns from aligned
@@ -53,8 +54,10 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
 
-  public DiskAlignedChunkLoader(boolean debug, boolean queryAllSensors, TsFileResource resource) {
-    this.debug = debug;
+  public DiskAlignedChunkLoader(
+      QueryContext context, boolean queryAllSensors, TsFileResource resource) {
+    this.context = context;
+    this.debug = context.isDebug();
     this.queryAllSensors = queryAllSensors;
     this.resource = resource;
   }
@@ -112,8 +115,9 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
 
       return chunkReader;
     } finally {
-      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-          CONSTRUCT_CHUNK_READER_ALIGNED_DISK, System.nanoTime() - t1);
+      long time = System.nanoTime() - t1;
+      context.getQueryStatistics().constructAlignedChunkReadersDiskCount.getAndAdd(1);
+      context.getQueryStatistics().constructAlignedChunkReadersDiskTime.getAndAdd(time);
     }
   }
 }
