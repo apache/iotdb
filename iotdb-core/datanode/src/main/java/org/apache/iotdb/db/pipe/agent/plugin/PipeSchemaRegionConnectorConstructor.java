@@ -19,19 +19,14 @@
 
 package org.apache.iotdb.db.pipe.agent.plugin;
 
-import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginConstructor;
-import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
+import org.apache.iotdb.commons.pipe.agent.plugin.PipeConnectorConstructor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.donothing.DoNothingConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.thrift.meta.IoTDBSchemaRegionConnector;
 import org.apache.iotdb.commons.pipe.plugin.meta.DataNodePipePluginMetaKeeper;
 import org.apache.iotdb.pipe.api.PipeConnector;
-import org.apache.iotdb.pipe.api.PipePlugin;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
-import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import java.util.Arrays;
-
-public class PipeSchemaRegionConnectorConstructor extends PipePluginConstructor {
+public class PipeSchemaRegionConnectorConstructor extends PipeConnectorConstructor {
 
   PipeSchemaRegionConnectorConstructor(DataNodePipePluginMetaKeeper pipePluginMetaKeeper) {
     super(pipePluginMetaKeeper);
@@ -40,40 +35,39 @@ public class PipeSchemaRegionConnectorConstructor extends PipePluginConstructor 
   @Override
   protected void initConstructors() {
     PLUGIN_CONSTRUCTORS.put(
-        BuiltinPipePlugin.IOTDB_SCHEMA_REGION_CONNECTOR.getPipePluginName(),
+        BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName(),
         IoTDBSchemaRegionConnector::new);
+    PLUGIN_CONSTRUCTORS.put(
+        BuiltinPipePlugin.IOTDB_THRIFT_SSL_CONNECTOR.getPipePluginName(),
+        IoTDBSchemaRegionConnector::new);
+    PLUGIN_CONSTRUCTORS.put(
+        BuiltinPipePlugin.IOTDB_THRIFT_SYNC_CONNECTOR.getPipePluginName(),
+        IoTDBSchemaRegionConnector::new);
+    PLUGIN_CONSTRUCTORS.put(
+        BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName(),
+        IoTDBSchemaRegionConnector::new);
+    PLUGIN_CONSTRUCTORS.put(
+        BuiltinPipePlugin.DO_NOTHING_CONNECTOR.getPipePluginName(), DoNothingConnector::new);
 
     PLUGIN_CONSTRUCTORS.put(
-        BuiltinPipePlugin.IOTDB_SCHEMA_REGION_SINK.getPipePluginName(),
+        BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName(), IoTDBSchemaRegionConnector::new);
+    PLUGIN_CONSTRUCTORS.put(
+        BuiltinPipePlugin.IOTDB_THRIFT_SSL_SINK.getPipePluginName(),
         IoTDBSchemaRegionConnector::new);
+    PLUGIN_CONSTRUCTORS.put(
+        BuiltinPipePlugin.IOTDB_THRIFT_SYNC_SINK.getPipePluginName(),
+        IoTDBSchemaRegionConnector::new);
+    PLUGIN_CONSTRUCTORS.put(
+        BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_SINK.getPipePluginName(),
+        IoTDBSchemaRegionConnector::new);
+    PLUGIN_CONSTRUCTORS.put(
+        BuiltinPipePlugin.DO_NOTHING_SINK.getPipePluginName(), DoNothingConnector::new);
   }
 
   @Override
-  protected PipeConnector reflectPlugin(PipeParameters connectorParameters) {
-    if (!connectorParameters.hasAnyAttributes(
-        PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY)) {
-      throw new PipeException(
-          "Failed to reflect PipeConnector instance because "
-              + "'connector' is not specified in the parameters.");
-    }
-
+  protected PipeConnector reflectPluginByKey(String pluginKey) {
+    // TODO: support constructing plugin by reflection
     return (PipeConnector)
-        reflectPluginByKey(
-            connectorParameters
-                .getStringOrDefault(
-                    Arrays.asList(
-                        PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
-                    BuiltinPipePlugin.IOTDB_SCHEMA_REGION_SINK.getPipePluginName())
-                // Convert the value of `CONNECTOR_KEY` or `SINK_KEY` to lowercase for matching in
-                // `PLUGIN_CONSTRUCTORS`
-                .toLowerCase());
-  }
-
-  @Override
-  protected final PipePlugin reflectPluginByKey(String pluginKey) {
-    // currently only support IOTDB_SCHEMA_REGION_SINK
-    return PLUGIN_CONSTRUCTORS
-        .get(BuiltinPipePlugin.IOTDB_SCHEMA_REGION_SINK.getPipePluginName())
-        .get();
+        PLUGIN_CONSTRUCTORS.getOrDefault(pluginKey, DoNothingConnector::new).get();
   }
 }
