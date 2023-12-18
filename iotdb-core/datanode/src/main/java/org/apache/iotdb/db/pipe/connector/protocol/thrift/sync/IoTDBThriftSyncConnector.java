@@ -19,7 +19,11 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftSyncPipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
@@ -57,7 +61,10 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.net.UnknownHostException;
 import java.util.Arrays;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR;
 import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_SSL_CONNECTOR;
@@ -88,24 +95,46 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
   public void validate(PipeParameterValidator validator) throws Exception {
     super.validate(validator);
 
+    final IoTDBConfig ioTDBConfig = IoTDBDescriptor.getInstance().getConfig();
     final PipeParameters parameters = validator.getParameters();
+
     final String userSpecifiedConnectorName =
         parameters
             .getStringOrDefault(
                 ImmutableList.of(CONNECTOR_KEY, SINK_KEY),
                 IOTDB_THRIFT_CONNECTOR.getPipePluginName())
             .toLowerCase();
+    final Set<TEndPoint> givenNodeUrls = parseNodeUrls(parameters);
 
-    validator.validate(
-        args -> !((boolean) args[0]) || ((boolean) args[1] && (boolean) args[2]),
-        String.format(
-            "When ssl transport is enabled, %s and %s must be specified",
-            SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY, SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY),
-        IOTDB_THRIFT_SSL_CONNECTOR.getPipePluginName().equals(userSpecifiedConnectorName)
-            || IOTDB_THRIFT_SSL_SINK.getPipePluginName().equals(userSpecifiedConnectorName)
-            || parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false),
-        parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY),
-        parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY));
+    validator
+        .validate(
+            empty -> {
+              try {
+                // Ensure the sink doesn't point to the thrift receiver on DataNode itself
+                return !NodeUrlUtils.containsLocalAddress(
+                    givenNodeUrls.stream()
+                        .filter(tEndPoint -> tEndPoint.getPort() == ioTDBConfig.getRpcPort())
+                        .map(TEndPoint::getIp)
+                        .collect(Collectors.toList()));
+              } catch (UnknownHostException e) {
+                LOGGER.warn("Unknown host when checking pipe sink IP.", e);
+                return false;
+              }
+            },
+            String.format(
+                "One of the endpoints %s of the receivers is pointing back to the thrift receiver %s on sender itself, or unknown host when checking pipe sink IP.",
+                givenNodeUrls,
+                new TEndPoint(ioTDBConfig.getRpcAddress(), ioTDBConfig.getRpcPort())))
+        .validate(
+            args -> !((boolean) args[0]) || ((boolean) args[1] && (boolean) args[2]),
+            String.format(
+                "When ssl transport is enabled, %s and %s must be specified",
+                SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY, SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY),
+            IOTDB_THRIFT_SSL_CONNECTOR.getPipePluginName().equals(userSpecifiedConnectorName)
+                || IOTDB_THRIFT_SSL_SINK.getPipePluginName().equals(userSpecifiedConnectorName)
+                || parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false),
+            parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY),
+            parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY));
   }
 
   @Override
