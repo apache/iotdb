@@ -900,7 +900,7 @@ public class DataRegionTest {
         IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
-    int finishedCompactionTaskNumWhenTestStart =
+    long finishedCompactionTaskNumWhenTestStart =
         CompactionTaskManager.getInstance().getFinishedTaskNum();
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
