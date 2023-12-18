@@ -25,11 +25,17 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInjectNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationSourceNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.apache.iotdb.tsfile.utils.Preconditions.checkArgument;
 
 /**
  * <b>Optimization phase:</b> Distributed plan planning
@@ -78,6 +84,16 @@ public class ColumnInjectionPushDown implements PlanOptimizer {
     }
 
     @Override
+    public PlanNode visitMultiChildProcess(MultiChildProcessNode node, RewriterContext context) {
+      List<PlanNode> children = new ArrayList<>();
+      for (PlanNode child : node.getChildren()) {
+        context.setParent(null);
+        children.add(child.accept(this, context));
+      }
+      return node.cloneWithChildren(children);
+    }
+
+    @Override
     public PlanNode visitColumnInject(ColumnInjectNode node, RewriterContext context) {
       PlanNode child = node.getChild();
 
@@ -99,12 +115,13 @@ public class ColumnInjectionPushDown implements PlanOptimizer {
     }
 
     private PlanNode concatParentWithChild(PlanNode parent, PlanNode child) {
-      if (parent != null) {
-        ((SingleChildProcessNode) parent).setChild(child);
-        return parent;
-      } else {
+      if (parent == null) {
         return child;
       }
+
+      checkArgument(parent instanceof SingleChildProcessNode);
+      ((SingleChildProcessNode) parent).setChild(child);
+      return parent;
     }
   }
 
