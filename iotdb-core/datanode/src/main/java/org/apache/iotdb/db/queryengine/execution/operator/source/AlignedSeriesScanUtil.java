@@ -22,7 +22,6 @@ package org.apache.iotdb.db.queryengine.execution.operator.source;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
-import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.AlignedDescPriorityMergeReader;
@@ -66,14 +65,14 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
       boolean queryAllSensors,
       List<TSDataType> givenDataTypes) {
     super(seriesPath, scanOrder, scanOptions, context);
-    dataTypes =
+    isAligned = true;
+    this.dataTypes =
         givenDataTypes != null
             ? givenDataTypes
             : ((AlignedPath) seriesPath)
                 .getSchemaList().stream()
                     .map(IMeasurementSchema::getType)
                     .collect(Collectors.toList());
-    isAligned = true;
     this.queryAllSensors = queryAllSensors;
   }
 
@@ -88,8 +87,8 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
   }
 
   @Override
-  protected AlignedTimeSeriesMetadata loadTimeSeriesMetadata(
-      TsFileResource resource, PartialPath seriesPath, QueryContext context) throws IOException {
+  protected AlignedTimeSeriesMetadata loadTimeSeriesMetadata(TsFileResource resource)
+      throws IOException {
     return FileLoaderUtils.loadAlignedTimeSeriesMetadata(
         resource, (AlignedPath) seriesPath, context, scanOptions.getGlobalTimeFilter());
   }

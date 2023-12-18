@@ -67,12 +67,12 @@ import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.BUI
 
 public class SeriesScanUtil {
 
-  private final QueryContext context;
+  protected final QueryContext context;
 
   // The path of the target series which will be scanned.
-  private final PartialPath seriesPath;
+  protected final PartialPath seriesPath;
   protected boolean isAligned = false;
-  protected final TSDataType dataType;
+  private final TSDataType dataType;
 
   // inner class of SeriesReader for order purpose
   private final TimeOrderUtils orderUtils;
@@ -80,32 +80,32 @@ public class SeriesScanUtil {
   private QueryDataSource dataSource;
 
   // file index
-  protected int curSeqFileIndex;
-  protected int curUnseqFileIndex;
+  private int curSeqFileIndex;
+  private int curUnseqFileIndex;
 
   // TimeSeriesMetadata cache
-  protected ITimeSeriesMetadata firstTimeSeriesMetadata;
-  protected final List<ITimeSeriesMetadata> seqTimeSeriesMetadata;
-  protected final PriorityQueue<ITimeSeriesMetadata> unSeqTimeSeriesMetadata;
+  private ITimeSeriesMetadata firstTimeSeriesMetadata;
+  private final List<ITimeSeriesMetadata> seqTimeSeriesMetadata;
+  private final PriorityQueue<ITimeSeriesMetadata> unSeqTimeSeriesMetadata;
 
   // chunk cache
-  protected IChunkMetadata firstChunkMetadata;
-  protected final PriorityQueue<IChunkMetadata> cachedChunkMetadata;
+  private IChunkMetadata firstChunkMetadata;
+  private final PriorityQueue<IChunkMetadata> cachedChunkMetadata;
 
   // page cache
-  protected VersionPageReader firstPageReader;
-  protected final List<VersionPageReader> seqPageReaders;
-  protected final PriorityQueue<VersionPageReader> unSeqPageReaders;
+  private VersionPageReader firstPageReader;
+  private final List<VersionPageReader> seqPageReaders;
+  private final PriorityQueue<VersionPageReader> unSeqPageReaders;
 
   // point cache
-  protected final PriorityMergeReader mergeReader;
+  private final PriorityMergeReader mergeReader;
 
   // result cache
-  protected boolean hasCachedNextOverlappedPage;
-  protected TsBlock cachedTsBlock;
+  private boolean hasCachedNextOverlappedPage;
+  private TsBlock cachedTsBlock;
 
   protected SeriesScanOptions scanOptions;
-  protected PaginationController paginationController;
+  private final PaginationController paginationController;
 
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
@@ -116,37 +116,37 @@ public class SeriesScanUtil {
       SeriesScanOptions scanOptions,
       FragmentInstanceContext context) {
     this.seriesPath = seriesPath;
-    dataType = seriesPath.getSeriesType();
+    this.dataType = seriesPath.getSeriesType();
 
     this.scanOptions = scanOptions;
-    paginationController = scanOptions.getPaginationController();
+    this.paginationController = scanOptions.getPaginationController();
 
     this.context = context;
 
     if (scanOrder.isAscending()) {
-      orderUtils = new AscTimeOrderUtils();
-      mergeReader = getPriorityMergeReader();
+      this.orderUtils = new AscTimeOrderUtils();
+      this.mergeReader = getPriorityMergeReader();
     } else {
-      orderUtils = new DescTimeOrderUtils();
-      mergeReader = getDescPriorityMergeReader();
+      this.orderUtils = new DescTimeOrderUtils();
+      this.mergeReader = getDescPriorityMergeReader();
     }
 
     // init TimeSeriesMetadata materializer
-    seqTimeSeriesMetadata = new LinkedList<>();
-    unSeqTimeSeriesMetadata =
+    this.seqTimeSeriesMetadata = new LinkedList<>();
+    this.unSeqTimeSeriesMetadata =
         new PriorityQueue<>(
             orderUtils.comparingLong(
                 timeSeriesMetadata -> orderUtils.getOrderTime(timeSeriesMetadata.getStatistics())));
 
     // init ChunkMetadata materializer
-    cachedChunkMetadata =
+    this.cachedChunkMetadata =
         new PriorityQueue<>(
             orderUtils.comparingLong(
                 chunkMetadata -> orderUtils.getOrderTime(chunkMetadata.getStatistics())));
 
     // init PageReader materializer
-    seqPageReaders = new LinkedList<>();
-    unSeqPageReaders =
+    this.seqPageReaders = new LinkedList<>();
+    this.unSeqPageReaders =
         new PriorityQueue<>(
             orderUtils.comparingLong(
                 versionPageReader -> orderUtils.getOrderTime(versionPageReader.getStatistics())));
@@ -1125,7 +1125,7 @@ public class SeriesScanUtil {
 
   private void unpackSeqTsFileResource() throws IOException {
     ITimeSeriesMetadata timeseriesMetadata =
-        loadTimeSeriesMetadata(orderUtils.getNextSeqFileResource(true), seriesPath, context);
+        loadTimeSeriesMetadata(orderUtils.getNextSeqFileResource(true));
     if (timeseriesMetadata != null) {
       timeseriesMetadata.setSeq(true);
       seqTimeSeriesMetadata.add(timeseriesMetadata);
@@ -1134,16 +1134,15 @@ public class SeriesScanUtil {
 
   private void unpackUnseqTsFileResource() throws IOException {
     ITimeSeriesMetadata timeseriesMetadata =
-        loadTimeSeriesMetadata(orderUtils.getNextUnseqFileResource(true), seriesPath, context);
+        loadTimeSeriesMetadata(orderUtils.getNextUnseqFileResource(true));
     if (timeseriesMetadata != null) {
       timeseriesMetadata.setSeq(false);
       unSeqTimeSeriesMetadata.add(timeseriesMetadata);
     }
   }
 
-  protected ITimeSeriesMetadata loadTimeSeriesMetadata(
-      TsFileResource resource, PartialPath seriesPath, QueryContext context) throws IOException {
-    return FileLoaderUtils.loadAlignedTimeSeriesMetadata(
+  protected ITimeSeriesMetadata loadTimeSeriesMetadata(TsFileResource resource) throws IOException {
+    return FileLoaderUtils.loadTimeSeriesMetadata(
         resource,
         seriesPath,
         context,

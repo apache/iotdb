@@ -73,7 +73,7 @@ public class FileLoaderUtils {
    * @param globalTimeFilter global time filter, only used to check time range
    * @throws IOException may be thrown while reading it from disk.
    */
-  public static TimeseriesMetadata loadAlignedTimeSeriesMetadata(
+  public static TimeseriesMetadata loadTimeSeriesMetadata(
       TsFileResource resource,
       PartialPath seriesPath,
       QueryContext context,
