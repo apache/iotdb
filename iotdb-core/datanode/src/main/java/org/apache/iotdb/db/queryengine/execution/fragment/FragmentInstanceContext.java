@@ -494,6 +494,19 @@ public class FragmentInstanceContext extends QueryContext {
             getQueryStatistics().constructAlignedChunkReadersDiskTime.get(),
             getQueryStatistics().constructNonAlignedChunkReadersMemTime.get(),
             getQueryStatistics().constructNonAlignedChunkReadersDiskTime.get());
+
+    SeriesScanCostMetricSet.getInstance()
+        .recordPageReadersDecompressCount(
+            getQueryStatistics().pageReadersDecodeAlignedMemCount.get(),
+            getQueryStatistics().pageReadersDecodeAlignedDiskCount.get(),
+            getQueryStatistics().pageReadersDecodeNonAlignedMemCount.get(),
+            getQueryStatistics().pageReadersDecodeNonAlignedDiskCount.get());
+    SeriesScanCostMetricSet.getInstance()
+        .recordPageReadersDecompressTime(
+            getQueryStatistics().pageReadersDecodeAlignedMemTime.get(),
+            getQueryStatistics().pageReadersDecodeAlignedDiskTime.get(),
+            getQueryStatistics().pageReadersDecodeNonAlignedMemTime.get(),
+            getQueryStatistics().pageReadersDecodeNonAlignedDiskTime.get());
   }
 
   private void releaseDataNodeQueryContext() {

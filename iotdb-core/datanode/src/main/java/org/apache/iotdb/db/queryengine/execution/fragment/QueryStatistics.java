@@ -46,7 +46,7 @@ public class QueryStatistics {
   public AtomicLong loadTimeSeriesMetadataAlignedMemSeqTime = new AtomicLong(0);
   public AtomicLong loadTimeSeriesMetadataAlignedMemUnSeqTime = new AtomicLong(0);
 
-  // statistics for count and time of construct chunk readers
+  // statistics for count and time of construct chunk readers(disk io and decompress)
   public AtomicLong constructNonAlignedChunkReadersDiskCount = new AtomicLong(0);
   public AtomicLong constructNonAlignedChunkReadersMemCount = new AtomicLong(0);
   public AtomicLong constructAlignedChunkReadersDiskCount = new AtomicLong(0);
@@ -56,4 +56,14 @@ public class QueryStatistics {
   public AtomicLong constructNonAlignedChunkReadersMemTime = new AtomicLong(0);
   public AtomicLong constructAlignedChunkReadersDiskTime = new AtomicLong(0);
   public AtomicLong constructAlignedChunkReadersMemTime = new AtomicLong(0);
+
+  // statistics for count and time of page decode
+  public AtomicLong pageReadersDecodeAlignedDiskCount = new AtomicLong(0);
+  public AtomicLong pageReadersDecodeAlignedDiskTime = new AtomicLong(0);
+  public AtomicLong pageReadersDecodeAlignedMemCount = new AtomicLong(0);
+  public AtomicLong pageReadersDecodeAlignedMemTime = new AtomicLong(0);
+  public AtomicLong pageReadersDecodeNonAlignedDiskCount = new AtomicLong(0);
+  public AtomicLong pageReadersDecodeNonAlignedDiskTime = new AtomicLong(0);
+  public AtomicLong pageReadersDecodeNonAlignedMemCount = new AtomicLong(0);
+  public AtomicLong pageReadersDecodeNonAlignedMemTime = new AtomicLong(0);
 }

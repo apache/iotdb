@@ -953,46 +953,104 @@ public class SeriesScanCostMetricSet implements IMetricSet {
     initChunkReaderAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     initChunkReaderNonAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     initChunkReaderNonAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    Arrays.asList(ALIGNED, NON_ALIGNED)
-        .forEach(
-            type ->
-                Arrays.asList(MEM, DISK)
-                    .forEach(
-                        from ->
-                            metricService.remove(
-                                MetricType.TIMER,
-                                Metric.SERIES_SCAN_COST.toString(),
-                                Tag.STAGE.toString(),
-                                INIT_CHUNK_READER,
-                                Tag.TYPE.toString(),
-                                type,
-                                Tag.FROM.toString(),
-                                from)));
+    for (String type : Arrays.asList(ALIGNED, NON_ALIGNED)) {
+      for (String from : Arrays.asList(MEM, DISK)) {
+        metricService.remove(
+            MetricType.TIMER,
+            Metric.SERIES_SCAN_COST.toString(),
+            Tag.STAGE.toString(),
+            INIT_CHUNK_READER,
+            Tag.TYPE.toString(),
+            type,
+            Tag.FROM.toString(),
+            from);
+      }
+    }
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // build tsblock from page reader
   /////////////////////////////////////////////////////////////////////////////////////////////////
   private static final String BUILD_TSBLOCK_FROM_PAGE_READER = "build_tsblock_from_page_reader";
-  public static final String BUILD_TSBLOCK_FROM_PAGE_READER_ALIGNED_MEM =
-      BUILD_TSBLOCK_FROM_PAGE_READER + "_" + ALIGNED + "_" + MEM;
-  public static final String BUILD_TSBLOCK_FROM_PAGE_READER_ALIGNED_DISK =
-      BUILD_TSBLOCK_FROM_PAGE_READER + "_" + ALIGNED + "_" + DISK;
-  public static final String BUILD_TSBLOCK_FROM_PAGE_READER_NONALIGNED_MEM =
-      BUILD_TSBLOCK_FROM_PAGE_READER + "_" + NON_ALIGNED + "_" + MEM;
-  public static final String BUILD_TSBLOCK_FROM_PAGE_READER_NONALIGNED_DISK =
-      BUILD_TSBLOCK_FROM_PAGE_READER + "_" + NON_ALIGNED + "_" + DISK;
+  private static final String HISTOGRAM_BUILD_TSBLOCK_FROM_PAGE_READER =
+      "histogram_build_tsblock_from_page_reader";
 
-  private Timer buildTsBlockFromPageReaderAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-  private Timer buildTsBlockFromPageReaderAlignedDiskTimer =
-      DoNothingMetricManager.DO_NOTHING_TIMER;
-  private Timer buildTsBlockFromPageReaderNonAlignedMemTimer =
-      DoNothingMetricManager.DO_NOTHING_TIMER;
-  private Timer buildTsBlockFromPageReaderNonAlignedDiskTimer =
-      DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Histogram pageReadersDecodeAlignedMemHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram pageReadersDecodeAlignedDiskHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram pageReadersDecodeNonAlignedMemHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram pageReadersDecodeNonAlignedDiskHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+
+  private Timer pageReadersDecodeAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer pageReadersDecodeAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer pageReadersDecodeNonAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer pageReadersDecodeNonAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+
+  public void recordPageReadersDecompressCount(
+      long alignedMemCount,
+      long alignedDiskCount,
+      long nonAlignedMemCount,
+      long nonAlignedDiskCount) {
+    pageReadersDecodeAlignedMemHistogram.update(alignedMemCount);
+    pageReadersDecodeAlignedDiskHistogram.update(alignedDiskCount);
+    pageReadersDecodeNonAlignedMemHistogram.update(nonAlignedMemCount);
+    pageReadersDecodeNonAlignedDiskHistogram.update(nonAlignedDiskCount);
+  }
+
+  public void recordPageReadersDecompressTime(
+      long alignedMemTime, long alignedDiskTime, long nonAlignedMemTime, long nonAlignedDiskTime) {
+    pageReadersDecodeAlignedMemTimer.updateNanos(alignedMemTime);
+    pageReadersDecodeAlignedDiskTimer.updateNanos(alignedDiskTime);
+    pageReadersDecodeNonAlignedMemTimer.updateNanos(nonAlignedMemTime);
+    pageReadersDecodeNonAlignedDiskTimer.updateNanos(nonAlignedDiskTime);
+  }
 
   private void bindTsBlockFromPageReader(AbstractMetricService metricService) {
-    buildTsBlockFromPageReaderAlignedMemTimer =
+    pageReadersDecodeAlignedMemHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.SERIES_SCAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            HISTOGRAM_BUILD_TSBLOCK_FROM_PAGE_READER,
+            Tag.TYPE.toString(),
+            ALIGNED,
+            Tag.FROM.toString(),
+            MEM);
+    pageReadersDecodeAlignedDiskHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.SERIES_SCAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            HISTOGRAM_BUILD_TSBLOCK_FROM_PAGE_READER,
+            Tag.TYPE.toString(),
+            ALIGNED,
+            Tag.FROM.toString(),
+            DISK);
+    pageReadersDecodeNonAlignedMemHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.SERIES_SCAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            HISTOGRAM_BUILD_TSBLOCK_FROM_PAGE_READER,
+            Tag.TYPE.toString(),
+            NON_ALIGNED,
+            Tag.FROM.toString(),
+            MEM);
+    pageReadersDecodeNonAlignedDiskHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.SERIES_SCAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            HISTOGRAM_BUILD_TSBLOCK_FROM_PAGE_READER,
+            Tag.TYPE.toString(),
+            NON_ALIGNED,
+            Tag.FROM.toString(),
+            DISK);
+
+    pageReadersDecodeAlignedMemTimer =
         metricService.getOrCreateTimer(
             Metric.SERIES_SCAN_COST.toString(),
             MetricLevel.IMPORTANT,
@@ -1002,7 +1060,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             ALIGNED,
             Tag.FROM.toString(),
             MEM);
-    buildTsBlockFromPageReaderAlignedDiskTimer =
+    pageReadersDecodeAlignedDiskTimer =
         metricService.getOrCreateTimer(
             Metric.SERIES_SCAN_COST.toString(),
             MetricLevel.IMPORTANT,
@@ -1012,7 +1070,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             ALIGNED,
             Tag.FROM.toString(),
             DISK);
-    buildTsBlockFromPageReaderNonAlignedMemTimer =
+    pageReadersDecodeNonAlignedMemTimer =
         metricService.getOrCreateTimer(
             Metric.SERIES_SCAN_COST.toString(),
             MetricLevel.IMPORTANT,
@@ -1022,7 +1080,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             NON_ALIGNED,
             Tag.FROM.toString(),
             MEM);
-    buildTsBlockFromPageReaderNonAlignedDiskTimer =
+    pageReadersDecodeNonAlignedDiskTimer =
         metricService.getOrCreateTimer(
             Metric.SERIES_SCAN_COST.toString(),
             MetricLevel.IMPORTANT,
@@ -1035,25 +1093,38 @@ public class SeriesScanCostMetricSet implements IMetricSet {
   }
 
   private void unbindTsBlockFromPageReader(AbstractMetricService metricService) {
-    buildTsBlockFromPageReaderAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    buildTsBlockFromPageReaderAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    buildTsBlockFromPageReaderNonAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    buildTsBlockFromPageReaderNonAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    Arrays.asList(ALIGNED, NON_ALIGNED)
-        .forEach(
-            type ->
-                Arrays.asList(MEM, DISK)
-                    .forEach(
-                        from ->
-                            metricService.remove(
-                                MetricType.TIMER,
-                                Metric.SERIES_SCAN_COST.toString(),
-                                Tag.STAGE.toString(),
-                                BUILD_TSBLOCK_FROM_PAGE_READER,
-                                Tag.TYPE.toString(),
-                                type,
-                                Tag.FROM.toString(),
-                                from)));
+    pageReadersDecodeAlignedMemHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    pageReadersDecodeAlignedDiskHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    pageReadersDecodeNonAlignedMemHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    pageReadersDecodeNonAlignedDiskHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    pageReadersDecodeAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    pageReadersDecodeAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    pageReadersDecodeNonAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    pageReadersDecodeNonAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+
+    for (String type : Arrays.asList(ALIGNED, NON_ALIGNED)) {
+      for (String from : Arrays.asList(MEM, DISK)) {
+        metricService.remove(
+            MetricType.HISTOGRAM,
+            Metric.SERIES_SCAN_COST.toString(),
+            Tag.STAGE.toString(),
+            HISTOGRAM_BUILD_TSBLOCK_FROM_PAGE_READER,
+            Tag.TYPE.toString(),
+            type,
+            Tag.FROM.toString(),
+            from);
+
+        metricService.remove(
+            MetricType.TIMER,
+            Metric.SERIES_SCAN_COST.toString(),
+            Tag.STAGE.toString(),
+            BUILD_TSBLOCK_FROM_PAGE_READER,
+            Tag.TYPE.toString(),
+            type,
+            Tag.FROM.toString(),
+            from);
+      }
+    }
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1113,7 +1184,6 @@ public class SeriesScanCostMetricSet implements IMetricSet {
   public void bindTo(AbstractMetricService metricService) {
     bindTimeseriesMetadata(metricService);
     bindAlignedTimeseriesMetadata(metricService);
-
     bindReadTimeseriesMetadata(metricService);
     bindTimeseriesMetadataModification(metricService);
     bindLoadChunkMetadataList(metricService);
@@ -1196,18 +1266,6 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         break;
       case INIT_CHUNK_READER_NONALIGNED_DISK:
         initChunkReaderNonAlignedDiskTimer.updateNanos(cost);
-        break;
-      case BUILD_TSBLOCK_FROM_PAGE_READER_ALIGNED_MEM:
-        buildTsBlockFromPageReaderAlignedMemTimer.updateNanos(cost);
-        break;
-      case BUILD_TSBLOCK_FROM_PAGE_READER_ALIGNED_DISK:
-        buildTsBlockFromPageReaderAlignedDiskTimer.updateNanos(cost);
-        break;
-      case BUILD_TSBLOCK_FROM_PAGE_READER_NONALIGNED_MEM:
-        buildTsBlockFromPageReaderNonAlignedMemTimer.updateNanos(cost);
-        break;
-      case BUILD_TSBLOCK_FROM_PAGE_READER_NONALIGNED_DISK:
-        buildTsBlockFromPageReaderNonAlignedDiskTimer.updateNanos(cost);
         break;
       case BUILD_TSBLOCK_FROM_MERGE_READER_ALIGNED:
         buildTsBlockFromMergeReaderAlignedTimer.updateNanos(cost);
