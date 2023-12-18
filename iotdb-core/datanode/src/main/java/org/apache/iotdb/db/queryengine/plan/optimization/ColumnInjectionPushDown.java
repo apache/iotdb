@@ -37,15 +37,15 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
  * <p><b>Rule:</b>
  * <pre>
  *        ColumnInject
- *             |              ->  ColumnInject
+ *             |              ->  SeriesAggregationSource
  *  SeriesAggregationSource
  * <pre>
  *        ColumnInject
- *             |              ->  ColumnInject
+ *             |              ->        Aggregation
  *        Aggregation
  * <pre>
  *        ColumnInject
- *             |              ->  ColumnInject
+ *             |              ->  SlidingWindowAggregation
  *  SlidingWindowAggregation
  */
 public class ColumnInjectionPushDown implements PlanOptimizer {
