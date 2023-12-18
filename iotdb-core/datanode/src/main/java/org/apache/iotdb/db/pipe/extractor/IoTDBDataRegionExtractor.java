@@ -153,14 +153,14 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
       throw new IllegalArgumentException(
           "The argument `extractor.pattern` or `source.pattern` is an illegal path.");
     }
-    if ("root".equals(pattern) || "root.".equals(pattern)) {
-      return;
-    }
     try {
       PathUtils.isLegalPath(pattern);
     } catch (IllegalPathException e) {
       try {
-        String[] pathNodes = StringUtils.split(pattern, "\\.");
+        if ("root".equals(pattern) || "root.".equals(pattern)) {
+          return;
+        }
+        String[] pathNodes = StringUtils.splitPreserveAllTokens(pattern, "\\.");
         PathUtils.splitPathToDetachedNodes(
             String.join(".", Arrays.copyOfRange(pathNodes, 0, pathNodes.length - 1)));
         String lastNode = pathNodes[pathNodes.length - 1];
