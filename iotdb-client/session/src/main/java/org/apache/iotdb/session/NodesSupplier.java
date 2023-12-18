@@ -79,6 +79,8 @@ public class NodesSupplier implements INodeSupplier, Runnable {
 
   private ThriftConnection client;
 
+  private volatile boolean closed = false;
+
   @SuppressWarnings("unsafeThreadSchedule")
   public static NodesSupplier createNodeSupplier(
       List<TEndPoint> endPointList,
@@ -154,6 +156,12 @@ public class NodesSupplier implements INodeSupplier, Runnable {
 
   @Override
   public void run() {
+    if (closed) {
+      if (client != null) {
+        destroyCurrentClient();
+      }
+      return;
+    }
     if (client == null) {
       for (TEndPoint endPoint : availableNodes) {
         if (createConnection(endPoint)) {
@@ -163,7 +171,7 @@ public class NodesSupplier implements INodeSupplier, Runnable {
     }
 
     if (client != null && !updateDataNodeList()) {
-      close();
+      destroyCurrentClient();
     }
   }
 
@@ -184,15 +192,22 @@ public class NodesSupplier implements INodeSupplier, Runnable {
       return true;
     } catch (Exception e) {
       LOGGER.warn("Failed to create connection with {}.", endPoint);
-      close();
+      destroyCurrentClient();
       return false;
+    }
+  }
+
+  private synchronized void destroyCurrentClient() {
+    if (client != null) {
+      client.close();
+      client = null;
     }
   }
 
   @Override
   public void close() {
-    client.close();
-    client = null;
+    closed = true;
+    destroyCurrentClient();
   }
 
   private boolean updateDataNodeList() {

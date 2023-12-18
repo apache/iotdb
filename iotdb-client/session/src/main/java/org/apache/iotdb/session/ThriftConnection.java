@@ -176,9 +176,11 @@ public class ThriftConnection {
   }
 
   public void close() {
-    if (transport.isOpen()) {
+    if (transport != null && transport.isOpen()) {
       try {
-        client.closeSession(new TSCloseSessionReq(sessionId));
+        if (client != null) {
+          client.closeSession(new TSCloseSessionReq(sessionId));
+        }
       } catch (TException e) {
         LOGGER.warn("Closing Session-{} with {} failed.", sessionId, endPoint);
         if (transport.isOpen()) {
