@@ -518,18 +518,20 @@ public class TsFileSequenceReader implements AutoCloseable {
     } catch (ByteBufferAllocateException e) {
       // when the buffer length is over than Integer.MAX_VALUE,
       // using tsFileInput to get timeseriesMetadataList
-      tsFileInput.position(metadataIndexPair.left.getOffset());
-      while (tsFileInput.position() < metadataIndexPair.right) {
-        TimeseriesMetadata timeseriesMetadata;
-        try {
-          timeseriesMetadata = TimeseriesMetadata.deserializeFrom(tsFileInput, true);
-        } catch (Exception e1) {
-          logger.error(
-              "Something error happened while deserializing TimeseriesMetadata of file {}", file);
-          throw e1;
-        }
-        if (allSensors.contains(timeseriesMetadata.getMeasurementId())) {
-          timeseriesMetadataList.add(timeseriesMetadata);
+      synchronized (this) {
+        tsFileInput.position(metadataIndexPair.left.getOffset());
+        while (tsFileInput.position() < metadataIndexPair.right) {
+          TimeseriesMetadata timeseriesMetadata;
+          try {
+            timeseriesMetadata = TimeseriesMetadata.deserializeFrom(tsFileInput, true);
+          } catch (Exception e1) {
+            logger.error(
+                "Something error happened while deserializing TimeseriesMetadata of file {}", file);
+            throw e1;
+          }
+          if (allSensors.contains(timeseriesMetadata.getMeasurementId())) {
+            timeseriesMetadataList.add(timeseriesMetadata);
+          }
         }
       }
     }
