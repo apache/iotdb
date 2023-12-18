@@ -125,10 +125,6 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
     boolean isUnsealedPageOverThreshold =
         chunkWriters[subTaskId].checkIsUnsealedPageOverThreshold(
             pageSizeLowerBoundInCompaction, pagePointNumLowerBoundInCompaction, true);
-    if (isUnsealedPageOverThreshold) {
-      // seal page
-      chunkWriters[subTaskId].sealCurrentPage();
-    }
     if (!isUnsealedPageOverThreshold
         || !checkIsAlignedPageLargeEnough(timePageHeader, valuePageHeaders)) {
       // there is unsealed page or current page is not large enough , then deserialize the page
@@ -160,10 +156,6 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
     boolean isUnsealedPageOverThreshold =
         chunkWriters[subTaskId].checkIsUnsealedPageOverThreshold(
             pageSizeLowerBoundInCompaction, pagePointNumLowerBoundInCompaction, true);
-    if (isUnsealedPageOverThreshold) {
-      // seal page
-      chunkWriters[subTaskId].sealCurrentPage();
-    }
     if (!isUnsealedPageOverThreshold || !checkIsPageLargeEnough(pageHeader)) {
       // there is unsealed page or current page is not large enough , then deserialize the page
       return false;
