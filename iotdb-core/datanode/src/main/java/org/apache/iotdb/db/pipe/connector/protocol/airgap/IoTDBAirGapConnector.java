@@ -27,12 +27,12 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapOneByteResponse;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
 import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -368,7 +368,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
 
         if (!send(
             socket,
-            PipeTransferFilePieceReq.toTPipeTransferBytes(
+            PipeTransferTsFilePieceReq.toTPipeTransferBytes(
                 tsFile.getName(),
                 position,
                 readLength == readFileBufferSize
@@ -385,7 +385,8 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
     // 2. Transfer file seal signal, which means the file is transferred completely
     if (!send(
         socket,
-        PipeTransferFileSealReq.toTPipeTransferFileSealBytes(tsFile.getName(), tsFile.length()))) {
+        PipeTransferTsFileSealReq.toTPipeTransferFileSealBytes(
+            tsFile.getName(), tsFile.length()))) {
       throw new PipeException(String.format("Seal file %s error. Socket %s.", tsFile, socket));
     } else {
       LOGGER.info("Successfully transferred file {}.", tsFile);

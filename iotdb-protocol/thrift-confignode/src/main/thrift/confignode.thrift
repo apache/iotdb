@@ -714,6 +714,12 @@ struct TShowPipeResp {
   2: optional list<TShowPipeInfo> pipeInfoList
 }
 
+struct TPipeConfigTransferReq {
+  1:required i8 version
+  2:required i16 type
+  3:required binary body
+}
+
 struct TDeleteTimeSeriesReq{
   1: required string queryId
   2: required binary pathPatternTree
@@ -1332,8 +1338,8 @@ service IConfigNodeRPCService {
   /** Get all pipe information. It is used for DataNode registration and restart*/
   TGetAllPipeInfoResp getAllPipeInfo()
 
-  /** Execute schema language from external pipes */
-  common.TSStatus executeSyncCommand(binary configPhysicalPlanBinary)
+ /** Execute schema language from external pipes */
+  common.TSStatus handleTransferConfigPlan(TPipeConfigTransferReq req)
 
   // ======================================================
   // TestTools

@@ -28,13 +28,13 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftSyncPipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
 import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -438,7 +438,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
         final PipeTransferFilePieceResp resp =
             PipeTransferFilePieceResp.fromTPipeTransferResp(
                 client.pipeTransfer(
-                    PipeTransferFilePieceReq.toTPipeTransferReq(
+                    PipeTransferTsFilePieceReq.toTPipeTransferReq(
                         tsFile.getName(),
                         position,
                         readLength == readFileBufferSize
@@ -466,7 +466,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
     // 2. Transfer file seal signal, which means the file is transferred completely
     final TPipeTransferResp resp =
         client.pipeTransfer(
-            PipeTransferFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()));
+            PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()));
     if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format("Seal file %s error, result status %s.", tsFile, resp.getStatus()));

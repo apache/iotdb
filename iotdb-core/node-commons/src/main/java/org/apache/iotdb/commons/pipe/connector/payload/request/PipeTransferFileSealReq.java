@@ -17,10 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.payload.evolvable.request;
+package org.apache.iotdb.commons.pipe.connector.payload.request;
 
-import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
-import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -30,66 +28,61 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class PipeTransferFileSealReq extends TPipeTransferReq {
+public abstract class PipeTransferFileSealReq extends TPipeTransferReq {
 
   private transient String fileName;
   private transient long fileLength;
 
-  private PipeTransferFileSealReq() {
-    // Empty constructor
-  }
-
-  public String getFileName() {
+  public final String getFileName() {
     return fileName;
   }
 
-  public long getFileLength() {
+  public final long getFileLength() {
     return fileLength;
   }
 
+  protected abstract PipeRequestType getPlanType();
+
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeTransferFileSealReq toTPipeTransferReq(String fileName, long fileLength)
+  protected PipeTransferFileSealReq convertToTPipeTransferReq(String fileName, long fileLength)
       throws IOException {
-    final PipeTransferFileSealReq fileSealReq = new PipeTransferFileSealReq();
 
-    fileSealReq.fileName = fileName;
-    fileSealReq.fileLength = fileLength;
+    this.fileName = fileName;
+    this.fileLength = fileLength;
 
-    fileSealReq.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
-    fileSealReq.type = PipeRequestType.TRANSFER_FILE_SEAL.getType();
+    this.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
+    this.type = getPlanType().getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(fileName, outputStream);
       ReadWriteIOUtils.write(fileLength, outputStream);
-      fileSealReq.body =
-          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+      this.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
 
-    return fileSealReq;
+    return this;
   }
 
-  public static PipeTransferFileSealReq fromTPipeTransferReq(TPipeTransferReq req) {
-    final PipeTransferFileSealReq fileSealReq = new PipeTransferFileSealReq();
+  public PipeTransferFileSealReq translateFromTPipeTransferReq(TPipeTransferReq req) {
 
-    fileSealReq.fileName = ReadWriteIOUtils.readString(req.body);
-    fileSealReq.fileLength = ReadWriteIOUtils.readLong(req.body);
+    fileName = ReadWriteIOUtils.readString(req.body);
+    fileLength = ReadWriteIOUtils.readLong(req.body);
 
-    fileSealReq.version = req.version;
-    fileSealReq.type = req.type;
-    fileSealReq.body = req.body;
+    version = req.version;
+    type = req.type;
+    body = req.body;
 
-    return fileSealReq;
+    return this;
   }
 
   /////////////////////////////// Air Gap ///////////////////////////////
 
-  public static byte[] toTPipeTransferFileSealBytes(String fileName, long fileLength)
+  public byte[] convertToTPipeTransferSnapshotSealBytes(String fileName, long fileLength)
       throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
-      ReadWriteIOUtils.write(PipeRequestType.TRANSFER_FILE_SEAL.getType(), outputStream);
+      ReadWriteIOUtils.write(getPlanType().getType(), outputStream);
       ReadWriteIOUtils.write(fileName, outputStream);
       ReadWriteIOUtils.write(fileLength, outputStream);
       return byteArrayOutputStream.toByteArray();

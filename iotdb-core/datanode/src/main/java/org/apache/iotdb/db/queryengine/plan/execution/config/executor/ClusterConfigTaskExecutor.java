@@ -77,6 +77,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
@@ -194,6 +195,7 @@ import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.trigger.api.Trigger;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -1927,10 +1929,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> alterLogicalViewByPipe(
-      AlterLogicalViewNode alterLogicalViewNode, MPPQueryContext context) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-
+  public TSStatus alterLogicalViewByPipe(AlterLogicalViewNode alterLogicalViewNode) {
     Map<PartialPath, ViewExpression> viewPathToSourceMap =
         alterLogicalViewNode.getViewPathToSourceMap();
 
@@ -1947,10 +1946,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
     TAlterLogicalViewReq req =
         new TAlterLogicalViewReq(
-            context.getQueryId().getId(), ByteBuffer.wrap(stream.toByteArray()));
+            Coordinator.getInstance().createQueryId().getId(),
+            ByteBuffer.wrap(stream.toByteArray()));
+    TSStatus tsStatus;
     try (ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TSStatus tsStatus;
       do {
         try {
           tsStatus = client.alterLogicalView(req);
@@ -1971,20 +1971,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             "Failed to execute alter view {} by pipe, status is {}.",
             viewPathToSourceMap,
             tsStatus);
-        if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-          future.setException(
-              new BatchProcessException(tsStatus.subStatus.toArray(new TSStatus[0])));
-        } else {
-          future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
-        }
-      } else {
-        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-      return future;
     } catch (ClientManagerException | TException e) {
-      future.setException(e);
-      return future;
+      tsStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      tsStatus.setMessage(e.toString());
     }
+    return tsStatus;
   }
 
   @Override
@@ -2330,11 +2322,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public TSStatus executeSyncCommand(ByteBuffer configPhysicalPlanBinary) {
+  public TSStatus handleTransferConfigPlan(TPipeTransferReq req) {
     TSStatus tsStatus;
+    TPipeConfigTransferReq configTransferReq =
+        new TPipeConfigTransferReq(req.version, req.type, req.body);
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      tsStatus = configNodeClient.executeSyncCommand(configPhysicalPlanBinary);
+      tsStatus = configNodeClient.handleTransferConfigPlan(configTransferReq);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn("Failed to executeSyncCommand, status is {}.", tsStatus);
       }

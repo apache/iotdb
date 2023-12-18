@@ -23,9 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
-import org.apache.iotdb.commons.pipe.connector.payload.request.PipeTransferSnapshotPieceReq;
-import org.apache.iotdb.commons.pipe.connector.payload.request.PipeTransferSnapshotSealReq;
-import org.apache.iotdb.commons.pipe.connector.payload.request.TransferConfigPlanReq;
+import org.apache.iotdb.commons.pipe.connector.payload.request.PipeTransferFilePieceReq;
+import org.apache.iotdb.commons.pipe.connector.payload.request.PipeTransferFileSealReq;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -33,14 +32,16 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaPlanReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
 import org.apache.iotdb.db.pipe.receiver.PipePlanToStatementVisitor;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -49,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.AlterLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
@@ -136,24 +138,30 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
                 PipeTransferTabletBatchReq.fromTPipeTransferReq(req),
                 partitionFetcher,
                 schemaFetcher);
-          case TRANSFER_FILE_PIECE:
+          case TRANSFER_TS_FILE_PIECE:
             return handleTransferFilePiece(
-                PipeTransferFilePieceReq.fromTPipeTransferReq(req),
+                PipeTransferTsFilePieceReq.fromTPipeTransferReq(req),
                 req instanceof AirGapPseudoTPipeTransferRequest);
-          case TRANSFER_FILE_SEAL:
+          case TRANSFER_TS_FILE_SEAL:
             return handleTransferFileSeal(
-                PipeTransferFileSealReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
-          case TRANSFER_CONFIG_PLAN:
-            return handleTransferConfigPlan((TransferConfigPlanReq) req);
+                PipeTransferTsFileSealReq.fromTPipeTransferReq(req),
+                partitionFetcher,
+                schemaFetcher);
           case TRANSFER_SCHEMA_PLAN:
             return handleTransferSchemaPlan(
                 PipeTransferSchemaPlanReq.fromTPipeTransferReq(req),
                 partitionFetcher,
                 schemaFetcher);
-          case TRANSFER_SNAPSHOT_PIECE:
-            return handleTransferSnapshotPiece((PipeTransferSnapshotPieceReq) req);
-          case TRANSFER_SNAPSHOT_SEAL:
-            return handleTransferSnapshotSeal((PipeTransferSnapshotSealReq) req);
+          case TRANSFER_SCHEMA_SNAPSHOT_PIECE:
+            return handleTransferSchemaSnapshotPiece(
+                PipeTransferSchemaSnapshotPieceReq.fromTPipeTransferReq(req));
+          case TRANSFER_SCHEMA_SNAPSHOT_SEAL:
+            return handleTransferSchemaSnapshotSeal(
+                PipeTransferSchemaSnapshotSealReq.fromTPipeTransferReq(req));
+          case TRANSFER_CONFIG_PLAN:
+          case TRANSFER_CONFIG_SNAPSHOT_PIECE:
+          case TRANSFER_CONFIG_SNAPSHOT_SEAL:
+            return handleTransferConfigPlan(req);
           default:
             break;
         }
@@ -298,7 +306,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
   }
 
   private TPipeTransferResp handleTransferFilePiece(
-      PipeTransferFilePieceReq req, boolean isRequestThroughAirGap) {
+      PipeTransferTsFilePieceReq req, boolean isRequestThroughAirGap) {
     try {
       updateWritingFileIfNeeded(req.getFileName());
 
@@ -428,7 +436,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
   }
 
   private TPipeTransferResp handleTransferFileSeal(
-      PipeTransferFileSealReq req,
+      PipeTransferTsFileSealReq req,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
     try {
@@ -518,30 +526,34 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
     }
   }
 
-  private TPipeTransferResp handleTransferConfigPlan(TransferConfigPlanReq req) {
-    return new TPipeTransferResp(
-        ClusterConfigTaskExecutor.getInstance().executeSyncCommand(req.body));
-  }
-
   private TPipeTransferResp handleTransferSchemaPlan(
       PipeTransferSchemaPlanReq req,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
+    return req.getPlanNode() instanceof AlterLogicalViewNode
+        ? new TPipeTransferResp(
+            ClusterConfigTaskExecutor.getInstance()
+                .alterLogicalViewByPipe((AlterLogicalViewNode) req.getPlanNode()))
+        : new TPipeTransferResp(
+            executeStatement(
+                new PipePlanToStatementVisitor().process(req.getPlanNode(), null),
+                partitionFetcher,
+                schemaFetcher));
+  }
+
+  private TPipeTransferResp handleTransferSchemaSnapshotPiece(PipeTransferFilePieceReq req) {
+    // TODO
+    return new TPipeTransferResp();
+  }
+
+  private TPipeTransferResp handleTransferSchemaSnapshotSeal(PipeTransferFileSealReq req) {
+    // TODO
+    return new TPipeTransferResp();
+  }
+
+  private TPipeTransferResp handleTransferConfigPlan(TPipeTransferReq req) {
     return new TPipeTransferResp(
-        executeStatement(
-            new PipePlanToStatementVisitor().process(req.getPlanNode(), null),
-            partitionFetcher,
-            schemaFetcher));
-  }
-
-  private TPipeTransferResp handleTransferSnapshotPiece(PipeTransferSnapshotPieceReq req) {
-    // TODO
-    return new TPipeTransferResp();
-  }
-
-  private TPipeTransferResp handleTransferSnapshotSeal(PipeTransferSnapshotSealReq req) {
-    // TODO
-    return new TPipeTransferResp();
+        ClusterConfigTaskExecutor.getInstance().handleTransferConfigPlan(req));
   }
 
   private boolean isWritingFileAvailable() {

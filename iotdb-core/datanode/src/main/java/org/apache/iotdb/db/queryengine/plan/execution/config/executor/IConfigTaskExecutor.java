@@ -68,10 +68,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaSta
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import com.google.common.util.concurrent.SettableFuture;
-
-import java.nio.ByteBuffer;
 
 public interface IConfigTaskExecutor {
 
@@ -180,8 +179,7 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> alterLogicalView(
       AlterLogicalViewStatement alterLogicalViewStatement, MPPQueryContext context);
 
-  SettableFuture<ConfigTaskResult> alterLogicalViewByPipe(
-      AlterLogicalViewNode alterLogicalViewNode, MPPQueryContext context);
+  TSStatus alterLogicalViewByPipe(AlterLogicalViewNode alterLogicalViewNode);
 
   SettableFuture<ConfigTaskResult> getRegionId(GetRegionIdStatement getRegionIdStatement);
 
@@ -217,5 +215,5 @@ public interface IConfigTaskExecutor {
 
   TThrottleQuotaResp getThrottleQuota();
 
-  TSStatus executeSyncCommand(ByteBuffer configPhysicalPlanBinary);
+  TSStatus handleTransferConfigPlan(TPipeTransferReq req);
 }
