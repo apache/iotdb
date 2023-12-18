@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.exception.ByteBufferAllocateException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
@@ -62,7 +63,7 @@ public class TsFileSketchTool {
 
   public static void main(String[] args) throws IOException {
     Pair<String, String> fileNames = checkArgs(args);
-    String filename = "/Volumes/ExtHD/ExtDownloads/2811/1700281998534-405-4-0.tsfile";
+    String filename = fileNames.left;
     String outFile = fileNames.right;
     System.out.println("TsFile path:" + filename);
     System.out.println("Sketch save path:" + outFile);
@@ -109,7 +110,7 @@ public class TsFileSketchTool {
     printFileInfo();
 
     // print chunk
-    //    printChunk(allChunkGroupMetadata);
+    printChunk(allChunkGroupMetadata);
 
     // metadata begins
     if (tsFileMetaData.getMetadataIndex().getChildren().isEmpty()) {
@@ -539,14 +540,29 @@ public class TsFileSketchTool {
             if (i != metadataIndexListSize - 1) {
               endOffset = metadataIndexNode.getChildren().get(i + 1).getOffset();
             }
-            generateMetadataIndexWithOffset(
-                metadataIndexNode.getChildren().get(i).getOffset(),
-                endOffset,
-                metadataIndexNode.getChildren().get(i),
-                deviceId,
-                metadataIndexNode.getNodeType(),
-                timeseriesMetadataMap,
-                needChunkMetadata);
+            try {
+              ByteBuffer nextBuffer =
+                  readData(metadataIndexNode.getChildren().get(i).getOffset(), endOffset);
+              generateMetadataIndexWithOffset(
+                  metadataIndexNode.getChildren().get(i).getOffset(),
+                  metadataIndexNode.getChildren().get(i),
+                  nextBuffer,
+                  deviceId,
+                  metadataIndexNode.getNodeType(),
+                  timeseriesMetadataMap,
+                  needChunkMetadata);
+            } catch (ByteBufferAllocateException e) {
+              // when the buffer length is over than Integer.MAX_VALUE,
+              // using tsFileInput to get timeseriesMetadataList
+              generateMetadataIndexWithOffsetUsingTsFileInput(
+                  metadataIndexNode.getChildren().get(i).getOffset(),
+                  endOffset,
+                  metadataIndexNode.getChildren().get(i),
+                  deviceId,
+                  metadataIndexNode.getNodeType(),
+                  timeseriesMetadataMap,
+                  needChunkMetadata);
+            }
           }
         }
       } catch (BufferOverflowException e) {
@@ -558,12 +574,11 @@ public class TsFileSketchTool {
      * Traverse the metadata index from MetadataIndexEntry to get TimeseriesMetadatas
      *
      * @param metadataIndex MetadataIndexEntry
-     * @param buffer byte buffer
      * @param deviceId String
      * @param timeseriesMetadataMap map: deviceId -> timeseriesMetadata list
      * @param needChunkMetadata deserialize chunk metadata list or not
      */
-    private void generateMetadataIndexWithOffset(
+    private void generateMetadataIndexWithOffsetUsingTsFileInput(
         long start,
         long end,
         MetadataIndexEntry metadataIndex,
@@ -598,7 +613,7 @@ public class TsFileSketchTool {
             if (i != metadataIndexListSize - 1) {
               endOffset = metadataIndexNode.getChildren().get(i + 1).getOffset();
             }
-            generateMetadataIndexWithOffset(
+            generateMetadataIndexWithOffsetUsingTsFileInput(
                 metadataIndexNode.getChildren().get(i).getOffset(),
                 endOffset,
                 metadataIndexNode.getChildren().get(i),
