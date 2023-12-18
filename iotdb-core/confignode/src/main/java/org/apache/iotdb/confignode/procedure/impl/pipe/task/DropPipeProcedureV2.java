@@ -152,12 +152,13 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     }
     DropPipeProcedureV2 that = (DropPipeProcedureV2) o;
     return getProcId() == that.getProcId()
-        && getState().equals(that.getState())
+        && getCurrentState().equals(that.getCurrentState())
+        && getCycles() == that.getCycles()
         && pipeName.equals(that.pipeName);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(getProcId(), getState(), pipeName);
+    return Objects.hash(getProcId(), getCurrentState(), getCycles(), pipeName);
   }
 }

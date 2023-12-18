@@ -179,13 +179,15 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
     }
     PipeHandleLeaderChangeProcedure that = (PipeHandleLeaderChangeProcedure) o;
     return getProcId() == that.getProcId()
-        && getState().equals(that.getState())
+        && getCurrentState().equals(that.getCurrentState())
+        && getCycles() == that.getCycles()
         && this.dataRegionGroupToOldAndNewLeaderPairMap.equals(
             that.dataRegionGroupToOldAndNewLeaderPairMap);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(getProcId(), getState(), dataRegionGroupToOldAndNewLeaderPairMap);
+    return Objects.hash(
+        getProcId(), getCurrentState(), getCycles(), dataRegionGroupToOldAndNewLeaderPairMap);
   }
 }

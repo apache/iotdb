@@ -180,12 +180,13 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     }
     StopPipeProcedureV2 that = (StopPipeProcedureV2) o;
     return getProcId() == that.getProcId()
-        && getState().equals(that.getState())
+        && getCurrentState().equals(that.getCurrentState())
+        && getCycles() == that.getCycles()
         && pipeName.equals(that.pipeName);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(getProcId(), getState(), pipeName);
+    return Objects.hash(getProcId(), getCurrentState(), getCycles(), pipeName);
   }
 }
