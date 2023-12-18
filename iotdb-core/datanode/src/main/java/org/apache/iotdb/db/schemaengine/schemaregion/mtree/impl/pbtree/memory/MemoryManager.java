@@ -40,6 +40,28 @@ import java.util.NoSuchElementException;
 import static org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer.getBelongedContainer;
 import static org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer.getCachedMNodeContainer;
 
+/**
+ * This class implemented the cache management, involving the cache status management on per MNode
+ * and cache eviction. All the nodes in memory are still basically organized as a trie via the
+ * container and parent reference in each node. Some extra data structure is used to help manage the
+ * node cached in memory.
+ *
+ * <p>The cache eviction on node is actually evicting a subtree from the MTree.
+ *
+ * <p>All the cached nodes are divided into two parts by their cache status, evictable nodes and
+ * none evictable nodes.
+ *
+ * <ol>
+ *   <li>Evictable nodes are all placed in nodeCache, which prepares the nodes be selected by cache
+ *       eviction.
+ *   <li>None evictable nodes takes two parts:
+ *       <ol>
+ *         <li>The volatile nodes, new added or updated, which means the data has not been synced to
+ *             disk.
+ *         <li>The ancestors of the volatile nodes.
+ *       </ol>
+ * </ol>
+ */
 public class MemoryManager implements IMemoryManager {
 
   private final LockManager lockManager;
