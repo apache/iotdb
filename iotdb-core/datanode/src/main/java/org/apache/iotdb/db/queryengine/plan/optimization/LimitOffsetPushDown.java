@@ -47,7 +47,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * <b>Optimization phase:</b> Distributed plan planning
+ * <b>Optimization phase:</b> Distributed plan planning.
  *
  * <p><b>Rule:</b> The LIMIT OFFSET condition can be pushed down to the SeriesScanNode, when the
  * following conditions are met:

@@ -38,18 +38,18 @@ import java.util.List;
 import static org.apache.iotdb.tsfile.utils.Preconditions.checkArgument;
 
 /**
- * <b>Optimization phase:</b> Distributed plan planning
+ * <b>Optimization phase:</b> Distributed plan planning.
  *
- * <p><b>Rule:</b>
- * <pre>
+ * <p><b>Rules:</b>
+ * <pre>1.
  *        ColumnInject
  *             |              ->  SeriesAggregationSource
  *  SeriesAggregationSource
- * <pre>
+ * <pre>2.
  *        ColumnInject
  *             |              ->        Aggregation
  *        Aggregation
- * <pre>
+ * <pre>3.
  *        ColumnInject
  *             |              ->  SlidingWindowAggregation
  *  SlidingWindowAggregation
