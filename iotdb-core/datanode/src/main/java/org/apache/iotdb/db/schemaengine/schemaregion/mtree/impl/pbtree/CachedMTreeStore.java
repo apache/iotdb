@@ -34,7 +34,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.ICa
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.ReleaseFlushMonitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.flush.PBTreeFlushExecutor;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockManager;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.MemManager;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.MemoryStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.iterator.CachedTraverserIterator;
@@ -61,7 +61,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
   private final int schemaRegionId;
 
-  private final MemManager memManager;
+  private final MemoryStatistics memoryStatistics;
   private final ICacheManager cacheManager;
   private ISchemaFile file;
   private ICachedMNode root;
@@ -83,9 +83,10 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     file = SchemaFile.initSchemaFile(storageGroup.getFullPath(), schemaRegionId);
     root = file.init();
     this.regionStatistics = regionStatistics;
-    this.memManager = new MemManager(regionStatistics);
+    this.memoryStatistics = new MemoryStatistics(regionStatistics);
     this.flushCallback = flushCallback;
-    this.cacheManager = releaseFlushMonitor.createLRUCacheManager(this, memManager, lockManager);
+    this.cacheManager =
+        releaseFlushMonitor.createLRUCacheManager(this, memoryStatistics, lockManager);
     cacheManager.initRootStatus(root);
     regionStatistics.setCacheManager(cacheManager);
     ensureMemoryStatus();
@@ -381,7 +382,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     boolean isSuccess = resultReference.get();
     if (isSuccess) {
       regionStatistics.addDevice();
-      memManager.updatePinnedSize(node.estimateSize() - rawSize);
+      memoryStatistics.updatePinnedSize(node.estimateSize() - rawSize);
     }
 
     return node.getAsDeviceMNode();
@@ -401,7 +402,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     boolean isSuccess = resultReference.get();
     if (isSuccess) {
       regionStatistics.deleteDevice();
-      memManager.updatePinnedSize(internalMNode.estimateSize() - rawSize);
+      memoryStatistics.updatePinnedSize(internalMNode.estimateSize() - rawSize);
     }
 
     return internalMNode;
@@ -418,12 +419,12 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     updateMNode(measurementMNode.getAsMNode(), o -> o.getAsMeasurementMNode().setAlias(alias));
 
     if (existingAlias != null && alias != null) {
-      memManager.updatePinnedSize(alias.length() - existingAlias.length());
+      memoryStatistics.updatePinnedSize(alias.length() - existingAlias.length());
     } else if (alias == null) {
-      memManager.updatePinnedSize(
+      memoryStatistics.updatePinnedSize(
           -(MNodeSizeEstimator.getAliasBaseSize() + existingAlias.length()));
     } else {
-      memManager.updatePinnedSize(MNodeSizeEstimator.getAliasBaseSize() + alias.length());
+      memoryStatistics.updatePinnedSize(MNodeSizeEstimator.getAliasBaseSize() + alias.length());
     }
   }
 
@@ -587,9 +588,10 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     file = SchemaFile.loadSnapshot(snapshotDir, storageGroup, schemaRegionId);
     root = file.init();
     this.regionStatistics = regionStatistics;
-    this.memManager = new MemManager(regionStatistics);
+    this.memoryStatistics = new MemoryStatistics(regionStatistics);
     this.flushCallback = flushCallback;
-    this.cacheManager = releaseFlushMonitor.createLRUCacheManager(this, memManager, lockManager);
+    this.cacheManager =
+        releaseFlushMonitor.createLRUCacheManager(this, memoryStatistics, lockManager);
     cacheManager.initRootStatus(root);
     regionStatistics.setCacheManager(cacheManager);
     ensureMemoryStatus();

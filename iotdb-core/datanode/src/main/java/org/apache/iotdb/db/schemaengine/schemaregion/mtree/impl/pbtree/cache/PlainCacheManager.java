@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache;
 
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockManager;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.MemManager;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.MemoryStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
 import java.util.Map;
@@ -33,8 +33,8 @@ public class PlainCacheManager extends CacheManager {
   @SuppressWarnings("java:S3077")
   private volatile Map<CacheEntry, ICachedMNode> nodeCache = new ConcurrentHashMap<>();
 
-  public PlainCacheManager(MemManager memManager, LockManager lockManager) {
-    super(memManager, lockManager);
+  public PlainCacheManager(MemoryStatistics memoryStatistics, LockManager lockManager) {
+    super(memoryStatistics, lockManager);
   }
 
   @Override

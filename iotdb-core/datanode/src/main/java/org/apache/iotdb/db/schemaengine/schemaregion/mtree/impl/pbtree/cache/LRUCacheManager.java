@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache;
 
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockManager;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.MemManager;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.MemoryStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
 import java.util.Objects;
@@ -34,8 +34,8 @@ public class LRUCacheManager extends CacheManager {
 
   private final LRUCacheList[] lruCacheLists = new LRUCacheList[NUM_OF_LIST];
 
-  public LRUCacheManager(MemManager memManager, LockManager lockManager) {
-    super(memManager, lockManager);
+  public LRUCacheManager(MemoryStatistics memoryStatistics, LockManager lockManager) {
+    super(memoryStatistics, lockManager);
     for (int i = 0; i < NUM_OF_LIST; i++) {
       lruCacheLists[i] = new LRUCacheList();
     }
