@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoaderManager;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
+import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
+import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskTemporaryRuntimeEnvironment;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.PipeExtractor;
@@ -240,6 +242,11 @@ public class PipePluginAgent {
     final PipeConnector temporaryConnector = reflectConnector(connectorParameters);
     try {
       temporaryConnector.validate(new PipeParameterValidator(connectorParameters));
+      temporaryConnector.customize(
+          connectorParameters,
+          new PipeTaskRuntimeConfiguration(
+              new PipeTaskTemporaryRuntimeEnvironment(createPipeStatement)));
+      temporaryConnector.handshake();
     } finally {
       try {
         temporaryConnector.close();

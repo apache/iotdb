@@ -141,6 +141,10 @@ CLUSTER
     : C L U S T E R
     ;
 
+CLUSTERID
+    : C L U S T E R I D
+    ;
+
 CONCAT
     : C O N C A T
     ;

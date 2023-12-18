@@ -388,6 +388,9 @@ class RatisConsensus implements IConsensus {
                     // connect to the peer)
                     // We can still retry in case it's a temporary network partition.
                     return RaftClientReply.newBuilder()
+                        .setClientId(localFakeId)
+                        .setServerId(server.getId())
+                        .setGroupId(request.getRaftGroupId())
                         .setException(
                             new ReadIndexException(
                                 "internal GRPC connection error:", ioe.getCause()))
