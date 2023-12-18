@@ -32,38 +32,41 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class PBTreeFlushExecutor {
 
   private static final Logger logger = LoggerFactory.getLogger(PBTreeFlushExecutor.class);
 
   private final Iterator<ICachedMNode> subtreeRoots;
+  private final IDatabaseMNode<ICachedMNode> databaseMNode;
+  private final AtomicInteger remainToFlush;
 
   private final ICacheManager cacheManager;
   private final ISchemaFile file;
   private final LockManager lockManager;
 
   public PBTreeFlushExecutor(
-      Iterator<ICachedMNode> subtreeRoots,
-      ICacheManager cacheManager,
-      ISchemaFile file,
-      LockManager lockManager) {
-    this.subtreeRoots = subtreeRoots;
+      ICacheManager cacheManager, ISchemaFile file, LockManager lockManager) {
+    this.remainToFlush = null;
+    this.subtreeRoots = cacheManager.collectVolatileSubtrees();
+    this.databaseMNode = cacheManager.collectUpdatedStorageGroupMNodes();
     this.cacheManager = cacheManager;
     this.file = file;
     this.lockManager = lockManager;
   }
 
   public PBTreeFlushExecutor(
-      IDatabaseMNode<ICachedMNode> databaseMNode,
+      AtomicInteger remainToFlush,
       ICacheManager cacheManager,
       ISchemaFile file,
       LockManager lockManager) {
-    this.subtreeRoots = Collections.singletonList(databaseMNode.getAsMNode()).iterator();
+    this.remainToFlush = remainToFlush;
+    this.subtreeRoots = cacheManager.collectVolatileSubtrees();
+    this.databaseMNode = cacheManager.collectUpdatedStorageGroupMNodes();
     this.cacheManager = cacheManager;
     this.file = file;
     this.lockManager = lockManager;
@@ -71,7 +74,14 @@ public class PBTreeFlushExecutor {
 
   public void flushVolatileNodes() throws MetadataException {
     List<Exception> exceptions = new ArrayList<>();
-    while (subtreeRoots.hasNext()) {
+    if (databaseMNode != null && checkRemainToFlush()) {
+      try {
+        processFlushDatabase(databaseMNode);
+      } catch (Exception e) {
+        exceptions.add(e);
+      }
+    }
+    while (subtreeRoots.hasNext() && checkRemainToFlush()) {
       try {
         processFlushNonDatabase(subtreeRoots.next());
       } catch (Exception e) {
@@ -84,11 +94,11 @@ public class PBTreeFlushExecutor {
     }
   }
 
-  public void flushDatabase() throws IOException {
-    while (subtreeRoots.hasNext()) {
-      ICachedMNode subtreeRoot = subtreeRoots.next();
-      processFlushDatabase(subtreeRoot.getAsDatabaseMNode());
+  private boolean checkRemainToFlush() {
+    if (remainToFlush == null) {
+      return true;
     }
+    return remainToFlush.decrementAndGet() >= 0;
   }
 
   private void processFlushDatabase(IDatabaseMNode<ICachedMNode> updatedStorageGroupMNode)

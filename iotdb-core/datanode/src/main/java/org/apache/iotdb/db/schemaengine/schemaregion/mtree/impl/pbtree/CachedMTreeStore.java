@@ -21,7 +21,6 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
@@ -610,10 +609,15 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
    * @return should not continue releasing
    */
   public boolean executeMemoryRelease() {
-    if (regionStatistics.getUnpinnedMemorySize() != 0) {
-      return !cacheManager.evict();
-    } else {
-      return true;
+    lockManager.globalReadUnlock();
+    try {
+      if (regionStatistics.getUnpinnedMemorySize() != 0) {
+        return !cacheManager.evict();
+      } else {
+        return true;
+      }
+    } finally {
+      lockManager.globalReadUnlock();
     }
   }
 
@@ -623,19 +627,8 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       lockManager.globalReadLock();
     }
     try {
-      PBTreeFlushExecutor flushExecutor;
-      IDatabaseMNode<ICachedMNode> updatedStorageGroupMNode =
-          cacheManager.collectUpdatedStorageGroupMNodes();
-      if (updatedStorageGroupMNode != null) {
-        flushExecutor =
-            new PBTreeFlushExecutor(updatedStorageGroupMNode, cacheManager, file, lockManager);
-        flushExecutor.flushDatabase();
-      }
-
-      Iterator<ICachedMNode> volatileSubtrees = cacheManager.collectVolatileSubtrees();
-
+      PBTreeFlushExecutor flushExecutor = new PBTreeFlushExecutor(cacheManager, file, lockManager);
       long startTime = System.currentTimeMillis();
-      flushExecutor = new PBTreeFlushExecutor(volatileSubtrees, cacheManager, file, lockManager);
       flushExecutor.flushVolatileNodes();
       long time = System.currentTimeMillis() - startTime;
       if (time > 10_000) {
