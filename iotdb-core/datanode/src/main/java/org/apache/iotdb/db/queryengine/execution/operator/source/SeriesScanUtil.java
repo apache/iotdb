@@ -259,7 +259,9 @@ public class SeriesScanUtil {
 
   /**
    * This method should be called after hasNextFile() until no next chunk, make sure that all
-   * overlapped chunks are consumed
+   * overlapped chunks are consumed.
+   *
+   * @throws IllegalStateException illegal state
    */
   public boolean hasNextChunk() throws IOException {
     if (!paginationController.hasCurLimit()) {

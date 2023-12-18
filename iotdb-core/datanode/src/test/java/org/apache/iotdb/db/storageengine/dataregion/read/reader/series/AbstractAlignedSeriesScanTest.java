@@ -64,7 +64,7 @@ public abstract class AbstractAlignedSeriesScanTest {
   protected static final String TEST_DEVICE = TEST_DATABASE + ".d1_aligned";
 
   /**
-   * The data distribution is as follows:
+   * The data distribution is as follows.
    *
    * <pre>
    *  time    root.sg_pd.d1_aligned(s1, s2, s3)
@@ -122,9 +122,9 @@ public abstract class AbstractAlignedSeriesScanTest {
       List<TimeRange> pages = new ArrayList<>();
       // prepare f1-c1-p1
       pages.add(new TimeRange(0L, 9L));
-      for (IChunkWriter iChunkWriter :
+      for (IChunkWriter chunkWriter :
           createChunkWriter(writtenPaths, dataTypes, encodings, compressionTypes, true)) {
-        writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
+        writeAlignedChunk((AlignedChunkWriterImpl) chunkWriter, tsFileIOWriter, pages, true);
       }
       tsFileIOWriter.endChunkGroup();
 
@@ -213,9 +213,9 @@ public abstract class AbstractAlignedSeriesScanTest {
       // prepare f3-c1-p1
       List<TimeRange> pages = new ArrayList<>();
       pages.add(new TimeRange(20L, 29L));
-      for (IChunkWriter iChunkWriter :
+      for (IChunkWriter chunkWriter :
           createChunkWriter(writtenPaths, dataTypes, encodings, compressionTypes, true)) {
-        writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
+        writeAlignedChunk((AlignedChunkWriterImpl) chunkWriter, tsFileIOWriter, pages, true);
       }
       tsFileIOWriter.endChunkGroup();
 
@@ -293,9 +293,9 @@ public abstract class AbstractAlignedSeriesScanTest {
       // prepare f4-c1-p1
       List<TimeRange> pages = new ArrayList<>();
       pages.add(new TimeRange(40L, 49L));
-      for (IChunkWriter iChunkWriter :
+      for (IChunkWriter chunkWriter :
           createChunkWriter(writtenPaths, dataTypes, encodings, compressionTypes, true)) {
-        writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
+        writeAlignedChunk((AlignedChunkWriterImpl) chunkWriter, tsFileIOWriter, pages, true);
       }
 
       // prepare f4-c1-p2
@@ -353,9 +353,9 @@ public abstract class AbstractAlignedSeriesScanTest {
       // prepare f4-c1-p3
       pages.clear();
       pages.add(new TimeRange(60L, 69L));
-      for (IChunkWriter iChunkWriter :
+      for (IChunkWriter chunkWriter :
           createChunkWriter(writtenPaths, dataTypes, encodings, compressionTypes, true)) {
-        writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
+        writeAlignedChunk((AlignedChunkWriterImpl) chunkWriter, tsFileIOWriter, pages, true);
       }
 
       tsFileIOWriter.endChunkGroup();
@@ -365,9 +365,9 @@ public abstract class AbstractAlignedSeriesScanTest {
       pages.clear();
       // prepare f4-c2-p1
       pages.add(new TimeRange(70L, 79L));
-      for (IChunkWriter iChunkWriter :
+      for (IChunkWriter chunkWriter :
           createChunkWriter(writtenPaths, dataTypes, encodings, compressionTypes, true)) {
-        writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
+        writeAlignedChunk((AlignedChunkWriterImpl) chunkWriter, tsFileIOWriter, pages, true);
       }
       tsFileIOWriter.endChunkGroup();
 
@@ -389,9 +389,9 @@ public abstract class AbstractAlignedSeriesScanTest {
       pages.add(new TimeRange(70L, 79L));
       // prepare f5-c1-p2
       pages.add(new TimeRange(80L, 89L));
-      for (IChunkWriter iChunkWriter :
+      for (IChunkWriter chunkWriter :
           createChunkWriter(writtenPaths, dataTypes, encodings, compressionTypes, true)) {
-        writeAlignedChunk((AlignedChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
+        writeAlignedChunk((AlignedChunkWriterImpl) chunkWriter, tsFileIOWriter, pages, true);
       }
       tsFileIOWriter.endChunkGroup();
 
