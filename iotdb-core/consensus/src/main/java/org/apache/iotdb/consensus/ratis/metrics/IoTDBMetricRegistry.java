@@ -145,13 +145,13 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
   }
 
   @Override
-  public <T> void gauge(String fullName, Supplier<Supplier<T>> supplier) {
+  public <T> void gauge(String name, Supplier<Supplier<T>> supplier) {
+    final String fullName = getMetricName(name);
     gaugeCache.computeIfAbsent(
         fullName,
-        name -> {
+        fn -> {
           final GaugeProxy<T> gauge = new GaugeProxy<>(supplier);
-          metricService.createAutoGauge(
-              name, getMetricLevel(name), gauge, GaugeProxy::getDoubleValue);
+          metricService.createAutoGauge(fn, getMetricLevel(fn), gauge, GaugeProxy::getDoubleValue);
           return true;
         });
   }

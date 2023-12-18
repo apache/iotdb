@@ -83,11 +83,11 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeDualIT {
 
       List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertTrue(
-          showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("STOPPED")));
+          showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("RUNNING")));
       Assert.assertTrue(
-          showPipeResult.stream().anyMatch((o) -> o.id.equals("p2") && o.state.equals("STOPPED")));
+          showPipeResult.stream().anyMatch((o) -> o.id.equals("p2") && o.state.equals("RUNNING")));
       Assert.assertTrue(
-          showPipeResult.stream().anyMatch((o) -> o.id.equals("p3") && o.state.equals("STOPPED")));
+          showPipeResult.stream().anyMatch((o) -> o.id.equals("p3") && o.state.equals("RUNNING")));
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
@@ -148,9 +148,8 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeDualIT {
 
       List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertTrue(
-          showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("STOPPED")));
+          showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("RUNNING")));
 
-      Assert.assertEquals(TSStatusCode.PIPE_ERROR.getStatusCode(), client.stopPipe("p1").getCode());
       status =
           client.createPipe(
               new TCreatePipeReq("p1", connectorAttributes)
@@ -168,10 +167,17 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeDualIT {
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("RUNNING")));
 
       Assert.assertEquals(
-          TSStatusCode.PIPE_ERROR.getStatusCode(), client.startPipe("p1").getCode());
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
       showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertTrue(
-          showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("RUNNING")));
+          showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("STOPPED")));
+      Assert.assertEquals(1, showPipeResult.stream().filter((o) -> o.id.equals("p1")).count());
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
+      showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      Assert.assertTrue(
+          showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("STOPPED")));
       Assert.assertEquals(1, showPipeResult.stream().filter((o) -> o.id.equals("p1")).count());
     }
   }
@@ -262,7 +268,7 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeDualIT {
       Assert.assertEquals(TSStatusCode.PIPE_ERROR.getStatusCode(), client.startPipe("*").getCode());
       List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertTrue(
-          showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("STOPPED")));
+          showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("RUNNING")));
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());

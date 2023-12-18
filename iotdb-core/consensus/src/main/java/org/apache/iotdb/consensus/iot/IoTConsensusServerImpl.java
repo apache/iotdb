@@ -113,14 +113,14 @@ public class IoTConsensusServerImpl {
   private final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager;
   private final IoTConsensusServerMetrics ioTConsensusServerMetrics;
   private final String consensusGroupId;
-  private final ScheduledExecutorService retryService;
+  private final ScheduledExecutorService backgroundTaskService;
 
   public IoTConsensusServerImpl(
       String storageDir,
       Peer thisNode,
       List<Peer> configuration,
       IStateMachine stateMachine,
-      ScheduledExecutorService retryService,
+      ScheduledExecutorService backgroundTaskService,
       IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager,
       IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager,
       IoTConsensusConfig config) {
@@ -136,7 +136,7 @@ public class IoTConsensusServerImpl {
     } else {
       persistConfiguration();
     }
-    this.retryService = retryService;
+    this.backgroundTaskService = backgroundTaskService;
     this.config = config;
     this.consensusGroupId = thisNode.getGroupId().toString();
     consensusReqReader = (ConsensusReqReader) stateMachine.read(new GetConsensusReqReaderPlan());
@@ -733,8 +733,12 @@ public class IoTConsensusServerImpl {
     return searchIndex;
   }
 
-  public ScheduledExecutorService getRetryService() {
-    return retryService;
+  public ScheduledExecutorService getBackgroundTaskService() {
+    return backgroundTaskService;
+  }
+
+  public LogDispatcher getLogDispatcher() {
+    return logDispatcher;
   }
 
   public IoTConsensusServerMetrics getIoTConsensusServerMetrics() {

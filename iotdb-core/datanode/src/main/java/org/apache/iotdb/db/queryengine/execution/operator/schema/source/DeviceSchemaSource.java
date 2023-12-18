@@ -31,12 +31,14 @@ import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
+import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.util.List;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.STRING_NULL;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
 
 public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
@@ -96,15 +98,28 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
     builder
         .getColumnBuilder(0)
         .writeBinary(new Binary(device.getFullPath(), TSFileConfig.STRING_CHARSET));
+
+    String templateName = STRING_NULL;
+    int templateId = device.getTemplateId();
+    if (templateId != -1) {
+      templateName = ClusterTemplateManager.getInstance().getTemplate(templateId).getName();
+    }
+
     if (hasSgCol) {
       builder.getColumnBuilder(1).writeBinary(new Binary(database, TSFileConfig.STRING_CHARSET));
       builder
           .getColumnBuilder(2)
           .writeBinary(new Binary(String.valueOf(device.isAligned()), TSFileConfig.STRING_CHARSET));
+      builder
+          .getColumnBuilder(3)
+          .writeBinary(new Binary(String.valueOf(templateName), TSFileConfig.STRING_CHARSET));
     } else {
       builder
           .getColumnBuilder(1)
           .writeBinary(new Binary(String.valueOf(device.isAligned()), TSFileConfig.STRING_CHARSET));
+      builder
+          .getColumnBuilder(2)
+          .writeBinary(new Binary(String.valueOf(templateName), TSFileConfig.STRING_CHARSET));
     }
     builder.declarePosition();
   }

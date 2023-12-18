@@ -22,7 +22,6 @@ package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
-import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.DiskAlignedChunkLoader;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -41,12 +40,7 @@ public class MemAlignedChunkMetadataLoader implements IChunkMetadataLoader {
   private final TsFileResource resource;
   private final PartialPath seriesPath;
   private final QueryContext context;
-  private final Filter timeFilter;
-  // only used for limit and offset push down optimizer, if we select all columns from aligned
-  // device, we
-  // can use statistics to skip.
-  // it's only exact while using limit & offset push down
-  private final boolean queryAllSensors;
+  private final Filter globalTimeFilter;
 
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
@@ -55,13 +49,11 @@ public class MemAlignedChunkMetadataLoader implements IChunkMetadataLoader {
       TsFileResource resource,
       PartialPath seriesPath,
       QueryContext context,
-      Filter timeFilter,
-      boolean queryAllSensors) {
+      Filter globalTimeFilter) {
     this.resource = resource;
     this.seriesPath = seriesPath;
     this.context = context;
-    this.timeFilter = timeFilter;
-    this.queryAllSensors = queryAllSensors;
+    this.globalTimeFilter = globalTimeFilter;
   }
 
   @Override
@@ -77,8 +69,7 @@ public class MemAlignedChunkMetadataLoader implements IChunkMetadataLoader {
             if (chunkMetadata.needSetChunkLoader()) {
               chunkMetadata.setVersion(resource.getVersion());
               chunkMetadata.setClosed(resource.isClosed());
-              chunkMetadata.setChunkLoader(
-                  new DiskAlignedChunkLoader(context.isDebug(), queryAllSensors, resource));
+              chunkMetadata.setChunkLoader(new DiskAlignedChunkLoader(context.isDebug(), resource));
             }
           });
 
@@ -89,22 +80,23 @@ public class MemAlignedChunkMetadataLoader implements IChunkMetadataLoader {
       if (memChunks != null) {
         for (ReadOnlyMemChunk readOnlyMemChunk : memChunks) {
           if (!readOnlyMemChunk.isEmpty()) {
-            ((AlignedReadOnlyMemChunk) readOnlyMemChunk).setQueryAllSensors(queryAllSensors);
             chunkMetadataList.add(readOnlyMemChunk.getChunkMetaData());
           }
         }
       }
 
-      // remove not satisfied ChunkMetaData
-      long t2 = System.nanoTime();
-      chunkMetadataList.removeIf(
-          chunkMetaData ->
-              (timeFilter != null
-                      && !timeFilter.satisfyStartEndTime(
-                          chunkMetaData.getStartTime(), chunkMetaData.getEndTime()))
-                  || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
-      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-          CHUNK_METADATA_FILTER_ALIGNED_MEM, System.nanoTime() - t2);
+      // when chunkMetadataList.size() == 1, it means that the chunk statistics is same as
+      // the time series metadata, so we don't need to filter it again.
+      if (chunkMetadataList.size() > 1) {
+        // remove not satisfied ChunkMetaData
+        long t2 = System.nanoTime();
+        chunkMetadataList.removeIf(
+            chunkMetaData ->
+                (globalTimeFilter != null && globalTimeFilter.canSkip(chunkMetaData))
+                    || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
+        SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
+            CHUNK_METADATA_FILTER_ALIGNED_MEM, System.nanoTime() - t2);
+      }
 
       for (IChunkMetadata metadata : chunkMetadataList) {
         metadata.setVersion(resource.getVersion());

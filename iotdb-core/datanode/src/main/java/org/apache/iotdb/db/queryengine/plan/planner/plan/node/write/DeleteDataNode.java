@@ -35,7 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
-import org.apache.iotdb.tsfile.read.filter.factory.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilterApi;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
@@ -295,7 +295,7 @@ public class DeleteDataNode extends WritePlanNode implements WALEntryValue {
       // regionId is null when data region of devicePath not existed
       dataPartition
           .getDataRegionReplicaSet(
-              devicePath.getFullPath(), TimeFilter.between(deleteStartTime, deleteEndTime))
+              devicePath.getFullPath(), TimeFilterApi.between(deleteStartTime, deleteEndTime))
           .stream()
           .filter(regionReplicaSet -> regionReplicaSet.getRegionId() != null)
           .forEach(

@@ -421,7 +421,7 @@ public class TsFileSplitter {
 
     valueDecoder.reset();
     PageReader pageReader =
-        new PageReader(pageData, chunkHeader.getDataType(), valueDecoder, timeDecoder, null);
+        new PageReader(pageData, chunkHeader.getDataType(), valueDecoder, timeDecoder);
     BatchData batchData = pageReader.getAllSatisfiedPageData();
     long[] times = new long[batchData.length()];
     Object[] values = new Object[batchData.length()];

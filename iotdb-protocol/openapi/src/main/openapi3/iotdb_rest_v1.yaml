@@ -49,24 +49,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/ExecutionStatus'
 
-  /rest/v1/insertRecords:
-    post:
-      summary: insertRecords
-      description: insertRecords
-      operationId: insertRecords
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/InsertRecordsRequest'
-      responses:
-        "200":
-          description: ExecutionStatus
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ExecutionStatus'
-
   /rest/v1/nonQuery:
     post:
       summary: executeNonQueryStatement
@@ -212,40 +194,6 @@ components:
           type: boolean
         deviceId:
           type: string
-
-    InsertRecordsRequest:
-      title: InsertRecordsRequest
-      type: object
-      properties:
-        timestamps:
-          type: array
-          items:
-            type: integer
-            format: int64
-        measurementsList:
-          type: array
-          items:
-            type: array
-            items:
-              type: string
-        dataTypesList:
-          type: array
-          items:
-            type: array
-            items:
-              type: string
-        valuesList:
-          type: array
-          items:
-            type: array
-            items:
-              type: object
-        isAligned:
-          type: boolean
-        deviceIds:
-          type: array
-          items:
-            type: string
 
     ExecutionStatus:
       type: object

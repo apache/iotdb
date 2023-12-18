@@ -44,8 +44,9 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
 
   private final TsFileResource resource;
   private final QueryContext context;
-  // time filter or value filter, only used to check time range
-  private final Filter filter;
+
+  // global time filter, only used to check time range
+  private final Filter globalTimeFilter;
 
   private final List<Modification> pathModifications;
 
@@ -56,11 +57,11 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
   public DiskChunkMetadataLoader(
       TsFileResource resource,
       QueryContext context,
-      Filter filter,
+      Filter globalTimeFilter,
       List<Modification> pathModifications) {
     this.resource = resource;
     this.context = context;
-    this.filter = filter;
+    this.globalTimeFilter = globalTimeFilter;
     this.pathModifications = pathModifications;
   }
 
@@ -71,7 +72,26 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
       List<IChunkMetadata> chunkMetadataList =
           ((TimeseriesMetadata) timeSeriesMetadata).getCopiedChunkMetadataList();
 
-      final long t2 = System.nanoTime();
+      // when chunkMetadataList.size() == 1, it means that the chunk statistics is same as
+      // the time series metadata, so we don't need to filter it again.
+      if (chunkMetadataList.size() > 1) {
+        // remove not satisfied ChunkMetaData
+        final long t2 = System.nanoTime();
+        chunkMetadataList.removeIf(
+            chunkMetaData ->
+                (globalTimeFilter != null && globalTimeFilter.canSkip(chunkMetaData))
+                    || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
+
+        if (context.isDebug()) {
+          DEBUG_LOGGER.info("After removed by filter Chunk meta data list is: ");
+          chunkMetadataList.forEach(c -> DEBUG_LOGGER.info(c.toString()));
+        }
+
+        SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
+            CHUNK_METADATA_FILTER_NONALIGNED_DISK, System.nanoTime() - t2);
+      }
+
+      final long t3 = System.nanoTime();
 
       if (context.isDebug()) {
         DEBUG_LOGGER.info(
@@ -91,7 +111,7 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
       }
 
       SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-          CHUNK_METADATA_MODIFICATION_NONALIGNED_DISK, System.nanoTime() - t2);
+          CHUNK_METADATA_MODIFICATION_NONALIGNED_DISK, System.nanoTime() - t3);
 
       // it is ok, even if it is not thread safe, because the cost of creating a DiskChunkLoader is
       // very cheap.
@@ -103,22 +123,6 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
               chunkMetadata.setChunkLoader(new DiskChunkLoader(context.isDebug(), resource));
             }
           });
-
-      // remove not satisfied ChunkMetaData
-      final long t3 = System.nanoTime();
-      chunkMetadataList.removeIf(
-          chunkMetaData ->
-              (filter != null
-                      && !filter.satisfyStartEndTime(
-                          chunkMetaData.getStartTime(), chunkMetaData.getEndTime()))
-                  || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
-      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-          CHUNK_METADATA_FILTER_NONALIGNED_DISK, System.nanoTime() - t3);
-
-      if (context.isDebug()) {
-        DEBUG_LOGGER.info("After removed by filter Chunk meta data list is: ");
-        chunkMetadataList.forEach(c -> DEBUG_LOGGER.info(c.toString()));
-      }
 
       return chunkMetadataList;
     } finally {

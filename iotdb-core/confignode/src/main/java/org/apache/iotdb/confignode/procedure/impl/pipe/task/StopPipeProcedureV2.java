@@ -59,10 +59,13 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException {
+  protected boolean executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("StopPipeProcedureV2: executeFromValidateTask({})", pipeName);
 
     pipeTaskInfo.get().checkBeforeStopPipe(pipeName);
+
+    return pipeTaskInfo.get().isPipeStopped(pipeName)
+        && !pipeTaskInfo.get().isStoppedByRuntimeException(pipeName);
   }
 
   @Override

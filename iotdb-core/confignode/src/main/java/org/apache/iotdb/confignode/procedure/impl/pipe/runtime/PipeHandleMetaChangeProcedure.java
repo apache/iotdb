@@ -65,10 +65,11 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
   }
 
   @Override
-  protected void executeFromValidateTask(ConfigNodeProcedureEnv env) {
+  protected boolean executeFromValidateTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleMetaChangeProcedure: executeFromValidateTask");
 
     // Do nothing
+    return false;
   }
 
   @Override
