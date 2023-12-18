@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.read.filter.operator;
 
 import org.apache.iotdb.tsfile.file.metadata.IMetadata;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.filter.basic.BinaryLogicalFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.OperatorType;
@@ -47,6 +48,16 @@ public class Or extends BinaryLogicalFilter {
   @Override
   public boolean satisfyRow(long time, Object[] values) {
     return left.satisfyRow(time, values) || right.satisfyRow(time, values);
+  }
+
+  @Override
+  public boolean[] satisfyTsBlock(TsBlock tsBlock) {
+    boolean[] leftResult = left.satisfyTsBlock(tsBlock);
+    boolean[] rightResult = right.satisfyTsBlock(tsBlock);
+    for (int i = 0; i < leftResult.length; i++) {
+      leftResult[i] = leftResult[i] || rightResult[i];
+    }
+    return leftResult;
   }
 
   @Override
