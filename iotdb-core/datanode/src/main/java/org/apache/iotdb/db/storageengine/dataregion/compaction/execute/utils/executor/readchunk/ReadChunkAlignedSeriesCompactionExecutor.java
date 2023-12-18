@@ -350,8 +350,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
             uncompressedValuePageDatas,
             valueDataTypes,
             valueDecoders,
-            null,
-            true);
+            null);
     alignedPageReader.setDeleteIntervalList(deleteIntervalLists);
     int processedPointNum = 0;
     IPointReader lazyPointReader = alignedPageReader.getLazyPointReader();
