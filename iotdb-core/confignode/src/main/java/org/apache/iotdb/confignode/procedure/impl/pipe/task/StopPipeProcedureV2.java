@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
@@ -178,11 +179,13 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       return false;
     }
     StopPipeProcedureV2 that = (StopPipeProcedureV2) o;
-    return pipeName.equals(that.pipeName);
+    return getProcId() == that.getProcId()
+        && getState().equals(that.getState())
+        && pipeName.equals(that.pipeName);
   }
 
   @Override
   public int hashCode() {
-    return pipeName.hashCode();
+    return Objects.hash(getProcId(), getState(), pipeName);
   }
 }

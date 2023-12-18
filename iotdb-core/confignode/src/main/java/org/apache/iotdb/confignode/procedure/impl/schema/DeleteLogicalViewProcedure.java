@@ -33,7 +33,7 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
-import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
+import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DeleteLogicalViewState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.db.exception.metadata.view.ViewNotExistException;
@@ -71,12 +71,13 @@ public class DeleteLogicalViewProcedure
 
   private transient String requestMessage;
 
-  public DeleteLogicalViewProcedure() {
-    super();
+  public DeleteLogicalViewProcedure(boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
-  public DeleteLogicalViewProcedure(String queryId, PathPatternTree patternTree) {
-    super();
+  public DeleteLogicalViewProcedure(
+      String queryId, PathPatternTree patternTree, boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
     this.queryId = queryId;
     setPatternTree(patternTree);
   }
@@ -270,7 +271,10 @@ public class DeleteLogicalViewProcedure
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.DELETE_LOGICAL_VIEW_PROCEDURE.getTypeCode());
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_DELETE_LOGICAL_VIEW_PROCEDURE.getTypeCode()
+            : ProcedureType.DELETE_LOGICAL_VIEW_PROCEDURE.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(queryId, stream);
     patternTree.serialize(stream);
@@ -290,12 +294,13 @@ public class DeleteLogicalViewProcedure
     DeleteLogicalViewProcedure that = (DeleteLogicalViewProcedure) o;
     return this.getProcId() == that.getProcId()
         && this.getState() == that.getState()
+        && isGeneratedByPipe == that.isGeneratedByPipe
         && patternTree.equals(that.patternTree);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(getProcId(), getState(), patternTree);
+    return Objects.hash(getProcId(), getState(), isGeneratedByPipe, patternTree);
   }
 
   private class DeleteLogicalViewRegionTaskExecutor<Q>

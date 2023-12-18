@@ -67,11 +67,11 @@ public class CQManager {
             CONF.getCqSubmitThread(), ThreadName.CQ_SCHEDULER.getName());
   }
 
-  public TSStatus createCQ(TCreateCQReq req) {
+  public TSStatus createCQ(TCreateCQReq req, boolean isGeneratedByPipe) {
     lock.readLock().lock();
     try {
       ScheduledExecutorService currentExecutor = executor;
-      return configManager.getProcedureManager().createCQ(req, currentExecutor);
+      return configManager.getProcedureManager().createCQ(req, currentExecutor, isGeneratedByPipe);
     } finally {
       lock.readLock().unlock();
     }

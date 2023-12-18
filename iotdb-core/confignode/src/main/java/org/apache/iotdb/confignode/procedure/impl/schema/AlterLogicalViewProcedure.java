@@ -37,7 +37,7 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
-import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
+import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.AlterLogicalViewState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.db.exception.BatchProcessException;
@@ -74,13 +74,15 @@ public class AlterLogicalViewProcedure
   private transient PathPatternTree pathPatternTree;
   private transient ByteBuffer patternTreeBytes;
 
-  public AlterLogicalViewProcedure() {
-    super();
+  public AlterLogicalViewProcedure(boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
   public AlterLogicalViewProcedure(
-      String queryId, Map<PartialPath, ViewExpression> viewPathToSourceMap) {
-    super();
+      String queryId,
+      Map<PartialPath, ViewExpression> viewPathToSourceMap,
+      boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
     this.queryId = queryId;
     this.viewPathToSourceMap = viewPathToSourceMap;
     generatePathPatternTree();
@@ -255,7 +257,10 @@ public class AlterLogicalViewProcedure
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeInt(ProcedureType.ALTER_LOGICAL_VIEW_PROCEDURE.getTypeCode());
+    stream.writeInt(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_ALTER_LOGICAL_VIEW_PROCEDURE.getTypeCode()
+            : ProcedureType.ALTER_LOGICAL_VIEW_PROCEDURE.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(queryId, stream);
     ReadWriteIOUtils.write(this.viewPathToSourceMap.size(), stream);
@@ -288,13 +293,16 @@ public class AlterLogicalViewProcedure
     if (this == o) return true;
     if (!(o instanceof AlterLogicalViewProcedure)) return false;
     AlterLogicalViewProcedure that = (AlterLogicalViewProcedure) o;
-    return Objects.equals(queryId, that.queryId)
+    return Objects.equals(getProcId(), that.getProcId())
+        && Objects.equals(getState(), that.getState())
+        && Objects.equals(isGeneratedByPipe, that.isGeneratedByPipe)
+        && Objects.equals(queryId, that.queryId)
         && Objects.equals(viewPathToSourceMap, that.viewPathToSourceMap);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(queryId, viewPathToSourceMap);
+    return Objects.hash(getProcId(), getState(), isGeneratedByPipe, queryId, viewPathToSourceMap);
   }
 
   private class AlterLogicalViewRegionTaskExecutor<Q>

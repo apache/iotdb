@@ -253,6 +253,6 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
 
   @Override
   public int hashCode() {
-    return Objects.hash(this.pluginName);
+    return Objects.hash(getProcId(), getState(), pluginName);
   }
 }

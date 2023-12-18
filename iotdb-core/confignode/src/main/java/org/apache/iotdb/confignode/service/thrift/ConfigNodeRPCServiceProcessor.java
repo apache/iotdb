@@ -422,13 +422,13 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus deleteDatabase(TDeleteDatabaseReq tDeleteReq) {
     String prefixPath = tDeleteReq.getPrefixPath();
-    return configManager.deleteDatabases(Collections.singletonList(prefixPath));
+    return configManager.deleteDatabases(Collections.singletonList(prefixPath), false);
   }
 
   @Override
   public TSStatus deleteDatabases(TDeleteDatabasesReq tDeleteReq) {
     List<String> prefixList = tDeleteReq.getPrefixPathList();
-    return configManager.deleteDatabases(prefixList);
+    return configManager.deleteDatabases(prefixList, false);
   }
 
   @Override
@@ -716,12 +716,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus createTrigger(TCreateTriggerReq req) {
-    return configManager.createTrigger(req);
+    return configManager.createTrigger(req, false);
   }
 
   @Override
   public TSStatus dropTrigger(TDropTriggerReq req) {
-    return configManager.dropTrigger(req);
+    return configManager.dropTrigger(req, false);
   }
 
   @Override
@@ -872,7 +872,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus setSchemaTemplate(TSetSchemaTemplateReq req) {
-    return configManager.setSchemaTemplate(req);
+    return configManager.setSchemaTemplate(req, false);
   }
 
   @Override
@@ -882,12 +882,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req) {
-    return configManager.deactivateSchemaTemplate(req);
+    return configManager.deactivateSchemaTemplate(req, false);
   }
 
   @Override
   public TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req) {
-    return configManager.unsetSchemaTemplate(req);
+    return configManager.unsetSchemaTemplate(req, false);
   }
 
   @Override
@@ -902,17 +902,17 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) {
-    return configManager.deleteTimeSeries(req);
+    return configManager.deleteTimeSeries(req, false);
   }
 
   @Override
   public TSStatus deleteLogicalView(TDeleteLogicalViewReq req) {
-    return configManager.deleteLogicalView(req);
+    return configManager.deleteLogicalView(req, false);
   }
 
   @Override
-  public TSStatus alterLogicalView(TAlterLogicalViewReq req) throws TException {
-    return configManager.alterLogicalView(req);
+  public TSStatus alterLogicalView(TAlterLogicalViewReq req) {
+    return configManager.alterLogicalView(req, false);
   }
 
   @Override
@@ -983,7 +983,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus createCQ(TCreateCQReq req) {
-    return configManager.createCQ(req);
+    return configManager.createCQ(req, false);
   }
 
   @Override

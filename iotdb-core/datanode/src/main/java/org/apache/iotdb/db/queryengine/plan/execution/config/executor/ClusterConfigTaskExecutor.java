@@ -2336,7 +2336,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           configNodeClient.handleTransferConfigPlan(configTransferReq);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode()
           != pipeConfigTransferResp.getStatus().getCode()) {
-        LOGGER.warn("Failed to executeSyncCommand, status is {}.", pipeConfigTransferResp);
+        LOGGER.warn("Failed to handleTransferConfigPlan, status is {}.", pipeConfigTransferResp);
       }
       result = new TPipeTransferResp(pipeConfigTransferResp.status);
       result.setBody(pipeConfigTransferResp.body);

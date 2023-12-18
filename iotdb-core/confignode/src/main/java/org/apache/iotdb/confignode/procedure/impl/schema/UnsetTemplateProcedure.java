@@ -35,7 +35,7 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
-import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
+import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.UnsetTemplateState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
@@ -76,12 +76,13 @@ public class UnsetTemplateProcedure
   private transient ByteBuffer addTemplateSetInfo;
   private transient ByteBuffer invalidateTemplateSetInfo;
 
-  public UnsetTemplateProcedure() {
-    super();
+  public UnsetTemplateProcedure(boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
-  public UnsetTemplateProcedure(String queryId, Template template, PartialPath path) {
-    super();
+  public UnsetTemplateProcedure(
+      String queryId, Template template, PartialPath path, boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
     this.queryId = queryId;
     this.template = template;
     this.path = path;
@@ -396,7 +397,10 @@ public class UnsetTemplateProcedure
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.UNSET_TEMPLATE_PROCEDURE.getTypeCode());
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_UNSET_TEMPLATE_PROCEDURE.getTypeCode()
+            : ProcedureType.UNSET_TEMPLATE_PROCEDURE.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(queryId, stream);
     template.serialize(stream);

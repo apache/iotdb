@@ -54,12 +54,13 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
   private TriggerInformation triggerInformation;
   private Binary jarFile;
 
-  public CreateTriggerProcedure() {
-    super();
+  public CreateTriggerProcedure(boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
-  public CreateTriggerProcedure(TriggerInformation triggerInformation, Binary jarFile) {
-    super();
+  public CreateTriggerProcedure(
+      TriggerInformation triggerInformation, Binary jarFile, boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
     this.triggerInformation = triggerInformation;
     this.jarFile = jarFile;
   }
@@ -265,7 +266,10 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.CREATE_TRIGGER_PROCEDURE.getTypeCode());
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_CREATE_TRIGGER_PROCEDURE.getTypeCode()
+            : ProcedureType.CREATE_TRIGGER_PROCEDURE.getTypeCode());
     super.serialize(stream);
     triggerInformation.serialize(stream);
     if (jarFile == null) {
@@ -292,6 +296,7 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
       CreateTriggerProcedure thatProc = (CreateTriggerProcedure) that;
       return thatProc.getProcId() == this.getProcId()
           && thatProc.getState() == this.getState()
+          && thatProc.isGeneratedByPipe == this.isGeneratedByPipe
           && thatProc.triggerInformation.equals(this.triggerInformation);
     }
     return false;
@@ -299,6 +304,6 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
 
   @Override
   public int hashCode() {
-    return Objects.hash(getProcId(), getState(), triggerInformation);
+    return Objects.hash(getProcId(), getState(), isGeneratedByPipe, triggerInformation);
   }
 }

@@ -47,12 +47,12 @@ public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState
 
   private String triggerName;
 
-  public DropTriggerProcedure() {
-    super();
+  public DropTriggerProcedure(boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
-  public DropTriggerProcedure(String triggerName) {
-    super();
+  public DropTriggerProcedure(String triggerName, boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
     this.triggerName = triggerName;
   }
 
@@ -155,7 +155,10 @@ public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.DROP_TRIGGER_PROCEDURE.getTypeCode());
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_DROP_TRIGGER_PROCEDURE.getTypeCode()
+            : ProcedureType.DROP_TRIGGER_PROCEDURE.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(triggerName, stream);
   }
@@ -172,6 +175,7 @@ public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState
       DropTriggerProcedure thatProc = (DropTriggerProcedure) that;
       return thatProc.getProcId() == this.getProcId()
           && thatProc.getState() == this.getState()
+          && thatProc.isGeneratedByPipe == this.isGeneratedByPipe
           && (thatProc.triggerName).equals(this.triggerName);
     }
     return false;
@@ -179,6 +183,6 @@ public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState
 
   @Override
   public int hashCode() {
-    return Objects.hash(getProcId(), getState(), triggerName);
+    return Objects.hash(getProcId(), getState(), isGeneratedByPipe, triggerName);
   }
 }

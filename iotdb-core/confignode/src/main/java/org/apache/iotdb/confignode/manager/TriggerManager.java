@@ -95,7 +95,7 @@ public class TriggerManager {
    * @param req the createTrigger request
    * @return status of create this trigger
    */
-  public TSStatus createTrigger(TCreateTriggerReq req) {
+  public TSStatus createTrigger(TCreateTriggerReq req, boolean isGeneratedByPipe) {
     final boolean isStateful = TriggerType.construct(req.getTriggerType()) == TriggerType.STATEFUL;
     TDataNodeLocation dataNodeLocation = null;
     if (isStateful) {
@@ -126,11 +126,14 @@ public class TriggerManager {
             req.getJarMD5());
     return configManager
         .getProcedureManager()
-        .createTrigger(triggerInformation, needToSaveJar ? new Binary(req.getJarFile()) : null);
+        .createTrigger(
+            triggerInformation,
+            needToSaveJar ? new Binary(req.getJarFile()) : null,
+            isGeneratedByPipe);
   }
 
-  public TSStatus dropTrigger(TDropTriggerReq req) {
-    return configManager.getProcedureManager().dropTrigger(req.getTriggerName());
+  public TSStatus dropTrigger(TDropTriggerReq req, boolean isGeneratedByPipe) {
+    return configManager.getProcedureManager().dropTrigger(req.getTriggerName(), isGeneratedByPipe);
   }
 
   public TGetTriggerTableResp getTriggerTable(boolean onlyStateful) {

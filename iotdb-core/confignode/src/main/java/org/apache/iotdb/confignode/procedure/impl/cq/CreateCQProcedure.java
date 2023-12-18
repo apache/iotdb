@@ -68,13 +68,14 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
   private static final String CONSENSUS_WRITE_ERROR =
       "Failed in the write API executing the consensus layer due to: ";
 
-  public CreateCQProcedure(ScheduledExecutorService executor) {
-    super();
+  public CreateCQProcedure(ScheduledExecutorService executor, boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
     this.executor = executor;
   }
 
-  public CreateCQProcedure(TCreateCQReq req, ScheduledExecutorService executor) {
-    super();
+  public CreateCQProcedure(
+      TCreateCQReq req, ScheduledExecutorService executor, boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
     this.req = req;
     this.md5 = DigestUtils.md2Hex(req.cqId);
     this.executor = executor;
@@ -226,7 +227,10 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.CREATE_CQ_PROCEDURE.getTypeCode());
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_CREATE_CQ_PROCEDURE.getTypeCode()
+            : ProcedureType.CREATE_CQ_PROCEDURE.getTypeCode());
     super.serialize(stream);
     ThriftCommonsSerDeUtils.serializeTCreateCQReq(req, stream);
     ReadWriteIOUtils.write(md5, stream);
@@ -250,13 +254,15 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
       return false;
     }
     CreateCQProcedure that = (CreateCQProcedure) o;
-    return firstExecutionTime == that.firstExecutionTime
+    return getProcId() == that.getProcId()
+        && getState().equals(that.getState())
+        && firstExecutionTime == that.firstExecutionTime
         && Objects.equals(req, that.req)
         && Objects.equals(md5, that.md5);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(req, md5, firstExecutionTime);
+    return Objects.hash(getProcId(), getState(), req, md5, firstExecutionTime);
   }
 }

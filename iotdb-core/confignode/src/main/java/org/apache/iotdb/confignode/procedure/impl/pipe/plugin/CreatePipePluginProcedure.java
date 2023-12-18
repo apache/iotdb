@@ -312,7 +312,7 @@ public class CreatePipePluginProcedure extends AbstractNodeProcedure<CreatePipeP
 
   @Override
   public int hashCode() {
-    return Objects.hash(this.pipePluginMeta);
+    return Objects.hash(getProcId(), getState(), pipePluginMeta);
   }
 
   @TestOnly
