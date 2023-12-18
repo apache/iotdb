@@ -36,7 +36,7 @@ import java.util.TreeSet;
 /** Manage all the time partitions for all data regions and control the total memory of them */
 public class TimePartitionManager {
   private static final Logger logger = LoggerFactory.getLogger(TimePartitionManager.class);
-  final Map<DataRegionId, Map<Long, TimePartitionInfo>> timePartitionInfoMap;
+  final Map<DataRegionId, Map<Long, TimePartitionInfo>> timePartitionInfoMap; // NOTE
 
   long memCost = 0;
   long timePartitionInfoMemoryThreshold =

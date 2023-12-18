@@ -135,6 +135,11 @@ public class PipeRealtimeEvent extends EnrichedEvent {
   }
 
   @Override
+  public void skipParsingTime() {
+    event.skipParsingTime();
+  }
+
+  @Override
   public PipeRealtimeEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       String pipeName, PipeTaskMeta pipeTaskMeta, String pattern) {
     return new PipeRealtimeEvent(

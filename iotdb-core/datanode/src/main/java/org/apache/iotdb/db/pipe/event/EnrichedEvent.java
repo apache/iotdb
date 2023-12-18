@@ -53,7 +53,7 @@ public abstract class EnrichedEvent implements Event {
   private final String pattern;
 
   protected boolean isPatternParsed;
-  protected boolean isTimeParsed = true;
+  protected boolean isTimeParsed;
 
   private boolean shouldReportOnCommit = false;
 
@@ -63,6 +63,7 @@ public abstract class EnrichedEvent implements Event {
     this.pipeTaskMeta = pipeTaskMeta;
     this.pattern = pattern;
     isPatternParsed = getPattern().equals(PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE);
+    isTimeParsed = true; // ?
   }
 
   /**
@@ -183,6 +184,10 @@ public abstract class EnrichedEvent implements Event {
    */
   public void skipParsingPattern() {
     isPatternParsed = true;
+  }
+
+  public void skipParsingTime() {
+    isTimeParsed = true;
   }
 
   public boolean shouldParsePatternOrTime() {
