@@ -33,7 +33,6 @@ import org.apache.iotdb.db.pipe.connector.protocol.websocket.WebSocketConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.writeback.WriteBackConnector;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
-import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import java.util.Arrays;
 
@@ -48,6 +47,9 @@ public class PipeDataRegionConnectorConstructor extends PipePluginConstructor {
     PLUGIN_CONSTRUCTORS.put(
         BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName(),
         IoTDBThriftAsyncConnector::new);
+    PLUGIN_CONSTRUCTORS.put(
+        BuiltinPipePlugin.IOTDB_THRIFT_SSL_CONNECTOR.getPipePluginName(),
+        IoTDBThriftSyncConnector::new);
     PLUGIN_CONSTRUCTORS.put(
         BuiltinPipePlugin.IOTDB_THRIFT_SYNC_CONNECTOR.getPipePluginName(),
         IoTDBThriftSyncConnector::new);
@@ -71,6 +73,8 @@ public class PipeDataRegionConnectorConstructor extends PipePluginConstructor {
     PLUGIN_CONSTRUCTORS.put(
         BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName(), IoTDBThriftAsyncConnector::new);
     PLUGIN_CONSTRUCTORS.put(
+        BuiltinPipePlugin.IOTDB_THRIFT_SSL_SINK.getPipePluginName(), IoTDBThriftSyncConnector::new);
+    PLUGIN_CONSTRUCTORS.put(
         BuiltinPipePlugin.IOTDB_THRIFT_SYNC_SINK.getPipePluginName(),
         IoTDBThriftSyncConnector::new);
     PLUGIN_CONSTRUCTORS.put(
@@ -92,13 +96,6 @@ public class PipeDataRegionConnectorConstructor extends PipePluginConstructor {
 
   @Override
   protected PipeConnector reflectPlugin(PipeParameters connectorParameters) {
-    if (!connectorParameters.hasAnyAttributes(
-        PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY)) {
-      throw new PipeException(
-          "Failed to reflect PipeConnector instance because "
-              + "'connector' is not specified in the parameters.");
-    }
-
     return (PipeConnector)
         reflectPluginByKey(
             connectorParameters

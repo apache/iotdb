@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -70,6 +71,9 @@ public abstract class AbstractOperatePipeProcedureV2
   // This variable should not be serialized into procedure store,
   // putting it here is just for convenience
   protected AtomicReference<PipeTaskInfo> pipeTaskInfo;
+
+  private static final String SKIP_PIPE_PROCEDURE_MESSAGE =
+      "Try to start a RUNNING pipe or stop a STOPPED pipe, do nothing.";
 
   @Override
   protected ProcedureLockState acquireLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
@@ -162,9 +166,12 @@ public abstract class AbstractOperatePipeProcedureV2
   /**
    * Execute at state {@link OperatePipeTaskState#VALIDATE_TASK}.
    *
+   * @return true if this procedure can skip subsequent stages (start RUNNING pipe or stop STOPPED
+   *     pipe without runtime exception)
    * @throws PipeException if validation for pipe parameters failed
    */
-  protected abstract void executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException;
+  protected abstract boolean executeFromValidateTask(ConfigNodeProcedureEnv env)
+      throws PipeException;
 
   /** Execute at state {@link OperatePipeTaskState#CALCULATE_INFO_FOR_TASK}. */
   protected abstract void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env);
@@ -199,7 +206,14 @@ public abstract class AbstractOperatePipeProcedureV2
     try {
       switch (state) {
         case VALIDATE_TASK:
-          executeFromValidateTask(env);
+          if (executeFromValidateTask(env)) {
+            LOGGER.warn("ProcedureId {}: {}", getProcId(), SKIP_PIPE_PROCEDURE_MESSAGE);
+            // On client side, the message returned after the successful execution of the pipe
+            // command corresponding to this procedure is "Msg: The statement is executed
+            // successfully."
+            this.setResult(SKIP_PIPE_PROCEDURE_MESSAGE.getBytes(StandardCharsets.UTF_8));
+            return Flow.NO_MORE_STATE;
+          }
           setNextState(OperatePipeTaskState.CALCULATE_INFO_FOR_TASK);
           break;
         case CALCULATE_INFO_FOR_TASK:

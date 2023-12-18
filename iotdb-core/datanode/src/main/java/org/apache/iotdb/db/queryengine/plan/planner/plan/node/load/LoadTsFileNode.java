@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
@@ -88,7 +89,11 @@ public class LoadTsFileNode extends WritePlanNode {
   @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
     List<WritePlanNode> res = new ArrayList<>();
-    LoadTsFileStatement statement = (LoadTsFileStatement) analysis.getStatement();
+    LoadTsFileStatement statement =
+        analysis.getStatement() instanceof PipeEnrichedStatement
+            ? (LoadTsFileStatement)
+                ((PipeEnrichedStatement) analysis.getStatement()).getInnerStatement()
+            : (LoadTsFileStatement) analysis.getStatement();
 
     for (int i = 0; i < resources.size(); i++) {
       res.add(

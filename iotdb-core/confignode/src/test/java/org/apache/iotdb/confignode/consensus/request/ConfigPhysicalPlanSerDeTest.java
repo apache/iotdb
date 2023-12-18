@@ -80,6 +80,7 @@ import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerLoca
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateClusterIdPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
@@ -165,6 +166,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.ConfigRegion;
 import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.DataRegion;
@@ -1661,5 +1663,15 @@ public class ConfigPhysicalPlanSerDeTest {
         (SetThrottleQuotaPlan) ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
     Assert.assertEquals(plan.getUserName(), deserializedPlan.getUserName());
     Assert.assertEquals(plan.getThrottleQuota(), deserializedPlan.getThrottleQuota());
+  }
+
+  @Test
+  public void updateClusterIdPlanTest() throws IOException {
+    final String clusterId = String.valueOf(UUID.randomUUID());
+    UpdateClusterIdPlan updateClusterIdPlan = new UpdateClusterIdPlan(clusterId);
+    UpdateClusterIdPlan deserializedPlan =
+        (UpdateClusterIdPlan)
+            ConfigPhysicalPlan.Factory.create(updateClusterIdPlan.serializeToByteBuffer());
+    Assert.assertEquals(updateClusterIdPlan, deserializedPlan);
   }
 }

@@ -58,6 +58,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.DO_NOTHING_PROCESSOR;
 import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.IOTDB_EXTRACTOR;
+import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR;
 
 public class PipePluginInfo implements SnapshotProcessor {
 
@@ -153,16 +154,10 @@ public class PipePluginInfo implements SnapshotProcessor {
 
     final PipeParameters connectorParameters =
         new PipeParameters(createPipeRequest.getConnectorAttributes());
-    if (!connectorParameters.hasAnyAttributes(
-        PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY)) {
-      final String exceptionMessage =
-          "Failed to create pipe, the pipe connector plugin is not specified";
-      LOGGER.warn(exceptionMessage);
-      throw new PipeException(exceptionMessage);
-    }
     final String connectorPluginName =
-        connectorParameters.getStringByKeys(
-            PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY);
+        connectorParameters.getStringOrDefault(
+            Arrays.asList(PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
+            IOTDB_THRIFT_CONNECTOR.getPipePluginName());
     if (!pipePluginMetaKeeper.containsPipePlugin(connectorPluginName)) {
       final String exceptionMessage =
           String.format(
