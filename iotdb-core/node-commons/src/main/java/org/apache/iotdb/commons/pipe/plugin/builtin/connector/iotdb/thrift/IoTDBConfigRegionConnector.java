@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.thrift.meta;
+package org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.thrift;
 
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.PlaceholderConnector;
 

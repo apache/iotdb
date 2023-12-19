@@ -17,13 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.pipe.connector;
+package org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.thrift;
 
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.thrift.IoTDBMetaConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.PlaceholderConnector;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-public class IoTDBConfigRegionConnector extends IoTDBMetaConnector {
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConfigRegionConnector.class);
-}
+/**
+ * This class is a placeholder and should not be initialized. It represents the IoTDB SSL connector.
+ * There is a real implementation in the server module but cannot be imported here. The pipe agent
+ * in the server module will replace this class with the real implementation when initializing the
+ * IoTDB SSL connector.
+ */
+public class IoTDBThriftSslConnector extends PlaceholderConnector {}

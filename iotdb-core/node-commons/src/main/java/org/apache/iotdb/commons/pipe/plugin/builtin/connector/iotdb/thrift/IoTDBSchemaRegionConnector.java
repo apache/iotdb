@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,13 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.pipe.connector;
+package org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.thrift;
 
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.thrift.IoTDBMetaConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.PlaceholderConnector;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-public class IoTDBConfigRegionConnector extends IoTDBMetaConnector {
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConfigRegionConnector.class);
-}
+public class IoTDBSchemaRegionConnector extends PlaceholderConnector {}
