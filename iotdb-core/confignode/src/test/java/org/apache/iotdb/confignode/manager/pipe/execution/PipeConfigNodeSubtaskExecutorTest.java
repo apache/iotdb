@@ -55,7 +55,7 @@ public class PipeConfigNodeSubtaskExecutorTest {
                   {
                     put(
                         PipeConnectorConstant.CONNECTOR_KEY,
-                        BuiltinPipePlugin.IOTDB_CONFIG_REGION_SINK.getPipePluginName());
+                        BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName());
                     put(PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY, "127.0.0.1");
                     put(PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY, "6667");
                   }

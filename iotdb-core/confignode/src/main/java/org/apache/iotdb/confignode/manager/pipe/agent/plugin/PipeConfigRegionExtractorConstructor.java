@@ -37,14 +37,12 @@ public class PipeConfigRegionExtractorConstructor extends PipeExtractorConstruct
     PLUGIN_CONSTRUCTORS.put(
         BuiltinPipePlugin.DO_NOTHING_EXTRACTOR.getPipePluginName(), DoNothingExtractor::new);
     PLUGIN_CONSTRUCTORS.put(
-        BuiltinPipePlugin.IOTDB_CONFIG_REGION_EXTRACTOR.getPipePluginName(),
-        IoTDBConfigRegionExtractor::new);
+        BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName(), IoTDBConfigRegionExtractor::new);
 
     PLUGIN_CONSTRUCTORS.put(
         BuiltinPipePlugin.DO_NOTHING_SOURCE.getPipePluginName(), DoNothingExtractor::new);
     PLUGIN_CONSTRUCTORS.put(
-        BuiltinPipePlugin.IOTDB_CONFIG_REGION_SOURCE.getPipePluginName(),
-        IoTDBConfigRegionExtractor::new);
+        BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName(), IoTDBConfigRegionExtractor::new);
   }
 
   @Override
