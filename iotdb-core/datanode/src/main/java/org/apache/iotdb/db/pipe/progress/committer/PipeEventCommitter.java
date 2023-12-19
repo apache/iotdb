@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.commit;
+package org.apache.iotdb.db.pipe.progress.committer;
 
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 
