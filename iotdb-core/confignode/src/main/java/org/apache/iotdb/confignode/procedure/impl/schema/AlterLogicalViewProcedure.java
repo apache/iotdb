@@ -257,7 +257,7 @@ public class AlterLogicalViewProcedure
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeInt(
+    stream.writeShort(
         isGeneratedByPipe
             ? ProcedureType.PIPE_ENRICHED_ALTER_LOGICAL_VIEW_PROCEDURE.getTypeCode()
             : ProcedureType.ALTER_LOGICAL_VIEW_PROCEDURE.getTypeCode());
