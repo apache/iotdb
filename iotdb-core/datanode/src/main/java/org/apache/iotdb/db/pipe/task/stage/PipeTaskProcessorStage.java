@@ -95,6 +95,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
             pipeExtractorInputEventSupplier,
             pipeProcessor,
             pipeConnectorOutputEventCollector);
+
     this.executor = executor;
   }
 
