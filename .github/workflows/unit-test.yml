@@ -15,7 +15,6 @@ on:
     branches:
       - master
       - 'rel/*'
-      - 'pbtree_concurrent'
     paths-ignore:
       - 'docs/**'
       - 'site/**'
