@@ -39,9 +39,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConfigReceiverV1.class);
+
+  private static final AtomicInteger queryIndex = new AtomicInteger(0);
 
   @Override
   public IoTDBConnectorRequestVersion getVersion() {
@@ -87,8 +90,14 @@ public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
   }
 
   private TPipeTransferResp handleTransferConfigPlan(PipeTransferConfigPlanReq req) {
+
     // TODO
     return new TPipeTransferResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+  }
+
+  // Used to construct pipe related procedures
+  private String getPseudoQueryId() {
+    return "pipe" + System.currentTimeMillis() + queryIndex.getAndIncrement();
   }
 
   @Override
