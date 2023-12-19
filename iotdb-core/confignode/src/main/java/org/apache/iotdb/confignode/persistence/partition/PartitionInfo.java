@@ -974,7 +974,6 @@ public class PartitionInfo implements SnapshotProcessor {
       return new GetRegionIdResp(
           new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), new ArrayList<>());
     }
-
     DatabasePartitionTable databasePartitionTable = databasePartitionTables.get(plan.getDatabase());
     return new GetRegionIdResp(
         new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),

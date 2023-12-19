@@ -479,8 +479,7 @@ showConfigNodes
 getRegionId
     : SHOW (DATA|SCHEMA) REGIONID WHERE (DATABASE operator_eq database=prefixPath
         |DEVICE operator_eq device=prefixPath)
-        (operator_and firstExpression = expression )?
-        (operator_and secondExpression = expression )?
+        (operator_and timeRangeExpression = expression )?
     ;
 
 // ---- Get Time Slot List

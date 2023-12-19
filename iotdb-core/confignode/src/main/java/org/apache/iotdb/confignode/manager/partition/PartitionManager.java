@@ -1031,11 +1031,8 @@ public class PartitionManager {
       // Return empty result if Database not specified
       return new GetRegionIdResp(RpcUtils.SUCCESS_STATUS, new ArrayList<>());
     }
-
-    if (req.isSetStartTimeSlot()) {
-      plan.setStartTimeSlotId(req.getStartTimeSlot());
-      plan.setEndTimeSlotId(req.getEndTimeSlot());
-    }
+    plan.setStartTimeSlotId(req.getStartTimeSlot());
+    plan.setEndTimeSlotId(req.getEndTimeSlot());
     try {
       return (GetRegionIdResp) getConsensusManager().read(plan);
     } catch (ConsensusException e) {
