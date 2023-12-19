@@ -29,33 +29,33 @@ public class PipeSchemaRegionConnectorConstructor extends PipeConnectorConstruct
 
   @Override
   protected void initConstructors() {
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName(),
         IoTDBSchemaRegionConnector::new);
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.IOTDB_THRIFT_SSL_CONNECTOR.getPipePluginName(),
         IoTDBSchemaRegionConnector::new);
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.IOTDB_THRIFT_SYNC_CONNECTOR.getPipePluginName(),
         IoTDBSchemaRegionConnector::new);
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName(),
         IoTDBSchemaRegionConnector::new);
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.DO_NOTHING_CONNECTOR.getPipePluginName(), DoNothingConnector::new);
 
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName(), IoTDBSchemaRegionConnector::new);
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.IOTDB_THRIFT_SSL_SINK.getPipePluginName(),
         IoTDBSchemaRegionConnector::new);
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.IOTDB_THRIFT_SYNC_SINK.getPipePluginName(),
         IoTDBSchemaRegionConnector::new);
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_SINK.getPipePluginName(),
         IoTDBSchemaRegionConnector::new);
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.DO_NOTHING_SINK.getPipePluginName(), DoNothingConnector::new);
   }
 
@@ -63,6 +63,6 @@ public class PipeSchemaRegionConnectorConstructor extends PipeConnectorConstruct
   protected PipeConnector reflectPluginByKey(String pluginKey) {
     // TODO: support constructing plugin by reflection
     return (PipeConnector)
-        PLUGIN_CONSTRUCTORS.getOrDefault(pluginKey, DoNothingConnector::new).get();
+        pluginConstructors.getOrDefault(pluginKey, DoNothingConnector::new).get();
   }
 }

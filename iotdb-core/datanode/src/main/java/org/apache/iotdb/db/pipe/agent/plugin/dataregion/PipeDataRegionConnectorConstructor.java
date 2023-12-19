@@ -39,53 +39,53 @@ public class PipeDataRegionConnectorConstructor extends PipeConnectorConstructor
 
   @Override
   protected void initConstructors() {
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName(),
         IoTDBThriftAsyncConnector::new);
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.IOTDB_THRIFT_SSL_CONNECTOR.getPipePluginName(),
         IoTDBThriftSyncConnector::new);
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.IOTDB_THRIFT_SYNC_CONNECTOR.getPipePluginName(),
         IoTDBThriftSyncConnector::new);
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName(),
         IoTDBThriftAsyncConnector::new);
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.IOTDB_LEGACY_PIPE_CONNECTOR.getPipePluginName(),
         IoTDBLegacyPipeConnector::new);
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName(), IoTDBAirGapConnector::new);
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.WEBSOCKET_CONNECTOR.getPipePluginName(), WebSocketConnector::new);
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.OPC_UA_CONNECTOR.getPipePluginName(), OpcUaConnector::new);
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.DO_NOTHING_CONNECTOR.getPipePluginName(), DoNothingConnector::new);
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.WRITE_BACK_CONNECTOR.getPipePluginName(), WriteBackConnector::new);
 
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName(), IoTDBThriftAsyncConnector::new);
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.IOTDB_THRIFT_SSL_SINK.getPipePluginName(), IoTDBThriftSyncConnector::new);
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.IOTDB_THRIFT_SYNC_SINK.getPipePluginName(),
         IoTDBThriftSyncConnector::new);
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_SINK.getPipePluginName(),
         IoTDBThriftAsyncConnector::new);
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.IOTDB_LEGACY_PIPE_SINK.getPipePluginName(),
         IoTDBLegacyPipeConnector::new);
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.IOTDB_AIR_GAP_SINK.getPipePluginName(), IoTDBAirGapConnector::new);
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.WEBSOCKET_SINK.getPipePluginName(), WebSocketConnector::new);
-    PLUGIN_CONSTRUCTORS.put(BuiltinPipePlugin.OPC_UA_SINK.getPipePluginName(), OpcUaConnector::new);
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(BuiltinPipePlugin.OPC_UA_SINK.getPipePluginName(), OpcUaConnector::new);
+    pluginConstructors.put(
         BuiltinPipePlugin.DO_NOTHING_SINK.getPipePluginName(), DoNothingConnector::new);
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.WRITE_BACK_SINK.getPipePluginName(), WriteBackConnector::new);
   }
 }

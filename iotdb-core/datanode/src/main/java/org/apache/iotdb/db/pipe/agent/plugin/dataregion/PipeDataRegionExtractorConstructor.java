@@ -33,14 +33,14 @@ public class PipeDataRegionExtractorConstructor extends PipeExtractorConstructor
 
   @Override
   protected void initConstructors() {
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.DO_NOTHING_EXTRACTOR.getPipePluginName(), DoNothingExtractor::new);
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName(), IoTDBDataRegionExtractor::new);
 
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.DO_NOTHING_SOURCE.getPipePluginName(), DoNothingExtractor::new);
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName(), IoTDBDataRegionExtractor::new);
   }
 }

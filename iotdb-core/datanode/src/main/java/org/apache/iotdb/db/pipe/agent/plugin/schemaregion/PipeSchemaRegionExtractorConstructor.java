@@ -29,14 +29,14 @@ public class PipeSchemaRegionExtractorConstructor extends PipeExtractorConstruct
 
   @Override
   protected void initConstructors() {
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.DO_NOTHING_EXTRACTOR.getPipePluginName(), DoNothingExtractor::new);
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName(), IoTDBSchemaRegionExtractor::new);
 
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.DO_NOTHING_SOURCE.getPipePluginName(), DoNothingExtractor::new);
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName(), IoTDBSchemaRegionExtractor::new);
   }
 
@@ -44,6 +44,6 @@ public class PipeSchemaRegionExtractorConstructor extends PipeExtractorConstruct
   protected PipeExtractor reflectPluginByKey(String pluginKey) {
     // TODO: support constructing plugin by reflection
     return (PipeExtractor)
-        PLUGIN_CONSTRUCTORS.getOrDefault(pluginKey, DoNothingExtractor::new).get();
+        pluginConstructors.getOrDefault(pluginKey, DoNothingExtractor::new).get();
   }
 }

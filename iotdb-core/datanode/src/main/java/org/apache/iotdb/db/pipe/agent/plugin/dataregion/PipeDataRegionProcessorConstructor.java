@@ -33,9 +33,9 @@ public class PipeDataRegionProcessorConstructor extends PipeProcessorConstructor
 
   @Override
   protected void initConstructors() {
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName(), DoNothingProcessor::new);
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.DOWN_SAMPLING_PROCESSOR.getPipePluginName(), DownSamplingProcessor::new);
   }
 }

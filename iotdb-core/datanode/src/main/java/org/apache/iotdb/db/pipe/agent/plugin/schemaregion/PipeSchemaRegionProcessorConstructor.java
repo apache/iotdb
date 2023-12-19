@@ -28,7 +28,7 @@ public class PipeSchemaRegionProcessorConstructor extends PipeProcessorConstruct
 
   @Override
   protected void initConstructors() {
-    PLUGIN_CONSTRUCTORS.put(
+    pluginConstructors.put(
         BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName(), DoNothingProcessor::new);
   }
 
@@ -36,6 +36,6 @@ public class PipeSchemaRegionProcessorConstructor extends PipeProcessorConstruct
   protected PipeProcessor reflectPluginByKey(String pluginKey) {
     // TODO: support constructing plugin by reflection
     return (PipeProcessor)
-        PLUGIN_CONSTRUCTORS.getOrDefault(pluginKey, DoNothingProcessor::new).get();
+        pluginConstructors.getOrDefault(pluginKey, DoNothingProcessor::new).get();
   }
 }

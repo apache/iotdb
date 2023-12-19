@@ -37,12 +37,12 @@ public abstract class PipePluginConstructor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipePluginConstructor.class);
 
-  private final PipePluginMetaKeeper pipePluginMetaKeeper;
+  private final PipePluginMetaKeeper pluginMetaKeeper;
 
-  protected static final Map<String, Supplier<PipePlugin>> PLUGIN_CONSTRUCTORS = new HashMap<>();
+  protected final Map<String, Supplier<PipePlugin>> pluginConstructors = new HashMap<>();
 
-  protected PipePluginConstructor(PipePluginMetaKeeper pipePluginMetaKeeper) {
-    this.pipePluginMetaKeeper = pipePluginMetaKeeper;
+  protected PipePluginConstructor(PipePluginMetaKeeper pluginMetaKeeper) {
+    this.pluginMetaKeeper = pluginMetaKeeper;
     initConstructors();
   }
 
@@ -56,11 +56,11 @@ public abstract class PipePluginConstructor {
   public abstract PipePlugin reflectPlugin(PipeParameters pipeParameters);
 
   protected PipePlugin reflectPluginByKey(String pluginKey) {
-    return PLUGIN_CONSTRUCTORS.getOrDefault(pluginKey, () -> reflect(pluginKey)).get();
+    return pluginConstructors.getOrDefault(pluginKey, () -> reflect(pluginKey)).get();
   }
 
   private PipePlugin reflect(String pluginName) {
-    if (pipePluginMetaKeeper == null) {
+    if (pluginMetaKeeper == null) {
       throw new PipeException(
           "Failed to reflect PipePlugin instance, because PipePluginMetaKeeper is null.");
     }
@@ -70,7 +70,7 @@ public abstract class PipePluginConstructor {
           "Failed to reflect PipePlugin instance, because plugin name is null.");
     }
 
-    final PipePluginMeta information = pipePluginMetaKeeper.getPipePluginMeta(pluginName);
+    final PipePluginMeta information = pluginMetaKeeper.getPipePluginMeta(pluginName);
     if (information == null) {
       String errorMessage =
           String.format(
@@ -83,7 +83,7 @@ public abstract class PipePluginConstructor {
 
     try {
       return (PipePlugin)
-          pipePluginMetaKeeper.getPluginClass(pluginName).getDeclaredConstructor().newInstance();
+          pluginMetaKeeper.getPluginClass(pluginName).getDeclaredConstructor().newInstance();
     } catch (InstantiationException
         | InvocationTargetException
         | NoSuchMethodException
