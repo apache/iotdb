@@ -21,8 +21,8 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.source;
 
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
-import org.apache.iotdb.db.queryengine.plan.optimization.base.ColumnInjectionPushDown;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -34,8 +34,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public abstract class SeriesAggregationSourceNode extends SeriesSourceNode
-    implements ColumnInjectionPushDown {
+public abstract class SeriesAggregationSourceNode extends SeriesSourceNode {
 
   // The list of aggregate functions, each AggregateDescriptor will be output as one column in
   // result TsBlock
@@ -88,7 +87,6 @@ public abstract class SeriesAggregationSourceNode extends SeriesSourceNode
     return outputEndTime;
   }
 
-  @Override
   public void setOutputEndTime(boolean outputEndTime) {
     this.outputEndTime = outputEndTime;
   }
@@ -110,6 +108,11 @@ public abstract class SeriesAggregationSourceNode extends SeriesSourceNode
             .flatMap(List::stream)
             .collect(Collectors.toList()));
     return outputColumnNames;
+  }
+
+  @Override
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitSeriesAggregationSourceNode(this, context);
   }
 
   @Override
