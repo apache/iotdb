@@ -59,16 +59,15 @@ public abstract class PipePluginConstructor {
     return PLUGIN_CONSTRUCTORS.getOrDefault(pluginKey, () -> reflect(pluginKey)).get();
   }
 
-  protected final PipePlugin reflect(String pluginName) {
+  private PipePlugin reflect(String pluginName) {
     if (pipePluginMetaKeeper == null) {
-      LOGGER.warn("Failed to reflect PipePlugin instance, because PipePluginMetaKeeper is null.");
-      return null;
+      throw new PipeException(
+          "Failed to reflect PipePlugin instance, because PipePluginMetaKeeper is null.");
     }
 
     if (pluginName == null) {
-      String errorMessage = "Failed to reflect PipePlugin instance, because plugin name is null.";
-      LOGGER.warn(errorMessage);
-      throw new PipeException(errorMessage);
+      throw new PipeException(
+          "Failed to reflect PipePlugin instance, because plugin name is null.");
     }
 
     final PipePluginMeta information = pipePluginMetaKeeper.getPipePluginMeta(pluginName);

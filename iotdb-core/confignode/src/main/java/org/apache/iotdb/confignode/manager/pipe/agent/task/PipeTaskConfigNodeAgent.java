@@ -55,7 +55,7 @@ public class PipeTaskConfigNodeAgent extends PipeTaskAgent {
     super();
   }
 
-  ///////////////////////// Manage by dataRegionGroupId /////////////////////////
+  ///////////////////////// Manage by consensusGroupId /////////////////////////
 
   @Override
   public void createPipeTask(
