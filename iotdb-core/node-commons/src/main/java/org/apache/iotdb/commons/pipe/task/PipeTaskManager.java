@@ -42,19 +42,19 @@ public class PipeTaskManager {
         pipeMap.computeIfAbsent(pipeStaticMeta, k -> new HashMap<>());
     regionId2PipeTask.put(consensusGroupId, pipeTask);
 
-    // update leader data region count
+    // update leader region count
     leaderRegionCount = Math.max(leaderRegionCount, regionId2PipeTask.size());
   }
 
   /** Add pipe tasks by pipe static meta. */
   public synchronized void addPipeTasks(
       PipeStaticMeta pipeStaticMeta, Map<TConsensusGroupId, PipeTask> pipeTasks) {
-    final Map<TConsensusGroupId, PipeTask> dataRegionId2PipeTask =
+    final Map<TConsensusGroupId, PipeTask> regionId2PipeTask =
         pipeMap.computeIfAbsent(pipeStaticMeta, k -> new HashMap<>());
-    dataRegionId2PipeTask.putAll(pipeTasks);
+    regionId2PipeTask.putAll(pipeTasks);
 
-    // update leader data region count
-    leaderRegionCount = Math.max(leaderRegionCount, dataRegionId2PipeTask.size());
+    // update leader region count
+    leaderRegionCount = Math.max(leaderRegionCount, regionId2PipeTask.size());
   }
 
   /**

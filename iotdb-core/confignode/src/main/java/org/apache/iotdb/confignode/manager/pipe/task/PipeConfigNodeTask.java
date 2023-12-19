@@ -19,15 +19,13 @@
 
 package org.apache.iotdb.confignode.manager.pipe.task;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
 
-public class PipeConfigNodeTask extends PipeTask {
+public class PipeConfigNodeTask implements PipeTask {
+
   private final PipeConfigNodeTaskStage stage;
 
-  public PipeConfigNodeTask(
-      String pipeName, TConsensusGroupId regionId, PipeConfigNodeTaskStage configNodeStage) {
-    super(pipeName, regionId, null, null, null);
+  public PipeConfigNodeTask(PipeConfigNodeTaskStage configNodeStage) {
     this.stage = configNodeStage;
   }
 

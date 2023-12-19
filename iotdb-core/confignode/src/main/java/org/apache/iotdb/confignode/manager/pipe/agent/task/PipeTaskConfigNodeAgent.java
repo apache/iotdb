@@ -21,15 +21,10 @@ package org.apache.iotdb.confignode.manager.pipe.agent.task;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
-import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMetaKeeper;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
-import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.manager.pipe.task.PipeConfigNodeTask;
-import org.apache.iotdb.confignode.manager.pipe.task.PipeConfigNodeTaskStage;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,34 +58,34 @@ public class PipeTaskConfigNodeAgent extends PipeTaskAgent {
       TConsensusGroupId consensusGroupId,
       PipeStaticMeta pipeStaticMeta,
       PipeTaskMeta pipeTaskMeta) {
-    if (pipeTaskManager.getPipeTask(pipeStaticMeta, consensusGroupId) != null) {
-      LOGGER.warn(
-          "Pipe task {} has already been created, skip creating it again",
-          pipeStaticMeta.getPipeName());
-      return;
-    }
-
-    if (pipeTaskMeta.getLeaderDataNodeId()
-        == ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()) {
-      final PipeConfigNodeTask configNodeTask =
-          new PipeConfigNodeTask(
-              pipeStaticMeta.getPipeName(),
-              consensusGroupId,
-              new PipeConfigNodeTaskStage(
-                  pipeStaticMeta.getPipeName(),
-                  pipeStaticMeta.getCreationTime(),
-                  pipeStaticMeta.getExtractorParameters().getAttribute(),
-                  pipeStaticMeta.getConnectorParameters().getAttribute(),
-                  consensusGroupId));
-      configNodeTask.create();
-      pipeTaskManager.addPipeTask(pipeStaticMeta, consensusGroupId, configNodeTask);
-    }
-
-    pipeMetaKeeper
-        .getPipeMeta(pipeStaticMeta.getPipeName())
-        .getRuntimeMeta()
-        .getConsensusGroupId2TaskMetaMap()
-        .put(consensusGroupId, pipeTaskMeta);
+    //    if (pipeTaskManager.getPipeTask(pipeStaticMeta, consensusGroupId) != null) {
+    //      LOGGER.warn(
+    //          "Pipe task {} has already been created, skip creating it again",
+    //          pipeStaticMeta.getPipeName());
+    //      return;
+    //    }
+    //
+    //    if (pipeTaskMeta.getLeaderDataNodeId()
+    //        == ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()) {
+    //      final PipeConfigNodeTask configNodeTask =
+    //          new PipeConfigNodeTask(
+    //              pipeStaticMeta.getPipeName(),
+    //              consensusGroupId,
+    //              new PipeConfigNodeTaskStage(
+    //                  pipeStaticMeta.getPipeName(),
+    //                  pipeStaticMeta.getCreationTime(),
+    //                  pipeStaticMeta.getExtractorParameters().getAttribute(),
+    //                  pipeStaticMeta.getConnectorParameters().getAttribute(),
+    //                  consensusGroupId));
+    //      configNodeTask.create();
+    //      pipeTaskManager.addPipeTask(pipeStaticMeta, consensusGroupId, configNodeTask);
+    //    }
+    //
+    //    pipeMetaKeeper
+    //        .getPipeMeta(pipeStaticMeta.getPipeName())
+    //        .getRuntimeMeta()
+    //        .getConsensusGroupId2TaskMetaMap()
+    //        .put(consensusGroupId, pipeTaskMeta);
   }
 
   @Override
@@ -98,37 +93,40 @@ public class PipeTaskConfigNodeAgent extends PipeTaskAgent {
       PipeMetaKeeper pipeMetaKeeper,
       TConsensusGroupId regionGroupId,
       PipeStaticMeta pipeStaticMeta) {
-    if (pipeTaskManager.getPipeTask(pipeStaticMeta, regionGroupId) == null) {
-      LOGGER.warn(
-          "Pipe task {} has already been dropped, skip dropping it again",
-          pipeStaticMeta.getPipeName());
-      return;
-    }
-
-    pipeMetaKeeper
-        .getPipeMeta(pipeStaticMeta.getPipeName())
-        .getRuntimeMeta()
-        .getConsensusGroupId2TaskMetaMap()
-        .remove(regionGroupId);
-    final PipeTask pipeTask = pipeTaskManager.removePipeTask(pipeStaticMeta, regionGroupId);
-    if (pipeTask != null) {
-      pipeTask.drop();
-    }
+    //    if (pipeTaskManager.getPipeTask(pipeStaticMeta, regionGroupId) == null) {
+    //      LOGGER.warn(
+    //          "Pipe task {} has already been dropped, skip dropping it again",
+    //          pipeStaticMeta.getPipeName());
+    //      return;
+    //    }
+    //
+    //    pipeMetaKeeper
+    //        .getPipeMeta(pipeStaticMeta.getPipeName())
+    //        .getRuntimeMeta()
+    //        .getConsensusGroupId2TaskMetaMap()
+    //        .remove(regionGroupId);
+    //    final PipeDataNodeTask pipeTask = pipeTaskManager.removePipeTask(pipeStaticMeta,
+    // regionGroupId);
+    //    if (pipeTask != null) {
+    //      pipeTask.drop();
+    //    }
   }
 
   @Override
   public void startPipeTask(TConsensusGroupId regionGroupId, PipeStaticMeta pipeStaticMeta) {
-    final PipeTask pipeTask = pipeTaskManager.getPipeTask(pipeStaticMeta, regionGroupId);
-    if (pipeTask != null) {
-      pipeTask.start();
-    }
+    //    final PipeDataNodeTask pipeTask = pipeTaskManager.getPipeTask(pipeStaticMeta,
+    // regionGroupId);
+    //    if (pipeTask != null) {
+    //      pipeTask.start();
+    //    }
   }
 
   public void stopPipeTask(TConsensusGroupId regionGroupId, PipeStaticMeta pipeStaticMeta) {
-    final PipeTask pipeTask = pipeTaskManager.getPipeTask(pipeStaticMeta, regionGroupId);
-    if (pipeTask != null) {
-      pipeTask.stop();
-    }
+    //    final PipeDataNodeTask pipeTask = pipeTaskManager.getPipeTask(pipeStaticMeta,
+    // regionGroupId);
+    //    if (pipeTask != null) {
+    //      pipeTask.stop();
+    //    }
   }
 
   public void handleSinglePipeMetaChanges(PipeMetaKeeper pipeMetaKeeper, PipeMeta newPipeMeta) {
@@ -136,27 +134,27 @@ public class PipeTaskConfigNodeAgent extends PipeTaskAgent {
   }
 
   public void handleLeaderChanged(PipeMetaKeeper pipeMetaKeeper) {
-    pipeMetaKeeper
-        .getPipeMetaList()
-        .forEach(
-            pipeMeta ->
-                pipeTaskManager
-                    .getPipeTasks(pipeMeta.getStaticMeta())
-                    .values()
-                    .forEach(PipeTask::stop));
+    //    pipeMetaKeeper
+    //        .getPipeMetaList()
+    //        .forEach(
+    //            pipeMeta ->
+    //                pipeTaskManager
+    //                    .getPipeTasks(pipeMeta.getStaticMeta())
+    //                    .values()
+    //                    .forEach(PipeDataNodeTask::stop));
   }
 
   public void handleLeaderReady(PipeMetaKeeper pipeMetaKeeper) {
-    pipeMetaKeeper
-        .getPipeMetaList()
-        .forEach(
-            pipeMeta -> {
-              if (pipeMeta.getRuntimeMeta().getStatus().get() == PipeStatus.RUNNING) {
-                pipeTaskManager
-                    .getPipeTasks(pipeMeta.getStaticMeta())
-                    .values()
-                    .forEach(PipeTask::start);
-              }
-            });
+    //    pipeMetaKeeper
+    //        .getPipeMetaList()
+    //        .forEach(
+    //            pipeMeta -> {
+    //              if (pipeMeta.getRuntimeMeta().getStatus().get() == PipeStatus.RUNNING) {
+    //                pipeTaskManager
+    //                    .getPipeTasks(pipeMeta.getStaticMeta())
+    //                    .values()
+    //                    .forEach(PipeDataNodeTask::start);
+    //              }
+    //            });
   }
 }

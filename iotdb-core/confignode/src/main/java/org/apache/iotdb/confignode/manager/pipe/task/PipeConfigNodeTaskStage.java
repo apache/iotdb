@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.manager.pipe.task;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.task.stage.PipeTaskStage;
 import org.apache.iotdb.confignode.manager.pipe.execution.PipeConfigNodeSubtask;
 import org.apache.iotdb.confignode.manager.pipe.execution.PipeConfigNodeSubtaskExecutor;
@@ -30,7 +29,7 @@ import java.util.Map;
 public class PipeConfigNodeTaskStage extends PipeTaskStage {
 
   private final String pipeName;
-  private final int dataRegionId;
+  private final long creationTime;
 
   private final PipeConfigNodeSubtask subtask;
 
@@ -38,18 +37,24 @@ public class PipeConfigNodeTaskStage extends PipeTaskStage {
       String pipeName,
       long creationTime,
       Map<String, String> extractorAttributes,
-      Map<String, String> connectorAttributes,
-      TConsensusGroupId dataRegionId) {
+      Map<String, String> processorAttributes,
+      Map<String, String> connectorAttributes) {
     this.pipeName = pipeName;
-    this.dataRegionId = dataRegionId.getId();
+    this.creationTime = creationTime;
 
     try {
-      this.subtask =
+      subtask =
           new PipeConfigNodeSubtask(
-              pipeName, creationTime, extractorAttributes, connectorAttributes);
+              pipeName,
+              creationTime,
+              extractorAttributes,
+              processorAttributes,
+              connectorAttributes);
     } catch (Exception e) {
       throw new PipeException(
-          "Failed to construct pipe schema subtask, because of " + e.getMessage(), e);
+          String.format(
+              "Failed to create subtask for pipe %s, creation time %d", pipeName, creationTime),
+          e);
     }
   }
 

@@ -59,6 +59,7 @@ public class PipeConfigNodeSubtask extends PipeSubtask {
       String taskID,
       long creationTime,
       Map<String, String> extractorAttributes,
+      Map<String, String> processorAttributes,
       Map<String, String> connectorAttributes)
       throws Exception {
 

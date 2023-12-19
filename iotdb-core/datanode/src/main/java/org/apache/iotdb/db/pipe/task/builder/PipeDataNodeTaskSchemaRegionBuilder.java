@@ -17,22 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task;
+package org.apache.iotdb.db.pipe.task.builder;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutorManager;
 
-public class PipeTaskDataRegionBuilder extends PipeTaskBuilder {
+public class PipeDataNodeTaskSchemaRegionBuilder extends PipeDataNodeTaskBuilder {
 
-  public PipeTaskDataRegionBuilder(
+  public PipeDataNodeTaskSchemaRegionBuilder(
       PipeStaticMeta pipeStaticMeta, TConsensusGroupId regionId, PipeTaskMeta pipeTaskMeta) {
     super(
         pipeStaticMeta,
         regionId,
         pipeTaskMeta,
-        PipeSubtaskExecutorManager.getInstance().getDataRegionProcessorExecutor(),
-        PipeSubtaskExecutorManager.getInstance().getDataRegionConnectorExecutor());
+        PipeSubtaskExecutorManager.getInstance().getSchemaRegionProcessorExecutor(),
+        PipeSubtaskExecutorManager.getInstance().getSchemaRegionConnectorExecutor());
   }
 }

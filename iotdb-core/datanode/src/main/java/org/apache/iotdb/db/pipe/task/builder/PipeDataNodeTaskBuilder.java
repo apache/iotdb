@@ -17,19 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task;
+package org.apache.iotdb.db.pipe.task.builder;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.execution.executor.PipeProcessorSubtaskExecutor;
+import org.apache.iotdb.db.pipe.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.task.stage.PipeTaskConnectorStage;
 import org.apache.iotdb.db.pipe.task.stage.PipeTaskExtractorStage;
 import org.apache.iotdb.db.pipe.task.stage.PipeTaskProcessorStage;
 
-public abstract class PipeTaskBuilder {
+public abstract class PipeDataNodeTaskBuilder {
 
   private final PipeStaticMeta pipeStaticMeta;
   private final TConsensusGroupId regionId;
@@ -38,7 +38,7 @@ public abstract class PipeTaskBuilder {
   protected final PipeProcessorSubtaskExecutor processorExecutor;
   protected final PipeConnectorSubtaskExecutor connectorExecutor;
 
-  protected PipeTaskBuilder(
+  protected PipeDataNodeTaskBuilder(
       PipeStaticMeta pipeStaticMeta,
       TConsensusGroupId regionId,
       PipeTaskMeta pipeTaskMeta,
@@ -51,7 +51,7 @@ public abstract class PipeTaskBuilder {
     this.connectorExecutor = connectorExecutor;
   }
 
-  public PipeTask build() {
+  public PipeDataNodeTask build() {
     // Event flow: extractor -> processor -> connector
 
     // We first build the extractor and connector, then build the processor.
@@ -82,7 +82,7 @@ public abstract class PipeTaskBuilder {
             connectorStage.getPipeConnectorPendingQueue(),
             processorExecutor);
 
-    return new PipeTask(
+    return new PipeDataNodeTask(
         pipeStaticMeta.getPipeName(), regionId, extractorStage, processorStage, connectorStage);
   }
 }

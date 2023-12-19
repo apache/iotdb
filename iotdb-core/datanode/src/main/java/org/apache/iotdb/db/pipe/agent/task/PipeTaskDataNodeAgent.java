@@ -35,8 +35,9 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.extractor.realtime.listener.PipeInsertionDataNodeListener;
-import org.apache.iotdb.db.pipe.task.PipeBuilder;
-import org.apache.iotdb.db.pipe.task.PipeTaskDataRegionBuilder;
+import org.apache.iotdb.db.pipe.task.PipeDataNodeTask;
+import org.apache.iotdb.db.pipe.task.builder.PipeBuilder;
+import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeTaskDataRegionBuilder;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
@@ -678,8 +679,9 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
       PipeStaticMeta pipeStaticMeta,
       PipeTaskMeta pipeTaskMeta) {
     if (pipeTaskMeta.getLeaderDataNodeId() == CONFIG.getDataNodeId()) {
-      final PipeTask pipeTask =
-          new PipeTaskDataRegionBuilder(pipeStaticMeta, consensusGroupId, pipeTaskMeta).build();
+      final PipeDataNodeTask pipeTask =
+          new PipeDataNodeTaskDataRegionBuilder(pipeStaticMeta, consensusGroupId, pipeTaskMeta)
+              .build();
       pipeTask.create();
       pipeTaskManager.addPipeTask(pipeStaticMeta, consensusGroupId, pipeTask);
     }
@@ -700,7 +702,8 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
         .getRuntimeMeta()
         .getConsensusGroupId2TaskMetaMap()
         .remove(dataRegionGroupId);
-    final PipeTask pipeTask = pipeTaskManager.removePipeTask(pipeStaticMeta, dataRegionGroupId);
+    final PipeDataNodeTask pipeTask =
+        (PipeDataNodeTask) pipeTaskManager.removePipeTask(pipeStaticMeta, dataRegionGroupId);
     if (pipeTask != null) {
       pipeTask.drop();
     }
@@ -708,7 +711,8 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
 
   @Override
   protected void startPipeTask(TConsensusGroupId dataRegionGroupId, PipeStaticMeta pipeStaticMeta) {
-    final PipeTask pipeTask = pipeTaskManager.getPipeTask(pipeStaticMeta, dataRegionGroupId);
+    final PipeDataNodeTask pipeTask =
+        (PipeDataNodeTask) pipeTaskManager.getPipeTask(pipeStaticMeta, dataRegionGroupId);
     if (pipeTask != null) {
       pipeTask.start();
     }

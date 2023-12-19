@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task;
+package org.apache.iotdb.db.pipe.task.builder;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
@@ -52,7 +52,7 @@ public class PipeBuilder {
           == CONFIG.getDataNodeId()) {
         consensusGroupIdToPipeTaskMap.put(
             consensusGroupIdToPipeTaskMeta.getKey(),
-            new PipeTaskDataRegionBuilder(
+            new PipeDataNodeTaskDataRegionBuilder(
                     pipeStaticMeta,
                     consensusGroupIdToPipeTaskMeta.getKey(),
                     consensusGroupIdToPipeTaskMeta.getValue())
