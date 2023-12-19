@@ -64,10 +64,9 @@ public class QueryExecutionMetricSet implements IMetricSet {
     dispatchReadTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     Arrays.asList(WAIT_FOR_DISPATCH, DISPATCH_READ)
         .forEach(
-            stage -> {
-              metricService.remove(
-                  MetricType.TIMER, Metric.DISPATCHER.toString(), Tag.STAGE.toString(), stage);
-            });
+            stage ->
+                metricService.remove(
+                    MetricType.TIMER, Metric.DISPATCHER.toString(), Tag.STAGE.toString(), stage));
   }
   // endregion
 
@@ -130,10 +129,12 @@ public class QueryExecutionMetricSet implements IMetricSet {
             DRIVER_INTERNAL_PROCESS,
             WAIT_FOR_RESULT)
         .forEach(
-            stage -> {
-              metricService.remove(
-                  MetricType.TIMER, Metric.QUERY_EXECUTION.toString(), Tag.STAGE.toString(), stage);
-            });
+            stage ->
+                metricService.remove(
+                    MetricType.TIMER,
+                    Metric.QUERY_EXECUTION.toString(),
+                    Tag.STAGE.toString(),
+                    stage));
   }
   // endregion
 
@@ -160,10 +161,9 @@ public class QueryExecutionMetricSet implements IMetricSet {
     aggregationFromStatisticsTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     Arrays.asList("raw_data", "statistics")
         .forEach(
-            from -> {
-              metricService.remove(
-                  MetricType.TIMER, Metric.AGGREGATION.toString(), Tag.FROM.toString(), from);
-            });
+            from ->
+                metricService.remove(
+                    MetricType.TIMER, Metric.AGGREGATION.toString(), Tag.FROM.toString(), from));
   }
   // endregion
 
