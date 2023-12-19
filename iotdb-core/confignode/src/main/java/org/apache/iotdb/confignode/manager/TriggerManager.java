@@ -93,6 +93,7 @@ public class TriggerManager {
    * <p>All DataNodes will add TriggerInformation of this trigger in local TriggerTable.
    *
    * @param req the createTrigger request
+   * @param isGeneratedByPipe whether the trigger creation is caused by pipe request
    * @return status of create this trigger
    */
   public TSStatus createTrigger(TCreateTriggerReq req, boolean isGeneratedByPipe) {

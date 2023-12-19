@@ -28,7 +28,7 @@ import java.io.IOException;
 public class PipeTransferConfigSnapShotSealReq extends PipeTransferFileSealReq {
   @Override
   protected PipeRequestType getPlanType() {
-    return PipeRequestType.TRANSFER_SCHEMA_SNAPSHOT_SEAL;
+    return PipeRequestType.TRANSFER_CONFIG_SNAPSHOT_SEAL;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////
