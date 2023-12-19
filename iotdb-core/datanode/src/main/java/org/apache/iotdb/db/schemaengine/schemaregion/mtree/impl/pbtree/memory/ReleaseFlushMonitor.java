@@ -227,8 +227,22 @@ public class ReleaseFlushMonitor {
 
   @TestOnly
   public void forceFlushAndRelease() {
-    scheduler.forceFlushAll();
-    scheduler.scheduleRelease(true);
+    boolean needFlush = false;
+    while (true) {
+      needFlush = false;
+      for (CachedMTreeStore store : regionToStoreMap.values()) {
+        if (store.getRegionStatistics().getBufferNodeNum() > 0) {
+          needFlush = true;
+          break;
+        }
+      }
+      if (needFlush) {
+        scheduler.forceFlushAll();
+        scheduler.scheduleRelease(true);
+      } else {
+        break;
+      }
+    }
   }
 
   public void clear() {

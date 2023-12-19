@@ -42,8 +42,6 @@ public class NodeBuffer implements INodeBuffer {
   private IDatabaseMNode<ICachedMNode> updatedDatabaseMNode;
   private final Map<CacheEntry, ICachedMNode>[] maps = new Map[MAP_NUM];
 
-  private final Map<Integer, NodeBufferIterator> currentIteratorMap = new ConcurrentHashMap<>();
-
   public NodeBuffer() {
     for (int i = 0; i < MAP_NUM; i++) {
       maps[i] = new ConcurrentHashMap<>();
@@ -109,11 +107,6 @@ public class NodeBuffer implements INodeBuffer {
 
   private void put(CacheEntry cacheEntry, ICachedMNode node) {
     maps[getLoc(cacheEntry)].put(cacheEntry, node);
-    if (!currentIteratorMap.isEmpty()) {
-      for (NodeBufferIterator nodeBufferIterator : currentIteratorMap.values()) {
-        nodeBufferIterator.checkHasNew(getLoc(cacheEntry));
-      }
-    }
   }
 
   @Override
@@ -144,9 +137,7 @@ public class NodeBuffer implements INodeBuffer {
 
   @Override
   public Iterator<ICachedMNode> iterator() {
-    NodeBufferIterator iterator = new NodeBufferIterator();
-    currentIteratorMap.put(iterator.hashCode, iterator);
-    return iterator;
+    return new NodeBufferIterator();
   }
 
   private class NodeBufferIterator implements Iterator<ICachedMNode> {
@@ -155,29 +146,12 @@ public class NodeBuffer implements INodeBuffer {
 
     ICachedMNode nextNode = null;
 
-    volatile boolean hasNew = false;
-
-    private final int hashCode = super.hashCode();
-
     @Override
     public boolean hasNext() {
       if (nextNode == null) {
         tryGetNext();
-        if (nextNode == null && hasNew) {
-          synchronized (this) {
-            hasNew = false;
-            mapIndex = 0;
-          }
-          currentIterator = maps[0].values().iterator();
-          tryGetNext();
-        }
       }
-      if (nextNode == null) {
-        currentIteratorMap.remove(hashCode);
-        return false;
-      } else {
-        return true;
-      }
+      return nextNode != null;
     }
 
     @Override
@@ -209,16 +183,6 @@ public class NodeBuffer implements INodeBuffer {
       }
 
       nextNode = currentIterator.next();
-    }
-
-    private void checkHasNew(int index) {
-      if (mapIndex >= index) {
-        synchronized (this) {
-          if (mapIndex >= index) {
-            hasNew = true;
-          }
-        }
-      }
     }
   }
 }
