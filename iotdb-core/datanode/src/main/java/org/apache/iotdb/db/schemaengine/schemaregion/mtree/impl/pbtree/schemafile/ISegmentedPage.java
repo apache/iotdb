@@ -80,7 +80,7 @@ public interface ISegmentedPage extends ISchemaPage {
    * Transplant designated segment from srcPage, to spare space of the page
    *
    * @param srcPage source page conveys source segment
-   * @param segId id of the target segment
+   * @param segId id of the designated segment from the srcPage
    * @param newSegSize size of new segment in this page
    * @throws MetadataException if spare not enough, segment not found or inconsistency
    */

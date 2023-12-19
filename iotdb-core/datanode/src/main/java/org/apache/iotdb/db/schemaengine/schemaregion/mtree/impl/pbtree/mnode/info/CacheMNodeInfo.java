@@ -19,11 +19,14 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.info;
 
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.BasicMNodeInfo;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.CacheEntry;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockEntry;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.cache.CacheEntry;
 
 public class CacheMNodeInfo extends BasicMNodeInfo {
 
-  private CacheEntry cacheEntry;
+  private volatile CacheEntry cacheEntry;
+
+  private volatile LockEntry lockEntry;
 
   public CacheMNodeInfo(String name) {
     super(name);
@@ -35,6 +38,14 @@ public class CacheMNodeInfo extends BasicMNodeInfo {
 
   public void setCacheEntry(CacheEntry cacheEntry) {
     this.cacheEntry = cacheEntry;
+  }
+
+  public LockEntry getLockEntry() {
+    return lockEntry;
+  }
+
+  public void setLock(LockEntry lockEntry) {
+    this.lockEntry = lockEntry;
   }
 
   @Override

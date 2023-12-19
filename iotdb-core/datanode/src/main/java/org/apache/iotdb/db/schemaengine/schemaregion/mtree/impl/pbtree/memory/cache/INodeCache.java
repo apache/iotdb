@@ -16,10 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol;
+package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.cache;
 
-/** This interface defines the threshold strategy for release and flush task */
-public interface IReleaseFlushStrategy {
-  /** Check if exceed release threshold */
-  boolean isExceedReleaseThreshold();
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
+
+/**
+ * NodeCache is used to implement specific cache eviction strategy and help quickly locate the
+ * target nodes tobe evicted. This interface defines the behaviours that an implementation shall
+ * meet.
+ */
+public interface INodeCache {
+
+  long getCacheNodeNum();
+
+  void initCacheEntryForNode(ICachedMNode node);
+
+  void updateCacheStatusAfterAccess(CacheEntry cacheEntry);
+
+  void addToNodeCache(CacheEntry cacheEntry, ICachedMNode node);
+
+  void removeFromNodeCache(CacheEntry cacheEntry);
+
+  ICachedMNode getPotentialNodeTobeEvicted();
+
+  void clear();
 }
