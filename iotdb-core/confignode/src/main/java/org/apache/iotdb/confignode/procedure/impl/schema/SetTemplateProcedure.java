@@ -33,7 +33,7 @@ import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.receiver.PipeEnrichedPhysicalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
@@ -349,7 +349,7 @@ public class SetTemplateProcedure
               .getConsensusManager()
               .write(
                   isGeneratedByPipe
-                      ? new PipeEnrichedPhysicalPlan(commitSetSchemaTemplatePlan)
+                      ? new PipeEnrichedPlan(commitSetSchemaTemplatePlan)
                       : commitSetSchemaTemplatePlan);
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
@@ -515,7 +515,7 @@ public class SetTemplateProcedure
               .getConsensusManager()
               .write(
                   isGeneratedByPipe
-                      ? new PipeEnrichedPhysicalPlan(commitSetSchemaTemplatePlan)
+                      ? new PipeEnrichedPlan(commitSetSchemaTemplatePlan)
                       : commitSetSchemaTemplatePlan);
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);

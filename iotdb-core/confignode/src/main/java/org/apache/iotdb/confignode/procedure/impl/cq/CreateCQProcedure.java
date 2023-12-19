@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.receiver.PipeEnrichedPhysicalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.manager.cq.CQScheduleTask;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -155,7 +155,7 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
               .getConsensusManager()
               .write(
                   isGeneratedByPipe
-                      ? new PipeEnrichedPhysicalPlan(new ActiveCQPlan(req.cqId, md5))
+                      ? new PipeEnrichedPlan(new ActiveCQPlan(req.cqId, md5))
                       : new ActiveCQPlan(req.cqId, md5));
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);

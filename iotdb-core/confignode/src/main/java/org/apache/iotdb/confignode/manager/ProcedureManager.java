@@ -634,8 +634,8 @@ public class ProcedureManager {
   /**
    * Generate {@link CreateRegionGroupsProcedure} and wait until it finished.
    *
-   * @return {@link TSStatusCode#SUCCESS_STATUS} if all RegionGroups created successfully, {@link
-   *     TSStatusCode#CREATE_REGION_ERROR} otherwise
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if all RegionGroups have been created successfully,
+   *     {@link TSStatusCode#CREATE_REGION_ERROR} otherwise
    */
   public TSStatus createRegionGroups(
       TConsensusGroupType consensusGroupType, CreateRegionGroupsPlan createRegionGroupsPlan) {
@@ -654,10 +654,10 @@ public class ProcedureManager {
   }
 
   /**
-   * Generate {@link CreateTriggerProcedure} and wait for it finished.
+   * Generate {@link CreateTriggerProcedure} and wait until it finished.
    *
-   * @return {@link TSStatusCode#SUCCESS_STATUS} if trigger created successfully, {@link
-   *     TSStatusCode#CREATE_TRIGGER_ERROR} otherwise
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if the trigger has been created successfully,
+   *     {@link TSStatusCode#CREATE_TRIGGER_ERROR} otherwise
    */
   public TSStatus createTrigger(
       TriggerInformation triggerInformation, Binary jarFile, boolean isGeneratedByPipe) {
@@ -690,10 +690,10 @@ public class ProcedureManager {
   }
 
   /**
-   * Generate {@link DropTriggerProcedure} and wait for it finished.
+   * Generate {@link DropTriggerProcedure} and wait until it finished.
    *
-   * @return {@link TSStatusCode#SUCCESS_STATUS} if trigger dropped successfully, {@link
-   *     TSStatusCode#DROP_TRIGGER_ERROR} otherwise
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if the trigger has been dropped successfully,
+   *     {@link TSStatusCode#DROP_TRIGGER_ERROR} otherwise
    */
   public TSStatus dropTrigger(String triggerName, boolean isGeneratedByPipe) {
     long procedureId =
