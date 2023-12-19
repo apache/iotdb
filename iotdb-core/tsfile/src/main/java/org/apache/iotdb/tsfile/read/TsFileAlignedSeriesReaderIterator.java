@@ -81,8 +81,7 @@ public class TsFileAlignedSeriesReaderIterator {
       totalSize += chunk.getHeader().getSerializedSize() + chunk.getHeader().getDataSize();
     }
 
-    AlignedChunkReader chunkReader =
-        new AlignedChunkReader(timeChunk, Arrays.asList(valueChunks), null, false);
+    AlignedChunkReader chunkReader = new AlignedChunkReader(timeChunk, Arrays.asList(valueChunks));
 
     return new NextAlignedChunkInfo(chunkReader, totalSize, notNullChunkNum, totalPointNum);
   }

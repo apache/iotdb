@@ -81,7 +81,6 @@ public class PaginationController {
   }
 
   public TsBlock applyTsBlock(TsBlock resultTsBlock) {
-
     int fromIndex = 0;
     int length = resultTsBlock.getPositionCount();
     if (hasCurOffset()) {

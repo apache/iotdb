@@ -24,21 +24,38 @@ import org.apache.iotdb.tsfile.read.filter.operator.And;
 import org.apache.iotdb.tsfile.read.filter.operator.Not;
 import org.apache.iotdb.tsfile.read.filter.operator.Or;
 
+import static org.apache.iotdb.tsfile.utils.Preconditions.checkArgument;
+
 public class FilterFactory {
 
   private FilterFactory() {
     // forbidden construction
   }
 
-  public static And and(Filter left, Filter right) {
+  public static Filter and(Filter left, Filter right) {
+    if (left == null && right == null) {
+      return null;
+    } else if (left == null) {
+      return right;
+    } else if (right == null) {
+      return left;
+    }
     return new And(left, right);
   }
 
-  public static Or or(Filter left, Filter right) {
+  public static Filter or(Filter left, Filter right) {
+    if (left == null && right == null) {
+      return null;
+    } else if (left == null) {
+      return right;
+    } else if (right == null) {
+      return left;
+    }
     return new Or(left, right);
   }
 
   public static Not not(Filter filter) {
+    checkArgument(filter != null, "filter cannot be null");
     return new Not(filter);
   }
 }

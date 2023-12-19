@@ -54,7 +54,7 @@ public class MemAlignedChunkLoaderTest {
     AlignedReadOnlyMemChunk chunk = Mockito.mock(AlignedReadOnlyMemChunk.class);
     ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
 
-    MemAlignedChunkLoader memAlignedChunkLoader = new MemAlignedChunkLoader(chunk, false);
+    MemAlignedChunkLoader memAlignedChunkLoader = new MemAlignedChunkLoader(chunk);
     try {
       memAlignedChunkLoader.loadChunk(chunkMetadata);
       fail();
@@ -138,7 +138,7 @@ public class MemAlignedChunkLoaderTest {
     assertEquals(timeStatistics, pageReader.getTimeStatistics());
     assertFalse(pageReader.isModified());
     pageReader.setLimitOffset(UNLIMITED_PAGINATION_CONTROLLER);
-    pageReader.setFilter(null);
+    pageReader.addRecordFilter(null);
 
     memAlignedChunkLoader.close();
   }

@@ -46,14 +46,9 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
 
   private final TsFileResource resource;
   private final QueryContext context;
-  // time filter or value filter, only used to check time range
-  private final Filter filter;
 
-  // only used for limit and offset push down optimizer, if we select all columns from aligned
-  // device, we
-  // can use statistics to skip.
-  // it's only exact while using limit & offset push down
-  private final boolean queryAllSensors;
+  // global time filter, only used to check time range
+  private final Filter globalTimeFilter;
 
   // all sub sensors' modifications
   private final List<List<Modification>> pathModifications;
@@ -65,13 +60,11 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
   public DiskAlignedChunkMetadataLoader(
       TsFileResource resource,
       QueryContext context,
-      Filter filter,
-      boolean queryAllSensors,
+      Filter globalTimeFilter,
       List<List<Modification>> pathModifications) {
     this.resource = resource;
     this.context = context;
-    this.filter = filter;
-    this.queryAllSensors = queryAllSensors;
+    this.globalTimeFilter = globalTimeFilter;
     this.pathModifications = pathModifications;
   }
 
@@ -82,7 +75,26 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
       List<AlignedChunkMetadata> alignedChunkMetadataList =
           ((AlignedTimeSeriesMetadata) timeSeriesMetadata).getCopiedChunkMetadataList();
 
-      final long t2 = System.nanoTime();
+      // when alignedChunkMetadataList.size() == 1, it means that the chunk statistics is same as
+      // the time series metadata, so we don't need to filter it again.
+      if (alignedChunkMetadataList.size() > 1) {
+        // remove not satisfied ChunkMetaData
+        final long t2 = System.nanoTime();
+        alignedChunkMetadataList.removeIf(
+            alignedChunkMetaData ->
+                (globalTimeFilter != null && globalTimeFilter.canSkip(alignedChunkMetaData))
+                    || alignedChunkMetaData.getStartTime() > alignedChunkMetaData.getEndTime());
+
+        if (context.isDebug()) {
+          DEBUG_LOGGER.info("After removed by filter Chunk meta data list is: ");
+          alignedChunkMetadataList.forEach(c -> DEBUG_LOGGER.info(c.toString()));
+        }
+
+        SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
+            CHUNK_METADATA_FILTER_ALIGNED_DISK, System.nanoTime() - t2);
+      }
+
+      final long t3 = System.nanoTime();
 
       if (context.isDebug()) {
         DEBUG_LOGGER.info(
@@ -100,18 +112,7 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
         alignedChunkMetadataList.forEach(c -> DEBUG_LOGGER.info(c.toString()));
       }
       SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-          CHUNK_METADATA_MODIFICATION_ALIGNED_DISK, System.nanoTime() - t2);
-
-      // remove not satisfied ChunkMetaData
-      final long t3 = System.nanoTime();
-      alignedChunkMetadataList.removeIf(
-          alignedChunkMetaData ->
-              (filter != null
-                      && !filter.satisfyStartEndTime(
-                          alignedChunkMetaData.getStartTime(), alignedChunkMetaData.getEndTime()))
-                  || alignedChunkMetaData.getStartTime() > alignedChunkMetaData.getEndTime());
-      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-          CHUNK_METADATA_FILTER_ALIGNED_DISK, System.nanoTime() - t3);
+          CHUNK_METADATA_MODIFICATION_ALIGNED_DISK, System.nanoTime() - t3);
 
       // it is ok, even if it is not thread safe, because the cost of creating a DiskChunkLoader is
       // very cheap.
@@ -120,15 +121,9 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
             if (chunkMetadata.needSetChunkLoader()) {
               chunkMetadata.setVersion(resource.getVersion());
               chunkMetadata.setClosed(resource.isClosed());
-              chunkMetadata.setChunkLoader(
-                  new DiskAlignedChunkLoader(context.isDebug(), queryAllSensors, resource));
+              chunkMetadata.setChunkLoader(new DiskAlignedChunkLoader(context.isDebug(), resource));
             }
           });
-
-      if (context.isDebug()) {
-        DEBUG_LOGGER.info("After removed by filter Chunk meta data list is: ");
-        alignedChunkMetadataList.forEach(c -> DEBUG_LOGGER.info(c.toString()));
-      }
 
       return new ArrayList<>(alignedChunkMetadataList);
     } finally {
