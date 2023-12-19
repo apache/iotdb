@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.pipe.task;
+package org.apache.iotdb.confignode.manager.pipe.coordinator.task;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -25,5 +25,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class IoTDBConfigRegionConnector extends IoTDBMetaConnector {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConfigRegionConnector.class);
 }

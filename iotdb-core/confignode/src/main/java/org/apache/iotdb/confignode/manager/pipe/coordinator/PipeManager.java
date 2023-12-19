@@ -17,12 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.pipe;
+package org.apache.iotdb.confignode.manager.pipe.coordinator;
 
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.manager.pipe.plugin.PipePluginCoordinator;
-import org.apache.iotdb.confignode.manager.pipe.runtime.PipeRuntimeCoordinator;
-import org.apache.iotdb.confignode.manager.pipe.task.PipeTaskCoordinator;
+import org.apache.iotdb.confignode.manager.pipe.coordinator.plugin.PipePluginCoordinator;
+import org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.PipeRuntimeCoordinator;
+import org.apache.iotdb.confignode.manager.pipe.coordinator.task.PipeTaskCoordinator;
 import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
 
 public class PipeManager {

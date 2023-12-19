@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.manager.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
-import org.apache.iotdb.confignode.manager.pipe.task.stage.PipeConfigNodeTaskStage;
 
 public class PipeConfigNodeTask extends PipeTask {
   private final PipeConfigNodeTaskStage stage;

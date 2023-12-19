@@ -29,7 +29,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.pipe.task.PipeConfigNodeTask;
-import org.apache.iotdb.confignode.manager.pipe.task.stage.PipeConfigNodeTaskStage;
+import org.apache.iotdb.confignode.manager.pipe.task.PipeConfigNodeTaskStage;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,9 +38,9 @@ import org.slf4j.LoggerFactory;
  * State transition diagram of a pipe task:
  *
  * <p><code>
- * |----------------|                     |---------| --> start pipe --> |---------|                   |---------|
- * | initial status | --> create pipe --> | STOPPED |                    | RUNNING | --> drop pipe --> | DROPPED |
- * |----------------|                     |---------| <-- stop  pipe <-- |---------|                   |---------|
+ * |----------------|                     |---------| --> stop  pipe --> |---------|                   |---------|
+ * | initial status | --> create pipe --> | RUNNING |                    | STOPPED | --> drop pipe --> | DROPPED |
+ * |----------------|                     |---------| <-- start pipe <-- |---------|                   |---------|
  *                                             |                                                            |
  *                                             | ----------------------> drop pipe -----------------------> |
  * </code>

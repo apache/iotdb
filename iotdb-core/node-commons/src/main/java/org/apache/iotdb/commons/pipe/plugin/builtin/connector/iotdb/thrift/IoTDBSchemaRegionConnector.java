@@ -19,6 +19,4 @@
 
 package org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.thrift;
 
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.PlaceholderConnector;
-
-public class IoTDBSchemaRegionConnector extends PlaceholderConnector {}
+public class IoTDBSchemaRegionConnector extends IoTDBMetaConnector {}

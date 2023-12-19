@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.execution.executor;
 
 import org.apache.iotdb.db.pipe.execution.executor.dataregion.PipeDataRegionConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.execution.executor.dataregion.PipeDataRegionProcessorSubtaskExecutor;
-import org.apache.iotdb.db.pipe.execution.executor.schemaregion.PipeSchemaRegionAssignerSubtaskExecutor;
 import org.apache.iotdb.db.pipe.execution.executor.schemaregion.PipeSchemaRegionConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.execution.executor.schemaregion.PipeSchemaRegionProcessorSubtaskExecutor;
 
@@ -36,9 +35,9 @@ public class PipeSubtaskExecutorManager {
   private final PipeProcessorSubtaskExecutor dataRegionProcessorExecutor;
   private final PipeConnectorSubtaskExecutor dataRegionConnectorExecutor;
 
-  private final PipeSchemaRegionAssignerSubtaskExecutor schemaRegionAssignerExecutor;
-  private final PipeSchemaRegionProcessorSubtaskExecutor schemaRegionProcessorExecutor;
-  private final PipeSchemaRegionConnectorSubtaskExecutor schemaRegionConnectorExecutor;
+  private final PipeAssignerSubtaskExecutor schemaRegionAssignerExecutor;
+  private final PipeProcessorSubtaskExecutor schemaRegionProcessorExecutor;
+  private final PipeConnectorSubtaskExecutor schemaRegionConnectorExecutor;
 
   public PipeAssignerSubtaskExecutor getDataRegionAssignerExecutor() {
     throw new UnsupportedOperationException("currently not needed");
@@ -52,15 +51,15 @@ public class PipeSubtaskExecutorManager {
     return dataRegionConnectorExecutor;
   }
 
-  public PipeSchemaRegionAssignerSubtaskExecutor getSchemaRegionAssignerExecutor() {
+  public PipeAssignerSubtaskExecutor getSchemaRegionAssignerExecutor() {
     throw new UnsupportedOperationException("currently not needed");
   }
 
-  public PipeSchemaRegionProcessorSubtaskExecutor getSchemaRegionProcessorExecutor() {
+  public PipeProcessorSubtaskExecutor getSchemaRegionProcessorExecutor() {
     return schemaRegionProcessorExecutor;
   }
 
-  public PipeSchemaRegionConnectorSubtaskExecutor getSchemaRegionConnectorExecutor() {
+  public PipeConnectorSubtaskExecutor getSchemaRegionConnectorExecutor() {
     return schemaRegionConnectorExecutor;
   }
 

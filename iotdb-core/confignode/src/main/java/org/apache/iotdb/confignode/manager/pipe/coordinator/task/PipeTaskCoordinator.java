@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.pipe.task;
+package org.apache.iotdb.confignode.manager.pipe.coordinator.task;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.consensus.request.read.pipe.task.ShowPipePlanV2;
