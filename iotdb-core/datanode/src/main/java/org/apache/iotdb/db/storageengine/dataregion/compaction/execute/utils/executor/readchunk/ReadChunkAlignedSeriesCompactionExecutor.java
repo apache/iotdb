@@ -71,6 +71,9 @@ import java.util.stream.Collectors;
 
 public class ReadChunkAlignedSeriesCompactionExecutor {
 
+  private static final int columnNumToEnableLazyLoad = 1000;
+  private static final int targetFileLevelToEnableLazyLoad = 2;
+
   private final String device;
   private final LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
       readerAndChunkMetadataList;
@@ -104,7 +107,9 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
         Integer.parseInt(this.targetResource.getTsFile().getName().split("-")[2]);
     flushPolicy = new FlushDataBlockPolicy(compactionFileLevel);
     this.lazyLoadChunkOrPage =
-        IoTDBDescriptor.getInstance().getConfig().isEnableLazyLoadForAlignedSeriesCompaction();
+        IoTDBDescriptor.getInstance().getConfig().isEnableLazyLoadForAlignedSeriesCompaction()
+            && this.schemaList.size() > columnNumToEnableLazyLoad
+            && compactionFileLevel >= targetFileLevelToEnableLazyLoad;
     if (lazyLoadChunkOrPage) {
       this.chunkWriter = new LazyAlignedChunkWriterImpl(schemaList);
     } else {

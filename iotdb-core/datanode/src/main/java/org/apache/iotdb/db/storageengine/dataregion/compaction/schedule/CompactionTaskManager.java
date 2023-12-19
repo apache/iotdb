@@ -249,7 +249,7 @@ public class CompactionTaskManager implements IService {
 
   public RateLimiter getRewritePointRateLimiter() {
     setProcessPointRate(
-        IoTDBDescriptor.getInstance().getConfig().getCompactionProcessPointNumPerSec());
+        IoTDBDescriptor.getInstance().getConfig().getCompactionRewritePointNumPerSec());
     return rewritePointRateLimiter;
   }
 
