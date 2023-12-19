@@ -29,22 +29,37 @@ import org.apache.iotdb.db.pipe.extractor.realtime.listener.PipeInsertionDataNod
 import org.apache.iotdb.db.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_END_TIME_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_START_TIME_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.SOURCE_END_TIME_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_END_TIME_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_START_TIME_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.SOURCE_START_TIME_KEY;
 
 public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
+
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(PipeRealtimeDataRegionExtractor.class);
 
   protected String pipeName;
   protected String dataRegionId;
@@ -55,6 +70,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   protected long realtimeDataExtractionStartTime; // Event time
   protected long realtimeDataExtractionEndTime; // Event time
+  private boolean isDbCoveredByTimeRange = false;
 
   protected boolean isForwardingPipeRequests;
 
@@ -73,7 +89,34 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
-    // Do nothing
+    PipeParameters parameters = validator.getParameters();
+
+    if (parameters.hasAnyAttributes(SOURCE_START_TIME_KEY, SOURCE_END_TIME_KEY)) {
+
+      if (parameters.hasAnyAttributes(
+          EXTRACTOR_HISTORY_START_TIME_KEY,
+          SOURCE_HISTORY_START_TIME_KEY,
+          EXTRACTOR_HISTORY_END_TIME_KEY,
+          SOURCE_HISTORY_END_TIME_KEY)) {
+        LOGGER.warn("...");
+      }
+
+      try {
+        realtimeDataExtractionStartTime =
+            parameters.hasAnyAttributes(SOURCE_START_TIME_KEY)
+                ? DateTimeUtils.convertDatetimeStrToLong(
+                    parameters.getStringByKeys(SOURCE_START_TIME_KEY), ZoneId.systemDefault())
+                : Long.MIN_VALUE;
+        realtimeDataExtractionEndTime =
+            parameters.hasAnyAttributes(SOURCE_END_TIME_KEY)
+                ? DateTimeUtils.convertDatetimeStrToLong(
+                    parameters.getStringByKeys(SOURCE_END_TIME_KEY), ZoneId.systemDefault())
+                : Long.MAX_VALUE;
+      } catch (Exception e) {
+        // compatible with the current validation framework
+        throw new PipeParameterNotValidException(e.getMessage());
+      }
+    }
   }
 
   @Override
@@ -166,7 +209,26 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     }
   }
 
+  @Override
+  public Event supply() {
+    EnrichedEvent event = doSupply();
+    if (event != null) {
+      if (canSkipParsingTime()) {
+        event.skipParsingTime();
+      }
+    }
+
+    return event;
+  }
+
+  private boolean canSkipParsingTime() {
+    // TODO
+    return isDbCoveredByTimeRange;
+  }
+
   protected abstract void doExtract(PipeRealtimeEvent event);
+
+  protected abstract EnrichedEvent doSupply();
 
   public abstract boolean isNeedListenToTsFile();
 

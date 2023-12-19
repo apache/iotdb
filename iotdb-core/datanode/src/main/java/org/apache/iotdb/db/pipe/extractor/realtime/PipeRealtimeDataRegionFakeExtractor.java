@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.pipe.extractor.realtime;
 
+import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
-import org.apache.iotdb.pipe.api.event.Event;
 
 public class PipeRealtimeDataRegionFakeExtractor extends PipeRealtimeDataRegionExtractor {
 
@@ -44,13 +44,13 @@ public class PipeRealtimeDataRegionFakeExtractor extends PipeRealtimeDataRegionE
   }
 
   @Override
-  public Event supply() {
-    return null;
+  protected void doExtract(PipeRealtimeEvent event) {
+    // do nothing
   }
 
   @Override
-  protected void doExtract(PipeRealtimeEvent event) {
-    // do nothing
+  protected EnrichedEvent doSupply() {
+    return null;
   }
 
   @Override

@@ -95,7 +95,6 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private long historicalDataExtractionTimeLowerBound; // Arrival time
 
   private boolean sloppyTimeRange; // true to disable time range filter after extraction
-  private boolean isDbCoveredByTimeRange = false;
 
   private Queue<TsFileResource> pendingQueue;
 
