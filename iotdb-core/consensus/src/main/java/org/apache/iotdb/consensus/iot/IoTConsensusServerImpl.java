@@ -215,33 +215,54 @@ public class IoTConsensusServerImpl {
       }
       IConsensusRequest planNode = stateMachine.deserializeRequest(indexedConsensusRequest);
       long startWriteTime = System.nanoTime();
-      TSStatus result = stateMachine.write(planNode);
-      PERFORMANCE_OVERVIEW_METRICS.recordEngineCost(System.nanoTime() - startWriteTime);
 
-      long writeToStateMachineEndTime = System.nanoTime();
-      // statistic the time of writing request into stateMachine
-      ioTConsensusServerMetrics.recordWriteStateMachineTime(
-          writeToStateMachineEndTime - writeToStateMachineStartTime);
-      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        // The index is used when constructing batch in LogDispatcher. If its value
-        // increases but the corresponding request does not exist or is not put into
-        // the queue, the dispatcher will try to find the request in WAL. This behavior
-        // is not expected and will slow down the preparation speed for batch.
-        // So we need to use the lock to ensure the `offer()` and `incrementAndGet()` are
-        // in one transaction.
-        synchronized (searchIndex) {
-          logDispatcher.offer(indexedConsensusRequest);
-          searchIndex.incrementAndGet();
+      int retryTime = 0;
+      TSStatus result = null;
+      while (retryTime < config.getReplication().getMaxWriteRetryTime()) {
+        result = stateMachine.write(planNode);
+        if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          long writeToStateMachineEndTime = System.nanoTime();
+          PERFORMANCE_OVERVIEW_METRICS.recordEngineCost(
+              writeToStateMachineEndTime - startWriteTime);
+          // statistic the time of writing request into stateMachine
+          ioTConsensusServerMetrics.recordWriteStateMachineTime(
+              writeToStateMachineEndTime - writeToStateMachineStartTime);
+
+          // The index is used when constructing batch in LogDispatcher. If its value
+          // increases but the corresponding request does not exist or is not put into
+          // the queue, the dispatcher will try to find the request in WAL. This behavior
+          // is not expected and will slow down the preparation speed for batch.
+          // So we need to use the lock to ensure the `offer()` and `incrementAndGet()` are
+          // in one transaction.
+          synchronized (searchIndex) {
+            logDispatcher.offer(indexedConsensusRequest);
+            searchIndex.incrementAndGet();
+          }
+          // statistic the time of offering request into queue
+          ioTConsensusServerMetrics.recordOfferRequestToQueueTime(
+              System.nanoTime() - writeToStateMachineEndTime);
+          break;
+        } else {
+          retryTime++;
+          logger.debug(
+              "{}: write operation failed. searchIndex: {}. Code: {}. retryTime: {}.",
+              thisNode.getGroupId(),
+              indexedConsensusRequest.getSearchIndex(),
+              result.getCode(),
+              retryTime);
+          if (retryTime == config.getReplication().getMaxWriteRetryTime()) {
+            logger.error(
+                "{}: write operation still failed after max retry times. searchIndex: {}. Code: {}.",
+                thisNode.getGroupId(),
+                indexedConsensusRequest.getSearchIndex(),
+                result.getCode());
+          }
+          try {
+            Thread.sleep(config.getReplication().getWriteRetryWaitTime());
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
         }
-        // statistic the time of offering request into queue
-        ioTConsensusServerMetrics.recordOfferRequestToQueueTime(
-            System.nanoTime() - writeToStateMachineEndTime);
-      } else {
-        logger.debug(
-            "{}: write operation failed. searchIndex: {}. Code: {}",
-            thisNode.getGroupId(),
-            indexedConsensusRequest.getSearchIndex(),
-            result.getCode());
       }
       // statistic the time of total write process
       ioTConsensusServerMetrics.recordConsensusWriteTime(

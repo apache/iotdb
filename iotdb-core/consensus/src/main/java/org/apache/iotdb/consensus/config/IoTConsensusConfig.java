@@ -253,7 +253,8 @@ public class IoTConsensusConfig {
     private final int maxLogEntriesNumPerBatch;
     private final int maxSizePerBatch;
     private final int maxPendingBatchesNum;
-
+    private final int maxWriteRetryTime;
+    private final long writeRetryWaitTime;
     private final int maxQueueLength;
     private final long maxWaitingTimeForWaitBatchInMs;
     private final int maxWaitingTimeForAccumulatingBatchInMs;
@@ -269,6 +270,8 @@ public class IoTConsensusConfig {
         int maxLogEntriesNumPerBatch,
         int maxSizePerBatch,
         int maxPendingBatchesNum,
+        int maxWriteRetryTime,
+        long writeRetryWaitTime,
         int maxQueueLength,
         long maxWaitingTimeForWaitBatchInMs,
         int maxWaitingTimeForAccumulatingBatchInMs,
@@ -282,6 +285,8 @@ public class IoTConsensusConfig {
       this.maxLogEntriesNumPerBatch = maxLogEntriesNumPerBatch;
       this.maxSizePerBatch = maxSizePerBatch;
       this.maxPendingBatchesNum = maxPendingBatchesNum;
+      this.maxWriteRetryTime = maxWriteRetryTime;
+      this.writeRetryWaitTime = writeRetryWaitTime;
       this.maxQueueLength = maxQueueLength;
       this.maxWaitingTimeForWaitBatchInMs = maxWaitingTimeForWaitBatchInMs;
       this.maxWaitingTimeForAccumulatingBatchInMs = maxWaitingTimeForAccumulatingBatchInMs;
@@ -304,6 +309,14 @@ public class IoTConsensusConfig {
 
     public int getMaxPendingBatchesNum() {
       return maxPendingBatchesNum;
+    }
+
+    public int getMaxWriteRetryTime() {
+      return maxWriteRetryTime;
+    }
+
+    public long getWriteRetryWaitTime() {
+      return writeRetryWaitTime;
     }
 
     public int getMaxQueueLength() {
@@ -357,6 +370,8 @@ public class IoTConsensusConfig {
       private int maxPendingBatchesNum = 5;
       private int maxQueueLength = 4096;
       private long maxWaitingTimeForWaitBatchInMs = 10 * 1000L;
+      private int maxWriteRetryTime = 5;
+      private long writeRetryWaitTime = 1000;
 
       private int maxWaitingTimeForAccumulatingBatchInMs = 500;
       private long basicRetryWaitTimeMs = TimeUnit.MILLISECONDS.toMillis(100);
@@ -367,7 +382,7 @@ public class IoTConsensusConfig {
       private long allocateMemoryForConsensus = Runtime.getRuntime().maxMemory() / 10;
       private double maxMemoryRatioForQueue = 0.6;
 
-      public Replication.Builder setMaxLogEntriesNumPerBatch(int maxLogEntriesNumPerBatch) {
+      public Builder setMaxLogEntriesNumPerBatch(int maxLogEntriesNumPerBatch) {
         this.maxLogEntriesNumPerBatch = maxLogEntriesNumPerBatch;
         return this;
       }
@@ -377,7 +392,7 @@ public class IoTConsensusConfig {
         return this;
       }
 
-      public Replication.Builder setMaxPendingBatchesNum(int maxPendingBatchesNum) {
+      public Builder setMaxPendingBatchesNum(int maxPendingBatchesNum) {
         this.maxPendingBatchesNum = maxPendingBatchesNum;
         return this;
       }
@@ -387,8 +402,7 @@ public class IoTConsensusConfig {
         return this;
       }
 
-      public Replication.Builder setMaxWaitingTimeForWaitBatchInMs(
-          long maxWaitingTimeForWaitBatchInMs) {
+      public Builder setMaxWaitingTimeForWaitBatchInMs(long maxWaitingTimeForWaitBatchInMs) {
         this.maxWaitingTimeForWaitBatchInMs = maxWaitingTimeForWaitBatchInMs;
         return this;
       }
@@ -399,22 +413,32 @@ public class IoTConsensusConfig {
         return this;
       }
 
-      public Replication.Builder setBasicRetryWaitTimeMs(long basicRetryWaitTimeMs) {
+      public Builder setMaxWriteRetryTime(int maxWriteRetryTime) {
+        this.maxWriteRetryTime = maxWriteRetryTime;
+        return this;
+      }
+
+      public Builder setWriteRetryWaitTime(long writeRetryWaitTime) {
+        this.writeRetryWaitTime = writeRetryWaitTime;
+        return this;
+      }
+
+      public Builder setBasicRetryWaitTimeMs(long basicRetryWaitTimeMs) {
         this.basicRetryWaitTimeMs = basicRetryWaitTimeMs;
         return this;
       }
 
-      public Replication.Builder setMaxRetryWaitTimeMs(long maxRetryWaitTimeMs) {
+      public Builder setMaxRetryWaitTimeMs(long maxRetryWaitTimeMs) {
         this.maxRetryWaitTimeMs = maxRetryWaitTimeMs;
         return this;
       }
 
-      public Replication.Builder setWalThrottleThreshold(long walThrottleThreshold) {
+      public Builder setWalThrottleThreshold(long walThrottleThreshold) {
         this.walThrottleThreshold = walThrottleThreshold;
         return this;
       }
 
-      public Replication.Builder setThrottleTimeOutMs(long throttleTimeOutMs) {
+      public Builder setThrottleTimeOutMs(long throttleTimeOutMs) {
         this.throttleTimeOutMs = throttleTimeOutMs;
         return this;
       }
@@ -424,7 +448,7 @@ public class IoTConsensusConfig {
         return this;
       }
 
-      public Replication.Builder setAllocateMemoryForConsensus(long allocateMemoryForConsensus) {
+      public Builder setAllocateMemoryForConsensus(long allocateMemoryForConsensus) {
         this.allocateMemoryForConsensus = allocateMemoryForConsensus;
         return this;
       }
@@ -439,6 +463,8 @@ public class IoTConsensusConfig {
             maxLogEntriesNumPerBatch,
             maxSizePerBatch,
             maxPendingBatchesNum,
+            maxWriteRetryTime,
+            writeRetryWaitTime,
             maxQueueLength,
             maxWaitingTimeForWaitBatchInMs,
             maxWaitingTimeForAccumulatingBatchInMs,
