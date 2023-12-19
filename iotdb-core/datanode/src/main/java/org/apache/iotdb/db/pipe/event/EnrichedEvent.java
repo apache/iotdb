@@ -52,16 +52,22 @@ public abstract class EnrichedEvent implements Event {
 
   private final String pattern;
 
+  protected final long startTime;
+  protected final long endTime;
+
   protected boolean isPatternParsed;
   protected boolean isTimeParsed;
 
   private boolean shouldReportOnCommit = false;
 
-  protected EnrichedEvent(String pipeName, PipeTaskMeta pipeTaskMeta, String pattern) {
+  protected EnrichedEvent(
+      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime) {
     referenceCount = new AtomicInteger(0);
     this.pipeName = pipeName;
     this.pipeTaskMeta = pipeTaskMeta;
     this.pattern = pattern;
+    this.startTime = startTime;
+    this.endTime = endTime;
     isPatternParsed = getPattern().equals(PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE);
     isTimeParsed = true; // ?
   }
@@ -178,6 +184,14 @@ public abstract class EnrichedEvent implements Event {
     return pattern == null ? PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE : pattern;
   }
 
+  public final long getStartTime() {
+    return startTime;
+  }
+
+  public final long getEndTime() {
+    return endTime;
+  }
+
   /**
    * If pipe's pattern is database-level, then no need to parse event by pattern cause pipes are
    * data-region-level.
@@ -195,7 +209,7 @@ public abstract class EnrichedEvent implements Event {
   }
 
   public abstract EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern);
+      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime);
 
   public void reportException(PipeRuntimeException pipeRuntimeException) {
     if (pipeTaskMeta != null) {

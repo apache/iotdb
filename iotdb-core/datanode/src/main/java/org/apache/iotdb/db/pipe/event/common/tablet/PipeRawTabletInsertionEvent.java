@@ -53,8 +53,10 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
       boolean needToReport,
       String pipeName,
       PipeTaskMeta pipeTaskMeta,
-      String pattern) {
-    super(pipeName, pipeTaskMeta, pattern);
+      String pattern,
+      long startTime,
+      long endTime) {
+    super(pipeName, pipeTaskMeta, pattern, startTime, endTime);
     this.tablet = Objects.requireNonNull(tablet);
     this.isAligned = isAligned;
     this.sourceEvent = sourceEvent;
@@ -68,17 +70,26 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
       PipeTaskMeta pipeTaskMeta,
       EnrichedEvent sourceEvent,
       boolean needToReport) {
-    this(tablet, isAligned, sourceEvent, needToReport, pipeName, pipeTaskMeta, null);
+    this(
+        tablet,
+        isAligned,
+        sourceEvent,
+        needToReport,
+        pipeName,
+        pipeTaskMeta,
+        null,
+        Long.MIN_VALUE,
+        Long.MAX_VALUE);
   }
 
   @TestOnly
   public PipeRawTabletInsertionEvent(Tablet tablet, boolean isAligned) {
-    this(tablet, isAligned, null, false, null, null, null);
+    this(tablet, isAligned, null, false, null, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @TestOnly
   public PipeRawTabletInsertionEvent(Tablet tablet, boolean isAligned, String pattern) {
-    this(tablet, isAligned, null, false, null, null, pattern);
+    this(tablet, isAligned, null, false, null, null, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @Override
@@ -107,9 +118,17 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern) {
+      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime) {
     return new PipeRawTabletInsertionEvent(
-        tablet, isAligned, sourceEvent, needToReport, pipeName, pipeTaskMeta, pattern);
+        tablet,
+        isAligned,
+        sourceEvent,
+        needToReport,
+        pipeName,
+        pipeTaskMeta,
+        pattern,
+        startTime,
+        endTime);
   }
 
   @Override

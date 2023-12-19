@@ -53,6 +53,9 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   protected String pattern;
   private boolean isDbNameCoveredByPattern = false;
 
+  protected long realtimeDataExtractionStartTime; // Event time
+  protected long realtimeDataExtractionEndTime; // Event time
+
   protected boolean isForwardingPipeRequests;
 
   // This queue is used to store pending events extracted by the method extract(). The method
@@ -171,6 +174,14 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   public final String getPattern() {
     return pattern;
+  }
+
+  public final long getRealtimeDataExtractionStartTime() {
+    return realtimeDataExtractionStartTime;
+  }
+
+  public final long getRealtimeDataExtractionEndTime() {
+    return realtimeDataExtractionEndTime;
   }
 
   public final boolean isForwardingPipeRequests() {

@@ -195,11 +195,15 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     }
 
     TimePartitionInfo st =
-        TimePartitionManager.getInstance().getTimePartitionInfo(new DataRegionId(environment.getRegionId()),
-            TimePartitionUtils.getTimePartitionId(historicalDataExtractionStartTime));
+        TimePartitionManager.getInstance()
+            .getTimePartitionInfo(
+                new DataRegionId(environment.getRegionId()),
+                TimePartitionUtils.getTimePartitionId(historicalDataExtractionStartTime));
     TimePartitionInfo ed =
-        TimePartitionManager.getInstance().getTimePartitionInfo(new DataRegionId(environment.getRegionId()),
-            TimePartitionUtils.getTimePartitionId(historicalDataExtractionEndTime));
+        TimePartitionManager.getInstance()
+            .getTimePartitionInfo(
+                new DataRegionId(environment.getRegionId()),
+                TimePartitionUtils.getTimePartitionId(historicalDataExtractionEndTime));
 
     // Enable historical extractor by default
     historicalDataExtractionTimeLowerBound =
@@ -406,10 +410,13 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             pipeTaskMeta,
             pattern,
             historicalDataExtractionStartTime,
-            historicalDataExtractionEndTime,
-            !sloppyTimeRange && !isTsFileResourceCoveredByTimeRange(resource));
+            historicalDataExtractionEndTime);
     if (isDbNameCoveredByPattern) {
       event.skipParsingPattern();
+    }
+
+    if (!sloppyTimeRange && !isTsFileResourceCoveredByTimeRange(resource)) {
+      event.skipParsingTime();
     }
 
     event.increaseReferenceCount(PipeHistoricalDataRegionTsFileExtractor.class.getName());

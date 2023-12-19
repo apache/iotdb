@@ -57,7 +57,16 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       ProgressIndex progressIndex,
       boolean isAligned,
       boolean isGeneratedByPipe) {
-    this(walEntryHandler, progressIndex, isAligned, isGeneratedByPipe, null, null, null);
+    this(
+        walEntryHandler,
+        progressIndex,
+        isAligned,
+        isGeneratedByPipe,
+        null,
+        null,
+        null,
+        Long.MIN_VALUE,
+        Long.MAX_VALUE);
   }
 
   private PipeInsertNodeTabletInsertionEvent(
@@ -67,8 +76,10 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       boolean isGeneratedByPipe,
       String pipeName,
       PipeTaskMeta pipeTaskMeta,
-      String pattern) {
-    super(pipeName, pipeTaskMeta, pattern);
+      String pattern,
+      long startTime,
+      long endTime) {
+    super(pipeName, pipeTaskMeta, pattern, startTime, endTime);
     this.walEntryHandler = walEntryHandler;
     this.progressIndex = progressIndex;
     this.isAligned = isAligned;
@@ -130,7 +141,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   @Override
   public PipeInsertNodeTabletInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern) {
+      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime) {
     return new PipeInsertNodeTabletInsertionEvent(
         walEntryHandler,
         progressIndex,
@@ -138,7 +149,9 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
         isGeneratedByPipe,
         pipeName,
         pipeTaskMeta,
-        pattern);
+        pattern,
+        startTime,
+        endTime);
   }
 
   @Override
