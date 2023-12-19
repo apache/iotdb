@@ -25,17 +25,24 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.FillDescriptor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
@@ -43,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.LongLiteral;
+import org.apache.iotdb.db.utils.columngenerator.parameter.SlidingTimeColumnGeneratorParameter;
 
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -87,6 +95,111 @@ public class TestPlanBuilder {
     node.setPushDownLimit(limit);
     node.setPushDownOffset(offset);
     this.root = node;
+    return this;
+  }
+
+  public TestPlanBuilder aggregationScan(
+      String id,
+      PartialPath path,
+      List<AggregationDescriptor> aggregationDescriptors,
+      GroupByTimeParameter groupByTimeParameter,
+      boolean outputEndTime) {
+    SeriesAggregationScanNode aggregationScanNode =
+        new SeriesAggregationScanNode(
+            new PlanNodeId(id),
+            (MeasurementPath) path,
+            aggregationDescriptors,
+            Ordering.ASC,
+            groupByTimeParameter);
+    aggregationScanNode.setOutputEndTime(outputEndTime);
+    this.root = aggregationScanNode;
+    return this;
+  }
+
+  public TestPlanBuilder alignedAggregationScan(
+      String id,
+      PartialPath path,
+      List<AggregationDescriptor> aggregationDescriptors,
+      GroupByTimeParameter groupByTimeParameter,
+      boolean outputEndTime) {
+    AlignedSeriesAggregationScanNode aggregationScanNode =
+        new AlignedSeriesAggregationScanNode(
+            new PlanNodeId(id),
+            (AlignedPath) path,
+            aggregationDescriptors,
+            Ordering.ASC,
+            groupByTimeParameter);
+    aggregationScanNode.setOutputEndTime(outputEndTime);
+    this.root = aggregationScanNode;
+    return this;
+  }
+
+  public TestPlanBuilder rawDataAggregation(
+      String id,
+      List<AggregationDescriptor> aggregationDescriptors,
+      GroupByTimeParameter groupByTimeParameter,
+      boolean outputEndTime) {
+    AggregationNode aggregationNode =
+        new AggregationNode(
+            new PlanNodeId(String.valueOf(id)),
+            Collections.singletonList(getRoot()),
+            aggregationDescriptors,
+            groupByTimeParameter,
+            Ordering.ASC);
+    aggregationNode.setOutputEndTime(outputEndTime);
+    this.root = aggregationNode;
+    return this;
+  }
+
+  public TestPlanBuilder slidingWindow(
+      String id,
+      List<AggregationDescriptor> aggregationDescriptors,
+      GroupByTimeParameter groupByTimeParameter,
+      boolean outputEndTime) {
+    SlidingWindowAggregationNode slidingWindowAggregationNode =
+        new SlidingWindowAggregationNode(
+            new PlanNodeId(id),
+            getRoot(),
+            aggregationDescriptors,
+            groupByTimeParameter,
+            Ordering.ASC);
+    slidingWindowAggregationNode.setOutputEndTime(outputEndTime);
+    this.root = slidingWindowAggregationNode;
+    return this;
+  }
+
+  public TestPlanBuilder aggregationTimeJoin(
+      int startId,
+      List<PartialPath> paths,
+      List<List<AggregationDescriptor>> aggregationDescriptorsList,
+      GroupByTimeParameter groupByTimeParameter) {
+    int planId = startId;
+
+    List<PlanNode> seriesSourceNodes = new ArrayList<>();
+    for (int i = 0; i < paths.size(); i++) {
+      PartialPath path = paths.get(i);
+      if (path instanceof MeasurementPath) {
+        seriesSourceNodes.add(
+            new SeriesAggregationScanNode(
+                new PlanNodeId(String.valueOf(planId)),
+                (MeasurementPath) paths.get(i),
+                aggregationDescriptorsList.get(i),
+                Ordering.ASC,
+                groupByTimeParameter));
+      } else {
+        seriesSourceNodes.add(
+            new AlignedSeriesAggregationScanNode(
+                new PlanNodeId(String.valueOf(planId)),
+                (AlignedPath) paths.get(i),
+                aggregationDescriptorsList.get(i),
+                Ordering.ASC,
+                groupByTimeParameter));
+      }
+      planId++;
+    }
+
+    this.root =
+        new TimeJoinNode(new PlanNodeId(String.valueOf(planId)), Ordering.ASC, seriesSourceNodes);
     return this;
   }
 
@@ -163,14 +276,15 @@ public class TestPlanBuilder {
     return this;
   }
 
-  public TestPlanBuilder filter(String id, List<Expression> expressions, Expression predicate) {
+  public TestPlanBuilder filter(
+      String id, List<Expression> expressions, Expression predicate, boolean isGroupByTime) {
     this.root =
         new FilterNode(
             new PlanNodeId(id),
             getRoot(),
             expressions.toArray(new Expression[0]),
             predicate,
-            false,
+            isGroupByTime,
             ZonedDateTime.now().getOffset(),
             Ordering.ASC);
     return this;
@@ -183,6 +297,37 @@ public class TestPlanBuilder {
     intoPathDescriptor.recordSourceColumnDataType(
         sourcePath.toString(), sourcePath.getSeriesType());
     this.root = new IntoNode(new PlanNodeId(id), getRoot(), intoPathDescriptor);
+    return this;
+  }
+
+  public TestPlanBuilder columnInject(String id, GroupByTimeParameter groupByTimeParameter) {
+    this.root =
+        new ColumnInjectNode(
+            new PlanNodeId(id),
+            getRoot(),
+            0,
+            new SlidingTimeColumnGeneratorParameter(groupByTimeParameter, true));
+    return this;
+  }
+
+  public TestPlanBuilder deviceView(
+      String id,
+      List<String> outputColumnNames,
+      List<String> devices,
+      Map<String, List<Integer>> deviceToMeasurementIndexesMap,
+      List<PlanNode> children) {
+    DeviceViewNode deviceViewNode =
+        new DeviceViewNode(
+            new PlanNodeId(id),
+            new OrderByParameter(
+                Arrays.asList(
+                    new SortItem(OrderByKey.DEVICE, Ordering.ASC),
+                    new SortItem(OrderByKey.TIME, Ordering.ASC))),
+            outputColumnNames,
+            devices,
+            deviceToMeasurementIndexesMap);
+    deviceViewNode.setChildren(children);
+    this.root = deviceViewNode;
     return this;
   }
 }
