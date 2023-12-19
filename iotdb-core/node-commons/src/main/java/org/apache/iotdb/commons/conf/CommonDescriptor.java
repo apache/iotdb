@@ -372,19 +372,28 @@ public class CommonDescriptor {
 
     config.setPipeAsyncConnectorSelectorNumber(
         Integer.parseInt(
-            properties.getProperty(
-                "pipe_async_connector_selector_number",
-                String.valueOf(config.getPipeAsyncConnectorSelectorNumber()))));
+            Optional.ofNullable(properties.getProperty("pipe_async_connector_selector_number"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_sink_selector_number",
+                        String.valueOf(
+                            config.getPipeExtractorAssignerDisruptorRingBufferSize())))));
     config.setPipeAsyncConnectorCoreClientNumber(
         Integer.parseInt(
-            properties.getProperty(
-                "pipe_async_connector_core_client_number",
-                String.valueOf(config.getPipeAsyncConnectorCoreClientNumber()))));
+            Optional.ofNullable(properties.getProperty("pipe_async_connector_core_client_number"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_sink_core_client_number",
+                        String.valueOf(
+                            config.getPipeExtractorAssignerDisruptorRingBufferSize())))));
     config.setPipeAsyncConnectorMaxClientNumber(
         Integer.parseInt(
-            properties.getProperty(
-                "pipe_async_connector_max_client_number",
-                String.valueOf(config.getPipeAsyncConnectorMaxClientNumber()))));
+            Optional.ofNullable(properties.getProperty("pipe_async_connector_max_client_number"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_sink_max_client_number",
+                        String.valueOf(
+                            config.getPipeExtractorAssignerDisruptorRingBufferSize())))));
 
     config.setSeperatedPipeHeartbeatEnabled(
         Boolean.parseBoolean(
