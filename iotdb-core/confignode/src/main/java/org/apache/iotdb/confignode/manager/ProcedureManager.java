@@ -175,7 +175,7 @@ public class ProcedureManager {
     }
     List<TSStatus> procedureStatus = new ArrayList<>();
     boolean isSucceed = waitingProcedureFinished(procedureIds, procedureStatus);
-    // clear the previously deleted regions
+    // Clear the previously deleted regions
     final PartitionManager partitionManager = getConfigManager().getPartitionManager();
     partitionManager.getRegionMaintainer().submit(partitionManager::maintainRegionReplicas);
     if (isSucceed) {
@@ -632,9 +632,10 @@ public class ProcedureManager {
   }
 
   /**
-   * Generate CreateRegionGroupsProcedure and wait for it finished.
+   * Generate {@link CreateRegionGroupsProcedure} and wait until it finished.
    *
-   * @return SUCCESS_STATUS if all RegionGroups created successfully, CREATE_REGION_ERROR otherwise
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if all RegionGroups created successfully, {@link
+   *     TSStatusCode#CREATE_REGION_ERROR} otherwise
    */
   public TSStatus createRegionGroups(
       TConsensusGroupType consensusGroupType, CreateRegionGroupsPlan createRegionGroupsPlan) {
@@ -653,9 +654,10 @@ public class ProcedureManager {
   }
 
   /**
-   * Generate CreateTriggerProcedure and wait for it finished.
+   * Generate {@link CreateTriggerProcedure} and wait for it finished.
    *
-   * @return SUCCESS_STATUS if trigger created successfully, CREATE_TRIGGER_ERROR otherwise
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if trigger created successfully, {@link
+   *     TSStatusCode#CREATE_TRIGGER_ERROR} otherwise
    */
   public TSStatus createTrigger(
       TriggerInformation triggerInformation, Binary jarFile, boolean isGeneratedByPipe) {
@@ -688,9 +690,10 @@ public class ProcedureManager {
   }
 
   /**
-   * Generate DropTriggerProcedure and wait for it finished.
+   * Generate {@link DropTriggerProcedure} and wait for it finished.
    *
-   * @return SUCCESS_STATUS if trigger dropped successfully, DROP_TRIGGER_ERROR otherwise
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if trigger dropped successfully, {@link
+   *     TSStatusCode#DROP_TRIGGER_ERROR} otherwise
    */
   public TSStatus dropTrigger(String triggerName, boolean isGeneratedByPipe) {
     long procedureId =

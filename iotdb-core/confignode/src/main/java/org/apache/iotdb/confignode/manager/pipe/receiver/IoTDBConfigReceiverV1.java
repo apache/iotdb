@@ -90,7 +90,6 @@ public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
   }
 
   private TPipeTransferResp handleTransferConfigPlan(PipeTransferConfigPlanReq req) {
-
     // TODO
     return new TPipeTransferResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }

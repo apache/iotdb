@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.it.utils;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
@@ -27,6 +28,7 @@ import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.util.SessionUtils;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.junit.Assert;
@@ -152,7 +154,7 @@ public class TestUtils {
   public static void resultSetEqualTest(
       String sql, String expectedHeader, String[] expectedRetArray) {
     resultSetEqualTest(
-        sql, expectedHeader, expectedRetArray, null, "root", "root", TimeUnit.MILLISECONDS);
+        sql, expectedHeader, expectedRetArray, null, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, TimeUnit.MILLISECONDS);
   }
 
   public static void resultSetEqualTest(
@@ -176,7 +178,7 @@ public class TestUtils {
       header.append(s).append(",");
     }
     resultSetEqualTest(
-        sql, header.toString(), expectedRetArray, df, "root", "root", TimeUnit.MILLISECONDS);
+        sql, header.toString(), expectedRetArray, df, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, TimeUnit.MILLISECONDS);
   }
 
   public static void resultSetEqualTest(
@@ -189,7 +191,7 @@ public class TestUtils {
     for (String s : expectedHeader) {
       header.append(s).append(",");
     }
-    resultSetEqualTest(sql, header.toString(), expectedRetArray, df, "root", "root", currPrecision);
+    resultSetEqualTest(sql, header.toString(), expectedRetArray, df, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, currPrecision);
   }
 
   public static void resultSetEqualTest(
@@ -255,7 +257,7 @@ public class TestUtils {
   }
 
   public static void assertTestFail(String sql, String errMsg) {
-    assertTestFail(sql, errMsg, "root", "root");
+    assertTestFail(sql, errMsg, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
 
   public static void assertTestFail(String sql, String errMsg, String userName, String password) {
@@ -274,7 +276,7 @@ public class TestUtils {
   }
 
   public static void assertNonQueryTestFail(String sql, String errMsg) {
-    assertNonQueryTestFail(sql, errMsg, "root", "root");
+    assertNonQueryTestFail(sql, errMsg, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
 
   public static void assertNonQueryTestFail(
@@ -366,7 +368,7 @@ public class TestUtils {
   }
 
   public static void executeNonQuery(String sql) {
-    executeNonQuery(sql, "root", "root");
+    executeNonQuery(sql, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
 
   public static void executeNonQuery(String sql, String userName, String password) {
@@ -400,7 +402,7 @@ public class TestUtils {
   }
 
   public static boolean tryExecuteNonQueryWithRetry(BaseEnv env, String sql) {
-    return tryExecuteNonQueryWithRetry(env, sql, "root", "root");
+    return tryExecuteNonQueryWithRetry(env, sql, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
 
   public static boolean tryExecuteNonQueryWithRetry(
@@ -409,7 +411,7 @@ public class TestUtils {
   }
 
   public static boolean tryExecuteNonQueriesWithRetry(BaseEnv env, List<String> sqlList) {
-    return tryExecuteNonQueriesWithRetry(env, sqlList, "root", "root");
+    return tryExecuteNonQueriesWithRetry(env, sqlList, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
 
   // This method will not throw failure given that a failure is encountered.
@@ -496,7 +498,7 @@ public class TestUtils {
   }
 
   public static void executeQuery(String sql) {
-    executeQuery(sql, "root", "root");
+    executeQuery(sql, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
 
   public static void executeQuery(String sql, String userName, String password) {
