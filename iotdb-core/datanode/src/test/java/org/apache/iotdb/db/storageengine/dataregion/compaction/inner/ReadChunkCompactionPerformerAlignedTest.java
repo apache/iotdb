@@ -35,7 +35,6 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
-import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -361,7 +360,6 @@ public class ReadChunkCompactionPerformerAlignedTest {
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
-    TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
     CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(

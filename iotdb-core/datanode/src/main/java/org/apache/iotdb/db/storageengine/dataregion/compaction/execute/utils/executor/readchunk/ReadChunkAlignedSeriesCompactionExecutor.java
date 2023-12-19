@@ -188,14 +188,17 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
         getChunkLoader(reader, (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata());
     List<ChunkLoader> valueChunks = Arrays.asList(new ChunkLoader[schemaList.size()]);
     Collections.fill(valueChunks, getChunkLoader(reader, null));
+    long pointNum = 0;
     for (IChunkMetadata chunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
       if (chunkMetadata == null) {
         continue;
       }
+      pointNum += chunkMetadata.getStatistics().getCount();
       ChunkLoader valueChunk = getChunkLoader(reader, (ChunkMetadata) chunkMetadata);
       int idx = measurementSchemaListIndexMap.get(chunkMetadata.getMeasurementUid());
       valueChunks.set(idx, valueChunk);
     }
+    summary.increaseProcessPointNum(pointNum);
     if (flushPolicy.canCompactCurrentChunkByDirectlyFlush(timeChunk, valueChunks)) {
       flushCurrentChunkWriter();
       compactAlignedChunkByFlush(timeChunk, valueChunks);
@@ -361,7 +364,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       checkAndUpdatePreviousTimestamp(currentTime);
       processedPointNum++;
     }
-    summary.increaseProcessPointNum(processedPointNum);
+    summary.increaseRewritePointNum((long) processedPointNum * schemaList.size());
     if (rateLimiter != null) {
       rateLimiter.acquire(processedPointNum);
     }
