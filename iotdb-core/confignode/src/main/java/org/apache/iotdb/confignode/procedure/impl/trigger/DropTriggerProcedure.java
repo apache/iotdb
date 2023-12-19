@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.trigger;
 
 import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.receiver.PipeEnrichedPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
@@ -95,7 +96,10 @@ public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState
           LOG.info("Start to drop trigger [{}] on Config Nodes", triggerName);
           env.getConfigManager()
               .getConsensusManager()
-              .write(new DeleteTriggerInTablePlan(triggerName));
+              .write(
+                  isGeneratedByPipe
+                      ? new PipeEnrichedPhysicalPlan(new DeleteTriggerInTablePlan(triggerName))
+                      : new DeleteTriggerInTablePlan(triggerName));
           setNextState(DropTriggerState.CONFIG_NODE_DROPPED);
           break;
 

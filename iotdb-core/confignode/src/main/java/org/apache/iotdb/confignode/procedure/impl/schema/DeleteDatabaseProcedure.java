@@ -151,7 +151,7 @@ public class DeleteDatabaseProcedure
 
           // Delete DatabasePartitionTable
           final TSStatus deleteConfigResult =
-              env.deleteDatabaseConfig(deleteDatabaseSchema.getName());
+              env.deleteDatabaseConfig(deleteDatabaseSchema.getName(), isGeneratedByPipe);
 
           // Delete Database metrics
           PartitionMetrics.unbindDatabaseRelatedMetricsWhenUpdate(

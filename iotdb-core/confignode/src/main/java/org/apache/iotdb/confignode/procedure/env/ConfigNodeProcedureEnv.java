@@ -125,9 +125,9 @@ public class ConfigNodeProcedureEnv {
    * @param name database name
    * @return tsStatus
    */
-  public TSStatus deleteDatabaseConfig(String name) {
+  public TSStatus deleteDatabaseConfig(String name, boolean isGeneratedByPipe) {
     DeleteDatabasePlan deleteDatabasePlan = new DeleteDatabasePlan(name);
-    return getClusterSchemaManager().deleteDatabase(deleteDatabasePlan);
+    return getClusterSchemaManager().deleteDatabase(deleteDatabasePlan, isGeneratedByPipe);
   }
 
   /**

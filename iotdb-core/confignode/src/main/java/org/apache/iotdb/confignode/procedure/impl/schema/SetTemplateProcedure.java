@@ -33,6 +33,7 @@ import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.receiver.PipeEnrichedPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
@@ -343,7 +344,13 @@ public class SetTemplateProcedure
         new CommitSetSchemaTemplatePlan(templateName, templateSetPath);
     TSStatus status;
     try {
-      status = env.getConfigManager().getConsensusManager().write(commitSetSchemaTemplatePlan);
+      status =
+          env.getConfigManager()
+              .getConsensusManager()
+              .write(
+                  isGeneratedByPipe
+                      ? new PipeEnrichedPhysicalPlan(commitSetSchemaTemplatePlan)
+                      : commitSetSchemaTemplatePlan);
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -501,9 +508,15 @@ public class SetTemplateProcedure
   private void rollbackCommitSet(ConfigNodeProcedureEnv env) {
     CommitSetSchemaTemplatePlan commitSetSchemaTemplatePlan =
         new CommitSetSchemaTemplatePlan(templateName, templateSetPath, true);
-    TSStatus status = null;
+    TSStatus status;
     try {
-      status = env.getConfigManager().getConsensusManager().write(commitSetSchemaTemplatePlan);
+      status =
+          env.getConfigManager()
+              .getConsensusManager()
+              .write(
+                  isGeneratedByPipe
+                      ? new PipeEnrichedPhysicalPlan(commitSetSchemaTemplatePlan)
+                      : commitSetSchemaTemplatePlan);
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());

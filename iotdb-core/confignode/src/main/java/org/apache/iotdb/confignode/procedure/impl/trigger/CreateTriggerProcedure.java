@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl.trigger;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.receiver.PipeEnrichedPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
@@ -147,8 +148,12 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
           env.getConfigManager()
               .getConsensusManager()
               .write(
-                  new UpdateTriggerStateInTablePlan(
-                      triggerInformation.getTriggerName(), TTriggerState.ACTIVE));
+                  isGeneratedByPipe
+                      ? new PipeEnrichedPhysicalPlan(
+                          new UpdateTriggerStateInTablePlan(
+                              triggerInformation.getTriggerName(), TTriggerState.ACTIVE))
+                      : new UpdateTriggerStateInTablePlan(
+                          triggerInformation.getTriggerName(), TTriggerState.ACTIVE));
           setNextState(CreateTriggerState.CONFIG_NODE_ACTIVE);
           break;
 
@@ -197,7 +202,11 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
         try {
           env.getConfigManager()
               .getConsensusManager()
-              .write(new DeleteTriggerInTablePlan(triggerInformation.getTriggerName()));
+              .write(
+                  isGeneratedByPipe
+                      ? new PipeEnrichedPhysicalPlan(
+                          new DeleteTriggerInTablePlan(triggerInformation.getTriggerName()))
+                      : new DeleteTriggerInTablePlan(triggerInformation.getTriggerName()));
         } catch (ConsensusException e) {
           LOG.warn("Failed in the write API executing the consensus layer due to: ", e);
         }
