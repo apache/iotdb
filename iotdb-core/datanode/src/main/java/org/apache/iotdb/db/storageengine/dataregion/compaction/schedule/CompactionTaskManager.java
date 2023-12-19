@@ -83,7 +83,7 @@ public class CompactionTaskManager implements IService {
   private final AtomicInteger finishedTaskNum = new AtomicInteger(0);
 
   private final RateLimiter mergeWriteRateLimiter = RateLimiter.create(Double.MAX_VALUE);
-  private final RateLimiter processPointRateLimiter = RateLimiter.create(Double.MAX_VALUE);
+  private final RateLimiter rewritePointRateLimiter = RateLimiter.create(Double.MAX_VALUE);
 
   private volatile boolean init = false;
 
@@ -247,10 +247,10 @@ public class CompactionTaskManager implements IService {
     return mergeWriteRateLimiter;
   }
 
-  public RateLimiter getProcessPointRateLimiter() {
+  public RateLimiter getRewritePointRateLimiter() {
     setProcessPointRate(
         IoTDBDescriptor.getInstance().getConfig().getCompactionProcessPointNumPerSec());
-    return processPointRateLimiter;
+    return rewritePointRateLimiter;
   }
 
   private void setWriteMergeRate(final double throughoutMbPerSec) {
@@ -266,8 +266,8 @@ public class CompactionTaskManager implements IService {
 
   private void setProcessPointRate(final double processPointPerSec) {
     double rate = processPointPerSec <= 0 ? Double.MAX_VALUE : processPointPerSec;
-    if (processPointRateLimiter.getRate() != rate) {
-      processPointRateLimiter.setRate(rate);
+    if (rewritePointRateLimiter.getRate() != rate) {
+      rewritePointRateLimiter.setRate(rate);
     }
   }
 

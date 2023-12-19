@@ -82,7 +82,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
   private Map<String, Integer> measurementSchemaListIndexMap;
   private final FlushDataBlockPolicy flushPolicy;
   private final CompactionTaskSummary summary;
-  private final RateLimiter rateLimiter;
+  private final RateLimiter rewritePointRateLimiter;
 
   private final boolean lazyLoadChunkOrPage;
   private long lastWriteTimestamp = Long.MIN_VALUE;
@@ -110,7 +110,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     } else {
       this.chunkWriter = new AlignedChunkWriterImpl(schemaList);
     }
-    this.rateLimiter = CompactionTaskManager.getInstance().getProcessPointRateLimiter();
+    this.rewritePointRateLimiter = CompactionTaskManager.getInstance().getRewritePointRateLimiter();
   }
 
   private void collectValueColumnSchemaList() throws IOException {
@@ -355,7 +355,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
             valueDecoders,
             null);
     alignedPageReader.setDeleteIntervalList(deleteIntervalLists);
-    int processedPointNum = 0;
+    long processedPointNum = 0;
     IPointReader lazyPointReader = alignedPageReader.getLazyPointReader();
     while (lazyPointReader.hasNextTimeValuePair()) {
       TimeValuePair timeValuePair = lazyPointReader.nextTimeValuePair();
@@ -364,9 +364,12 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       checkAndUpdatePreviousTimestamp(currentTime);
       processedPointNum++;
     }
-    summary.increaseRewritePointNum((long) processedPointNum * schemaList.size());
-    if (rateLimiter != null) {
-      rateLimiter.acquire(processedPointNum);
+    processedPointNum *= schemaList.size();
+    summary.increaseRewritePointNum(processedPointNum);
+
+    if (rewritePointRateLimiter != null) {
+      rewritePointRateLimiter.acquire(
+          processedPointNum > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) processedPointNum);
     }
   }
 

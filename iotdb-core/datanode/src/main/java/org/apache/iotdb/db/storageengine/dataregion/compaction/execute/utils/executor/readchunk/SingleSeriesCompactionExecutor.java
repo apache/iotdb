@@ -24,6 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -37,6 +38,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import com.google.common.util.concurrent.RateLimiter;
 
 import java.io.IOException;
 import java.util.LinkedList;
@@ -70,6 +73,8 @@ public class SingleSeriesCompactionExecutor {
       IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
   private final long chunkPointNumLowerBound =
       IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
+  private final RateLimiter rewritePointRateLimiter =
+      CompactionTaskManager.getInstance().getRewritePointRateLimiter();
 
   public SingleSeriesCompactionExecutor(
       PartialPath series,
@@ -275,7 +280,9 @@ public class SingleSeriesCompactionExecutor {
         }
       }
     }
-    pointCountInChunkWriter += chunk.getChunkStatistic().getCount();
+    long count = chunk.getChunkStatistic().getCount();
+    pointCountInChunkWriter += count;
+    rewritePointRateLimiter.acquire(count > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) count);
   }
 
   private void writeCachedChunkIntoChunkWriter() throws IOException {
