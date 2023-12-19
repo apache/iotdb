@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static org.apache.iotdb.tsfile.utils.Preconditions.checkArgument;
@@ -76,9 +77,17 @@ public class ColumnInjectionPushDown implements PlanOptimizer {
 
     @Override
     public PlanNode visitPlan(PlanNode node, RewriterContext context) {
-      for (PlanNode child : node.getChildren()) {
-        context.setParent(node);
-        child.accept(this, context);
+      // other source node, just return
+      return node;
+    }
+
+    @Override
+    public PlanNode visitSingleChildProcess(SingleChildProcessNode node, RewriterContext context) {
+      PlanNode child = node.getChild();
+      context.setParent(node);
+      PlanNode rewrittenChild = child.accept(this, context);
+      if (!rewrittenChild.equals(child)) {
+        return node.cloneWithChildren(Collections.singletonList(rewrittenChild));
       }
       return node;
     }
