@@ -600,6 +600,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
       Map<String, String> processorAttributes = new HashMap<>();
       Map<String, String> connectorAttributes = new HashMap<>();
 
+      // add this property to avoid to make self cycle.
       connectorAttributes.put("source.forwarding-pipe-requests", "false");
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -639,6 +640,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
       Map<String, String> processorAttributes = new HashMap<>();
       Map<String, String> connectorAttributes = new HashMap<>();
 
+      // add this property to avoid to make self cycle.
       connectorAttributes.put("source.forwarding-pipe-requests", "false");
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
