@@ -137,7 +137,10 @@ public class MTreeBelowSGCachedImpl {
       throws MetadataException, IOException {
     this.tagGetter = tagGetter;
     this.regionStatistics = regionStatistics;
-    store = new CachedMTreeStore(storageGroupPath, schemaRegionId, regionStatistics, flushCallback);
+    store =
+        PBTreeFactory.getInstance()
+            .createNewCachedMTreeStore(
+                storageGroupPath, schemaRegionId, regionStatistics, flushCallback);
     this.storageGroupMNode = store.getRoot();
     this.storageGroupMNode.setParent(storageGroupMNode.getParent());
     this.rootNode = store.generatePrefix(storageGroupPath);
@@ -224,8 +227,9 @@ public class MTreeBelowSGCachedImpl {
       throws IOException, MetadataException {
     return new MTreeBelowSGCachedImpl(
         new PartialPath(storageGroupFullPath),
-        CachedMTreeStore.loadFromSnapshot(
-            snapshotDir, storageGroupFullPath, schemaRegionId, regionStatistics, flushCallback),
+        PBTreeFactory.getInstance()
+            .createCachedMTreeStoreFromSnapshot(
+                snapshotDir, storageGroupFullPath, schemaRegionId, regionStatistics, flushCallback),
         measurementProcess,
         deviceProcess,
         tagGetter,

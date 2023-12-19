@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache;
+package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -28,9 +28,7 @@ import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaEngineStatistics;
 import org.apache.iotdb.db.schemaengine.rescon.ISchemaEngineStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.CachedMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.flush.Scheduler;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.IReleaseFlushStrategy;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.MemManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.ReleaseFlushStrategyNumBasedImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.ReleaseFlushStrategySizeBasedImpl;
 import org.apache.iotdb.db.utils.concurrent.FiniteSemaphore;
@@ -56,8 +54,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
- * CacheMemoryManager is used to register the CachedMTreeStore and create the CacheManager.
- * CacheMemoryManager provides the {@link ReleaseFlushMonitor#ensureMemoryStatus} interface, which
+ * All instances of CachedMTreeStoreCacheMemoryManager shall be registered in ReleaseFlushMonitor.
+ * ReleaseFlushMonitor provides the {@link ReleaseFlushMonitor#ensureMemoryStatus} interface, which
  * starts asynchronous threads to free and flush the disk when memory usage exceeds a threshold.
  */
 public class ReleaseFlushMonitor {
@@ -86,18 +84,9 @@ public class ReleaseFlushMonitor {
   private FiniteSemaphore releaseSemaphore;
   private Scheduler scheduler;
 
-  /**
-   * Create and allocate LRUCacheManager to the corresponding CachedMTreeStore.
-   *
-   * @param store CachedMTreeStore
-   * @return LRUCacheManager
-   */
-  public ICacheManager createLRUCacheManager(
-      CachedMTreeStore store, MemManager memManager, LockManager lockManager) {
-    ICacheManager cacheManager = new LRUCacheManager(memManager, lockManager);
+  public void registerCachedMTreeStore(CachedMTreeStore store) {
     regionToStoreMap.put(store.getRegionStatistics().getSchemaRegionId(), store);
     regionToTraverserTime.put(store.getRegionStatistics().getSchemaRegionId(), new RecordList());
-    return cacheManager;
   }
 
   public void clearCachedMTreeStore(CachedMTreeStore store) {

@@ -17,13 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache;
+package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.buffer;
 
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.cache.CacheEntry;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
 import java.util.Iterator;
 
+/**
+ * NodeBuffer is used to hold volatile nodes in memory and help quickly locate the target nodes tobe
+ * flushed. This interface defines the behaviours that an implementation shall meet.
+ */
 public interface INodeBuffer {
 
   IDatabaseMNode<ICachedMNode> getUpdatedDatabaseMNode();

@@ -24,9 +24,9 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.CachedMTreeStore;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.ICacheManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.IReleaseFlushStrategy;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.IMemoryManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaFile;
 
 import org.slf4j.Logger;
@@ -96,7 +96,7 @@ public class Scheduler {
                             () -> {
                               CachedMTreeStore store = entry.getValue();
                               int regionId = entry.getKey();
-                              ICacheManager cacheManager = store.getCacheManager();
+                              IMemoryManager memoryManager = store.getMemoryManager();
                               ISchemaFile file = store.getSchemaFile();
                               LockManager lockManager = store.getLockManager();
                               long startTime = System.currentTimeMillis();
@@ -107,7 +107,7 @@ public class Scheduler {
                                   return;
                                 }
                                 PBTreeFlushExecutor flushExecutor =
-                                    new PBTreeFlushExecutor(cacheManager, file, lockManager);
+                                    new PBTreeFlushExecutor(memoryManager, file, lockManager);
                                 flushExecutor.flushVolatileNodes();
                               } catch (MetadataException e) {
                                 LOGGER.warn(
@@ -138,7 +138,7 @@ public class Scheduler {
   }
 
   /**
-   * Keep fetching evictable nodes from cacheManager until the memory status is under safe mode or
+   * Keep fetching evictable nodes from memoryManager until the memory status is under safe mode or
    * no node could be evicted. Update the memory status after evicting each node.
    *
    * @param force true if force to evict all cache
@@ -182,7 +182,7 @@ public class Scheduler {
       workerPool.submit(
           () -> {
             CachedMTreeStore store = regionToStore.get(regionId);
-            ICacheManager cacheManager = store.getCacheManager();
+            IMemoryManager memoryManager = store.getMemoryManager();
             ISchemaFile file = store.getSchemaFile();
             LockManager lockManager = store.getLockManager();
             long startTime = System.currentTimeMillis();
@@ -193,7 +193,7 @@ public class Scheduler {
                 return;
               }
               PBTreeFlushExecutor flushExecutor =
-                  new PBTreeFlushExecutor(remainToFlush, cacheManager, file, lockManager);
+                  new PBTreeFlushExecutor(remainToFlush, memoryManager, file, lockManager);
               flushExecutor.flushVolatileNodes();
             } catch (MetadataException e) {
               LOGGER.warn(

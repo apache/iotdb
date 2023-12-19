@@ -21,8 +21,8 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.flush;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.ICacheManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockManager;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.IMemoryManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaFile;
 
@@ -45,29 +45,29 @@ public class PBTreeFlushExecutor {
   private final IDatabaseMNode<ICachedMNode> databaseMNode;
   private final AtomicInteger remainToFlush;
 
-  private final ICacheManager cacheManager;
+  private final IMemoryManager memoryManager;
   private final ISchemaFile file;
   private final LockManager lockManager;
 
   public PBTreeFlushExecutor(
-      ICacheManager cacheManager, ISchemaFile file, LockManager lockManager) {
+      IMemoryManager memoryManager, ISchemaFile file, LockManager lockManager) {
     this.remainToFlush = null;
-    this.subtreeRoots = cacheManager.collectVolatileSubtrees();
-    this.databaseMNode = cacheManager.collectUpdatedStorageGroupMNodes();
-    this.cacheManager = cacheManager;
+    this.subtreeRoots = memoryManager.collectVolatileSubtrees();
+    this.databaseMNode = memoryManager.collectUpdatedStorageGroupMNodes();
+    this.memoryManager = memoryManager;
     this.file = file;
     this.lockManager = lockManager;
   }
 
   public PBTreeFlushExecutor(
       AtomicInteger remainToFlush,
-      ICacheManager cacheManager,
+      IMemoryManager memoryManager,
       ISchemaFile file,
       LockManager lockManager) {
     this.remainToFlush = remainToFlush;
-    this.subtreeRoots = cacheManager.collectVolatileSubtrees();
-    this.databaseMNode = cacheManager.collectUpdatedStorageGroupMNodes();
-    this.cacheManager = cacheManager;
+    this.subtreeRoots = memoryManager.collectVolatileSubtrees();
+    this.databaseMNode = memoryManager.collectUpdatedStorageGroupMNodes();
+    this.memoryManager = memoryManager;
     this.file = file;
     this.lockManager = lockManager;
   }
@@ -122,14 +122,14 @@ public class PBTreeFlushExecutor {
       file.writeMNode(subtreeRoot);
       collectedVolatileSubtrees = new ArrayList<>();
       volatileSubtreeIterator =
-          cacheManager.updateCacheStatusAndRetrieveSubtreeAfterPersist(subtreeRoot);
+          memoryManager.updateCacheStatusAndRetrieveSubtreeAfterPersist(subtreeRoot);
       while (volatileSubtreeIterator.hasNext()) {
         collectedVolatileSubtrees.add(volatileSubtreeIterator.next());
       }
     } catch (MetadataException | IOException e) {
       logger.warn(
           "Error occurred during MTree flush, current node is {}", subtreeRoot.getFullPath(), e);
-      cacheManager.updateCacheStatusAfterFlushFailure(subtreeRoot);
+      memoryManager.updateCacheStatusAfterFlushFailure(subtreeRoot);
       throw e;
     } finally {
       lockManager.writeUnlock(subtreeRoot);
@@ -152,7 +152,7 @@ public class PBTreeFlushExecutor {
         file.writeMNode(subtreeRoot);
         collectedVolatileSubtrees = new ArrayList<>();
         volatileSubtreeIterator =
-            cacheManager.updateCacheStatusAndRetrieveSubtreeAfterPersist(subtreeRoot);
+            memoryManager.updateCacheStatusAndRetrieveSubtreeAfterPersist(subtreeRoot);
         while (volatileSubtreeIterator.hasNext()) {
           collectedVolatileSubtrees.add(volatileSubtreeIterator.next());
         }
@@ -171,14 +171,14 @@ public class PBTreeFlushExecutor {
 
   private void processNotFlushedSubtrees(
       ICachedMNode currentNode, Deque<Iterator<ICachedMNode>> volatileSubtreeStack) {
-    cacheManager.updateCacheStatusAfterFlushFailure(currentNode);
+    memoryManager.updateCacheStatusAfterFlushFailure(currentNode);
     Iterator<ICachedMNode> subtreeIterator;
     ICachedMNode node;
     while (!volatileSubtreeStack.isEmpty()) {
       subtreeIterator = volatileSubtreeStack.pop();
       while (subtreeIterator.hasNext()) {
         node = subtreeIterator.next();
-        cacheManager.updateCacheStatusAfterFlushFailure(node);
+        memoryManager.updateCacheStatusAfterFlushFailure(node);
         lockManager.writeUnlock(node);
       }
     }

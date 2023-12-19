@@ -16,13 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache;
+
+package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory;
 
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotPinnedException;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockManager;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.MemManager;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.MemoryStatistics;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.buffer.INodeBuffer;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.buffer.NodeBuffer;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.cache.CacheEntry;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.cache.INodeCache;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.cache.LRUNodeCache;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer;
 
@@ -52,26 +58,24 @@ import static org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mn
  *       <ol>
  *         <li>The volatile nodes, new added or updated, which means the data has not been synced to
  *             disk.
- *         <li>The ancestors of the volatile nodes. If a node is not volatile but not in nodeCache,
- *             it means this node is an ancestor of some volatile node. Any volatile node is
- *             contained in the CachedContainer of its parent. The parent will be placed in
- *             nodeBuffer. If the parent is volatile as well, then the parent of the parent will be
- *             placed in nodeBuffer instead, which means the root node of a maximum volatile subtree
- *             will be placed in node buffer.
+ *         <li>The ancestors of the volatile nodes.
  *       </ol>
  * </ol>
  */
-public abstract class CacheManager implements ICacheManager {
+public class MemoryManager implements IMemoryManager {
 
   private final LockManager lockManager;
 
-  private final MemManager memManager;
+  private final MemoryStatistics memoryStatistics;
+
+  // The nodeCache helps to quickly locate the target nodes tobe evicted.
+  private final INodeCache nodeCache = new LRUNodeCache();
 
   // The nodeBuffer helps to quickly locate the volatile subtree
   private final INodeBuffer nodeBuffer = new NodeBuffer();
 
-  protected CacheManager(MemManager memManager, LockManager lockManager) {
-    this.memManager = memManager;
+  public MemoryManager(MemoryStatistics memoryStatistics, LockManager lockManager) {
+    this.memoryStatistics = memoryStatistics;
     this.lockManager = lockManager;
   }
 
@@ -99,7 +103,7 @@ public abstract class CacheManager implements ICacheManager {
       }
       pinMNodeWithMemStatusUpdate(node);
     }
-    updateCacheStatusAfterAccess(cacheEntry);
+    nodeCache.updateCacheStatusAfterAccess(cacheEntry);
   }
 
   /**
@@ -113,7 +117,7 @@ public abstract class CacheManager implements ICacheManager {
     pinMNodeWithMemStatusUpdate(node);
     CacheEntry cacheEntry = getCacheEntry(node);
     getBelongedContainer(node).addChildToCache(node);
-    addToNodeCache(cacheEntry, node);
+    nodeCache.addToNodeCache(cacheEntry, node);
   }
 
   /**
@@ -156,7 +160,7 @@ public abstract class CacheManager implements ICacheManager {
       // the status change affects the subTre collect in nodeBuffer
       cacheEntry.setVolatile(true);
       if (!cacheEntry.hasVolatileDescendant()) {
-        removeFromNodeCache(cacheEntry);
+        nodeCache.removeFromNodeCache(cacheEntry);
         removeAncestorsFromCache(node);
       }
       getBelongedContainer(node).updateMNode(node.getName());
@@ -181,7 +185,7 @@ public abstract class CacheManager implements ICacheManager {
         if (!cacheEntry.hasVolatileDescendant()) {
           cacheEntry.incVolatileDescendant();
           isStatusChange = true;
-          removeFromNodeCache(cacheEntry);
+          nodeCache.removeFromNodeCache(cacheEntry);
         } else {
           cacheEntry.incVolatileDescendant();
         }
@@ -211,7 +215,7 @@ public abstract class CacheManager implements ICacheManager {
           return;
         }
 
-        addToNodeCache(cacheEntry, current);
+        nodeCache.addToNodeCache(cacheEntry, current);
       }
 
       current = current.getParent();
@@ -349,7 +353,7 @@ public abstract class CacheManager implements ICacheManager {
 
             // there's no direct volatile subtree under this node, thus there's no need to flush it
             // add the node and its ancestors to cache
-            addToNodeCache(cacheEntry, node);
+            nodeCache.addToNodeCache(cacheEntry, node);
             addAncestorsToCache(node);
           }
         } finally {
@@ -384,16 +388,16 @@ public abstract class CacheManager implements ICacheManager {
           nodeBuffer.remove(getCacheEntry(node.getParent()));
         }
       } else {
-        removeFromNodeCache(cacheEntry);
+        nodeCache.removeFromNodeCache(cacheEntry);
       }
 
       node.setCacheEntry(null);
     }
 
     if (cacheEntry.isPinned()) {
-      memManager.releasePinnedMemResource(node);
+      memoryStatistics.releasePinnedMemResource(node);
     }
-    memManager.releaseMemResource(node);
+    memoryStatistics.releaseMemResource(node);
   }
 
   /**
@@ -411,7 +415,7 @@ public abstract class CacheManager implements ICacheManager {
       List<ICachedMNode> evictedMNodes = new ArrayList<>();
       boolean isSuccess = false;
       while (!isSuccess) {
-        node = getPotentialNodeTobeEvicted();
+        node = nodeCache.getPotentialNodeTobeEvicted();
         if (node == null) {
           break;
         }
@@ -435,7 +439,7 @@ public abstract class CacheManager implements ICacheManager {
                 node.getParent().getAsDeviceMNode().deleteAliasChild(alias);
               }
             }
-            removeFromNodeCache(getCacheEntry(node));
+            nodeCache.removeFromNodeCache(getCacheEntry(node));
             node.setCacheEntry(null);
             evictedMNodes.add(node);
             isSuccess = true;
@@ -449,7 +453,7 @@ public abstract class CacheManager implements ICacheManager {
         collectEvictedMNodes(node, evictedMNodes);
       }
 
-      memManager.releaseMemResource(evictedMNodes);
+      memoryStatistics.releaseMemResource(evictedMNodes);
       return !evictedMNodes.isEmpty();
     } finally {
       lockManager.globalReadUnlock();
@@ -458,7 +462,7 @@ public abstract class CacheManager implements ICacheManager {
 
   private void collectEvictedMNodes(ICachedMNode node, List<ICachedMNode> evictedMNodes) {
     for (ICachedMNode child : node.getChildren().values()) {
-      removeFromNodeCache(getCacheEntry(child));
+      nodeCache.removeFromNodeCache(getCacheEntry(child));
       child.setCacheEntry(null);
       evictedMNodes.add(child);
       collectEvictedMNodes(child, evictedMNodes);
@@ -493,10 +497,10 @@ public abstract class CacheManager implements ICacheManager {
     CacheEntry cacheEntry = getCacheEntry(node);
     // update memory status first
     if (cacheEntry == null) {
-      memManager.requestPinnedMemResource(node);
-      initCacheEntryForNode(node);
+      memoryStatistics.requestPinnedMemResource(node);
+      nodeCache.initCacheEntryForNode(node);
     } else if (!cacheEntry.isPinned()) {
-      memManager.upgradeMemResource(node);
+      memoryStatistics.upgradeMemResource(node);
     }
     doPin(node);
   }
@@ -540,7 +544,7 @@ public abstract class CacheManager implements ICacheManager {
       cacheEntry.unPin();
       if (!cacheEntry.isPinned()) {
         isPinStatusChanged = true;
-        memManager.releasePinnedMemResource(node);
+        memoryStatistics.releasePinnedMemResource(node);
       }
     }
 
@@ -554,7 +558,7 @@ public abstract class CacheManager implements ICacheManager {
   @Override
   public void clear(ICachedMNode root) {
     clearMNodeInMemory(root);
-    clearNodeCache();
+    nodeCache.clear();
     nodeBuffer.removeUpdatedDatabaseNode();
     nodeBuffer.clear();
   }
@@ -566,9 +570,9 @@ public abstract class CacheManager implements ICacheManager {
     }
 
     if (cacheEntry.isPinned()) {
-      memManager.releasePinnedMemResource(node);
+      memoryStatistics.releasePinnedMemResource(node);
     }
-    memManager.releaseMemResource(node);
+    memoryStatistics.releaseMemResource(node);
 
     Iterator<ICachedMNode> iterator = getCachedMNodeContainer(node).getChildrenIterator();
     while (iterator.hasNext()) {
@@ -585,17 +589,8 @@ public abstract class CacheManager implements ICacheManager {
     return nodeBuffer.getBufferNodeNum();
   }
 
-  protected void initCacheEntryForNode(ICachedMNode node) {
-    node.setCacheEntry(new CacheEntry());
+  @Override
+  public long getCacheNodeNum() {
+    return nodeCache.getCacheNodeNum();
   }
-
-  protected abstract void updateCacheStatusAfterAccess(CacheEntry cacheEntry);
-
-  protected abstract void addToNodeCache(CacheEntry cacheEntry, ICachedMNode node);
-
-  protected abstract void removeFromNodeCache(CacheEntry cacheEntry);
-
-  protected abstract ICachedMNode getPotentialNodeTobeEvicted();
-
-  protected abstract void clearNodeCache();
 }

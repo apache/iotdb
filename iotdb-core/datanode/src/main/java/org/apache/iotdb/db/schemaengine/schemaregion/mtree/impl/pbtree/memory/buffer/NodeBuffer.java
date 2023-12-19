@@ -17,9 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache;
+package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.buffer;
 
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.cache.CacheEntry;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
 import java.util.Iterator;
@@ -27,6 +28,13 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * The ancestors of the volatile nodes. If a node is not volatile but not in nodeCache, it means
+ * this node is an ancestor of some volatile node. Any volatile node is contained in the
+ * CachedContainer of its parent. The parent will be placed in nodeBuffer. If the parent is volatile
+ * as well, then the parent of the parent will be hold nodeBuffer instead, which means the root node
+ * of a maximum volatile subtree will be placed in node buffer.
+ */
 public class NodeBuffer implements INodeBuffer {
 
   private static final int MAP_NUM = 17;
@@ -36,7 +44,7 @@ public class NodeBuffer implements INodeBuffer {
 
   private final Map<Integer, NodeBufferIterator> currentIteratorMap = new ConcurrentHashMap<>();
 
-  NodeBuffer() {
+  public NodeBuffer() {
     for (int i = 0; i < MAP_NUM; i++) {
       maps[i] = new ConcurrentHashMap<>();
     }

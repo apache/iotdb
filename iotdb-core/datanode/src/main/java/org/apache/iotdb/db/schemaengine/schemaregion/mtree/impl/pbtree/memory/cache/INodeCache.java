@@ -16,18 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode;
+package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.cache;
 
-import org.apache.iotdb.commons.schema.node.IMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockEntry;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.cache.CacheEntry;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
-public interface ICachedMNode extends IMNode<ICachedMNode> {
-  CacheEntry getCacheEntry();
+/**
+ * NodeCache is used to implement specific cache eviction strategy and help quickly locate the
+ * target nodes tobe evicted. This interface defines the behaviours that an implementation shall
+ * meet.
+ */
+public interface INodeCache {
 
-  void setCacheEntry(CacheEntry cacheEntry);
+  long getCacheNodeNum();
 
-  LockEntry getLockEntry();
+  void initCacheEntryForNode(ICachedMNode node);
 
-  void setLockEntry(LockEntry lockEntry);
+  void updateCacheStatusAfterAccess(CacheEntry cacheEntry);
+
+  void addToNodeCache(CacheEntry cacheEntry, ICachedMNode node);
+
+  void removeFromNodeCache(CacheEntry cacheEntry);
+
+  ICachedMNode getPotentialNodeTobeEvicted();
+
+  void clear();
 }
