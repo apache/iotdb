@@ -372,7 +372,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
   }
 
   private void doTransfer(PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
-      throws PipeException, TException, IOException {
+      throws PipeException, IOException {
     Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus =
         clientManager.getClientAndStatusByEvent(pipeTsFileInsertionEvent);
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
@@ -388,17 +388,27 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
           break;
         }
 
-        final PipeTransferFilePieceResp resp =
-            PipeTransferFilePieceResp.fromTPipeTransferResp(
-                clientAndStatus
-                    .getLeft()
-                    .pipeTransfer(
-                        PipeTransferFilePieceReq.toTPipeTransferReq(
-                            tsFile.getName(),
-                            position,
-                            readLength == readFileBufferSize
-                                ? readBuffer
-                                : Arrays.copyOfRange(readBuffer, 0, readLength))));
+        final PipeTransferFilePieceResp resp;
+        try {
+          resp =
+              PipeTransferFilePieceResp.fromTPipeTransferResp(
+                  clientAndStatus
+                      .getLeft()
+                      .pipeTransfer(
+                          PipeTransferFilePieceReq.toTPipeTransferReq(
+                              tsFile.getName(),
+                              position,
+                              readLength == readFileBufferSize
+                                  ? readBuffer
+                                  : Arrays.copyOfRange(readBuffer, 0, readLength))));
+        } catch (TException e) {
+          clientAndStatus.setRight(false);
+          throw new PipeConnectionException(
+              String.format(
+                  "Network error when transfer raw tablet insertion event, because %s.",
+                  e.getMessage()),
+              e);
+        }
         position += readLength;
 
         // This case only happens when the connection is broken, and the connector is reconnected
@@ -419,11 +429,21 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
     }
 
     // 2. Transfer file seal signal, which means the file is transferred completely
-    final TPipeTransferResp resp =
-        clientAndStatus
-            .getLeft()
-            .pipeTransfer(
-                PipeTransferFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()));
+    final TPipeTransferResp resp;
+    try {
+      resp =
+          clientAndStatus
+              .getLeft()
+              .pipeTransfer(
+                  PipeTransferFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()));
+    } catch (TException e) {
+      clientAndStatus.setRight(false);
+      throw new PipeConnectionException(
+          String.format(
+              "Network error when transfer raw tablet insertion event, because %s.",
+              e.getMessage()),
+          e);
+    }
     if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format("Seal file %s error, result status %s.", tsFile, resp.getStatus()));
