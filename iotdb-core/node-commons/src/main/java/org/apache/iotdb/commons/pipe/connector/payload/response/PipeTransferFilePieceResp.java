@@ -35,52 +35,55 @@ public class PipeTransferFilePieceResp extends TPipeTransferResp {
 
   private long endWritingOffset;
 
-  private PipeTransferFilePieceResp() {}
+  private PipeTransferFilePieceResp() {
+    // Empty constructor
+  }
 
   public long getEndWritingOffset() {
     return endWritingOffset;
   }
 
+  /////////////////////////////// Thrift ///////////////////////////////
+
   public static PipeTransferFilePieceResp toTPipeTransferResp(
       TSStatus status, long endWritingOffset) throws IOException {
-    final PipeTransferFilePieceResp snapshotPieceResp = new PipeTransferFilePieceResp();
+    final PipeTransferFilePieceResp filePieceResp = new PipeTransferFilePieceResp();
 
-    snapshotPieceResp.status = status;
+    filePieceResp.status = status;
 
-    snapshotPieceResp.endWritingOffset = endWritingOffset;
+    filePieceResp.endWritingOffset = endWritingOffset;
     try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(endWritingOffset, outputStream);
-      snapshotPieceResp.body =
+      filePieceResp.body =
           ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
 
-    return snapshotPieceResp;
+    return filePieceResp;
   }
 
   public static PipeTransferFilePieceResp toTPipeTransferResp(TSStatus status) {
-    final PipeTransferFilePieceResp snapshotPieceResp = new PipeTransferFilePieceResp();
+    final PipeTransferFilePieceResp filePieceResp = new PipeTransferFilePieceResp();
 
-    snapshotPieceResp.status = status;
+    filePieceResp.status = status;
 
-    return snapshotPieceResp;
+    return filePieceResp;
   }
 
   public static PipeTransferFilePieceResp fromTPipeTransferResp(TPipeTransferResp transferResp) {
-    final PipeTransferFilePieceResp snapshotPieceResp = new PipeTransferFilePieceResp();
+    final PipeTransferFilePieceResp filePieceResp = new PipeTransferFilePieceResp();
 
-    snapshotPieceResp.status = transferResp.status;
+    filePieceResp.status = transferResp.status;
 
     if (transferResp.isSetBody()) {
-      snapshotPieceResp.endWritingOffset = ReadWriteIOUtils.readLong(transferResp.body);
-      snapshotPieceResp.body = transferResp.body;
+      filePieceResp.endWritingOffset = ReadWriteIOUtils.readLong(transferResp.body);
+      filePieceResp.body = transferResp.body;
     }
 
-    return snapshotPieceResp;
+    return filePieceResp;
   }
 
   /////////////////////////////// Object ///////////////////////////////
-
   @Override
   public boolean equals(Object obj) {
     if (this == obj) {

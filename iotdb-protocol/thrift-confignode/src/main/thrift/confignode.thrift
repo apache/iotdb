@@ -591,7 +591,7 @@ struct TDatabaseInfo {
   11: required i32 maxDataRegionNum
 }
 
-struct TGetDatabaseReq{
+struct TGetDatabaseReq {
   1: required list<string> databasePathPattern
   2: required binary scopePatternTree
 }
@@ -685,7 +685,7 @@ struct TShowPipeInfo {
   7: required string exceptionMessage
 }
 
-struct TGetAllPipeInfoResp{
+struct TGetAllPipeInfoResp {
   1: required common.TSStatus status
   2: required list<binary> allPipeInfo
 }
@@ -726,17 +726,17 @@ struct TPipeConfigTransferResp {
   2: optional binary body
 }
 
-struct TDeleteTimeSeriesReq{
+struct TDeleteTimeSeriesReq {
   1: required string queryId
   2: required binary pathPatternTree
 }
 
-struct TDeleteLogicalViewReq{
+struct TDeleteLogicalViewReq {
   1: required string queryId
   2: required binary pathPatternTree
 }
 
-struct TAlterLogicalViewReq{
+struct TAlterLogicalViewReq {
   1: required string queryId
   2: required binary viewBinary
 }
@@ -773,13 +773,13 @@ struct TShowCQResp {
 }
 
 
-struct TDeactivateSchemaTemplateReq{
+struct TDeactivateSchemaTemplateReq {
   1: required string queryId
   2: required binary pathPatternTree
   3: optional string templateName
 }
 
-struct TUnsetSchemaTemplateReq{
+struct TUnsetSchemaTemplateReq {
   1: required string queryId
   2: required string templateName
   3: required string path
@@ -788,18 +788,18 @@ struct TUnsetSchemaTemplateReq{
 // ====================================================
 // Quota
 // ====================================================
-struct TSpaceQuotaResp{
+struct TSpaceQuotaResp {
   1: required common.TSStatus status
   2: optional map<string, common.TSpaceQuota> spaceQuota
   3: optional map<string, common.TSpaceQuota> spaceQuotaUsage
 }
 
-struct TThrottleQuotaResp{
+struct TThrottleQuotaResp {
   1: required common.TSStatus status
   2: optional map<string, common.TThrottleQuota> throttleQuota
 }
 
-struct TShowThrottleReq{
+struct TShowThrottleReq {
   1: optional string userName;
 }
 
@@ -1156,18 +1156,18 @@ service IConfigNodeRPCService {
   TGetLocationForTriggerResp getLocationOfStatefulTrigger(string triggerName)
 
   /**
-     * Return the trigger table
-     */
+   * Return the trigger table
+   */
   TGetTriggerTableResp getTriggerTable()
 
   /**
-     * Return the Stateful trigger table
-     */
+   * Return the Stateful trigger table
+   */
   TGetTriggerTableResp getStatefulTriggerTable()
 
   /**
-     * Return the trigger jar list of the trigger name list
-     */
+   * Return the trigger jar list of the trigger name list
+   */
   TGetJarInListResp getTriggerJar(TGetJarInListReq req)
 
   // ======================================================
