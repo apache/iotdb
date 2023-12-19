@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.connector;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.pipe.connector.payload.request.PipeTransferHandshakeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.receiver.thrift.IoTDBThriftReceiverV1;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -39,7 +39,7 @@ public class PipeReceiverTest {
     IoTDBThriftReceiverV1 receiver = new IoTDBThriftReceiverV1();
     try {
       receiver.receive(
-          PipeTransferHandshakeReq.toTPipeTransferReq(
+          PipeTransferDataNodeHandshakeReq.toTPipeTransferReq(
               CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
       receiver.receive(
           PipeTransferTabletRawReq.toTPipeTransferReq(

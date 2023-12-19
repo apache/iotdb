@@ -23,9 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.request.PipeTransferFileSealReq;
-import org.apache.iotdb.commons.pipe.connector.payload.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiverV1;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.manager.pipe.connector.payload.request.PipeTransferConfigHandshakeReq;
 import org.apache.iotdb.confignode.manager.pipe.connector.payload.request.PipeTransferConfigPlanReq;
 import org.apache.iotdb.confignode.manager.pipe.connector.payload.request.PipeTransferConfigSnapShotPieceReq;
 import org.apache.iotdb.confignode.manager.pipe.connector.payload.request.PipeTransferConfigSnapShotSealReq;
@@ -54,8 +54,9 @@ public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
       final short rawRequestType = req.getType();
       if (PipeRequestType.isValidatedRequestType(rawRequestType)) {
         switch (PipeRequestType.valueOf(rawRequestType)) {
-          case HANDSHAKE:
-            return handleTransferHandshake(PipeTransferHandshakeReq.fromTPipeTransferReq(req));
+          case CONFIGNODE_HANDSHAKE:
+            return handleTransferHandshake(
+                PipeTransferConfigHandshakeReq.fromTPipeTransferReq(req));
           case TRANSFER_CONFIG_PLAN:
             return handleTransferConfigPlan(PipeTransferConfigPlanReq.fromTPipeTransferReq(req));
           case TRANSFER_CONFIG_SNAPSHOT_PIECE:

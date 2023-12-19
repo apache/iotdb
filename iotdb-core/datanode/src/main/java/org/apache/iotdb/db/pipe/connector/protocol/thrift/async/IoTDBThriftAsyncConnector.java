@@ -24,8 +24,8 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.pipe.connector.payload.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftAsyncPipeTransferBatchReqBuilder;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
@@ -360,7 +360,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
     final AtomicReference<Exception> exception = new AtomicReference<>();
 
     client.pipeTransfer(
-        PipeTransferHandshakeReq.toTPipeTransferReq(
+        PipeTransferDataNodeHandshakeReq.toTPipeTransferReq(
             CommonDescriptor.getInstance().getConfig().getTimestampPrecision()),
         new AsyncMethodCallback<TPipeTransferResp>() {
           @Override

@@ -23,13 +23,13 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.request.PipeTransferFileSealReq;
-import org.apache.iotdb.commons.pipe.connector.payload.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiverV1;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaPlanReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
@@ -98,12 +98,9 @@ public class IoTDBThriftReceiverV1 extends IoTDBFileReceiverV1 {
       final short rawRequestType = req.getType();
       if (PipeRequestType.isValidatedRequestType(rawRequestType)) {
         switch (PipeRequestType.valueOf(rawRequestType)) {
-          case HANDSHAKE:
-            TPipeTransferResp resp =
-                handleTransferHandshake(PipeTransferHandshakeReq.fromTPipeTransferReq(req));
-            return resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-                ? handleTransferConfigPlan(req)
-                : resp;
+          case DATANODE_HANDSHAKE:
+            return handleTransferHandshake(
+                PipeTransferDataNodeHandshakeReq.fromTPipeTransferReq(req));
           case TRANSFER_TABLET_INSERT_NODE:
           case TRANSFER_TABLET_BINARY:
             return handleTransferTabletInsertNode(
@@ -127,6 +124,7 @@ public class IoTDBThriftReceiverV1 extends IoTDBFileReceiverV1 {
           case TRANSFER_SCHEMA_SNAPSHOT_SEAL:
             return handleTransferFileSeal(
                 PipeTransferSchemaSnapshotSealReq.fromTPipeTransferReq(req));
+          case CONFIGNODE_HANDSHAKE:
           case TRANSFER_CONFIG_PLAN:
           case TRANSFER_CONFIG_SNAPSHOT_PIECE:
           case TRANSFER_CONFIG_SNAPSHOT_SEAL:
