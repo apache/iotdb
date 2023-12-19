@@ -1031,8 +1031,17 @@ public class PartitionManager {
       // Return empty result if Database not specified
       return new GetRegionIdResp(RpcUtils.SUCCESS_STATUS, new ArrayList<>());
     }
-    plan.setStartTimeSlotId(req.getStartTimeSlot());
-    plan.setEndTimeSlotId(req.getEndTimeSlot());
+    if (req.isSetStartTimeSlot()) {
+      plan.setStartTimeSlotId(req.getStartTimeSlot());
+    } else {
+      plan.setStartTimeSlotId(new TTimePartitionSlot(0));
+    }
+    if (req.isSetEndTimeSlot()) {
+      plan.setEndTimeSlotId(req.getEndTimeSlot());
+    } else {
+      plan.setEndTimeSlotId(new TTimePartitionSlot(Long.MAX_VALUE));
+    }
+
     try {
       return (GetRegionIdResp) getConsensusManager().read(plan);
     } catch (ConsensusException e) {

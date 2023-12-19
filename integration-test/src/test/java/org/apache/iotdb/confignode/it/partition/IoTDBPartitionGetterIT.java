@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
@@ -359,16 +360,18 @@ public class IoTDBPartitionGetterIT {
       // Get RegionIds of specified database and timestamp
       getRegionIdReq = new TGetRegionIdReq(TConsensusGroupType.DataRegion);
       getRegionIdReq.setDatabase(sg0);
-      getRegionIdReq.setTimeStamp(0);
+      getRegionIdReq.setStartTimeSlot(new TTimePartitionSlot(0));
+      getRegionIdReq.setEndTimeSlot(new TTimePartitionSlot(0));
       getRegionIdResp = client.getRegionId(getRegionIdReq);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRegionIdResp.status.getCode());
 
-      //           Get RegionId with wrong PartitionSlot
+      //   Get schema RegionIds with specified database and timestamp will ignore timestamp and
+      // return success.
       getRegionIdReq.setType(TConsensusGroupType.SchemaRegion);
       getRegionIdResp = client.getRegionId(getRegionIdReq);
       Assert.assertEquals(
-          TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), getRegionIdResp.status.getCode());
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRegionIdResp.status.getCode());
 
       // Get all RegionIds within database
       for (int i = 0; i < storageGroupNum; i++) {
@@ -383,7 +386,8 @@ public class IoTDBPartitionGetterIT {
         for (long j = 0; j < testTimePartitionSlotsNum; j++) {
           TGetRegionIdReq subReq = new TGetRegionIdReq(TConsensusGroupType.DataRegion);
           subReq.setDatabase(curSg);
-          subReq.setTimeStamp(j * testTimePartitionInterval);
+          subReq.setStartTimeSlot(new TTimePartitionSlot(j * testTimePartitionInterval));
+          subReq.setEndTimeSlot(new TTimePartitionSlot(j * testTimePartitionInterval));
           TGetRegionIdResp subResp = client.getRegionId(subReq);
           Assert.assertEquals(
               TSStatusCode.SUCCESS_STATUS.getStatusCode(), subResp.getStatus().getCode());
