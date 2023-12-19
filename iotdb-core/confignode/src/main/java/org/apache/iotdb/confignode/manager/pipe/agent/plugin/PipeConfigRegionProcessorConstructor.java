@@ -22,14 +22,9 @@ package org.apache.iotdb.confignode.manager.pipe.agent.plugin;
 import org.apache.iotdb.commons.pipe.agent.plugin.PipeProcessorConstructor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.donothing.DoNothingProcessor;
-import org.apache.iotdb.commons.pipe.plugin.meta.ConfigNodePipePluginMetaKeeper;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 
 public class PipeConfigRegionProcessorConstructor extends PipeProcessorConstructor {
-
-  PipeConfigRegionProcessorConstructor(ConfigNodePipePluginMetaKeeper pipePluginMetaKeeper) {
-    super(pipePluginMetaKeeper);
-  }
 
   @Override
   protected void initConstructors() {

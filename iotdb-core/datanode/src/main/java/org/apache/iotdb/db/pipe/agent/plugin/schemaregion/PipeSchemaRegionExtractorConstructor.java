@@ -17,30 +17,33 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.agent.plugin;
+package org.apache.iotdb.db.pipe.agent.plugin.schemaregion;
 
 import org.apache.iotdb.commons.pipe.agent.plugin.PipeExtractorConstructor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.donothing.DoNothingExtractor;
-import org.apache.iotdb.commons.pipe.plugin.meta.DataNodePipePluginMetaKeeper;
-import org.apache.iotdb.db.pipe.extractor.IoTDBDataRegionExtractor;
+import org.apache.iotdb.db.pipe.extractor.IoTDBSchemaRegionExtractor;
+import org.apache.iotdb.pipe.api.PipeExtractor;
 
-public class PipeDataRegionExtractorConstructor extends PipeExtractorConstructor {
-
-  PipeDataRegionExtractorConstructor(DataNodePipePluginMetaKeeper pipePluginMetaKeeper) {
-    super(pipePluginMetaKeeper);
-  }
+public class PipeSchemaRegionExtractorConstructor extends PipeExtractorConstructor {
 
   @Override
   protected void initConstructors() {
     PLUGIN_CONSTRUCTORS.put(
         BuiltinPipePlugin.DO_NOTHING_EXTRACTOR.getPipePluginName(), DoNothingExtractor::new);
     PLUGIN_CONSTRUCTORS.put(
-        BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName(), IoTDBDataRegionExtractor::new);
+        BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName(), IoTDBSchemaRegionExtractor::new);
 
     PLUGIN_CONSTRUCTORS.put(
         BuiltinPipePlugin.DO_NOTHING_SOURCE.getPipePluginName(), DoNothingExtractor::new);
     PLUGIN_CONSTRUCTORS.put(
-        BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName(), IoTDBDataRegionExtractor::new);
+        BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName(), IoTDBSchemaRegionExtractor::new);
+  }
+
+  @Override
+  protected PipeExtractor reflectPluginByKey(String pluginKey) {
+    // TODO: support constructing plugin by reflection
+    return (PipeExtractor)
+        PLUGIN_CONSTRUCTORS.getOrDefault(pluginKey, DoNothingExtractor::new).get();
   }
 }

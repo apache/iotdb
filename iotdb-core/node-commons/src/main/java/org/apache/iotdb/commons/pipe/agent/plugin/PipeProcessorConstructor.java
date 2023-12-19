@@ -31,6 +31,10 @@ public abstract class PipeProcessorConstructor extends PipePluginConstructor {
     super(pipePluginMetaKeeper);
   }
 
+  protected PipeProcessorConstructor() {
+    super();
+  }
+
   @Override
   public final PipeProcessor reflectPlugin(PipeParameters processorParameters) {
     return (PipeProcessor)

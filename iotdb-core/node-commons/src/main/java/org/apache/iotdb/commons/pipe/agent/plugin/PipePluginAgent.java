@@ -19,37 +19,95 @@
 
 package org.apache.iotdb.commons.pipe.agent.plugin;
 
+import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskTemporaryRuntimeEnvironment;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.PipeProcessor;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.Map;
 
 public abstract class PipePluginAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipePluginAgent.class);
 
-  private final ReentrantLock lock = new ReentrantLock();
+  private final PipePluginConstructor pipeExtractorConstructor;
+  private final PipePluginConstructor pipeProcessorConstructor;
+  private final PipePluginConstructor pipeConnectorConstructor;
 
-  protected PipePluginAgent() {}
-
-  /////////////////////////////// Lock ///////////////////////////////
-
-  public void acquireLock() {
-    lock.lock();
+  protected PipePluginAgent() {
+    pipeExtractorConstructor = createPipeExtractorConstructor();
+    pipeProcessorConstructor = createPipeProcessorConstructor();
+    pipeConnectorConstructor = createPipeConnectorConstructor();
   }
 
-  public void releaseLock() {
-    lock.unlock();
+  protected abstract PipePluginConstructor createPipeExtractorConstructor();
+
+  protected abstract PipePluginConstructor createPipeProcessorConstructor();
+
+  protected abstract PipePluginConstructor createPipeConnectorConstructor();
+
+  public final PipeExtractor reflectExtractor(PipeParameters extractorParameters) {
+    return (PipeExtractor) pipeExtractorConstructor.reflectPlugin(extractorParameters);
   }
 
-  public abstract PipeExtractor reflectExtractor(PipeParameters extractorParameters);
+  public final PipeProcessor reflectProcessor(PipeParameters processorParameters) {
+    return (PipeProcessor) pipeProcessorConstructor.reflectPlugin(processorParameters);
+  }
 
-  public abstract PipeProcessor reflectProcessor(PipeParameters processorParameters);
+  public final PipeConnector reflectConnector(PipeParameters connectorParameters) {
+    return (PipeConnector) pipeConnectorConstructor.reflectPlugin(connectorParameters);
+  }
 
-  public abstract PipeConnector reflectConnector(PipeParameters connectorParameters);
+  public void validate(
+      String pipeName,
+      Map<String, String> extractorAttributes,
+      Map<String, String> processorAttributes,
+      Map<String, String> connectorAttributes)
+      throws Exception {
+    final PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
+    final PipeExtractor temporaryExtractor = reflectExtractor(extractorParameters);
+    try {
+      temporaryExtractor.validate(new PipeParameterValidator(extractorParameters));
+    } finally {
+      try {
+        temporaryExtractor.close();
+      } catch (Exception e) {
+        LOGGER.warn("Failed to close temporary extractor: {}", e.getMessage(), e);
+      }
+    }
+
+    final PipeParameters processorParameters = new PipeParameters(processorAttributes);
+    final PipeProcessor temporaryProcessor = reflectProcessor(processorParameters);
+    try {
+      temporaryProcessor.validate(new PipeParameterValidator(processorParameters));
+    } finally {
+      try {
+        temporaryProcessor.close();
+      } catch (Exception e) {
+        LOGGER.warn("Failed to close temporary processor: {}", e.getMessage(), e);
+      }
+    }
+
+    final PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
+    final PipeConnector temporaryConnector = reflectConnector(connectorParameters);
+    try {
+      temporaryConnector.validate(new PipeParameterValidator(connectorParameters));
+      temporaryConnector.customize(
+          connectorParameters,
+          new PipeTaskRuntimeConfiguration(new PipeTaskTemporaryRuntimeEnvironment(pipeName)));
+      temporaryConnector.handshake();
+    } finally {
+      try {
+        temporaryConnector.close();
+      } catch (Exception e) {
+        LOGGER.warn("Failed to close temporary connector: {}", e.getMessage(), e);
+      }
+    }
+  }
 }

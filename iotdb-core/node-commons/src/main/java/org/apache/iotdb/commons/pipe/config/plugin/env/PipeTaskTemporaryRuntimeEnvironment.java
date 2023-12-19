@@ -17,13 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.config.plugin.env;
+package org.apache.iotdb.commons.pipe.config.plugin.env;
 
-import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
+/** For temporary use when validating during creating a new pipe. */
+public class PipeTaskTemporaryRuntimeEnvironment extends PipeTaskRuntimeEnvironment {
 
-public class PipeTaskProcessorRuntimeEnvironment extends PipeTaskRuntimeEnvironment {
-
-  public PipeTaskProcessorRuntimeEnvironment(String pipeName, long creationTime, int regionId) {
-    super(pipeName, creationTime, regionId);
+  public PipeTaskTemporaryRuntimeEnvironment(String pipeName) {
+    super(pipeName, System.currentTimeMillis(), -1);
   }
 }

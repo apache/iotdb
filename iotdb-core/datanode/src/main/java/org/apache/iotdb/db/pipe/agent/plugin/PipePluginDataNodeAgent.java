@@ -19,20 +19,14 @@
 
 package org.apache.iotdb.db.pipe.agent.plugin;
 
-import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginAgent;
 import org.apache.iotdb.commons.pipe.plugin.meta.DataNodePipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoaderManager;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
-import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
-import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskTemporaryRuntimeEnvironment;
-import org.apache.iotdb.pipe.api.PipeConnector;
-import org.apache.iotdb.pipe.api.PipeExtractor;
+import org.apache.iotdb.db.pipe.agent.plugin.dataregion.PipeDataRegionPluginAgent;
+import org.apache.iotdb.db.pipe.agent.plugin.schemaregion.PipeSchemaRegionPluginAgent;
 import org.apache.iotdb.pipe.api.PipePlugin;
-import org.apache.iotdb.pipe.api.PipeProcessor;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
@@ -42,28 +36,41 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 import java.util.Map;
+import java.util.concurrent.locks.ReentrantLock;
 
-public class PipePluginDataNodeAgent extends PipePluginAgent {
+public class PipePluginDataNodeAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipePluginDataNodeAgent.class);
 
-  protected DataNodePipePluginMetaKeeper pipePluginMetaKeeper;
-  private final PipeDataRegionExtractorConstructor pipeExtractorConstructor;
-  private final PipeDataRegionProcessorConstructor pipeProcessorConstructor;
-  private final PipeDataRegionConnectorConstructor pipeConnectorConstructor;
+  private final DataNodePipePluginMetaKeeper pipePluginMetaKeeper;
+
+  private final PipeDataRegionPluginAgent dataRegionPluginAgent;
+  private final PipeSchemaRegionPluginAgent schemaRegionPluginAgent;
+
+  private final ReentrantLock lock;
 
   public PipePluginDataNodeAgent() {
-    this.pipePluginMetaKeeper = new DataNodePipePluginMetaKeeper();
-    this.pipeExtractorConstructor = new PipeDataRegionExtractorConstructor(pipePluginMetaKeeper);
-    this.pipeProcessorConstructor = new PipeDataRegionProcessorConstructor(pipePluginMetaKeeper);
-    this.pipeConnectorConstructor = new PipeDataRegionConnectorConstructor(pipePluginMetaKeeper);
+    pipePluginMetaKeeper = new DataNodePipePluginMetaKeeper();
+
+    dataRegionPluginAgent = new PipeDataRegionPluginAgent(pipePluginMetaKeeper);
+    schemaRegionPluginAgent = new PipeSchemaRegionPluginAgent();
+
+    lock = new ReentrantLock();
+  }
+
+  public PipeDataRegionPluginAgent dataRegion() {
+    return dataRegionPluginAgent;
+  }
+
+  public PipeSchemaRegionPluginAgent schemaRegion() {
+    return schemaRegionPluginAgent;
   }
 
   /////////////////////////////// Pipe Plugin Management ///////////////////////////////
 
   public void register(PipePluginMeta pipePluginMeta, ByteBuffer jarFile)
       throws IOException, PipeException {
-    acquireLock();
+    lock.lock();
     try {
       // try to deregister first to avoid inconsistent state
       deregister(pipePluginMeta.getPluginName(), false);
@@ -73,7 +80,7 @@ public class PipePluginDataNodeAgent extends PipePluginAgent {
       saveJarFileIfNeeded(pipePluginMeta.getJarName(), jarFile);
       doRegister(pipePluginMeta);
     } finally {
-      releaseLock();
+      lock.unlock();
     }
   }
 
@@ -165,7 +172,7 @@ public class PipePluginDataNodeAgent extends PipePluginAgent {
   }
 
   public void deregister(String pluginName, boolean needToDeleteJar) throws PipeException {
-    acquireLock();
+    lock.lock();
     try {
       final PipePluginMeta information = pipePluginMetaKeeper.getPipePluginMeta(pluginName);
 
@@ -189,73 +196,19 @@ public class PipePluginDataNodeAgent extends PipePluginAgent {
     } catch (IOException e) {
       throw new PipeException(e.getMessage(), e);
     } finally {
-      releaseLock();
+      lock.unlock();
     }
   }
 
-  /**
-   * Validation should have the granularity of "DataNode level", not "DataRegion level", because a
-   * DataNode may have no DataRegion at all when creating pipe
-   */
   public void validate(
       String pipeName,
       Map<String, String> extractorAttributes,
       Map<String, String> processorAttributes,
       Map<String, String> connectorAttributes)
       throws Exception {
-    final PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
-    final PipeExtractor temporaryExtractor = reflectExtractor(extractorParameters);
-    try {
-      temporaryExtractor.validate(new PipeParameterValidator(extractorParameters));
-    } finally {
-      try {
-        temporaryExtractor.close();
-      } catch (Exception e) {
-        LOGGER.warn("Failed to close temporary extractor: {}", e.getMessage(), e);
-      }
-    }
-
-    final PipeParameters processorParameters = new PipeParameters(processorAttributes);
-    final PipeProcessor temporaryProcessor = reflectProcessor(processorParameters);
-    try {
-      temporaryProcessor.validate(new PipeParameterValidator(processorParameters));
-    } finally {
-      try {
-        temporaryProcessor.close();
-      } catch (Exception e) {
-        LOGGER.warn("Failed to close temporary processor: {}", e.getMessage(), e);
-      }
-    }
-
-    final PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
-    final PipeConnector temporaryConnector = reflectConnector(connectorParameters);
-    try {
-      temporaryConnector.validate(new PipeParameterValidator(connectorParameters));
-      temporaryConnector.customize(
-          connectorParameters,
-          new PipeTaskRuntimeConfiguration(new PipeTaskTemporaryRuntimeEnvironment(pipeName)));
-      temporaryConnector.handshake();
-    } finally {
-      try {
-        temporaryConnector.close();
-      } catch (Exception e) {
-        LOGGER.warn("Failed to close temporary connector: {}", e.getMessage(), e);
-      }
-    }
-  }
-
-  @Override
-  public PipeExtractor reflectExtractor(PipeParameters extractorParameters) {
-    return pipeExtractorConstructor.reflectPlugin(extractorParameters);
-  }
-
-  @Override
-  public PipeProcessor reflectProcessor(PipeParameters processorParameters) {
-    return pipeProcessorConstructor.reflectPlugin(processorParameters);
-  }
-
-  @Override
-  public PipeConnector reflectConnector(PipeParameters connectorParameters) {
-    return pipeConnectorConstructor.reflectPlugin(connectorParameters);
+    dataRegionPluginAgent.validate(
+        pipeName, extractorAttributes, processorAttributes, connectorAttributes);
+    schemaRegionPluginAgent.validate(
+        pipeName, extractorAttributes, processorAttributes, connectorAttributes);
   }
 }

@@ -30,7 +30,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class PipePluginMetaKeeper {
+public abstract class PipePluginMetaKeeper {
 
   protected final Map<String, PipePluginMeta> pipePluginNameToMetaMap = new ConcurrentHashMap<>();
   protected final Map<String, Class<?>> pipePluginNameToClassMap;

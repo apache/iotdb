@@ -17,25 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.pipe.agent.plugin;
+package org.apache.iotdb.commons.pipe.config.plugin.env;
 
-import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginAgent;
-import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginConstructor;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 
-public class PipePluginConfigNodeAgent extends PipePluginAgent {
+public class PipeTaskExtractorRuntimeEnvironment extends PipeTaskRuntimeEnvironment {
 
-  @Override
-  protected PipePluginConstructor createPipeExtractorConstructor() {
-    return new PipeConfigRegionExtractorConstructor();
+  private final PipeTaskMeta pipeTaskMeta;
+
+  public PipeTaskExtractorRuntimeEnvironment(
+      String pipeName, long creationTime, int regionId, PipeTaskMeta pipeTaskMeta) {
+    super(pipeName, creationTime, regionId);
+    this.pipeTaskMeta = pipeTaskMeta;
   }
 
-  @Override
-  protected PipePluginConstructor createPipeProcessorConstructor() {
-    return new PipeConfigRegionProcessorConstructor();
-  }
-
-  @Override
-  protected PipePluginConstructor createPipeConnectorConstructor() {
-    return new PipeConfigRegionConnectorConstructor();
+  public PipeTaskMeta getPipeTaskMeta() {
+    return pipeTaskMeta;
   }
 }

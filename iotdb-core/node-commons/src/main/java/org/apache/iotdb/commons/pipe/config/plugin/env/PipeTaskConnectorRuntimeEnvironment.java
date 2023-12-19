@@ -17,22 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.config.plugin.env;
+package org.apache.iotdb.commons.pipe.config.plugin.env;
 
-import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+public class PipeTaskConnectorRuntimeEnvironment extends PipeTaskRuntimeEnvironment {
 
-public class PipeTaskExtractorRuntimeEnvironment extends PipeTaskRuntimeEnvironment {
-
-  private final PipeTaskMeta pipeTaskMeta;
-
-  public PipeTaskExtractorRuntimeEnvironment(
-      String pipeName, long creationTime, int regionId, PipeTaskMeta pipeTaskMeta) {
+  public PipeTaskConnectorRuntimeEnvironment(String pipeName, long creationTime, int regionId) {
     super(pipeName, creationTime, regionId);
-    this.pipeTaskMeta = pipeTaskMeta;
-  }
-
-  public PipeTaskMeta getPipeTaskMeta() {
-    return pipeTaskMeta;
   }
 }

@@ -22,15 +22,10 @@ package org.apache.iotdb.confignode.manager.pipe.agent.plugin;
 import org.apache.iotdb.commons.pipe.agent.plugin.PipeExtractorConstructor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.donothing.DoNothingExtractor;
-import org.apache.iotdb.commons.pipe.plugin.meta.ConfigNodePipePluginMetaKeeper;
 import org.apache.iotdb.confignode.manager.pipe.extractor.IoTDBConfigRegionExtractor;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 
 public class PipeConfigRegionExtractorConstructor extends PipeExtractorConstructor {
-
-  PipeConfigRegionExtractorConstructor(ConfigNodePipePluginMetaKeeper pipePluginMetaKeeper) {
-    super(pipePluginMetaKeeper);
-  }
 
   @Override
   protected void initConstructors() {

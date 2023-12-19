@@ -17,30 +17,30 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.agent.plugin;
+package org.apache.iotdb.db.pipe.agent.plugin.dataregion;
 
-import org.apache.iotdb.commons.pipe.agent.plugin.PipeProcessorConstructor;
+import org.apache.iotdb.commons.pipe.agent.plugin.PipeExtractorConstructor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
-import org.apache.iotdb.commons.pipe.plugin.builtin.processor.donothing.DoNothingProcessor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.donothing.DoNothingExtractor;
 import org.apache.iotdb.commons.pipe.plugin.meta.DataNodePipePluginMetaKeeper;
-import org.apache.iotdb.pipe.api.PipeProcessor;
+import org.apache.iotdb.db.pipe.extractor.IoTDBDataRegionExtractor;
 
-public class PipeSchemaRegionProcessorConstructor extends PipeProcessorConstructor {
+public class PipeDataRegionExtractorConstructor extends PipeExtractorConstructor {
 
-  PipeSchemaRegionProcessorConstructor(DataNodePipePluginMetaKeeper pipePluginMetaKeeper) {
+  PipeDataRegionExtractorConstructor(DataNodePipePluginMetaKeeper pipePluginMetaKeeper) {
     super(pipePluginMetaKeeper);
   }
 
   @Override
   protected void initConstructors() {
     PLUGIN_CONSTRUCTORS.put(
-        BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName(), DoNothingProcessor::new);
-  }
+        BuiltinPipePlugin.DO_NOTHING_EXTRACTOR.getPipePluginName(), DoNothingExtractor::new);
+    PLUGIN_CONSTRUCTORS.put(
+        BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName(), IoTDBDataRegionExtractor::new);
 
-  @Override
-  protected PipeProcessor reflectPluginByKey(String pluginKey) {
-    // TODO: support constructing plugin by reflection
-    return (PipeProcessor)
-        PLUGIN_CONSTRUCTORS.getOrDefault(pluginKey, DoNothingProcessor::new).get();
+    PLUGIN_CONSTRUCTORS.put(
+        BuiltinPipePlugin.DO_NOTHING_SOURCE.getPipePluginName(), DoNothingExtractor::new);
+    PLUGIN_CONSTRUCTORS.put(
+        BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName(), IoTDBDataRegionExtractor::new);
   }
 }

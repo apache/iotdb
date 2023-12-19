@@ -33,6 +33,10 @@ public abstract class PipeConnectorConstructor extends PipePluginConstructor {
     super(pipePluginMetaKeeper);
   }
 
+  protected PipeConnectorConstructor() {
+    super();
+  }
+
   @Override
   public final PipeConnector reflectPlugin(PipeParameters connectorParameters) {
     return (PipeConnector)

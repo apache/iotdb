@@ -17,13 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.config.plugin.env;
+package org.apache.iotdb.db.pipe.agent.plugin.schemaregion;
 
-import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginAgent;
+import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginConstructor;
 
-public class PipeTaskConnectorRuntimeEnvironment extends PipeTaskRuntimeEnvironment {
+public class PipeSchemaRegionPluginAgent extends PipePluginAgent {
 
-  public PipeTaskConnectorRuntimeEnvironment(String pipeName, long creationTime, int regionId) {
-    super(pipeName, creationTime, regionId);
+  @Override
+  protected PipePluginConstructor createPipeExtractorConstructor() {
+    return new PipeSchemaRegionExtractorConstructor();
+  }
+
+  @Override
+  protected PipePluginConstructor createPipeProcessorConstructor() {
+    return new PipeSchemaRegionProcessorConstructor();
+  }
+
+  @Override
+  protected PipePluginConstructor createPipeConnectorConstructor() {
+    return new PipeSchemaRegionConnectorConstructor();
   }
 }

@@ -17,25 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.pipe.agent.plugin;
+package org.apache.iotdb.db.pipe.agent.plugin.schemaregion;
 
-import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginAgent;
-import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginConstructor;
+import org.apache.iotdb.commons.pipe.agent.plugin.PipeProcessorConstructor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.donothing.DoNothingProcessor;
+import org.apache.iotdb.pipe.api.PipeProcessor;
 
-public class PipePluginConfigNodeAgent extends PipePluginAgent {
+public class PipeSchemaRegionProcessorConstructor extends PipeProcessorConstructor {
 
   @Override
-  protected PipePluginConstructor createPipeExtractorConstructor() {
-    return new PipeConfigRegionExtractorConstructor();
+  protected void initConstructors() {
+    PLUGIN_CONSTRUCTORS.put(
+        BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName(), DoNothingProcessor::new);
   }
 
   @Override
-  protected PipePluginConstructor createPipeProcessorConstructor() {
-    return new PipeConfigRegionProcessorConstructor();
-  }
-
-  @Override
-  protected PipePluginConstructor createPipeConnectorConstructor() {
-    return new PipeConfigRegionConnectorConstructor();
+  protected PipeProcessor reflectPluginByKey(String pluginKey) {
+    // TODO: support constructing plugin by reflection
+    return (PipeProcessor)
+        PLUGIN_CONSTRUCTORS.getOrDefault(pluginKey, DoNothingProcessor::new).get();
   }
 }

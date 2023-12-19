@@ -80,6 +80,7 @@ public class PipePluginDataNodeAgentTest {
     Assert.assertEquals(
         IoTDBDataRegionExtractor.class,
         agent
+            .dataRegion()
             .reflectExtractor(
                 new PipeParameters(
                     new HashMap<String, String>() {
@@ -93,6 +94,7 @@ public class PipePluginDataNodeAgentTest {
     Assert.assertEquals(
         BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginClass(),
         agent
+            .dataRegion()
             .reflectProcessor(
                 new PipeParameters(
                     new HashMap<String, String>() {
@@ -106,6 +108,7 @@ public class PipePluginDataNodeAgentTest {
     Assert.assertEquals(
         IoTDBThriftAsyncConnector.class,
         agent
+            .dataRegion()
             .reflectConnector(
                 new PipeParameters(
                     new HashMap<String, String>() {

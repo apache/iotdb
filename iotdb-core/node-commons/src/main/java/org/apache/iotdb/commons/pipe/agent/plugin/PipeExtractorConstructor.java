@@ -33,6 +33,10 @@ public abstract class PipeExtractorConstructor extends PipePluginConstructor {
     super(pipePluginMetaKeeper);
   }
 
+  protected PipeExtractorConstructor() {
+    super();
+  }
+
   @Override
   public final PipeExtractor reflectPlugin(PipeParameters extractorParameters) {
     return (PipeExtractor)

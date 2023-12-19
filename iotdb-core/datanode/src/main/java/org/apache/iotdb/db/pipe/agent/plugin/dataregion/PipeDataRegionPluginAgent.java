@@ -17,25 +17,32 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.pipe.agent.plugin;
+package org.apache.iotdb.db.pipe.agent.plugin.dataregion;
 
 import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginAgent;
 import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginConstructor;
+import org.apache.iotdb.commons.pipe.plugin.meta.DataNodePipePluginMetaKeeper;
 
-public class PipePluginConfigNodeAgent extends PipePluginAgent {
+public class PipeDataRegionPluginAgent extends PipePluginAgent {
+
+  protected final DataNodePipePluginMetaKeeper pipePluginMetaKeeper;
+
+  public PipeDataRegionPluginAgent(DataNodePipePluginMetaKeeper pipePluginMetaKeeper) {
+    this.pipePluginMetaKeeper = pipePluginMetaKeeper;
+  }
 
   @Override
   protected PipePluginConstructor createPipeExtractorConstructor() {
-    return new PipeConfigRegionExtractorConstructor();
+    return new PipeDataRegionExtractorConstructor(pipePluginMetaKeeper);
   }
 
   @Override
   protected PipePluginConstructor createPipeProcessorConstructor() {
-    return new PipeConfigRegionProcessorConstructor();
+    return new PipeDataRegionProcessorConstructor(pipePluginMetaKeeper);
   }
 
   @Override
   protected PipePluginConstructor createPipeConnectorConstructor() {
-    return new PipeConfigRegionConnectorConstructor();
+    return new PipeDataRegionConnectorConstructor(pipePluginMetaKeeper);
   }
 }

@@ -17,20 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.agent.plugin;
+package org.apache.iotdb.db.pipe.agent.plugin.schemaregion;
 
 import org.apache.iotdb.commons.pipe.agent.plugin.PipeConnectorConstructor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.donothing.DoNothingConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.thrift.IoTDBSchemaRegionConnector;
-import org.apache.iotdb.commons.pipe.plugin.meta.DataNodePipePluginMetaKeeper;
 import org.apache.iotdb.pipe.api.PipeConnector;
 
 public class PipeSchemaRegionConnectorConstructor extends PipeConnectorConstructor {
-
-  PipeSchemaRegionConnectorConstructor(DataNodePipePluginMetaKeeper pipePluginMetaKeeper) {
-    super(pipePluginMetaKeeper);
-  }
 
   @Override
   protected void initConstructors() {
