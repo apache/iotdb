@@ -955,11 +955,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TGetRegionIdResp getRegionId(TGetRegionIdReq req) {
-    if (req.isSetStartTimeSlot() && req.getType() != TConsensusGroupType.DataRegion) {
-      TSStatus status = new TSStatus(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode());
-      status.setMessage("Only data region can set time");
-      return new TGetRegionIdResp(status);
-    }
     return configManager.getRegionId(req);
   }
 
