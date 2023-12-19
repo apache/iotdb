@@ -24,6 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.reader.CompactionChunkReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -40,7 +41,6 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReader;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -651,7 +651,7 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
 
   private void validatePages(Chunk chunk) throws IOException {
     ChunkHeader chunkHeader = chunk.getHeader();
-    ChunkReader chunkReader = new ChunkReader(chunk);
+    CompactionChunkReader chunkReader = new CompactionChunkReader(chunk);
     ByteBuffer chunkDataBuffer = chunk.getData();
     while (chunkDataBuffer.remaining() > 0) {
       PageHeader pageHeader;

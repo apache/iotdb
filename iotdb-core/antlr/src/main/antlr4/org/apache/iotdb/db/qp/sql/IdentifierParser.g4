@@ -57,6 +57,7 @@ keyWords
     | CHILD
     | CLEAR
     | CLUSTER
+    | CLUSTERID
     | CONCAT
     | CONDITION
     | CONFIGNODES

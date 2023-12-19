@@ -44,12 +44,6 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
   private String pipeName;
 
-  // This variable is used to record whether the pipe status is STOPPED and to determine whether to
-  // skip this procedure.
-  //
-  // Pure in-memory object, not involved in snapshot serialization and deserialization.
-  private boolean canSkipSubsequentStages;
-
   public StopPipeProcedureV2() {
     super();
   }
@@ -57,7 +51,6 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   public StopPipeProcedureV2(String pipeName) throws PipeException {
     super();
     this.pipeName = pipeName;
-    this.canSkipSubsequentStages = false;
   }
 
   @Override
@@ -66,10 +59,13 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException {
+  protected boolean executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("StopPipeProcedureV2: executeFromValidateTask({})", pipeName);
 
-    canSkipSubsequentStages = pipeTaskInfo.get().checkBeforeStopPipe(pipeName);
+    pipeTaskInfo.get().checkBeforeStopPipe(pipeName);
+
+    return pipeTaskInfo.get().isPipeStopped(pipeName)
+        && !pipeTaskInfo.get().isStoppedByRuntimeException(pipeName);
   }
 
   @Override
@@ -82,11 +78,6 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   protected void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
       throws PipeException {
     LOGGER.info("StopPipeProcedureV2: executeFromWriteConfigNodeConsensus({})", pipeName);
-
-    if (canSkipSubsequentStages) {
-      LOGGER.warn("Pipe status is STOPPED, skip executeFromWriteConfigNodeConsensus({})", pipeName);
-      return;
-    }
 
     TSStatus response;
     try {
@@ -107,11 +98,6 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   @Override
   protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
     LOGGER.info("StopPipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
-
-    if (canSkipSubsequentStages) {
-      LOGGER.warn("Pipe status is STOPPED, skip executeFromOperateOnDataNodes({})", pipeName);
-      return;
-    }
 
     String exceptionMessage =
         parsePushPipeMetaExceptionForPipe(pipeName, pushSinglePipeMetaToDataNodes(pipeName, env));

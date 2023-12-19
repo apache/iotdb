@@ -96,9 +96,9 @@ public class ChunkReaderTest {
                   new Path(testStorageGroup + PATH_SEPARATOR + "d" + i, "s" + j, true));
           for (ChunkMetadata chunkMetadata : chunkMetadataList) {
             Chunk chunk = tsFileSequenceReader.readMemChunk(chunkMetadata);
-            ChunkReader chunkReader = new ChunkReader(chunk, null);
+            ChunkReader chunkReader = new ChunkReader(chunk);
             chunk = tsFileSequenceReader.readMemChunk(chunkMetadata);
-            ChunkReader chunkReaderByTimestamp = new ChunkReader(chunk, null, 301);
+            ChunkReader chunkReaderByTimestamp = new ChunkReader(chunk, 301);
             Assert.assertEquals(5, chunkReader.loadPageReaderList().size());
             Assert.assertEquals(2, chunkReaderByTimestamp.loadPageReaderList().size());
           }

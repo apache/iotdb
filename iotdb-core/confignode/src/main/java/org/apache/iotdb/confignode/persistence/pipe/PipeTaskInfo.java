@@ -158,18 +158,16 @@ public class PipeTaskInfo implements SnapshotProcessor {
     throw new PipeException(exceptionMessage);
   }
 
-  /** @return true if the pipe status is RUNNING before starting the pipe */
-  public boolean checkBeforeStartPipe(String pipeName) throws PipeException {
+  public void checkBeforeStartPipe(String pipeName) throws PipeException {
     acquireReadLock();
     try {
-      return checkBeforeStartPipeInternal(pipeName);
+      checkBeforeStartPipeInternal(pipeName);
     } finally {
       releaseReadLock();
     }
   }
 
-  /** @return true if the pipe status is RUNNING before starting the pipe */
-  private boolean checkBeforeStartPipeInternal(String pipeName) throws PipeException {
+  private void checkBeforeStartPipeInternal(String pipeName) throws PipeException {
     if (!isPipeExisted(pipeName)) {
       final String exceptionMessage =
           String.format("Failed to start pipe %s, the pipe does not exist", pipeName);
@@ -178,34 +176,24 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
 
     final PipeStatus pipeStatus = getPipeStatus(pipeName);
-    if (pipeStatus == PipeStatus.RUNNING) {
-      final String exceptionMessage =
-          String.format("Failed to start pipe %s, the pipe is already running", pipeName);
-      LOGGER.warn(exceptionMessage);
-      return true;
-    }
     if (pipeStatus == PipeStatus.DROPPED) {
       final String exceptionMessage =
           String.format("Failed to start pipe %s, the pipe is already dropped", pipeName);
       LOGGER.info(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
-
-    return false;
   }
 
-  /** @return true if the pipe status is STOPPED before stopping the pipe */
-  public boolean checkBeforeStopPipe(String pipeName) throws PipeException {
+  public void checkBeforeStopPipe(String pipeName) throws PipeException {
     acquireReadLock();
     try {
-      return checkBeforeStopPipeInternal(pipeName);
+      checkBeforeStopPipeInternal(pipeName);
     } finally {
       releaseReadLock();
     }
   }
 
-  /** @return true if the pipe status is STOPPED before stopping the pipe */
-  private boolean checkBeforeStopPipeInternal(String pipeName) throws PipeException {
+  private void checkBeforeStopPipeInternal(String pipeName) throws PipeException {
     if (!isPipeExisted(pipeName)) {
       final String exceptionMessage =
           String.format("Failed to stop pipe %s, the pipe does not exist", pipeName);
@@ -214,20 +202,12 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
 
     final PipeStatus pipeStatus = getPipeStatus(pipeName);
-    if (pipeStatus == PipeStatus.STOPPED) {
-      final String exceptionMessage =
-          String.format("Failed to stop pipe %s, the pipe is already stop", pipeName);
-      LOGGER.warn(exceptionMessage);
-      return true;
-    }
     if (pipeStatus == PipeStatus.DROPPED) {
       final String exceptionMessage =
           String.format("Failed to stop pipe %s, the pipe is already dropped", pipeName);
       LOGGER.info(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
-
-    return false;
   }
 
   public void checkBeforeDropPipe(String pipeName) {
@@ -264,6 +244,26 @@ public class PipeTaskInfo implements SnapshotProcessor {
     acquireReadLock();
     try {
       return pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta().getStatus().get();
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public boolean isPipeRunning(String pipeName) {
+    acquireReadLock();
+    try {
+      return pipeMetaKeeper.containsPipeMeta(pipeName)
+          && PipeStatus.RUNNING.equals(getPipeStatus(pipeName));
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public boolean isPipeStopped(String pipeName) {
+    acquireReadLock();
+    try {
+      return pipeMetaKeeper.containsPipeMeta(pipeName)
+          && PipeStatus.STOPPED.equals(getPipeStatus(pipeName));
     } finally {
       releaseReadLock();
     }

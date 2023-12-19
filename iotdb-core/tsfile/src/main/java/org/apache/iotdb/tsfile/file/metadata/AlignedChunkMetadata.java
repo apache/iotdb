@@ -72,10 +72,12 @@ public class AlignedChunkMetadata implements IChunkMetadata {
     return statistics.map(stat -> stat.hasNullValue(rowCount)).orElse(true);
   }
 
+  @Override
   public int getMeasurementCount() {
     return valueChunkMetadataList.size();
   }
 
+  @Override
   public boolean timeAllSelected() {
     for (int index = 0; index < getMeasurementCount(); index++) {
       if (!hasNullValue(index)) {

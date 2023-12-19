@@ -120,15 +120,9 @@ public class PipeTaskCoordinator {
   public TSStatus stopPipe(String pipeName) {
     final boolean isStoppedByRuntimeException = pipeTaskInfo.isStoppedByRuntimeException(pipeName);
     final TSStatus status = configManager.getProcedureManager().stopPipe(pipeName);
-    if (status == RpcUtils.SUCCESS_STATUS) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       if (isStoppedByRuntimeException) {
-        // Under normal circumstances, this branch is not executed because when
-        // `isStoppedByRuntimeException` is true, the pipe status is most likely to be STOPPED,
-        // unless this method is called between the execution of `autoRestartWithLock` and
-        // `handleSuccessfulRestartWithLock` in `PipeMetaSyncer` (in this case, the pipe status is
-        // RUNNING and `isStoppedByRuntimeException` is true).
-
-        // Even if return status is success, it doesn't imply the success of the
+        // Even if the return status is success, it doesn't imply the success of the
         // `executeFromOperateOnDataNodes` phase of stopping pipe. However, we still need to set
         // `isStoppedByRuntimeException` to false to avoid auto-restart. Meanwhile,
         // `isStoppedByRuntimeException` does not need to be synchronized with DNs.

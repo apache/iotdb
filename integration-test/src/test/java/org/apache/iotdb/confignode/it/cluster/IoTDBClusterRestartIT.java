@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
-import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.EnvUtils;
 import org.apache.iotdb.it.env.cluster.config.MppBaseConfig;
@@ -32,7 +31,6 @@ import org.apache.iotdb.it.env.cluster.config.MppCommonConfig;
 import org.apache.iotdb.it.env.cluster.config.MppJVMConfig;
 import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
-import org.apache.iotdb.it.framework.IoTDBTestLogger;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 
@@ -43,19 +41,19 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.iotdb.consensus.ConsensusFactory.RATIS_CONSENSUS;
+
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
 public class IoTDBClusterRestartIT {
-  private static final Logger logger = IoTDBTestLogger.logger;
-
-  private static final String ratisConsensusProtocolClass =
-      "org.apache.iotdb.consensus.ratis.RatisConsensus";
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBClusterRestartIT.class);
 
   private static final int testReplicationFactor = 2;
 
@@ -66,10 +64,9 @@ public class IoTDBClusterRestartIT {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
-        .setConfigNodeConsensusProtocolClass(ratisConsensusProtocolClass)
-        .setSchemaRegionConsensusProtocolClass(ratisConsensusProtocolClass)
-        .setDataRegionConsensusProtocolClass(ratisConsensusProtocolClass)
-        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setConfigNodeConsensusProtocolClass(RATIS_CONSENSUS)
+        .setSchemaRegionConsensusProtocolClass(RATIS_CONSENSUS)
+        .setDataRegionConsensusProtocolClass(RATIS_CONSENSUS)
         .setSchemaReplicationFactor(testReplicationFactor)
         .setDataReplicationFactor(testReplicationFactor);
 

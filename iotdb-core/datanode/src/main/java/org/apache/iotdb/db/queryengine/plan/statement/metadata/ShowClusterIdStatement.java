@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,8 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.optimization.base;
+package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
-public interface ColumnInjectionPushDown {
-  void setOutputEndTime(boolean outputEndTime);
+import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
+import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+
+public class ShowClusterIdStatement extends ShowStatement implements IConfigStatement {
+  @Override
+  public QueryType getQueryType() {
+    return QueryType.READ;
+  }
+
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitShowClusterId(this, context);
+  }
 }
