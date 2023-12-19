@@ -39,7 +39,7 @@ public interface IPageReader extends IMetadata {
 
   TsBlock getAllSatisfiedData() throws IOException;
 
-  void setFilter(Filter filter);
+  void addRecordFilter(Filter filter);
 
   boolean isModified();
 

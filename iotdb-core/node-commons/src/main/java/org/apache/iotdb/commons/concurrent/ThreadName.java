@@ -103,7 +103,7 @@ public enum ThreadName {
   IOT_CONSENSUS_RPC_PROCESSOR("IoTConsensusRPC-Processor"),
   ASYNC_DATANODE_IOT_CONSENSUS_CLIENT_POOL("AsyncDataNodeIoTConsensusServiceClientPool"),
   LOG_DISPATCHER("LogDispatcher"),
-  LOG_DISPATCHER_RETRY_EXECUTOR("LogDispatcherRetryExecutor"),
+  IOT_CONSENSUS_BACKGROUND_TASK_EXECUTOR("IoTConsensusBackgroundTaskExecutor"),
   // -------------------------- Ratis --------------------------
   // NOTICE: The thread name of ratis cannot be edited here!
   // We list the thread name here just for distinguishing what module the thread belongs to.
@@ -235,7 +235,7 @@ public enum ThreadName {
               IOT_CONSENSUS_RPC_PROCESSOR,
               ASYNC_DATANODE_IOT_CONSENSUS_CLIENT_POOL,
               LOG_DISPATCHER,
-              LOG_DISPATCHER_RETRY_EXECUTOR));
+              IOT_CONSENSUS_BACKGROUND_TASK_EXECUTOR));
 
   private static final Set<ThreadName> ratisThreadNames =
       new HashSet<>(

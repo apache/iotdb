@@ -89,12 +89,12 @@ public class IoTDBGroupByNaturalMonthNsPrecisionIT extends IoTDBGroupByNaturalMo
         new String[] {
           // [01-28, 03-01 + 1ns)
           "1674864000000000000,2,",
-          // [03-01 + 1ns, 04-02 + 2ns)
-          "1677628800000000001,1,",
-          // [04-02 + 2ns, 05-03 + 3ns)
-          "1680393600000000002,1,",
-          // [05-03 + 3ns, 05-29 + 4ns)
-          "1683072000000000003,0,"
+          // [03-01 + 1ns, 03-30 + 2ns)
+          "1677628800000000001,0,",
+          // [03-30 + 2ns, 05-01 + 3ns)
+          "1680134400000000002,2,",
+          // [05-01 + 3ns, 05-29 + 4ns)
+          "1682899200000000003,0,"
         };
     // the part in timeDuration finer than current time precision will be discarded
     resultSetEqualTest(

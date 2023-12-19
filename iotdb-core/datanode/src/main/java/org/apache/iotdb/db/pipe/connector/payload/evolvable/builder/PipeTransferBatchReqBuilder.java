@@ -114,8 +114,9 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
     final TPipeTransferReq req = buildTabletInsertionReq(event);
     final long requestCommitId = ((EnrichedEvent) event).getCommitId();
 
-    if (requestCommitIds.isEmpty()
-        || !requestCommitIds.get(requestCommitIds.size() - 1).equals(requestCommitId)) {
+    // The deduplication logic here is to avoid the accumulation of the same event in a batch when
+    // retrying.
+    if ((events.isEmpty() || !events.get(events.size() - 1).equals(event))) {
       reqs.add(req);
       events.add(event);
       requestCommitIds.add(requestCommitId);

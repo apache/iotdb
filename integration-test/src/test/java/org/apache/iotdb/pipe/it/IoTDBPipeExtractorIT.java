@@ -272,19 +272,19 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualIT {
       TestUtils.assertDataOnEnv(
           receiverEnv,
           "show devices",
-          "Device,IsAligned,",
+          "Device,IsAligned,Template,",
           new HashSet<>(
               Arrays.asList(
-                  "root.nonAligned.1TS,false,",
-                  "root.nonAligned.100TS,false,",
-                  "root.nonAligned.1000TS,false,",
-                  "root.nonAligned.`1(TS)`,false,",
-                  "root.nonAligned.6TS.`6`,false,",
-                  "root.aligned.1TS,true,",
-                  "root.aligned.100TS,true,",
-                  "root.aligned.1000TS,true,",
-                  "root.aligned.`1(TS)`,true,",
-                  "root.aligned.6TS.`6`,true,")));
+                  "root.nonAligned.1TS,false,null,",
+                  "root.nonAligned.100TS,false,null,",
+                  "root.nonAligned.1000TS,false,null,",
+                  "root.nonAligned.`1(TS)`,false,null,",
+                  "root.nonAligned.6TS.`6`,false,null,",
+                  "root.aligned.1TS,true,null,",
+                  "root.aligned.100TS,true,null,",
+                  "root.aligned.1000TS,true,null,",
+                  "root.aligned.`1(TS)`,true,null,",
+                  "root.aligned.6TS.`6`,true,null,")));
     }
   }
 

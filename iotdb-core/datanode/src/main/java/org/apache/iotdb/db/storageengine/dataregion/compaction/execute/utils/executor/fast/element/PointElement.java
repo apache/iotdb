@@ -21,7 +21,6 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.ex
 
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
 import java.io.IOException;
 
@@ -36,19 +35,13 @@ public class PointElement {
   public PointElement(PageElement pageElement) throws IOException {
     pageElement.deserializePage();
     this.pageElement = pageElement;
-    if (pageElement.iChunkReader instanceof ChunkReader) {
-      this.pointReader = pageElement.batchData.getTsBlockSingleColumnIterator();
-    } else {
-      // For aligned page, we use pointReader rather than deserialize all data point to get rid of
-      // huge memory cost
-      this.pointReader = pageElement.pointReader;
-    }
+    this.pointReader = pageElement.getPointReader();
     if (!pointReader.hasNextTimeValuePair()) {
       return;
     }
     this.timeValuePair = pointReader.nextTimeValuePair();
     this.timestamp = timeValuePair.getTimestamp();
-    this.priority = pageElement.priority;
+    this.priority = pageElement.getPriority();
   }
 
   public boolean hasNext() throws IOException {
