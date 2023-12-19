@@ -241,7 +241,8 @@ public class DeactivateTemplateProcedure
             env.getConfigManager().getRelatedSchemaRegionGroup(timeSeriesPatternTree),
             DataNodeRequestType.DEACTIVATE_TEMPLATE,
             ((dataNodeLocation, consensusGroupIdList) ->
-                new TDeactivateTemplateReq(consensusGroupIdList, dataNodeRequest)));
+                new TDeactivateTemplateReq(consensusGroupIdList, dataNodeRequest)
+                    .setIsGeneratedByPipe(isGeneratedByPipe)));
     deleteTimeSeriesTask.execute();
   }
 

@@ -308,95 +308,98 @@ struct TUpdateConfigNodeGroupReq {
   1: required list<common.TConfigNodeLocation> configNodeLocations
 }
 
-struct TUpdateTemplateReq{
+struct TUpdateTemplateReq {
   1: required byte type
   2: required binary templateInfo
 }
 
-struct TTsFilePieceReq{
+struct TTsFilePieceReq {
     1: required binary body
     2: required string uuid
     3: required common.TConsensusGroupId consensusGroupId
 }
 
-struct TLoadCommandReq{
+struct TLoadCommandReq {
     1: required i32 commandType
     2: required string uuid
     3: optional bool isGeneratedByPipe
 }
 
-struct TLoadResp{
+struct TLoadResp {
   1: required bool accepted
   2: optional string message
   3: optional common.TSStatus status
 }
 
-struct TConstructSchemaBlackListReq{
+struct TConstructSchemaBlackListReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required binary pathPatternTree
 }
 
-struct TRollbackSchemaBlackListReq{
+struct TRollbackSchemaBlackListReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required binary pathPatternTree
 }
 
-struct TInvalidateMatchedSchemaCacheReq{
+struct TInvalidateMatchedSchemaCacheReq {
   1: required binary pathPatternTree
 }
 
-struct TFetchSchemaBlackListReq{
+struct TFetchSchemaBlackListReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required binary pathPatternTree
 }
 
-struct TFetchSchemaBlackListResp{
+struct TFetchSchemaBlackListResp {
   1: required common.TSStatus status
   2: required binary pathPatternTree
 }
 
-struct TDeleteDataForDeleteSchemaReq{
+struct TDeleteDataForDeleteSchemaReq {
   1: required list<common.TConsensusGroupId> dataRegionIdList
   2: required binary pathPatternTree
+  3: optional bool isGeneratedByPipe
 }
 
-struct TDeleteTimeSeriesReq{
+struct TDeleteTimeSeriesReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required binary pathPatternTree
+  3: optional bool isGeneratedByPipe
 }
 
-struct TConstructSchemaBlackListWithTemplateReq{
+struct TConstructSchemaBlackListWithTemplateReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required map<string, list<i32>> templateSetInfo
 }
 
-struct TRollbackSchemaBlackListWithTemplateReq{
+struct TRollbackSchemaBlackListWithTemplateReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required map<string, list<i32>> templateSetInfo
 }
 
-struct TDeactivateTemplateReq{
+struct TDeactivateTemplateReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required map<string, list<i32>> templateSetInfo
+  3: optional bool isGeneratedByPipe
 }
 
-struct TCountPathsUsingTemplateReq{
+struct TCountPathsUsingTemplateReq {
   1: required i32 templateId
   2: required binary patternTree
   3: required list<common.TConsensusGroupId> schemaRegionIdList
 }
 
-struct TCountPathsUsingTemplateResp{
+struct TCountPathsUsingTemplateResp {
   1: required common.TSStatus status
   2: optional i64 count
 }
 
-struct TCheckTimeSeriesExistenceReq{
+struct TCheckTimeSeriesExistenceReq {
   1: required binary patternTree
   2: required list<common.TConsensusGroupId> schemaRegionIdList
 }
 
-struct TCheckTimeSeriesExistenceResp{
+struct TCheckTimeSeriesExistenceResp {
   1: required common.TSStatus status
   2: optional bool exists
 }
@@ -421,24 +424,26 @@ struct TPushSinglePipeMetaReq {
   2: optional string pipeNameToDrop // If it is not null, pipe with indicated name on datanode will be dropped.
 }
 
-struct TConstructViewSchemaBlackListReq{
+struct TConstructViewSchemaBlackListReq {
     1: required list<common.TConsensusGroupId> schemaRegionIdList
     2: required binary pathPatternTree
 }
 
-struct TRollbackViewSchemaBlackListReq{
+struct TRollbackViewSchemaBlackListReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required binary pathPatternTree
 }
 
-struct TDeleteViewSchemaReq{
+struct TDeleteViewSchemaReq {
    1: required list<common.TConsensusGroupId> schemaRegionIdList
    2: required binary pathPatternTree
+   3: optional bool isGeneratedByPipe
 }
 
-struct TAlterViewReq{
+struct TAlterViewReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required list<binary> viewBinaryList
+  3: optional bool isGeneratedByPipe
 }
 
 // ====================================================
@@ -476,7 +481,7 @@ service IDataNodeRPCService {
 
   TCancelResp cancelFragmentInstance(TCancelFragmentInstanceReq req);
 
-  TSchemaFetchResponse fetchSchema(TSchemaFetchRequest req)
+  TSchemaFetchResponse fetchSchema(TSchemaFetchRequest req);
 
   TLoadResp sendTsFilePieceNode(TTsFilePieceReq req);
 
@@ -525,35 +530,35 @@ service IDataNodeRPCService {
    *
    * @param The specified RegionGroup and the new leader DataNode
    */
-  common.TSStatus changeRegionLeader(TRegionLeaderChangeReq req);
+  common.TSStatus changeRegionLeader(TRegionLeaderChangeReq req)
 
   /**
    * Create a new Region peer in the given DataNode for the specified RegionGroup
    *
    * @param TCreatePeerReq which contains RegionId and its colleagues' locations
    */
-  common.TSStatus createNewRegionPeer(TCreatePeerReq req);
+  common.TSStatus createNewRegionPeer(TCreatePeerReq req)
 
   /**
    * Add a Region peer to the specified RegionGroup
    *
    * @param TMaintainPeerReq which contains RegionId and the DataNodeLocation that selected to perform the add peer process
    */
-  common.TSStatus addRegionPeer(TMaintainPeerReq req);
+  common.TSStatus addRegionPeer(TMaintainPeerReq req)
 
   /**
    * Remove a Region peer from the specified RegionGroup
    *
    * @param TMaintainPeerReq which contains RegionId and the DataNodeLocation that selected to perform the remove peer process
    */
-  common.TSStatus removeRegionPeer(TMaintainPeerReq req);
+  common.TSStatus removeRegionPeer(TMaintainPeerReq req)
 
   /**
    * Delete a Region peer in the given ConsensusGroup and all of its data on the specified DataNode
    *
    * @param TMaintainPeerReq which contains RegionId and the DataNodeLocation where the specified Region peer located
    */
-  common.TSStatus deleteOldRegionPeer(TMaintainPeerReq req);
+  common.TSStatus deleteOldRegionPeer(TMaintainPeerReq req)
 
   /**
   * Config node will disable the Data node, the Data node will not accept read/write request when disabled

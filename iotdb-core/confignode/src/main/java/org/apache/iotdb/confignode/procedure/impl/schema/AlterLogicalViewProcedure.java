@@ -157,7 +157,7 @@ public class AlterLogicalViewProcedure
             targetSchemaRegionGroup,
             DataNodeRequestType.ALTER_VIEW,
             (dataNodeLocation, consensusGroupIdList) -> {
-              TAlterViewReq req = new TAlterViewReq();
+              TAlterViewReq req = new TAlterViewReq().setIsGeneratedByPipe(isGeneratedByPipe);
               req.setSchemaRegionIdList(consensusGroupIdList);
               List<ByteBuffer> viewMapBinaryList = new ArrayList<>();
               for (TConsensusGroupId consensusGroupId : consensusGroupIdList) {

@@ -232,8 +232,9 @@ public class DeleteTimeSeriesProcedure
             DataNodeRequestType.DELETE_DATA_FOR_DELETE_SCHEMA,
             ((dataNodeLocation, consensusGroupIdList) ->
                 new TDeleteDataForDeleteSchemaReq(
-                    new ArrayList<>(consensusGroupIdList),
-                    preparePatternTreeBytesData(patternTree))));
+                        new ArrayList<>(consensusGroupIdList),
+                        preparePatternTreeBytesData(patternTree))
+                    .setIsGeneratedByPipe(isGeneratedByPipe)));
     deleteDataTask.execute();
   }
 
@@ -245,7 +246,8 @@ public class DeleteTimeSeriesProcedure
             env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
             DataNodeRequestType.DELETE_TIMESERIES,
             ((dataNodeLocation, consensusGroupIdList) ->
-                new TDeleteTimeSeriesReq(consensusGroupIdList, patternTreeBytes)));
+                new TDeleteTimeSeriesReq(consensusGroupIdList, patternTreeBytes)
+                    .setIsGeneratedByPipe(isGeneratedByPipe)));
     deleteTimeSeriesTask.execute();
   }
 

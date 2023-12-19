@@ -205,7 +205,8 @@ public class DeleteLogicalViewProcedure
             env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
             DataNodeRequestType.DELETE_VIEW,
             ((dataNodeLocation, consensusGroupIdList) ->
-                new TDeleteViewSchemaReq(consensusGroupIdList, patternTreeBytes)));
+                new TDeleteViewSchemaReq(consensusGroupIdList, patternTreeBytes)
+                    .setIsGeneratedByPipe(isGeneratedByPipe)));
     deleteTimeSeriesTask.execute();
   }
 
