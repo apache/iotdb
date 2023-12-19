@@ -282,6 +282,7 @@ public class SingleSeriesCompactionExecutor {
     }
     long count = chunk.getChunkStatistic().getCount();
     pointCountInChunkWriter += count;
+    summary.increaseRewritePointNum(count);
     rewritePointRateLimiter.acquire(count > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) count);
   }
 
