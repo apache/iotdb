@@ -160,10 +160,12 @@ struct TSetDataNodeStatusReq {
 // Database
 struct TDeleteDatabaseReq {
   1: required string prefixPath
+  2: optional bool isGeneratedByPipe
 }
 
 struct TDeleteDatabasesReq {
   1: required list<string> prefixPathList
+  2: optional bool isGeneratedByPipe
 }
 
 struct TSetSchemaReplicationFactorReq {
@@ -457,20 +459,22 @@ enum TTriggerState {
 
 struct TCreateTriggerReq {
   1: required string triggerName
-  2: required string className,
-  3: required byte triggerEvent,
+  2: required string className
+  3: required byte triggerEvent
   4: required byte triggerType
-  5: required binary pathPattern,
-  6: required map<string, string> attributes,
+  5: required binary pathPattern
+  6: required map<string, string> attributes
   7: required i32 failureStrategy
-  8: required bool isUsingURI,
-  9: optional string jarName,
-  10: optional binary jarFile,
-  11: optional string jarMD5,
+  8: required bool isUsingURI
+  9: optional string jarName
+  10: optional binary jarFile
+  11: optional string jarMD5
+  12: optional bool isGeneratedByPipe
 }
 
 struct TDropTriggerReq {
   1: required string triggerName
+  2: optional bool isGeneratedByPipe
 }
 
 struct TGetLocationForTriggerResp {
@@ -661,6 +665,7 @@ struct TSetSchemaTemplateReq {
   1: required string queryId
   2: required string name
   3: required string path
+  4: optional bool isGeneratedByPipe
 }
 
 struct TGetPathsSetTemplatesReq {
@@ -729,16 +734,19 @@ struct TPipeConfigTransferResp {
 struct TDeleteTimeSeriesReq {
   1: required string queryId
   2: required binary pathPatternTree
+  3: optional bool isGeneratedByPipe
 }
 
 struct TDeleteLogicalViewReq {
   1: required string queryId
   2: required binary pathPatternTree
+  3: optional bool isGeneratedByPipe
 }
 
 struct TAlterLogicalViewReq {
   1: required string queryId
   2: required binary viewBinary
+  3: optional bool isGeneratedByPipe
 }
 
 // ====================================================
@@ -755,6 +763,7 @@ struct TCreateCQReq {
   8: required string sql
   9: required string zoneId
   10: required string username
+  11: optional bool isGeneratedByPipe
 }
 
 struct TDropCQReq {
@@ -777,12 +786,14 @@ struct TDeactivateSchemaTemplateReq {
   1: required string queryId
   2: required binary pathPatternTree
   3: optional string templateName
+  4: optional bool isGeneratedByPipe
 }
 
 struct TUnsetSchemaTemplateReq {
   1: required string queryId
   2: required string templateName
   3: required string path
+  4: optional bool isGeneratedByPipe
 }
 
 // ====================================================

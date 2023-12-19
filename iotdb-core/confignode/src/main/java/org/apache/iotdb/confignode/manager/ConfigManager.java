@@ -122,6 +122,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
@@ -588,10 +589,10 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public synchronized TSStatus deleteDatabases(
-      List<String> deletedPaths, boolean isGeneratedByPipe) {
+  public synchronized TSStatus deleteDatabases(TDeleteDatabasesReq tDeleteReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      List<String> deletedPaths = tDeleteReq.getPrefixPathList();
       // remove wild
       Map<String, TDatabaseSchema> deleteDatabaseSchemaMap =
           getClusterSchemaManager().getMatchedDatabaseSchemasByName(deletedPaths);
@@ -602,7 +603,9 @@ public class ConfigManager implements IManager {
       }
       ArrayList<TDatabaseSchema> parsedDeleteDatabases =
           new ArrayList<>(deleteDatabaseSchemaMap.values());
-      return procedureManager.deleteDatabases(parsedDeleteDatabases, isGeneratedByPipe);
+      return procedureManager.deleteDatabases(
+          parsedDeleteDatabases,
+          tDeleteReq.isSetIsGeneratedByPipe() && tDeleteReq.isIsGeneratedByPipe());
     } else {
       return status;
     }
@@ -1251,18 +1254,18 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus createTrigger(TCreateTriggerReq req, boolean isGeneratedByPipe) {
+  public TSStatus createTrigger(TCreateTriggerReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? triggerManager.createTrigger(req, isGeneratedByPipe)
+        ? triggerManager.createTrigger(req)
         : status;
   }
 
   @Override
-  public TSStatus dropTrigger(TDropTriggerReq req, boolean isGeneratedByPipe) {
+  public TSStatus dropTrigger(TDropTriggerReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? triggerManager.dropTrigger(req, isGeneratedByPipe)
+        ? triggerManager.dropTrigger(req)
         : status;
   }
 
@@ -1532,12 +1535,14 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public synchronized TSStatus setSchemaTemplate(
-      TSetSchemaTemplateReq req, boolean isGeneratedByPipe) {
+  public synchronized TSStatus setSchemaTemplate(TSetSchemaTemplateReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return procedureManager.setSchemaTemplate(
-          req.getQueryId(), req.getName(), req.getPath(), isGeneratedByPipe);
+          req.getQueryId(),
+          req.getName(),
+          req.getPath(),
+          req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe());
     } else {
       return status;
     }
@@ -1558,8 +1563,7 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus deactivateSchemaTemplate(
-      TDeactivateSchemaTemplateReq req, boolean isGeneratedByPipe) {
+  public TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return status;
@@ -1606,12 +1610,13 @@ public class ConfigManager implements IManager {
     }
 
     return procedureManager.deactivateTemplate(
-        req.getQueryId(), templateSetInfo, isGeneratedByPipe);
+        req.getQueryId(),
+        templateSetInfo,
+        req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe());
   }
 
   @Override
-  public synchronized TSStatus unsetSchemaTemplate(
-      TUnsetSchemaTemplateReq req, boolean isGeneratedByPipe) {
+  public synchronized TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return status;
@@ -1621,7 +1626,10 @@ public class ConfigManager implements IManager {
     if (checkResult.left.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       try {
         return procedureManager.unsetSchemaTemplate(
-            req.getQueryId(), checkResult.right, new PartialPath(req.getPath()), isGeneratedByPipe);
+            req.getQueryId(),
+            checkResult.right,
+            new PartialPath(req.getPath()),
+            req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe());
       } catch (IllegalPathException e) {
         return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
       }
@@ -1658,30 +1666,30 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req, boolean isGeneratedByPipe) {
+  public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return procedureManager.deleteTimeSeries(req, isGeneratedByPipe);
+      return procedureManager.deleteTimeSeries(req);
     } else {
       return status;
     }
   }
 
   @Override
-  public TSStatus deleteLogicalView(TDeleteLogicalViewReq req, boolean isGeneratedByPipe) {
+  public TSStatus deleteLogicalView(TDeleteLogicalViewReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return procedureManager.deleteLogicalView(req, isGeneratedByPipe);
+      return procedureManager.deleteLogicalView(req);
     } else {
       return status;
     }
   }
 
   @Override
-  public TSStatus alterLogicalView(TAlterLogicalViewReq req, boolean isGeneratedByPipe) {
+  public TSStatus alterLogicalView(TAlterLogicalViewReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return procedureManager.alterLogicalView(req, isGeneratedByPipe);
+      return procedureManager.alterLogicalView(req);
     } else {
       return status;
     }
@@ -1795,10 +1803,10 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus createCQ(TCreateCQReq req, boolean isGeneratedByPipe) {
+  public TSStatus createCQ(TCreateCQReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? cqManager.createCQ(req, isGeneratedByPipe)
+        ? cqManager.createCQ(req)
         : status;
   }
 

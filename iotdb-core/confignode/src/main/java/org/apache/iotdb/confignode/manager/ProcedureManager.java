@@ -185,7 +185,7 @@ public class ProcedureManager {
     }
   }
 
-  public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req, boolean isGeneratedByPipe) {
+  public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) {
     String queryId = req.getQueryId();
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
@@ -218,7 +218,10 @@ public class ProcedureManager {
         }
         procedureId =
             this.executor.submitProcedure(
-                new DeleteTimeSeriesProcedure(queryId, patternTree, isGeneratedByPipe));
+                new DeleteTimeSeriesProcedure(
+                    queryId,
+                    patternTree,
+                    req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()));
       }
     }
     List<TSStatus> procedureStatus = new ArrayList<>();
@@ -231,7 +234,7 @@ public class ProcedureManager {
     }
   }
 
-  public TSStatus deleteLogicalView(TDeleteLogicalViewReq req, boolean isGeneratedByPipe) {
+  public TSStatus deleteLogicalView(TDeleteLogicalViewReq req) {
     String queryId = req.getQueryId();
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
@@ -264,7 +267,10 @@ public class ProcedureManager {
         }
         procedureId =
             this.executor.submitProcedure(
-                new DeleteLogicalViewProcedure(queryId, patternTree, isGeneratedByPipe));
+                new DeleteLogicalViewProcedure(
+                    queryId,
+                    patternTree,
+                    req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()));
       }
     }
     List<TSStatus> procedureStatus = new ArrayList<>();
@@ -277,7 +283,7 @@ public class ProcedureManager {
     }
   }
 
-  public TSStatus alterLogicalView(TAlterLogicalViewReq req, boolean isGeneratedByPipe) {
+  public TSStatus alterLogicalView(TAlterLogicalViewReq req) {
     String queryId = req.getQueryId();
     ByteBuffer byteBuffer = ByteBuffer.wrap(req.getViewBinary());
     Map<PartialPath, ViewExpression> viewPathToSourceMap = new HashMap<>();
@@ -309,7 +315,10 @@ public class ProcedureManager {
       if (procedureId == -1) {
         procedureId =
             this.executor.submitProcedure(
-                new AlterLogicalViewProcedure(queryId, viewPathToSourceMap, isGeneratedByPipe));
+                new AlterLogicalViewProcedure(
+                    queryId,
+                    viewPathToSourceMap,
+                    req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()));
       }
     }
     List<TSStatus> procedureStatus = new ArrayList<>();
@@ -709,10 +718,11 @@ public class ProcedureManager {
     }
   }
 
-  public TSStatus createCQ(
-      TCreateCQReq req, ScheduledExecutorService scheduledExecutor, boolean isGeneratedByPipe) {
+  public TSStatus createCQ(TCreateCQReq req, ScheduledExecutorService scheduledExecutor) {
     long procedureId =
-        executor.submitProcedure(new CreateCQProcedure(req, scheduledExecutor, isGeneratedByPipe));
+        executor.submitProcedure(
+            new CreateCQProcedure(
+                req, scheduledExecutor, req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()));
     List<TSStatus> statusList = new ArrayList<>();
     waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
     return statusList.get(0);

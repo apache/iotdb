@@ -93,10 +93,9 @@ public class TriggerManager {
    * <p>All DataNodes will add TriggerInformation of this trigger in local TriggerTable.
    *
    * @param req the createTrigger request
-   * @param isGeneratedByPipe whether the trigger creation is caused by pipe request
    * @return status of create this trigger
    */
-  public TSStatus createTrigger(TCreateTriggerReq req, boolean isGeneratedByPipe) {
+  public TSStatus createTrigger(TCreateTriggerReq req) {
     final boolean isStateful = TriggerType.construct(req.getTriggerType()) == TriggerType.STATEFUL;
     TDataNodeLocation dataNodeLocation = null;
     if (isStateful) {
@@ -130,11 +129,14 @@ public class TriggerManager {
         .createTrigger(
             triggerInformation,
             needToSaveJar ? new Binary(req.getJarFile()) : null,
-            isGeneratedByPipe);
+            req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe());
   }
 
-  public TSStatus dropTrigger(TDropTriggerReq req, boolean isGeneratedByPipe) {
-    return configManager.getProcedureManager().dropTrigger(req.getTriggerName(), isGeneratedByPipe);
+  public TSStatus dropTrigger(TDropTriggerReq req) {
+    return configManager
+        .getProcedureManager()
+        .dropTrigger(
+            req.getTriggerName(), req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe());
   }
 
   public TGetTriggerTableResp getTriggerTable(boolean onlyStateful) {
