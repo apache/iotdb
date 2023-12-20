@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.pipe.extractor.realtime;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
@@ -29,6 +31,8 @@ import org.apache.iotdb.db.pipe.extractor.realtime.listener.PipeInsertionDataNod
 import org.apache.iotdb.db.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.rescon.memory.TimePartitionInfo;
+import org.apache.iotdb.db.storageengine.rescon.memory.TimePartitionManager;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
@@ -70,7 +74,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   protected long realtimeDataExtractionStartTime; // Event time
   protected long realtimeDataExtractionEndTime; // Event time
-  private boolean isDbCoveredByTimeRange = false;
+  private boolean isDbTimePartitionCoveredByTimeRange = true;
 
   protected boolean isForwardingPipeRequests;
 
@@ -144,6 +148,25 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       }
     }
 
+    for (long currentTime = realtimeDataExtractionStartTime;
+        currentTime
+            < realtimeDataExtractionEndTime
+                + CommonDescriptor.getInstance().getConfig().getTimePartitionInterval();
+        currentTime += CommonDescriptor.getInstance().getConfig().getTimePartitionInterval()) {
+      if (currentTime > realtimeDataExtractionEndTime) {
+        currentTime = realtimeDataExtractionEndTime;
+      }
+      TimePartitionInfo timePartitionInfo =
+          TimePartitionManager.getInstance()
+              .getTimePartitionInfo(
+                  new DataRegionId(environment.getRegionId()),
+                  TimePartitionUtils.getTimePartitionId(realtimeDataExtractionStartTime));
+      if (Objects.isNull(timePartitionInfo)) {
+        isDbTimePartitionCoveredByTimeRange = false;
+        break;
+      }
+    }
+
     isForwardingPipeRequests =
         parameters.getBooleanOrDefault(
             Arrays.asList(
@@ -200,7 +223,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       event.skipParsingPattern();
     }
 
-    if (canSkipParsingTime()) {
+    if (isDbTimePartitionCoveredByTimeRange) {
       event.skipParsingTime();
     }
 
@@ -220,11 +243,6 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
         clearPendingQueue();
       }
     }
-  }
-
-  private boolean canSkipParsingTime() {
-    // TODO
-    return isDbCoveredByTimeRange;
   }
 
   protected abstract void doExtract(PipeRealtimeEvent event);

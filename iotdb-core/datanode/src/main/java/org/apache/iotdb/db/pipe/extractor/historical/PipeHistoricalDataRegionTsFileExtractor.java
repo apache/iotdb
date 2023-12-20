@@ -22,7 +22,6 @@ package org.apache.iotdb.db.pipe.extractor.historical;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
@@ -31,8 +30,6 @@ import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
-import org.apache.iotdb.db.storageengine.rescon.memory.TimePartitionInfo;
-import org.apache.iotdb.db.storageengine.rescon.memory.TimePartitionManager;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -192,17 +189,6 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
         isDbNameCoveredByPattern = true;
       }
     }
-
-    TimePartitionInfo st =
-        TimePartitionManager.getInstance()
-            .getTimePartitionInfo(
-                new DataRegionId(environment.getRegionId()),
-                TimePartitionUtils.getTimePartitionId(historicalDataExtractionStartTime));
-    TimePartitionInfo ed =
-        TimePartitionManager.getInstance()
-            .getTimePartitionInfo(
-                new DataRegionId(environment.getRegionId()),
-                TimePartitionUtils.getTimePartitionId(historicalDataExtractionEndTime));
 
     // Enable historical extractor by default
     historicalDataExtractionTimeLowerBound =
