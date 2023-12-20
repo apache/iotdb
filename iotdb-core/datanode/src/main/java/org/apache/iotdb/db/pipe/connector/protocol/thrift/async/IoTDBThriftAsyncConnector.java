@@ -73,7 +73,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_BATCH_MODE_ENABLE_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_ENABLE_KEY;
 
 public class IoTDBThriftAsyncConnector extends IoTDBConnector {
 
@@ -117,12 +116,6 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
   public void validate(PipeParameterValidator validator) throws Exception {
     super.validate(validator);
     retryConnector.validate(validator);
-
-    final PipeParameters parameters = validator.getParameters();
-    validator.validate(
-        useSSL -> !((boolean) useSSL),
-        "IoTDBThriftAsyncConnector does not support SSL transmission currently",
-        parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false));
   }
 
   @Override
