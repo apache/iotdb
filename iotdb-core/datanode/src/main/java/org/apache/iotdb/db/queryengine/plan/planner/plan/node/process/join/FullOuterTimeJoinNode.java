@@ -35,10 +35,22 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
- * This node is responsible for join two or more TsBlock.
+ * This node is responsible for joining two or more TsBlock.
  *
- * <p>The join algorithm is like <b>full outer join</b> by timestamp column. It will join two or
- * more TsBlock by Timestamp column. The output result of TimeJoinOperator is sorted by timestamp.
+ * <p>The join algorithm is <b>full outer join</b> on timestamp column —— take the <b>union</b> of
+ * all child timestamps as the time column of the result. If a timestamp does not exist in one
+ * child, it will be null in the corresponding row of the result. The output result is sorted by
+ * timestamp.
+ *
+ * <p>e.g.
+ *
+ * <pre>
+ *   [series1]  [series2]  [series1 join series2]
+ *   time, s1   time, s2   time,   s1,   s2
+ *      1,  1                 1,    1, null
+ *      2,  2      2,  2      2,    2,    2
+ *                 3,  3      3, null,    3
+ * </pre>
  */
 public class FullOuterTimeJoinNode extends MultiChildProcessNode {
 

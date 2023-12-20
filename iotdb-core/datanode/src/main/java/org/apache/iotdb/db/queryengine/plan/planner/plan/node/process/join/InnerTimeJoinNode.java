@@ -35,6 +35,22 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+/**
+ * This node is responsible for joining two or more TsBlock.
+ *
+ * <p>The join algorithm is <b>inner join</b> on timestamp column —— take the <b>intersection</b> of
+ * all child timestamps as the time column of the result. The output result is sorted by timestamp.
+ *
+ * <p>e.g.
+ *
+ * <pre>
+ *   [series1]  [series2]  [series1 join series2]
+ *   time, s1   time, s2   time, s1, s2
+ *      1,  1
+ *      2,  2      2,  2      2,  2,  2
+ *                 3,  3
+ * </pre>
+ */
 public class InnerTimeJoinNode extends MultiChildProcessNode {
 
   // This parameter indicates the order when executing multiway merge sort.

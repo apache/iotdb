@@ -33,6 +33,24 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * This node is responsible for joining two TsBlock.
+ *
+ * <p>The join algorithm is <b>left join</b> on timestamp column —— take the time column of the
+ * <b>left child</b> as the time column of the result. If a timestamp does not exist in the right
+ * child, it will be null in the corresponding row of the result. The output result is sorted by
+ * timestamp.
+ *
+ * <p>e.g.
+ *
+ * <pre>
+ *   [series1]  [series2]  [series1 join series2]
+ *   time, s1   time, s2   time, s1,   s2
+ *      1,  1                 1,  1, null
+ *      2,  2      2,  2      2,  2,    2
+ *                 3,  3
+ * </pre>
+ */
 public class LeftOuterTimeJoinNode extends TwoChildProcessNode {
 
   // This parameter indicates the order when executing multiway merge sort.
