@@ -299,8 +299,7 @@ public class PipeTaskDataNodeAgent {
 
       // If task meta does not exist on data node, create a new task
       if (taskMetaOnDataNode == null) {
-        createPipeTask(
-            pipeMetaKeeper, consensusGroupIdFromConfigNode, pipeStaticMeta, taskMetaFromConfigNode);
+        createPipeTask(consensusGroupIdFromConfigNode, pipeStaticMeta, taskMetaFromConfigNode);
         // We keep the new created task's status consistent with the status recorded in data node's
         // pipe runtime meta. please note that the status recorded in data node's pipe runtime meta
         // is not reliable, but we will have a check later to make sure the status is correct.
@@ -315,9 +314,8 @@ public class PipeTaskDataNodeAgent {
       final int dataNodeIdOnDataNode = taskMetaOnDataNode.getLeaderDataNodeId();
 
       if (dataNodeIdFromConfigNode != dataNodeIdOnDataNode) {
-        dropPipeTask(pipeMetaKeeper, consensusGroupIdFromConfigNode, pipeStaticMeta);
-        createPipeTask(
-            pipeMetaKeeper, consensusGroupIdFromConfigNode, pipeStaticMeta, taskMetaFromConfigNode);
+        dropPipeTask(consensusGroupIdFromConfigNode, pipeStaticMeta);
+        createPipeTask(consensusGroupIdFromConfigNode, pipeStaticMeta, taskMetaFromConfigNode);
         // We keep the new created task's status consistent with the status recorded in data node's
         // pipe runtime meta. please note that the status recorded in data node's pipe runtime meta
         // is not reliable, but we will have a check later to make sure the status is correct.
@@ -336,7 +334,7 @@ public class PipeTaskDataNodeAgent {
       final PipeTaskMeta taskMetaFromConfigNode =
           consensusGroupIdToTaskMetaMapFromConfigNode.get(consensusGroupIdOnDataNode);
       if (taskMetaFromConfigNode == null) {
-        dropPipeTask(pipeMetaKeeper, consensusGroupIdOnDataNode, pipeStaticMeta);
+        dropPipeTask(consensusGroupIdOnDataNode, pipeStaticMeta);
       }
     }
 
