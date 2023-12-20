@@ -160,16 +160,17 @@ public class LeftOuterTimeJoinOperator implements ProcessOperator {
   }
 
   private boolean prepareInput(long start, long maxRuntime) throws Exception {
-    if ((leftTsBlock == null || leftTsBlock.getPositionCount() == leftIndex) && left.hasNext()) {
-      leftTsBlock = left.next();
+    if ((leftTsBlock == null || leftTsBlock.getPositionCount() == leftIndex)
+        && left.hasNextWithTimer()) {
+      leftTsBlock = left.nextWithTimer();
       leftIndex = 0;
     }
     // still have time and right child still have remaining data
     if ((System.nanoTime() - start < maxRuntime)
         && (!rightFinished
             && (rightTsBlock == null || rightTsBlock.getPositionCount() == rightIndex))) {
-      if (right.hasNext()) {
-        rightTsBlock = right.next();
+      if (right.hasNextWithTimer()) {
+        rightTsBlock = right.nextWithTimer();
         rightIndex = 0;
       } else {
         rightFinished = true;
@@ -295,7 +296,7 @@ public class LeftOuterTimeJoinOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() throws Exception {
-    return tsBlockIsNotEmpty(leftTsBlock, leftIndex) || left.hasNext();
+    return tsBlockIsNotEmpty(leftTsBlock, leftIndex) || left.hasNextWithTimer();
   }
 
   @Override
