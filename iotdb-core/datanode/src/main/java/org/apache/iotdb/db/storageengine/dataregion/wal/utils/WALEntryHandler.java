@@ -41,13 +41,16 @@ public class WALEntryHandler {
   private static final Logger logger = LoggerFactory.getLogger(WALEntryHandler.class);
 
   private long memTableId = -1;
+
   // cached value, null after this value is flushed to wal successfully
   @SuppressWarnings("squid:S3077")
   private volatile WALEntryValue value;
+
   // wal entry's position in the wal, valid after the value is flushed to wal successfully
   // it's safe to use volatile here to make this reference thread-safe.
   @SuppressWarnings("squid:S3077")
   private final WALEntryPosition walEntryPosition = new WALEntryPosition();
+
   // wal node, null when wal is disabled
   private WALNode walNode = null;
 
@@ -84,9 +87,14 @@ public class WALEntryHandler {
   }
 
   public InsertNode getInsertNodeViaCacheIfPossible() {
-    return value instanceof InsertNode
-        ? (InsertNode) value
-        : walEntryPosition.readByteBufferOrInsertNodeViaCacheDirectly().getRight();
+    try {
+      return value instanceof InsertNode
+          ? (InsertNode) value
+          : walEntryPosition.readByteBufferOrInsertNodeViaCacheDirectly().getRight();
+    } catch (Exception e) {
+      logger.warn("Fail to get insert node via cache. {}", this, e);
+      throw e;
+    }
   }
 
   /**
