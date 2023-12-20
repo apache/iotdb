@@ -46,8 +46,7 @@ public class PipeTransferTsFileSealReq extends PipeTransferFileSealReq {
 
   /////////////////////////////// Air Gap ///////////////////////////////
 
-  public static byte[] toTPipeTransferFileSealBytes(String fileName, long fileLength)
-      throws IOException {
+  public static byte[] toTPipeTransferBytes(String fileName, long fileLength) throws IOException {
     return new PipeTransferTsFileSealReq()
         .convertToTPipeTransferSnapshotSealBytes(fileName, fileLength);
   }

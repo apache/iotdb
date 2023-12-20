@@ -46,7 +46,7 @@ public class PipeTransferConfigHandshakeReq extends PipeTransferHandshakeReq {
 
   /////////////////////////////// Air Gap ///////////////////////////////
 
-  public static byte[] toTransferHandshakeBytes(String timestampPrecision) throws IOException {
+  public static byte[] toTPipeTransferBytes(String timestampPrecision) throws IOException {
     return new PipeTransferConfigHandshakeReq().convertToTransferHandshakeBytes(timestampPrecision);
   }
 

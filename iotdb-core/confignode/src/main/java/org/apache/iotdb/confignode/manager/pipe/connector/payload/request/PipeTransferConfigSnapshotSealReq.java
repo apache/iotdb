@@ -20,45 +20,42 @@
 package org.apache.iotdb.confignode.manager.pipe.connector.payload.request;
 
 import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
-import org.apache.iotdb.commons.pipe.connector.payload.request.PipeTransferFilePieceReq;
+import org.apache.iotdb.commons.pipe.connector.payload.request.PipeTransferFileSealReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import java.io.IOException;
 
-public class PipeTransferConfigSnapShotPieceReq extends PipeTransferFilePieceReq {
+public class PipeTransferConfigSnapshotSealReq extends PipeTransferFileSealReq {
   @Override
   protected PipeRequestType getPlanType() {
-    return PipeRequestType.TRANSFER_CONFIG_SNAPSHOT_PIECE;
+    return PipeRequestType.TRANSFER_CONFIG_SNAPSHOT_SEAL;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeTransferConfigSnapShotPieceReq toTPipeTransferReq(
-      String fileName, long startWritingOffset, byte[] filePiece) throws IOException {
-    return (PipeTransferConfigSnapShotPieceReq)
-        new PipeTransferConfigSnapShotPieceReq()
-            .convertToTPipeTransferReq(fileName, startWritingOffset, filePiece);
+  public static PipeTransferConfigSnapshotSealReq toTPipeTransferReq(
+      String fileName, long fileLength) throws IOException {
+    return (PipeTransferConfigSnapshotSealReq)
+        new PipeTransferConfigSnapshotSealReq().convertToTPipeTransferReq(fileName, fileLength);
   }
 
-  public static PipeTransferConfigSnapShotPieceReq fromTPipeTransferReq(
-      TPipeTransferReq transferReq) {
-    return (PipeTransferConfigSnapShotPieceReq)
-        new PipeTransferConfigSnapShotPieceReq().translateFromTPipeTransferReq(transferReq);
+  public static PipeTransferConfigSnapshotSealReq fromTPipeTransferReq(TPipeTransferReq req) {
+    return (PipeTransferConfigSnapshotSealReq)
+        new PipeTransferConfigSnapshotSealReq().translateFromTPipeTransferReq(req);
   }
 
   /////////////////////////////// Air Gap ///////////////////////////////
 
-  public static byte[] toTPipeTransferBytes(
-      String fileName, long startWritingOffset, byte[] filePiece) throws IOException {
-    return new PipeTransferConfigSnapShotPieceReq()
-        .convertToTPipeTransferBytes(fileName, startWritingOffset, filePiece);
+  public static byte[] toTPipeTransferBytes(String fileName, long fileLength) throws IOException {
+    return new PipeTransferConfigSnapshotSealReq()
+        .convertToTPipeTransferSnapshotSealBytes(fileName, fileLength);
   }
 
   /////////////////////////////// Object ///////////////////////////////
 
   @Override
   public boolean equals(Object obj) {
-    return obj instanceof PipeTransferConfigSnapShotPieceReq && super.equals(obj);
+    return obj instanceof PipeTransferConfigSnapshotSealReq && super.equals(obj);
   }
 
   @Override

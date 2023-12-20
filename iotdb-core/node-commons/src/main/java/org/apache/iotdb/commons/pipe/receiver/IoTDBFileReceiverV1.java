@@ -42,6 +42,10 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * {@link IoTDBFileReceiverV1} is the parent class of receiver on both configNode and DataNode,
+ * handling all the logic of parallel file receiving.
+ */
 public abstract class IoTDBFileReceiverV1 implements IoTDBThriftReceiver {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBFileReceiverV1.class);
@@ -56,7 +60,7 @@ public abstract class IoTDBFileReceiverV1 implements IoTDBThriftReceiver {
 
   /////////////////////////////// Tools ///////////////////////////////
 
-  protected void updateWritingFileIfNeeded(String fileName) throws IOException {
+  protected final void updateWritingFileIfNeeded(String fileName) throws IOException {
     if (isFileExistedAndNameCorrect(fileName)) {
       return;
     }
@@ -87,11 +91,11 @@ public abstract class IoTDBFileReceiverV1 implements IoTDBThriftReceiver {
     LOGGER.info("Writing file {} was created. Ready to write file pieces.", writingFile.getPath());
   }
 
-  protected boolean isFileExistedAndNameCorrect(String fileName) {
+  private boolean isFileExistedAndNameCorrect(String fileName) {
     return writingFile != null && writingFile.getName().equals(fileName);
   }
 
-  protected void closeCurrentWritingFileWriter() {
+  private void closeCurrentWritingFileWriter() {
     if (writingFileWriter != null) {
       try {
         writingFileWriter.close();
@@ -110,7 +114,7 @@ public abstract class IoTDBFileReceiverV1 implements IoTDBThriftReceiver {
     }
   }
 
-  protected void deleteCurrentWritingFile() {
+  private void deleteCurrentWritingFile() {
     if (writingFile != null) {
       if (writingFile.exists()) {
         try {
@@ -131,7 +135,7 @@ public abstract class IoTDBFileReceiverV1 implements IoTDBThriftReceiver {
     }
   }
 
-  protected boolean isWritingFileOffsetCorrect(long offset) throws IOException {
+  private boolean isWritingFileOffsetCorrect(long offset) throws IOException {
     final boolean offsetCorrect = writingFileWriter.length() == offset;
     if (!offsetCorrect) {
       LOGGER.warn(
@@ -143,7 +147,7 @@ public abstract class IoTDBFileReceiverV1 implements IoTDBThriftReceiver {
     return offsetCorrect;
   }
 
-  protected boolean isWritingFileAvailable() {
+  private boolean isWritingFileAvailable() {
     final boolean isWritingFileAvailable =
         writingFile != null && writingFile.exists() && writingFileWriter != null;
     if (!isWritingFileAvailable) {
@@ -234,7 +238,7 @@ public abstract class IoTDBFileReceiverV1 implements IoTDBThriftReceiver {
     return new TPipeTransferResp(RpcUtils.SUCCESS_STATUS);
   }
 
-  protected TPipeTransferResp handleTransferFilePiece(
+  protected final TPipeTransferResp handleTransferFilePiece(
       PipeTransferFilePieceReq req, boolean isRequestThroughAirGap) throws IOException {
     try {
       updateWritingFileIfNeeded(req.getFileName());
@@ -277,7 +281,7 @@ public abstract class IoTDBFileReceiverV1 implements IoTDBThriftReceiver {
     }
   }
 
-  protected TPipeTransferResp handleTransferFileSeal(PipeTransferFileSealReq req) {
+  protected final TPipeTransferResp handleTransferFileSeal(PipeTransferFileSealReq req) {
     try {
       if (!isWritingFileAvailable()) {
         final TSStatus status =

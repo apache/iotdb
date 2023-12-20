@@ -27,8 +27,8 @@ import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiverV1;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.pipe.connector.payload.request.PipeTransferConfigHandshakeReq;
 import org.apache.iotdb.confignode.manager.pipe.connector.payload.request.PipeTransferConfigPlanReq;
-import org.apache.iotdb.confignode.manager.pipe.connector.payload.request.PipeTransferConfigSnapShotPieceReq;
-import org.apache.iotdb.confignode.manager.pipe.connector.payload.request.PipeTransferConfigSnapShotSealReq;
+import org.apache.iotdb.confignode.manager.pipe.connector.payload.request.PipeTransferConfigSnapshotPieceReq;
+import org.apache.iotdb.confignode.manager.pipe.connector.payload.request.PipeTransferConfigSnapshotSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -64,11 +64,11 @@ public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
             return handleTransferConfigPlan(PipeTransferConfigPlanReq.fromTPipeTransferReq(req));
           case TRANSFER_CONFIG_SNAPSHOT_PIECE:
             return handleTransferFilePiece(
-                PipeTransferConfigSnapShotPieceReq.fromTPipeTransferReq(req),
+                PipeTransferConfigSnapshotPieceReq.fromTPipeTransferReq(req),
                 req instanceof AirGapPseudoTPipeTransferRequest);
           case TRANSFER_CONFIG_SNAPSHOT_SEAL:
             return handleTransferFileSeal(
-                PipeTransferConfigSnapShotSealReq.fromTPipeTransferReq(req));
+                PipeTransferConfigSnapshotSealReq.fromTPipeTransferReq(req));
           default:
             break;
         }

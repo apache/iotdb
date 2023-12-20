@@ -124,6 +124,8 @@ public class IoTDBThriftReceiverV1 extends IoTDBFileReceiverV1 {
           case TRANSFER_SCHEMA_SNAPSHOT_SEAL:
             return handleTransferFileSeal(
                 PipeTransferSchemaSnapshotSealReq.fromTPipeTransferReq(req));
+            // Config Requests will first be received by the DataNode receiver,
+            // then transferred to configNode receiver to execute.
           case CONFIGNODE_HANDSHAKE:
           case TRANSFER_CONFIG_PLAN:
           case TRANSFER_CONFIG_SNAPSHOT_PIECE:

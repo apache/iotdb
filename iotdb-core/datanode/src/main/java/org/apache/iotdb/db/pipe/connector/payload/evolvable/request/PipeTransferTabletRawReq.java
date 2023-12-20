@@ -200,7 +200,7 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
     return sortedBitMap;
   }
 
-  /////////////////////////////// WriteBack ///////////////////////////////
+  /////////////////////////////// WriteBack & Batch ///////////////////////////////
 
   public static PipeTransferTabletRawReq toTPipeTransferRawReq(Tablet tablet, boolean isAligned) {
     final PipeTransferTabletRawReq tabletReq = new PipeTransferTabletRawReq();
@@ -248,8 +248,7 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
 
   /////////////////////////////// Air Gap ///////////////////////////////
 
-  public static byte[] toTPipeTransferTabletBytes(Tablet tablet, boolean isAligned)
-      throws IOException {
+  public static byte[] toTPipeTransferBytes(Tablet tablet, boolean isAligned) throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
@@ -275,7 +274,7 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
         && isAligned == that.isAligned
         && version == that.version
         && type == that.type
-        && body.equals(that.body);
+        && (body == null || that.body == null ? body == that.body : body.equals(that.body));
   }
 
   @Override

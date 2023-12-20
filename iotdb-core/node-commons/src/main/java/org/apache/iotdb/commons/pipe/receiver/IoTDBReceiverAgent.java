@@ -46,7 +46,7 @@ public abstract class IoTDBReceiverAgent {
     initConstructors();
   }
 
-  public TPipeTransferResp receive(TPipeTransferReq req) {
+  public final TPipeTransferResp receive(TPipeTransferReq req) {
     final byte reqVersion = req.getVersion();
     if (RECEIVER_CONSTRUCTORS.containsKey(reqVersion)) {
       return getReceiver(reqVersion).receive(req);
@@ -88,7 +88,7 @@ public abstract class IoTDBReceiverAgent {
     return receiverThreadLocal.get();
   }
 
-  public void handleClientExit() {
+  public final void handleClientExit() {
     final IoTDBThriftReceiver receiver = receiverThreadLocal.get();
     if (receiver != null) {
       receiver.handleExit();

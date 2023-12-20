@@ -25,6 +25,8 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaPlanReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
@@ -41,10 +43,13 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -53,7 +58,7 @@ public class PipeDataNodeThriftRequestTest {
   private static final String TIME_PRECISION = "ms";
 
   @Test
-  public void testPipeValidateHandshakeReq() throws IOException {
+  public void testPipeTransferDataNodeHandshakeReq() throws IOException {
     PipeTransferDataNodeHandshakeReq req =
         PipeTransferDataNodeHandshakeReq.toTPipeTransferReq(TIME_PRECISION);
     PipeTransferDataNodeHandshakeReq deserializeReq =
@@ -92,6 +97,19 @@ public class PipeDataNodeThriftRequestTest {
     List<PartialPath> paths = new ArrayList<>();
     paths.add(new PartialPath(new String[] {"root", "sg", "d", "s"}));
     Assert.assertEquals(statement.getPaths(), paths);
+  }
+
+  @Test
+  public void testPipeTransferTabletBinaryReq() {
+    // Not do real test here since "serializeToWal" needs private inner class of walBuffer
+    PipeTransferTabletBinaryReq req =
+        PipeTransferTabletBinaryReq.toTPipeTransferReq(ByteBuffer.wrap(new byte[] {'a', 'b'}));
+    PipeTransferTabletBinaryReq deserializeReq =
+        PipeTransferTabletBinaryReq.fromTPipeTransferReq(req);
+
+    Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
+    Assert.assertEquals(req.getType(), deserializeReq.getType());
+    Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
   }
 
   @Test
@@ -158,9 +176,55 @@ public class PipeDataNodeThriftRequestTest {
     }
   }
 
+  @Ignore("Ignored until tablet ser/de bug is fixed")
   @Test
-  public void testPipeTransferFilePieceReq() throws IOException {
-    byte[] body = "testPipeTransferFilePieceReq".getBytes();
+  public void testPipeTransferTabletBatchReq() throws IOException {
+    // InsertNode req
+    PipeTransferTabletInsertNodeReq insertNodeReq =
+        PipeTransferTabletInsertNodeReq.toTPipeTransferRawReq(
+            new InsertRowNode(
+                new PlanNodeId(""),
+                new PartialPath(new String[] {"root", "sg", "d"}),
+                false,
+                new String[] {"s"},
+                new TSDataType[] {TSDataType.INT32},
+                1,
+                new Object[] {1},
+                false));
+
+    // Binary req
+    // Not do real test here since "serializeToWal" needs private inner class of walBuffer
+    PipeTransferTabletBinaryReq binaryReq =
+        PipeTransferTabletBinaryReq.toTPipeTransferReq(ByteBuffer.wrap(new byte[] {'a', 'b'}));
+
+    // Raw req
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT32));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.FLOAT));
+    schemaList.add(new MeasurementSchema("s4", TSDataType.DOUBLE));
+    schemaList.add(new MeasurementSchema("s5", TSDataType.BOOLEAN));
+    schemaList.add(new MeasurementSchema("s6", TSDataType.TEXT));
+    Tablet t = new Tablet("root.sg.d", schemaList, 1024);
+    t.rowSize = 2;
+    t.addTimestamp(0, 2000);
+    t.addTimestamp(1, 1000);
+    t.addValue("s1", 0, 2);
+    t.addValue("s6", 0, "2");
+    t.addValue("s1", 1, 1);
+    t.addValue("s6", 1, "1");
+
+    PipeTransferTabletRawReq rawReq = PipeTransferTabletRawReq.toTPipeTransferRawReq(t, false);
+
+    PipeTransferTabletBatchReq req =
+        PipeTransferTabletBatchReq.toTPipeTransferReq(
+            Arrays.asList(insertNodeReq, binaryReq, rawReq));
+    Assert.assertEquals(req, PipeTransferTabletBatchReq.fromTPipeTransferReq(req));
+  }
+
+  @Test
+  public void testPipeTransferTsFilePieceReq() throws IOException {
+    byte[] body = "testPipeTransferTsFilePieceReq".getBytes();
     String fileName = "1.tsfile";
 
     PipeTransferTsFilePieceReq req =
@@ -179,7 +243,7 @@ public class PipeDataNodeThriftRequestTest {
 
   @Test
   public void testPipeTransferSchemaSnapshotPieceReq() throws IOException {
-    byte[] body = "testPipeTransferSnapshotPieceReq".getBytes();
+    byte[] body = "testPipeTransferSchemaSnapshotPieceReq".getBytes();
     String fileName = "1.temp";
 
     PipeTransferSchemaSnapshotPieceReq req =
@@ -230,17 +294,6 @@ public class PipeDataNodeThriftRequestTest {
 
   @Test
   public void testPIpeTransferFilePieceResp() throws IOException {
-    PipeTransferFilePieceResp resp =
-        PipeTransferFilePieceResp.toTPipeTransferResp(RpcUtils.SUCCESS_STATUS, 100);
-    PipeTransferFilePieceResp deserializeResp =
-        PipeTransferFilePieceResp.fromTPipeTransferResp(resp);
-
-    Assert.assertEquals(resp.getStatus(), deserializeResp.getStatus());
-    Assert.assertEquals(resp.getEndWritingOffset(), deserializeResp.getEndWritingOffset());
-  }
-
-  @Test
-  public void testPipeTransferSnapshotPieceResp() throws IOException {
     PipeTransferFilePieceResp resp =
         PipeTransferFilePieceResp.toTPipeTransferResp(RpcUtils.SUCCESS_STATUS, 100);
     PipeTransferFilePieceResp deserializeResp =

@@ -52,7 +52,7 @@ public abstract class PipeTransferFilePieceReq extends TPipeTransferReq {
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  protected PipeTransferFilePieceReq convertToTPipeTransferReq(
+  protected final PipeTransferFilePieceReq convertToTPipeTransferReq(
       String snapshotName, long startWritingOffset, byte[] snapshotPiece) throws IOException {
 
     this.fileName = snapshotName;
@@ -72,7 +72,8 @@ public abstract class PipeTransferFilePieceReq extends TPipeTransferReq {
     return this;
   }
 
-  protected PipeTransferFilePieceReq translateFromTPipeTransferReq(TPipeTransferReq transferReq) {
+  protected final PipeTransferFilePieceReq translateFromTPipeTransferReq(
+      TPipeTransferReq transferReq) {
 
     fileName = ReadWriteIOUtils.readString(transferReq.body);
     startWritingOffset = ReadWriteIOUtils.readLong(transferReq.body);
@@ -87,7 +88,7 @@ public abstract class PipeTransferFilePieceReq extends TPipeTransferReq {
 
   /////////////////////////////// Air Gap ///////////////////////////////
 
-  protected byte[] convertToTPipeTransferBytes(
+  protected final byte[] convertToTPipeTransferBytes(
       String snapshotName, long startWritingOffset, byte[] snapshotPiece) throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {

@@ -32,7 +32,7 @@ public abstract class PipeTransferHandshakeReq extends TPipeTransferReq {
 
   private transient String timestampPrecision;
 
-  public String getTimestampPrecision() {
+  public final String getTimestampPrecision() {
     return timestampPrecision;
   }
 
@@ -40,7 +40,7 @@ public abstract class PipeTransferHandshakeReq extends TPipeTransferReq {
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  protected PipeTransferHandshakeReq convertToTPipeTransferReq(String timestampPrecision)
+  protected final PipeTransferHandshakeReq convertToTPipeTransferReq(String timestampPrecision)
       throws IOException {
     this.timestampPrecision = timestampPrecision;
 
@@ -55,7 +55,8 @@ public abstract class PipeTransferHandshakeReq extends TPipeTransferReq {
     return this;
   }
 
-  protected PipeTransferHandshakeReq translateFromTPipeTransferReq(TPipeTransferReq transferReq) {
+  protected final PipeTransferHandshakeReq translateFromTPipeTransferReq(
+      TPipeTransferReq transferReq) {
     timestampPrecision = ReadWriteIOUtils.readString(transferReq.body);
 
     version = transferReq.version;
@@ -67,7 +68,8 @@ public abstract class PipeTransferHandshakeReq extends TPipeTransferReq {
 
   /////////////////////////////// Air Gap ///////////////////////////////
 
-  protected byte[] convertToTransferHandshakeBytes(String timestampPrecision) throws IOException {
+  protected final byte[] convertToTransferHandshakeBytes(String timestampPrecision)
+      throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);

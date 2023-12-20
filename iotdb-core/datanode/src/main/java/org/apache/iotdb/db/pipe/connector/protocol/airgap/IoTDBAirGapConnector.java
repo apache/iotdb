@@ -194,7 +194,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
 
       if (!send(
           socket,
-          PipeTransferDataNodeHandshakeReq.toTransferHandshakeBytes(
+          PipeTransferDataNodeHandshakeReq.toTPipeTransferBytes(
               CommonDescriptor.getInstance().getConfig().getTimestampPrecision()))) {
         throw new PipeException("Handshake error with target server ip: " + ip + ", port: " + port);
       } else {
@@ -324,9 +324,9 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
       throws PipeException, WALPipeException, IOException {
     final byte[] bytes =
         pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible() == null
-            ? PipeTransferTabletBinaryReq.toTransferInsertNodeBytes(
+            ? PipeTransferTabletBinaryReq.toTPipeTransferBytes(
                 pipeInsertNodeTabletInsertionEvent.getByteBuffer())
-            : PipeTransferTabletInsertNodeReq.toTransferInsertNodeBytes(
+            : PipeTransferTabletInsertNodeReq.toTPipeTransferBytes(
                 pipeInsertNodeTabletInsertionEvent.getInsertNode());
 
     if (!send(socket, bytes)) {
@@ -341,7 +341,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
       throws PipeException, IOException {
     if (!send(
         socket,
-        PipeTransferTabletRawReq.toTPipeTransferTabletBytes(
+        PipeTransferTabletRawReq.toTPipeTransferBytes(
             pipeRawTabletInsertionEvent.convertToTablet(),
             pipeRawTabletInsertionEvent.isAligned()))) {
       throw new PipeException(
@@ -385,8 +385,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
     // 2. Transfer file seal signal, which means the file is transferred completely
     if (!send(
         socket,
-        PipeTransferTsFileSealReq.toTPipeTransferFileSealBytes(
-            tsFile.getName(), tsFile.length()))) {
+        PipeTransferTsFileSealReq.toTPipeTransferBytes(tsFile.getName(), tsFile.length()))) {
       throw new PipeException(String.format("Seal file %s error. Socket %s.", tsFile, socket));
     } else {
       LOGGER.info("Successfully transferred file {}.", tsFile);

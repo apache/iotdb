@@ -1949,8 +1949,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
     TAlterLogicalViewReq req =
         new TAlterLogicalViewReq(
-            Coordinator.getInstance().createQueryId().getId(),
-            ByteBuffer.wrap(stream.toByteArray()));
+                Coordinator.getInstance().createQueryId().getId(),
+                ByteBuffer.wrap(stream.toByteArray()))
+            .setIsGeneratedByPipe(true);
     TSStatus tsStatus;
     try (ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
