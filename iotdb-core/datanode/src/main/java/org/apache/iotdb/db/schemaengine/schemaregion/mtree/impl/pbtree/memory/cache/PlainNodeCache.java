@@ -16,15 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache;
+package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.cache;
 
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.MemManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class PlainCacheManager extends CacheManager {
+public class PlainNodeCache implements INodeCache {
 
   // The nodes in nodeCache are all evictable if not pinned and may be selected to be evicted during
   // cache
@@ -32,37 +31,23 @@ public class PlainCacheManager extends CacheManager {
   @SuppressWarnings("java:S3077")
   private volatile Map<CacheEntry, ICachedMNode> nodeCache = new ConcurrentHashMap<>();
 
-  public PlainCacheManager(MemManager memManager) {
-    super(memManager);
-  }
+  public PlainNodeCache() {}
 
   @Override
-  protected void updateCacheStatusAfterAccess(CacheEntry cacheEntry) {}
-
-  // MNode update operation like node replace may reset the mapping between cacheEntry and node,
-  // thus it should be updated
-  @Override
-  protected void updateCacheStatusAfterUpdate(CacheEntry cacheEntry, ICachedMNode node) {
-    nodeCache.replace(cacheEntry, node);
-  }
+  public void updateCacheStatusAfterAccess(CacheEntry cacheEntry) {}
 
   @Override
-  protected boolean isInNodeCache(CacheEntry cacheEntry) {
-    return nodeCache.containsKey(cacheEntry);
-  }
-
-  @Override
-  protected void addToNodeCache(CacheEntry cacheEntry, ICachedMNode node) {
+  public void addToNodeCache(CacheEntry cacheEntry, ICachedMNode node) {
     nodeCache.put(cacheEntry, node);
   }
 
   @Override
-  protected void removeFromNodeCache(CacheEntry cacheEntry) {
+  public void removeFromNodeCache(CacheEntry cacheEntry) {
     nodeCache.remove(cacheEntry);
   }
 
   @Override
-  protected ICachedMNode getPotentialNodeTobeEvicted() {
+  public ICachedMNode getPotentialNodeTobeEvicted() {
     for (CacheEntry cacheEntry : nodeCache.keySet()) {
       if (!cacheEntry.isPinned()) {
         return nodeCache.get(cacheEntry);
@@ -72,12 +57,17 @@ public class PlainCacheManager extends CacheManager {
   }
 
   @Override
-  protected void clearNodeCache() {
+  public void clear() {
     nodeCache.clear();
   }
 
   @Override
   public long getCacheNodeNum() {
     return nodeCache.size();
+  }
+
+  @Override
+  public void initCacheEntryForNode(ICachedMNode node) {
+    node.setCacheEntry(new CacheEntry());
   }
 }

@@ -386,6 +386,7 @@ public class QueryExecution implements IQueryExecution {
           distributedPlan.getInstances().size(),
           printFragmentInstances(distributedPlan.getInstances()));
     }
+
     // check timeout after building distribution plan because it could be time-consuming in some
     // cases.
     checkTimeOutForQuery();

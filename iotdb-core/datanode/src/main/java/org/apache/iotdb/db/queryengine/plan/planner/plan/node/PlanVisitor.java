@@ -103,6 +103,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 
+@SuppressWarnings("java:S6539") // suppress "Monster class" warning
 public abstract class PlanVisitor<R, C> {
 
   public R process(PlanNode node, C context) {
@@ -200,7 +201,7 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitColumnInject(ColumnInjectNode node, C context) {
-    return visitPlan(node, context);
+    return visitSingleChildProcess(node, context);
   }
 
   public R visitSingleDeviceView(SingleDeviceViewNode node, C context) {

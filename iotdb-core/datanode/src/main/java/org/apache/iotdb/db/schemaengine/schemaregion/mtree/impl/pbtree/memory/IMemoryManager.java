@@ -16,7 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache;
+
+package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory;
 
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
@@ -25,7 +26,29 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICa
 
 import java.util.Iterator;
 
-public interface ICacheManager {
+/**
+ * This class implemented the cache management, involving the cache status management on per MNode
+ * and cache eviction. All the nodes in memory are still basically organized as a trie via the
+ * container and parent reference in each node. Some extra data structure is used to help manage the
+ * node cached in memory.
+ *
+ * <p>The cache eviction on node is actually evicting a subtree from the MTree.
+ *
+ * <p>All the cached nodes are divided into two parts by their cache status, evictable nodes and
+ * none evictable nodes.
+ *
+ * <ol>
+ *   <li>Evictable nodes are all placed in nodeCache, which prepares the nodes be selected by cache
+ *       eviction.
+ *   <li>None evictable nodes takes two parts:
+ *       <ol>
+ *         <li>The volatile nodes, new added or updated, which means the data has not been synced to
+ *             disk.
+ *         <li>The ancestors of the volatile nodes.
+ *       </ol>
+ * </ol>
+ */
+public interface IMemoryManager {
 
   void initRootStatus(ICachedMNode root);
 
@@ -39,8 +62,16 @@ public interface ICacheManager {
 
   IDatabaseMNode<ICachedMNode> collectUpdatedStorageGroupMNodes();
 
+  /**
+   * The returned node by iterator will automatically take the write lock. Please unlock the node
+   * after process.
+   */
   Iterator<ICachedMNode> collectVolatileSubtrees();
 
+  /**
+   * The returned node by iterator will automatically take the write lock. Please unlock the node
+   * after process.
+   */
   Iterator<ICachedMNode> updateCacheStatusAndRetrieveSubtreeAfterPersist(ICachedMNode subtreeRoot);
 
   void updateCacheStatusAfterFlushFailure(ICachedMNode subtreeRoot);
