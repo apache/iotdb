@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -34,23 +35,17 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-/**
- * This node is responsible for join two or more TsBlock.
- *
- * <p>The join algorithm is like <b>full outer join</b> by timestamp column. It will join two or
- * more TsBlock by Timestamp column. The output result of TimeJoinOperator is sorted by timestamp.
- */
-public class FullOuterTimeJoinNode extends MultiChildProcessNode {
+public class InnerTimeJoinNode extends MultiChildProcessNode {
 
   // This parameter indicates the order when executing multiway merge sort.
   private final Ordering mergeOrder;
 
-  public FullOuterTimeJoinNode(PlanNodeId id, Ordering mergeOrder) {
+  public InnerTimeJoinNode(PlanNodeId id, Ordering mergeOrder) {
     super(id, new ArrayList<>());
     this.mergeOrder = mergeOrder;
   }
 
-  public FullOuterTimeJoinNode(PlanNodeId id, Ordering mergeOrder, List<PlanNode> children) {
+  public InnerTimeJoinNode(PlanNodeId id, Ordering mergeOrder, List<PlanNode> children) {
     super(id, children);
     this.mergeOrder = mergeOrder;
   }
@@ -61,12 +56,12 @@ public class FullOuterTimeJoinNode extends MultiChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new FullOuterTimeJoinNode(getPlanNodeId(), getMergeOrder());
+    return new InnerTimeJoinNode(getPlanNodeId(), getMergeOrder());
   }
 
   @Override
   public PlanNode createSubNode(int subNodeId, int startIndex, int endIndex) {
-    return new FullOuterTimeJoinNode(
+    return new InnerTimeJoinNode(
         new PlanNodeId(String.format("%s-%s", getPlanNodeId(), subNodeId)),
         getMergeOrder(),
         new ArrayList<>(children.subList(startIndex, endIndex)));
@@ -83,30 +78,30 @@ public class FullOuterTimeJoinNode extends MultiChildProcessNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitFullOuterTimeJoin(this, context);
+    return visitor.visitInnerTimeJoin(this, context);
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.FULL_OUTER_TIME_JOIN.serialize(byteBuffer);
+    PlanNodeType.INNER_TIME_JOIN.serialize(byteBuffer);
     ReadWriteIOUtils.write(mergeOrder.ordinal(), byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.FULL_OUTER_TIME_JOIN.serialize(stream);
+    PlanNodeType.INNER_TIME_JOIN.serialize(stream);
     ReadWriteIOUtils.write(mergeOrder.ordinal(), stream);
   }
 
-  public static FullOuterTimeJoinNode deserialize(ByteBuffer byteBuffer) {
+  public static InnerTimeJoinNode deserialize(ByteBuffer byteBuffer) {
     Ordering mergeOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new FullOuterTimeJoinNode(planNodeId, mergeOrder);
+    return new InnerTimeJoinNode(planNodeId, mergeOrder);
   }
 
   @Override
   public String toString() {
-    return "FullOuterTimeJoinNode-" + this.getPlanNodeId();
+    return "InnerTimeJoinNode-" + this.getPlanNodeId();
   }
 
   @Override
@@ -120,7 +115,7 @@ public class FullOuterTimeJoinNode extends MultiChildProcessNode {
     if (!super.equals(o)) {
       return false;
     }
-    FullOuterTimeJoinNode that = (FullOuterTimeJoinNode) o;
+    InnerTimeJoinNode that = (InnerTimeJoinNode) o;
     return mergeOrder == that.mergeOrder && children.equals(that.children);
   }
 
