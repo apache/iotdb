@@ -38,7 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.Sche
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FullOuterTimeJoinNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByTagNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.HorizontallyConcatNode;
