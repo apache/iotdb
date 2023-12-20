@@ -200,6 +200,7 @@ public class PipePluginDataNodeAgent {
     }
   }
 
+  // TODO: validate pipe plugin attributes for config node
   public void validate(
       String pipeName,
       Map<String, String> extractorAttributes,

@@ -27,7 +27,7 @@ public class PipeTaskRuntimeEnvironment implements PipeRuntimeEnvironment {
   private final long creationTime;
   private final int regionId;
 
-  protected PipeTaskRuntimeEnvironment(String pipeName, long creationTime, int regionId) {
+  public PipeTaskRuntimeEnvironment(String pipeName, long creationTime, int regionId) {
     this.pipeName = pipeName;
     this.creationTime = creationTime;
     this.regionId = regionId;

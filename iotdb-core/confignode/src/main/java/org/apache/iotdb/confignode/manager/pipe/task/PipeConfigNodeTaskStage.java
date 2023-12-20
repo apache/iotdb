@@ -28,9 +28,6 @@ import java.util.Map;
 
 public class PipeConfigNodeTaskStage extends PipeTaskStage {
 
-  private final String pipeName;
-  private final long creationTime;
-
   private final PipeConfigNodeSubtask subtask;
 
   public PipeConfigNodeTaskStage(
@@ -39,8 +36,6 @@ public class PipeConfigNodeTaskStage extends PipeTaskStage {
       Map<String, String> extractorAttributes,
       Map<String, String> processorAttributes,
       Map<String, String> connectorAttributes) {
-    this.pipeName = pipeName;
-    this.creationTime = creationTime;
 
     try {
       subtask =
