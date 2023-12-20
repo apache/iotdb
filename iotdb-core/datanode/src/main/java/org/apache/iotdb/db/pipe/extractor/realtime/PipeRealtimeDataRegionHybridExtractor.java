@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpoch;
@@ -257,16 +256,16 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   @Override
-  public EnrichedEvent doSupply() {
+  public Event supply() {
     isStartedToSupply = true;
 
     PipeRealtimeEvent realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
 
     while (realtimeEvent != null) {
-      EnrichedEvent suppliedEvent;
+      Event suppliedEvent;
 
       // used to judge type of event, not directly for supplying.
-      final EnrichedEvent eventToSupply = realtimeEvent.getEvent();
+      final Event eventToSupply = realtimeEvent.getEvent();
       if (eventToSupply instanceof TabletInsertionEvent) {
         suppliedEvent = supplyTabletInsertion(realtimeEvent);
       } else if (eventToSupply instanceof TsFileInsertionEvent) {
@@ -294,7 +293,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     return null;
   }
 
-  private EnrichedEvent supplyTabletInsertion(PipeRealtimeEvent event) {
+  private Event supplyTabletInsertion(PipeRealtimeEvent event) {
     event
         .getTsFileEpoch()
         .migrateState(
@@ -334,7 +333,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     }
   }
 
-  private EnrichedEvent supplyTsFileInsertion(PipeRealtimeEvent event) {
+  private Event supplyTsFileInsertion(PipeRealtimeEvent event) {
     event
         .getTsFileEpoch()
         .migrateState(
@@ -379,7 +378,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     }
   }
 
-  private EnrichedEvent supplyHeartbeat(PipeRealtimeEvent event) {
+  private Event supplyHeartbeat(PipeRealtimeEvent event) {
     if (event.increaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName())) {
       return event.getEvent();
     } else {

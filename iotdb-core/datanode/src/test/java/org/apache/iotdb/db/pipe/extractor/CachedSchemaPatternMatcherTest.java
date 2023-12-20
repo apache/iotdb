@@ -27,6 +27,7 @@ import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.realtime.matcher.CachedSchemaPatternMatcher;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import org.junit.After;
@@ -151,7 +152,7 @@ public class CachedSchemaPatternMatcherTest {
     public PipeRealtimeDataRegionFakeExtractor() {}
 
     @Override
-    public EnrichedEvent doSupply() {
+    public Event supply() {
       return null;
     }
 

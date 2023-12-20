@@ -205,7 +205,13 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     }
 
     // TODO: check what happens when skip extracting
-    if (event.getEvent().isEventTimeOverlappedWithTimeRange()) {
+    if (!event.shouldParseTime() || event.getEvent().isEventTimeOverlappedWithTimeRange()) {
+      // 1. Check if time parsing is necessary. If not, it means that the timestamps of the data
+      // contained in this event are definitely within the time range (start time ~ end time).
+      // Otherwise,
+      // 2. Check if the timestamps of the data contained in this event intersect with the time
+      // range. If there is no intersection, it indicates that this data will be filtered out by the
+      // extractor, and the extract process is skipped.
       doExtract(event);
     }
 
@@ -216,21 +222,12 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     }
   }
 
-  @Override
-  public Event supply() {
-    EnrichedEvent event = doSupply();
-    // do nothing now
-    return event;
-  }
-
   private boolean canSkipParsingTime() {
     // TODO
     return isDbCoveredByTimeRange;
   }
 
   protected abstract void doExtract(PipeRealtimeEvent event);
-
-  protected abstract EnrichedEvent doSupply();
 
   public abstract boolean isNeedListenToTsFile();
 

@@ -110,7 +110,7 @@ public class TabletInsertionDataContainer {
     final long[] originTimestampColumn = new long[] {insertRowNode.getTime()};
     List<Integer> rowIndexList =
         IntStream.range(0, originTimestampColumn.length)
-            .filter(i -> isRowTimeOverlappedWithTimeRange(originTimestampColumn[i]))
+            .filter(i -> isRowTimeCoveredByTimeRange(originTimestampColumn[i]))
             .boxed()
             .collect(Collectors.toList());
     this.timestampColumn = rowIndexList.stream().mapToLong(i -> originTimestampColumn[i]).toArray();
@@ -166,7 +166,7 @@ public class TabletInsertionDataContainer {
     final long[] originTimestampColumn = insertTabletNode.getTimes();
     List<Integer> rowIndexList =
         IntStream.range(0, originTimestampColumn.length)
-            .filter(i -> isRowTimeOverlappedWithTimeRange(originTimestampColumn[i]))
+            .filter(i -> isRowTimeCoveredByTimeRange(originTimestampColumn[i]))
             .boxed()
             .collect(Collectors.toList());
     this.timestampColumn = rowIndexList.stream().mapToLong(i -> originTimestampColumn[i]).toArray();
@@ -232,7 +232,7 @@ public class TabletInsertionDataContainer {
     final long[] originTimestampColumn = tablet.timestamps;
     List<Integer> rowIndexList =
         IntStream.range(0, originTimestampColumn.length)
-            .filter(i -> isRowTimeOverlappedWithTimeRange(originTimestampColumn[i]))
+            .filter(i -> isRowTimeCoveredByTimeRange(originTimestampColumn[i]))
             .boxed()
             .collect(Collectors.toList());
     this.timestampColumn = rowIndexList.stream().mapToLong(i -> originTimestampColumn[i]).toArray();
@@ -447,7 +447,7 @@ public class TabletInsertionDataContainer {
     return tablet;
   }
 
-  private boolean isRowTimeOverlappedWithTimeRange(long timestamp) {
+  private boolean isRowTimeCoveredByTimeRange(long timestamp) {
     return !sourceEvent.shouldParseTime()
         || (sourceEvent.getStartTime() <= timestamp && timestamp <= sourceEvent.getEndTime());
   }
