@@ -311,15 +311,15 @@ public class CommonDescriptor {
                     properties.getProperty(
                         "pipe_extractor_assigner_disruptor_ring_buffer_entry_size_in_bytes",
                         String.valueOf(
-                            config.getPipeExtractorAssignerDisruptorRingBufferSize())))));
+                            config
+                                .getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes())))));
     config.setPipeExtractorMatcherCacheSize(
         Integer.parseInt(
             Optional.ofNullable(properties.getProperty("pipe_source_matcher_cache_size"))
                 .orElse(
                     properties.getProperty(
                         "pipe_extractor_matcher_cache_size",
-                        String.valueOf(
-                            config.getPipeExtractorAssignerDisruptorRingBufferSize())))));
+                        String.valueOf(config.getPipeExtractorMatcherCacheSize())))));
 
     config.setPipeConnectorHandshakeTimeoutMs(
         Long.parseLong(
@@ -327,48 +327,42 @@ public class CommonDescriptor {
                 .orElse(
                     properties.getProperty(
                         "pipe_connector_handshake_timeout_ms",
-                        String.valueOf(
-                            config.getPipeExtractorAssignerDisruptorRingBufferSize())))));
+                        String.valueOf(config.getPipeConnectorHandshakeTimeoutMs())))));
     config.setPipeConnectorTransferTimeoutMs(
         Long.parseLong(
             Optional.ofNullable(properties.getProperty("pipe_sink_timeout_ms"))
                 .orElse(
                     properties.getProperty(
                         "pipe_connector_timeout_ms",
-                        String.valueOf(
-                            config.getPipeExtractorAssignerDisruptorRingBufferSize())))));
+                        String.valueOf(config.getPipeConnectorTransferTimeoutMs())))));
     config.setPipeConnectorReadFileBufferSize(
         Integer.parseInt(
             Optional.ofNullable(properties.getProperty("pipe_sink_read_file_buffer_size"))
                 .orElse(
                     properties.getProperty(
                         "pipe_connector_read_file_buffer_size",
-                        String.valueOf(
-                            config.getPipeExtractorAssignerDisruptorRingBufferSize())))));
+                        String.valueOf(config.getPipeConnectorReadFileBufferSize())))));
     config.setPipeConnectorRetryIntervalMs(
         Long.parseLong(
             Optional.ofNullable(properties.getProperty("pipe_sink_retry_interval_ms"))
                 .orElse(
                     properties.getProperty(
                         "pipe_connector_retry_interval_ms",
-                        String.valueOf(
-                            config.getPipeExtractorAssignerDisruptorRingBufferSize())))));
+                        String.valueOf(config.getPipeConnectorRetryIntervalMs())))));
     config.setPipeConnectorPendingQueueSize(
         Integer.parseInt(
             Optional.ofNullable(properties.getProperty("pipe_sink_pending_queue_size"))
                 .orElse(
                     properties.getProperty(
                         "pipe_connector_pending_queue_size",
-                        String.valueOf(
-                            config.getPipeExtractorAssignerDisruptorRingBufferSize())))));
+                        String.valueOf(config.getPipeConnectorPendingQueueSize())))));
     config.setPipeConnectorRPCThriftCompressionEnabled(
         Boolean.parseBoolean(
             Optional.ofNullable(properties.getProperty("pipe_sink_rpc_thrift_compression_enabled"))
                 .orElse(
                     properties.getProperty(
                         "pipe_connector_rpc_thrift_compression_enabled",
-                        String.valueOf(
-                            config.getPipeExtractorAssignerDisruptorRingBufferSize())))));
+                        String.valueOf(config.isPipeConnectorRPCThriftCompressionEnabled())))));
 
     config.setPipeAsyncConnectorSelectorNumber(
         Integer.parseInt(
@@ -376,24 +370,21 @@ public class CommonDescriptor {
                 .orElse(
                     properties.getProperty(
                         "pipe_async_connector_selector_number",
-                        String.valueOf(
-                            config.getPipeExtractorAssignerDisruptorRingBufferSize())))));
+                        String.valueOf(config.getPipeAsyncConnectorSelectorNumber())))));
     config.setPipeAsyncConnectorCoreClientNumber(
         Integer.parseInt(
             Optional.ofNullable(properties.getProperty("pipe_sink_core_client_number"))
                 .orElse(
                     properties.getProperty(
                         "pipe_async_connector_core_client_number",
-                        String.valueOf(
-                            config.getPipeExtractorAssignerDisruptorRingBufferSize())))));
+                        String.valueOf(config.getPipeAsyncConnectorCoreClientNumber())))));
     config.setPipeAsyncConnectorMaxClientNumber(
         Integer.parseInt(
             Optional.ofNullable(properties.getProperty("pipe_sink_max_client_number"))
                 .orElse(
                     properties.getProperty(
                         "pipe_async_connector_max_client_number",
-                        String.valueOf(
-                            config.getPipeExtractorAssignerDisruptorRingBufferSize())))));
+                        String.valueOf(config.getPipeAsyncConnectorMaxClientNumber())))));
 
     config.setSeperatedPipeHeartbeatEnabled(
         Boolean.parseBoolean(
