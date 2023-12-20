@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager.pipe.agent.task;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
+import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMetaKeeper;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
@@ -28,6 +29,8 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Map;
 
 /**
  * State transition diagram of a pipe task:
@@ -50,9 +53,27 @@ public class PipeTaskConfigNodeAgent extends PipeTaskAgent {
     super();
   }
 
-  ///////////////////////// Manage by consensusGroupId /////////////////////////
+  @Override
+  protected boolean isShutdown() {
+    return false;
+  }
 
   @Override
+  protected Map<TConsensusGroupId, PipeTask> buildPipeTasks(PipeMeta pipeMetaFromConfigNode) {
+    return null;
+  }
+
+  @Override
+  protected void createPipeTask(
+      TConsensusGroupId consensusGroupId,
+      PipeStaticMeta pipeStaticMeta,
+      PipeTaskMeta pipeTaskMeta) {}
+
+  @Override
+  protected void dropPipeTask(TConsensusGroupId dataRegionGroupId, PipeStaticMeta pipeStaticMeta) {}
+
+  ///////////////////////// Manage by consensusGroupId /////////////////////////
+
   public void createPipeTask(
       PipeMetaKeeper pipeMetaKeeper,
       TConsensusGroupId consensusGroupId,
@@ -88,7 +109,6 @@ public class PipeTaskConfigNodeAgent extends PipeTaskAgent {
     //        .put(consensusGroupId, pipeTaskMeta);
   }
 
-  @Override
   public void dropPipeTask(
       PipeMetaKeeper pipeMetaKeeper,
       TConsensusGroupId regionGroupId,
@@ -112,7 +132,6 @@ public class PipeTaskConfigNodeAgent extends PipeTaskAgent {
     //    }
   }
 
-  @Override
   public void startPipeTask(TConsensusGroupId regionGroupId, PipeStaticMeta pipeStaticMeta) {
     //    final PipeDataNodeTask pipeTask = pipeTaskManager.getPipeTask(pipeStaticMeta,
     // regionGroupId);
