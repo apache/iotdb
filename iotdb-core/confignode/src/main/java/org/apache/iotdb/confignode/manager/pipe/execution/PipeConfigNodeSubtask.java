@@ -94,6 +94,7 @@ public class PipeConfigNodeSubtask extends PipeSubtask {
     // 3. Customize extractor
     final PipeTaskRuntimeConfiguration runtimeConfiguration =
         new PipeTaskRuntimeConfiguration(
+            // TODO: check CONFIG_REGION_ID.getId()
             new PipeTaskRuntimeEnvironment(taskID, creationTime, CONFIG_REGION_ID.getId()));
     extractor.customize(extractorParameters, runtimeConfiguration);
 
@@ -113,6 +114,7 @@ public class PipeConfigNodeSubtask extends PipeSubtask {
     // 3. Customize processor
     final PipeTaskRuntimeConfiguration runtimeConfiguration =
         new PipeTaskRuntimeConfiguration(
+            // TODO: check CONFIG_REGION_ID.getId()
             new PipeTaskRuntimeEnvironment(taskID, creationTime, CONFIG_REGION_ID.getId()));
     processor.customize(processorParameters, runtimeConfiguration);
 
@@ -132,6 +134,7 @@ public class PipeConfigNodeSubtask extends PipeSubtask {
     // 3. Customize connector
     final PipeTaskRuntimeConfiguration runtimeConfiguration =
         new PipeTaskRuntimeConfiguration(
+            // TODO: check CONFIG_REGION_ID.getId()
             new PipeTaskRuntimeEnvironment(taskID, creationTime, CONFIG_REGION_ID.getId()));
     connector.customize(connectorParameters, runtimeConfiguration);
 
