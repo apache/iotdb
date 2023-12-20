@@ -193,7 +193,9 @@ public class TopKOperatorTest {
               timeOrdering,
               SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath1));
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
-      OperatorContext.setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      seriesScanOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       MeasurementPath measurementPath2 =
           new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device1.sensor0", TSDataType.INT32);
@@ -205,7 +207,9 @@ public class TopKOperatorTest {
               timeOrdering,
               SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath2));
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
-      OperatorContext.setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      seriesScanOperator2
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       MeasurementPath measurementPath3 =
           new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device1.sensor1", TSDataType.INT32);
@@ -217,7 +221,9 @@ public class TopKOperatorTest {
               timeOrdering,
               SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath3));
       seriesScanOperator3.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
-      OperatorContext.setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      seriesScanOperator3
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       MeasurementPath measurementPath4 =
           new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device2.sensor0", TSDataType.INT32);
@@ -229,7 +235,9 @@ public class TopKOperatorTest {
               timeOrdering,
               SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath4));
       seriesScanOperator4.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
-      OperatorContext.setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      seriesScanOperator4
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       MeasurementPath measurementPath5 =
           new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device2.sensor1", TSDataType.INT32);
@@ -241,7 +249,9 @@ public class TopKOperatorTest {
               timeOrdering,
               SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath5));
       seriesScanOperator5.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
-      OperatorContext.setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      seriesScanOperator5
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       List<TSDataType> tsDataTypes =
           new LinkedList<>(
@@ -278,7 +288,9 @@ public class TopKOperatorTest {
                           ? new AscTimeComparator()
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
-      OperatorContext.setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      timeJoinOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       SingleDeviceViewOperator singleDeviceViewOperator2 =
           new SingleDeviceViewOperator(
@@ -306,7 +318,9 @@ public class TopKOperatorTest {
                           ? new AscTimeComparator()
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
-      OperatorContext.setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      timeJoinOperator2
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       SingleDeviceViewOperator singleDeviceViewOperator3 =
           new SingleDeviceViewOperator(
@@ -330,7 +344,7 @@ public class TopKOperatorTest {
                   Arrays.asList(TSDataType.INT64, TSDataType.TEXT)),
               limitValue,
               true);
-      OperatorContext.setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      topKOperator.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       return topKOperator;
     } catch (IllegalPathException e) {
       e.printStackTrace();
@@ -895,7 +909,9 @@ public class TopKOperatorTest {
               timeOrdering,
               SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath1));
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
-      OperatorContext.setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      seriesScanOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       MeasurementPath measurementPath2 =
           new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device1.sensor0", TSDataType.INT32);
@@ -907,7 +923,9 @@ public class TopKOperatorTest {
               timeOrdering,
               SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath2));
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
-      OperatorContext.setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      seriesScanOperator2
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       MeasurementPath measurementPath3 =
           new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device1.sensor1", TSDataType.INT32);
@@ -919,7 +937,9 @@ public class TopKOperatorTest {
               timeOrdering,
               SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath3));
       seriesScanOperator3.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
-      OperatorContext.setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      seriesScanOperator3
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       MeasurementPath measurementPath4 =
           new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device2.sensor0", TSDataType.INT32);
@@ -931,7 +951,9 @@ public class TopKOperatorTest {
               timeOrdering,
               SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath4));
       seriesScanOperator4.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
-      OperatorContext.setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      seriesScanOperator4
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       MeasurementPath measurementPath5 =
           new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device2.sensor1", TSDataType.INT32);
@@ -943,7 +965,9 @@ public class TopKOperatorTest {
               timeOrdering,
               SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath5));
       seriesScanOperator5.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
-      OperatorContext.setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      seriesScanOperator5
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       MeasurementPath measurementPath6 =
           new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device3.sensor0", TSDataType.INT32);
@@ -955,7 +979,9 @@ public class TopKOperatorTest {
               timeOrdering,
               SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath6));
       seriesScanOperator6.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
-      OperatorContext.setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      seriesScanOperator6
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       MeasurementPath measurementPath7 =
           new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device3.sensor1", TSDataType.INT32);
@@ -967,7 +993,9 @@ public class TopKOperatorTest {
               timeOrdering,
               SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath7));
       seriesScanOperator7.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
-      OperatorContext.setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      seriesScanOperator7
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       List<TSDataType> tsDataTypes =
           new LinkedList<>(Arrays.asList(TSDataType.TEXT, TSDataType.INT32, TSDataType.INT32));
@@ -989,7 +1017,10 @@ public class TopKOperatorTest {
                           ? new AscTimeComparator()
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
-      OperatorContext.setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      timeJoinOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       RowBasedTimeJoinOperator timeJoinOperator2 =
           new RowBasedTimeJoinOperator(
               driverContext.getOperatorContexts().get(8),
@@ -1008,7 +1039,10 @@ public class TopKOperatorTest {
                           ? new AscTimeComparator()
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
-      OperatorContext.setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      timeJoinOperator2
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       RowBasedTimeJoinOperator timeJoinOperator3 =
           new RowBasedTimeJoinOperator(
               driverContext.getOperatorContexts().get(9),
@@ -1027,7 +1061,10 @@ public class TopKOperatorTest {
                           ? new AscTimeComparator()
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
-      OperatorContext.setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      timeJoinOperator3
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       List<String> devices = new ArrayList<>(Arrays.asList(DEVICE0, DEVICE1, DEVICE2, DEVICE3));
       if (deviceOrdering == Ordering.DESC) {
         Collections.reverse(devices);
@@ -1073,7 +1110,7 @@ public class TopKOperatorTest {
                   Arrays.asList(TSDataType.TEXT, TSDataType.INT64)),
               limitValue,
               false);
-      OperatorContext.setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      topKOperator.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       return topKOperator;
     } catch (IllegalPathException e) {
       e.printStackTrace();
@@ -1305,7 +1342,7 @@ public class TopKOperatorTest {
                 Collections.singletonList(TSDataType.INT64)),
             20,
             true);
-    OperatorContext.setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+    topKOperator.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
     int index = 0;
     while (topKOperator.isBlocked().isDone() && topKOperator.hasNext()) {
@@ -1382,7 +1419,9 @@ public class TopKOperatorTest {
               SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath1));
       seriesScanOperator1.initQueryDataSource(
           new QueryDataSource(Collections.emptyList(), Collections.emptyList()));
-      OperatorContext.setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      seriesScanOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       MeasurementPath measurementPath2 =
           new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device1.sensor0", TSDataType.INT32);
@@ -1395,7 +1434,9 @@ public class TopKOperatorTest {
               SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath2));
       seriesScanOperator2.initQueryDataSource(
           new QueryDataSource(Collections.emptyList(), Collections.emptyList()));
-      OperatorContext.setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      seriesScanOperator2
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       MeasurementPath measurementPath3 =
           new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device1.sensor1", TSDataType.INT32);
@@ -1408,7 +1449,9 @@ public class TopKOperatorTest {
               SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath3));
       seriesScanOperator3.initQueryDataSource(
           new QueryDataSource(Collections.emptyList(), Collections.emptyList()));
-      OperatorContext.setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      seriesScanOperator3
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       MeasurementPath measurementPath4 =
           new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device2.sensor0", TSDataType.INT32);
@@ -1421,7 +1464,9 @@ public class TopKOperatorTest {
               SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath4));
       seriesScanOperator4.initQueryDataSource(
           new QueryDataSource(Collections.emptyList(), Collections.emptyList()));
-      OperatorContext.setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      seriesScanOperator4
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       MeasurementPath measurementPath5 =
           new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device2.sensor1", TSDataType.INT32);
@@ -1434,7 +1479,9 @@ public class TopKOperatorTest {
               SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath5));
       seriesScanOperator5.initQueryDataSource(
           new QueryDataSource(Collections.emptyList(), Collections.emptyList()));
-      OperatorContext.setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      seriesScanOperator5
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       List<TSDataType> tsDataTypes =
           new LinkedList<>(
@@ -1471,7 +1518,9 @@ public class TopKOperatorTest {
                           ? new AscTimeComparator()
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
-      OperatorContext.setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      timeJoinOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       SingleDeviceViewOperator singleDeviceViewOperator2 =
           new SingleDeviceViewOperator(
@@ -1499,7 +1548,9 @@ public class TopKOperatorTest {
                           ? new AscTimeComparator()
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
-      OperatorContext.setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      timeJoinOperator2
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       SingleDeviceViewOperator singleDeviceViewOperator3 =
           new SingleDeviceViewOperator(
@@ -1523,7 +1574,7 @@ public class TopKOperatorTest {
                   Arrays.asList(TSDataType.INT64, TSDataType.TEXT)),
               limitValue,
               true);
-      OperatorContext.setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      topKOperator.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       return topKOperator;
     } catch (IllegalPathException e) {
       e.printStackTrace();
