@@ -364,37 +364,50 @@ public class TabletInsertionDataContainer {
       return tablet;
     }
 
-    List<Integer> indexList =
-        IntStream.range(0, timestampColumn.length)
-            .filter(this::isRowTimeOverlappedWithTimeRange)
-            .boxed()
-            .collect(Collectors.toList());
+    if (sourceEvent.shouldParseTime()) {
+      // filter tablet row by row
+      List<Integer> indexList =
+          IntStream.range(0, timestampColumn.length)
+              .filter(this::isRowTimeOverlappedWithTimeRange)
+              .boxed()
+              .collect(Collectors.toList());
 
-    List<MeasurementSchema> measurementSchemaArrayList =
-        new ArrayList<>(
-            Arrays.asList(measurementSchemaList).subList(0, measurementSchemaList.length));
+      List<MeasurementSchema> measurementSchemaArrayList =
+          new ArrayList<>(
+              Arrays.asList(measurementSchemaList).subList(0, measurementSchemaList.length));
+      measurementSchemaArrayList =
+          indexList.stream().map(measurementSchemaArrayList::get).collect(Collectors.toList());
 
-    measurementSchemaArrayList =
-        indexList.stream().map(measurementSchemaArrayList::get).collect(Collectors.toList());
+      final Tablet newTablet = new Tablet(deviceId, measurementSchemaArrayList, indexList.size());
+      newTablet.timestamps = indexList.stream().mapToLong(i -> timestampColumn[i]).toArray();
+      newTablet.bitMaps =
+          indexList.stream()
+              .mapToInt(Integer::intValue)
+              .mapToObj(i -> nullValueColumnBitmaps[i])
+              .toArray(BitMap[]::new);
+      newTablet.values =
+          indexList.stream().mapToInt(Integer::intValue).mapToObj(i -> valueColumns[i]).toArray();
+      newTablet.rowSize = indexList.size();
 
-    final Tablet newTablet = new Tablet(deviceId, measurementSchemaArrayList, indexList.size());
-    newTablet.timestamps = indexList.stream().mapToLong(i -> timestampColumn[i]).toArray();
-    newTablet.bitMaps =
-        indexList.stream()
-            .mapToInt(Integer::intValue)
-            .mapToObj(i -> nullValueColumnBitmaps[i])
-            .toArray(BitMap[]::new);
-    newTablet.values =
-        indexList.stream().mapToInt(Integer::intValue).mapToObj(i -> valueColumns[i]).toArray();
-    newTablet.rowSize = indexList.size();
+      tablet = newTablet;
+    } else {
+      final List<MeasurementSchema> measurementSchemaArrayList =
+          new ArrayList<>(
+              Arrays.asList(measurementSchemaList).subList(0, measurementSchemaList.length));
 
-    tablet = newTablet;
+      final Tablet newTablet = new Tablet(deviceId, measurementSchemaArrayList, rowCount);
+      newTablet.timestamps = timestampColumn;
+      newTablet.bitMaps = nullValueColumnBitmaps;
+      newTablet.values = valueColumns;
+      newTablet.rowSize = rowCount;
+
+      tablet = newTablet;
+    }
 
     return tablet;
   }
 
   private boolean isRowTimeOverlappedWithTimeRange(long timestamp) {
-    return sourceEvent.shouldParseTime()
-        || (sourceEvent.getStartTime() <= timestamp && timestamp <= sourceEvent.getEndTime());
+    return sourceEvent.getStartTime() <= timestamp && timestamp <= sourceEvent.getEndTime();
   }
 }
