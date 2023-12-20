@@ -43,7 +43,6 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -176,7 +175,6 @@ public class PipeDataNodeThriftRequestTest {
     }
   }
 
-  @Ignore("Ignored until tablet ser/de bug is fixed")
   @Test
   public void testPipeTransferTabletBatchReq() throws IOException {
     // InsertNode req

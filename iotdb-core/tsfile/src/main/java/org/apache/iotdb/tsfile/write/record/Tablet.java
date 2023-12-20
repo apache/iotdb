@@ -756,8 +756,21 @@ public class Tablet {
     if (thisBitMaps == thatBitMaps) {
       return true;
     }
-    if (thisBitMaps == null || thatBitMaps == null) {
-      return false;
+    if (thisBitMaps == null) {
+      for (int i = 0; i < columns; i++) {
+        if (thatBitMaps[i] != null) {
+          return false;
+        }
+      }
+      return true;
+    }
+    if (thatBitMaps == null) {
+      for (int i = 0; i < columns; i++) {
+        if (thisBitMaps[i] != null) {
+          return false;
+        }
+      }
+      return true;
     }
 
     for (int i = 0; i < columns; i++) {

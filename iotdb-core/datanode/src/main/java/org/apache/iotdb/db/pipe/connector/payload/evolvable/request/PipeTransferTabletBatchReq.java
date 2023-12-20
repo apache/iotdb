@@ -145,8 +145,7 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
     return batchReq;
   }
 
-  public static PipeTransferTabletBatchReq fromTPipeTransferReq(TPipeTransferReq transferReq)
-      throws IOException {
+  public static PipeTransferTabletBatchReq fromTPipeTransferReq(TPipeTransferReq transferReq) {
     final PipeTransferTabletBatchReq batchReq = new PipeTransferTabletBatchReq();
 
     int size = ReadWriteIOUtils.readInt(transferReq.body);
@@ -190,8 +189,6 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
       return false;
     }
     PipeTransferTabletBatchReq that = (PipeTransferTabletBatchReq) obj;
-    System.out.println(tabletReqs.equals(that.tabletReqs));
-    System.out.println(tabletReqs + "\n" + that.tabletReqs);
     return binaryReqs.equals(that.binaryReqs)
         && insertNodeReqs.equals(that.insertNodeReqs)
         && tabletReqs.equals(that.tabletReqs)
