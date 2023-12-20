@@ -174,8 +174,6 @@ public class IoTDBConfig {
   /** The proportion of write memory for loading TsFile */
   private double loadTsFileProportion = 0.125;
 
-  private int maxLoadingTimeseriesNumber = 2000;
-
   /**
    * If memory cost of data region increased more than proportion of {@linkplain
    * IoTDBConfig#getAllocateMemoryForStorageEngine()}*{@linkplain
@@ -1092,6 +1090,16 @@ public class IoTDBConfig {
   private int maxSizePerBatch = 16 * 1024 * 1024;
   private int maxPendingBatchesNum = 5;
   private double maxMemoryRatioForQueue = 0.6;
+
+  /** Load related */
+  private int maxLoadingTimeseriesNumber = 2000;
+
+  // TODO: remove loadMemoryTotalSizeFromQueryInBytes after introducing queryEngine memory manager
+  private long loadMemoryTotalSizeFromQueryInBytes = 200 * 1024 * 1024L;
+  private long initLoadMemoryTotalSizeInBytes = 100 * 1024 * 1024L; // 100MB
+  private long loadMemoryAllocateRetryIntervalMs = 1000;
+  private int loadMemoryAllocateMaxRetries = 10;
+  private long loadMemoryAllocateMinSizeInBytes = 32;
 
   /** Pipe related */
   /** initialized as empty, updated based on the latest `systemDir` during querying */
@@ -3273,14 +3281,6 @@ public class IoTDBConfig {
     return loadTsFileProportion;
   }
 
-  public int getMaxLoadingTimeseriesNumber() {
-    return maxLoadingTimeseriesNumber;
-  }
-
-  public void setMaxLoadingTimeseriesNumber(int maxLoadingTimeseriesNumber) {
-    this.maxLoadingTimeseriesNumber = maxLoadingTimeseriesNumber;
-  }
-
   public static String getEnvironmentVariables() {
     return "\n\t"
         + IoTDBConstant.IOTDB_HOME
@@ -3733,6 +3733,54 @@ public class IoTDBConfig {
 
   public int getModeMapSizeThreshold() {
     return modeMapSizeThreshold;
+  }
+
+  public long getLoadMemoryTotalSizeFromQueryInBytes() {
+    return loadMemoryTotalSizeFromQueryInBytes;
+  }
+
+  public void setLoadMemoryTotalSizeFromQueryInBytes(long loadMemoryTotalSizeFromQueryInBytes) {
+    this.loadMemoryTotalSizeFromQueryInBytes = loadMemoryTotalSizeFromQueryInBytes;
+  }
+
+  public long getInitLoadMemoryTotalSizeInBytes() {
+    return initLoadMemoryTotalSizeInBytes;
+  }
+
+  public void setInitLoadMemoryTotalSizeInBytes(long initLoadMemoryTotalSizeInBytes) {
+    this.initLoadMemoryTotalSizeInBytes = initLoadMemoryTotalSizeInBytes;
+  }
+
+  public int getMaxLoadingTimeseriesNumber() {
+    return maxLoadingTimeseriesNumber;
+  }
+
+  public void setMaxLoadingTimeseriesNumber(int maxLoadingTimeseriesNumber) {
+    this.maxLoadingTimeseriesNumber = maxLoadingTimeseriesNumber;
+  }
+
+  public long getLoadMemoryAllocateRetryIntervalMs() {
+    return loadMemoryAllocateRetryIntervalMs;
+  }
+
+  public void setLoadMemoryAllocateRetryIntervalMs(long loadMemoryAllocateRetryIntervalMs) {
+    this.loadMemoryAllocateRetryIntervalMs = loadMemoryAllocateRetryIntervalMs;
+  }
+
+  public int getLoadMemoryAllocateMaxRetries() {
+    return loadMemoryAllocateMaxRetries;
+  }
+
+  public void setLoadMemoryAllocateMaxRetries(int loadMemoryAllocateMaxRetries) {
+    this.loadMemoryAllocateMaxRetries = loadMemoryAllocateMaxRetries;
+  }
+
+  public long getLoadMemoryAllocateMinSizeInBytes() {
+    return loadMemoryAllocateMinSizeInBytes;
+  }
+
+  public void setLoadMemoryAllocateMinSizeInBytes(long loadMemoryAllocateMinSizeInBytes) {
+    this.loadMemoryAllocateMinSizeInBytes = loadMemoryAllocateMinSizeInBytes;
   }
 
   public void setPipeReceiverFileDirs(String[] pipeReceiverFileDirs) {
