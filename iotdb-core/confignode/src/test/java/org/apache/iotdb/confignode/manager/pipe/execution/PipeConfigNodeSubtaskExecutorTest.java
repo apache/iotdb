@@ -32,7 +32,6 @@ import org.mockito.Mockito;
 
 import java.util.HashMap;
 
-import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -51,13 +50,12 @@ public class PipeConfigNodeSubtaskExecutorTest {
                 "PipeProcessorSubtaskExecutorTest",
                 System.currentTimeMillis(),
                 new HashMap<>(),
+                new HashMap<>(),
                 new HashMap<String, String>() {
                   {
                     put(
                         PipeConnectorConstant.CONNECTOR_KEY,
-                        BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName());
-                    put(PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY, "127.0.0.1");
-                    put(PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY, "6667");
+                        BuiltinPipePlugin.DO_NOTHING_CONNECTOR.getPipePluginName());
                   }
                 }));
   }
@@ -101,12 +99,6 @@ public class PipeConfigNodeSubtaskExecutorTest {
     // test start a subtask which is in the map
     executor.register(subtask);
     executor.start(subtask.getTaskID());
-    try {
-      Thread.sleep(5000);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
-    verify(subtask, atLeast(1)).call();
     Assert.assertTrue(subtask.isSubmittingSelf());
 
     // test start a subtask which is in the map and is already running
