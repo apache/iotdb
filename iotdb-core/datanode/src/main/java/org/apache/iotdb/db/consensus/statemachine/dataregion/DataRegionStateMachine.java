@@ -65,6 +65,10 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   protected DataRegion region;
 
+  private final int maxWriteRetryTimes = 5;
+
+  private final long writeRetryWaitTimeInMs = 1000;
+
   public DataRegionStateMachine(DataRegion region) {
     this.region = region;
   }
@@ -237,7 +241,32 @@ public class DataRegionStateMachine extends BaseStateMachine {
   }
 
   protected TSStatus write(PlanNode planNode) {
-    return planNode.accept(new DataExecutionVisitor(), region);
+    // To ensure the Data inconsistency between multiple replications, we add retry in write
+    // operation.
+    TSStatus result = null;
+    int retryTime = 0;
+    while (retryTime < maxWriteRetryTimes) {
+      result = planNode.accept(new DataExecutionVisitor(), region);
+      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        break;
+      } else {
+        retryTime++;
+        logger.debug(
+            "write operation failed because {}, retryTime: {}.", result.getCode(), retryTime);
+        if (retryTime == maxWriteRetryTimes) {
+          logger.error(
+              "write operation still failed after {} retry times, because {}.",
+              maxWriteRetryTimes,
+              result.getCode());
+        }
+        try {
+          Thread.sleep(writeRetryWaitTimeInMs);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        }
+      }
+    }
+    return result;
   }
 
   @Override
