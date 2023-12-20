@@ -31,12 +31,13 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import java.util.HashMap;
 import java.util.Map;
 
-public class PipeBuilder {
+public class PipeDataNodeBuilder {
+
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private final PipeMeta pipeMeta;
 
-  public PipeBuilder(PipeMeta pipeMeta) {
+  public PipeDataNodeBuilder(PipeMeta pipeMeta) {
     this.pipeMeta = pipeMeta;
   }
 

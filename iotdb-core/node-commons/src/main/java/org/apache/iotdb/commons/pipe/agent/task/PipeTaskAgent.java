@@ -42,6 +42,19 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+/**
+ * State transition diagram of a pipe task:
+ *
+ * <p><code>
+ * |----------------|                     |---------| --> stop  pipe --> |---------|                   |---------|
+ * | initial status | --> create pipe --> | RUNNING |                    | STOPPED | --> drop pipe --> | DROPPED |
+ * |----------------|                     |---------| <-- start pipe <-- |---------|                   |---------|
+ *                                             |                                                            |
+ *                                             | ----------------------> drop pipe -----------------------> |
+ * </code>
+ *
+ * <p>Other transitions are not allowed, will be ignored when received in the pipe task agent.
+ */
 public abstract class PipeTaskAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskAgent.class);
@@ -754,14 +767,27 @@ public abstract class PipeTaskAgent {
     return true;
   }
 
-  ///////////////////////// Manage by dataRegionGroupId /////////////////////////
+  ///////////////////////// Manage by consensusGroupId /////////////////////////
 
   protected abstract void createPipeTask(
       TConsensusGroupId consensusGroupId, PipeStaticMeta pipeStaticMeta, PipeTaskMeta pipeTaskMeta);
 
-  protected abstract void dropPipeTask(
-      TConsensusGroupId dataRegionGroupId, PipeStaticMeta pipeStaticMeta);
+  private void dropPipeTask(TConsensusGroupId consensusGroupId, PipeStaticMeta pipeStaticMeta) {
+    pipeMetaKeeper
+        .getPipeMeta(pipeStaticMeta.getPipeName())
+        .getRuntimeMeta()
+        .getConsensusGroupId2TaskMetaMap()
+        .remove(consensusGroupId);
+    final PipeTask pipeTask = pipeTaskManager.removePipeTask(pipeStaticMeta, consensusGroupId);
+    if (pipeTask != null) {
+      pipeTask.drop();
+    }
+  }
 
-  protected abstract void startPipeTask(
-      TConsensusGroupId dataRegionGroupId, PipeStaticMeta pipeStaticMeta);
+  private void startPipeTask(TConsensusGroupId consensusGroupId, PipeStaticMeta pipeStaticMeta) {
+    final PipeTask pipeTask = pipeTaskManager.getPipeTask(pipeStaticMeta, consensusGroupId);
+    if (pipeTask != null) {
+      pipeTask.start();
+    }
+  }
 }

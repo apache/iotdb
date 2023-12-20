@@ -35,7 +35,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.extractor.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.task.PipeDataNodeTask;
-import org.apache.iotdb.db.pipe.task.builder.PipeBuilder;
+import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeBuilder;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeTaskDataRegionBuilder;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
@@ -54,19 +54,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * State transition diagram of a pipe task:
- *
- * <p><code>
- * |----------------|                     |---------| --> stop  pipe --> |---------|                   |---------|
- * | initial status | --> create pipe --> | RUNNING |                    | STOPPED | --> drop pipe --> | DROPPED |
- * |----------------|                     |---------| <-- start pipe <-- |---------|                   |---------|
- *                                             |                                                            |
- *                                             | ----------------------> drop pipe -----------------------> |
- * </code>
- *
- * <p>Other transitions are not allowed, will be ignored when received in the pipe task agent.
- */
 public class PipeTaskDataNodeAgent extends PipeTaskAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskDataNodeAgent.class);
@@ -82,7 +69,7 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
 
   @Override
   protected Map<TConsensusGroupId, PipeTask> buildPipeTasks(PipeMeta pipeMetaFromConfigNode) {
-    return new PipeBuilder(pipeMetaFromConfigNode).build();
+    return new PipeDataNodeBuilder(pipeMetaFromConfigNode).build();
   }
 
   public synchronized void stopAllPipesWithCriticalException() {
@@ -210,29 +197,6 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
         .getRuntimeMeta()
         .getConsensusGroupId2TaskMetaMap()
         .put(consensusGroupId, pipeTaskMeta);
-  }
-
-  @Override
-  protected void dropPipeTask(TConsensusGroupId dataRegionGroupId, PipeStaticMeta pipeStaticMeta) {
-    pipeMetaKeeper
-        .getPipeMeta(pipeStaticMeta.getPipeName())
-        .getRuntimeMeta()
-        .getConsensusGroupId2TaskMetaMap()
-        .remove(dataRegionGroupId);
-    final PipeDataNodeTask pipeTask =
-        (PipeDataNodeTask) pipeTaskManager.removePipeTask(pipeStaticMeta, dataRegionGroupId);
-    if (pipeTask != null) {
-      pipeTask.drop();
-    }
-  }
-
-  @Override
-  protected void startPipeTask(TConsensusGroupId dataRegionGroupId, PipeStaticMeta pipeStaticMeta) {
-    final PipeDataNodeTask pipeTask =
-        (PipeDataNodeTask) pipeTaskManager.getPipeTask(pipeStaticMeta, dataRegionGroupId);
-    if (pipeTask != null) {
-      pipeTask.start();
-    }
   }
 
   ///////////////////////// Heartbeat /////////////////////////
