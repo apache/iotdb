@@ -41,8 +41,8 @@ public class JMXService implements IService {
     // Empty constructor
   }
 
-  /** function for registering MBean. */
-  public static void registerMBean(Object mbean, String name) {
+  /** Function for registering MBean. */
+  public static synchronized void registerMBean(Object mbean, String name) {
     try {
       MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
       ObjectName objectName = new ObjectName(name);
@@ -57,8 +57,8 @@ public class JMXService implements IService {
     }
   }
 
-  /** function for deregistering MBean. */
-  public static void deregisterMBean(String name) {
+  /** Function for deregistering MBean. */
+  public static synchronized void deregisterMBean(String name) {
     try {
       MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
       ObjectName objectName = new ObjectName(name);
