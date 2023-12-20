@@ -138,6 +138,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowSpace
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowThrottleQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.TransformToViewExpressionVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.AlterLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateContinuousQueryStatement;
@@ -1679,6 +1680,24 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
+  public SettableFuture<ConfigTaskResult> executeSyncCommand(ByteBuffer configPhysicalPlanBinary) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TSStatus tsStatus = configNodeClient.executeSyncCommand(configPhysicalPlanBinary);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        LOGGER.warn("Failed to executeSyncCommand, status is {}.", tsStatus);
+        future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
   public SettableFuture<ConfigTaskResult> deleteTimeSeries(
       String queryId, DeleteTimeSeriesStatement deleteTimeSeriesStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
@@ -1792,7 +1811,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     CreateLogicalViewStatement createLogicalViewStatement = new CreateLogicalViewStatement();
     createLogicalViewStatement.setTargetFullPaths(
         Collections.singletonList(renameLogicalViewStatement.getNewName()));
-    createLogicalViewStatement.setViewExpression(viewExpression);
+    createLogicalViewStatement.setViewExpressions(Collections.singletonList(viewExpression));
     ExecutionResult executionResult =
         Coordinator.getInstance()
             .execute(
@@ -1908,6 +1927,67 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         LOGGER.warn(
             "Failed to execute alter view {}, status is {}.",
             alterLogicalViewStatement.getTargetPathList(),
+            tsStatus);
+        if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+          future.setException(
+              new BatchProcessException(tsStatus.subStatus.toArray(new TSStatus[0])));
+        } else {
+          future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
+        }
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+      return future;
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+      return future;
+    }
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> alterLogicalViewByPipe(
+      AlterLogicalViewNode alterLogicalViewNode, MPPQueryContext context) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    Map<PartialPath, ViewExpression> viewPathToSourceMap =
+        alterLogicalViewNode.getViewPathToSourceMap();
+
+    ByteArrayOutputStream stream = new ByteArrayOutputStream();
+    try {
+      ReadWriteIOUtils.write(viewPathToSourceMap.size(), stream);
+      for (Map.Entry<PartialPath, ViewExpression> entry : viewPathToSourceMap.entrySet()) {
+        entry.getKey().serialize(stream);
+        ViewExpression.serialize(entry.getValue(), stream);
+      }
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+
+    TAlterLogicalViewReq req =
+        new TAlterLogicalViewReq(
+            context.getQueryId().getId(), ByteBuffer.wrap(stream.toByteArray()));
+    try (ConfigNodeClient client =
+        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TSStatus tsStatus;
+      do {
+        try {
+          tsStatus = client.alterLogicalView(req);
+        } catch (TTransportException e) {
+          if (e.getType() == TTransportException.TIMED_OUT
+              || e.getCause() instanceof SocketTimeoutException) {
+            // time out mainly caused by slow execution, wait until
+            tsStatus = RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
+          } else {
+            throw e;
+          }
+        }
+        // keep waiting until task ends
+      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        LOGGER.warn(
+            "Failed to execute alter view {} by pipe, status is {}.",
+            viewPathToSourceMap,
             tsStatus);
         if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
           future.setException(

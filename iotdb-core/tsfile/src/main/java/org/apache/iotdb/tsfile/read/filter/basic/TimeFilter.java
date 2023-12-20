@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.read.filter.basic;
 
 import org.apache.iotdb.tsfile.file.metadata.IMetadata;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import java.io.Serializable;
 
@@ -40,6 +41,15 @@ public abstract class TimeFilter extends Filter {
   public boolean satisfyRow(long time, Object[] values) {
     // only use time to filter
     return timeSatisfy(time);
+  }
+
+  @Override
+  public boolean[] satisfyTsBlock(TsBlock tsBlock) {
+    boolean[] satisfyInfo = new boolean[tsBlock.getPositionCount()];
+    for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+      satisfyInfo[i] = timeSatisfy(tsBlock.getTimeByIndex(i));
+    }
+    return satisfyInfo;
   }
 
   protected abstract boolean timeSatisfy(long time);

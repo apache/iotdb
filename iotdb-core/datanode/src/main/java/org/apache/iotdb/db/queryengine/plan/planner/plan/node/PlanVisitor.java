@@ -92,6 +92,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeri
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
@@ -102,6 +103,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 
+@SuppressWarnings("java:S6539") // suppress "Monster class" warning
 public abstract class PlanVisitor<R, C> {
 
   public R process(PlanNode node, C context) {
@@ -124,16 +126,20 @@ public abstract class PlanVisitor<R, C> {
     return visitSourceNode(node, context);
   }
 
-  public R visitSeriesAggregationScan(SeriesAggregationScanNode node, C context) {
-    return visitSourceNode(node, context);
-  }
-
   public R visitAlignedSeriesScan(AlignedSeriesScanNode node, C context) {
     return visitSourceNode(node, context);
   }
 
-  public R visitAlignedSeriesAggregationScan(AlignedSeriesAggregationScanNode node, C context) {
+  public R visitSeriesAggregationSourceNode(SeriesAggregationSourceNode node, C context) {
     return visitSourceNode(node, context);
+  }
+
+  public R visitSeriesAggregationScan(SeriesAggregationScanNode node, C context) {
+    return visitSeriesAggregationSourceNode(node, context);
+  }
+
+  public R visitAlignedSeriesAggregationScan(AlignedSeriesAggregationScanNode node, C context) {
+    return visitSeriesAggregationSourceNode(node, context);
   }
 
   public R visitLastQueryScan(LastQueryScanNode node, C context) {
@@ -195,7 +201,7 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitColumnInject(ColumnInjectNode node, C context) {
-    return visitPlan(node, context);
+    return visitSingleChildProcess(node, context);
   }
 
   public R visitSingleDeviceView(SingleDeviceViewNode node, C context) {

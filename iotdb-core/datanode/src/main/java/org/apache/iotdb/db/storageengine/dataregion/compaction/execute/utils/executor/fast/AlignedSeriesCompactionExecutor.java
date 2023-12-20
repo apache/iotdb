@@ -23,9 +23,12 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionPathUtils;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.AlignedPageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.FileElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.PageElement;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.reader.CompactionAlignedChunkReader;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.reader.CompactionChunkReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
@@ -40,8 +43,6 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReader;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
@@ -252,7 +253,7 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
     // deserialize time chunk
     Chunk timeChunk = chunkMetadataElement.chunk;
 
-    ChunkReader chunkReader = new ChunkReader(timeChunk);
+    CompactionChunkReader chunkReader = new CompactionChunkReader(timeChunk);
     ByteBuffer chunkDataBuffer = timeChunk.getData();
     ChunkHeader chunkHeader = timeChunk.getHeader();
     while (chunkDataBuffer.remaining() > 0) {
@@ -278,7 +279,7 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
         compressedValuePageDatas.add(null);
         continue;
       }
-      chunkReader = new ChunkReader(valueChunk);
+      chunkReader = new CompactionChunkReader(valueChunk);
       chunkDataBuffer = valueChunk.getData();
       chunkHeader = valueChunk.getHeader();
 
@@ -318,12 +319,12 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
         alignedPageDatas.add(compressedValuePageDatas.get(j).get(i));
       }
       pageQueue.add(
-          new PageElement(
+          new AlignedPageElement(
               timePageHeaders.get(i),
               alignedPageHeaders,
               compressedTimePageDatas.get(i),
               alignedPageDatas,
-              new AlignedChunkReader(timeChunk, valueChunks),
+              new CompactionAlignedChunkReader(timeChunk, valueChunks),
               chunkMetadataElement,
               i == timePageHeaders.size() - 1,
               chunkMetadataElement.priority));
@@ -391,10 +392,10 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
    * Return NONE_DELETED if and only if no data exists on all value pages is deleted
    */
   protected ModifiedStatus isPageModified(PageElement pageElement) {
-    long startTime = pageElement.startTime;
-    long endTime = pageElement.pageHeader.getEndTime();
+    long startTime = pageElement.getStartTime();
+    long endTime = pageElement.getEndTime();
     AlignedChunkMetadata alignedChunkMetadata =
-        (AlignedChunkMetadata) pageElement.chunkMetadataElement.chunkMetadata;
+        (AlignedChunkMetadata) pageElement.getChunkMetadataElement().chunkMetadata;
     ModifiedStatus lastPageStatus = null;
     for (IChunkMetadata valueChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
       ModifiedStatus currentPageStatus =

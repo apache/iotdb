@@ -260,7 +260,7 @@ public class SingleSeriesCompactionExecutor {
    * @throws IOException if io errors occurred
    */
   private void writeChunkIntoChunkWriter(Chunk chunk) throws IOException {
-    IChunkReader chunkReader = new ChunkReader(chunk, null);
+    IChunkReader chunkReader = new ChunkReader(chunk);
     while (chunkReader.hasNextSatisfiedPage()) {
       IPointReader batchIterator = chunkReader.nextPageData().getBatchDataIterator();
       while (batchIterator.hasNextTimeValuePair()) {

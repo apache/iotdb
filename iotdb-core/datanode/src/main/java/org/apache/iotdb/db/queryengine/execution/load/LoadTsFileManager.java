@@ -35,7 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.utils.FileLoaderUtils;
+import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -283,7 +283,7 @@ public class LoadTsFileManager {
     }
 
     private TsFileResource generateResource(TsFileIOWriter writer) throws IOException {
-      TsFileResource tsFileResource = FileLoaderUtils.generateTsFileResource(writer);
+      TsFileResource tsFileResource = TsFileResourceUtils.generateTsFileResource(writer);
       tsFileResource.serialize();
       return tsFileResource;
     }

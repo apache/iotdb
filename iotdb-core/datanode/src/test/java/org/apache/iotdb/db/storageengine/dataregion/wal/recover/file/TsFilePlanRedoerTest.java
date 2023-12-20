@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -156,7 +157,8 @@ public class TsFilePlanRedoerTest {
     MeasurementPath fullPath =
         new MeasurementPath(
             DEVICE2_NAME, "s1", new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
-    ReadOnlyMemChunk memChunk = recoveryMemTable.query(fullPath, Long.MIN_VALUE, null);
+    ReadOnlyMemChunk memChunk =
+        recoveryMemTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, null);
     IPointReader iterator = memChunk.getPointReader();
     time = 5;
     while (iterator.hasNextTimeValuePair()) {
@@ -170,7 +172,7 @@ public class TsFilePlanRedoerTest {
     fullPath =
         new MeasurementPath(
             DEVICE2_NAME, "s2", new MeasurementSchema("s2", TSDataType.DOUBLE, TSEncoding.RLE));
-    memChunk = recoveryMemTable.query(fullPath, Long.MIN_VALUE, null);
+    memChunk = recoveryMemTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, null);
     iterator = memChunk.getPointReader();
     time = 5;
     while (iterator.hasNextTimeValuePair()) {
@@ -255,7 +257,8 @@ public class TsFilePlanRedoerTest {
                 new MeasurementSchema("s3", TSDataType.BOOLEAN, TSEncoding.RLE),
                 new MeasurementSchema("s4", TSDataType.FLOAT, TSEncoding.RLE),
                 new MeasurementSchema("s5", TSDataType.TEXT, TSEncoding.PLAIN)));
-    ReadOnlyMemChunk memChunk = recoveryMemTable.query(fullPath, Long.MIN_VALUE, null);
+    ReadOnlyMemChunk memChunk =
+        recoveryMemTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, null);
     IPointReader iterator = memChunk.getPointReader();
     int time = 6;
     while (iterator.hasNextTimeValuePair()) {
@@ -334,7 +337,8 @@ public class TsFilePlanRedoerTest {
     MeasurementPath fullPath =
         new MeasurementPath(
             DEVICE1_NAME, "s1", new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE));
-    ReadOnlyMemChunk memChunk = recoveryMemTable.query(fullPath, Long.MIN_VALUE, null);
+    ReadOnlyMemChunk memChunk =
+        recoveryMemTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, null);
     IPointReader iterator = memChunk.getPointReader();
     int time = 5;
     while (iterator.hasNextTimeValuePair()) {
@@ -348,7 +352,7 @@ public class TsFilePlanRedoerTest {
     fullPath =
         new MeasurementPath(
             DEVICE1_NAME, "s2", new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    memChunk = recoveryMemTable.query(fullPath, Long.MIN_VALUE, null);
+    memChunk = recoveryMemTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, null);
     iterator = memChunk.getPointReader();
     time = 5;
     while (iterator.hasNextTimeValuePair()) {
@@ -446,7 +450,8 @@ public class TsFilePlanRedoerTest {
                 new MeasurementSchema("s3", TSDataType.BOOLEAN, TSEncoding.RLE),
                 new MeasurementSchema("s4", TSDataType.FLOAT, TSEncoding.RLE),
                 new MeasurementSchema("s5", TSDataType.TEXT, TSEncoding.PLAIN)));
-    ReadOnlyMemChunk memChunk = recoveryMemTable.query(fullPath, Long.MIN_VALUE, null);
+    ReadOnlyMemChunk memChunk =
+        recoveryMemTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, null);
     IPointReader iterator = memChunk.getPointReader();
     int time = 6;
     while (iterator.hasNextTimeValuePair()) {
@@ -567,7 +572,8 @@ public class TsFilePlanRedoerTest {
     MeasurementPath fullPath =
         new MeasurementPath(
             DEVICE1_NAME, "s1", new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE));
-    ReadOnlyMemChunk memChunk = recoveryMemTable.query(fullPath, Long.MIN_VALUE, null);
+    ReadOnlyMemChunk memChunk =
+        recoveryMemTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, null);
     IPointReader iterator = memChunk.getPointReader();
     int time = 1;
     while (iterator.hasNextTimeValuePair()) {
@@ -581,7 +587,7 @@ public class TsFilePlanRedoerTest {
     fullPath =
         new MeasurementPath(
             DEVICE1_NAME, "s2", new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    memChunk = recoveryMemTable.query(fullPath, Long.MIN_VALUE, null);
+    memChunk = recoveryMemTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, null);
     iterator = memChunk.getPointReader();
     time = 1;
     while (iterator.hasNextTimeValuePair()) {
@@ -727,7 +733,8 @@ public class TsFilePlanRedoerTest {
                 new MeasurementSchema("s3", TSDataType.BOOLEAN, TSEncoding.RLE),
                 new MeasurementSchema("s4", TSDataType.FLOAT, TSEncoding.RLE),
                 new MeasurementSchema("s5", TSDataType.TEXT, TSEncoding.PLAIN)));
-    ReadOnlyMemChunk memChunk = recoveryMemTable.query(fullPath, Long.MIN_VALUE, null);
+    ReadOnlyMemChunk memChunk =
+        recoveryMemTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, null);
     IPointReader iterator = memChunk.getPointReader();
     time = 6;
     while (iterator.hasNextTimeValuePair()) {

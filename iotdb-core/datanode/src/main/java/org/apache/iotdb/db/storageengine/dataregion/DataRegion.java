@@ -1690,7 +1690,10 @@ public class DataRegion implements IDataRegionForQuery {
   /** used for queryengine */
   @Override
   public QueryDataSource query(
-      List<PartialPath> pathList, String singleDeviceId, QueryContext context, Filter timeFilter)
+      List<PartialPath> pathList,
+      String singleDeviceId,
+      QueryContext context,
+      Filter globalTimeFilter)
       throws QueryProcessException {
     try {
       List<TsFileResource> seqResources =
@@ -1699,7 +1702,7 @@ public class DataRegion implements IDataRegionForQuery {
               pathList,
               singleDeviceId,
               context,
-              timeFilter,
+              globalTimeFilter,
               true);
       List<TsFileResource> unseqResources =
           getFileResourceListForQuery(
@@ -1707,7 +1710,7 @@ public class DataRegion implements IDataRegionForQuery {
               pathList,
               singleDeviceId,
               context,
-              timeFilter,
+              globalTimeFilter,
               false);
 
       QUERY_RESOURCE_METRIC_SET.recordQueryResourceNum(SEQUENCE_TSFILE, seqResources.size());
@@ -1758,7 +1761,7 @@ public class DataRegion implements IDataRegionForQuery {
       List<PartialPath> pathList,
       String singleDeviceId,
       QueryContext context,
-      Filter timeFilter,
+      Filter globalTimeFilter,
       boolean isSeq)
       throws MetadataException {
 
@@ -1768,7 +1771,7 @@ public class DataRegion implements IDataRegionForQuery {
           pathList,
           tsFileResources,
           isSeq,
-          (timeFilter == null ? "null" : timeFilter));
+          (globalTimeFilter == null ? "null" : globalTimeFilter));
     }
 
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
@@ -1779,7 +1782,7 @@ public class DataRegion implements IDataRegionForQuery {
 
     for (TsFileResource tsFileResource : tsFileResources) {
       if (!tsFileResource.isSatisfied(
-          singleDeviceId, timeFilter, isSeq, dataTTL, context.isDebug())) {
+          singleDeviceId, globalTimeFilter, isSeq, dataTTL, context.isDebug())) {
         continue;
       }
       closeQueryLock.readLock().lock();

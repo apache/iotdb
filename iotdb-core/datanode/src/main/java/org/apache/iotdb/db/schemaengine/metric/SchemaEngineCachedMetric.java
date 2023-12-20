@@ -19,32 +19,27 @@
 
 package org.apache.iotdb.db.schemaengine.metric;
 
-import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaEngineStatistics;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.CacheMemoryManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.ReleaseFlushStrategySizeBasedImpl;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.ReleaseFlushMonitor;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
-
-import java.util.concurrent.TimeUnit;
 
 public class SchemaEngineCachedMetric implements ISchemaEngineMetric {
 
   // TODO: rename schema_file to pbtree
   private static final String RELEASE_THRESHOLD = "schema_file_release_threshold";
-  private static final String FLUSH_THRESHOLD = "schema_file_flush_threshold";
   private static final String PINNED_NODE_NUM = "schema_file_pinned_num";
   private static final String UNPINNED_NODE_NUM = "schema_file_unpinned_num";
   private static final String PINNED_MEM_SIZE = "schema_file_pinned_mem";
   private static final String UNPINNED_MEM_SIZE = "schema_file_unpinned_mem";
-  private static final String RELEASE_TIMER = "schema_file_release";
-  private static final String FLUSH_TIMER = "schema_file_flush";
-  private static final String RELEASE_THREAD_NUM = "schema_file_release_thread_num";
-  private static final String FLUSH_THREAD_NUM = "schema_file_flush_thread_num";
+  private static final String RELEASE_TIMER = "schema_file_release"; // TODO: implement it
+  private static final String FLUSH_TIMER = "schema_file_flush"; // TODO: implement it
+  private static final String RELEASE_FLUSH_THREAD_NUM = "schema_file_release_flush_thread_num";
 
   private final CachedSchemaEngineStatistics engineStatistics;
 
@@ -66,14 +61,6 @@ public class SchemaEngineCachedMetric implements ISchemaEngineMetric {
         MetricLevel.IMPORTANT,
         Tag.NAME.toString(),
         RELEASE_THRESHOLD);
-    metricService.gauge(
-        (long)
-            (IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForSchemaRegion()
-                * ReleaseFlushStrategySizeBasedImpl.FLUSH_THRESHOLD_RATION),
-        Metric.SCHEMA_ENGINE.toString(),
-        MetricLevel.IMPORTANT,
-        Tag.NAME.toString(),
-        FLUSH_THRESHOLD);
     metricService.createAutoGauge(
         Metric.SCHEMA_ENGINE.toString(),
         MetricLevel.IMPORTANT,
@@ -109,17 +96,10 @@ public class SchemaEngineCachedMetric implements ISchemaEngineMetric {
     metricService.createAutoGauge(
         Metric.SCHEMA_ENGINE.toString(),
         MetricLevel.IMPORTANT,
-        CacheMemoryManager.getInstance(),
-        CacheMemoryManager::getReleaseThreadNum,
+        ReleaseFlushMonitor.getInstance(),
+        ReleaseFlushMonitor::getActiveWorkerNum,
         Tag.NAME.toString(),
-        RELEASE_THREAD_NUM);
-    metricService.createAutoGauge(
-        Metric.SCHEMA_ENGINE.toString(),
-        MetricLevel.IMPORTANT,
-        CacheMemoryManager.getInstance(),
-        CacheMemoryManager::getFlushThreadNum,
-        Tag.NAME.toString(),
-        FLUSH_THREAD_NUM);
+        RELEASE_FLUSH_THREAD_NUM);
   }
 
   @Override
@@ -127,8 +107,6 @@ public class SchemaEngineCachedMetric implements ISchemaEngineMetric {
     schemaEngineMemMetric.unbindFrom(metricService);
     metricService.remove(
         MetricType.GAUGE, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), RELEASE_THRESHOLD);
-    metricService.remove(
-        MetricType.GAUGE, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), FLUSH_THRESHOLD);
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.SCHEMA_ENGINE.toString(),
@@ -157,33 +135,6 @@ public class SchemaEngineCachedMetric implements ISchemaEngineMetric {
         MetricType.AUTO_GAUGE,
         Metric.SCHEMA_ENGINE.toString(),
         Tag.NAME.toString(),
-        RELEASE_THREAD_NUM);
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.SCHEMA_ENGINE.toString(),
-        Tag.NAME.toString(),
-        FLUSH_THREAD_NUM);
-  }
-
-  public void recordFlush(long milliseconds) {
-    MetricService.getInstance()
-        .timer(
-            milliseconds,
-            TimeUnit.MILLISECONDS,
-            Metric.SCHEMA_ENGINE.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            FLUSH_TIMER);
-  }
-
-  public void recordRelease(long milliseconds) {
-    MetricService.getInstance()
-        .timer(
-            milliseconds,
-            TimeUnit.MILLISECONDS,
-            Metric.SCHEMA_ENGINE.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            RELEASE_TIMER);
+        RELEASE_FLUSH_THREAD_NUM);
   }
 }
