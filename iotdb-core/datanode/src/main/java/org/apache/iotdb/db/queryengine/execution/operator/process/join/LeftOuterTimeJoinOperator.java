@@ -138,6 +138,7 @@ public class LeftOuterTimeJoinOperator implements ProcessOperator {
             && !resultBuilder.isFull()
             && appendRightTableRow(time)) {
           timeColumnBuilder.writeLong(time);
+          resultBuilder.declarePosition();
           // deal with leftTsBlock
           appendLeftTableRow();
 
@@ -184,7 +185,13 @@ public class LeftOuterTimeJoinOperator implements ProcessOperator {
 
   private void appendLeftTableRow() {
     for (int i = 0; i < leftColumnCount; i++) {
-      resultBuilder.getColumnBuilder(i).write(leftTsBlock.getColumn(i), leftIndex);
+      Column leftColumn = leftTsBlock.getColumn(i);
+      ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(i);
+      if (leftColumn.isNull(leftIndex)) {
+        columnBuilder.appendNull();
+      } else {
+        columnBuilder.write(leftColumn, leftIndex);
+      }
     }
     leftIndex++;
   }
@@ -215,9 +222,13 @@ public class LeftOuterTimeJoinOperator implements ProcessOperator {
     if (rightTsBlock.getTimeByIndex(rightIndex) == time) {
       // right table has this time, append right table's corresponding row
       for (int i = leftColumnCount; i < outputColumnCount; i++) {
-        resultBuilder
-            .getColumnBuilder(i)
-            .write(rightTsBlock.getColumn(i - leftColumnCount), rightIndex);
+        Column rightColumn = rightTsBlock.getColumn(i - leftColumnCount);
+        ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(i);
+        if (rightColumn.isNull(rightIndex)) {
+          columnBuilder.appendNull();
+        } else {
+          columnBuilder.write(rightColumn, rightIndex);
+        }
       }
       // update right Index
       rightIndex++;
@@ -238,6 +249,8 @@ public class LeftOuterTimeJoinOperator implements ProcessOperator {
     for (int i = leftIndex; i < rowSize; i++) {
       timeColumnBuilder.writeLong(leftTimeColumn.getLong(i));
     }
+
+    resultBuilder.declarePositions(rowSize - leftIndex);
 
     // append value column of left table
     appendValueColumnForLeftTable(rowSize);
