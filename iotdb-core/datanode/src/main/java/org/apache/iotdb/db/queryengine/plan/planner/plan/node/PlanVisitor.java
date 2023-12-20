@@ -80,8 +80,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWin
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TwoChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.InnerTimeJoinNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.LeftOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
@@ -207,6 +209,16 @@ public abstract class PlanVisitor<R, C> {
 
   public R visitSingleDeviceView(SingleDeviceViewNode node, C context) {
     return visitSingleChildProcess(node, context);
+  }
+
+  // two child -----------------------------------------------------------------------------------
+
+  public R visitTwoChildProcess(TwoChildProcessNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitLeftOuterTimeJoin(LeftOuterTimeJoinNode node, C context) {
+    return visitTwoChildProcess(node, context);
   }
 
   // multi child --------------------------------------------------------------------------------

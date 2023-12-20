@@ -23,30 +23,29 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TwoChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
-public class InnerTimeJoinNode extends MultiChildProcessNode {
+public class LeftOuterTimeJoinNode extends TwoChildProcessNode {
 
   // This parameter indicates the order when executing multiway merge sort.
   private final Ordering mergeOrder;
 
-  public InnerTimeJoinNode(PlanNodeId id, Ordering mergeOrder) {
-    super(id, new ArrayList<>());
+  public LeftOuterTimeJoinNode(PlanNodeId id, Ordering mergeOrder) {
+    super(id);
     this.mergeOrder = mergeOrder;
   }
 
-  public InnerTimeJoinNode(PlanNodeId id, Ordering mergeOrder, List<PlanNode> children) {
-    super(id, children);
+  public LeftOuterTimeJoinNode(
+      PlanNodeId id, Ordering mergeOrder, PlanNode leftChild, PlanNode rightChild) {
+    super(id, leftChild, rightChild);
     this.mergeOrder = mergeOrder;
   }
 
@@ -56,52 +55,42 @@ public class InnerTimeJoinNode extends MultiChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new InnerTimeJoinNode(getPlanNodeId(), getMergeOrder());
-  }
-
-  @Override
-  public PlanNode createSubNode(int subNodeId, int startIndex, int endIndex) {
-    return new InnerTimeJoinNode(
-        new PlanNodeId(String.format("%s-%s", getPlanNodeId(), subNodeId)),
-        getMergeOrder(),
-        new ArrayList<>(children.subList(startIndex, endIndex)));
+    return new LeftOuterTimeJoinNode(getPlanNodeId(), getMergeOrder());
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return children.stream()
-        .map(PlanNode::getOutputColumnNames)
-        .flatMap(List::stream)
-        .distinct()
-        .collect(Collectors.toList());
+    List<String> outputColumnNames = leftChild.getOutputColumnNames();
+    outputColumnNames.addAll(rightChild.getOutputColumnNames());
+    return outputColumnNames;
   }
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitInnerTimeJoin(this, context);
+    return visitor.visitLeftOuterTimeJoin(this, context);
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.INNER_TIME_JOIN.serialize(byteBuffer);
+    PlanNodeType.LEFT_OUTER_TIME_JOIN.serialize(byteBuffer);
     ReadWriteIOUtils.write(mergeOrder.ordinal(), byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.INNER_TIME_JOIN.serialize(stream);
+    PlanNodeType.LEFT_OUTER_TIME_JOIN.serialize(stream);
     ReadWriteIOUtils.write(mergeOrder.ordinal(), stream);
   }
 
-  public static InnerTimeJoinNode deserialize(ByteBuffer byteBuffer) {
+  public static LeftOuterTimeJoinNode deserialize(ByteBuffer byteBuffer) {
     Ordering mergeOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new InnerTimeJoinNode(planNodeId, mergeOrder);
+    return new LeftOuterTimeJoinNode(planNodeId, mergeOrder);
   }
 
   @Override
   public String toString() {
-    return "InnerTimeJoinNode-" + this.getPlanNodeId();
+    return "LeftOuterTimeJoinNode-" + this.getPlanNodeId();
   }
 
   @Override
@@ -115,7 +104,7 @@ public class InnerTimeJoinNode extends MultiChildProcessNode {
     if (!super.equals(o)) {
       return false;
     }
-    InnerTimeJoinNode that = (InnerTimeJoinNode) o;
+    LeftOuterTimeJoinNode that = (LeftOuterTimeJoinNode) o;
     return mergeOrder == that.mergeOrder;
   }
 

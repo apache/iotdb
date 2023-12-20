@@ -121,11 +121,11 @@ public class FullOuterTimeJoinNode extends MultiChildProcessNode {
       return false;
     }
     FullOuterTimeJoinNode that = (FullOuterTimeJoinNode) o;
-    return mergeOrder == that.mergeOrder && children.equals(that.children);
+    return mergeOrder == that.mergeOrder;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), mergeOrder, children);
+    return Objects.hash(super.hashCode(), mergeOrder);
   }
 }
