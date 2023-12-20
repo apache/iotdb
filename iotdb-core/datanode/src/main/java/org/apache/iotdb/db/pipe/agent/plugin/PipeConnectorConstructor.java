@@ -29,7 +29,6 @@ import org.apache.iotdb.db.pipe.connector.protocol.opcua.OpcUaConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBThriftSyncConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.websocket.WebSocketConnector;
-import org.apache.iotdb.db.pipe.connector.protocol.writeback.WriteBackConnector;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -64,8 +63,6 @@ public class PipeConnectorConstructor extends PipePluginConstructor {
         BuiltinPipePlugin.OPC_UA_CONNECTOR.getPipePluginName(), OpcUaConnector::new);
     PLUGIN_CONSTRUCTORS.put(
         BuiltinPipePlugin.DO_NOTHING_CONNECTOR.getPipePluginName(), DoNothingConnector::new);
-    PLUGIN_CONSTRUCTORS.put(
-        BuiltinPipePlugin.WRITE_BACK_CONNECTOR.getPipePluginName(), WriteBackConnector::new);
 
     PLUGIN_CONSTRUCTORS.put(
         BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName(), IoTDBThriftAsyncConnector::new);
@@ -85,8 +82,6 @@ public class PipeConnectorConstructor extends PipePluginConstructor {
     PLUGIN_CONSTRUCTORS.put(BuiltinPipePlugin.OPC_UA_SINK.getPipePluginName(), OpcUaConnector::new);
     PLUGIN_CONSTRUCTORS.put(
         BuiltinPipePlugin.DO_NOTHING_SINK.getPipePluginName(), DoNothingConnector::new);
-    PLUGIN_CONSTRUCTORS.put(
-        BuiltinPipePlugin.WRITE_BACK_SINK.getPipePluginName(), WriteBackConnector::new);
   }
 
   @Override
