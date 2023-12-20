@@ -35,8 +35,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.tsfile.utils.Preconditions.checkArgument;
-
 /**
  * <b>Optimization phase:</b> Distributed plan planning.
  *
@@ -67,34 +65,38 @@ public class ColumnInjectionPushDown implements PlanOptimizer {
       // SeriesAggregationNode,
       // If it is and has overlap in groupByParameter, there is SlidingWindowNode
       // There will be a ColumnInjectNode on them, so we need to check if it can be pushed down.
-      return plan.accept(new Rewriter(), new RewriterContext());
+      return plan.accept(new Rewriter(), null);
     }
     return plan;
   }
 
-  private static class Rewriter extends PlanVisitor<PlanNode, RewriterContext> {
+  private static class Rewriter extends PlanVisitor<PlanNode, Void> {
 
     @Override
-    public PlanNode visitPlan(PlanNode node, RewriterContext context) {
-      for (PlanNode child : node.getChildren()) {
-        context.setParent(node);
-        child.accept(this, context);
-      }
+    public PlanNode visitPlan(PlanNode node, Void context) {
+      // other source node, just return
       return node;
     }
 
     @Override
-    public PlanNode visitMultiChildProcess(MultiChildProcessNode node, RewriterContext context) {
-      List<PlanNode> children = new ArrayList<>();
-      for (PlanNode child : node.getChildren()) {
-        context.setParent(null);
-        children.add(child.accept(this, context));
-      }
-      return node.cloneWithChildren(children);
+    public PlanNode visitSingleChildProcess(SingleChildProcessNode node, Void context) {
+      PlanNode rewrittenChild = node.getChild().accept(this, context);
+      node.setChild(rewrittenChild);
+      return node;
     }
 
     @Override
-    public PlanNode visitColumnInject(ColumnInjectNode node, RewriterContext context) {
+    public PlanNode visitMultiChildProcess(MultiChildProcessNode node, Void context) {
+      List<PlanNode> rewrittenChildren = new ArrayList<>();
+      for (PlanNode child : node.getChildren()) {
+        rewrittenChildren.add(child.accept(this, context));
+      }
+      node.setChildren(rewrittenChildren);
+      return node;
+    }
+
+    @Override
+    public PlanNode visitColumnInject(ColumnInjectNode node, Void context) {
       PlanNode child = node.getChild();
 
       boolean columnInjectPushDown = true;
@@ -109,32 +111,9 @@ public class ColumnInjectionPushDown implements PlanOptimizer {
       }
 
       if (columnInjectPushDown) {
-        return concatParentWithChild(context.getParent(), child);
-      }
-      return node;
-    }
-
-    private PlanNode concatParentWithChild(PlanNode parent, PlanNode child) {
-      if (parent == null) {
         return child;
       }
-
-      checkArgument(parent instanceof SingleChildProcessNode);
-      ((SingleChildProcessNode) parent).setChild(child);
-      return parent;
-    }
-  }
-
-  private static class RewriterContext {
-
-    private PlanNode parent;
-
-    public PlanNode getParent() {
-      return parent;
-    }
-
-    public void setParent(PlanNode parent) {
-      this.parent = parent;
+      return node;
     }
   }
 }
