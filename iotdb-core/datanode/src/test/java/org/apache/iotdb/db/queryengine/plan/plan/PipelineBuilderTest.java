@@ -46,8 +46,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
@@ -89,21 +89,22 @@ public class PipelineBuilderTest {
   @Test
   public void testConsumeAllChildrenPipelineBuilder1() throws IllegalPathException {
     TypeProvider typeProvider = new TypeProvider();
-    TimeJoinNode timeJoinNode = initTimeJoinNode(typeProvider, 4);
+    FullOuterTimeJoinNode fullOuterTimeJoinNode = initTimeJoinNode(typeProvider, 4);
     LocalExecutionPlanContext context = createLocalExecutionPlanContext(typeProvider);
     context.setDegreeOfParallelism(1);
 
     List<Operator> childrenOperator =
-        operatorTreeGenerator.dealWithConsumeAllChildrenPipelineBreaker(timeJoinNode, context);
+        operatorTreeGenerator.dealWithConsumeAllChildrenPipelineBreaker(
+            fullOuterTimeJoinNode, context);
     assertEquals(0, context.getPipelineNumber());
     assertEquals(4, childrenOperator.size());
-    assertEquals(4, timeJoinNode.getChildren().size());
+    assertEquals(4, fullOuterTimeJoinNode.getChildren().size());
     for (int i = 0; i < 4; i++) {
       assertEquals(SeriesScanOperator.class, childrenOperator.get(i).getClass());
-      assertEquals(SeriesScanNode.class, timeJoinNode.getChildren().get(i).getClass());
+      assertEquals(SeriesScanNode.class, fullOuterTimeJoinNode.getChildren().get(i).getClass());
       assertEquals(
           String.format("root.sg.d%d.s1", i),
-          timeJoinNode.getChildren().get(i).getOutputColumnNames().get(0));
+          fullOuterTimeJoinNode.getChildren().get(i).getOutputColumnNames().get(0));
     }
 
     // Validate the number exchange operator
@@ -120,36 +121,43 @@ public class PipelineBuilderTest {
   @Test
   public void testConsumeAllChildrenPipelineBuilder2() throws IllegalPathException {
     TypeProvider typeProvider = new TypeProvider();
-    TimeJoinNode timeJoinNode = initTimeJoinNode(typeProvider, 4);
+    FullOuterTimeJoinNode fullOuterTimeJoinNode = initTimeJoinNode(typeProvider, 4);
     LocalExecutionPlanContext context = createLocalExecutionPlanContext(typeProvider);
     context.setDegreeOfParallelism(2);
 
     List<Operator> childrenOperator =
-        operatorTreeGenerator.dealWithConsumeAllChildrenPipelineBreaker(timeJoinNode, context);
+        operatorTreeGenerator.dealWithConsumeAllChildrenPipelineBreaker(
+            fullOuterTimeJoinNode, context);
     // The number of pipeline is 1, since parent pipeline hasn't joined
     assertEquals(1, context.getPipelineNumber());
 
     // Validate the first pipeline
     assertEquals(3, childrenOperator.size());
-    assertEquals(3, timeJoinNode.getChildren().size());
+    assertEquals(3, fullOuterTimeJoinNode.getChildren().size());
     for (int i = 0; i < 2; i++) {
       assertEquals(SeriesScanOperator.class, childrenOperator.get(i).getClass());
-      assertEquals(SeriesScanNode.class, timeJoinNode.getChildren().get(i).getClass());
+      assertEquals(SeriesScanNode.class, fullOuterTimeJoinNode.getChildren().get(i).getClass());
     }
     assertEquals(ExchangeOperator.class, childrenOperator.get(2).getClass());
 
     // Validate the changes of node structure
-    assertEquals("root.sg.d0.s1", timeJoinNode.getChildren().get(0).getOutputColumnNames().get(0));
-    assertEquals("root.sg.d1.s1", timeJoinNode.getChildren().get(1).getOutputColumnNames().get(0));
-    assertEquals(TimeJoinNode.class, timeJoinNode.getChildren().get(2).getClass());
+    assertEquals(
+        "root.sg.d0.s1", fullOuterTimeJoinNode.getChildren().get(0).getOutputColumnNames().get(0));
+    assertEquals(
+        "root.sg.d1.s1", fullOuterTimeJoinNode.getChildren().get(1).getOutputColumnNames().get(0));
+    assertEquals(
+        FullOuterTimeJoinNode.class, fullOuterTimeJoinNode.getChildren().get(2).getClass());
 
     // Validate the second pipeline
-    TimeJoinNode subTimeJoinNode = (TimeJoinNode) timeJoinNode.getChildren().get(2);
-    assertEquals(2, subTimeJoinNode.getChildren().size());
+    FullOuterTimeJoinNode subFullOuterTimeJoinNode =
+        (FullOuterTimeJoinNode) fullOuterTimeJoinNode.getChildren().get(2);
+    assertEquals(2, subFullOuterTimeJoinNode.getChildren().size());
     assertEquals(
-        "root.sg.d2.s1", subTimeJoinNode.getChildren().get(0).getOutputColumnNames().get(0));
+        "root.sg.d2.s1",
+        subFullOuterTimeJoinNode.getChildren().get(0).getOutputColumnNames().get(0));
     assertEquals(
-        "root.sg.d3.s1", subTimeJoinNode.getChildren().get(1).getOutputColumnNames().get(0));
+        "root.sg.d3.s1",
+        subFullOuterTimeJoinNode.getChildren().get(1).getOutputColumnNames().get(0));
 
     // Validate the number exchange operator
     assertEquals(1, context.getExchangeSumNum());
@@ -167,12 +175,13 @@ public class PipelineBuilderTest {
   @Test
   public void testConsumeAllChildrenPipelineBuilder3() throws IllegalPathException {
     TypeProvider typeProvider = new TypeProvider();
-    TimeJoinNode timeJoinNode = initTimeJoinNode(typeProvider, 4);
+    FullOuterTimeJoinNode fullOuterTimeJoinNode = initTimeJoinNode(typeProvider, 4);
     LocalExecutionPlanContext context = createLocalExecutionPlanContext(typeProvider);
     context.setDegreeOfParallelism(3);
 
     List<Operator> childrenOperator =
-        operatorTreeGenerator.dealWithConsumeAllChildrenPipelineBreaker(timeJoinNode, context);
+        operatorTreeGenerator.dealWithConsumeAllChildrenPipelineBreaker(
+            fullOuterTimeJoinNode, context);
     // The number of pipeline is 2, since parent pipeline hasn't joined
     assertEquals(2, context.getPipelineNumber());
 
@@ -183,24 +192,30 @@ public class PipelineBuilderTest {
     assertEquals(ExchangeOperator.class, childrenOperator.get(2).getClass());
 
     // Validate the changes of node structure
-    assertEquals(3, timeJoinNode.getChildren().size());
-    assertEquals("root.sg.d0.s1", timeJoinNode.getChildren().get(0).getOutputColumnNames().get(0));
-    assertEquals("root.sg.d1.s1", timeJoinNode.getChildren().get(1).getOutputColumnNames().get(0));
-    assertEquals(TimeJoinNode.class, timeJoinNode.getChildren().get(2).getClass());
+    assertEquals(3, fullOuterTimeJoinNode.getChildren().size());
+    assertEquals(
+        "root.sg.d0.s1", fullOuterTimeJoinNode.getChildren().get(0).getOutputColumnNames().get(0));
+    assertEquals(
+        "root.sg.d1.s1", fullOuterTimeJoinNode.getChildren().get(1).getOutputColumnNames().get(0));
+    assertEquals(
+        FullOuterTimeJoinNode.class, fullOuterTimeJoinNode.getChildren().get(2).getClass());
 
     // Validate the second pipeline
     ExchangeOperator exchangeOperator1 = (ExchangeOperator) childrenOperator.get(1);
     assertEquals("SeriesScanNode1", exchangeOperator1.getSourceId().getId());
 
     // Validate the third pipeline
-    TimeJoinNode subTimeJoinNode = (TimeJoinNode) timeJoinNode.getChildren().get(2);
-    assertEquals(2, subTimeJoinNode.getChildren().size());
+    FullOuterTimeJoinNode subFullOuterTimeJoinNode =
+        (FullOuterTimeJoinNode) fullOuterTimeJoinNode.getChildren().get(2);
+    assertEquals(2, subFullOuterTimeJoinNode.getChildren().size());
     assertEquals(
-        "root.sg.d2.s1", subTimeJoinNode.getChildren().get(0).getOutputColumnNames().get(0));
+        "root.sg.d2.s1",
+        subFullOuterTimeJoinNode.getChildren().get(0).getOutputColumnNames().get(0));
     assertEquals(
-        "root.sg.d3.s1", subTimeJoinNode.getChildren().get(1).getOutputColumnNames().get(0));
+        "root.sg.d3.s1",
+        subFullOuterTimeJoinNode.getChildren().get(1).getOutputColumnNames().get(0));
     ExchangeOperator exchangeOperator2 = (ExchangeOperator) childrenOperator.get(2);
-    assertEquals(exchangeOperator2.getSourceId(), subTimeJoinNode.getPlanNodeId());
+    assertEquals(exchangeOperator2.getSourceId(), subFullOuterTimeJoinNode.getPlanNodeId());
 
     // Validate the number exchange operator
     assertEquals(2, context.getExchangeSumNum());
@@ -221,12 +236,13 @@ public class PipelineBuilderTest {
   @Test
   public void testConsumeAllChildrenPipelineBuilder4() throws IllegalPathException {
     TypeProvider typeProvider = new TypeProvider();
-    TimeJoinNode timeJoinNode = initTimeJoinNode(typeProvider, 4);
+    FullOuterTimeJoinNode fullOuterTimeJoinNode = initTimeJoinNode(typeProvider, 4);
     LocalExecutionPlanContext context = createLocalExecutionPlanContext(typeProvider);
     context.setDegreeOfParallelism(4);
 
     List<Operator> childrenOperator =
-        operatorTreeGenerator.dealWithConsumeAllChildrenPipelineBreaker(timeJoinNode, context);
+        operatorTreeGenerator.dealWithConsumeAllChildrenPipelineBreaker(
+            fullOuterTimeJoinNode, context);
     // The number of pipeline is 3, since parent pipeline hasn't joined
     assertEquals(3, context.getPipelineNumber());
 
@@ -238,12 +254,12 @@ public class PipelineBuilderTest {
     assertEquals(ExchangeOperator.class, childrenOperator.get(3).getClass());
 
     // Validate the changes of node structure
-    assertEquals(4, timeJoinNode.getChildren().size());
+    assertEquals(4, fullOuterTimeJoinNode.getChildren().size());
     for (int i = 0; i < 4; i++) {
-      assertEquals(SeriesScanNode.class, timeJoinNode.getChildren().get(i).getClass());
+      assertEquals(SeriesScanNode.class, fullOuterTimeJoinNode.getChildren().get(i).getClass());
       assertEquals(
           String.format("root.sg.d%d.s1", i),
-          timeJoinNode.getChildren().get(i).getOutputColumnNames().get(0));
+          fullOuterTimeJoinNode.getChildren().get(i).getOutputColumnNames().get(0));
     }
 
     // Validate the second pipeline
@@ -279,12 +295,13 @@ public class PipelineBuilderTest {
   @Test
   public void testConsumeAllChildrenPipelineBuilder5() throws IllegalPathException {
     TypeProvider typeProvider = new TypeProvider();
-    TimeJoinNode timeJoinNode = initTimeJoinNode(typeProvider, 4);
+    FullOuterTimeJoinNode fullOuterTimeJoinNode = initTimeJoinNode(typeProvider, 4);
     LocalExecutionPlanContext context = createLocalExecutionPlanContext(typeProvider);
     context.setDegreeOfParallelism(5);
 
     List<Operator> childrenOperator =
-        operatorTreeGenerator.dealWithConsumeAllChildrenPipelineBreaker(timeJoinNode, context);
+        operatorTreeGenerator.dealWithConsumeAllChildrenPipelineBreaker(
+            fullOuterTimeJoinNode, context);
     // The number of pipeline is 4, since parent pipeline hasn't joined
     assertEquals(4, context.getPipelineNumber());
 
@@ -295,12 +312,12 @@ public class PipelineBuilderTest {
     }
 
     // Validate the changes of node structure
-    assertEquals(4, timeJoinNode.getChildren().size());
+    assertEquals(4, fullOuterTimeJoinNode.getChildren().size());
     for (int i = 0; i < 4; i++) {
-      assertEquals(SeriesScanNode.class, timeJoinNode.getChildren().get(i).getClass());
+      assertEquals(SeriesScanNode.class, fullOuterTimeJoinNode.getChildren().get(i).getClass());
       assertEquals(
           String.format("root.sg.d%d.s1", i),
-          timeJoinNode.getChildren().get(i).getOutputColumnNames().get(0));
+          fullOuterTimeJoinNode.getChildren().get(i).getOutputColumnNames().get(0));
     }
 
     // Validate the second pipeline
@@ -340,12 +357,13 @@ public class PipelineBuilderTest {
   @Test
   public void testConsumeAllChildrenPipelineBuilder6() throws IllegalPathException {
     TypeProvider typeProvider = new TypeProvider();
-    TimeJoinNode timeJoinNode = initTimeJoinNode(typeProvider, 4);
+    FullOuterTimeJoinNode fullOuterTimeJoinNode = initTimeJoinNode(typeProvider, 4);
     LocalExecutionPlanContext context = createLocalExecutionPlanContext(typeProvider);
     context.setDegreeOfParallelism(6);
 
     List<Operator> childrenOperator =
-        operatorTreeGenerator.dealWithConsumeAllChildrenPipelineBreaker(timeJoinNode, context);
+        operatorTreeGenerator.dealWithConsumeAllChildrenPipelineBreaker(
+            fullOuterTimeJoinNode, context);
     // The number of pipeline is 4, since parent pipeline hasn't joined
     assertEquals(4, context.getPipelineNumber());
 
@@ -356,12 +374,12 @@ public class PipelineBuilderTest {
     }
 
     // Validate the changes of node structure
-    assertEquals(4, timeJoinNode.getChildren().size());
+    assertEquals(4, fullOuterTimeJoinNode.getChildren().size());
     for (int i = 0; i < 4; i++) {
-      assertEquals(SeriesScanNode.class, timeJoinNode.getChildren().get(i).getClass());
+      assertEquals(SeriesScanNode.class, fullOuterTimeJoinNode.getChildren().get(i).getClass());
       assertEquals(
           String.format("root.sg.d%d.s1", i),
-          timeJoinNode.getChildren().get(i).getOutputColumnNames().get(0));
+          fullOuterTimeJoinNode.getChildren().get(i).getOutputColumnNames().get(0));
     }
 
     // Validate the second pipeline
@@ -880,18 +898,19 @@ public class PipelineBuilderTest {
    * @param childNum the number of children
    * @return a timeJoinNode with @childNum seriesScanNode as children
    */
-  private TimeJoinNode initTimeJoinNode(TypeProvider typeProvider, int childNum)
+  private FullOuterTimeJoinNode initTimeJoinNode(TypeProvider typeProvider, int childNum)
       throws IllegalPathException {
-    TimeJoinNode timeJoinNode = new TimeJoinNode(new PlanNodeId("TimeJoinNode"), Ordering.ASC);
+    FullOuterTimeJoinNode fullOuterTimeJoinNode =
+        new FullOuterTimeJoinNode(new PlanNodeId("TimeJoinNode"), Ordering.ASC);
     for (int i = 0; i < childNum; i++) {
       SeriesScanNode seriesScanNode =
           new SeriesScanNode(
               new PlanNodeId(String.format("SeriesScanNode%d", i)),
               new MeasurementPath(String.format("root.sg.d%d.s1", i), TSDataType.INT32));
       typeProvider.setType(seriesScanNode.getSeriesPath().toString(), TSDataType.INT32);
-      timeJoinNode.addChild(seriesScanNode);
+      fullOuterTimeJoinNode.addChild(seriesScanNode);
     }
-    return timeJoinNode;
+    return fullOuterTimeJoinNode;
   }
 
   /**

@@ -34,21 +34,22 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
- * This node is responsible for join two or more TsBlock. The join algorithm is like outer join by
- * timestamp column. It will join two or more TsBlock by Timestamp column. The output result of
- * TimeJoinOperator is sorted by timestamp
+ * This node is responsible for join two or more TsBlock.
+ *
+ * <p>The join algorithm is like <b>full outer join</b> by timestamp column. It will join two or
+ * more TsBlock by Timestamp column. The output result of TimeJoinOperator is sorted by timestamp.
  */
-public class TimeJoinNode extends MultiChildProcessNode {
+public class FullOuterTimeJoinNode extends MultiChildProcessNode {
 
   // This parameter indicates the order when executing multiway merge sort.
   private final Ordering mergeOrder;
 
-  public TimeJoinNode(PlanNodeId id, Ordering mergeOrder) {
+  public FullOuterTimeJoinNode(PlanNodeId id, Ordering mergeOrder) {
     super(id, new ArrayList<>());
     this.mergeOrder = mergeOrder;
   }
 
-  public TimeJoinNode(PlanNodeId id, Ordering mergeOrder, List<PlanNode> children) {
+  public FullOuterTimeJoinNode(PlanNodeId id, Ordering mergeOrder, List<PlanNode> children) {
     super(id, children);
     this.mergeOrder = mergeOrder;
   }
@@ -59,12 +60,12 @@ public class TimeJoinNode extends MultiChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new TimeJoinNode(getPlanNodeId(), getMergeOrder());
+    return new FullOuterTimeJoinNode(getPlanNodeId(), getMergeOrder());
   }
 
   @Override
   public PlanNode createSubNode(int subNodeId, int startIndex, int endIndex) {
-    return new TimeJoinNode(
+    return new FullOuterTimeJoinNode(
         new PlanNodeId(String.format("%s-%s", getPlanNodeId(), subNodeId)),
         getMergeOrder(),
         new ArrayList<>(children.subList(startIndex, endIndex)));
@@ -81,7 +82,7 @@ public class TimeJoinNode extends MultiChildProcessNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitTimeJoin(this, context);
+    return visitor.visitFullOuterTimeJoin(this, context);
   }
 
   @Override
@@ -96,10 +97,10 @@ public class TimeJoinNode extends MultiChildProcessNode {
     ReadWriteIOUtils.write(mergeOrder.ordinal(), stream);
   }
 
-  public static TimeJoinNode deserialize(ByteBuffer byteBuffer) {
+  public static FullOuterTimeJoinNode deserialize(ByteBuffer byteBuffer) {
     Ordering mergeOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new TimeJoinNode(planNodeId, mergeOrder);
+    return new FullOuterTimeJoinNode(planNodeId, mergeOrder);
   }
 
   @Override
@@ -118,7 +119,7 @@ public class TimeJoinNode extends MultiChildProcessNode {
     if (!super.equals(o)) {
       return false;
     }
-    TimeJoinNode that = (TimeJoinNode) o;
+    FullOuterTimeJoinNode that = (FullOuterTimeJoinNode) o;
     return mergeOrder == that.mergeOrder && children.equals(that.children);
   }
 

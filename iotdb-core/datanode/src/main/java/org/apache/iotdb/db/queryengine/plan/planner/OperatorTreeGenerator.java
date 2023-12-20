@@ -171,6 +171,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceView
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByTagNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.HorizontallyConcatNode;
@@ -182,7 +183,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryCollectNode;
@@ -1871,7 +1871,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   @Deprecated
   @Override
-  public Operator visitTimeJoin(TimeJoinNode node, LocalExecutionPlanContext context) {
+  public Operator visitFullOuterTimeJoin(
+      FullOuterTimeJoinNode node, LocalExecutionPlanContext context) {
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
     OperatorContext operatorContext =
         context
@@ -2535,7 +2536,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         dataTypes.add(((SeriesScanNode) child).getSeriesPath().getSeriesType());
       } else if (child instanceof AlignedSeriesScanNode) {
         dataTypes.add(((AlignedSeriesScanNode) child).getAlignedPath().getSeriesType());
-      } else if (child instanceof TimeJoinNode) {
+      } else if (child instanceof FullOuterTimeJoinNode) {
         dataTypes.addAll(getOutputColumnTypesOfTimeJoinNode(child));
       } else {
         LOGGER.error(
