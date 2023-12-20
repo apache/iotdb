@@ -87,10 +87,10 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
   }
 
   @Override
-  protected AlignedTimeSeriesMetadata loadTimeSeriesMetadata(TsFileResource resource)
+  protected AlignedTimeSeriesMetadata loadTimeSeriesMetadata(TsFileResource resource, boolean isSeq)
       throws IOException {
     return FileLoaderUtils.loadAlignedTimeSeriesMetadata(
-        resource, (AlignedPath) seriesPath, context, scanOptions.getGlobalTimeFilter());
+        resource, (AlignedPath) seriesPath, context, scanOptions.getGlobalTimeFilter(), isSeq);
   }
 
   @Override

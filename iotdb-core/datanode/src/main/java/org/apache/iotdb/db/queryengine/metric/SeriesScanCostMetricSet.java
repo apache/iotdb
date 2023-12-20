@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
@@ -31,98 +32,297 @@ import org.apache.iotdb.metrics.utils.MetricType;
 import java.util.Arrays;
 
 public class SeriesScanCostMetricSet implements IMetricSet {
-  private static final SeriesScanCostMetricSet INSTANCE = new SeriesScanCostMetricSet();
 
-  private SeriesScanCostMetricSet() {
-    // empty constructor
+  public static SeriesScanCostMetricSet getInstance() {
+    return SeriesScanCostMetricSet.InstanceHolder.INSTANCE;
   }
 
-  // region load timeseries metadata
-  private static final String LOAD_TIMESERIES_METADATA = "load_timeseries_metadata";
-  private static final String ALIGNED = "aligned";
-  private static final String NON_ALIGNED = "non_aligned";
-  private static final String MEM = "mem";
-  private static final String DISK = "disk";
-  public static final String LOAD_TIMESERIES_METADATA_ALIGNED_MEM =
-      LOAD_TIMESERIES_METADATA + "_" + ALIGNED + "_" + MEM;
-  public static final String LOAD_TIMESERIES_METADATA_ALIGNED_DISK =
-      LOAD_TIMESERIES_METADATA + "_" + ALIGNED + "_" + DISK;
-  public static final String LOAD_TIMESERIES_METADATA_NONALIGNED_MEM =
-      LOAD_TIMESERIES_METADATA + "_" + NON_ALIGNED + "_" + MEM;
-  public static final String LOAD_TIMESERIES_METADATA_NONALIGNED_DISK =
-      LOAD_TIMESERIES_METADATA + "_" + NON_ALIGNED + "_" + DISK;
-  private Timer loadTimeseriesMetadataAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-  private Timer loadTimeseriesMetadataAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-  private Timer loadTimeseriesMetadataNonAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-  private Timer loadTimeseriesMetadataNonAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // load timeseries metadata
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  public static final String LOAD_TIMESERIES_METADATA = "load_timeseries_metadata";
+  public static final String LOAD_ALIGNED_TIMESERIES_METADATA = "load_aligned_timeseries_metadata";
+  public static final String ALIGNED = "aligned";
+  public static final String NON_ALIGNED = "non_aligned";
+  public static final String MEM = "mem";
+  public static final String DISK = "disk";
+  public static final String SEQUENCE = "sequence";
+  public static final String UNSEQUENCE = "unsequence";
+
+  private Histogram loadTimeSeriesMetadataDiskSeqHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram loadTimeSeriesMetadataDiskUnSeqHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram loadTimeSeriesMetadataMemSeqHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram loadTimeSeriesMetadataMemUnSeqHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+
+  private Histogram loadTimeSeriesMetadataAlignedDiskSeqHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram loadTimeSeriesMetadataAlignedDiskUnSeqHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram loadTimeSeriesMetadataAlignedMemSeqHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram loadTimeSeriesMetadataAlignedMemUnSeqHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+
+  private Timer loadTimeSeriesMetadataDiskSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer loadTimeSeriesMetadataDiskUnSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer loadTimeSeriesMetadataMemSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer loadTimeSeriesMetadataMemUnSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
+
+  public Timer loadTimeSeriesMetadataAlignedDiskSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
+  public Timer loadTimeSeriesMetadataAlignedDiskUnSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
+  public Timer loadTimeSeriesMetadataAlignedMemSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
+  public Timer loadTimeSeriesMetadataAlignedMemUnSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
+
+  public void recordNonAlignedTimeSeriesMetadataCount(long c1, long c2, long c3, long c4) {
+    loadTimeSeriesMetadataDiskSeqHistogram.update(c1);
+    loadTimeSeriesMetadataDiskUnSeqHistogram.update(c2);
+    loadTimeSeriesMetadataMemSeqHistogram.update(c3);
+    loadTimeSeriesMetadataMemUnSeqHistogram.update(c4);
+  }
+
+  public void recordNonAlignedTimeSeriesMetadataTime(long t1, long t2, long t3, long t4) {
+    loadTimeSeriesMetadataDiskSeqTime.updateNanos(t1);
+    loadTimeSeriesMetadataDiskUnSeqTime.updateNanos(t2);
+    loadTimeSeriesMetadataMemSeqTime.updateNanos(t3);
+    loadTimeSeriesMetadataMemUnSeqTime.updateNanos(t4);
+  }
+
+  public void recordAlignedTimeSeriesMetadataCount(long c1, long c2, long c3, long c4) {
+    loadTimeSeriesMetadataAlignedDiskSeqHistogram.update(c1);
+    loadTimeSeriesMetadataAlignedDiskUnSeqHistogram.update(c2);
+    loadTimeSeriesMetadataAlignedMemSeqHistogram.update(c3);
+    loadTimeSeriesMetadataAlignedMemUnSeqHistogram.update(c4);
+  }
+
+  public void recordAlignedTimeSeriesMetadataTime(long t1, long t2, long t3, long t4) {
+    loadTimeSeriesMetadataAlignedDiskSeqTime.updateNanos(t1);
+    loadTimeSeriesMetadataAlignedDiskUnSeqTime.updateNanos(t2);
+    loadTimeSeriesMetadataAlignedMemSeqTime.updateNanos(t3);
+    loadTimeSeriesMetadataAlignedMemUnSeqTime.updateNanos(t4);
+  }
 
   private void bindTimeseriesMetadata(AbstractMetricService metricService) {
-    loadTimeseriesMetadataAlignedMemTimer =
-        metricService.getOrCreateTimer(
-            Metric.SERIES_SCAN_COST.toString(),
+    loadTimeSeriesMetadataDiskSeqHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.METRIC_LOAD_TIME_SERIES_METADATA.toString(),
             MetricLevel.IMPORTANT,
             Tag.STAGE.toString(),
             LOAD_TIMESERIES_METADATA,
             Tag.TYPE.toString(),
-            ALIGNED,
-            Tag.FROM.toString(),
-            MEM);
-    loadTimeseriesMetadataAlignedDiskTimer =
-        metricService.getOrCreateTimer(
-            Metric.SERIES_SCAN_COST.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.STAGE.toString(),
-            LOAD_TIMESERIES_METADATA,
-            Tag.TYPE.toString(),
-            ALIGNED,
+            SEQUENCE,
             Tag.FROM.toString(),
             DISK);
-    loadTimeseriesMetadataNonAlignedMemTimer =
-        metricService.getOrCreateTimer(
-            Metric.SERIES_SCAN_COST.toString(),
+    loadTimeSeriesMetadataDiskUnSeqHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.METRIC_LOAD_TIME_SERIES_METADATA.toString(),
             MetricLevel.IMPORTANT,
             Tag.STAGE.toString(),
             LOAD_TIMESERIES_METADATA,
             Tag.TYPE.toString(),
-            NON_ALIGNED,
-            Tag.FROM.toString(),
-            MEM);
-    loadTimeseriesMetadataNonAlignedDiskTimer =
-        metricService.getOrCreateTimer(
-            Metric.SERIES_SCAN_COST.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.STAGE.toString(),
-            LOAD_TIMESERIES_METADATA,
-            Tag.TYPE.toString(),
-            NON_ALIGNED,
+            UNSEQUENCE,
             Tag.FROM.toString(),
             DISK);
+    loadTimeSeriesMetadataMemSeqHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.METRIC_LOAD_TIME_SERIES_METADATA.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            LOAD_TIMESERIES_METADATA,
+            Tag.TYPE.toString(),
+            SEQUENCE,
+            Tag.FROM.toString(),
+            MEM);
+    loadTimeSeriesMetadataMemUnSeqHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.METRIC_LOAD_TIME_SERIES_METADATA.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            LOAD_TIMESERIES_METADATA,
+            Tag.TYPE.toString(),
+            UNSEQUENCE,
+            Tag.FROM.toString(),
+            MEM);
+
+    loadTimeSeriesMetadataDiskSeqTime =
+        metricService.getOrCreateTimer(
+            Metric.SERIES_SCAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            LOAD_TIMESERIES_METADATA,
+            Tag.TYPE.toString(),
+            SEQUENCE,
+            Tag.FROM.toString(),
+            DISK);
+    loadTimeSeriesMetadataDiskUnSeqTime =
+        metricService.getOrCreateTimer(
+            Metric.SERIES_SCAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            LOAD_TIMESERIES_METADATA,
+            Tag.TYPE.toString(),
+            UNSEQUENCE,
+            Tag.FROM.toString(),
+            DISK);
+    loadTimeSeriesMetadataMemSeqTime =
+        metricService.getOrCreateTimer(
+            Metric.SERIES_SCAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            LOAD_TIMESERIES_METADATA,
+            Tag.TYPE.toString(),
+            SEQUENCE,
+            Tag.FROM.toString(),
+            MEM);
+    loadTimeSeriesMetadataMemUnSeqTime =
+        metricService.getOrCreateTimer(
+            Metric.SERIES_SCAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            LOAD_TIMESERIES_METADATA,
+            Tag.TYPE.toString(),
+            UNSEQUENCE,
+            Tag.FROM.toString(),
+            MEM);
+  }
+
+  private void bindAlignedTimeseriesMetadata(AbstractMetricService metricService) {
+    loadTimeSeriesMetadataAlignedDiskSeqHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.METRIC_LOAD_TIME_SERIES_METADATA.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            LOAD_ALIGNED_TIMESERIES_METADATA,
+            Tag.TYPE.toString(),
+            SEQUENCE,
+            Tag.FROM.toString(),
+            DISK);
+    loadTimeSeriesMetadataAlignedDiskUnSeqHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.METRIC_LOAD_TIME_SERIES_METADATA.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            LOAD_ALIGNED_TIMESERIES_METADATA,
+            Tag.TYPE.toString(),
+            UNSEQUENCE,
+            Tag.FROM.toString(),
+            DISK);
+    loadTimeSeriesMetadataAlignedMemSeqHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.METRIC_LOAD_TIME_SERIES_METADATA.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            LOAD_ALIGNED_TIMESERIES_METADATA,
+            Tag.TYPE.toString(),
+            SEQUENCE,
+            Tag.FROM.toString(),
+            MEM);
+    loadTimeSeriesMetadataAlignedMemUnSeqHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.METRIC_LOAD_TIME_SERIES_METADATA.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            LOAD_ALIGNED_TIMESERIES_METADATA,
+            Tag.TYPE.toString(),
+            UNSEQUENCE,
+            Tag.FROM.toString(),
+            MEM);
+
+    loadTimeSeriesMetadataAlignedDiskSeqTime =
+        metricService.getOrCreateTimer(
+            Metric.SERIES_SCAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            LOAD_ALIGNED_TIMESERIES_METADATA,
+            Tag.TYPE.toString(),
+            SEQUENCE,
+            Tag.FROM.toString(),
+            DISK);
+    loadTimeSeriesMetadataAlignedDiskUnSeqTime =
+        metricService.getOrCreateTimer(
+            Metric.SERIES_SCAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            LOAD_ALIGNED_TIMESERIES_METADATA,
+            Tag.TYPE.toString(),
+            UNSEQUENCE,
+            Tag.FROM.toString(),
+            DISK);
+    loadTimeSeriesMetadataAlignedMemSeqTime =
+        metricService.getOrCreateTimer(
+            Metric.SERIES_SCAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            LOAD_ALIGNED_TIMESERIES_METADATA,
+            Tag.TYPE.toString(),
+            SEQUENCE,
+            Tag.FROM.toString(),
+            MEM);
+    loadTimeSeriesMetadataAlignedMemUnSeqTime =
+        metricService.getOrCreateTimer(
+            Metric.SERIES_SCAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            LOAD_ALIGNED_TIMESERIES_METADATA,
+            Tag.TYPE.toString(),
+            UNSEQUENCE,
+            Tag.FROM.toString(),
+            MEM);
   }
 
   private void unbindTimeseriesMetadata(AbstractMetricService metricService) {
-    loadTimeseriesMetadataAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    loadTimeseriesMetadataAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    loadTimeseriesMetadataNonAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    loadTimeseriesMetadataNonAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    Arrays.asList(ALIGNED, NON_ALIGNED)
-        .forEach(
-            type ->
-                Arrays.asList(MEM, DISK)
-                    .forEach(
-                        from ->
-                            metricService.remove(
-                                MetricType.TIMER,
-                                Metric.SERIES_SCAN_COST.toString(),
-                                Tag.STAGE.toString(),
-                                LOAD_TIMESERIES_METADATA,
-                                Tag.TYPE.toString(),
-                                type,
-                                Tag.FROM.toString(),
-                                from)));
-  }
-  // endregion
+    loadTimeSeriesMetadataDiskSeqHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    loadTimeSeriesMetadataDiskUnSeqHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    loadTimeSeriesMetadataMemSeqHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    loadTimeSeriesMetadataMemUnSeqHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    loadTimeSeriesMetadataAlignedDiskSeqHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    loadTimeSeriesMetadataAlignedDiskUnSeqHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    loadTimeSeriesMetadataAlignedMemSeqHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    loadTimeSeriesMetadataAlignedMemUnSeqHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
 
-  // region read timeseries metadata
+    loadTimeSeriesMetadataDiskSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
+    loadTimeSeriesMetadataDiskUnSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
+    loadTimeSeriesMetadataMemSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
+    loadTimeSeriesMetadataMemUnSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
+    loadTimeSeriesMetadataAlignedDiskSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
+    loadTimeSeriesMetadataAlignedDiskUnSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
+    loadTimeSeriesMetadataAlignedMemSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
+    loadTimeSeriesMetadataAlignedMemUnSeqTime = DoNothingMetricManager.DO_NOTHING_TIMER;
+
+    for (String type : Arrays.asList(ALIGNED, NON_ALIGNED)) {
+      for (String from : Arrays.asList(MEM, DISK)) {
+        for (String stage :
+            Arrays.asList(LOAD_TIMESERIES_METADATA, LOAD_ALIGNED_TIMESERIES_METADATA)) {
+          metricService.remove(
+              MetricType.HISTOGRAM,
+              Metric.METRIC_LOAD_TIME_SERIES_METADATA.toString(),
+              Tag.STAGE.toString(),
+              stage,
+              Tag.TYPE.toString(),
+              type,
+              Tag.FROM.toString(),
+              from);
+
+          metricService.remove(
+              MetricType.TIMER,
+              Metric.SERIES_SCAN_COST.toString(),
+              Tag.STAGE.toString(),
+              LOAD_ALIGNED_TIMESERIES_METADATA,
+              Tag.TYPE.toString(),
+              type,
+              Tag.FROM.toString(),
+              from);
+        }
+      }
+    }
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // read timeseries metadata
+  /////////////////////////////////////////////////////////////////////////////////////////////////
   private static final String READ_TIMESERIES_METADATA = "read_timeseries_metadata";
   private static final String CACHE = "cache";
   private static final String FILE = "file";
@@ -161,21 +361,21 @@ public class SeriesScanCostMetricSet implements IMetricSet {
     readTimeseriesMetadataFileTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     Arrays.asList(CACHE, FILE)
         .forEach(
-            from -> {
-              metricService.remove(
-                  MetricType.TIMER,
-                  Metric.SERIES_SCAN_COST.toString(),
-                  Tag.STAGE.toString(),
-                  READ_TIMESERIES_METADATA,
-                  Tag.TYPE.toString(),
-                  NULL,
-                  Tag.FROM.toString(),
-                  from);
-            });
+            from ->
+                metricService.remove(
+                    MetricType.TIMER,
+                    Metric.SERIES_SCAN_COST.toString(),
+                    Tag.STAGE.toString(),
+                    READ_TIMESERIES_METADATA,
+                    Tag.TYPE.toString(),
+                    NULL,
+                    Tag.FROM.toString(),
+                    from));
   }
-  // endregion
 
-  // region read timeseries metadata aligned
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // read timeseries metadata aligned
+  /////////////////////////////////////////////////////////////////////////////////////////////////
   private static final String TIMESERIES_METADATA_MODIFICATION = "timeseries_metadata_modification";
   public static final String TIMESERIES_METADATA_MODIFICATION_ALIGNED =
       TIMESERIES_METADATA_MODIFICATION + "_" + ALIGNED;
@@ -214,21 +414,21 @@ public class SeriesScanCostMetricSet implements IMetricSet {
     timeseriesMetadataModificationNonAlignedTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     Arrays.asList(ALIGNED, NON_ALIGNED)
         .forEach(
-            type -> {
-              metricService.remove(
-                  MetricType.TIMER,
-                  Metric.SERIES_SCAN_COST.toString(),
-                  Tag.STAGE.toString(),
-                  TIMESERIES_METADATA_MODIFICATION,
-                  Tag.TYPE.toString(),
-                  type,
-                  Tag.FROM.toString(),
-                  NULL);
-            });
+            type ->
+                metricService.remove(
+                    MetricType.TIMER,
+                    Metric.SERIES_SCAN_COST.toString(),
+                    Tag.STAGE.toString(),
+                    TIMESERIES_METADATA_MODIFICATION,
+                    Tag.TYPE.toString(),
+                    type,
+                    Tag.FROM.toString(),
+                    NULL));
   }
-  // endregion
 
-  // region load chunk metadata list
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // load chunk metadata list
+  /////////////////////////////////////////////////////////////////////////////////////////////////
   private static final String LOAD_CHUNK_METADATA_LIST = "load_chunk_metadata_list";
   public static final String LOAD_CHUNK_METADATA_LIST_ALIGNED_MEM =
       LOAD_CHUNK_METADATA_LIST + "_" + ALIGNED + "_" + MEM;
@@ -293,26 +493,24 @@ public class SeriesScanCostMetricSet implements IMetricSet {
     loadChunkMetadataListNonAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     Arrays.asList(ALIGNED, NON_ALIGNED)
         .forEach(
-            type -> {
-              Arrays.asList(MEM, DISK)
-                  .forEach(
-                      from -> {
-                        metricService.remove(
-                            MetricType.TIMER,
-                            Metric.SERIES_SCAN_COST.toString(),
-                            Tag.STAGE.toString(),
-                            LOAD_CHUNK_METADATA_LIST,
-                            Tag.TYPE.toString(),
-                            type,
-                            Tag.FROM.toString(),
-                            from);
-                      });
-            });
+            type ->
+                Arrays.asList(MEM, DISK)
+                    .forEach(
+                        from ->
+                            metricService.remove(
+                                MetricType.TIMER,
+                                Metric.SERIES_SCAN_COST.toString(),
+                                Tag.STAGE.toString(),
+                                LOAD_CHUNK_METADATA_LIST,
+                                Tag.TYPE.toString(),
+                                type,
+                                Tag.FROM.toString(),
+                                from)));
   }
 
-  // endregion
-
-  // region chunk metadata modification
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // chunk metadata modification
+  /////////////////////////////////////////////////////////////////////////////////////////////////
   private static final String CHUNK_METADATA_MODIFICATION = "chunk_metadata_modification";
   public static final String CHUNK_METADATA_MODIFICATION_ALIGNED_MEM =
       CHUNK_METADATA_MODIFICATION + "_" + ALIGNED + "_" + MEM;
@@ -330,7 +528,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
       DoNothingMetricManager.DO_NOTHING_TIMER;
 
   private void bindChunkMetadataModification(AbstractMetricService metricService) {
-    constructChunkReaderAlignedMemTimer =
+    constructChunkReadersAlignedMemTimer =
         metricService.getOrCreateTimer(
             Metric.SERIES_SCAN_COST.toString(),
             MetricLevel.IMPORTANT,
@@ -340,7 +538,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             ALIGNED,
             Tag.FROM.toString(),
             MEM);
-    constructChunkReaderAlignedDiskTimer =
+    constructChunkReadersAlignedDiskTimer =
         metricService.getOrCreateTimer(
             Metric.SERIES_SCAN_COST.toString(),
             MetricLevel.IMPORTANT,
@@ -350,7 +548,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             ALIGNED,
             Tag.FROM.toString(),
             DISK);
-    constructChunkReaderNonAlignedMemTimer =
+    constructChunkReadersNonAlignedMemTimer =
         metricService.getOrCreateTimer(
             Metric.SERIES_SCAN_COST.toString(),
             MetricLevel.IMPORTANT,
@@ -360,7 +558,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             NON_ALIGNED,
             Tag.FROM.toString(),
             MEM);
-    constructChunkReaderNonAlignedDiskTimer =
+    constructChunkReadersNonAlignedDiskTimer =
         metricService.getOrCreateTimer(
             Metric.SERIES_SCAN_COST.toString(),
             MetricLevel.IMPORTANT,
@@ -393,9 +591,10 @@ public class SeriesScanCostMetricSet implements IMetricSet {
                                 Tag.FROM.toString(),
                                 from)));
   }
-  // endregion
 
-  // region chunk metadata filter
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // chunk metadata filter
+  /////////////////////////////////////////////////////////////////////////////////////////////////
   private static final String CHUNK_METADATA_FILTER = "chunk_metadata_filter";
   public static final String CHUNK_METADATA_FILTER_ALIGNED_MEM =
       CHUNK_METADATA_FILTER + "_" + ALIGNED + "_" + MEM;
@@ -476,25 +675,88 @@ public class SeriesScanCostMetricSet implements IMetricSet {
                                 from)));
   }
 
-  // endregion
-
-  // region construct chunk reader
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // construct chunk reader
+  /////////////////////////////////////////////////////////////////////////////////////////////////
   private static final String CONSTRUCT_CHUNK_READER = "construct_chunk_reader";
-  public static final String CONSTRUCT_CHUNK_READER_ALIGNED_MEM =
-      CONSTRUCT_CHUNK_READER + "_" + ALIGNED + "_" + MEM;
-  public static final String CONSTRUCT_CHUNK_READER_ALIGNED_DISK =
-      CONSTRUCT_CHUNK_READER + "_" + ALIGNED + "_" + DISK;
-  public static final String CONSTRUCT_CHUNK_READER_NONALIGNED_MEM =
-      CONSTRUCT_CHUNK_READER + "_" + NON_ALIGNED + "_" + MEM;
-  public static final String CONSTRUCT_CHUNK_READER_NONALIGNED_DISK =
-      CONSTRUCT_CHUNK_READER + "_" + NON_ALIGNED + "_" + DISK;
-  private Timer constructChunkReaderAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-  private Timer constructChunkReaderAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-  private Timer constructChunkReaderNonAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-  private Timer constructChunkReaderNonAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private static final String HISTOGRAM_CONSTRUCT_CHUNK_READER = "histogram_construct_chunk_reader";
+
+  private Histogram constructChunkReadersAlignedMemHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram constructChunkReadersAlignedDiskHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram constructChunkReadersNonAlignedMemHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram constructChunkReadersNonAlignedDiskHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+
+  private Timer constructChunkReadersAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer constructChunkReadersAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer constructChunkReadersNonAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer constructChunkReadersNonAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+
+  public void recordConstructChunkReadersCount(
+      long alignedMemCount,
+      long alignedDiskCount,
+      long nonAlignedMemCount,
+      long nonAlignedDiskCount) {
+    constructChunkReadersAlignedMemHistogram.update(alignedMemCount);
+    constructChunkReadersAlignedDiskHistogram.update(alignedDiskCount);
+    constructChunkReadersNonAlignedMemHistogram.update(nonAlignedMemCount);
+    constructChunkReadersNonAlignedDiskHistogram.update(nonAlignedDiskCount);
+  }
+
+  public void recordConstructChunkReadersTime(
+      long alignedMemTime, long alignedDiskTime, long nonAlignedMemTime, long nonAlignedDiskTime) {
+    constructChunkReadersAlignedMemTimer.updateNanos(alignedMemTime);
+    constructChunkReadersAlignedDiskTimer.updateNanos(alignedDiskTime);
+    constructChunkReadersNonAlignedMemTimer.updateNanos(nonAlignedMemTime);
+    constructChunkReadersNonAlignedDiskTimer.updateNanos(nonAlignedDiskTime);
+  }
 
   private void bindConstructChunkReader(AbstractMetricService metricService) {
-    constructChunkReaderAlignedMemTimer =
+    constructChunkReadersAlignedMemHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.SERIES_SCAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            HISTOGRAM_CONSTRUCT_CHUNK_READER,
+            Tag.TYPE.toString(),
+            ALIGNED,
+            Tag.FROM.toString(),
+            MEM);
+    constructChunkReadersAlignedDiskHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.SERIES_SCAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            HISTOGRAM_CONSTRUCT_CHUNK_READER,
+            Tag.TYPE.toString(),
+            ALIGNED,
+            Tag.FROM.toString(),
+            DISK);
+    constructChunkReadersNonAlignedMemHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.SERIES_SCAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            HISTOGRAM_CONSTRUCT_CHUNK_READER,
+            Tag.TYPE.toString(),
+            NON_ALIGNED,
+            Tag.FROM.toString(),
+            MEM);
+    constructChunkReadersNonAlignedDiskHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.SERIES_SCAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            HISTOGRAM_CONSTRUCT_CHUNK_READER,
+            Tag.TYPE.toString(),
+            NON_ALIGNED,
+            Tag.FROM.toString(),
+            DISK);
+
+    constructChunkReadersAlignedMemTimer =
         metricService.getOrCreateTimer(
             Metric.SERIES_SCAN_COST.toString(),
             MetricLevel.IMPORTANT,
@@ -504,7 +766,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             ALIGNED,
             Tag.FROM.toString(),
             MEM);
-    constructChunkReaderAlignedDiskTimer =
+    constructChunkReadersAlignedDiskTimer =
         metricService.getOrCreateTimer(
             Metric.SERIES_SCAN_COST.toString(),
             MetricLevel.IMPORTANT,
@@ -514,7 +776,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             ALIGNED,
             Tag.FROM.toString(),
             DISK);
-    constructChunkReaderNonAlignedMemTimer =
+    constructChunkReadersNonAlignedMemTimer =
         metricService.getOrCreateTimer(
             Metric.SERIES_SCAN_COST.toString(),
             MetricLevel.IMPORTANT,
@@ -524,7 +786,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             NON_ALIGNED,
             Tag.FROM.toString(),
             MEM);
-    constructChunkReaderNonAlignedDiskTimer =
+    constructChunkReadersNonAlignedDiskTimer =
         metricService.getOrCreateTimer(
             Metric.SERIES_SCAN_COST.toString(),
             MetricLevel.IMPORTANT,
@@ -537,31 +799,44 @@ public class SeriesScanCostMetricSet implements IMetricSet {
   }
 
   private void unbindConstructChunkReader(AbstractMetricService metricService) {
-    constructChunkReaderAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    constructChunkReaderAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    constructChunkReaderNonAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    constructChunkReaderNonAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    Arrays.asList(ALIGNED, NON_ALIGNED)
-        .forEach(
-            type ->
-                Arrays.asList(MEM, DISK)
-                    .forEach(
-                        from -> {
-                          metricService.remove(
-                              MetricType.TIMER,
-                              Metric.SERIES_SCAN_COST.toString(),
-                              Tag.STAGE.toString(),
-                              CONSTRUCT_CHUNK_READER,
-                              Tag.TYPE.toString(),
-                              type,
-                              Tag.FROM.toString(),
-                              from);
-                        }));
+    constructChunkReadersAlignedMemHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    constructChunkReadersAlignedDiskHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    constructChunkReadersNonAlignedMemHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    constructChunkReadersNonAlignedDiskHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+
+    constructChunkReadersAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    constructChunkReadersAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    constructChunkReadersNonAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    constructChunkReadersNonAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+
+    for (String type : Arrays.asList(ALIGNED, NON_ALIGNED)) {
+      for (String from : Arrays.asList(MEM, DISK)) {
+        metricService.remove(
+            MetricType.HISTOGRAM,
+            Metric.SERIES_SCAN_COST.toString(),
+            Tag.STAGE.toString(),
+            HISTOGRAM_CONSTRUCT_CHUNK_READER,
+            Tag.TYPE.toString(),
+            type,
+            Tag.FROM.toString(),
+            from);
+
+        metricService.remove(
+            MetricType.TIMER,
+            Metric.SERIES_SCAN_COST.toString(),
+            Tag.STAGE.toString(),
+            CONSTRUCT_CHUNK_READER,
+            Tag.TYPE.toString(),
+            type,
+            Tag.FROM.toString(),
+            from);
+      }
+    }
   }
 
-  // endregion
-
-  // region read chunk
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // read chunk
+  /////////////////////////////////////////////////////////////////////////////////////////////////
   private static final String READ_CHUNK = "read_chunk";
   private static final String ALL = "all";
   public static final String READ_CHUNK_ALL = READ_CHUNK + "_" + ALL;
@@ -608,9 +883,10 @@ public class SeriesScanCostMetricSet implements IMetricSet {
                     Tag.FROM.toString(),
                     from));
   }
-  // endregion
 
-  // region init chunk reader
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // init chunk reader
+  /////////////////////////////////////////////////////////////////////////////////////////////////
   private static final String INIT_CHUNK_READER = "init_chunk_reader";
   public static final String INIT_CHUNK_READER_ALIGNED_MEM =
       INIT_CHUNK_READER + "_" + ALIGNED + "_" + MEM;
@@ -673,45 +949,104 @@ public class SeriesScanCostMetricSet implements IMetricSet {
     initChunkReaderAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     initChunkReaderNonAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     initChunkReaderNonAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    Arrays.asList(ALIGNED, NON_ALIGNED)
-        .forEach(
-            type ->
-                Arrays.asList(MEM, DISK)
-                    .forEach(
-                        from ->
-                            metricService.remove(
-                                MetricType.TIMER,
-                                Metric.SERIES_SCAN_COST.toString(),
-                                Tag.STAGE.toString(),
-                                INIT_CHUNK_READER,
-                                Tag.TYPE.toString(),
-                                type,
-                                Tag.FROM.toString(),
-                                from)));
+    for (String type : Arrays.asList(ALIGNED, NON_ALIGNED)) {
+      for (String from : Arrays.asList(MEM, DISK)) {
+        metricService.remove(
+            MetricType.TIMER,
+            Metric.SERIES_SCAN_COST.toString(),
+            Tag.STAGE.toString(),
+            INIT_CHUNK_READER,
+            Tag.TYPE.toString(),
+            type,
+            Tag.FROM.toString(),
+            from);
+      }
+    }
   }
-  // endregion
 
-  // region build tsblock from page reader
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // build tsblock from page reader
+  /////////////////////////////////////////////////////////////////////////////////////////////////
   private static final String BUILD_TSBLOCK_FROM_PAGE_READER = "build_tsblock_from_page_reader";
-  public static final String BUILD_TSBLOCK_FROM_PAGE_READER_ALIGNED_MEM =
-      BUILD_TSBLOCK_FROM_PAGE_READER + "_" + ALIGNED + "_" + MEM;
-  public static final String BUILD_TSBLOCK_FROM_PAGE_READER_ALIGNED_DISK =
-      BUILD_TSBLOCK_FROM_PAGE_READER + "_" + ALIGNED + "_" + DISK;
-  public static final String BUILD_TSBLOCK_FROM_PAGE_READER_NONALIGNED_MEM =
-      BUILD_TSBLOCK_FROM_PAGE_READER + "_" + NON_ALIGNED + "_" + MEM;
-  public static final String BUILD_TSBLOCK_FROM_PAGE_READER_NONALIGNED_DISK =
-      BUILD_TSBLOCK_FROM_PAGE_READER + "_" + NON_ALIGNED + "_" + DISK;
+  private static final String HISTOGRAM_BUILD_TSBLOCK_FROM_PAGE_READER =
+      "histogram_build_tsblock_from_page_reader";
 
-  private Timer buildTsBlockFromPageReaderAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-  private Timer buildTsBlockFromPageReaderAlignedDiskTimer =
-      DoNothingMetricManager.DO_NOTHING_TIMER;
-  private Timer buildTsBlockFromPageReaderNonAlignedMemTimer =
-      DoNothingMetricManager.DO_NOTHING_TIMER;
-  private Timer buildTsBlockFromPageReaderNonAlignedDiskTimer =
-      DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Histogram pageReadersDecodeAlignedMemHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram pageReadersDecodeAlignedDiskHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram pageReadersDecodeNonAlignedMemHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram pageReadersDecodeNonAlignedDiskHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+
+  private Timer pageReadersDecodeAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer pageReadersDecodeAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer pageReadersDecodeNonAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer pageReadersDecodeNonAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+
+  public void recordPageReadersDecompressCount(
+      long alignedMemCount,
+      long alignedDiskCount,
+      long nonAlignedMemCount,
+      long nonAlignedDiskCount) {
+    pageReadersDecodeAlignedMemHistogram.update(alignedMemCount);
+    pageReadersDecodeAlignedDiskHistogram.update(alignedDiskCount);
+    pageReadersDecodeNonAlignedMemHistogram.update(nonAlignedMemCount);
+    pageReadersDecodeNonAlignedDiskHistogram.update(nonAlignedDiskCount);
+  }
+
+  public void recordPageReadersDecompressTime(
+      long alignedMemTime, long alignedDiskTime, long nonAlignedMemTime, long nonAlignedDiskTime) {
+    pageReadersDecodeAlignedMemTimer.updateNanos(alignedMemTime);
+    pageReadersDecodeAlignedDiskTimer.updateNanos(alignedDiskTime);
+    pageReadersDecodeNonAlignedMemTimer.updateNanos(nonAlignedMemTime);
+    pageReadersDecodeNonAlignedDiskTimer.updateNanos(nonAlignedDiskTime);
+  }
 
   private void bindTsBlockFromPageReader(AbstractMetricService metricService) {
-    buildTsBlockFromPageReaderAlignedMemTimer =
+    pageReadersDecodeAlignedMemHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.SERIES_SCAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            HISTOGRAM_BUILD_TSBLOCK_FROM_PAGE_READER,
+            Tag.TYPE.toString(),
+            ALIGNED,
+            Tag.FROM.toString(),
+            MEM);
+    pageReadersDecodeAlignedDiskHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.SERIES_SCAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            HISTOGRAM_BUILD_TSBLOCK_FROM_PAGE_READER,
+            Tag.TYPE.toString(),
+            ALIGNED,
+            Tag.FROM.toString(),
+            DISK);
+    pageReadersDecodeNonAlignedMemHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.SERIES_SCAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            HISTOGRAM_BUILD_TSBLOCK_FROM_PAGE_READER,
+            Tag.TYPE.toString(),
+            NON_ALIGNED,
+            Tag.FROM.toString(),
+            MEM);
+    pageReadersDecodeNonAlignedDiskHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.SERIES_SCAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            HISTOGRAM_BUILD_TSBLOCK_FROM_PAGE_READER,
+            Tag.TYPE.toString(),
+            NON_ALIGNED,
+            Tag.FROM.toString(),
+            DISK);
+
+    pageReadersDecodeAlignedMemTimer =
         metricService.getOrCreateTimer(
             Metric.SERIES_SCAN_COST.toString(),
             MetricLevel.IMPORTANT,
@@ -721,7 +1056,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             ALIGNED,
             Tag.FROM.toString(),
             MEM);
-    buildTsBlockFromPageReaderAlignedDiskTimer =
+    pageReadersDecodeAlignedDiskTimer =
         metricService.getOrCreateTimer(
             Metric.SERIES_SCAN_COST.toString(),
             MetricLevel.IMPORTANT,
@@ -731,7 +1066,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             ALIGNED,
             Tag.FROM.toString(),
             DISK);
-    buildTsBlockFromPageReaderNonAlignedMemTimer =
+    pageReadersDecodeNonAlignedMemTimer =
         metricService.getOrCreateTimer(
             Metric.SERIES_SCAN_COST.toString(),
             MetricLevel.IMPORTANT,
@@ -741,7 +1076,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             NON_ALIGNED,
             Tag.FROM.toString(),
             MEM);
-    buildTsBlockFromPageReaderNonAlignedDiskTimer =
+    pageReadersDecodeNonAlignedDiskTimer =
         metricService.getOrCreateTimer(
             Metric.SERIES_SCAN_COST.toString(),
             MetricLevel.IMPORTANT,
@@ -754,31 +1089,43 @@ public class SeriesScanCostMetricSet implements IMetricSet {
   }
 
   private void unbindTsBlockFromPageReader(AbstractMetricService metricService) {
-    buildTsBlockFromPageReaderAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    buildTsBlockFromPageReaderAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    buildTsBlockFromPageReaderNonAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    buildTsBlockFromPageReaderNonAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    Arrays.asList(ALIGNED, NON_ALIGNED)
-        .forEach(
-            type -> {
-              Arrays.asList(MEM, DISK)
-                  .forEach(
-                      from -> {
-                        metricService.remove(
-                            MetricType.TIMER,
-                            Metric.SERIES_SCAN_COST.toString(),
-                            Tag.STAGE.toString(),
-                            BUILD_TSBLOCK_FROM_PAGE_READER,
-                            Tag.TYPE.toString(),
-                            type,
-                            Tag.FROM.toString(),
-                            from);
-                      });
-            });
-  }
-  // endregion
+    pageReadersDecodeAlignedMemHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    pageReadersDecodeAlignedDiskHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    pageReadersDecodeNonAlignedMemHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    pageReadersDecodeNonAlignedDiskHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    pageReadersDecodeAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    pageReadersDecodeAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    pageReadersDecodeNonAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    pageReadersDecodeNonAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
-  // region build tsblock from merge reader
+    for (String type : Arrays.asList(ALIGNED, NON_ALIGNED)) {
+      for (String from : Arrays.asList(MEM, DISK)) {
+        metricService.remove(
+            MetricType.HISTOGRAM,
+            Metric.SERIES_SCAN_COST.toString(),
+            Tag.STAGE.toString(),
+            HISTOGRAM_BUILD_TSBLOCK_FROM_PAGE_READER,
+            Tag.TYPE.toString(),
+            type,
+            Tag.FROM.toString(),
+            from);
+
+        metricService.remove(
+            MetricType.TIMER,
+            Metric.SERIES_SCAN_COST.toString(),
+            Tag.STAGE.toString(),
+            BUILD_TSBLOCK_FROM_PAGE_READER,
+            Tag.TYPE.toString(),
+            type,
+            Tag.FROM.toString(),
+            from);
+      }
+    }
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // build tsblock from merge reader
+  /////////////////////////////////////////////////////////////////////////////////////////////////
   private static final String BUILD_TSBLOCK_FROM_MERGE_READER = "build_tsblock_from_merge_reader";
   public static final String BUILD_TSBLOCK_FROM_MERGE_READER_ALIGNED =
       BUILD_TSBLOCK_FROM_MERGE_READER + "_" + ALIGNED;
@@ -828,11 +1175,11 @@ public class SeriesScanCostMetricSet implements IMetricSet {
                     Tag.TYPE.toString(),
                     type));
   }
-  // endregion
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
     bindTimeseriesMetadata(metricService);
+    bindAlignedTimeseriesMetadata(metricService);
     bindReadTimeseriesMetadata(metricService);
     bindTimeseriesMetadataModification(metricService);
     bindLoadChunkMetadataList(metricService);
@@ -862,18 +1209,6 @@ public class SeriesScanCostMetricSet implements IMetricSet {
 
   public void recordSeriesScanCost(String type, long cost) {
     switch (type) {
-      case LOAD_TIMESERIES_METADATA_ALIGNED_MEM:
-        loadTimeseriesMetadataAlignedMemTimer.updateNanos(cost);
-        break;
-      case LOAD_TIMESERIES_METADATA_ALIGNED_DISK:
-        loadTimeseriesMetadataAlignedDiskTimer.updateNanos(cost);
-        break;
-      case LOAD_TIMESERIES_METADATA_NONALIGNED_MEM:
-        loadTimeseriesMetadataNonAlignedMemTimer.updateNanos(cost);
-        break;
-      case LOAD_TIMESERIES_METADATA_NONALIGNED_DISK:
-        loadTimeseriesMetadataNonAlignedDiskTimer.updateNanos(cost);
-        break;
       case TIMESERIES_METADATA_MODIFICATION_ALIGNED:
         timeseriesMetadataModificationAlignedTimer.updateNanos(cost);
         break;
@@ -928,30 +1263,6 @@ public class SeriesScanCostMetricSet implements IMetricSet {
       case INIT_CHUNK_READER_NONALIGNED_DISK:
         initChunkReaderNonAlignedDiskTimer.updateNanos(cost);
         break;
-      case CONSTRUCT_CHUNK_READER_ALIGNED_MEM:
-        constructChunkReaderAlignedMemTimer.updateNanos(cost);
-        break;
-      case CONSTRUCT_CHUNK_READER_ALIGNED_DISK:
-        constructChunkReaderAlignedDiskTimer.updateNanos(cost);
-        break;
-      case CONSTRUCT_CHUNK_READER_NONALIGNED_MEM:
-        constructChunkReaderNonAlignedMemTimer.updateNanos(cost);
-        break;
-      case CONSTRUCT_CHUNK_READER_NONALIGNED_DISK:
-        constructChunkReaderNonAlignedDiskTimer.updateNanos(cost);
-        break;
-      case BUILD_TSBLOCK_FROM_PAGE_READER_ALIGNED_MEM:
-        buildTsBlockFromPageReaderAlignedMemTimer.updateNanos(cost);
-        break;
-      case BUILD_TSBLOCK_FROM_PAGE_READER_ALIGNED_DISK:
-        buildTsBlockFromPageReaderAlignedDiskTimer.updateNanos(cost);
-        break;
-      case BUILD_TSBLOCK_FROM_PAGE_READER_NONALIGNED_MEM:
-        buildTsBlockFromPageReaderNonAlignedMemTimer.updateNanos(cost);
-        break;
-      case BUILD_TSBLOCK_FROM_PAGE_READER_NONALIGNED_DISK:
-        buildTsBlockFromPageReaderNonAlignedDiskTimer.updateNanos(cost);
-        break;
       case BUILD_TSBLOCK_FROM_MERGE_READER_ALIGNED:
         buildTsBlockFromMergeReaderAlignedTimer.updateNanos(cost);
         break;
@@ -975,7 +1286,13 @@ public class SeriesScanCostMetricSet implements IMetricSet {
     }
   }
 
-  public static SeriesScanCostMetricSet getInstance() {
-    return INSTANCE;
+  private static class InstanceHolder {
+    private InstanceHolder() {}
+
+    private static final SeriesScanCostMetricSet INSTANCE = new SeriesScanCostMetricSet();
+  }
+
+  private SeriesScanCostMetricSet() {
+    // empty constructor
   }
 }

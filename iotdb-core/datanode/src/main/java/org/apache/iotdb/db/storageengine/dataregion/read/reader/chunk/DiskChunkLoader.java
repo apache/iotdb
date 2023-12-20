@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -32,21 +33,20 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
 import java.io.IOException;
 
-import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.CONSTRUCT_CHUNK_READER_NONALIGNED_DISK;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.INIT_CHUNK_READER_NONALIGNED_DISK;
 
 /** To read one chunk from disk, and only used in iotdb server module. */
 public class DiskChunkLoader implements IChunkLoader {
 
+  private final QueryContext context;
+
   private final TsFileResource resource;
 
   private final boolean debug;
 
-  private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
-      SeriesScanCostMetricSet.getInstance();
-
-  public DiskChunkLoader(boolean debug, TsFileResource resource) {
-    this.debug = debug;
+  public DiskChunkLoader(QueryContext context, TsFileResource resource) {
+    this.context = context;
+    this.debug = context.isDebug();
     this.resource = resource;
   }
 
@@ -88,13 +88,14 @@ public class DiskChunkLoader implements IChunkLoader {
 
       long t2 = System.nanoTime();
       IChunkReader chunkReader = new ChunkReader(chunk, globalTimeFilter);
-      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-          INIT_CHUNK_READER_NONALIGNED_DISK, System.nanoTime() - t2);
+      SeriesScanCostMetricSet.getInstance()
+          .recordSeriesScanCost(INIT_CHUNK_READER_NONALIGNED_DISK, System.nanoTime() - t2);
 
       return chunkReader;
     } finally {
-      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-          CONSTRUCT_CHUNK_READER_NONALIGNED_DISK, System.nanoTime() - t1);
+      long time = System.nanoTime() - t1;
+      context.getQueryStatistics().constructNonAlignedChunkReadersDiskCount.getAndAdd(1);
+      context.getQueryStatistics().constructNonAlignedChunkReadersDiskTime.getAndAdd(time);
     }
   }
 }

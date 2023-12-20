@@ -95,7 +95,11 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   }
 
   @Override
-  public ICachedMNode get(Object key) {
+  public synchronized ICachedMNode get(Object key) {
+    return internalGet(key);
+  }
+
+  private ICachedMNode internalGet(Object key) {
     ICachedMNode result = get(childCache, key);
     if (result != null) {
       return result;
@@ -124,7 +128,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   @Override
   public synchronized ICachedMNode putIfAbsent(String key, ICachedMNode value) {
 
-    ICachedMNode node = get(key);
+    ICachedMNode node = internalGet(key);
     if (node == null) {
       if (newChildBuffer == null) {
         newChildBuffer = new ConcurrentHashMap<>();

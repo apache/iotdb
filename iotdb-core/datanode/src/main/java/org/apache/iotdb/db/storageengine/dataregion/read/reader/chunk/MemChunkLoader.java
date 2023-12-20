@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -28,18 +29,18 @@ import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 
-import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.CONSTRUCT_CHUNK_READER_NONALIGNED_MEM;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.INIT_CHUNK_READER_NONALIGNED_MEM;
 
 /** To read one chunk from memory, and only used in iotdb server module. */
 public class MemChunkLoader implements IChunkLoader {
-
+  private final QueryContext context;
   private final ReadOnlyMemChunk chunk;
 
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
 
-  public MemChunkLoader(ReadOnlyMemChunk chunk) {
+  public MemChunkLoader(QueryContext context, ReadOnlyMemChunk chunk) {
+    this.context = context;
     this.chunk = chunk;
   }
 
@@ -60,8 +61,8 @@ public class MemChunkLoader implements IChunkLoader {
       return new MemChunkReader(chunk, globalTimeFilter);
     } finally {
       long duration = System.nanoTime() - startTime;
-      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-          CONSTRUCT_CHUNK_READER_NONALIGNED_MEM, duration);
+      context.getQueryStatistics().constructNonAlignedChunkReadersMemCount.getAndAdd(1);
+      context.getQueryStatistics().constructNonAlignedChunkReadersMemTime.getAndAdd(duration);
       SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(INIT_CHUNK_READER_NONALIGNED_MEM, duration);
     }
   }

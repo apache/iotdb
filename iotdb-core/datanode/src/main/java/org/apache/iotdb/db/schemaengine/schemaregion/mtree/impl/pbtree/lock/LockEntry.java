@@ -16,33 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache;
+
+package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class CacheEntry {
+public class LockEntry {
 
-  private volatile boolean isVolatile = false;
+  private final AtomicInteger pinSemaphore = new AtomicInteger(0);
 
-  private final AtomicInteger semaphore = new AtomicInteger();
-
-  public boolean isVolatile() {
-    return isVolatile;
-  }
-
-  public void setVolatile(boolean aVolatile) {
-    isVolatile = aVolatile;
-  }
+  private final StampedWriterPreferredLock lock = new StampedWriterPreferredLock();
 
   public void pin() {
-    semaphore.getAndIncrement();
+    pinSemaphore.getAndIncrement();
   }
 
-  public void unPin() {
-    semaphore.getAndDecrement();
+  public void unpin() {
+    pinSemaphore.getAndDecrement();
   }
 
   public boolean isPinned() {
-    return semaphore.get() > 0;
+    return pinSemaphore.get() > 0;
+  }
+
+  public StampedWriterPreferredLock getLock() {
+    return lock;
   }
 }

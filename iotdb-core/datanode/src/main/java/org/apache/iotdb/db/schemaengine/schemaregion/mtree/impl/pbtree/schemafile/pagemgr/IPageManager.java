@@ -38,9 +38,10 @@ import java.util.Iterator;
  */
 public interface IPageManager {
 
-  void writeNewChildren(ICachedMNode parNode) throws MetadataException, IOException;
-
-  void writeUpdatedChildren(ICachedMNode parNode) throws MetadataException, IOException;
+  /**
+   * All change will be an internal process, lock and dirty pages are now in the scope of context.
+   */
+  void writeMNode(ICachedMNode node) throws MetadataException, IOException;
 
   void delete(ICachedMNode node) throws IOException, MetadataException;
 
@@ -50,8 +51,6 @@ public interface IPageManager {
   Iterator<ICachedMNode> getChildren(ICachedMNode parent) throws MetadataException, IOException;
 
   void clear() throws IOException, MetadataException;
-
-  void flushDirtyPages() throws IOException;
 
   void close() throws IOException;
 

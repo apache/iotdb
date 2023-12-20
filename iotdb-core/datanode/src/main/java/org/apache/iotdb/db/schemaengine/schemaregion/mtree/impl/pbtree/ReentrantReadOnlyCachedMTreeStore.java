@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.IMTreeStore;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.ReleaseFlushMonitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
@@ -52,12 +53,12 @@ public class ReentrantReadOnlyCachedMTreeStore implements IMTreeStore<ICachedMNo
 
   @Override
   public boolean hasChild(ICachedMNode parent, String name) throws MetadataException {
-    return store.hasChild(parent, name, false);
+    return store.hasChild(parent, name, false, true);
   }
 
   @Override
   public ICachedMNode getChild(ICachedMNode parent, String name) throws MetadataException {
-    return store.getChild(parent, name, false);
+    return store.getChild(parent, name, false, true);
   }
 
   @Override
@@ -130,6 +131,11 @@ public class ReentrantReadOnlyCachedMTreeStore implements IMTreeStore<ICachedMNo
   @Override
   public boolean createSnapshot(File snapshotDir) {
     throw new UnsupportedOperationException("ReadOnlyReentrantMTreeStore");
+  }
+
+  @Override
+  public ReleaseFlushMonitor.RecordNode recordTraverserStatistics() {
+    return store.recordTraverserStatistics();
   }
 
   public void unlockRead() {

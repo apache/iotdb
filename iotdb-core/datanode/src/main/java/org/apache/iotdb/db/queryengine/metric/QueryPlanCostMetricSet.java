@@ -110,10 +110,12 @@ public class QueryPlanCostMetricSet implements IMetricSet {
     Arrays.asList(
             ANALYZER, LOGICAL_PLANNER, DISTRIBUTION_PLANNER, PARTITION_FETCHER, SCHEMA_FETCHER)
         .forEach(
-            stage -> {
-              metricService.remove(
-                  MetricType.TIMER, Metric.QUERY_PLAN_COST.toString(), Tag.STAGE.toString(), stage);
-            });
+            stage ->
+                metricService.remove(
+                    MetricType.TIMER,
+                    Metric.QUERY_PLAN_COST.toString(),
+                    Tag.STAGE.toString(),
+                    stage));
   }
 
   public static QueryPlanCostMetricSet getInstance() {

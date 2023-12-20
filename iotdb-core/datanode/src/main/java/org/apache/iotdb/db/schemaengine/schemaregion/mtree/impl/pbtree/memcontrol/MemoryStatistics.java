@@ -25,11 +25,11 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICa
 import java.util.List;
 
 // This class is used for memory control in industry environment.
-public class MemManager {
+public class MemoryStatistics {
 
   private final CachedSchemaRegionStatistics regionStatistics;
 
-  public MemManager(CachedSchemaRegionStatistics regionStatistics) {
+  public MemoryStatistics(CachedSchemaRegionStatistics regionStatistics) {
     this.regionStatistics = regionStatistics;
   }
 
