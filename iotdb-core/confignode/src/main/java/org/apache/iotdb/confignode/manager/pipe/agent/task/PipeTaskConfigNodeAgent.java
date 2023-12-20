@@ -35,6 +35,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
+import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.ConfigRegion;
+
 public class PipeTaskConfigNodeAgent extends PipeTaskAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskConfigNodeAgent.class);
@@ -56,8 +58,9 @@ public class PipeTaskConfigNodeAgent extends PipeTaskAgent {
       PipeStaticMeta pipeStaticMeta,
       PipeTaskMeta pipeTaskMeta) {
     // TODO: getLeaderDataNodeId -> getLeaderNodeId
-    if (pipeTaskMeta.getLeaderDataNodeId()
-        == ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()) {
+    if (consensusGroupId.getType() == ConfigRegion
+        && pipeTaskMeta.getLeaderDataNodeId()
+            == ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()) {
       final PipeConfigNodeTask pipeTask =
           new PipeConfigNodeTask(
               new PipeConfigNodeTaskStage(

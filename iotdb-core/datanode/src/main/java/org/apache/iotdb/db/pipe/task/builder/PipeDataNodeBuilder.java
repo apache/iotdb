@@ -43,24 +43,37 @@ public class PipeDataNodeBuilder {
 
   public Map<TConsensusGroupId, PipeTask> build() {
     final PipeStaticMeta pipeStaticMeta = pipeMeta.getStaticMeta();
+    final PipeRuntimeMeta pipeRuntimeMeta = pipeMeta.getRuntimeMeta();
 
     final Map<TConsensusGroupId, PipeTask> consensusGroupIdToPipeTaskMap = new HashMap<>();
-
-    final PipeRuntimeMeta pipeRuntimeMeta = pipeMeta.getRuntimeMeta();
     for (Map.Entry<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToPipeTaskMeta :
         pipeRuntimeMeta.getConsensusGroupId2TaskMetaMap().entrySet()) {
-      if (consensusGroupIdToPipeTaskMeta.getValue().getLeaderDataNodeId()
-          == CONFIG.getDataNodeId()) {
-        consensusGroupIdToPipeTaskMap.put(
-            consensusGroupIdToPipeTaskMeta.getKey(),
-            new PipeDataNodeTaskDataRegionBuilder(
-                    pipeStaticMeta,
-                    consensusGroupIdToPipeTaskMeta.getKey(),
-                    consensusGroupIdToPipeTaskMeta.getValue())
-                .build());
+      final TConsensusGroupId consensusGroupId = consensusGroupIdToPipeTaskMeta.getKey();
+      final PipeTaskMeta pipeTaskMeta = consensusGroupIdToPipeTaskMeta.getValue();
+
+      switch (consensusGroupId.getType()) {
+        case DataRegion:
+          if (pipeTaskMeta.getLeaderDataNodeId() == CONFIG.getDataNodeId()) {
+            consensusGroupIdToPipeTaskMap.put(
+                consensusGroupId,
+                new PipeDataNodeTaskDataRegionBuilder(
+                        pipeStaticMeta, consensusGroupId, pipeTaskMeta)
+                    .build());
+          }
+          break;
+        case SchemaRegion:
+          if (pipeTaskMeta.getLeaderDataNodeId() == CONFIG.getDataNodeId()) {
+            consensusGroupIdToPipeTaskMap.put(
+                consensusGroupId,
+                new PipeDataNodeTaskSchemaRegionBuilder(
+                        pipeStaticMeta, consensusGroupId, pipeTaskMeta)
+                    .build());
+          }
+          break;
+        default:
+          break;
       }
     }
-
     return consensusGroupIdToPipeTaskMap;
   }
 }

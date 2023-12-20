@@ -37,6 +37,7 @@ import org.apache.iotdb.db.pipe.extractor.realtime.listener.PipeInsertionDataNod
 import org.apache.iotdb.db.pipe.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeBuilder;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeTaskDataRegionBuilder;
+import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeTaskSchemaRegionBuilder;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
@@ -53,6 +54,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.ConfigRegion;
 
 public class PipeTaskDataNodeAgent extends PipeTaskAgent {
 
@@ -185,13 +188,29 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
       TConsensusGroupId consensusGroupId,
       PipeStaticMeta pipeStaticMeta,
       PipeTaskMeta pipeTaskMeta) {
-    if (pipeTaskMeta.getLeaderDataNodeId() == CONFIG.getDataNodeId()) {
-      final PipeDataNodeTask pipeTask =
-          new PipeDataNodeTaskDataRegionBuilder(pipeStaticMeta, consensusGroupId, pipeTaskMeta)
-              .build();
+    if (consensusGroupId.getType() != ConfigRegion
+        && pipeTaskMeta.getLeaderDataNodeId() == CONFIG.getDataNodeId()) {
+      final PipeDataNodeTask pipeTask;
+      switch (consensusGroupId.getType()) {
+        case DataRegion:
+          pipeTask =
+              new PipeDataNodeTaskDataRegionBuilder(pipeStaticMeta, consensusGroupId, pipeTaskMeta)
+                  .build();
+          break;
+        case SchemaRegion:
+          pipeTask =
+              new PipeDataNodeTaskSchemaRegionBuilder(
+                      pipeStaticMeta, consensusGroupId, pipeTaskMeta)
+                  .build();
+          break;
+        default:
+          throw new UnsupportedOperationException(
+              "Unsupported consensus group type: " + consensusGroupId.getType());
+      }
       pipeTask.create();
       pipeTaskManager.addPipeTask(pipeStaticMeta, consensusGroupId, pipeTask);
     }
+
     pipeMetaKeeper
         .getPipeMeta(pipeStaticMeta.getPipeName())
         .getRuntimeMeta()
