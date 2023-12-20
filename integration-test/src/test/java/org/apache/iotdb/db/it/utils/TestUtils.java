@@ -28,7 +28,6 @@ import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.util.SessionUtils;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.junit.Assert;
@@ -154,7 +153,13 @@ public class TestUtils {
   public static void resultSetEqualTest(
       String sql, String expectedHeader, String[] expectedRetArray) {
     resultSetEqualTest(
-        sql, expectedHeader, expectedRetArray, null, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, TimeUnit.MILLISECONDS);
+        sql,
+        expectedHeader,
+        expectedRetArray,
+        null,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        TimeUnit.MILLISECONDS);
   }
 
   public static void resultSetEqualTest(
@@ -178,7 +183,13 @@ public class TestUtils {
       header.append(s).append(",");
     }
     resultSetEqualTest(
-        sql, header.toString(), expectedRetArray, df, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, TimeUnit.MILLISECONDS);
+        sql,
+        header.toString(),
+        expectedRetArray,
+        df,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        TimeUnit.MILLISECONDS);
   }
 
   public static void resultSetEqualTest(
@@ -191,7 +202,14 @@ public class TestUtils {
     for (String s : expectedHeader) {
       header.append(s).append(",");
     }
-    resultSetEqualTest(sql, header.toString(), expectedRetArray, df, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, currPrecision);
+    resultSetEqualTest(
+        sql,
+        header.toString(),
+        expectedRetArray,
+        df,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        currPrecision);
   }
 
   public static void resultSetEqualTest(
@@ -402,7 +420,8 @@ public class TestUtils {
   }
 
   public static boolean tryExecuteNonQueryWithRetry(BaseEnv env, String sql) {
-    return tryExecuteNonQueryWithRetry(env, sql, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
+    return tryExecuteNonQueryWithRetry(
+        env, sql, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
 
   public static boolean tryExecuteNonQueryWithRetry(
@@ -411,7 +430,8 @@ public class TestUtils {
   }
 
   public static boolean tryExecuteNonQueriesWithRetry(BaseEnv env, List<String> sqlList) {
-    return tryExecuteNonQueriesWithRetry(env, sqlList, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
+    return tryExecuteNonQueriesWithRetry(
+        env, sqlList, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
 
   // This method will not throw failure given that a failure is encountered.
