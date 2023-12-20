@@ -45,6 +45,7 @@ import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.queryengine.load.memory.DeviceToTimeseriesSchemasMap;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.SchemaValidator;
@@ -174,6 +175,7 @@ public class LoadTsfileAnalyzer {
     }
 
     LOGGER.info("Load - Analysis Stage: all tsfiles have been analyzed.");
+    schemaAutoCreatorAndVerifier.close();
 
     // data partition will be queried in the scheduler
     final Analysis analysis = new Analysis();
@@ -249,8 +251,8 @@ public class LoadTsfileAnalyzer {
   private final class SchemaAutoCreatorAndVerifier {
 
     private final Map<String, Boolean> tsfileDevice2IsAligned = new HashMap<>();
-    private final Map<String, Set<MeasurementSchema>> currentBatchDevice2TimeseriesSchemas =
-        new HashMap<>();
+    private final DeviceToTimeseriesSchemasMap currentBatchDevice2TimeseriesSchemas =
+        new DeviceToTimeseriesSchemasMap();
 
     private final Set<PartialPath> alreadySetDatabases = new HashSet<>();
 
@@ -260,6 +262,7 @@ public class LoadTsfileAnalyzer {
         TsFileSequenceReader reader,
         Map<String, List<TimeseriesMetadata>> device2TimeseriesMetadataList)
         throws IOException, AuthException {
+      boolean isReachedMaxMemorySize = false;
       for (final Map.Entry<String, List<TimeseriesMetadata>> entry :
           device2TimeseriesMetadataList.entrySet()) {
         final String device = entry.getKey();
@@ -301,9 +304,9 @@ public class LoadTsfileAnalyzer {
             }
             final Pair<CompressionType, TSEncoding> compressionEncodingPair =
                 reader.readTimeseriesCompressionTypeAndEncoding(timeseriesMetadata);
-            currentBatchDevice2TimeseriesSchemas
-                .computeIfAbsent(device, o -> new HashSet<>())
-                .add(
+            isReachedMaxMemorySize =
+                currentBatchDevice2TimeseriesSchemas.add(
+                    device,
                     new MeasurementSchema(
                         timeseriesMetadata.getMeasurementId(),
                         dataType,
@@ -311,6 +314,11 @@ public class LoadTsfileAnalyzer {
                         compressionEncodingPair.getLeft()));
 
             tsfileDevice2IsAligned.putIfAbsent(device, false);
+          }
+
+          if (isReachedMaxMemorySize) {
+            flush();
+            isReachedMaxMemorySize = false;
           }
         }
       }
@@ -611,6 +619,12 @@ public class LoadTsfileAnalyzer {
     public void clear() {
       tsfileDevice2IsAligned.clear();
       currentBatchDevice2TimeseriesSchemas.clear();
+      alreadySetDatabases.clear();
+    }
+
+    public void close() {
+      tsfileDevice2IsAligned.clear();
+      currentBatchDevice2TimeseriesSchemas.close();
       alreadySetDatabases.clear();
     }
   }

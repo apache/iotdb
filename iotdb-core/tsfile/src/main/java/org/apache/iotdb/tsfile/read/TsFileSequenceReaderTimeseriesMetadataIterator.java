@@ -39,7 +39,7 @@ import java.util.NoSuchElementException;
 public class TsFileSequenceReaderTimeseriesMetadataIterator
     implements Iterator<Map<String, List<TimeseriesMetadata>>> {
 
-  private static final int MAX_TIMESERIES_METADATA_COUNT = 2000;
+  private static final int MAX_TIMESERIES_METADATA_COUNT = 4000;
   private final TsFileSequenceReader reader;
   private final boolean needChunkMetadata;
   private ByteBuffer currentBuffer = null;
