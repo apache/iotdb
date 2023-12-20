@@ -136,6 +136,17 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
     throw new UnsupportedOperationException("isGeneratedByPipe() is not supported!");
   }
 
+  @Override
+  public boolean isEventTimeOverlappedWithTimeRange() {
+    long maxTimestamp = Long.MIN_VALUE;
+    long minTimestamp = Long.MAX_VALUE;
+    for (long timestamp : tablet.timestamps) {
+      maxTimestamp = Math.max(maxTimestamp, timestamp);
+      minTimestamp = Math.min(minTimestamp, timestamp);
+    }
+    return startTime <= maxTimestamp && minTimestamp <= endTime;
+  }
+
   public void markAsNeedToReport() {
     this.needToReport = true;
   }

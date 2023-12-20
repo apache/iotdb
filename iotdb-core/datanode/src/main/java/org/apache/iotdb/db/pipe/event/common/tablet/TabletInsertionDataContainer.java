@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -147,8 +148,12 @@ public class TabletInsertionDataContainer {
       }
     }
 
-    // TODO: consider rowIndexList is empty
     rowCount = rowIndexList.size();
+
+    // TODO: consider rowIndexList is empty
+    if (rowCount == 0) {
+      throw new PipeException("...");
+    }
   }
 
   private void parse(InsertTabletNode insertTabletNode, String pattern) {

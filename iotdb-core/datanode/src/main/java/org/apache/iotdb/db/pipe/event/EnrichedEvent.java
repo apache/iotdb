@@ -69,7 +69,7 @@ public abstract class EnrichedEvent implements Event {
     this.startTime = startTime;
     this.endTime = endTime;
     isPatternParsed = getPattern().equals(PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE);
-    isTimeParsed = (Long.MIN_VALUE == startTime && Long.MAX_VALUE == endTime);
+    isTimeParsed = Long.MIN_VALUE == startTime && Long.MAX_VALUE == endTime;
   }
 
   /**
@@ -224,6 +224,8 @@ public abstract class EnrichedEvent implements Event {
   }
 
   public abstract boolean isGeneratedByPipe();
+
+  public abstract boolean isEventTimeOverlappedWithTimeRange();
 
   public void setCommitterKeyAndCommitId(String committerKey, long commitId) {
     this.committerKey = committerKey;

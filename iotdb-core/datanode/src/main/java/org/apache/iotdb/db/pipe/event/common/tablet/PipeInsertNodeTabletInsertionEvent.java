@@ -25,12 +25,15 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import org.slf4j.Logger;
@@ -157,6 +160,31 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   @Override
   public boolean isGeneratedByPipe() {
     return isGeneratedByPipe;
+  }
+
+  @Override
+  public boolean isEventTimeOverlappedWithTimeRange() {
+    try {
+      InsertNode insertNode = getInsertNode();
+      if (insertNode instanceof InsertRowNode) {
+        long timestamp = ((InsertRowNode) insertNode).getTime();
+        return startTime <= timestamp && timestamp <= endTime;
+      } else if (insertNode instanceof InsertTabletNode) {
+        long maxTimestamp = Long.MIN_VALUE;
+        long minTimestamp = Long.MAX_VALUE;
+        for (long timestamp : ((InsertTabletNode) insertNode).getTimes()) {
+          maxTimestamp = Math.max(maxTimestamp, timestamp);
+          minTimestamp = Math.min(minTimestamp, timestamp);
+        }
+        return startTime <= maxTimestamp && minTimestamp <= endTime;
+      } else {
+        throw new UnSupportedDataTypeException(
+            String.format("InsertNode type %s is not supported.", insertNode.getClass().getName()));
+      }
+    } catch (Exception e) {
+      LOGGER.warn("...");
+      return true;
+    }
   }
 
   /////////////////////////// TabletInsertionEvent ///////////////////////////

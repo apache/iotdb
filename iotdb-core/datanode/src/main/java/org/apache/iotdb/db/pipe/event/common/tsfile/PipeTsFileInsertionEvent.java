@@ -185,6 +185,11 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     return isGeneratedByPipe;
   }
 
+  @Override
+  public boolean isEventTimeOverlappedWithTimeRange() {
+    return startTime <= resource.getFileEndTime() && resource.getFileStartTime() <= endTime;
+  }
+
   /////////////////////////// TsFileInsertionEvent ///////////////////////////
 
   @Override

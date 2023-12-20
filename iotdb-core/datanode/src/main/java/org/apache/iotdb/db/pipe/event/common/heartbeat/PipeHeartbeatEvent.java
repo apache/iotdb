@@ -118,6 +118,11 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
     return false;
   }
 
+  @Override
+  public boolean isEventTimeOverlappedWithTimeRange() {
+    return true;
+  }
+
   /////////////////////////////// Whether to print ///////////////////////////////
 
   public boolean isShouldPrintMessage() {

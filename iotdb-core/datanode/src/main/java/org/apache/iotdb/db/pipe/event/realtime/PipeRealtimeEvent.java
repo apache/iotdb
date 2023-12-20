@@ -154,6 +154,11 @@ public class PipeRealtimeEvent extends EnrichedEvent {
   }
 
   @Override
+  public boolean isEventTimeOverlappedWithTimeRange() {
+    return event.isEventTimeOverlappedWithTimeRange();
+  }
+
+  @Override
   public String toString() {
     return "PipeRealtimeEvent{"
         + "event="

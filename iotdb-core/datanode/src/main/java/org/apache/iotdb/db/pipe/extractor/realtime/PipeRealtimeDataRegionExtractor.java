@@ -200,7 +200,14 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       event.skipParsingPattern();
     }
 
-    doExtract(event);
+    if (canSkipParsingTime()) {
+      event.skipParsingTime();
+    }
+
+    // TODO: check what happens when skip extracting
+    if (event.getEvent().isEventTimeOverlappedWithTimeRange()) {
+      doExtract(event);
+    }
 
     synchronized (isClosed) {
       if (isClosed.get()) {
@@ -212,12 +219,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   @Override
   public Event supply() {
     EnrichedEvent event = doSupply();
-    if (event != null) {
-      if (canSkipParsingTime()) {
-        event.skipParsingTime();
-      }
-    }
-
+    // do nothing now
     return event;
   }
 
