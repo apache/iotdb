@@ -606,6 +606,15 @@ public class Tablet {
     return values;
   }
 
+  /**
+   * Note that the function will judge 2 tablets to be equal when their contents are logically the
+   * same. Namely, a tablet with bitmap "null" may be equal to another tablet with 3 columns and
+   * bitmap "[null, null, null]", and a tablet with rowSize 2 is judged identical to other tablets
+   * regardless of any timeStamps with indexes larger than or equal to 2.
+   *
+   * @param o the tablet to compare
+   * @return true if the tablets are logically equal
+   */
   @Override
   public boolean equals(Object o) {
     if (this == o) {
