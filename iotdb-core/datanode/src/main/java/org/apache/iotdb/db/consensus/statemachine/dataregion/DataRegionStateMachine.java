@@ -247,9 +247,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
     int retryTime = 0;
     while (retryTime < MAX_WRITE_RETRY_TIMES) {
       result = planNode.accept(new DataExecutionVisitor(), region);
-      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        break;
-      } else {
+      if (needRetry(result.getCode())) {
         retryTime++;
         logger.debug(
             "write operation failed because {}, retryTime: {}.", result.getCode(), retryTime);
@@ -264,6 +262,8 @@ public class DataRegionStateMachine extends BaseStateMachine {
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
         }
+      } else {
+        break;
       }
     }
     return result;
@@ -299,5 +299,12 @@ public class DataRegionStateMachine extends BaseStateMachine {
       logger.warn("{}: cannot get the canonical file of {} due to {}", this, snapshotDir, e);
       return null;
     }
+  }
+
+  public static boolean needRetry(int statusCode) {
+    return statusCode == TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()
+        || statusCode == TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()
+        || statusCode == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()
+        || statusCode == TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode();
   }
 }
