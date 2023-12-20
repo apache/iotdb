@@ -69,7 +69,7 @@ public abstract class EnrichedEvent implements Event {
     this.startTime = startTime;
     this.endTime = endTime;
     isPatternParsed = getPattern().equals(PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE);
-    isTimeParsed = true; // ?
+    isTimeParsed = (Long.MIN_VALUE == startTime && Long.MAX_VALUE == endTime);
   }
 
   /**
@@ -206,6 +206,10 @@ public abstract class EnrichedEvent implements Event {
 
   public boolean shouldParsePatternOrTime() {
     return !isPatternParsed || !isTimeParsed;
+  }
+
+  public boolean shouldParseTime() {
+    return !isTimeParsed;
   }
 
   public abstract EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(

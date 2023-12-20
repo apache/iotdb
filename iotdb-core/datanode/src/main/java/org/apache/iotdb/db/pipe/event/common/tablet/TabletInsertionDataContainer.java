@@ -44,6 +44,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class TabletInsertionDataContainer {
@@ -363,17 +364,37 @@ public class TabletInsertionDataContainer {
       return tablet;
     }
 
-    final int columnSize = measurementSchemaList.length;
-    final List<MeasurementSchema> measurementSchemaArrayList =
-        new ArrayList<>(Arrays.asList(measurementSchemaList).subList(0, columnSize));
-    final Tablet newTablet = new Tablet(deviceId, measurementSchemaArrayList, rowCount);
-    newTablet.timestamps = timestampColumn;
-    newTablet.bitMaps = nullValueColumnBitmaps;
-    newTablet.values = valueColumns;
-    newTablet.rowSize = rowCount;
+    List<Integer> indexList =
+        IntStream.range(0, timestampColumn.length)
+            .filter(this::isRowTimeOverlappedWithTimeRange)
+            .boxed()
+            .collect(Collectors.toList());
+
+    List<MeasurementSchema> measurementSchemaArrayList =
+        new ArrayList<>(
+            Arrays.asList(measurementSchemaList).subList(0, measurementSchemaList.length));
+
+    measurementSchemaArrayList =
+        indexList.stream().map(measurementSchemaArrayList::get).collect(Collectors.toList());
+
+    final Tablet newTablet = new Tablet(deviceId, measurementSchemaArrayList, indexList.size());
+    newTablet.timestamps = indexList.stream().mapToLong(i -> timestampColumn[i]).toArray();
+    newTablet.bitMaps =
+        indexList.stream()
+            .mapToInt(Integer::intValue)
+            .mapToObj(i -> nullValueColumnBitmaps[i])
+            .toArray(BitMap[]::new);
+    newTablet.values =
+        indexList.stream().mapToInt(Integer::intValue).mapToObj(i -> valueColumns[i]).toArray();
+    newTablet.rowSize = indexList.size();
 
     tablet = newTablet;
 
     return tablet;
+  }
+
+  private boolean isRowTimeOverlappedWithTimeRange(long timestamp) {
+    return sourceEvent.shouldParseTime()
+        || (sourceEvent.getStartTime() <= timestamp && timestamp <= sourceEvent.getEndTime());
   }
 }
