@@ -98,28 +98,26 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   public void validate(PipeParameterValidator validator) throws Exception {
     PipeParameters parameters = validator.getParameters();
 
-    if (parameters.hasAnyAttributes(SOURCE_START_TIME_KEY, SOURCE_END_TIME_KEY)) {
-      try {
-        realtimeDataExtractionStartTime =
-            parameters.hasAnyAttributes(SOURCE_START_TIME_KEY)
-                ? DateTimeUtils.convertDatetimeStrToLong(
-                    parameters.getStringByKeys(SOURCE_START_TIME_KEY), ZoneId.systemDefault())
-                : Long.MIN_VALUE;
-        realtimeDataExtractionEndTime =
-            parameters.hasAnyAttributes(SOURCE_END_TIME_KEY)
-                ? DateTimeUtils.convertDatetimeStrToLong(
-                    parameters.getStringByKeys(SOURCE_END_TIME_KEY), ZoneId.systemDefault())
-                : Long.MAX_VALUE;
-        if (realtimeDataExtractionStartTime > realtimeDataExtractionEndTime) {
-          throw new PipeParameterNotValidException(
-              String.format(
-                  "%s should be less than or equal to %s.",
-                  SOURCE_START_TIME_KEY, SOURCE_END_TIME_KEY));
-        }
-      } catch (Exception e) {
-        // compatible with the current validation framework
-        throw new PipeParameterNotValidException(e.getMessage());
+    try {
+      realtimeDataExtractionStartTime =
+          parameters.hasAnyAttributes(SOURCE_START_TIME_KEY)
+              ? DateTimeUtils.convertDatetimeStrToLong(
+                  parameters.getStringByKeys(SOURCE_START_TIME_KEY), ZoneId.systemDefault())
+              : Long.MIN_VALUE;
+      realtimeDataExtractionEndTime =
+          parameters.hasAnyAttributes(SOURCE_END_TIME_KEY)
+              ? DateTimeUtils.convertDatetimeStrToLong(
+                  parameters.getStringByKeys(SOURCE_END_TIME_KEY), ZoneId.systemDefault())
+              : Long.MAX_VALUE;
+      if (realtimeDataExtractionStartTime > realtimeDataExtractionEndTime) {
+        throw new PipeParameterNotValidException(
+            String.format(
+                "%s should be less than or equal to %s.",
+                SOURCE_START_TIME_KEY, SOURCE_END_TIME_KEY));
       }
+    } catch (Exception e) {
+      // compatible with the current validation framework
+      throw new PipeParameterNotValidException(e.getMessage());
     }
   }
 

@@ -156,7 +156,7 @@ public class TabletInsertionDataContainer {
 
     // TODO: consider rowIndexList is empty
     if (rowCount == 0) {
-      throw new PipeException("...");
+      throw new PipeException("[parse] InsertRowNode: rowIndexList is empty");
     }
   }
 
@@ -224,6 +224,11 @@ public class TabletInsertionDataContainer {
     }
 
     rowCount = timestampColumn.length;
+
+    // TODO: consider rowIndexList is empty
+    if (rowCount == 0) {
+      throw new PipeException("[parse] InsertTabletNode: rowIndexList is empty");
+    }
   }
 
   private void parse(Tablet tablet, boolean isAligned, String pattern) {
@@ -296,6 +301,11 @@ public class TabletInsertionDataContainer {
     }
 
     rowCount = tablet.rowSize;
+
+    // TODO: consider rowIndexList is empty
+    if (rowCount == 0) {
+      throw new PipeException("[parse] Tablet: rowIndexList is empty");
+    }
   }
 
   private boolean isRowTimeCoveredByTimeRange(long timestamp) {
