@@ -111,7 +111,7 @@ public class PipeTaskCoordinator {
   public TSStatus startPipe(String pipeName) {
     final TSStatus status = configManager.getProcedureManager().startPipe(pipeName);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Failed to stop pipe {}. Result status: {}.", pipeName, status);
+      LOGGER.warn("Failed to start pipe {}. Result status: {}.", pipeName, status);
     }
     return status;
   }
@@ -120,7 +120,7 @@ public class PipeTaskCoordinator {
   public TSStatus stopPipe(String pipeName) {
     final TSStatus status = configManager.getProcedureManager().stopPipe(pipeName);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Failed to start pipe {}. Result status: {}.", pipeName, status);
+      LOGGER.warn("Failed to stop pipe {}. Result status: {}.", pipeName, status);
     }
     return status;
   }

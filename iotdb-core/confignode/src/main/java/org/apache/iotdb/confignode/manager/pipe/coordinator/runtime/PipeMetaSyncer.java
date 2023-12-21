@@ -117,7 +117,7 @@ public class PipeMetaSyncer {
       pipeAutoRestartRoundCounter.set(0);
     }
 
-    final TSStatus metaSyncStatus = procedureManager.pipeHandleMetaChangeWithBlock(true, true);
+    final TSStatus metaSyncStatus = procedureManager.pipeMetaSync();
 
     if (metaSyncStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       boolean successfulSync = !somePipesNeedRestarting;
