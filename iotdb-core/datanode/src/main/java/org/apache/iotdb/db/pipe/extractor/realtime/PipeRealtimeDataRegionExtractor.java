@@ -247,7 +247,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   }
 
   private boolean isDbTimePartitionCoveredByTimeRange() {
-    if (skipTimeParse) {
+    if (!skipTimeParse) {
       return false;
     }
 

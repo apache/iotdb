@@ -71,7 +71,7 @@ public class PipeExtractorConstant {
   public static final String SOURCE_END_TIME_KEY = "source.end-time";
   public static final String SOURCE_REALTIME_SKIP_TIME_PARSE_KEY =
       "source.realtime.skip-time-parse";
-  public static final boolean SOURCE_REALTIME_TIME_SKIP_TIME_PARSE_DEFAULT_VALUE = true;
+  public static final boolean SOURCE_REALTIME_TIME_SKIP_TIME_PARSE_DEFAULT_VALUE = false;
 
   private PipeExtractorConstant() {
     throw new IllegalStateException("Utility class");
