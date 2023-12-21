@@ -94,6 +94,7 @@ public class IoTDBDynamicTableFactory
     optionalOptions.add(Options.CDC_PORT);
     optionalOptions.add(Options.SQL);
     optionalOptions.add(Options.PATTERN);
+    optionalOptions.add(Options.CDC_MODE);
 
     return optionalOptions;
   }
