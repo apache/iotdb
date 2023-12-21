@@ -160,12 +160,15 @@ public class LogDispatcher {
   }
 
   public void checkAndFlushIndex() {
-    threads.forEach(
-        thread -> {
-          IndexController controller = thread.getController();
-          controller.update(controller.getCurrentIndex(), true);
-        });
-    reader.setSafelyDeletedSearchIndex(impl.getMinFlushedSyncIndex());
+    if (!threads.isEmpty()) {
+      threads.forEach(
+          thread -> {
+            IndexController controller = thread.getController();
+            controller.update(controller.getCurrentIndex(), true);
+          });
+      // do not set SafelyDeletedSearchIndex as it is Long.MAX_VALUE when replica is 1
+      reader.setSafelyDeletedSearchIndex(impl.getMinFlushedSyncIndex());
+    }
   }
 
   public void offer(IndexedConsensusRequest request) {

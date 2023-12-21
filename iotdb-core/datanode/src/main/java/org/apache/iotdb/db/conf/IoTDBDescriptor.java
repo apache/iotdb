@@ -114,26 +114,13 @@ public class IoTDBDescriptor {
     return conf;
   }
 
-  public String getConfDir() {
-    // Check if a config-directory was specified first.
-    String confString = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
-    // If it wasn't, check if a home directory was provided (This usually contains a config)
-    if (confString == null) {
-      confString = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
-      if (confString != null) {
-        confString = confString + File.separatorChar + "conf";
-      }
-    }
-    return confString;
-  }
-
   /**
    * get props url location
    *
    * @return url object if location exit, otherwise null.
    */
   public URL getPropsUrl(String configFileName) {
-    String urlString = getConfDir();
+    String urlString = commonDescriptor.getConfDir();
     if (urlString == null) {
       // If urlString wasn't provided, try to find a default config in the root of the classpath.
       URL uri = IoTDBConfig.class.getResource("/" + configFileName);
@@ -834,11 +821,10 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "recovery_log_interval_in_ms", String.valueOf(conf.getRecoveryLogIntervalInMs()))));
 
-    conf.setEnableDiscardOutOfOrderData(
+    conf.setEnableSeparateData(
         Boolean.parseBoolean(
             properties.getProperty(
-                "enable_discard_out_of_order_data",
-                Boolean.toString(conf.isEnableDiscardOutOfOrderData()))));
+                "enable_separate_data", Boolean.toString(conf.isEnableSeparateData()))));
 
     conf.setWindowEvaluationThreadCount(
         Integer.parseInt(

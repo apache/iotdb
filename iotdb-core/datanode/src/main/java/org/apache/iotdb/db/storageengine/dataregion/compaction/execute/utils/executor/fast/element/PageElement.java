@@ -19,96 +19,52 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element;
 
-import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
-import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReader;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.List;
 
-@SuppressWarnings("squid:S1104")
-public class PageElement {
+public abstract class PageElement {
 
-  public PageHeader pageHeader;
+  private final ChunkMetadataElement chunkMetadataElement;
 
-  public List<PageHeader> valuePageHeaders;
+  private final boolean isLastPage;
 
-  public TsBlock batchData;
+  private final long priority;
 
   // pointReader is used to replace batchData to get rid of huge memory cost by loading data point
   // in a lazy way
-  public IPointReader pointReader;
+  protected IPointReader pointReader;
 
-  // compressed page data
-  public ByteBuffer pageData;
-
-  public List<ByteBuffer> valuePageDatas;
-
-  @SuppressWarnings("checkstyle:MemberNameCheck")
-  public IChunkReader iChunkReader;
-
-  public long priority;
-
-  public long startTime;
-
-  public boolean isSelected = false;
-
-  public boolean isLastPage;
-
-  public ChunkMetadataElement chunkMetadataElement;
-
-  public boolean needForceDecoding;
-
-  public PageElement(
-      PageHeader pageHeader,
-      ByteBuffer pageData,
-      ChunkReader chunkReader,
-      ChunkMetadataElement chunkMetadataElement,
-      boolean isLastPage,
-      long priority) {
-    this.pageHeader = pageHeader;
-    this.pageData = pageData;
-    this.priority = priority;
-    this.iChunkReader = chunkReader;
-    this.startTime = pageHeader.getStartTime();
+  protected PageElement(
+      ChunkMetadataElement chunkMetadataElement, boolean isLastPage, long priority) {
     this.chunkMetadataElement = chunkMetadataElement;
     this.isLastPage = isLastPage;
-    this.needForceDecoding = chunkMetadataElement.needForceDecoding;
-  }
-
-  @SuppressWarnings("squid:S107")
-  public PageElement(
-      PageHeader timePageHeader,
-      List<PageHeader> valuePageHeaders,
-      ByteBuffer timePageData,
-      List<ByteBuffer> valuePageDatas,
-      AlignedChunkReader alignedChunkReader,
-      ChunkMetadataElement chunkMetadataElement,
-      boolean isLastPage,
-      long priority) {
-    this.pageHeader = timePageHeader;
-    this.valuePageHeaders = valuePageHeaders;
-    this.pageData = timePageData;
-    this.valuePageDatas = valuePageDatas;
     this.priority = priority;
-    this.iChunkReader = alignedChunkReader;
-    this.startTime = pageHeader.getStartTime();
-    this.chunkMetadataElement = chunkMetadataElement;
-    this.isLastPage = isLastPage;
-    this.needForceDecoding = chunkMetadataElement.needForceDecoding;
   }
 
-  public void deserializePage() throws IOException {
-    if (iChunkReader instanceof AlignedChunkReader) {
-      this.pointReader =
-          ((AlignedChunkReader) iChunkReader)
-              .getPagePointReader(pageHeader, valuePageHeaders, pageData, valuePageDatas);
-    } else {
-      this.batchData = ((ChunkReader) iChunkReader).readPageData(pageHeader, pageData);
-    }
+  public abstract void deserializePage() throws IOException;
+
+  public abstract long getStartTime();
+
+  public abstract long getEndTime();
+
+  public ChunkMetadataElement getChunkMetadataElement() {
+    return chunkMetadataElement;
+  }
+
+  public boolean needForceDecoding() {
+    return chunkMetadataElement.needForceDecoding;
+  }
+
+  public boolean isLastPage() {
+    return isLastPage;
+  }
+
+  public long getPriority() {
+    return priority;
+  }
+
+  public IPointReader getPointReader() {
+    return pointReader;
   }
 }

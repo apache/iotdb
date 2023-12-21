@@ -21,6 +21,9 @@ package org.apache.iotdb.confignode.persistence.pipe;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.executable.ExecutableManager;
+import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.plugin.meta.ConfigNodePipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
@@ -34,9 +37,6 @@ import org.apache.iotdb.confignode.consensus.response.JarResp;
 import org.apache.iotdb.confignode.consensus.response.pipe.plugin.PipePluginTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant;
-import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
-import org.apache.iotdb.db.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -58,6 +58,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.DO_NOTHING_PROCESSOR;
 import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.IOTDB_EXTRACTOR;
+import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR;
 
 public class PipePluginInfo implements SnapshotProcessor {
 
@@ -72,8 +73,8 @@ public class PipePluginInfo implements SnapshotProcessor {
   private final PipePluginExecutableManager pipePluginExecutableManager;
 
   public PipePluginInfo() throws IOException {
-    pipePluginMetaKeeper = new ConfigNodePipePluginMetaKeeper();
-    pipePluginExecutableManager =
+    this.pipePluginMetaKeeper = new ConfigNodePipePluginMetaKeeper();
+    this.pipePluginExecutableManager =
         PipePluginExecutableManager.setupAndGetInstance(
             CONFIG_NODE_CONF.getPipeTemporaryLibDir(), CONFIG_NODE_CONF.getPipeDir());
   }
@@ -153,16 +154,10 @@ public class PipePluginInfo implements SnapshotProcessor {
 
     final PipeParameters connectorParameters =
         new PipeParameters(createPipeRequest.getConnectorAttributes());
-    if (!connectorParameters.hasAnyAttributes(
-        PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY)) {
-      final String exceptionMessage =
-          "Failed to create pipe, the pipe connector plugin is not specified";
-      LOGGER.warn(exceptionMessage);
-      throw new PipeException(exceptionMessage);
-    }
     final String connectorPluginName =
-        connectorParameters.getStringByKeys(
-            PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY);
+        connectorParameters.getStringOrDefault(
+            Arrays.asList(PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
+            IOTDB_THRIFT_CONNECTOR.getPipePluginName());
     if (!pipePluginMetaKeeper.containsPipePlugin(connectorPluginName)) {
       final String exceptionMessage =
           String.format(

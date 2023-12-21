@@ -751,18 +751,8 @@ public class DateTimeUtils {
 
   public static final long MS_TO_MONTH = 30 * 86400_000L;
 
-  public static long calcPositiveIntervalByMonth(
-      long startTime, TimeDuration duration, long times) {
+  public static long calcPositiveIntervalByMonth(long startTime, TimeDuration duration) {
     return TimeDuration.calcPositiveIntervalByMonth(
-        startTime,
-        duration,
-        times,
-        SessionManager.getInstance().getSessionTimeZone(),
-        TimestampPrecisionUtils.currPrecision);
-  }
-
-  public static long calcNegativeIntervalByMonth(long startTime, TimeDuration duration) {
-    return TimeDuration.calcNegativeIntervalByMonth(
         startTime,
         duration,
         SessionManager.getInstance().getSessionTimeZone(),

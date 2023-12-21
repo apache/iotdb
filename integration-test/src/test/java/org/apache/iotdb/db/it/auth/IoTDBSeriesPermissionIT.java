@@ -173,14 +173,14 @@ public class IoTDBSeriesPermissionIT {
     resultSetEqualTest(
         "show devices",
         showDevicesColumnHeaders.stream().map(ColumnHeader::getColumnName).toArray(String[]::new),
-        new String[] {"root.test.d1,false,"},
+        new String[] {"root.test.d1,false,null,"},
         "test1",
         "test123");
     grantUserSeriesPrivilege("test1", PrivilegeType.READ_SCHEMA, "root.test1.d1.**");
     resultSetEqualTest(
         "show devices",
         showDevicesColumnHeaders.stream().map(ColumnHeader::getColumnName).toArray(String[]::new),
-        new String[] {"root.test.d1,false,", "root.test1.d1,false,"},
+        new String[] {"root.test.d1,false,null,", "root.test1.d1,false,null,"},
         "test1",
         "test123");
     resultSetEqualTest(

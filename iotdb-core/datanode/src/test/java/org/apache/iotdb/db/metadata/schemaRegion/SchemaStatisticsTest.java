@@ -28,7 +28,7 @@ import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaEngineStatistics;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.rescon.ISchemaEngineStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.CacheMemoryManager;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.ReleaseFlushMonitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.SchemaRegionWritePlanFactory;
@@ -40,7 +40,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -56,17 +55,15 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
   }
 
   @Test
-  @Ignore
   public void testPBTreeMemoryStatistics() throws Exception {
     ISchemaRegion schemaRegion1 = getSchemaRegion("root.sg1", 0);
-    ISchemaRegion schemaRegion2 = getSchemaRegion("root.sg2", 0);
     ISchemaEngineStatistics engineStatistics =
         SchemaEngine.getInstance().getSchemaEngineStatistics();
 
     SchemaRegionTestUtil.createSimpleTimeseriesByList(
         schemaRegion1, Arrays.asList("root.sg1.n.s0", "root.sg1.n.v.d1.s1", "root.sg1.n.v.d2.s2"));
     SchemaRegionTestUtil.createSimpleTimeseriesByList(
-        schemaRegion2, Arrays.asList("root.sg2.d0.s0"));
+        schemaRegion1, Arrays.asList("root.sg1.d0.s0"));
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(new PartialPath("root.**.s1"));
     patternTree.appendPathPattern(new PartialPath("root.**.s2"));
@@ -79,7 +76,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
       IMNodeFactory<ICachedMNode> nodeFactory =
           MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
       // wait release and flush task
-      Thread.sleep(1000);
+      Thread.sleep(6000);
       // schemaRegion1
       IMNode<ICachedMNode> sg1 =
           nodeFactory.createDatabaseMNode(
@@ -94,8 +91,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
         Assert.assertEquals(
             size1 + nodeFactory.createDeviceMNode(sg1.getAsMNode(), "n").estimateSize(),
             schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage());
-        CacheMemoryManager.getInstance().forceFlushAndRelease();
-        Thread.sleep(1000);
+        ReleaseFlushMonitor.getInstance().forceFlushAndRelease();
         Assert.assertEquals(
             size1, schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage());
       }
@@ -270,7 +266,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
         Assert.assertTrue(
             d0ExistSize == schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage()
                 || d1ExistSize == schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage());
-        CacheMemoryManager.getInstance().forceFlushAndRelease();
+        ReleaseFlushMonitor.getInstance().forceFlushAndRelease();
         // wait release and flush task
         Thread.sleep(1000);
         Assert.assertEquals(
@@ -456,7 +452,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
         if (0 != cachedRegionStatistics1.getUnpinnedMNodeNum()) {
           // "d0" may remain in PartialMemory mode
           Assert.assertEquals("PBTree-PartialMemory", testParams.getTestModeName());
-          CacheMemoryManager.getInstance().forceFlushAndRelease();
+          ReleaseFlushMonitor.getInstance().forceFlushAndRelease();
           Thread.sleep(1000);
           Assert.assertEquals(0, cachedRegionStatistics1.getUnpinnedMNodeNum());
         }

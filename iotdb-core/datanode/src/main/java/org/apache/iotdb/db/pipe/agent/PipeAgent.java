@@ -19,23 +19,23 @@
 
 package org.apache.iotdb.db.pipe.agent;
 
-import org.apache.iotdb.db.pipe.agent.plugin.PipePluginAgent;
+import org.apache.iotdb.db.pipe.agent.plugin.PipePluginDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.receiver.PipeReceiverAgent;
 import org.apache.iotdb.db.pipe.agent.runtime.PipeRuntimeAgent;
-import org.apache.iotdb.db.pipe.agent.task.PipeTaskAgent;
+import org.apache.iotdb.db.pipe.agent.task.PipeTaskDataNodeAgent;
 
 /** PipeAgent is the entry point of the pipe module in DataNode. */
 public class PipeAgent {
 
-  private final PipePluginAgent pipePluginAgent;
-  private final PipeTaskAgent pipeTaskAgent;
+  private final PipePluginDataNodeAgent pipePluginDataNodeAgent;
+  private final PipeTaskDataNodeAgent pipeTaskDataNodeAgent;
   private final PipeRuntimeAgent pipeRuntimeAgent;
   private final PipeReceiverAgent pipeReceiverAgent;
 
   /** Private constructor to prevent users from creating a new instance. */
   private PipeAgent() {
-    pipePluginAgent = new PipePluginAgent();
-    pipeTaskAgent = new PipeTaskAgent();
+    pipePluginDataNodeAgent = new PipePluginDataNodeAgent();
+    pipeTaskDataNodeAgent = new PipeTaskDataNodeAgent();
     pipeRuntimeAgent = new PipeRuntimeAgent();
     pipeReceiverAgent = new PipeReceiverAgent();
   }
@@ -50,8 +50,8 @@ public class PipeAgent {
    *
    * @return the singleton instance of PipeTaskAgent
    */
-  public static PipeTaskAgent task() {
-    return PipeAgentHolder.HANDLE.pipeTaskAgent;
+  public static PipeTaskDataNodeAgent task() {
+    return PipeAgentHolder.HANDLE.pipeTaskDataNodeAgent;
   }
 
   /**
@@ -59,8 +59,8 @@ public class PipeAgent {
    *
    * @return the singleton instance of PipePluginAgent
    */
-  public static PipePluginAgent plugin() {
-    return PipeAgentHolder.HANDLE.pipePluginAgent;
+  public static PipePluginDataNodeAgent plugin() {
+    return PipeAgentHolder.HANDLE.pipePluginDataNodeAgent;
   }
 
   /**

@@ -133,6 +133,7 @@ public class ThriftConfigNodeSerDeUtils {
     return configNodeLocation;
   }
 
+  // Deprecated, restored for compatibility
   public static void serializeTPipeSinkInfo(TPipeSinkInfo pipeSinkInfo, DataOutputStream stream) {
     try {
       pipeSinkInfo.write(generateWriteProtocol(stream));
@@ -141,6 +142,7 @@ public class ThriftConfigNodeSerDeUtils {
     }
   }
 
+  // Deprecated, restored for compatibility
   public static TPipeSinkInfo deserializeTPipeSinkInfo(ByteBuffer buffer) {
     TPipeSinkInfo pipeSinkInfo = new TPipeSinkInfo();
     try {

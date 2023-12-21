@@ -45,7 +45,7 @@ import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
-import org.apache.iotdb.confignode.manager.pipe.PipeManager;
+import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
@@ -106,6 +106,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.consensus.common.DataSet;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 /**
@@ -113,6 +114,8 @@ import java.util.List;
  * Managers, services.
  */
 public interface IManager {
+
+  ClusterManager getClusterManager();
 
   /**
    * Get DataManager.
@@ -587,6 +590,13 @@ public interface IManager {
    * @return All pipe information.
    */
   TGetAllPipeInfoResp getAllPipeInfo();
+
+  /**
+   * Execute the config plan received from pipe.
+   *
+   * @return The result of the command execution.
+   */
+  TSStatus executeSyncCommand(ByteBuffer configPhysicalPlanBinary);
 
   /**
    * Get RegionId. used for Show cluster slots information in
