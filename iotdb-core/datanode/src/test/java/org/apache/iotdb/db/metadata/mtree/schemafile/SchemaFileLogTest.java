@@ -135,7 +135,9 @@ public class SchemaFileLogTest {
       sf.getChildren(lastNode);
       fail();
     } catch (Exception e) {
-      Assert.assertEquals("Segment(index:0) not found in page(index:2).", e.getMessage());
+      Assert.assertEquals(
+          String.format("Segment(index:0) not found in page(index:%d).", corruptPageIndex),
+          e.getMessage());
     } finally {
       sf.close();
     }

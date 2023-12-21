@@ -31,6 +31,8 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 
 public abstract class AbstractWALBuffer implements IWALBuffer {
@@ -48,6 +50,7 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
   protected volatile long currentWALFileVersion;
   // current search index
   protected volatile long currentSearchIndex;
+
   // current wal file log writer
   // it's safe to use volatile here to make this reference thread-safe.
   @SuppressWarnings("squid:S3077")
@@ -106,11 +109,12 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
               WALFileUtils.parseStartSearchIndex(lastName),
               fileStatus);
       File targetFile = SystemFileFactory.INSTANCE.getFile(logDirectory, targetName);
-      if (lastFile.renameTo(targetFile)) {
-        lastFile = targetFile;
-      } else {
-        logger.error("Fail to rename file {} to {}", lastName, targetName);
-      }
+      Files.move(
+          lastFile.toPath(),
+          targetFile.toPath(),
+          StandardCopyOption.REPLACE_EXISTING,
+          StandardCopyOption.ATOMIC_MOVE);
+      lastFile = targetFile;
     }
     // roll file
     long nextFileVersion = currentWALFileVersion + 1;

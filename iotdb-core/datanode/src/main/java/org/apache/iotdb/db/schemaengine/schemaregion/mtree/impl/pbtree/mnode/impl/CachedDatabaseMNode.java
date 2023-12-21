@@ -22,7 +22,8 @@ import org.apache.iotdb.commons.schema.node.common.AbstractDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.info.IDeviceInfo;
 import org.apache.iotdb.commons.schema.node.role.IInternalMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.DatabaseInfo;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.CacheEntry;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockEntry;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.cache.CacheEntry;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
 public class CachedDatabaseMNode
@@ -47,6 +48,16 @@ public class CachedDatabaseMNode
   @Override
   public void setCacheEntry(CacheEntry cacheEntry) {
     basicMNode.setCacheEntry(cacheEntry);
+  }
+
+  @Override
+  public LockEntry getLockEntry() {
+    return basicMNode.getLockEntry();
+  }
+
+  @Override
+  public void setLockEntry(LockEntry lockEntry) {
+    basicMNode.setLockEntry(lockEntry);
   }
 
   @Override

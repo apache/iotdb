@@ -230,7 +230,6 @@ public class SchemaFileTest {
     nsf.writeMNode(vt4);
 
     Assert.assertEquals(11111L, nsf.init().getAsDatabaseMNode().getDataTTL());
-
     nsf.close();
   }
 

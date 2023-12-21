@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.plugin.meta;
 
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -32,6 +33,13 @@ import java.util.concurrent.ConcurrentHashMap;
 public abstract class PipePluginMetaKeeper {
 
   protected final Map<String, PipePluginMeta> pipePluginNameToMetaMap = new ConcurrentHashMap<>();
+  protected final Map<String, Class<?>> pipePluginNameToClassMap;
+
+  public PipePluginMetaKeeper() {
+    pipePluginNameToClassMap = new ConcurrentHashMap<>();
+
+    loadBuiltInPlugins();
+  }
 
   protected void loadBuiltInPlugins() {
     for (final BuiltinPipePlugin builtinPipePlugin : BuiltinPipePlugin.values()) {
@@ -39,6 +47,8 @@ public abstract class PipePluginMetaKeeper {
           builtinPipePlugin.getPipePluginName(),
           new PipePluginMeta(
               builtinPipePlugin.getPipePluginName(), builtinPipePlugin.getClassName()));
+      addPluginAndClass(
+          builtinPipePlugin.getPipePluginName(), builtinPipePlugin.getPipePluginClass());
     }
   }
 
@@ -60,6 +70,24 @@ public abstract class PipePluginMetaKeeper {
 
   public boolean containsPipePlugin(String pluginName) {
     return pipePluginNameToMetaMap.containsKey(pluginName.toUpperCase());
+  }
+
+  public void addPluginAndClass(String pluginName, Class<?> clazz) {
+    pipePluginNameToClassMap.put(pluginName.toUpperCase(), clazz);
+  }
+
+  public Class<?> getPluginClass(String pluginName) {
+    return pipePluginNameToClassMap.get(pluginName.toUpperCase());
+  }
+
+  public void removePluginClass(String pluginName) {
+    pipePluginNameToClassMap.remove(pluginName.toUpperCase());
+  }
+
+  public void updatePluginClass(PipePluginMeta pipePluginMeta, PipePluginClassLoader classLoader)
+      throws ClassNotFoundException {
+    final Class<?> functionClass = Class.forName(pipePluginMeta.getClassName(), true, classLoader);
+    pipePluginNameToClassMap.put(pipePluginMeta.getPluginName().toUpperCase(), functionClass);
   }
 
   protected void processTakeSnapshot(OutputStream outputStream) throws IOException {

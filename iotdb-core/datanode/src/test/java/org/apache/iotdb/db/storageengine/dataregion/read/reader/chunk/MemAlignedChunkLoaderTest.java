@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedReadOnlyMemChunk;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
@@ -54,7 +55,8 @@ public class MemAlignedChunkLoaderTest {
     AlignedReadOnlyMemChunk chunk = Mockito.mock(AlignedReadOnlyMemChunk.class);
     ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
 
-    MemAlignedChunkLoader memAlignedChunkLoader = new MemAlignedChunkLoader(chunk);
+    MemAlignedChunkLoader memAlignedChunkLoader =
+        new MemAlignedChunkLoader(new QueryContext(), chunk);
     try {
       memAlignedChunkLoader.loadChunk(chunkMetadata);
       fail();
