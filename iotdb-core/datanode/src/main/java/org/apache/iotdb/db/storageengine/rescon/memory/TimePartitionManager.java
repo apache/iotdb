@@ -22,14 +22,17 @@ package org.apache.iotdb.db.storageengine.rescon.memory;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.extractor.realtime.listener.PipeTimePartitionListener;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
@@ -60,6 +63,13 @@ public class TimePartitionManager {
       }
 
       timePartitionInfoMapForRegion.put(timePartitionInfo.partitionId, timePartitionInfo);
+
+      PipeTimePartitionListener.getInstance()
+          .listenToTimePartitionGrow(
+              timePartitionInfo.dataRegionId.toString(),
+              new Pair<>(
+                  timePartitionInfoMapForRegion.firstKey(),
+                  timePartitionInfoMapForRegion.lastKey()));
     }
   }
 
@@ -155,12 +165,6 @@ public class TimePartitionManager {
     }
   }
 
-  public Map<Long, TimePartitionInfo> getTimePartitionInfo(DataRegionId dataRegionId) {
-    synchronized (timePartitionInfoMap) {
-      return timePartitionInfoMap.get(dataRegionId);
-    }
-  }
-
   public void clear() {
     synchronized (timePartitionInfoMap) {
       timePartitionInfoMap.clear();
@@ -181,5 +185,21 @@ public class TimePartitionManager {
     private InstanceHolder() {}
 
     private static TimePartitionManager instance = new TimePartitionManager();
+  }
+
+  //////////////////////////// APIs provided for pipe engine ////////////////////////////
+
+  public Pair<Long, Long> getTimePartitionIdBound(DataRegionId dataRegionId) {
+    synchronized (timePartitionInfoMap) {
+      Map<Long, TimePartitionInfo> timePartitionInfoMapForDataRegion =
+          timePartitionInfoMap.get(dataRegionId);
+      if (Objects.nonNull(timePartitionInfoMapForDataRegion)
+          && timePartitionInfoMapForDataRegion instanceof TreeMap) {
+        return new Pair<>(
+            ((TreeMap<Long, TimePartitionInfo>) timePartitionInfoMapForDataRegion).firstKey(),
+            ((TreeMap<Long, TimePartitionInfo>) timePartitionInfoMapForDataRegion).lastKey());
+      }
+    }
+    return null;
   }
 }
