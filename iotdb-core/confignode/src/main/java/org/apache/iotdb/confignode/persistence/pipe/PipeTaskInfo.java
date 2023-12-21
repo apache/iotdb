@@ -423,6 +423,20 @@ public class PipeTaskInfo implements SnapshotProcessor {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
+  public boolean shouldBeRunning(String pipeName) {
+    acquireReadLock();
+    try {
+      return shouldBeRunningInternal(pipeName);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  private boolean shouldBeRunningInternal(String pipeName) {
+    return pipeMetaKeeper.containsPipeMeta(pipeName)
+        && pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta().getShouldBeRunning();
+  }
+
   /**
    * Clear the exceptions of a pipe locally after it starts successfully.
    *
@@ -465,6 +479,24 @@ public class PipeTaskInfo implements SnapshotProcessor {
               }
             });
   }
+
+  public void setShouldBeRunningToFalse(String pipeName) {
+    acquireWriteLock();
+    try {
+      setShouldBeRunningToFalseInternal(pipeName);
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  private void setShouldBeRunningToFalseInternal(String pipeName) {
+    if (!pipeMetaKeeper.containsPipeMeta(pipeName)) {
+      return;
+    }
+
+    pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta().setShouldBeRunning(false);
+  }
+
   /**
    * Record the exceptions of all pipes locally if they encountered failure when pushing pipe meta.
    *
