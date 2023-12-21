@@ -30,7 +30,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -38,6 +37,9 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -48,6 +50,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class TabletInsertionDataContainer {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(TabletInsertionDataContainer.class);
 
   private final PipeTaskMeta pipeTaskMeta; // used to report progress
   private final EnrichedEvent sourceEvent; // used to report progress
@@ -153,10 +157,14 @@ public class TabletInsertionDataContainer {
     }
 
     rowCount = rowIndexList.size();
-
-    // TODO: consider rowIndexList is empty
     if (rowCount == 0) {
-      throw new PipeException("[parse] InsertRowNode: rowIndexList is empty");
+      LOGGER.warn(
+          "InsertRowNode({}) is parsed to zero rows according to the pattern({}) and time range({} ~ {}), the corresponding source event({}) will be ignored.",
+          insertRowNode,
+          pattern,
+          sourceEvent.getStartTime(),
+          sourceEvent.getEndTime(),
+          sourceEvent);
     }
   }
 
@@ -224,10 +232,14 @@ public class TabletInsertionDataContainer {
     }
 
     rowCount = timestampColumn.length;
-
-    // TODO: consider rowIndexList is empty
     if (rowCount == 0) {
-      throw new PipeException("[parse] InsertTabletNode: rowIndexList is empty");
+      LOGGER.warn(
+          "InsertTabletNode({}) is parsed to zero rows according to the pattern({}) and time range({} ~ {}), the corresponding source event({}) will be ignored.",
+          insertTabletNode,
+          pattern,
+          sourceEvent.getStartTime(),
+          sourceEvent.getEndTime(),
+          sourceEvent);
     }
   }
 
@@ -301,10 +313,14 @@ public class TabletInsertionDataContainer {
     }
 
     rowCount = tablet.rowSize;
-
-    // TODO: consider rowIndexList is empty
     if (rowCount == 0) {
-      throw new PipeException("[parse] Tablet: rowIndexList is empty");
+      LOGGER.warn(
+          "Tablet({}) is parsed to zero rows according to the pattern({}) and time range({} ~ {}), the corresponding source event({}) will be ignored.",
+          tablet,
+          pattern,
+          sourceEvent.getStartTime(),
+          sourceEvent.getEndTime(),
+          sourceEvent);
     }
   }
 
