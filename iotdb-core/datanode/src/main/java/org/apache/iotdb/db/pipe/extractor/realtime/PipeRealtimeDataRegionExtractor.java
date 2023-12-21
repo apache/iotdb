@@ -79,7 +79,8 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   // This variable is used to record the upper and lower bounds that the time partition ID
   // corresponding to this data region has ever reached. It may be updated by
   // PipeTimePartitionListener.
-  private AtomicReference<Pair<Long, Long>> dataRegionTimePartitionIdBound;
+  private final AtomicReference<Pair<Long, Long>> dataRegionTimePartitionIdBound =
+      new AtomicReference<>();
 
   protected boolean isForwardingPipeRequests;
 
@@ -275,7 +276,8 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   private boolean isDataRegionTimePartitionCoveredByTimeRange() {
     Pair<Long, Long> timePartitionIdBound = dataRegionTimePartitionIdBound.get();
-    return startTimePartitionIdLowerBound <= timePartitionIdBound.left
+    return Objects.nonNull(timePartitionIdBound)
+        && startTimePartitionIdLowerBound <= timePartitionIdBound.left
         && timePartitionIdBound.right <= endTimePartitionIdUpperBound;
   }
 

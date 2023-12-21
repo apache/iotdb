@@ -61,31 +61,33 @@ public class PipeTimePartitionListener {
 
   //////////////////////////// listen to changes ////////////////////////////
 
-  public void listenToTimePartitionGrow(
+  public synchronized void listenToTimePartitionGrow(
       String dataRegionId, Pair<Long, Long> newTimePartitionIdBound) {
     boolean shouldBroadcastTimePartitionChange = false;
-    Pair<Long, Long> oldTimePartitionBound = dataRegionId2TimePartitionIdBound.get(dataRegionId);
+    Pair<Long, Long> oldTimePartitionIdBound = dataRegionId2TimePartitionIdBound.get(dataRegionId);
 
-    if (Objects.isNull(oldTimePartitionBound)) {
+    if (Objects.isNull(oldTimePartitionIdBound)) {
       dataRegionId2TimePartitionIdBound.put(dataRegionId, newTimePartitionIdBound);
       shouldBroadcastTimePartitionChange = true;
-    } else if (newTimePartitionIdBound.left < oldTimePartitionBound.left
-        || oldTimePartitionBound.right < newTimePartitionIdBound.right) {
+    } else if (newTimePartitionIdBound.left < oldTimePartitionIdBound.left
+        || oldTimePartitionIdBound.right < newTimePartitionIdBound.right) {
       dataRegionId2TimePartitionIdBound.put(
           dataRegionId,
           new Pair<>(
-              Math.min(oldTimePartitionBound.left, newTimePartitionIdBound.left),
-              Math.max(oldTimePartitionBound.right, newTimePartitionIdBound.right)));
+              Math.min(oldTimePartitionIdBound.left, newTimePartitionIdBound.left),
+              Math.max(oldTimePartitionIdBound.right, newTimePartitionIdBound.right)));
       shouldBroadcastTimePartitionChange = true;
     }
 
     if (shouldBroadcastTimePartitionChange) {
-      dataRegionId2Extractors
-          .get(dataRegionId)
-          .forEach(
-              (id, extractor) ->
-                  extractor.setDataRegionTimePartitionIdBound(
-                      dataRegionId2TimePartitionIdBound.get(dataRegionId)));
+      Map<String, PipeRealtimeDataRegionExtractor> extractors =
+          dataRegionId2Extractors.get(dataRegionId);
+      if (Objects.isNull(extractors)) {
+        return;
+      }
+      Pair<Long, Long> timePartitionIdBound = dataRegionId2TimePartitionIdBound.get(dataRegionId);
+      extractors.forEach(
+          (id, extractor) -> extractor.setDataRegionTimePartitionIdBound(timePartitionIdBound));
     }
   }
 
