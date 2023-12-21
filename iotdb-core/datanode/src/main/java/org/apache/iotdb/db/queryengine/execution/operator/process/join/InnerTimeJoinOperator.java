@@ -182,6 +182,7 @@ public class InnerTimeJoinOperator implements ProcessOperator {
       }
       if (allHave) {
         timeBuilder.writeLong(time);
+        resultBuilder.declarePosition();
         appendOneSelectedRow(selectedRowIndexArray);
       }
     }
