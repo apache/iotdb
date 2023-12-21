@@ -866,12 +866,12 @@ public class ProcedureManager {
       final long procedureId = executor.submitProcedure(new PipeMetaSyncProcedure());
       final List<TSStatus> statusList = new ArrayList<>();
       final boolean isSucceed =
-              waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
+          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
       if (isSucceed) {
         return RpcUtils.SUCCESS_STATUS;
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-                .setMessage(statusList.get(0).getMessage());
+            .setMessage(statusList.get(0).getMessage());
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
