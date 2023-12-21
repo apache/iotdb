@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.pipe.extractor;
+package org.apache.iotdb.confignode.manager.pipe.transfer.extractor;
 
 import org.apache.iotdb.commons.pipe.datastructure.ConcurrentIterableLinkedQueue;
 import org.apache.iotdb.commons.pipe.datastructure.LinkedQueueVersion;

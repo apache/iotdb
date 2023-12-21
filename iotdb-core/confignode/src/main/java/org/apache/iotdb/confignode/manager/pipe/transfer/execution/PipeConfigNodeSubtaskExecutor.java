@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.pipe.execution;
+package org.apache.iotdb.confignode.manager.pipe.transfer.execution;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.pipe.execution.executor.PipeSubtaskExecutor;

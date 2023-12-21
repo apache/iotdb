@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.pipe.agent.task;
+package org.apache.iotdb.confignode.manager.pipe.transfer.agent.task;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
@@ -26,9 +26,9 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.manager.pipe.task.PipeConfigNodeTask;
-import org.apache.iotdb.confignode.manager.pipe.task.PipeConfigNodeTaskBuilder;
-import org.apache.iotdb.confignode.manager.pipe.task.PipeConfigNodeTaskStage;
+import org.apache.iotdb.confignode.manager.pipe.transfer.task.PipeConfigNodeTask;
+import org.apache.iotdb.confignode.manager.pipe.transfer.task.PipeConfigNodeTaskBuilder;
+import org.apache.iotdb.confignode.manager.pipe.transfer.task.PipeConfigNodeTaskStage;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

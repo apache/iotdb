@@ -17,15 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.pipe.extractor;
+package org.apache.iotdb.confignode.manager.pipe.transfer.extractor;
 
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -109,21 +113,26 @@ class PipeConfigPlanFilter {
       Collections.unmodifiableSet(
           new HashSet<>(Collections.singletonList(ConfigPhysicalPlanType.DeleteTriggerInTable)));
 
+  private static final Map<String, Set<ConfigPhysicalPlanType>> INCLUSION_MAP = new HashMap<>();
+
+  static {
+    // TODO: add more possible values and exclusion map
+    INCLUSION_MAP.put(PipeExtractorConstant.EXTRACTOR_SCHEMA_VALUE, schemaDefaultPlanSet);
+    INCLUSION_MAP.put(PipeExtractorConstant.EXTRACTOR_AUTHORITY_VALUE, authorityDefaultPlanSet);
+    INCLUSION_MAP.put(PipeExtractorConstant.EXTRACTOR_FUNCTION_VALUE, functionDefaultPlanSet);
+    INCLUSION_MAP.put(PipeExtractorConstant.EXTRACTOR_TRIGGER_VALUE, triggerDefaultPlanSet);
+    INCLUSION_MAP.put(PipeExtractorConstant.EXTRACTOR_TTL_VALUE, TTLDefaultPlanSet);
+  }
+
   static boolean shouldBeListenedByQueue(ConfigPhysicalPlan plan) {
     ConfigPhysicalPlanType type = plan.getType();
     if (type.equals(ConfigPhysicalPlanType.CommitSetSchemaTemplate)
         && ((CommitSetSchemaTemplatePlan) plan).isRollback()) {
       return false;
     }
-    return schemaDefaultPlanSet.contains(type)
-        || schemaDeletionPlanSet.contains(type)
-        || authorityDefaultPlanSet.contains(type)
-        || authorityDeletionPlanSet.contains(type)
-        || TTLDefaultPlanSet.contains(type)
-        || functionDefaultPlanSet.contains(type)
-        || functionDeletionPlanSet.contains(type)
-        || triggerDefaultPlanSet.contains(type)
-        || triggerDeletionPlanSet.contains(type);
+    return INCLUSION_MAP.values().stream()
+        .flatMap(Collection::stream)
+        .anyMatch(o -> o.equals(type));
   }
 
   private PipeConfigPlanFilter() {

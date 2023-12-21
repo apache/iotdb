@@ -26,14 +26,14 @@ public class PipeExtractorConstant {
 
   public static final String EXTRACTOR_INCLUSION_KEY = "extractor.inclusion";
   public static final String SOURCE_INCLUSION_KEY = "source.inclusion";
-  public static final String EXTRACTOR_INCLUSION_DATA_VALUE = "data";
-  public static final String EXTRACTOR_INCLUSION_SCHEMA_VALUE = "schema";
-  public static final String EXTRACTOR_INCLUSION_TTL_VALUE = "ttl";
-  public static final String EXTRACTOR_INCLUSION_FUNCTION_VALUE = "function";
-  public static final String EXTRACTOR_INCLUSION_TRIGGER_VALUE = "trigger";
-  public static final String EXTRACTOR_INCLUSION_MODEL_VALUE = "model";
-  public static final String EXTRACTOR_INCLUSION_AUTHORITY_VALUE = "authority";
   public static final String EXTRACTOR_INCLUSION_DEFAULT_VALUE = "data, schema";
+  public static final String EXTRACTOR_DATA_VALUE = "data";
+  public static final String EXTRACTOR_SCHEMA_VALUE = "schema";
+  public static final String EXTRACTOR_TTL_VALUE = "ttl";
+  public static final String EXTRACTOR_FUNCTION_VALUE = "function";
+  public static final String EXTRACTOR_TRIGGER_VALUE = "trigger";
+  public static final String EXTRACTOR_MODEL_VALUE = "model";
+  public static final String EXTRACTOR_AUTHORITY_VALUE = "authority";
 
   public static final String EXTRACTOR_PATTERN_KEY = "extractor.pattern";
   public static final String SOURCE_PATTERN_KEY = "source.pattern";

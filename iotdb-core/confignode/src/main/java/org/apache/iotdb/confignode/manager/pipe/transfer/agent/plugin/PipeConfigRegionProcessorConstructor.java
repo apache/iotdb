@@ -17,35 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.pipe.task;
+package org.apache.iotdb.confignode.manager.pipe.transfer.agent.plugin;
 
-import org.apache.iotdb.commons.pipe.task.PipeTask;
+import org.apache.iotdb.commons.pipe.agent.plugin.PipeProcessorConstructor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.donothing.DoNothingProcessor;
+import org.apache.iotdb.pipe.api.PipeProcessor;
 
-public class PipeConfigNodeTask implements PipeTask {
+class PipeConfigRegionProcessorConstructor extends PipeProcessorConstructor {
 
-  private final PipeConfigNodeTaskStage stage;
-
-  public PipeConfigNodeTask(PipeConfigNodeTaskStage configNodeStage) {
-    this.stage = configNodeStage;
+  @Override
+  protected void initConstructors() {
+    pluginConstructors.put(
+        BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName(), DoNothingProcessor::new);
   }
 
   @Override
-  public void create() {
-    stage.create();
-  }
-
-  @Override
-  public void drop() {
-    stage.drop();
-  }
-
-  @Override
-  public void start() {
-    stage.start();
-  }
-
-  @Override
-  public void stop() {
-    stage.stop();
+  protected PipeProcessor reflectPluginByKey(String pluginKey) {
+    // TODO: support constructing plugin by reflection
+    return (PipeProcessor)
+        pluginConstructors.getOrDefault(pluginKey, DoNothingProcessor::new).get();
   }
 }

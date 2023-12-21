@@ -17,14 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.pipe.execution;
+package org.apache.iotdb.confignode.manager.pipe.transfer.execution;
 
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.commons.pipe.task.DecoratingLock;
 import org.apache.iotdb.commons.pipe.task.subtask.PipeSubtask;
-import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
+import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.PipeProcessor;

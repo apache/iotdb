@@ -17,25 +17,35 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.pipe.agent.plugin;
+package org.apache.iotdb.confignode.manager.pipe.transfer.task;
 
-import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginAgent;
-import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginConstructor;
+import org.apache.iotdb.commons.pipe.task.PipeTask;
 
-public class PipeConfigRegionPluginAgent extends PipePluginAgent {
+public class PipeConfigNodeTask implements PipeTask {
 
-  @Override
-  protected PipePluginConstructor createPipeExtractorConstructor() {
-    return new PipeConfigRegionExtractorConstructor();
+  private final PipeConfigNodeTaskStage stage;
+
+  public PipeConfigNodeTask(PipeConfigNodeTaskStage configNodeStage) {
+    this.stage = configNodeStage;
   }
 
   @Override
-  protected PipePluginConstructor createPipeProcessorConstructor() {
-    return new PipeConfigRegionProcessorConstructor();
+  public void create() {
+    stage.create();
   }
 
   @Override
-  protected PipePluginConstructor createPipeConnectorConstructor() {
-    return new PipeConfigRegionConnectorConstructor();
+  public void drop() {
+    stage.drop();
+  }
+
+  @Override
+  public void start() {
+    stage.start();
+  }
+
+  @Override
+  public void stop() {
+    stage.stop();
   }
 }

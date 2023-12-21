@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.pipe.agent;
+package org.apache.iotdb.confignode.manager.pipe.transfer.agent;
 
-import org.apache.iotdb.confignode.manager.pipe.agent.plugin.PipeConfigRegionPluginAgent;
-import org.apache.iotdb.confignode.manager.pipe.agent.task.PipeTaskConfigNodeAgent;
+import org.apache.iotdb.confignode.manager.pipe.transfer.agent.plugin.PipeConfigRegionPluginAgent;
+import org.apache.iotdb.confignode.manager.pipe.transfer.agent.task.PipeTaskConfigNodeAgent;
 
 /** PipeAgent is the entry point of the pipe module in DataNode. */
 public class PipeConfigNodeAgent {

@@ -17,21 +17,31 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.pipe.extractor;
+package org.apache.iotdb.confignode.manager.pipe.transfer.extractor;
 
 import org.apache.iotdb.commons.pipe.datastructure.ConcurrentIterableLinkedQueue;
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb.IoTDBMetaExtractor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashSet;
+import java.util.Set;
+
 public class IoTDBConfigRegionExtractor extends IoTDBMetaExtractor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConfigRegionExtractor.class);
-
   private ConcurrentIterableLinkedQueue<ConfigPhysicalPlan>.DynamicIterator itr;
+  private Set<ConfigPhysicalPlanType> listenType = new HashSet<>();
+
+  @Override
+  public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
+      throws Exception {}
 
   @Override
   public void start() throws Exception {
@@ -40,7 +50,8 @@ public class IoTDBConfigRegionExtractor extends IoTDBMetaExtractor {
 
   @Override
   public Event supply() {
-    // TODO: itr.next()
+    ConfigPhysicalPlan plan = itr.next();
+    // TODO: convert plan to event
     return null;
   }
 

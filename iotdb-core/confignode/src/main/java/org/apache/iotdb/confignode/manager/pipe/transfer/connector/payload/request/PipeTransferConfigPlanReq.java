@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.pipe.connector.payload.request;
+package org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request;
 
 import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;

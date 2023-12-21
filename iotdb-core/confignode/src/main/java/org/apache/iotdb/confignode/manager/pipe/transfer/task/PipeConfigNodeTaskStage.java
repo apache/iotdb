@@ -17,11 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.pipe.task;
+package org.apache.iotdb.confignode.manager.pipe.transfer.task;
 
 import org.apache.iotdb.commons.pipe.task.stage.PipeTaskStage;
-import org.apache.iotdb.confignode.manager.pipe.execution.PipeConfigNodeSubtask;
-import org.apache.iotdb.confignode.manager.pipe.execution.PipeConfigNodeSubtaskExecutor;
+import org.apache.iotdb.confignode.manager.pipe.transfer.execution.PipeConfigNodeSubtask;
+import org.apache.iotdb.confignode.manager.pipe.transfer.execution.PipeConfigNodeSubtaskExecutor;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import java.util.Map;

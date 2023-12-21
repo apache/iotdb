@@ -17,12 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.pipe.agent.plugin;
+package org.apache.iotdb.confignode.manager.pipe.transfer.agent.plugin;
 
 import org.apache.iotdb.commons.pipe.agent.plugin.PipeExtractorConstructor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.donothing.DoNothingExtractor;
-import org.apache.iotdb.confignode.manager.pipe.extractor.IoTDBConfigRegionExtractor;
+import org.apache.iotdb.confignode.manager.pipe.transfer.extractor.IoTDBConfigRegionExtractor;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 
 class PipeConfigRegionExtractorConstructor extends PipeExtractorConstructor {

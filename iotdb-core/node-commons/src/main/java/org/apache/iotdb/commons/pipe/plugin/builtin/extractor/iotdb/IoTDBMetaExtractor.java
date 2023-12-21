@@ -20,9 +20,7 @@
 package org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb;
 
 import org.apache.iotdb.pipe.api.PipeExtractor;
-import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,15 +30,15 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_AUTHORITY_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_DATA_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_AUTHORITY_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_DATA_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_FUNCTION_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_FUNCTION_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_MODEL_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_SCHEMA_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_TRIGGER_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_TTL_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODEL_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_SCHEMA_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_TRIGGER_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_TTL_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_INCLUSION_KEY;
 
 public abstract class IoTDBMetaExtractor implements PipeExtractor {
@@ -67,22 +65,22 @@ public abstract class IoTDBMetaExtractor implements PipeExtractor {
         arg -> {
           Set<String> inclusionSet =
               new HashSet<>(Arrays.asList(((String) arg).replace(" ", "").split(",")));
-          if (inclusionSet.contains(EXTRACTOR_INCLUSION_SCHEMA_VALUE)) {
+          if (inclusionSet.contains(EXTRACTOR_SCHEMA_VALUE)) {
             enableSchemaSync = true;
           }
-          if (inclusionSet.contains(EXTRACTOR_INCLUSION_TTL_VALUE)) {
+          if (inclusionSet.contains(EXTRACTOR_TTL_VALUE)) {
             enableTtlSync = true;
           }
-          if (inclusionSet.contains(EXTRACTOR_INCLUSION_FUNCTION_VALUE)) {
+          if (inclusionSet.contains(EXTRACTOR_FUNCTION_VALUE)) {
             enableFunctionSync = true;
           }
-          if (inclusionSet.contains(EXTRACTOR_INCLUSION_TRIGGER_VALUE)) {
+          if (inclusionSet.contains(EXTRACTOR_TRIGGER_VALUE)) {
             enableTriggerSync = true;
           }
-          if (inclusionSet.contains(EXTRACTOR_INCLUSION_MODEL_VALUE)) {
+          if (inclusionSet.contains(EXTRACTOR_MODEL_VALUE)) {
             enableModelSync = true;
           }
-          if (inclusionSet.contains(EXTRACTOR_INCLUSION_AUTHORITY_VALUE)) {
+          if (inclusionSet.contains(EXTRACTOR_AUTHORITY_VALUE)) {
             enableAuthoritySync = true;
           }
           atLeastOneEnable =
@@ -93,28 +91,22 @@ public abstract class IoTDBMetaExtractor implements PipeExtractor {
                   || enableModelSync
                   || enableAuthoritySync;
           // If none of above are present and data is also absent, then validation will fail.
-          return atLeastOneEnable || inclusionSet.contains(EXTRACTOR_INCLUSION_DATA_VALUE);
+          return atLeastOneEnable || inclusionSet.contains(EXTRACTOR_DATA_VALUE);
         },
         String.format(
             "At least one of %s, %s, %s, %s, %s, %s, %s should be present in %s.",
-            EXTRACTOR_INCLUSION_DATA_VALUE,
-            EXTRACTOR_INCLUSION_SCHEMA_VALUE,
-            EXTRACTOR_INCLUSION_TTL_VALUE,
-            EXTRACTOR_INCLUSION_FUNCTION_VALUE,
-            EXTRACTOR_INCLUSION_TRIGGER_VALUE,
-            EXTRACTOR_INCLUSION_MODEL_VALUE,
-            EXTRACTOR_INCLUSION_AUTHORITY_VALUE,
+            EXTRACTOR_DATA_VALUE,
+            EXTRACTOR_SCHEMA_VALUE,
+            EXTRACTOR_TTL_VALUE,
+            EXTRACTOR_FUNCTION_VALUE,
+            EXTRACTOR_TRIGGER_VALUE,
+            EXTRACTOR_MODEL_VALUE,
+            EXTRACTOR_AUTHORITY_VALUE,
             SOURCE_INCLUSION_KEY),
         validator
             .getParameters()
             .getStringOrDefault(
                 Arrays.asList(EXTRACTOR_INCLUSION_KEY, SOURCE_INCLUSION_KEY),
                 EXTRACTOR_INCLUSION_DEFAULT_VALUE));
-  }
-
-  @Override
-  public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
-      throws Exception {
-    // do nothing
   }
 }

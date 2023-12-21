@@ -17,14 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.pipe.connector;
+package org.apache.iotdb.confignode.manager.pipe.transfer.agent.plugin;
 
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.thrift.IoTDBMetaConnector;
+import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginAgent;
+import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginConstructor;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+public class PipeConfigRegionPluginAgent extends PipePluginAgent {
 
-public class IoTDBConfigRegionConnector extends IoTDBMetaConnector {
+  @Override
+  protected PipePluginConstructor createPipeExtractorConstructor() {
+    return new PipeConfigRegionExtractorConstructor();
+  }
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConfigRegionConnector.class);
+  @Override
+  protected PipePluginConstructor createPipeProcessorConstructor() {
+    return new PipeConfigRegionProcessorConstructor();
+  }
+
+  @Override
+  protected PipePluginConstructor createPipeConnectorConstructor() {
+    return new PipeConfigRegionConnectorConstructor();
+  }
 }
