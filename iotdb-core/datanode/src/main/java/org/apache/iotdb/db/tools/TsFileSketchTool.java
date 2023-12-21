@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.exception.ByteBufferAllocateException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
@@ -540,7 +539,8 @@ public class TsFileSketchTool {
             if (i != metadataIndexListSize - 1) {
               endOffset = metadataIndexNode.getChildren().get(i + 1).getOffset();
             }
-            try {
+            if (endOffset - metadataIndexNode.getChildren().get(i).getOffset()
+                > Integer.MAX_VALUE) {
               ByteBuffer nextBuffer =
                   readData(metadataIndexNode.getChildren().get(i).getOffset(), endOffset);
               generateMetadataIndexWithOffset(
@@ -551,7 +551,7 @@ public class TsFileSketchTool {
                   metadataIndexNode.getNodeType(),
                   timeseriesMetadataMap,
                   needChunkMetadata);
-            } catch (ByteBufferAllocateException e) {
+            } else {
               // when the buffer length is over than Integer.MAX_VALUE,
               // using tsFileInput to get timeseriesMetadataList
               generateMetadataIndexWithOffsetUsingTsFileInput(

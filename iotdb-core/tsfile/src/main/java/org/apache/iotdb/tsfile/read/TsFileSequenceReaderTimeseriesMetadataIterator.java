@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.tsfile.read;
 
-import org.apache.iotdb.tsfile.exception.ByteBufferAllocateException;
 import org.apache.iotdb.tsfile.exception.TsFileSequenceReaderTimeseriesMetadataIteratorException;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
@@ -152,12 +151,12 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
       throw new TsFileSequenceReaderTimeseriesMetadataIteratorException(
           "currentBuffer still has some data left before deserializeLeafMeasurement");
     }
-    try {
+    if (endOffset - metadataIndexEntry.getOffset() > Integer.MAX_VALUE) {
       currentBuffer = reader.readData(metadataIndexEntry.getOffset(), endOffset);
       timeseriesMetadataMap
           .computeIfAbsent(currentDeviceId, k -> new ArrayList<>())
           .addAll(deserializeTimeseriesMetadata());
-    } catch (ByteBufferAllocateException e) {
+    } else {
       reader.position(metadataIndexEntry.getOffset());
       timeseriesMetadataMap
           .computeIfAbsent(currentDeviceId, k -> new ArrayList<>())

@@ -24,7 +24,6 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
-import org.apache.iotdb.tsfile.exception.ByteBufferAllocateException;
 import org.apache.iotdb.tsfile.exception.TsFileRuntimeException;
 import org.apache.iotdb.tsfile.exception.TsFileStatisticsMistakesException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
@@ -402,7 +401,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       return null;
     }
     List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
-    try {
+    if (metadataIndexPair.right - metadataIndexPair.left.getOffset() > Integer.MAX_VALUE) {
       buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
       while (buffer.hasRemaining()) {
         try {
@@ -413,7 +412,7 @@ public class TsFileSequenceReader implements AutoCloseable {
           throw e;
         }
       }
-    } catch (ByteBufferAllocateException e) {
+    } else {
       // when the buffer length is over than Integer.MAX_VALUE,
       // using tsFileInput to get timeseriesMetadataList
       tsFileInput.position(metadataIndexPair.left.getOffset());
@@ -500,7 +499,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
     List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
 
-    try {
+    if (metadataIndexPair.right - metadataIndexPair.left.getOffset() > Integer.MAX_VALUE) {
       ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
       while (buffer.hasRemaining()) {
         TimeseriesMetadata timeseriesMetadata;
@@ -515,7 +514,7 @@ public class TsFileSequenceReader implements AutoCloseable {
           timeseriesMetadataList.add(timeseriesMetadata);
         }
       }
-    } catch (ByteBufferAllocateException e) {
+    } else {
       // when the buffer length is over than Integer.MAX_VALUE,
       // using tsFileInput to get timeseriesMetadataList
       synchronized (this) {
@@ -1121,7 +1120,7 @@ public class TsFileSequenceReader implements AutoCloseable {
           if (i != metadataIndexListSize - 1) {
             endOffset = metadataIndexNode.getChildren().get(i + 1).getOffset();
           }
-          try {
+          if (endOffset - metadataIndexNode.getChildren().get(i).getOffset() > Integer.MAX_VALUE) {
             ByteBuffer nextBuffer =
                 readData(metadataIndexNode.getChildren().get(i).getOffset(), endOffset);
             generateMetadataIndex(
@@ -1131,7 +1130,7 @@ public class TsFileSequenceReader implements AutoCloseable {
                 metadataIndexNode.getNodeType(),
                 timeseriesMetadataMap,
                 needChunkMetadata);
-          } catch (ByteBufferAllocateException e) {
+          } else {
             // when the buffer length is over than Integer.MAX_VALUE,
             // using tsFileInput to get timeseriesMetadataList
             generateMetadataIndexUsingTsFileInput(
@@ -1215,7 +1214,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       if (i != metadataIndexEntryList.size() - 1) {
         endOffset = metadataIndexEntryList.get(i + 1).getOffset();
       }
-      try {
+      if (endOffset - metadataIndexEntry.getOffset() > Integer.MAX_VALUE) {
         ByteBuffer buffer = readData(metadataIndexEntry.getOffset(), endOffset);
         generateMetadataIndex(
             metadataIndexEntry,
@@ -1224,7 +1223,7 @@ public class TsFileSequenceReader implements AutoCloseable {
             metadataIndexNode.getNodeType(),
             timeseriesMetadataMap,
             needChunkMetadata);
-      } catch (ByteBufferAllocateException e) {
+      } else {
         generateMetadataIndexUsingTsFileInput(
             metadataIndexNode.getChildren().get(i),
             metadataIndexNode.getChildren().get(i).getOffset(),
@@ -1617,12 +1616,8 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @return data that been read.
    */
   protected ByteBuffer readData(long start, long end) throws IOException {
-    int totalSize = (int) (end - start);
-    if (totalSize < 0) {
-      throw new ByteBufferAllocateException("ByteBuffer capacity < 0: (" + totalSize + " < 0)");
-    }
     try {
-      return readData(start, totalSize);
+      return readData(start, (int) (end - start));
     } catch (Throwable t) {
       logger.warn("Exception {} happened while reading data of {}", t.getMessage(), file);
       throw t;
