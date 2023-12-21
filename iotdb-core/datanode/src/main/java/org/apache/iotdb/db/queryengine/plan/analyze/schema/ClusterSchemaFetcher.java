@@ -52,6 +52,9 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final Coordinator coordinator = Coordinator.getInstance();
+
+  // DataNodeSchemaCache's rwlock is used to block deletion when we insert the same timeseries
+  // and will be released after coordinator's execute().
   private final DataNodeSchemaCache schemaCache = DataNodeSchemaCache.getInstance();
   private final ITemplateManager templateManager = ClusterTemplateManager.getInstance();
 
@@ -188,7 +191,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         schemaComputationWithAutoCreation.computeMeasurement(index, null);
       }
     } finally {
-      schemaCache.releaseReadLock();
+      context.setAcquiredLock(true);
     }
   }
 
@@ -225,7 +228,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
             templateSetInfoList, templateTimeSeriesRequestList, context);
       }
     } finally {
-      schemaCache.releaseReadLock();
+      context.setAcquiredLock(true);
     }
   }
 
@@ -312,7 +315,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
       return schemaTree;
     } finally {
-      schemaCache.releaseReadLock();
+      context.setAcquiredLock(true);
     }
   }
 
