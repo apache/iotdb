@@ -373,6 +373,9 @@ public class Session implements ISession {
       int thriftMaxFrameSize,
       boolean enableRedirection,
       Version version) {
+    if (nodeUrls.isEmpty()) {
+      throw new IllegalArgumentException("nodeUrls shouldn't be empty.");
+    }
     this.nodeUrls = nodeUrls;
     this.username = username;
     this.password = password;
@@ -385,7 +388,10 @@ public class Session implements ISession {
   }
 
   public Session(Builder builder) {
-    if (builder.nodeUrls != null && builder.nodeUrls.size() > 0) {
+    if (builder.nodeUrls != null) {
+      if (builder.nodeUrls.isEmpty()) {
+        throw new IllegalArgumentException("nodeUrls shouldn't be empty.");
+      }
       this.nodeUrls = builder.nodeUrls;
       this.enableQueryRedirection = true;
     } else {
@@ -1080,7 +1086,6 @@ public class Session implements ISession {
         try {
           defaultSessionConnection.insertRecord(request);
         } catch (RedirectException ignored) {
-          logger.warn("session insertRecord fail:{}", ignored.getMessage());
         }
       } else {
         throw e;
@@ -1105,7 +1110,6 @@ public class Session implements ISession {
         try {
           defaultSessionConnection.insertRecord(request);
         } catch (RedirectException ignored) {
-          logger.warn("session insertRecord fail:{}", ignored.getMessage());
         }
       } else {
         throw e;
@@ -1411,7 +1415,6 @@ public class Session implements ISession {
       try {
         defaultSessionConnection.insertRecords(request);
       } catch (RedirectException ignored) {
-        logger.warn("session insertRecords fail:{}", ignored.getMessage());
       }
     }
   }
@@ -1658,7 +1661,6 @@ public class Session implements ISession {
       try {
         defaultSessionConnection.insertRecords(request);
       } catch (RedirectException ignored) {
-        logger.warn("session insertRecords fail:{}", ignored.getMessage());
       }
     }
   }
@@ -1831,7 +1833,6 @@ public class Session implements ISession {
       try {
         defaultSessionConnection.insertRecords(request);
       } catch (RedirectException ignored) {
-        logger.warn("session insertRecords fail:{}", ignored.getMessage());
       }
     }
   }
@@ -1874,7 +1875,6 @@ public class Session implements ISession {
       try {
         defaultSessionConnection.insertRecords(request);
       } catch (RedirectException ignored) {
-        logger.warn("session insertRecords fail:{}", ignored.getMessage());
       }
     }
   }
@@ -1946,7 +1946,6 @@ public class Session implements ISession {
         try {
           defaultSessionConnection.insertRecordsOfOneDevice(request);
         } catch (RedirectException ignored) {
-          logger.warn("session insertRecordsOfOneDevice fail:{}", ignored.getMessage());
         }
       } else {
         throw e;
@@ -2000,7 +1999,6 @@ public class Session implements ISession {
         try {
           defaultSessionConnection.insertStringRecordsOfOneDevice(req);
         } catch (RedirectException ignored) {
-          logger.warn("session insertStringRecordsOfOneDevice fail:{}", ignored.getMessage());
         }
       } else {
         throw e;
@@ -2095,7 +2093,6 @@ public class Session implements ISession {
         try {
           defaultSessionConnection.insertRecordsOfOneDevice(request);
         } catch (RedirectException ignored) {
-          logger.warn("session insertRecordsOfOneDevice fail:{}", ignored.getMessage());
         }
       } else {
         throw e;
@@ -2149,7 +2146,6 @@ public class Session implements ISession {
         try {
           defaultSessionConnection.insertStringRecordsOfOneDevice(req);
         } catch (RedirectException ignored) {
-          logger.warn("session insertStringRecordsOfOneDevice fail:{}", ignored.getMessage());
         }
       } else {
         throw e;
@@ -2464,7 +2460,6 @@ public class Session implements ISession {
         try {
           defaultSessionConnection.insertTablet(request);
         } catch (RedirectException ignored) {
-          logger.warn("session insertTablet fail:{}", ignored.getMessage());
         }
       } else {
         throw e;
@@ -2513,7 +2508,6 @@ public class Session implements ISession {
         try {
           defaultSessionConnection.insertTablet(request);
         } catch (RedirectException ignored) {
-          logger.warn("session insertTablet fail:{}", ignored.getMessage());
         }
       } else {
         throw e;
@@ -2573,7 +2567,6 @@ public class Session implements ISession {
       try {
         defaultSessionConnection.insertTablets(request);
       } catch (RedirectException ignored) {
-        logger.warn("session insertTablets fail:{}", ignored.getMessage());
       }
     }
   }
@@ -2610,7 +2603,6 @@ public class Session implements ISession {
       try {
         defaultSessionConnection.insertTablets(request);
       } catch (RedirectException ignored) {
-        logger.warn("session insertTablets fail:{}", ignored.getMessage());
       }
     }
   }
@@ -3406,7 +3398,6 @@ public class Session implements ISession {
                           } catch (IoTDBConnectionException | StatementExecutionException ex) {
                             throw new CompletionException(ex);
                           } catch (RedirectException ignored) {
-                            logger.info("insert by group has been redirect");
                           }
                         }
                       },

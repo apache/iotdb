@@ -19,220 +19,150 @@
 
 package org.apache.iotdb.tsfile.read.reader.chunk;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.reader.IChunkReader;
-import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
-import java.util.LinkedList;
 import java.util.List;
 
-public class ChunkReader implements IChunkReader {
+public class ChunkReader extends AbstractChunkReader {
 
-  private ChunkHeader chunkHeader;
-  private ByteBuffer chunkDataBuffer;
-  private IUnCompressor unCompressor;
-  private final Decoder timeDecoder =
-      Decoder.getDecoderByType(
-          TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
-          TSDataType.INT64);
+  private final ChunkHeader chunkHeader;
+  private final ByteBuffer chunkDataBuffer;
+  private final List<TimeRange> deleteIntervalList;
 
-  protected Filter filter;
-  private long currentTimestamp;
-
-  private List<IPageReader> pageReaderList = new LinkedList<>();
-
-  /** A list of deleted intervals. */
-  private List<TimeRange> deleteIntervalList;
-
-  /**
-   * constructor of ChunkReader.
-   *
-   * @param chunk input Chunk object
-   * @param filter filter
-   */
-  public ChunkReader(Chunk chunk, Filter filter) throws IOException {
-    this.filter = filter;
+  @SuppressWarnings("unchecked")
+  public ChunkReader(Chunk chunk, long readStopTime, Filter queryFilter) throws IOException {
+    super(readStopTime, queryFilter);
+    this.chunkHeader = chunk.getHeader();
     this.chunkDataBuffer = chunk.getData();
     this.deleteIntervalList = chunk.getDeleteIntervalList();
-    this.currentTimestamp = Long.MIN_VALUE;
-    chunkHeader = chunk.getHeader();
-    this.unCompressor = IUnCompressor.getUnCompressor(chunkHeader.getCompressionType());
+
     initAllPageReaders(chunk.getChunkStatistic());
+  }
+
+  public ChunkReader(Chunk chunk) throws IOException {
+    this(chunk, Long.MIN_VALUE, null);
+  }
+
+  public ChunkReader(Chunk chunk, Filter queryFilter) throws IOException {
+    this(chunk, Long.MIN_VALUE, queryFilter);
   }
 
   /**
    * Constructor of ChunkReader by timestamp. This constructor is used to accelerate queries by
    * filtering out pages whose endTime is less than current timestamp.
+   *
+   * @throws IOException exception when initAllPageReaders
    */
-  public ChunkReader(Chunk chunk, Filter filter, long currentTimestamp) throws IOException {
-    this.filter = filter;
-    this.chunkDataBuffer = chunk.getData();
-    this.deleteIntervalList = chunk.getDeleteIntervalList();
-    this.currentTimestamp = currentTimestamp;
-    chunkHeader = chunk.getHeader();
-    this.unCompressor = IUnCompressor.getUnCompressor(chunkHeader.getCompressionType());
-    initAllPageReaders(chunk.getChunkStatistic());
+  public ChunkReader(Chunk chunk, long readStopTime) throws IOException {
+    this(chunk, readStopTime, null);
   }
 
-  /**
-   * Constructor of ChunkReader without deserializing chunk into page. This is used for fast
-   * compaction.
-   */
-  public ChunkReader(Chunk chunk) {
-    this.filter = null;
-    this.chunkDataBuffer = chunk.getData();
-    this.deleteIntervalList = chunk.getDeleteIntervalList();
-    this.currentTimestamp = Long.MIN_VALUE;
-    chunkHeader = chunk.getHeader();
-    this.unCompressor = IUnCompressor.getUnCompressor(chunkHeader.getCompressionType());
-  }
-
-  private void initAllPageReaders(Statistics chunkStatistic) throws IOException {
+  private void initAllPageReaders(Statistics<? extends Serializable> chunkStatistic)
+      throws IOException {
     // construct next satisfied page header
     while (chunkDataBuffer.remaining() > 0) {
       // deserialize a PageHeader from chunkDataBuffer
       PageHeader pageHeader;
       if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
         pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkStatistic);
+        // when there is only one page in the chunk, the page statistic is the same as the chunk, so
+        // we needn't filter the page again
       } else {
         pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
+        // if the current page satisfies
+        if (pageCanSkip(pageHeader)) {
+          skipCurrentPage(pageHeader);
+          continue;
+        }
       }
-      // if the current page satisfies
-      if (pageCanSkip(pageHeader)) {
-        skipBytesInStreamByLength(pageHeader.getCompressedSize());
+
+      if (pageDeleted(pageHeader)) {
+        skipCurrentPage(pageHeader);
       } else {
-        pageReaderList.add(constructPageReaderForNextPage(pageHeader));
+        pageReaderList.add(constructPageReader(pageHeader));
       }
     }
   }
 
-  /** judge if has next page whose page header satisfies the filter. */
-  @Override
-  public boolean hasNextSatisfiedPage() {
-    return !pageReaderList.isEmpty();
+  private boolean pageCanSkip(PageHeader pageHeader) {
+    return queryFilter != null
+        && !queryFilter.satisfyStartEndTime(pageHeader.getStartTime(), pageHeader.getEndTime());
   }
 
-  /**
-   * get next data batch.
-   *
-   * @return next data batch
-   * @throws IOException IOException
-   */
-  @Override
-  public BatchData nextPageData() throws IOException {
-    if (pageReaderList.isEmpty()) {
-      throw new IOException("No more page");
-    }
-    return pageReaderList.remove(0).getAllSatisfiedPageData();
-  }
-
-  private void skipBytesInStreamByLength(int length) {
-    chunkDataBuffer.position(chunkDataBuffer.position() + length);
-  }
-
-  protected boolean pageCanSkip(PageHeader pageHeader) {
-    if (currentTimestamp > pageHeader.getEndTime()) {
+  private boolean pageDeleted(PageHeader pageHeader) {
+    if (readStopTime > pageHeader.getEndTime()) {
       // used for chunk reader by timestamp
       return true;
     }
+
+    long startTime = pageHeader.getStartTime();
+    long endTime = pageHeader.getEndTime();
     if (deleteIntervalList != null) {
       for (TimeRange range : deleteIntervalList) {
-        if (range.contains(pageHeader.getStartTime(), pageHeader.getEndTime())) {
+        if (range.contains(startTime, endTime)) {
           return true;
         }
-        if (range.overlaps(new TimeRange(pageHeader.getStartTime(), pageHeader.getEndTime()))) {
+        if (range.overlaps(new TimeRange(startTime, endTime))) {
           pageHeader.setModified(true);
         }
       }
     }
-    return filter != null && filter.canSkip(pageHeader);
+    return false;
   }
 
-  private PageReader constructPageReaderForNextPage(PageHeader pageHeader) throws IOException {
-    int compressedPageBodyLength = pageHeader.getCompressedSize();
-    byte[] compressedPageBody = new byte[compressedPageBodyLength];
+  private void skipCurrentPage(PageHeader pageHeader) {
+    chunkDataBuffer.position(chunkDataBuffer.position() + pageHeader.getCompressedSize());
+  }
 
-    // doesn't has a complete page body
-    if (compressedPageBodyLength > chunkDataBuffer.remaining()) {
-      throw new IOException(
-          "do not has a complete page body. Expected:"
-              + compressedPageBodyLength
-              + ". Actual:"
-              + chunkDataBuffer.remaining());
-    }
-
-    chunkDataBuffer.get(compressedPageBody);
-    Decoder valueDecoder =
-        Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
-    byte[] uncompressedPageData = new byte[pageHeader.getUncompressedSize()];
-    try {
-      unCompressor.uncompress(
-          compressedPageBody, 0, compressedPageBodyLength, uncompressedPageData, 0);
-    } catch (Exception e) {
-      throw new IOException(
-          "Uncompress error! uncompress size: "
-              + pageHeader.getUncompressedSize()
-              + "compressed size: "
-              + pageHeader.getCompressedSize()
-              + "page header: "
-              + pageHeader
-              + e.getMessage());
-    }
-
-    ByteBuffer pageData = ByteBuffer.wrap(uncompressedPageData);
+  private PageReader constructPageReader(PageHeader pageHeader) throws IOException {
+    ByteBuffer pageData = deserializePageData(pageHeader, chunkDataBuffer, chunkHeader);
     PageReader reader =
         new PageReader(
-            pageHeader, pageData, chunkHeader.getDataType(), valueDecoder, timeDecoder, filter);
+            pageHeader,
+            pageData,
+            chunkHeader.getDataType(),
+            Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType()),
+            defaultTimeDecoder,
+            queryFilter);
     reader.setDeleteIntervalList(deleteIntervalList);
     return reader;
   }
 
-  /**
-   * Read page data without uncompressing it.
-   *
-   * @return compressed page data
-   */
-  public ByteBuffer readPageDataWithoutUncompressing(PageHeader pageHeader) throws IOException {
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // util methods
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public static ByteBuffer readCompressedPageData(PageHeader pageHeader, ByteBuffer chunkBuffer)
+      throws IOException {
     int compressedPageBodyLength = pageHeader.getCompressedSize();
     byte[] compressedPageBody = new byte[compressedPageBodyLength];
-
-    // doesn't has a complete page body
-    if (compressedPageBodyLength > chunkDataBuffer.remaining()) {
+    // doesn't have a complete page body
+    if (compressedPageBodyLength > chunkBuffer.remaining()) {
       throw new IOException(
           "do not has a complete page body. Expected:"
               + compressedPageBodyLength
               + ". Actual:"
-              + chunkDataBuffer.remaining());
+              + chunkBuffer.remaining());
     }
-
-    chunkDataBuffer.get(compressedPageBody);
+    chunkBuffer.get(compressedPageBody);
     return ByteBuffer.wrap(compressedPageBody);
   }
 
-  /**
-   * Read data from compressed page data. Uncompress the page and decode it to batch data.
-   *
-   * @param compressedPageData Compressed page data
-   */
-  public TsBlock readPageData(PageHeader pageHeader, ByteBuffer compressedPageData)
+  public static ByteBuffer uncompressPageData(
+      PageHeader pageHeader, IUnCompressor unCompressor, ByteBuffer compressedPageData)
       throws IOException {
-    // uncompress page data
     int compressedPageBodyLength = pageHeader.getCompressedSize();
     byte[] uncompressedPageData = new byte[pageHeader.getUncompressedSize()];
     try {
@@ -249,28 +179,13 @@ public class ChunkReader implements IChunkReader {
               + e.getMessage());
     }
 
-    ByteBuffer pageData = ByteBuffer.wrap(uncompressedPageData);
-
-    // decode page data
-    TSDataType dataType = chunkHeader.getDataType();
-    Decoder valueDecoder = Decoder.getDecoderByType(chunkHeader.getEncodingType(), dataType);
-    PageReader pageReader =
-        new PageReader(pageHeader, pageData, dataType, valueDecoder, timeDecoder, filter);
-    pageReader.setDeleteIntervalList(deleteIntervalList);
-    return pageReader.getAllSatisfiedData();
+    return ByteBuffer.wrap(uncompressedPageData);
   }
 
-  @Override
-  public void close() {
-    // do nothing
-  }
-
-  public ChunkHeader getChunkHeader() {
-    return chunkHeader;
-  }
-
-  @Override
-  public List<IPageReader> loadPageReaderList() {
-    return pageReaderList;
+  public static ByteBuffer deserializePageData(
+      PageHeader pageHeader, ByteBuffer chunkBuffer, ChunkHeader chunkHeader) throws IOException {
+    IUnCompressor unCompressor = IUnCompressor.getUnCompressor(chunkHeader.getCompressionType());
+    ByteBuffer compressedPageBody = readCompressedPageData(pageHeader, chunkBuffer);
+    return uncompressPageData(pageHeader, unCompressor, compressedPageBody);
   }
 }

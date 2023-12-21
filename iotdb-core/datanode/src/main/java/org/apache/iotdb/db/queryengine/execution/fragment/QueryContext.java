@@ -41,6 +41,8 @@ import java.util.Set;
 /** QueryContext contains the shared information with in a query. */
 public class QueryContext {
 
+  private QueryStatistics queryStatistics = new QueryStatistics();
+
   /**
    * The key is the path of a ModificationFile and the value is all Modifications in this file. We
    * use this field because each call of Modification.getModifications() return a copy of the
@@ -156,11 +158,19 @@ public class QueryContext {
     return this;
   }
 
+  public boolean isInterrupted() {
+    return isInterrupted;
+  }
+
   public void setInterrupted(boolean interrupted) {
     isInterrupted = interrupted;
   }
 
-  public boolean isInterrupted() {
-    return isInterrupted;
+  public QueryStatistics getQueryStatistics() {
+    return this.queryStatistics;
+  }
+
+  public void setQueryStatistics(QueryStatistics queryStatistics) {
+    this.queryStatistics = queryStatistics;
   }
 }

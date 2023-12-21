@@ -733,4 +733,61 @@ public class IOTDBGroupByIT {
         expectedHeader,
         retArray);
   }
+
+  @Test
+  public void endTimeGroupByTimeTest8() {
+    String[] expectedHeader =
+        new String[] {
+          TIMESTAMP_STR,
+          "Device",
+          END_TIMESTAMP_STR,
+          count("temperature"),
+          sum("temperature"),
+          avg("temperature")
+        };
+    String[] retArray =
+        new String[] {
+          "15,root.ln.wf01.wt01,19,0,null,null,",
+          "20,root.ln.wf01.wt01,24,1,20.2,20.2,",
+          "25,root.ln.wf01.wt01,29,0,null,null,",
+          "30,root.ln.wf01.wt01,34,1,30.3,30.3,",
+          "35,root.ln.wf01.wt01,39,0,null,null,"
+        };
+    resultSetEqualTest(
+        "select __endTime,count(temperature), sum(temperature), avg(temperature) from "
+            + "root.ln.wf01.wt01 "
+            + "WHERE temperature > 0 "
+            + "GROUP BY ([0, 600), 5ms) "
+            + "limit 5 offset 3 align by device",
+        expectedHeader,
+        retArray);
+  }
+
+  @Test
+  public void endTimeGroupByTimeTest9() {
+    String[] expectedHeader =
+        new String[] {
+          TIMESTAMP_STR,
+          "Device",
+          END_TIMESTAMP_STR,
+          count("temperature"),
+          sum("temperature"),
+          avg("temperature")
+        };
+    String[] retArray =
+        new String[] {
+          "45,root.ln.wf01.wt01,45,3,90.9,30.3,",
+          "50,root.ln.wf01.wt01,50,3,121.2,40.4,",
+          "55,root.ln.wf01.wt01,55,3,121.2,40.4,",
+          "60,root.ln.wf01.wt01,60,2,90.9,45.45,",
+          "65,root.ln.wf01.wt01,65,2,90.9,45.45,"
+        };
+    resultSetEqualTest(
+        "select __endTime,count(temperature), sum(temperature), avg(temperature) from "
+            + "root.ln.wf01.wt01 "
+            + "GROUP BY ((0, 600], 30ms, 5ms) "
+            + "limit 5 offset 3 align by device",
+        expectedHeader,
+        retArray);
+  }
 }

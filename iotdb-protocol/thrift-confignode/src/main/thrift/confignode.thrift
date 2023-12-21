@@ -527,6 +527,11 @@ struct TShowClusterResp {
   5: required map<i32, TNodeVersionInfo> nodeVersionInfo
 }
 
+struct TGetClusterIdResp {
+  1: required common.TSStatus status
+  2: required string clusterId
+}
+
 struct TNodeVersionInfo {
   1: required string version;
   2: required string buildInfo;
@@ -692,23 +697,11 @@ struct TCreatePipeReq {
     4: required map<string, string> connectorAttributes
 }
 
+// Deprecated, restored for compatibility
 struct TPipeSinkInfo {
   1: required string pipeSinkName
   2: required string pipeSinkType
   3: optional map<string, string> attributes
-}
-
-struct TDropPipeSinkReq {
-  1: required string pipeSinkName
-}
-
-struct TGetPipeSinkReq {
-  1: optional string pipeSinkName
-}
-
-struct TGetPipeSinkResp {
-  1: required common.TSStatus status
-  2: required list<TPipeSinkInfo> pipeSinkInfoList
 }
 
 struct TShowPipeReq {
@@ -812,6 +805,15 @@ enum TActivationControl {
 
 
 service IConfigNodeRPCService {
+
+  // ======================================================
+  // Cluster
+  // ======================================================
+
+  /**
+   * Get cluster ID
+   */
+  TGetClusterIdResp getClusterId()
 
   // ======================================================
   // DataNode
@@ -1312,15 +1314,6 @@ service IConfigNodeRPCService {
   // Sync
   // ======================================================
 
-  /** Create PipeSink */
-  common.TSStatus createPipeSink(TPipeSinkInfo req)
-
-  /** Drop PipeSink */
-  common.TSStatus dropPipeSink(TDropPipeSinkReq req)
-
-  /** Get PipeSink by name, if name is empty, get all PipeSink */
-  TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req)
-
   /** Create Pipe */
   common.TSStatus createPipe(TCreatePipeReq req)
 
@@ -1336,8 +1329,11 @@ service IConfigNodeRPCService {
   /** Show Pipe by name, if name is empty, show all Pipe */
   TShowPipeResp showPipe(TShowPipeReq req)
 
-  /* Get all pipe information. It is used for DataNode registration and restart*/
-  TGetAllPipeInfoResp getAllPipeInfo();
+  /** Get all pipe information. It is used for DataNode registration and restart*/
+  TGetAllPipeInfoResp getAllPipeInfo()
+
+  /** Execute schema language from external pipes */
+  common.TSStatus executeSyncCommand(binary configPhysicalPlanBinary)
 
   // ======================================================
   // TestTools

@@ -56,7 +56,7 @@ public class PipeParameterValidator {
       throws PipeAttributeNotProvidedException {
     if (!parameters.hasAttribute(key)) {
       if (!canBeOptional) {
-        throw new PipeAttributeNotProvidedException(String.format("%s should be set.", key));
+        throw new PipeParameterNotValidException(String.format("Parameter %s should be set.", key));
       }
       return this;
     }
@@ -68,8 +68,8 @@ public class PipeParameterValidator {
       }
     }
 
-    throw new PipeAttributeNotProvidedException(
-        String.format("%s should be one of %s", key, Arrays.toString(optionalValues)));
+    throw new PipeParameterNotValidException(
+        String.format("The value of %s should be one of %s", key, Arrays.toString(optionalValues)));
   }
 
   /**

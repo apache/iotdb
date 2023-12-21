@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
@@ -56,7 +55,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
-import org.apache.iotdb.db.utils.FileLoaderUtils;
+import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -157,11 +156,7 @@ public class LoadTsfileAnalyzer {
         throw new SemanticException(
             String.format("TsFile %s is empty or incomplete.", tsFile.getPath()));
       } catch (AuthException e) {
-        schemaAutoCreatorAndVerifier.clear();
-        Analysis analysis = new Analysis();
-        analysis.setFinishQueryAfterAnalyze(true);
-        analysis.setFailStatus(RpcUtils.getStatus(e.getCode(), e.getMessage()));
-        return analysis;
+        return createFailAnalysisForAuthException(e);
       } catch (Exception e) {
         schemaAutoCreatorAndVerifier.clear();
         LOGGER.warn("Parse file {} to resource error.", tsFile.getPath(), e);
@@ -171,8 +166,12 @@ public class LoadTsfileAnalyzer {
       }
     }
 
-    schemaAutoCreatorAndVerifier.flush();
-    schemaAutoCreatorAndVerifier.clear();
+    try {
+      schemaAutoCreatorAndVerifier.flush();
+      schemaAutoCreatorAndVerifier.clear();
+    } catch (AuthException e) {
+      return createFailAnalysisForAuthException(e);
+    }
 
     LOGGER.info("Load - Analysis Stage: all tsfiles have been analyzed.");
 
@@ -216,7 +215,7 @@ public class LoadTsfileAnalyzer {
           schemaAutoCreatorAndVerifier.autoCreateAndVerify(reader, device2TimeseriesMetadata);
 
           if (!tsFileResource.resourceFileExists()) {
-            FileLoaderUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
+            TsFileResourceUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
           }
           writePointCount += getWritePointCount(device2TimeseriesMetadata);
         }
@@ -237,6 +236,14 @@ public class LoadTsfileAnalyzer {
         .flatMap(List::stream)
         .mapToLong(t -> t.getStatistics().getCount())
         .sum();
+  }
+
+  private Analysis createFailAnalysisForAuthException(AuthException e) {
+    schemaAutoCreatorAndVerifier.clear();
+    Analysis analysis = new Analysis();
+    analysis.setFinishQueryAfterAnalyze(true);
+    analysis.setFailStatus(RpcUtils.getStatus(e.getCode(), e.getMessage()));
+    return analysis;
   }
 
   private final class SchemaAutoCreatorAndVerifier {
@@ -315,7 +322,8 @@ public class LoadTsfileAnalyzer {
      * This can only be invoked after all timeseries in the current tsfile have been processed.
      * Otherwise, the isAligned status may be wrong.
      */
-    public void flushAndClearDeviceIsAlignedCacheIfNecessary() throws SemanticException {
+    public void flushAndClearDeviceIsAlignedCacheIfNecessary()
+        throws SemanticException, AuthException {
       // avoid OOM when loading a tsfile with too many timeseries
       // or loading too many tsfiles at the same time
       if (tsfileDevice2IsAligned.size() > 10000) {
@@ -324,13 +332,13 @@ public class LoadTsfileAnalyzer {
       }
     }
 
-    public void flush() {
+    public void flush() throws AuthException {
       doAutoCreateAndVerify();
 
       currentBatchDevice2TimeseriesSchemas.clear();
     }
 
-    private void doAutoCreateAndVerify() throws SemanticException {
+    private void doAutoCreateAndVerify() throws SemanticException, AuthException {
       if (currentBatchDevice2TimeseriesSchemas.isEmpty()) {
         return;
       }
@@ -351,6 +359,8 @@ public class LoadTsfileAnalyzer {
         if (loadTsFileStatement.isVerifySchema()) {
           verifySchema(schemaTree);
         }
+      } catch (AuthException e) {
+        throw e;
       } catch (Exception e) {
         LOGGER.warn("Auto create or verify schema error.", e);
         throw new SemanticException(
@@ -377,7 +387,7 @@ public class LoadTsfileAnalyzer {
     }
 
     private void autoCreateDatabase()
-        throws VerifyMetadataException, LoadFileException, IllegalPathException {
+        throws VerifyMetadataException, LoadFileException, IllegalPathException, AuthException {
       final int databasePrefixNodesLength = loadTsFileStatement.getDatabaseLevel() + 1;
       final Set<PartialPath> databasesNeededToBeSet = new HashSet<>();
 
@@ -433,12 +443,13 @@ public class LoadTsfileAnalyzer {
       }
     }
 
-    private void executeSetDatabaseStatement(Statement statement) throws LoadFileException {
+    private void executeSetDatabaseStatement(Statement statement)
+        throws LoadFileException, AuthException {
       // 1.check Authority
       TSStatus status =
           AuthorityChecker.checkAuthority(statement, context.getSession().getUserName());
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+        throw new AuthException(TSStatusCode.representOf(status.getCode()), status.getMessage());
       }
 
       // 2.execute setDatabase statement

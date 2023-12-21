@@ -24,8 +24,8 @@ import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
+import org.apache.iotdb.db.queryengine.plan.optimization.ColumnInjectionPushDown;
 import org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown;
-import org.apache.iotdb.db.queryengine.plan.optimization.PlanNodePushDown;
 import org.apache.iotdb.db.queryengine.plan.optimization.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.planner.IFragmentParallelPlaner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
@@ -45,7 +45,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 
 import org.apache.commons.lang3.Validate;
 
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -67,13 +67,7 @@ public class DistributionPlanner {
     this.logicalPlan = logicalPlan;
     this.context = logicalPlan.getContext();
 
-    this.optimizers =
-        new ArrayList<PlanOptimizer>() {
-          {
-            add(new LimitOffsetPushDown());
-            add(new PlanNodePushDown());
-          }
-        };
+    this.optimizers = Arrays.asList(new LimitOffsetPushDown(), new ColumnInjectionPushDown());
   }
 
   public PlanNode rewriteSource() {

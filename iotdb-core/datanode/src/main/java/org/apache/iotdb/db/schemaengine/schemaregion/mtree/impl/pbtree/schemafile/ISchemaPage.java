@@ -27,6 +27,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public interface ISchemaPage {
   /**
@@ -62,7 +65,8 @@ public interface ISchemaPage {
   }
 
   /** InternalPage should be initiated with a pointer which points to the minimal child of it. */
-  static SchemaPage initInternalPage(ByteBuffer buffer, int pageIndex, int ptr) {
+  static SchemaPage initInternalPage(
+      ByteBuffer buffer, int pageIndex, int ptr, AtomicInteger ai, ReadWriteLock rwl) {
     buffer.clear();
 
     buffer.position(SchemaFileConfig.PAGE_HEADER_SIZE);
@@ -84,10 +88,16 @@ public interface ISchemaPage {
     ReadWriteIOUtils.write(-1L, buffer);
     ReadWriteIOUtils.write(-1, buffer);
 
-    return new InternalPage(buffer);
+    return new InternalPage(buffer, ai, rwl);
   }
 
-  static ISegmentedPage initSegmentedPage(ByteBuffer buffer, int pageIndex) {
+  static SchemaPage initInternalPage(ByteBuffer buffer, int pageIndex, int ptr) {
+    return initInternalPage(
+        buffer, pageIndex, ptr, new AtomicInteger(), new ReentrantReadWriteLock());
+  }
+
+  static ISegmentedPage initSegmentedPage(
+      ByteBuffer buffer, int pageIndex, AtomicInteger ai, ReadWriteLock rwl) {
     buffer.clear();
     ReadWriteIOUtils.write(SchemaFileConfig.SEGMENTED_PAGE, buffer);
     ReadWriteIOUtils.write(pageIndex, buffer);
@@ -95,7 +105,12 @@ public interface ISchemaPage {
     ReadWriteIOUtils.write((short) (buffer.capacity() - SchemaFileConfig.PAGE_HEADER_SIZE), buffer);
     ReadWriteIOUtils.write((short) 0, buffer);
     ReadWriteIOUtils.write(-1L, buffer);
-    return new SegmentedPage(buffer);
+    return new SegmentedPage(buffer, ai, rwl);
+  }
+
+  static ISegmentedPage initSegmentedPage(ByteBuffer buffer, int pageIndex) {
+    return ISchemaPage.initSegmentedPage(
+        buffer, pageIndex, new AtomicInteger(), new ReentrantReadWriteLock());
   }
 
   static SchemaPage initAliasIndexPage(ByteBuffer buffer, int pageIndex) {
@@ -109,9 +124,17 @@ public interface ISchemaPage {
     return new AliasIndexPage(buffer);
   }
 
+  AtomicInteger getRefCnt();
+
+  ReadWriteLock getLock();
+
   void syncPageBuffer();
 
   void flushPageToChannel(FileChannel channel) throws IOException;
+
+  boolean isDirtyPage();
+
+  void setDirtyFlag();
 
   void flushPageToStream(OutputStream stream) throws IOException;
 
@@ -132,10 +155,6 @@ public interface ISchemaPage {
   ISegmentedPage getAsSegmentedPage();
 
   ByteBuffer getEntireSegmentSlice() throws MetadataException;
-
-  void markDirty();
-
-  boolean isDirty();
 
   @TestOnly
   WrappedSegment getSegmentOnTest(short idx) throws SegmentNotFoundException;
