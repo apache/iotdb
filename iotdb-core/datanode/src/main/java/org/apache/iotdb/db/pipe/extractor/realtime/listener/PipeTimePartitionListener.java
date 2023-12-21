@@ -32,6 +32,8 @@ public class PipeTimePartitionListener {
   private final Map<String, Map<String, PipeRealtimeDataRegionExtractor>> dataRegionId2Extractors =
       new ConcurrentHashMap<>();
 
+  // This variable is used to record the upper and lower bounds that each data region's time
+  // partition ID has ever reached.
   private final Map<String, Pair<Long, Long>> dataRegionId2TimePartitionIdBound =
       new ConcurrentHashMap<>();
 

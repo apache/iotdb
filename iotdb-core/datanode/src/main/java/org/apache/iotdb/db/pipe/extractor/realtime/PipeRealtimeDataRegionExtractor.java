@@ -76,8 +76,10 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   private boolean enableTimeParseSkipByTimePartition;
   private long startTimePartitionIdLowerBound; // calculated by realtimeDataExtractionStartTime
   private long endTimePartitionIdUpperBound; // calculated by realtimeDataExtractionEndTime
-  private AtomicReference<Pair<Long, Long>>
-      dataRegionTimePartitionIdBound; // updated by TimePartitionInfo
+  // This variable is used to record the upper and lower bounds that the time partition ID
+  // corresponding to this data region has ever reached. It may be updated by
+  // PipeTimePartitionListener.
+  private AtomicReference<Pair<Long, Long>> dataRegionTimePartitionIdBound;
 
   protected boolean isForwardingPipeRequests;
 
@@ -162,7 +164,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       setDataRegionTimePartitionIdBound(timePartitionIdBound);
     } else {
       LOGGER.warn(
-          "Something unexpected happened when obtaining TimePartitionInfoMap({}), set enableTimeParseSkipByTimePartition to false.",
+          "Something unexpected happened when obtaining time partition id bound on data region {}, set enableTimeParseSkipByTimePartition to false.",
           dataRegionId);
       enableTimeParseSkipByTimePartition = false;
     }

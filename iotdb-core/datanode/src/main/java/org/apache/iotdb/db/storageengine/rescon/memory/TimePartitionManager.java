@@ -64,6 +64,8 @@ public class TimePartitionManager {
 
       timePartitionInfoMapForRegion.put(timePartitionInfo.partitionId, timePartitionInfo);
 
+      // We need to ensure that the following method is called before
+      // PipeInsertionDataNodeListener.listenToInsertNode.
       PipeTimePartitionListener.getInstance()
           .listenToTimePartitionGrow(
               timePartitionInfo.dataRegionId.toString(),
