@@ -315,6 +315,11 @@ public class PipeTsFileResourceManager {
   }
 
   public int getLinkedTsfileCount() {
-    return hardlinkOrCopiedFileToPipeTsFileResourceMap.size();
+    lock.lock();
+    try {
+      return hardlinkOrCopiedFileToPipeTsFileResourceMap.size();
+    } finally {
+      lock.unlock();
+    }
   }
 }
