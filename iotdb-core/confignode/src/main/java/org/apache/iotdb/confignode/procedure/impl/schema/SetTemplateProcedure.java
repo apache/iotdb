@@ -451,7 +451,7 @@ public class SetTemplateProcedure
   private void rollbackPreSet(ConfigNodeProcedureEnv env) {
     PreSetSchemaTemplatePlan preSetSchemaTemplatePlan =
         new PreSetSchemaTemplatePlan(templateName, templateSetPath, true);
-    TSStatus status = null;
+    TSStatus status;
     try {
       status = env.getConfigManager().getConsensusManager().write(preSetSchemaTemplatePlan);
     } catch (ConsensusException e) {
@@ -510,13 +510,7 @@ public class SetTemplateProcedure
         new CommitSetSchemaTemplatePlan(templateName, templateSetPath, true);
     TSStatus status;
     try {
-      status =
-          env.getConfigManager()
-              .getConsensusManager()
-              .write(
-                  isGeneratedByPipe
-                      ? new PipeEnrichedPlan(commitSetSchemaTemplatePlan)
-                      : commitSetSchemaTemplatePlan);
+      status = env.getConfigManager().getConsensusManager().write(commitSetSchemaTemplatePlan);
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());

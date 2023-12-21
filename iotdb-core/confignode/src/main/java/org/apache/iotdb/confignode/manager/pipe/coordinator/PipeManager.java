@@ -41,7 +41,7 @@ public class PipeManager {
         new PipePluginCoordinator(configManager, pipeInfo.getPipePluginInfo());
     this.pipeTaskCoordinator = new PipeTaskCoordinator(configManager, pipeInfo.getPipeTaskInfo());
     this.pipeRuntimeCoordinator = new PipeRuntimeCoordinator(configManager);
-    this.pipeReceiverCoordinator = new PipeReceiverCoordinator();
+    this.pipeReceiverCoordinator = new PipeReceiverCoordinator(configManager);
   }
 
   public PipePluginCoordinator getPipePluginCoordinator() {

@@ -61,7 +61,7 @@ public class CreateCQProcedureTest {
             "Asia",
             "root");
     ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
-    CreateCQProcedure createCQProcedure1 = new CreateCQProcedure(req, executor, false);
+    CreateCQProcedure createCQProcedure1 = new CreateCQProcedure(req, executor);
 
     CQManager cqManager = Mockito.mock(CQManager.class);
     Mockito.when(cqManager.getExecutor()).thenReturn(executor);

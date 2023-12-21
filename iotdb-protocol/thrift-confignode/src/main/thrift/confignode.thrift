@@ -763,7 +763,6 @@ struct TCreateCQReq {
   8: required string sql
   9: required string zoneId
   10: required string username
-  11: optional bool isGeneratedByPipe
 }
 
 struct TDropCQReq {

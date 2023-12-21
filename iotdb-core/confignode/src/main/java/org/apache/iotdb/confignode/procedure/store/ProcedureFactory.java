@@ -141,7 +141,7 @@ public class ProcedureFactory implements IProcedureFactory {
       case CREATE_CQ_PROCEDURE:
         procedure =
             new CreateCQProcedure(
-                ConfigNode.getInstance().getConfigManager().getCQManager().getExecutor(), false);
+                ConfigNode.getInstance().getConfigManager().getCQManager().getExecutor());
         break;
       case SET_TEMPLATE_PROCEDURE:
         procedure = new SetTemplateProcedure(false);
@@ -187,11 +187,6 @@ public class ProcedureFactory implements IProcedureFactory {
         break;
       case PIPE_ENRICHED_DROP_TRIGGER_PROCEDURE:
         procedure = new DropTriggerProcedure(true);
-        break;
-      case PIPE_ENRICHED_CREATE_CQ_PROCEDURE:
-        procedure =
-            new CreateCQProcedure(
-                ConfigNode.getInstance().getConfigManager().getCQManager().getExecutor(), true);
         break;
       default:
         LOGGER.error("Unknown Procedure type: {}", typeCode);

@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.manager.cq.CQScheduleTask;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -69,14 +68,13 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
   private static final String CONSENSUS_WRITE_ERROR =
       "Failed in the write API executing the consensus layer due to: ";
 
-  public CreateCQProcedure(ScheduledExecutorService executor, boolean isGeneratedByPipe) {
-    super(isGeneratedByPipe);
+  public CreateCQProcedure(ScheduledExecutorService executor) {
+    super();
     this.executor = executor;
   }
 
-  public CreateCQProcedure(
-      TCreateCQReq req, ScheduledExecutorService executor, boolean isGeneratedByPipe) {
-    super(isGeneratedByPipe);
+  public CreateCQProcedure(TCreateCQReq req, ScheduledExecutorService executor) {
+    super();
     this.req = req;
     this.md5 = DigestUtils.md2Hex(req.cqId);
     this.executor = executor;
@@ -150,13 +148,7 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
   private void activeCQ(ConfigNodeProcedureEnv env) {
     TSStatus res;
     try {
-      res =
-          env.getConfigManager()
-              .getConsensusManager()
-              .write(
-                  isGeneratedByPipe
-                      ? new PipeEnrichedPlan(new ActiveCQPlan(req.cqId, md5))
-                      : new ActiveCQPlan(req.cqId, md5));
+      res = env.getConfigManager().getConsensusManager().write(new ActiveCQPlan(req.cqId, md5));
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -234,10 +226,7 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeShort(
-        isGeneratedByPipe
-            ? ProcedureType.PIPE_ENRICHED_CREATE_CQ_PROCEDURE.getTypeCode()
-            : ProcedureType.CREATE_CQ_PROCEDURE.getTypeCode());
+    stream.writeShort(ProcedureType.CREATE_CQ_PROCEDURE.getTypeCode());
     super.serialize(stream);
     ThriftCommonsSerDeUtils.serializeTCreateCQReq(req, stream);
     ReadWriteIOUtils.write(md5, stream);

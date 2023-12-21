@@ -719,10 +719,7 @@ public class ProcedureManager {
   }
 
   public TSStatus createCQ(TCreateCQReq req, ScheduledExecutorService scheduledExecutor) {
-    long procedureId =
-        executor.submitProcedure(
-            new CreateCQProcedure(
-                req, scheduledExecutor, req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()));
+    long procedureId = executor.submitProcedure(new CreateCQProcedure(req, scheduledExecutor));
     List<TSStatus> statusList = new ArrayList<>();
     waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
     return statusList.get(0);
