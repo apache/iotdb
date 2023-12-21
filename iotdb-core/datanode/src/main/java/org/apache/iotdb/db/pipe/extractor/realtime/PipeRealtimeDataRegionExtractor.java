@@ -53,12 +53,8 @@ import java.util.Objects;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_END_TIME_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_END_TIME_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_END_TIME_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_REALTIME_SKIP_TIME_PARSE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_REALTIME_TIME_SKIP_TIME_PARSE_DEFAULT_VALUE;
@@ -103,15 +99,6 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     PipeParameters parameters = validator.getParameters();
 
     if (parameters.hasAnyAttributes(SOURCE_START_TIME_KEY, SOURCE_END_TIME_KEY)) {
-
-      if (parameters.hasAnyAttributes(
-          EXTRACTOR_HISTORY_START_TIME_KEY,
-          SOURCE_HISTORY_START_TIME_KEY,
-          EXTRACTOR_HISTORY_END_TIME_KEY,
-          SOURCE_HISTORY_END_TIME_KEY)) {
-        LOGGER.warn("...");
-      }
-
       try {
         realtimeDataExtractionStartTime =
             parameters.hasAnyAttributes(SOURCE_START_TIME_KEY)
@@ -123,6 +110,12 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
                 ? DateTimeUtils.convertDatetimeStrToLong(
                     parameters.getStringByKeys(SOURCE_END_TIME_KEY), ZoneId.systemDefault())
                 : Long.MAX_VALUE;
+        if (realtimeDataExtractionStartTime > realtimeDataExtractionEndTime) {
+          throw new PipeParameterNotValidException(
+              String.format(
+                  "%s should be less than or equal to %s.",
+                  SOURCE_START_TIME_KEY, SOURCE_END_TIME_KEY));
+        }
       } catch (Exception e) {
         // compatible with the current validation framework
         throw new PipeParameterNotValidException(e.getMessage());
@@ -224,7 +217,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       event.skipParsingPattern();
     }
 
-    if (isDbTimePartitionCoveredByTimeRange()) {
+    if (skipTimeParse && isDbTimePartitionCoveredByTimeRange()) {
       event.skipParsingTime();
     }
 
@@ -247,10 +240,6 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   }
 
   private boolean isDbTimePartitionCoveredByTimeRange() {
-    if (!skipTimeParse) {
-      return false;
-    }
-
     final Map<Long, TimePartitionInfo> timePartitionInfoMap =
         TimePartitionManager.getInstance()
             .getTimePartitionInfo(new DataRegionId(Integer.parseInt(dataRegionId)));

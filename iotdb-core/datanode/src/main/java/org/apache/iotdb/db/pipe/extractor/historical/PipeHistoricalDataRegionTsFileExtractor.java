@@ -102,14 +102,6 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     if (parameters.hasAnyAttributes(SOURCE_START_TIME_KEY, SOURCE_END_TIME_KEY)) {
       isHistoricalExtractorEnabled = true;
 
-      if (parameters.hasAnyAttributes(
-          EXTRACTOR_HISTORY_START_TIME_KEY,
-          SOURCE_HISTORY_START_TIME_KEY,
-          EXTRACTOR_HISTORY_END_TIME_KEY,
-          SOURCE_HISTORY_END_TIME_KEY)) {
-        LOGGER.warn("...");
-      }
-
       try {
         historicalDataExtractionStartTime =
             parameters.hasAnyAttributes(SOURCE_START_TIME_KEY)
@@ -121,6 +113,12 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                 ? DateTimeUtils.convertDatetimeStrToLong(
                     parameters.getStringByKeys(SOURCE_END_TIME_KEY), ZoneId.systemDefault())
                 : Long.MAX_VALUE;
+        if (historicalDataExtractionStartTime > historicalDataExtractionEndTime) {
+          throw new PipeParameterNotValidException(
+              String.format(
+                  "%s should be less than or equal to %s.",
+                  SOURCE_START_TIME_KEY, SOURCE_END_TIME_KEY));
+        }
         return;
       } catch (Exception e) {
         // compatible with the current validation framework
@@ -154,6 +152,15 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                       EXTRACTOR_HISTORY_END_TIME_KEY, SOURCE_HISTORY_END_TIME_KEY),
                   ZoneId.systemDefault())
               : Long.MAX_VALUE;
+      if (historicalDataExtractionStartTime > historicalDataExtractionEndTime) {
+        throw new PipeParameterNotValidException(
+            String.format(
+                "%s (%s) should be less than or equal to %s (%s).",
+                EXTRACTOR_HISTORY_START_TIME_KEY,
+                SOURCE_HISTORY_START_TIME_KEY,
+                EXTRACTOR_HISTORY_END_TIME_KEY,
+                SOURCE_HISTORY_END_TIME_KEY));
+      }
     } catch (Exception e) {
       // compatible with the current validation framework
       throw new PipeParameterNotValidException(e.getMessage());

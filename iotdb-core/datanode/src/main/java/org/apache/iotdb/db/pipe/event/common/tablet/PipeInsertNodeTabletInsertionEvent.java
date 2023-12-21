@@ -182,7 +182,9 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
             String.format("InsertNode type %s is not supported.", insertNode.getClass().getName()));
       }
     } catch (Exception e) {
-      LOGGER.warn("...");
+      LOGGER.warn(
+          "An exception occurred when determining if the InsertNode event time overlaps with the time range: {}. Returning true to ensure data integrity.",
+          e.getMessage());
       return true;
     }
   }
