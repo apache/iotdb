@@ -159,6 +159,9 @@ public class Session implements ISession {
   // The version number of the client which used for compatibility in the server
   protected Version version;
 
+  // default enable
+  private boolean enableAutoFetch = true;
+
   private static final String REDIRECT_TWICE = "redirect twice";
 
   private static final String REDIRECT_TWICE_RETRY = "redirect twice, please try again.";
@@ -417,6 +420,7 @@ public class Session implements ISession {
     this.useSSL = builder.useSSL;
     this.trustStore = builder.trustStore;
     this.trustStorePwd = builder.trustStorePwd;
+    this.enableAutoFetch = builder.enableAutoFetch;
   }
 
   @Override
@@ -465,22 +469,27 @@ public class Session implements ISession {
       this.availableNodes = null;
     }
 
-    initThreadPool();
-    this.availableNodes =
-        NodesSupplier.createNodeSupplier(
-            getNodeUrls(),
-            executorService,
-            username,
-            password,
-            zoneId,
-            thriftDefaultBufferSize,
-            thriftMaxFrameSize,
-            connectionTimeoutInMs,
-            useSSL,
-            trustStore,
-            trustStorePwd,
-            enableRPCCompression,
-            version.toString());
+    if (enableAutoFetch) {
+      initThreadPool();
+      this.availableNodes =
+          NodesSupplier.createNodeSupplier(
+              getNodeUrls(),
+              executorService,
+              username,
+              password,
+              zoneId,
+              thriftDefaultBufferSize,
+              thriftMaxFrameSize,
+              connectionTimeoutInMs,
+              useSSL,
+              trustStore,
+              trustStorePwd,
+              enableRPCCompression,
+              version.toString());
+    } else {
+      this.availableNodes = new DummyNodesSupplier(getNodeUrls());
+    }
+
     this.enableRPCCompression = enableRPCCompression;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
     defaultSessionConnection = constructSessionConnection(this, defaultEndPoint, zoneId);
@@ -3551,6 +3560,8 @@ public class Session implements ISession {
     private Version version = SessionConfig.DEFAULT_VERSION;
     private long timeOut = SessionConfig.DEFAULT_QUERY_TIME_OUT;
 
+    private boolean enableAutoFetch = SessionConfig.DEFAULT_ENABLE_AUTO_FETCH;
+
     private boolean useSSL = false;
     private String trustStore;
     private String trustStorePwd;
@@ -3629,6 +3640,11 @@ public class Session implements ISession {
 
     public Builder timeOut(long timeOut) {
       this.timeOut = timeOut;
+      return this;
+    }
+
+    public Builder enableAutoFetch(boolean enableAutoFetch) {
+      this.enableAutoFetch = enableAutoFetch;
       return this;
     }
 

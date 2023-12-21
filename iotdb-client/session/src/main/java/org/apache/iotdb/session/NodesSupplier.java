@@ -38,7 +38,7 @@ public class NodesSupplier implements INodeSupplier, Runnable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(NodesSupplier.class);
 
-  private static final long UPDATE_PERIOD_IN_S = 10;
+  private static final long UPDATE_PERIOD_IN_S = 60;
   private static final String SHOW_DATA_NODES_COMMAND = "SHOW DATANODES";
 
   private static final String STATUS_COLUMN_NAME = "Status";
@@ -47,7 +47,7 @@ public class NodesSupplier implements INodeSupplier, Runnable {
 
   private static final String PORT_COLUMN_NAME = "RpcPort";
 
-  private static final String RUNNING_STATUS = "Running";
+  private static final String REMOVING_STATUS = "Removing";
 
   // it's ok that TIMEOUT_IN_MS is larger than UPDATE_PERIOD_IN_S, because the next update request
   // won't be scheduled until last time is done.
@@ -217,8 +217,8 @@ public class NodesSupplier implements INodeSupplier, Runnable {
       List<TEndPoint> res = new ArrayList<>();
       while (iterator.next()) {
         String ip = iterator.getString(IP_COLUMN_NAME);
-        // ignore 0.0.0.0 and not running DN
-        if (RUNNING_STATUS.equals(iterator.getString(STATUS_COLUMN_NAME))
+        // ignore 0.0.0.0 and removing DN
+        if (!REMOVING_STATUS.equals(iterator.getString(STATUS_COLUMN_NAME))
             && !"0.0.0.0".equals(ip)) {
           String port = iterator.getString(PORT_COLUMN_NAME);
           if (ip != null && port != null) {

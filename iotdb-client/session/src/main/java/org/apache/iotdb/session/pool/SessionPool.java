@@ -33,6 +33,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
+import org.apache.iotdb.session.DummyNodesSupplier;
 import org.apache.iotdb.session.NodesSupplier;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.util.SessionUtils;
@@ -141,9 +142,11 @@ public class SessionPool implements ISessionPool {
   private final String formattedNodeUrls;
 
   // used to update datanodeList periodically
-  protected volatile ScheduledExecutorService executorService;
+  private volatile ScheduledExecutorService executorService;
 
-  protected INodeSupplier availableNodes;
+  private INodeSupplier availableNodes;
+
+  private boolean enableAutoFetch = true;
 
   private static final String INSERT_RECORD_FAIL = "insertRecord failed";
 
@@ -514,7 +517,10 @@ public class SessionPool implements ISessionPool {
     this.version = builder.version;
     this.thriftDefaultBufferSize = builder.thriftDefaultBufferSize;
     this.thriftMaxFrameSize = builder.thriftMaxFrameSize;
-    initThreadPool();
+    this.enableAutoFetch = builder.enableAutoFetch;
+    if (enableAutoFetch) {
+      initThreadPool();
+    }
     if (builder.nodeUrls != null) {
       if (builder.nodeUrls.isEmpty()) {
         throw new IllegalArgumentException("nodeUrls shouldn't be empty.");
@@ -523,41 +529,51 @@ public class SessionPool implements ISessionPool {
       this.host = null;
       this.port = -1;
       this.formattedNodeUrls = builder.nodeUrls.toString();
-      this.availableNodes =
-          NodesSupplier.createNodeSupplier(
-              SessionUtils.parseSeedNodeUrls(nodeUrls),
-              executorService,
-              user,
-              password,
-              zoneId,
-              thriftDefaultBufferSize,
-              thriftMaxFrameSize,
-              connectionTimeoutInMs,
-              useSSL,
-              trustStore,
-              trustStorePwd,
-              enableCompression,
-              version.toString());
+      if (enableAutoFetch) {
+        this.availableNodes =
+            NodesSupplier.createNodeSupplier(
+                SessionUtils.parseSeedNodeUrls(nodeUrls),
+                executorService,
+                user,
+                password,
+                zoneId,
+                thriftDefaultBufferSize,
+                thriftMaxFrameSize,
+                connectionTimeoutInMs,
+                useSSL,
+                trustStore,
+                trustStorePwd,
+                enableCompression,
+                version.toString());
+      } else {
+        this.availableNodes = new DummyNodesSupplier(SessionUtils.parseSeedNodeUrls(nodeUrls));
+      }
+
     } else {
       this.host = builder.host;
       this.port = builder.port;
       this.nodeUrls = null;
       this.formattedNodeUrls = String.format("%s:%s", host, port);
-      this.availableNodes =
-          NodesSupplier.createNodeSupplier(
-              Collections.singletonList(new TEndPoint(host, port)),
-              executorService,
-              user,
-              password,
-              zoneId,
-              thriftDefaultBufferSize,
-              thriftMaxFrameSize,
-              connectionTimeoutInMs,
-              useSSL,
-              trustStore,
-              trustStorePwd,
-              enableCompression,
-              version.toString());
+      if (enableAutoFetch) {
+        this.availableNodes =
+            NodesSupplier.createNodeSupplier(
+                Collections.singletonList(new TEndPoint(host, port)),
+                executorService,
+                user,
+                password,
+                zoneId,
+                thriftDefaultBufferSize,
+                thriftMaxFrameSize,
+                connectionTimeoutInMs,
+                useSSL,
+                trustStore,
+                trustStorePwd,
+                enableCompression,
+                version.toString());
+      } else {
+        this.availableNodes =
+            new DummyNodesSupplier(Collections.singletonList(new TEndPoint(host, port)));
+      }
     }
     this.useSSL = builder.useSSL;
     this.trustStore = builder.trustStore;
@@ -3649,6 +3665,8 @@ public class SessionPool implements ISessionPool {
     private String trustStore;
     private String trustStorePwd;
 
+    private boolean enableAutoFetch;
+
     public Builder useSSL(boolean useSSL) {
       this.useSSL = useSSL;
       return this;
@@ -3736,6 +3754,11 @@ public class SessionPool implements ISessionPool {
 
     public Builder version(Version version) {
       this.version = version;
+      return this;
+    }
+
+    public Builder enableAutoFetch(boolean enableAutoFetch) {
+      this.enableAutoFetch = enableAutoFetch;
       return this;
     }
 
