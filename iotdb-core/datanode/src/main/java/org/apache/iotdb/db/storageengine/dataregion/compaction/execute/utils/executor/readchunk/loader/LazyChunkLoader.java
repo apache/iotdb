@@ -117,6 +117,7 @@ public class LazyChunkLoader extends ChunkLoader {
       }
       int headerSize = serializedPageSize - pageHeader.getCompressedSize();
       ModifiedStatus pageModifiedStatus = calculatePageModifiedStatus(pageHeader);
+      pageHeader.setModified(pageModifiedStatus != ModifiedStatus.NONE_DELETED);
       pageLoaders.add(
           new LazyPageLoader(
               reader,

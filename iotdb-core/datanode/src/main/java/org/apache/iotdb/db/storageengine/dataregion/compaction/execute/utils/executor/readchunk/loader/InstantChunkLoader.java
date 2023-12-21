@@ -83,6 +83,7 @@ public class InstantChunkLoader extends ChunkLoader {
       byte[] pageBody = new byte[pageSize];
       chunkData.get(pageBody);
       ModifiedStatus pageModifiedStatus = calculatePageModifiedStatus(pageHeader);
+      pageHeader.setModified(pageModifiedStatus != ModifiedStatus.NONE_DELETED);
       pageList.add(
           new InstantPageLoader(
               pageHeader,
