@@ -52,7 +52,6 @@ import org.apache.iotdb.consensus.natraft.service.RaftRPCService;
 import org.apache.iotdb.consensus.natraft.service.RaftRPCServiceProcessor;
 import org.apache.iotdb.consensus.natraft.utils.NodeReport;
 import org.apache.iotdb.consensus.natraft.utils.NodeReport.RaftMemberReport;
-import org.apache.iotdb.consensus.natraft.utils.StatusUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -168,10 +167,6 @@ public class RaftConsensus implements IConsensus {
   @Override
   public TSStatus write(ConsensusGroupId groupId, IConsensusRequest request)
       throws ConsensusGroupNotExistException {
-    if (config.isOnlyTestNetwork()) {
-      request.serializeToByteBuffer();
-      return StatusUtils.OK;
-    }
     RaftMember impl = stateMachineMap.get(groupId);
     if (impl == null) {
       throw new ConsensusGroupNotExistException(groupId);

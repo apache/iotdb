@@ -854,7 +854,7 @@ public abstract class RaftLogManager {
     if (removeSize <= 0) {
       return Collections.emptyList();
     }
-    logger.info(
+    logger.debug(
         "{}: Before compaction index {}-{}, removeSize {}, committedLogSize "
             + "{}, maxAppliedLog {}",
         name,
@@ -870,7 +870,7 @@ public abstract class RaftLogManager {
     if (config.isEnableRaftLogPersistence()) {
       getStableEntryManager().removeCompactedEntries(compactIndex);
     }
-    logger.info(
+    logger.debug(
         "{}: After compaction index {}-{}, committedLogSize {}",
         name,
         getFirstIndex(),

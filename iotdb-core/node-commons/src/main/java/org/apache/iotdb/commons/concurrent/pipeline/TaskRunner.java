@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.concurrent.dynamic.DynamicThread;
 import org.apache.iotdb.commons.concurrent.dynamic.DynamicThreadGroup;
 
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 /**
  * A thread that will continuously take tasks from an input queue, run the task, and insert the next
@@ -56,17 +57,18 @@ public class TaskRunner extends DynamicThread {
       while (!Thread.interrupted()) {
         Task task;
         try {
-          task = input.take();
-          idleToRunning();
-          task.run();
-          Task nextTask = task.nextTask();
-          if (nextTask != null) {
-            output.put(nextTask);
+          task = input.poll(10, TimeUnit.SECONDS);
+          if (task != null) {
+            idleToRunning();
+            task.run();
+            Task nextTask = task.nextTask();
+            if (nextTask != null) {
+              output.put(nextTask);
+            }
+            runningToIdle();
           }
-          runningToIdle();
-
           if (shouldExit()) {
-            break;
+            Thread.currentThread().interrupt();
           }
         } catch (InterruptedException e1) {
           Thread.currentThread().interrupt();
