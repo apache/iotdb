@@ -41,13 +41,25 @@ public class ConfigPlanListeningQueue implements SnapshotProcessor {
   private static final String SNAPSHOT_FILE_NAME = "pipe_listening_queue.bin";
 
   private final ConcurrentIterableLinkedQueue<ConfigPhysicalPlan> queue =
-      new ConcurrentIterableLinkedQueue();
+      new ConcurrentIterableLinkedQueue<>();
 
   /////////////////////////////// Function ///////////////////////////////
 
   public void tryListenToPlan(ConfigPhysicalPlan plan) {
     if (queue.hasAnyIterators() && PipeConfigPlanFilter.shouldBeListenedByQueue(plan)) {
       queue.add(plan);
+    }
+  }
+
+  public ConcurrentIterableLinkedQueue<ConfigPhysicalPlan>.DynamicIterator newIterator(int index) {
+    return queue.iterateFrom(index);
+  }
+
+  public void returnIterator(
+      ConcurrentIterableLinkedQueue<ConfigPhysicalPlan>.DynamicIterator itr) {
+    itr.close();
+    if (!queue.hasAnyIterators()) {
+      queue.clear();
     }
   }
 

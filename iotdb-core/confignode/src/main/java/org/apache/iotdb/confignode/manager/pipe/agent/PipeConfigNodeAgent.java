@@ -19,19 +19,19 @@
 
 package org.apache.iotdb.confignode.manager.pipe.agent;
 
-import org.apache.iotdb.confignode.manager.pipe.agent.plugin.PipePluginConfigNodeAgent;
+import org.apache.iotdb.confignode.manager.pipe.agent.plugin.PipeConfigRegionPluginAgent;
 import org.apache.iotdb.confignode.manager.pipe.agent.task.PipeTaskConfigNodeAgent;
 
 /** PipeAgent is the entry point of the pipe module in DataNode. */
 public class PipeConfigNodeAgent {
 
   private final PipeTaskConfigNodeAgent pipeConfigNodeTaskAgent;
-  private final PipePluginConfigNodeAgent pipePluginConfigNodeAgent;
+  private final PipeConfigRegionPluginAgent pipeConfigRegionPluginAgent;
 
   /** Private constructor to prevent users from creating a new instance. */
   private PipeConfigNodeAgent() {
     pipeConfigNodeTaskAgent = new PipeTaskConfigNodeAgent();
-    pipePluginConfigNodeAgent = new PipePluginConfigNodeAgent();
+    pipeConfigRegionPluginAgent = new PipeConfigRegionPluginAgent();
   }
 
   /** The singleton holder of PipeAgent. */
@@ -48,7 +48,7 @@ public class PipeConfigNodeAgent {
     return PipeConfigNodeAgentHolder.HANDLE.pipeConfigNodeTaskAgent;
   }
 
-  public static PipePluginConfigNodeAgent plugin() {
-    return PipeConfigNodeAgentHolder.HANDLE.pipePluginConfigNodeAgent;
+  public static PipeConfigRegionPluginAgent plugin() {
+    return PipeConfigNodeAgentHolder.HANDLE.pipeConfigRegionPluginAgent;
   }
 }

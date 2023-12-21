@@ -31,7 +31,7 @@ import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBThriftSyncCo
 import org.apache.iotdb.db.pipe.connector.protocol.websocket.WebSocketConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.writeback.WriteBackConnector;
 
-public class PipeDataRegionConnectorConstructor extends PipeConnectorConstructor {
+class PipeDataRegionConnectorConstructor extends PipeConnectorConstructor {
 
   PipeDataRegionConnectorConstructor(DataNodePipePluginMetaKeeper pipePluginMetaKeeper) {
     super(pipePluginMetaKeeper);

@@ -22,7 +22,7 @@ package org.apache.iotdb.confignode.manager.pipe.agent.plugin;
 import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginAgent;
 import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginConstructor;
 
-public class PipePluginConfigNodeAgent extends PipePluginAgent {
+public class PipeConfigRegionPluginAgent extends PipePluginAgent {
 
   @Override
   protected PipePluginConstructor createPipeExtractorConstructor() {

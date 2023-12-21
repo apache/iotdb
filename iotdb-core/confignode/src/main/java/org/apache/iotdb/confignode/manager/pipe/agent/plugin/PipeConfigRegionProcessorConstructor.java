@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.donothing.DoNothingProcessor;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 
-public class PipeConfigRegionProcessorConstructor extends PipeProcessorConstructor {
+class PipeConfigRegionProcessorConstructor extends PipeProcessorConstructor {
 
   @Override
   protected void initConstructors() {

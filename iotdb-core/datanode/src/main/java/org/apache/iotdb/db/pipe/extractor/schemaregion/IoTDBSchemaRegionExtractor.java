@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.extractor.schemaregion;
 
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb.IoTDBMetaExtractor;
+import org.apache.iotdb.pipe.api.event.Event;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,4 +28,15 @@ import org.slf4j.LoggerFactory;
 public class IoTDBSchemaRegionExtractor extends IoTDBMetaExtractor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSchemaRegionExtractor.class);
+
+  @Override
+  public void start() throws Exception {}
+
+  @Override
+  public Event supply() throws Exception {
+    return null;
+  }
+
+  @Override
+  public void close() throws Exception {}
 }

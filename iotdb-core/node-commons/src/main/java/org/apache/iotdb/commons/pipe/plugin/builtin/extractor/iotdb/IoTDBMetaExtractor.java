@@ -19,13 +19,10 @@
 
 package org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb;
 
-import org.apache.iotdb.commons.pipe.metric.PipeFakeEventCounter;
-import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
-import org.apache.iotdb.pipe.api.event.Event;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,8 +48,6 @@ public abstract class IoTDBMetaExtractor implements PipeExtractor {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBMetaExtractor.class);
 
   private final AtomicBoolean hasBeenStarted;
-  protected final UnboundedBlockingPendingQueue<Event> pendingQueue =
-      new UnboundedBlockingPendingQueue<>(new PipeFakeEventCounter());
 
   private boolean enableSchemaSync = false;
   private boolean enableTtlSync = false;
@@ -70,24 +65,24 @@ public abstract class IoTDBMetaExtractor implements PipeExtractor {
   public void validate(PipeParameterValidator validator) throws Exception {
     validator.validate(
         arg -> {
-          Set<String> inclusionList =
+          Set<String> inclusionSet =
               new HashSet<>(Arrays.asList(((String) arg).replace(" ", "").split(",")));
-          if (inclusionList.contains(EXTRACTOR_INCLUSION_SCHEMA_VALUE)) {
+          if (inclusionSet.contains(EXTRACTOR_INCLUSION_SCHEMA_VALUE)) {
             enableSchemaSync = true;
           }
-          if (inclusionList.contains(EXTRACTOR_INCLUSION_TTL_VALUE)) {
+          if (inclusionSet.contains(EXTRACTOR_INCLUSION_TTL_VALUE)) {
             enableTtlSync = true;
           }
-          if (inclusionList.contains(EXTRACTOR_INCLUSION_FUNCTION_VALUE)) {
+          if (inclusionSet.contains(EXTRACTOR_INCLUSION_FUNCTION_VALUE)) {
             enableFunctionSync = true;
           }
-          if (inclusionList.contains(EXTRACTOR_INCLUSION_TRIGGER_VALUE)) {
+          if (inclusionSet.contains(EXTRACTOR_INCLUSION_TRIGGER_VALUE)) {
             enableTriggerSync = true;
           }
-          if (inclusionList.contains(EXTRACTOR_INCLUSION_MODEL_VALUE)) {
+          if (inclusionSet.contains(EXTRACTOR_INCLUSION_MODEL_VALUE)) {
             enableModelSync = true;
           }
-          if (inclusionList.contains(EXTRACTOR_INCLUSION_AUTHORITY_VALUE)) {
+          if (inclusionSet.contains(EXTRACTOR_INCLUSION_AUTHORITY_VALUE)) {
             enableAuthoritySync = true;
           }
           atLeastOneEnable =
@@ -98,7 +93,7 @@ public abstract class IoTDBMetaExtractor implements PipeExtractor {
                   || enableModelSync
                   || enableAuthoritySync;
           // If none of above are present and data is also absent, then validation will fail.
-          return atLeastOneEnable || inclusionList.contains(EXTRACTOR_INCLUSION_DATA_VALUE);
+          return atLeastOneEnable || inclusionSet.contains(EXTRACTOR_INCLUSION_DATA_VALUE);
         },
         String.format(
             "At least one of %s, %s, %s, %s, %s, %s, %s should be present in %s.",
@@ -121,30 +116,5 @@ public abstract class IoTDBMetaExtractor implements PipeExtractor {
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
     // do nothing
-  }
-
-  @Override
-  public void start() throws Exception {
-    if (hasBeenStarted.get()) {
-      return;
-    }
-    hasBeenStarted.set(true);
-    // TODO: start listen and assign
-  }
-
-  public final void extract(Event event) {
-    // waitedOffer() should not return false, for the queue is unbounded.
-    pendingQueue.waitedOffer(event);
-  }
-
-  @Override
-  public Event supply() throws Exception {
-    // TODO: manage reference count
-    return pendingQueue.directPoll();
-  }
-
-  @Override
-  public void close() throws Exception {
-    // TODO: clear the queue and clear reference count
   }
 }

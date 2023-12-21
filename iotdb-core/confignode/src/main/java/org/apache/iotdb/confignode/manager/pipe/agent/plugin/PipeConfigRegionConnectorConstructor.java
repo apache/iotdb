@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.connector.donothing.DoNothin
 import org.apache.iotdb.confignode.manager.pipe.connector.IoTDBConfigRegionConnector;
 import org.apache.iotdb.pipe.api.PipeConnector;
 
-public class PipeConfigRegionConnectorConstructor extends PipeConnectorConstructor {
+class PipeConfigRegionConnectorConstructor extends PipeConnectorConstructor {
 
   @Override
   protected void initConstructors() {

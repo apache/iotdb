@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.donothing.DoNothin
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 
-public class PipeSchemaRegionExtractorConstructor extends PipeExtractorConstructor {
+class PipeSchemaRegionExtractorConstructor extends PipeExtractorConstructor {
 
   @Override
   protected void initConstructors() {

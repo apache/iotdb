@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.connector.donothing.DoNothin
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.thrift.IoTDBSchemaRegionConnector;
 import org.apache.iotdb.pipe.api.PipeConnector;
 
-public class PipeSchemaRegionConnectorConstructor extends PipeConnectorConstructor {
+class PipeSchemaRegionConnectorConstructor extends PipeConnectorConstructor {
 
   @Override
   protected void initConstructors() {

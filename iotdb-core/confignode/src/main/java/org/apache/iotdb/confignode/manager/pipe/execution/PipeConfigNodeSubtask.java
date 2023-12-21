@@ -50,12 +50,12 @@ public class PipeConfigNodeSubtask extends PipeSubtask {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfigNodeSubtask.class);
 
   // Pipe plugins for this subtask
-  private final PipeExtractor extractor;
+  private PipeExtractor extractor;
   // TODO: currently unused
   @SuppressWarnings("unused")
-  private final PipeProcessor processor;
+  private PipeProcessor processor;
 
-  private final PipeConnector connector;
+  private PipeConnector connector;
 
   // For thread pool to execute callbacks
   private final DecoratingLock callbackDecoratingLock = new DecoratingLock();
@@ -74,19 +74,17 @@ public class PipeConfigNodeSubtask extends PipeSubtask {
       throws Exception {
     super(pipeName, creationTime);
 
-    extractor = initExtractor(extractorAttributes);
-    processor = initProcessor(processorAttributes);
-    connector = initConnector(connectorAttributes);
-
+    initExtractor(extractorAttributes);
+    initProcessor(processorAttributes);
+    initConnector(connectorAttributes);
     // TODO: connect extractor, processor and connector
   }
 
-  private PipeExtractor initExtractor(Map<String, String> extractorAttributes) throws Exception {
+  private void initExtractor(Map<String, String> extractorAttributes) throws Exception {
     final PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
 
     // 1. Construct extractor
-    final PipeExtractor extractor =
-        PipeConfigNodeAgent.plugin().reflectExtractor(extractorParameters);
+    extractor = PipeConfigNodeAgent.plugin().reflectExtractor(extractorParameters);
 
     // 2. Validate extractor parameters
     extractor.validate(new PipeParameterValidator(extractorParameters));
@@ -97,16 +95,13 @@ public class PipeConfigNodeSubtask extends PipeSubtask {
             // TODO: check CONFIG_REGION_ID.getId()
             new PipeTaskRuntimeEnvironment(taskID, creationTime, CONFIG_REGION_ID.getId()));
     extractor.customize(extractorParameters, runtimeConfiguration);
-
-    return extractor;
   }
 
-  private PipeProcessor initProcessor(Map<String, String> processorAttributes) throws Exception {
+  private void initProcessor(Map<String, String> processorAttributes) throws Exception {
     final PipeParameters processorParameters = new PipeParameters(processorAttributes);
 
     // 1. Construct processor
-    final PipeProcessor processor =
-        PipeConfigNodeAgent.plugin().reflectProcessor(processorParameters);
+    processor = PipeConfigNodeAgent.plugin().reflectProcessor(processorParameters);
 
     // 2. Validate processor parameters
     processor.validate(new PipeParameterValidator(processorParameters));
@@ -117,16 +112,13 @@ public class PipeConfigNodeSubtask extends PipeSubtask {
             // TODO: check CONFIG_REGION_ID.getId()
             new PipeTaskRuntimeEnvironment(taskID, creationTime, CONFIG_REGION_ID.getId()));
     processor.customize(processorParameters, runtimeConfiguration);
-
-    return processor;
   }
 
-  private PipeConnector initConnector(Map<String, String> connectorAttributes) throws Exception {
+  private void initConnector(Map<String, String> connectorAttributes) throws Exception {
     final PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
 
     // 1. Construct connector
-    final PipeConnector connector =
-        PipeConfigNodeAgent.plugin().reflectConnector(connectorParameters);
+    connector = PipeConfigNodeAgent.plugin().reflectConnector(connectorParameters);
 
     // 2. Validate connector parameters
     connector.validate(new PipeParameterValidator(connectorParameters));
@@ -140,8 +132,6 @@ public class PipeConfigNodeSubtask extends PipeSubtask {
 
     // 4. Handshake
     connector.handshake();
-
-    return connector;
   }
 
   @Override

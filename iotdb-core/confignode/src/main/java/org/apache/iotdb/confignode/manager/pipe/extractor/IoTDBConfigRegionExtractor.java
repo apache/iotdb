@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.confignode.manager.pipe.extractor;
 
+import org.apache.iotdb.commons.pipe.datastructure.ConcurrentIterableLinkedQueue;
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb.IoTDBMetaExtractor;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.pipe.api.event.Event;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,4 +30,22 @@ import org.slf4j.LoggerFactory;
 public class IoTDBConfigRegionExtractor extends IoTDBMetaExtractor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConfigRegionExtractor.class);
+
+  private ConcurrentIterableLinkedQueue<ConfigPhysicalPlan>.DynamicIterator itr;
+
+  @Override
+  public void start() throws Exception {
+    itr = ConfigPlanListeningQueue.getInstance().newIterator(0);
+  }
+
+  @Override
+  public Event supply() {
+    // TODO: itr.next()
+    return null;
+  }
+
+  @Override
+  public void close() throws Exception {
+    ConfigPlanListeningQueue.getInstance().returnIterator(itr);
+  }
 }
