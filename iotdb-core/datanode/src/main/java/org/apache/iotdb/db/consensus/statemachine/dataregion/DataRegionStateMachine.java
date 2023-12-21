@@ -65,6 +65,10 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   protected DataRegion region;
 
+  private static final int MAX_WRITE_RETRY_TIMES = 5;
+
+  private static final long WRITE_RETRY_WAIT_TIME_IN_MS = 1000;
+
   public DataRegionStateMachine(DataRegion region) {
     this.region = region;
   }
@@ -237,7 +241,32 @@ public class DataRegionStateMachine extends BaseStateMachine {
   }
 
   protected TSStatus write(PlanNode planNode) {
-    return planNode.accept(new DataExecutionVisitor(), region);
+    // To ensure the Data inconsistency between multiple replications, we add retry in write
+    // operation.
+    TSStatus result = null;
+    int retryTime = 0;
+    while (retryTime < MAX_WRITE_RETRY_TIMES) {
+      result = planNode.accept(new DataExecutionVisitor(), region);
+      if (needRetry(result.getCode())) {
+        retryTime++;
+        logger.debug(
+            "write operation failed because {}, retryTime: {}.", result.getCode(), retryTime);
+        if (retryTime == MAX_WRITE_RETRY_TIMES) {
+          logger.error(
+              "write operation still failed after {} retry times, because {}.",
+              MAX_WRITE_RETRY_TIMES,
+              result.getCode());
+        }
+        try {
+          Thread.sleep(WRITE_RETRY_WAIT_TIME_IN_MS);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        }
+      } else {
+        break;
+      }
+    }
+    return result;
   }
 
   @Override
@@ -270,5 +299,13 @@ public class DataRegionStateMachine extends BaseStateMachine {
       logger.warn("{}: cannot get the canonical file of {} due to {}", this, snapshotDir, e);
       return null;
     }
+  }
+
+  public static boolean needRetry(int statusCode) {
+    // To fix the atomicity problem, we only need to add retry for system reject.
+    // In other cases, such as readonly, we can return directly because there are retries at the
+    // consensus layer.
+    return statusCode == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()
+        || statusCode == TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode();
   }
 }
