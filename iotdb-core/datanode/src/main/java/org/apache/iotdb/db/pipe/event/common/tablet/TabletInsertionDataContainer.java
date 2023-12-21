@@ -98,6 +98,10 @@ public class TabletInsertionDataContainer {
     this(null, null, insertNode, pattern);
   }
 
+  public boolean isAligned() {
+    return isAligned;
+  }
+
   //////////////////////////// parse ////////////////////////////
 
   private void parse(InsertRowNode insertRowNode, String pattern) {
@@ -294,6 +298,12 @@ public class TabletInsertionDataContainer {
     rowCount = tablet.rowSize;
   }
 
+  private boolean isRowTimeCoveredByTimeRange(long timestamp) {
+    return Objects.isNull(sourceEvent)
+        || !sourceEvent.shouldParseTime()
+        || (sourceEvent.getStartTime() <= timestamp && timestamp <= sourceEvent.getEndTime());
+  }
+
   private void generateColumnIndexMapper(
       String[] originMeasurementList,
       String pattern,
@@ -448,10 +458,6 @@ public class TabletInsertionDataContainer {
 
   ////////////////////////////  convertToTablet  ////////////////////////////
 
-  public boolean isAligned() {
-    return isAligned;
-  }
-
   public Tablet convertToTablet() {
     if (tablet != null) {
       return tablet;
@@ -466,11 +472,5 @@ public class TabletInsertionDataContainer {
     tablet = newTablet;
 
     return tablet;
-  }
-
-  private boolean isRowTimeCoveredByTimeRange(long timestamp) {
-    return Objects.isNull(sourceEvent)
-        || !sourceEvent.shouldParseTime()
-        || (sourceEvent.getStartTime() <= timestamp && timestamp <= sourceEvent.getEndTime());
   }
 }
