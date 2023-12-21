@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
@@ -134,6 +135,14 @@ public class PipeRuntimeAgent implements IService {
     // no need to wait for the next heartbeat cycle.
     if (pipeRuntimeException instanceof PipeRuntimeCriticalException) {
       PipeAgent.task().stopAllPipesWithCriticalException();
+    }
+  }
+
+  public void report(EnrichedEvent event, PipeRuntimeException pipeRuntimeException) {
+    if (event.getPipeTaskMeta() != null) {
+      report(event.getPipeTaskMeta(), pipeRuntimeException);
+    } else {
+      LOGGER.warn("Attempt to report pipe exception to a null PipeTaskMeta.", pipeRuntimeException);
     }
   }
 

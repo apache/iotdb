@@ -17,11 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.metric;
+package org.apache.iotdb.commons.pipe.metric;
 
+import org.apache.iotdb.commons.pipe.progress.committer.PipeEventCommitter;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.db.pipe.progress.committer.PipeEventCommitter;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;

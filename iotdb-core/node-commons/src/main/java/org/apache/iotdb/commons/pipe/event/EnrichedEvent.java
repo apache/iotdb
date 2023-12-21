@@ -17,15 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.event;
+package org.apache.iotdb.commons.pipe.event;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.pipe.progress.committer.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.progress.committer.PipeEventCommitManager;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.slf4j.Logger;
@@ -192,15 +190,16 @@ public abstract class EnrichedEvent implements Event {
   public abstract EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       String pipeName, PipeTaskMeta pipeTaskMeta, String pattern);
 
-  public void reportException(PipeRuntimeException pipeRuntimeException) {
-    if (pipeTaskMeta != null) {
-      PipeAgent.runtime().report(pipeTaskMeta, pipeRuntimeException);
-    } else {
-      LOGGER.warn("Attempt to report pipe exception to a null PipeTaskMeta.", pipeRuntimeException);
-    }
+  public PipeTaskMeta getPipeTaskMeta() {
+    return pipeTaskMeta;
   }
 
   public abstract boolean isGeneratedByPipe();
+
+  /** Whether the event need to be committed in order. */
+  public boolean needToCommit() {
+    return true;
+  }
 
   public void setCommitterKeyAndCommitId(String committerKey, long commitId) {
     this.committerKey = committerKey;

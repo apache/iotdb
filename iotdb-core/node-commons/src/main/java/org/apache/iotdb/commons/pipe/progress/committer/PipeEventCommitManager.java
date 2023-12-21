@@ -17,11 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.progress.committer;
+package org.apache.iotdb.commons.pipe.progress.committer;
 
-import org.apache.iotdb.db.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
-import org.apache.iotdb.db.pipe.metric.PipeEventCommitMetrics;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.metric.PipeEventCommitMetrics;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,7 +64,7 @@ public class PipeEventCommitManager {
    * calling this.
    */
   public void enrichWithCommitterKeyAndCommitId(EnrichedEvent event, int dataRegionId) {
-    if (event == null || event instanceof PipeHeartbeatEvent || event.getPipeName() == null) {
+    if (event == null || event.getPipeName() == null || !event.needToCommit()) {
       return;
     }
 
@@ -79,7 +78,7 @@ public class PipeEventCommitManager {
 
   public void commit(EnrichedEvent event, String committerKey) {
     if (event == null
-        || event instanceof PipeHeartbeatEvent
+        || !event.needToCommit()
         || event.getCommitId() <= EnrichedEvent.NO_COMMIT_ID
         || committerKey == null) {
       return;
