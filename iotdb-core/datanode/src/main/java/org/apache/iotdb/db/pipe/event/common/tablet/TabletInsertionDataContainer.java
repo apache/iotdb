@@ -142,8 +142,8 @@ public class TabletInsertionDataContainer {
         this.columnNameStringList[filteredColumnIndex] = originColumnNameStringList[i];
         this.valueColumnTypes[filteredColumnIndex] = originValueColumnTypes[i];
         this.valueColumns[filteredColumnIndex] =
-            reduceValueColumnsByRowIndexList(
-                originValueColumnTypes[i], originValueColumns[i], rowIndexList);
+            filterValueColumnsByRowIndexList(
+                originValueColumnTypes[i], originValueColumns[i], rowIndexList, true);
         this.nullValueColumnBitmaps[filteredColumnIndex] = new BitMap(1);
       }
     }
@@ -213,8 +213,8 @@ public class TabletInsertionDataContainer {
         this.columnNameStringList[filteredColumnIndex] = originColumnNameStringList[i];
         this.valueColumnTypes[filteredColumnIndex] = originValueColumnTypes[i];
         this.valueColumns[filteredColumnIndex] =
-            reduceValueColumnsByRowIndexList(
-                originValueColumnTypes[i], originValueColumns[i], rowIndexList);
+            filterValueColumnsByRowIndexList(
+                originValueColumnTypes[i], originValueColumns[i], rowIndexList, false);
         this.nullValueColumnBitmaps[filteredColumnIndex] = originBitMapList[i];
       }
     }
@@ -285,8 +285,8 @@ public class TabletInsertionDataContainer {
         this.columnNameStringList[filteredColumnIndex] = originColumnNameStringList[i];
         this.valueColumnTypes[filteredColumnIndex] = originValueColumnTypes[i];
         this.valueColumns[filteredColumnIndex] =
-            reduceValueColumnsByRowIndexList(
-                originValueColumnTypes[i], originValueColumns[i], rowIndexList);
+            filterValueColumnsByRowIndexList(
+                originValueColumnTypes[i], originValueColumns[i], rowIndexList, false);
         this.nullValueColumnBitmaps[filteredColumnIndex] = originBitMapList[i];
       }
     }
@@ -331,12 +331,18 @@ public class TabletInsertionDataContainer {
     }
   }
 
-  private static Object reduceValueColumnsByRowIndexList(
-      TSDataType type, Object originValueColumn, List<Integer> rowIndexList) {
+  private static Object filterValueColumnsByRowIndexList(
+      TSDataType type,
+      Object originValueColumn,
+      List<Integer> rowIndexList,
+      boolean isSingleOriginValueColumn) {
     switch (type) {
       case INT32:
         {
-          int[] intValueColumns = (int[]) originValueColumn;
+          int[] intValueColumns =
+              isSingleOriginValueColumn
+                  ? new int[] {(int) originValueColumn}
+                  : (int[]) originValueColumn;
           int[] valueColumns = new int[rowIndexList.size()];
           for (int i = 0; i < rowIndexList.size(); ++i) {
             valueColumns[i] = intValueColumns[rowIndexList.get(i)];
@@ -345,7 +351,10 @@ public class TabletInsertionDataContainer {
         }
       case INT64:
         {
-          long[] longValueColumns = (long[]) originValueColumn;
+          long[] longValueColumns =
+              isSingleOriginValueColumn
+                  ? new long[] {(long) originValueColumn}
+                  : (long[]) originValueColumn;
           long[] valueColumns = new long[rowIndexList.size()];
           for (int i = 0; i < rowIndexList.size(); ++i) {
             valueColumns[i] = longValueColumns[rowIndexList.get(i)];
@@ -354,7 +363,10 @@ public class TabletInsertionDataContainer {
         }
       case FLOAT:
         {
-          float[] floatValueColumns = (float[]) originValueColumn;
+          float[] floatValueColumns =
+              isSingleOriginValueColumn
+                  ? new float[] {(float) originValueColumn}
+                  : (float[]) originValueColumn;
           float[] valueColumns = new float[rowIndexList.size()];
           for (int i = 0; i < rowIndexList.size(); ++i) {
             valueColumns[i] = floatValueColumns[rowIndexList.get(i)];
@@ -363,7 +375,10 @@ public class TabletInsertionDataContainer {
         }
       case DOUBLE:
         {
-          double[] doubleValueColumns = (double[]) originValueColumn;
+          double[] doubleValueColumns =
+              isSingleOriginValueColumn
+                  ? new double[] {(double) originValueColumn}
+                  : (double[]) originValueColumn;
           double[] valueColumns = new double[rowIndexList.size()];
           for (int i = 0; i < rowIndexList.size(); ++i) {
             valueColumns[i] = doubleValueColumns[rowIndexList.get(i)];
@@ -372,7 +387,10 @@ public class TabletInsertionDataContainer {
         }
       case BOOLEAN:
         {
-          boolean[] booleanValueColumns = (boolean[]) originValueColumn;
+          boolean[] booleanValueColumns =
+              isSingleOriginValueColumn
+                  ? new boolean[] {(boolean) originValueColumn}
+                  : (boolean[]) originValueColumn;
           boolean[] valueColumns = new boolean[rowIndexList.size()];
           for (int i = 0; i < rowIndexList.size(); ++i) {
             valueColumns[i] = booleanValueColumns[rowIndexList.get(i)];
@@ -381,7 +399,10 @@ public class TabletInsertionDataContainer {
         }
       case TEXT:
         {
-          Binary[] binaryValueColumns = (Binary[]) originValueColumn;
+          Binary[] binaryValueColumns =
+              isSingleOriginValueColumn
+                  ? new Binary[] {(Binary) originValueColumn}
+                  : (Binary[]) originValueColumn;
           Binary[] valueColumns = new Binary[rowIndexList.size()];
           for (int i = 0; i < rowIndexList.size(); ++i) {
             valueColumns[i] = new Binary(binaryValueColumns[rowIndexList.get(i)].getValues());
@@ -448,7 +469,8 @@ public class TabletInsertionDataContainer {
   }
 
   private boolean isRowTimeCoveredByTimeRange(long timestamp) {
-    return !sourceEvent.shouldParseTime()
+    return Objects.isNull(sourceEvent)
+        || !sourceEvent.shouldParseTime()
         || (sourceEvent.getStartTime() <= timestamp && timestamp <= sourceEvent.getEndTime());
   }
 }
