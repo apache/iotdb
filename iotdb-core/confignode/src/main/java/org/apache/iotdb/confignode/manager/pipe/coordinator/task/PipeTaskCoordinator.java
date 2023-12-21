@@ -111,27 +111,16 @@ public class PipeTaskCoordinator {
   public TSStatus startPipe(String pipeName) {
     final TSStatus status = configManager.getProcedureManager().startPipe(pipeName);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Failed to start pipe {}. Result status: {}.", pipeName, status);
+      LOGGER.warn("Failed to stop pipe {}. Result status: {}.", pipeName, status);
     }
     return status;
   }
 
   /** Caller should ensure that the method is called in the lock {@link #tryLock()}. */
   public TSStatus stopPipe(String pipeName) {
-    final boolean isStoppedByRuntimeException = pipeTaskInfo.isStoppedByRuntimeException(pipeName);
     final TSStatus status = configManager.getProcedureManager().stopPipe(pipeName);
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      if (isStoppedByRuntimeException) {
-        // Even if the return status is success, it doesn't imply the success of the
-        // `executeFromOperateOnDataNodes` phase of stopping pipe. However, we still need to set
-        // `isStoppedByRuntimeException` to false to avoid auto-restart. Meanwhile,
-        // `isStoppedByRuntimeException` does not need to be synchronized with DNs.
-        LOGGER.info("Pipe {} has stopped manually, stop its auto restart process.", pipeName);
-        pipeTaskInfo.setIsStoppedByRuntimeExceptionToFalse(pipeName);
-        configManager.getProcedureManager().pipeHandleMetaChange(true, false);
-      }
-    } else {
-      LOGGER.warn("Failed to stop pipe {}. Result status: {}.", pipeName, status);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn("Failed to start pipe {}. Result status: {}.", pipeName, status);
     }
     return status;
   }

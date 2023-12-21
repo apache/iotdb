@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.manager.pipe.task;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
@@ -38,33 +37,27 @@ public class PipeConfigNodeTaskBuilder {
     this.pipeMeta = pipeMeta;
   }
 
-  public Map<TConsensusGroupId, PipeTask> build() {
+  public Map<Integer, PipeTask> build() {
     final PipeStaticMeta pipeStaticMeta = pipeMeta.getStaticMeta();
     final PipeRuntimeMeta pipeRuntimeMeta = pipeMeta.getRuntimeMeta();
 
-    final Map<TConsensusGroupId, PipeTask> consensusGroupIdToPipeTaskMap = new HashMap<>();
-    for (Map.Entry<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToPipeTaskMeta :
+    final Map<Integer, PipeTask> consensusGroupIdToPipeTaskMap = new HashMap<>();
+    for (Map.Entry<Integer, PipeTaskMeta> consensusGroupIdToPipeTaskMeta :
         pipeRuntimeMeta.getConsensusGroupId2TaskMetaMap().entrySet()) {
-      final TConsensusGroupId consensusGroupId = consensusGroupIdToPipeTaskMeta.getKey();
+      final int consensusGroupId = consensusGroupIdToPipeTaskMeta.getKey();
 
-      switch (consensusGroupId.getType()) {
-        case ConfigRegion:
-          // TODO: getLeaderDataNodeId -> getLeaderNodeId
-          if (consensusGroupIdToPipeTaskMeta.getValue().getLeaderDataNodeId()
+      if (consensusGroupId == Integer.MIN_VALUE
+          && consensusGroupIdToPipeTaskMeta.getValue().getLeaderNodeId()
               == ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()) {
-            consensusGroupIdToPipeTaskMap.put(
-                consensusGroupId,
-                new PipeConfigNodeTask(
-                    new PipeConfigNodeTaskStage(
-                        pipeStaticMeta.getPipeName(),
-                        pipeStaticMeta.getCreationTime(),
-                        pipeStaticMeta.getExtractorParameters().getAttribute(),
-                        pipeStaticMeta.getProcessorParameters().getAttribute(),
-                        pipeStaticMeta.getConnectorParameters().getAttribute())));
-          }
-          break;
-        default:
-          break;
+        consensusGroupIdToPipeTaskMap.put(
+            consensusGroupId,
+            new PipeConfigNodeTask(
+                new PipeConfigNodeTaskStage(
+                    pipeStaticMeta.getPipeName(),
+                    pipeStaticMeta.getCreationTime(),
+                    pipeStaticMeta.getExtractorParameters().getAttribute(),
+                    pipeStaticMeta.getProcessorParameters().getAttribute(),
+                    pipeStaticMeta.getConnectorParameters().getAttribute())));
       }
     }
     return consensusGroupIdToPipeTaskMap;

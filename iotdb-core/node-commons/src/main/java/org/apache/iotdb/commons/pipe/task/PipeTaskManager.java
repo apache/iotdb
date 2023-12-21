@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.commons.pipe.task;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 
 import java.util.HashMap;

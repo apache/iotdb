@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.task.builder;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutorManager;
@@ -27,7 +26,7 @@ import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutorManager;
 public class PipeDataNodeTaskSchemaRegionBuilder extends PipeDataNodeTaskBuilder {
 
   public PipeDataNodeTaskSchemaRegionBuilder(
-      PipeStaticMeta pipeStaticMeta, TConsensusGroupId regionId, PipeTaskMeta pipeTaskMeta) {
+      PipeStaticMeta pipeStaticMeta, int regionId, PipeTaskMeta pipeTaskMeta) {
     super(
         pipeStaticMeta,
         regionId,

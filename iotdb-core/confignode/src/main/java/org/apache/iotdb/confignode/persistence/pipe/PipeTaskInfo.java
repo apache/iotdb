@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.persistence.pipe;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMetaKeeper;
@@ -37,6 +38,7 @@ import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleMetaChangeProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -462,6 +464,65 @@ public class PipeTaskInfo implements SnapshotProcessor {
                 pipeTaskMeta.clearExceptionMessages();
               }
             });
+  }
+  /**
+   * Record the exceptions of all pipes locally if they encountered failure when pushing pipe meta.
+   *
+   * <p>If there are exceptions recorded, the related pipes will be stopped, and the exception
+   * messages will then be updated to all the nodes through {@link PipeHandleMetaChangeProcedure}.
+   *
+   * @param respMap The responseMap after pushing pipe meta
+   * @return true if there are exceptions encountered
+   */
+  public boolean recordPushPipeMetaExceptions(Map<Integer, TPushPipeMetaResp> respMap) {
+    acquireWriteLock();
+    try {
+      return recordPushPipeMetaExceptionsInternal(respMap);
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  private boolean recordPushPipeMetaExceptionsInternal(Map<Integer, TPushPipeMetaResp> respMap) {
+    boolean hasException = false;
+
+    for (final Map.Entry<Integer, TPushPipeMetaResp> respEntry : respMap.entrySet()) {
+      final int dataNodeId = respEntry.getKey();
+      final TPushPipeMetaResp resp = respEntry.getValue();
+
+      if (resp.getStatus().getCode() == TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()) {
+        hasException = true;
+
+        if (!resp.isSetExceptionMessages()) {
+          // The pushPipeMeta process on dataNode encountered internal errors
+          continue;
+        }
+
+        resp.getExceptionMessages()
+            .forEach(
+                message -> {
+                  if (pipeMetaKeeper.containsPipeMeta(message.getPipeName())) {
+                    final PipeRuntimeMeta runtimeMeta =
+                        pipeMetaKeeper.getPipeMeta(message.getPipeName()).getRuntimeMeta();
+
+                    // Mark the status of the pipe with exception as stopped
+                    runtimeMeta.getStatus().set(PipeStatus.STOPPED);
+
+                    final Map<Integer, PipeRuntimeException> exceptionMap =
+                        runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap();
+                    if (!exceptionMap.containsKey(dataNodeId)
+                        || exceptionMap.get(dataNodeId).getTimeStamp() < message.getTimeStamp()) {
+                      exceptionMap.put(
+                          dataNodeId,
+                          new PipeRuntimeCriticalException(
+                              message.getMessage(), message.getTimeStamp()));
+                    }
+                  }
+                });
+      }
+    }
+
+    return hasException;
   }
 
   public boolean autoRestart() {

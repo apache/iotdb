@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.commons.pipe.agent.task;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.commons.pipe.task.PipeTaskManager;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
@@ -174,16 +173,16 @@ public abstract class PipeTaskAgent {
       /* @NotNull */ PipeRuntimeMeta runtimeMetaFromCoordinator,
       /* @NotNull */ PipeRuntimeMeta runtimeMetaInAgent) {
     // 1. Handle region group leader changed first
-    final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMapFromCoordinator =
+    final Map<Integer, PipeTaskMeta> consensusGroupIdToTaskMetaMapFromCoordinator =
         runtimeMetaFromCoordinator.getConsensusGroupId2TaskMetaMap();
-    final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMapInAgent =
+    final Map<Integer, PipeTaskMeta> consensusGroupIdToTaskMetaMapInAgent =
         runtimeMetaInAgent.getConsensusGroupId2TaskMetaMap();
 
     // 1.1 Iterate over all consensus group ids in coordinator's pipe runtime meta, decide if we
     // need to drop and create a new task for each consensus group id
-    for (final Map.Entry<TConsensusGroupId, PipeTaskMeta> entryFromCoordinator :
+    for (final Map.Entry<Integer, PipeTaskMeta> entryFromCoordinator :
         consensusGroupIdToTaskMetaMapFromCoordinator.entrySet()) {
-      final TConsensusGroupId consensusGroupIdFromCoordinator = entryFromCoordinator.getKey();
+      final int consensusGroupIdFromCoordinator = entryFromCoordinator.getKey();
 
       final PipeTaskMeta taskMetaFromCoordinator = entryFromCoordinator.getValue();
       final PipeTaskMeta taskMetaInAgent =
@@ -204,8 +203,8 @@ public abstract class PipeTaskAgent {
       }
 
       // If task meta exists on local agent, check if it has changed
-      final int nodeIdFromCoordinator = taskMetaFromCoordinator.getLeaderDataNodeId();
-      final int nodeIdInAgent = taskMetaInAgent.getLeaderDataNodeId();
+      final int nodeIdFromCoordinator = taskMetaFromCoordinator.getLeaderNodeId();
+      final int nodeIdInAgent = taskMetaInAgent.getLeaderNodeId();
 
       if (nodeIdFromCoordinator != nodeIdInAgent) {
         dropPipeTask(consensusGroupIdFromCoordinator, pipeStaticMeta);
@@ -225,9 +224,9 @@ public abstract class PipeTaskAgent {
     // need
     // to drop any task. we do not need to create any new task here because we have already done
     // that in 1.1.
-    for (final Map.Entry<TConsensusGroupId, PipeTaskMeta> entryInAgent :
+    for (final Map.Entry<Integer, PipeTaskMeta> entryInAgent :
         consensusGroupIdToTaskMetaMapInAgent.entrySet()) {
-      final TConsensusGroupId consensusGroupIdInAgent = entryInAgent.getKey();
+      final int consensusGroupIdInAgent = entryInAgent.getKey();
       final PipeTaskMeta taskMetaFromCoordinator =
           consensusGroupIdToTaskMetaMapFromCoordinator.get(consensusGroupIdInAgent);
       if (taskMetaFromCoordinator == null) {
@@ -429,8 +428,7 @@ public abstract class PipeTaskAgent {
     return needToStartPipe;
   }
 
-  protected abstract Map<TConsensusGroupId, PipeTask> buildPipeTasks(
-      PipeMeta pipeMetaFromCoordinator);
+  protected abstract Map<Integer, PipeTask> buildPipeTasks(PipeMeta pipeMetaFromCoordinator);
 
   private void dropPipe(String pipeName, long creationTime) {
     final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
@@ -499,7 +497,7 @@ public abstract class PipeTaskAgent {
     }
 
     // Trigger start() method for each pipe task
-    final Map<TConsensusGroupId, PipeTask> pipeTasks =
+    final Map<Integer, PipeTask> pipeTasks =
         pipeTaskManager.getPipeTasks(existedPipeMeta.getStaticMeta());
     if (pipeTasks == null) {
       LOGGER.info(
@@ -531,7 +529,7 @@ public abstract class PipeTaskAgent {
     }
 
     // Trigger stop() method for each pipe task
-    final Map<TConsensusGroupId, PipeTask> pipeTasks =
+    final Map<Integer, PipeTask> pipeTasks =
         pipeTaskManager.getPipeTasks(existedPipeMeta.getStaticMeta());
     if (pipeTasks == null) {
       LOGGER.info(
