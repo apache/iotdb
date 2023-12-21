@@ -73,9 +73,10 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   protected long realtimeDataExtractionStartTime; // Event time
   protected long realtimeDataExtractionEndTime; // Event time
 
-  private boolean enableTimeParseSkipByTimePartition;
+  private boolean enableSkippingTimeParseByTimePartition;
   private long startTimePartitionIdLowerBound; // calculated by realtimeDataExtractionStartTime
   private long endTimePartitionIdUpperBound; // calculated by realtimeDataExtractionEndTime
+
   // This variable is used to record the upper and lower bounds that the time partition ID
   // corresponding to this data region has ever reached. It may be updated by
   // PipeTimePartitionListener.
@@ -167,7 +168,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       LOGGER.warn(
           "Something unexpected happened when obtaining time partition id bound on data region {}, set enableTimeParseSkipByTimePartition to false.",
           dataRegionId);
-      enableTimeParseSkipByTimePartition = false;
+      enableSkippingTimeParseByTimePartition = false;
     }
 
     isForwardingPipeRequests =
@@ -228,7 +229,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       event.skipParsingPattern();
     }
 
-    if (enableTimeParseSkipByTimePartition && isDataRegionTimePartitionCoveredByTimeRange()) {
+    if (enableSkippingTimeParseByTimePartition && isDataRegionTimePartitionCoveredByTimeRange()) {
       event.skipParsingTime();
     }
 
@@ -271,7 +272,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   public void setDataRegionTimePartitionIdBound(Pair<Long, Long> timePartitionIdBound) {
     dataRegionTimePartitionIdBound.set(timePartitionIdBound);
-    enableTimeParseSkipByTimePartition = true;
+    enableSkippingTimeParseByTimePartition = true;
   }
 
   private boolean isDataRegionTimePartitionCoveredByTimeRange() {
