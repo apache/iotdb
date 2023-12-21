@@ -407,7 +407,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       event.skipParsingPattern();
     }
 
-    if (!sloppyTimeRange && !isTsFileResourceCoveredByTimeRange(resource)) {
+    if (sloppyTimeRange || isTsFileResourceCoveredByTimeRange(resource)) {
       event.skipParsingTime();
     }
 
