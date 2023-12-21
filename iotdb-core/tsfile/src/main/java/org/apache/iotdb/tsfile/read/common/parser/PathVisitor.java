@@ -92,6 +92,14 @@ public class PathVisitor extends PathParserBaseVisitor<String[]> {
         break;
       }
     }
-    return NumberUtils.isCreatable(str.substring(index));
+    if (index > 0 && (str.charAt(index) == 'e' || str.charAt(index) == 'E')) {
+      // first char encountered is e/E means the number is like: "000e38".(all leading zeros before
+      // e/E)
+      return NumberUtils.isCreatable(str.substring(index - 1));
+    } else {
+      // parse the str after removing the leading zeros
+      // Numbers like 0000 and 00.12 can also be handled by this branch
+      return NumberUtils.isCreatable(str.substring(index));
+    }
   }
 }

@@ -186,14 +186,19 @@ public class GroupByMonthFilter extends GroupByFilter {
       }
       this.startTime = startTimes[n];
       this.slidingStep =
-          calcPositiveIntervalByMonth(startTime, originalSlidingStep, 1, timeZone, currPrecision)
+          calcPositiveIntervalByMonth(
+                  originalStartTime, originalSlidingStep.multiple(n + 1), timeZone, currPrecision)
               - startTime;
     } else {
-      startTime = originalStartTime + n * slidingStep;
+      this.startTime = originalStartTime + n * slidingStep;
     }
     if (originalInterval.containsMonth()) {
       this.interval =
-          calcPositiveIntervalByMonth(startTime, originalInterval, 1, timeZone, currPrecision)
+          calcPositiveIntervalByMonth(
+                  originalStartTime,
+                  originalSlidingStep.multiple(n).merge(originalInterval),
+                  timeZone,
+                  currPrecision)
               - startTime;
     }
   }

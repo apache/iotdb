@@ -125,7 +125,6 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   @Override
   protected void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
     LOGGER.info("StopPipeProcedureV2: rollbackFromWriteConfigNodeConsensus({})", pipeName);
-
     TSStatus response;
     try {
       response =

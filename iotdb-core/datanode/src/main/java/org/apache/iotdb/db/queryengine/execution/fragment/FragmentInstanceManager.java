@@ -32,6 +32,7 @@ import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.queryengine.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler;
 import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
+import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.PipelineDriverFactory;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
@@ -52,6 +53,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
@@ -117,19 +119,12 @@ public class FragmentInstanceManager {
             "into-operation-executor");
   }
 
-  public int getInstanceContextSize() {
-    return instanceContext.size();
-  }
-
-  public int getInstanceExecutionSize() {
-    return instanceExecution.size();
-  }
-
   @SuppressWarnings("squid:S1181")
   public FragmentInstanceInfo execDataQueryFragmentInstance(
       FragmentInstance instance, IDataRegionForQuery dataRegion) {
     long startTime = System.nanoTime();
     FragmentInstanceId instanceId = instance.getId();
+    AtomicLong driversCount = new AtomicLong();
     try (SetThreadName fragmentInstanceName = new SetThreadName(instanceId.getFullId())) {
       FragmentInstanceExecution execution =
           instanceExecution.computeIfAbsent(
@@ -173,6 +168,7 @@ public class FragmentInstanceManager {
                   // get the sink of last driver
                   ISink sink = drivers.get(drivers.size() - 1).getSink();
 
+                  driversCount.addAndGet(drivers.size());
                   return createFragmentInstanceExecution(
                       scheduler,
                       instanceId,
@@ -204,6 +200,9 @@ public class FragmentInstanceManager {
         return createFailedInstanceInfo(instanceId);
       }
     } finally {
+      QueryRelatedResourceMetricSet.getInstance()
+          .updateFragmentInstanceCount(
+              instanceContext.size(), instanceExecution.size(), driversCount.get());
       QUERY_EXECUTION_METRIC_SET.recordExecutionCost(
           LOCAL_EXECUTION_PLANNER, System.nanoTime() - startTime);
     }

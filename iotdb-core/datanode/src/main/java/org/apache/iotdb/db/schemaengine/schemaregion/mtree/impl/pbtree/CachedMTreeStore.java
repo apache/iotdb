@@ -21,7 +21,6 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
@@ -31,15 +30,15 @@ import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.IMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.estimator.MNodeSizeEstimator;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.iterator.AbstractTraverserIterator;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.CacheMemoryManager;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.ICacheManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.flush.PBTreeFlushExecutor;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.MemManager;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockManager;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.MemoryStatistics;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.IMemoryManager;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.ReleaseFlushMonitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.iterator.CachedTraverserIterator;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaFile;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.SchemaFile;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MNodeUtils;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -61,31 +60,41 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
   private final int schemaRegionId;
 
-  private final MemManager memManager;
-  private final ICacheManager cacheManager;
+  private final MemoryStatistics memoryStatistics;
+  private final IMemoryManager memoryManager;
   private ISchemaFile file;
   private ICachedMNode root;
+  // TODO: delete it
   private final Runnable flushCallback;
   private final IMNodeFactory<ICachedMNode> nodeFactory =
       MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
   private final CachedSchemaRegionStatistics regionStatistics;
-  private final StampedWriterPreferredLock lock = new StampedWriterPreferredLock();
+  private final ReleaseFlushMonitor releaseFlushMonitor = ReleaseFlushMonitor.getInstance();
+  private final LockManager lockManager;
 
   public CachedMTreeStore(
-      PartialPath storageGroup,
       int schemaRegionId,
       CachedSchemaRegionStatistics regionStatistics,
-      Runnable flushCallback)
-      throws MetadataException, IOException {
+      Runnable flushCallback,
+      ISchemaFile schemaFile,
+      IMemoryManager memoryManager,
+      MemoryStatistics memoryStatistics,
+      LockManager lockManager)
+      throws MetadataException {
     this.schemaRegionId = schemaRegionId;
-    file = SchemaFile.initSchemaFile(storageGroup.getFullPath(), schemaRegionId);
-    root = file.init();
     this.regionStatistics = regionStatistics;
-    this.memManager = new MemManager(regionStatistics);
     this.flushCallback = flushCallback;
-    this.cacheManager = CacheMemoryManager.getInstance().createLRUCacheManager(this, memManager);
-    cacheManager.initRootStatus(root);
-    regionStatistics.setCacheManager(cacheManager);
+
+    this.lockManager = lockManager;
+
+    file = schemaFile;
+    root = file.init();
+
+    this.memoryStatistics = memoryStatistics;
+
+    this.memoryManager = memoryManager;
+    memoryManager.initRootStatus(root);
+
     ensureMemoryStatus();
   }
 
@@ -106,6 +115,18 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     return res;
   }
 
+  public IMemoryManager getMemoryManager() {
+    return memoryManager;
+  }
+
+  public ISchemaFile getSchemaFile() {
+    return file;
+  }
+
+  public LockManager getLockManager() {
+    return lockManager;
+  }
+
   @Override
   public ICachedMNode getRoot() {
     return root;
@@ -113,25 +134,32 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
   @Override
   public boolean hasChild(ICachedMNode parent, String name) throws MetadataException {
-    return hasChild(parent, name, true);
+    return hasChild(parent, name, true, true);
   }
 
-  protected final boolean hasChild(ICachedMNode parent, String name, boolean needLock)
+  protected final boolean hasChild(
+      ICachedMNode parent, String name, boolean needGlobalLock, boolean needNodeLock)
       throws MetadataException {
-    if (needLock) {
-      lock.threadReadLock();
+    if (needGlobalLock) {
+      lockManager.globalReadLock();
+    }
+    if (needNodeLock) {
+      lockManager.threadReadLock(parent);
     }
     try {
-      ICachedMNode child = getChild(parent, name, needLock);
+      ICachedMNode child = getChild(parent, name, false, false);
       if (child == null) {
         return false;
       } else {
-        unPin(child);
+        unPin(child, false);
         return true;
       }
     } finally {
-      if (needLock) {
-        lock.threadReadUnlock();
+      if (needNodeLock) {
+        lockManager.threadReadUnlock(parent);
+      }
+      if (needGlobalLock) {
+        lockManager.globalReadUnlock();
       }
     }
   }
@@ -150,13 +178,17 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
    */
   @Override
   public ICachedMNode getChild(ICachedMNode parent, String name) throws MetadataException {
-    return getChild(parent, name, true);
+    return getChild(parent, name, true, true);
   }
 
-  protected final ICachedMNode getChild(ICachedMNode parent, String name, boolean needLock)
+  protected final ICachedMNode getChild(
+      ICachedMNode parent, String name, boolean needGlobalLock, boolean needNodeLock)
       throws MetadataException {
-    if (needLock) {
-      lock.threadReadLock();
+    if (needGlobalLock) {
+      lockManager.globalReadLock();
+    }
+    if (needNodeLock) {
+      lockManager.threadReadLock(parent);
     }
     try {
       ICachedMNode node = parent.getChild(name);
@@ -164,7 +196,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
         node = loadChildFromDisk(parent, name);
       } else {
         try {
-          cacheManager.updateCacheStatusAfterMemoryRead(node);
+          memoryManager.updateCacheStatusAfterMemoryRead(node);
         } catch (MNodeNotCachedException e) {
           node = loadChildFromDisk(parent, name);
         }
@@ -175,8 +207,11 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
       return node;
     } finally {
-      if (needLock) {
-        lock.threadReadUnlock();
+      if (needNodeLock) {
+        lockManager.threadReadUnlock(parent);
+      }
+      if (needGlobalLock) {
+        lockManager.globalReadUnlock();
       }
     }
   }
@@ -203,14 +238,14 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       ICachedMNode nodeAlreadyLoaded = parent.getChild(node.getName());
       if (nodeAlreadyLoaded != null) {
         try {
-          cacheManager.updateCacheStatusAfterMemoryRead(nodeAlreadyLoaded);
+          memoryManager.updateCacheStatusAfterMemoryRead(nodeAlreadyLoaded);
           return nodeAlreadyLoaded;
         } catch (MNodeNotCachedException ignored) {
           // the nodeAlreadyLoaded is evicted and use the node read from disk
         }
       }
       node.setParent(parent);
-      cacheManager.updateCacheStatusAfterDiskRead(node);
+      memoryManager.updateCacheStatusAfterDiskRead(node);
       ensureMemoryStatus();
       return node;
     }
@@ -266,14 +301,16 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   // must pin parent first
   @Override
   public ICachedMNode addChild(ICachedMNode parent, String childName, ICachedMNode child) {
-    lock.threadReadLock();
+    lockManager.globalReadLock();
+    lockManager.threadReadLock(parent);
     try {
       child.setParent(parent);
-      cacheManager.updateCacheStatusAfterAppend(child);
+      memoryManager.updateCacheStatusAfterAppend(child);
       ensureMemoryStatus();
       return parent.getChild(childName);
     } finally {
-      lock.threadReadUnlock();
+      lockManager.threadReadUnlock(parent);
+      lockManager.globalReadUnlock();
     }
   }
 
@@ -290,9 +327,9 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
    */
   @Override
   public void deleteChild(ICachedMNode parent, String childName) throws MetadataException {
-    lock.writeLock();
+    lockManager.globalWriteLock();
     try {
-      ICachedMNode deletedMNode = getChild(parent, childName, false);
+      ICachedMNode deletedMNode = getChild(parent, childName, false, false);
       ICachedMNodeContainer container = ICachedMNodeContainer.getCachedMNodeContainer(parent);
       if (!container.isVolatile() && !container.hasChildInNewChildBuffer(childName)) {
         // the container has been persisted and this child is not a new child, which means the child
@@ -305,9 +342,9 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       }
 
       parent.deleteChild(childName);
-      cacheManager.remove(deletedMNode);
+      memoryManager.remove(deletedMNode);
     } finally {
-      lock.unlockWrite();
+      lockManager.globalWriteUnlock();
     }
   }
 
@@ -324,14 +361,20 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
   final void updateMNode(ICachedMNode node, Consumer<ICachedMNode> operation, boolean needLock) {
     if (needLock) {
-      lock.threadReadLock();
+      lockManager.globalReadLock();
+    }
+    if (!node.isDatabase()) {
+      lockManager.threadReadLock(node.getParent(), true);
     }
     try {
       operation.accept(node);
-      cacheManager.updateCacheStatusAfterUpdate(node);
+      memoryManager.updateCacheStatusAfterUpdate(node);
     } finally {
+      if (!node.isDatabase()) {
+        lockManager.threadReadUnlock(node.getParent());
+      }
       if (needLock) {
-        lock.threadReadUnlock();
+        lockManager.globalReadUnlock();
       }
     }
   }
@@ -345,7 +388,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     boolean isSuccess = resultReference.get();
     if (isSuccess) {
       regionStatistics.addDevice();
-      memManager.updatePinnedSize(node.estimateSize() - rawSize);
+      memoryStatistics.updatePinnedSize(node.estimateSize() - rawSize);
     }
 
     return node.getAsDeviceMNode();
@@ -365,7 +408,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     boolean isSuccess = resultReference.get();
     if (isSuccess) {
       regionStatistics.deleteDevice();
-      memManager.updatePinnedSize(internalMNode.estimateSize() - rawSize);
+      memoryStatistics.updatePinnedSize(internalMNode.estimateSize() - rawSize);
     }
 
     return internalMNode;
@@ -382,12 +425,12 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     updateMNode(measurementMNode.getAsMNode(), o -> o.getAsMeasurementMNode().setAlias(alias));
 
     if (existingAlias != null && alias != null) {
-      memManager.updatePinnedSize(alias.length() - existingAlias.length());
+      memoryStatistics.updatePinnedSize(alias.length() - existingAlias.length());
     } else if (alias == null) {
-      memManager.updatePinnedSize(
+      memoryStatistics.updatePinnedSize(
           -(MNodeSizeEstimator.getAliasBaseSize() + existingAlias.length()));
     } else {
-      memManager.updatePinnedSize(MNodeSizeEstimator.getAliasBaseSize() + alias.length());
+      memoryStatistics.updatePinnedSize(MNodeSizeEstimator.getAliasBaseSize() + alias.length());
     }
   }
 
@@ -405,14 +448,24 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   }
 
   final void pin(ICachedMNode node, boolean needLock) throws MetadataException {
+    if (node.getParent() == null) {
+      // ignore node represented by template
+      return;
+    }
     if (needLock) {
-      lock.threadReadLock();
+      lockManager.globalReadLock();
+    }
+    if (!node.isDatabase()) {
+      lockManager.threadReadLock(node.getParent());
     }
     try {
-      cacheManager.pinMNode(node);
+      memoryManager.pinMNode(node);
     } finally {
+      if (!node.isDatabase()) {
+        lockManager.threadReadUnlock(node.getParent());
+      }
       if (needLock) {
-        lock.threadReadUnlock();
+        lockManager.globalReadUnlock();
       }
     }
   }
@@ -431,16 +484,26 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   }
 
   final void unPin(ICachedMNode node, boolean needLock) {
+    if (node.getParent() == null) {
+      // ignore node represented by template
+      return;
+    }
     if (needLock) {
-      lock.threadReadLock();
+      lockManager.globalReadLock();
+    }
+    if (!node.isDatabase()) {
+      lockManager.threadReadLock(node.getParent(), true);
     }
     try {
-      if (cacheManager.unPinMNode(node)) {
+      if (memoryManager.unPinMNode(node)) {
         ensureMemoryStatus();
       }
     } finally {
+      if (!node.isDatabase()) {
+        lockManager.threadReadUnlock(node.getParent());
+      }
       if (needLock) {
-        lock.threadReadUnlock();
+        lockManager.globalReadUnlock();
       }
     }
   }
@@ -458,11 +521,11 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   }
 
   final long stampedReadLock() {
-    return lock.stampedReadLock();
+    return lockManager.globalStampedReadLock();
   }
 
   final void stampedReadUnlock(long stamp) {
-    lock.stampedReadUnlock(stamp);
+    lockManager.globalStampedReadUnlock(stamp);
   }
 
   @Override
@@ -473,11 +536,11 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   /** clear all the data of MTreeStore in memory and disk. */
   @Override
   public void clear() {
-    lock.writeLock();
+    lockManager.globalWriteLock();
     try {
-      CacheMemoryManager.getInstance().clearCachedMTreeStore(this);
-      regionStatistics.setCacheManager(null);
-      cacheManager.clear(root);
+      releaseFlushMonitor.clearCachedMTreeStore(this);
+      regionStatistics.setMemoryManager(null);
+      memoryManager.clear(root);
       root = null;
       if (file != null) {
         try {
@@ -489,58 +552,28 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       }
       file = null;
     } finally {
-      lock.unlockWrite();
+      lockManager.globalWriteUnlock();
     }
   }
 
   @Override
   public boolean createSnapshot(File snapshotDir) {
-    lock.writeLock();
+    lockManager.globalWriteLock();
     try {
-      flushVolatileNodes();
-      ensureMemoryStatus();
+      flushVolatileNodes(false);
       return file.createSnapshot(snapshotDir);
     } finally {
-      lock.unlockWrite();
+      lockManager.globalWriteUnlock();
     }
   }
 
-  public static CachedMTreeStore loadFromSnapshot(
-      File snapshotDir,
-      String storageGroup,
-      int schemaRegionId,
-      CachedSchemaRegionStatistics regionStatistics,
-      Runnable flushCallback)
-      throws IOException, MetadataException {
-    return new CachedMTreeStore(
-        snapshotDir, storageGroup, schemaRegionId, regionStatistics, flushCallback);
-  }
-
-  private CachedMTreeStore(
-      File snapshotDir,
-      String storageGroup,
-      int schemaRegionId,
-      CachedSchemaRegionStatistics regionStatistics,
-      Runnable flushCallback)
-      throws IOException, MetadataException {
-    this.schemaRegionId = schemaRegionId;
-    file = SchemaFile.loadSnapshot(snapshotDir, storageGroup, schemaRegionId);
-    root = file.init();
-    this.regionStatistics = regionStatistics;
-    this.memManager = new MemManager(regionStatistics);
-    this.flushCallback = flushCallback;
-    this.cacheManager = CacheMemoryManager.getInstance().createLRUCacheManager(this, memManager);
-    cacheManager.initRootStatus(root);
-    regionStatistics.setCacheManager(cacheManager);
-    ensureMemoryStatus();
+  @Override
+  public ReleaseFlushMonitor.RecordNode recordTraverserStatistics() {
+    return releaseFlushMonitor.recordTraverserTime(schemaRegionId);
   }
 
   private void ensureMemoryStatus() {
-    CacheMemoryManager.getInstance().ensureMemoryStatus();
-  }
-
-  public StampedWriterPreferredLock getLock() {
-    return lock;
+    releaseFlushMonitor.ensureMemoryStatus();
   }
 
   public CachedSchemaRegionStatistics getRegionStatistics() {
@@ -548,74 +581,45 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   }
 
   /**
-   * Fetching evictable nodes from cacheManager. Update the memory status after evicting each node.
+   * Fetching evictable nodes from memoryManager. Update the memory status after evicting each node.
    *
    * @return should not continue releasing
    */
   public boolean executeMemoryRelease() {
-    if (regionStatistics.getUnpinnedMemorySize() != 0) {
-      return !cacheManager.evict();
-    } else {
-      return true;
+    lockManager.globalReadUnlock();
+    try {
+      if (regionStatistics.getUnpinnedMemorySize() != 0) {
+        return !memoryManager.evict();
+      } else {
+        return true;
+      }
+    } finally {
+      lockManager.globalReadUnlock();
     }
   }
 
   /** Sync all volatile nodes to PBTree and execute memory release after flush. */
-  public void flushVolatileNodes() {
+  public void flushVolatileNodes(boolean needLock) {
+    if (needLock) {
+      lockManager.globalReadLock();
+    }
     try {
-      boolean hasVolatileNodes = flushVolatileDBNode();
-
-      Iterator<ICachedMNode> volatileSubtrees = cacheManager.collectVolatileSubtrees();
-      if (volatileSubtrees.hasNext()) {
-        hasVolatileNodes = true;
-
-        long startTime = System.currentTimeMillis();
-
-        ICachedMNode subtreeRoot;
-        PBTreeFlushExecutor flushExecutor;
-        while (volatileSubtrees.hasNext()) {
-          subtreeRoot = volatileSubtrees.next();
-          flushExecutor = new PBTreeFlushExecutor(subtreeRoot, cacheManager, file);
-          flushExecutor.flushVolatileNodes();
-        }
-
-        long time = System.currentTimeMillis() - startTime;
-        if (time > 10_000) {
-          LOGGER.info("It takes {}ms to flush MTree in SchemaRegion {}", time, schemaRegionId);
-        } else {
-          LOGGER.debug("It takes {}ms to flush MTree in SchemaRegion {}", time, schemaRegionId);
-        }
+      PBTreeFlushExecutor flushExecutor = new PBTreeFlushExecutor(memoryManager, file, lockManager);
+      long startTime = System.currentTimeMillis();
+      flushExecutor.flushVolatileNodes();
+      long time = System.currentTimeMillis() - startTime;
+      if (time > 10_000) {
+        LOGGER.info("It takes {}ms to flush MTree in SchemaRegion {}", time, schemaRegionId);
+      } else {
+        LOGGER.debug("It takes {}ms to flush MTree in SchemaRegion {}", time, schemaRegionId);
       }
-
-      if (hasVolatileNodes) {
-        flushCallback.run();
-      }
-    } catch (MetadataException | IOException e) {
-      LOGGER.warn(
-          "Exception occurred during MTree flush, current SchemaRegionId is {}", schemaRegionId, e);
     } catch (Throwable e) {
       LOGGER.error(
           "Error occurred during MTree flush, current SchemaRegionId is {}", schemaRegionId, e);
-      e.printStackTrace();
-    }
-  }
-
-  private boolean flushVolatileDBNode() throws IOException {
-    IDatabaseMNode<ICachedMNode> updatedStorageGroupMNode =
-        cacheManager.collectUpdatedStorageGroupMNodes();
-    if (updatedStorageGroupMNode == null) {
-      return false;
-    }
-
-    try {
-      file.updateDatabaseNode(updatedStorageGroupMNode);
-      return true;
-    } catch (IOException e) {
-      LOGGER.warn(
-          "IOException occurred during updating StorageGroupMNode {}",
-          updatedStorageGroupMNode.getFullPath(),
-          e);
-      throw e;
+    } finally {
+      if (needLock) {
+        lockManager.globalReadUnlock();
+      }
     }
   }
 
@@ -629,13 +633,19 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     Iterator<ICachedMNode> bufferIterator;
     boolean isIteratingDisk;
     ICachedMNode nextNode;
+
+    boolean needLock;
     boolean isLocked;
+
+    long readLockStamp;
 
     CachedMNodeIterator(ICachedMNode parent, boolean needLock)
         throws MetadataException, IOException {
+      this.needLock = needLock;
       if (needLock) {
-        lock.threadReadLock();
+        lockManager.globalReadLock();
       }
+      readLockStamp = lockManager.stampedReadLock(parent);
       isLocked = true;
       try {
         this.parent = parent;
@@ -650,8 +660,9 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
         }
 
       } catch (Throwable e) {
+        lockManager.stampedReadUnlock(parent, readLockStamp);
         if (needLock) {
-          lock.threadReadUnlock();
+          lockManager.globalReadUnlock();
         }
         isLocked = false;
         throw e;
@@ -705,7 +716,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
             // this branch means the node load from disk is in cache, thus use the instance in
             // cache
             try {
-              cacheManager.updateCacheStatusAfterMemoryRead(nodeInMem);
+              memoryManager.updateCacheStatusAfterMemoryRead(nodeInMem);
               node = nodeInMem;
             } catch (MNodeNotCachedException e) {
               node = loadChildFromDiskToParent(parent, node);
@@ -723,7 +734,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       if (iterator.hasNext()) {
         node = iterator.next();
         // node in buffer won't be evicted during Iteration
-        cacheManager.updateCacheStatusAfterMemoryRead(node);
+        memoryManager.updateCacheStatusAfterMemoryRead(node);
       }
       nextNode = node;
     }
@@ -742,12 +753,16 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     public void close() {
       try {
         if (nextNode != null) {
-          unPin(nextNode);
+          unPin(nextNode, false);
           nextNode = null;
         }
       } finally {
         if (isLocked) {
-          lock.threadReadUnlock();
+          lockManager.stampedReadUnlock(parent, readLockStamp);
+          if (needLock) {
+            lockManager.globalReadUnlock();
+          }
+          isLocked = false;
         }
       }
     }

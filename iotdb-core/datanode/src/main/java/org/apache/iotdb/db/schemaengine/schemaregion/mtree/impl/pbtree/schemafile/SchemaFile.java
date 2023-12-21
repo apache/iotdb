@@ -243,10 +243,7 @@ public class SchemaFile implements ISchemaFile {
                 node.getFullPath()));
       }
     }
-
-    pageManager.writeNewChildren(node);
-    pageManager.writeUpdatedChildren(node);
-    pageManager.flushDirtyPages();
+    pageManager.writeMNode(node);
     updateHeaderBuffer();
   }
 
@@ -270,7 +267,6 @@ public class SchemaFile implements ISchemaFile {
   @Override
   public void close() throws IOException {
     updateHeaderBuffer();
-    pageManager.flushDirtyPages();
     pageManager.close();
     forceChannel();
     channel.close();
@@ -279,7 +275,6 @@ public class SchemaFile implements ISchemaFile {
   @Override
   public void sync() throws IOException {
     updateHeaderBuffer();
-    pageManager.flushDirtyPages();
     forceChannel();
   }
 
@@ -414,7 +409,7 @@ public class SchemaFile implements ISchemaFile {
     return (short) (globalIndex & SchemaFileConfig.SEG_INDEX_MASK);
   }
 
-  /** TODO: shall merge with {@linkplain PageManager#reEstimateSegSize} */
+  /** TODO: shall merge with PageManager#reEstimateSegSize */
   static short reEstimateSegSize(int oldSize) {
     for (short size : SchemaFileConfig.SEG_SIZE_LST) {
       if (oldSize < size) {

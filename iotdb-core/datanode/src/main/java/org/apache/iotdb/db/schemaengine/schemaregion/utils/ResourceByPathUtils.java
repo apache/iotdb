@@ -81,7 +81,10 @@ public abstract class ResourceByPathUtils {
       throws IOException;
 
   public abstract ReadOnlyMemChunk getReadOnlyMemChunkFromMemTable(
-      IMemTable memTable, List<Pair<Modification, IMemTable>> modsToMemtable, long timeLowerBound)
+      QueryContext context,
+      IMemTable memTable,
+      List<Pair<Modification, IMemTable>> modsToMemtable,
+      long timeLowerBound)
       throws QueryProcessException, IOException;
 
   public abstract List<IChunkMetadata> getVisibleMetadataListFromWriter(
@@ -186,7 +189,10 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
 
   @Override
   public ReadOnlyMemChunk getReadOnlyMemChunkFromMemTable(
-      IMemTable memTable, List<Pair<Modification, IMemTable>> modsToMemtable, long timeLowerBound)
+      QueryContext context,
+      IMemTable memTable,
+      List<Pair<Modification, IMemTable>> modsToMemtable,
+      long timeLowerBound)
       throws QueryProcessException, IOException {
     Map<IDeviceID, IWritableMemChunkGroup> memTableMap = memTable.getMemTableMap();
     IDeviceID deviceID = DeviceIDFactory.getInstance().getDeviceID(partialPath);
@@ -213,7 +219,8 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     if (modsToMemtable != null) {
       deletionList = constructDeletionList(memTable, modsToMemtable, timeLowerBound);
     }
-    return new AlignedReadOnlyMemChunk(getMeasurementSchema(), alignedTvListCopy, deletionList);
+    return new AlignedReadOnlyMemChunk(
+        context, getMeasurementSchema(), alignedTvListCopy, deletionList);
   }
 
   public VectorMeasurementSchema getMeasurementSchema() {
@@ -345,7 +352,10 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
 
   @Override
   public ReadOnlyMemChunk getReadOnlyMemChunkFromMemTable(
-      IMemTable memTable, List<Pair<Modification, IMemTable>> modsToMemtable, long timeLowerBound)
+      QueryContext context,
+      IMemTable memTable,
+      List<Pair<Modification, IMemTable>> modsToMemtable,
+      long timeLowerBound)
       throws QueryProcessException, IOException {
     Map<IDeviceID, IWritableMemChunkGroup> memTableMap = memTable.getMemTableMap();
     IDeviceID deviceID = DeviceIDFactory.getInstance().getDeviceID(partialPath.getDevicePath());
@@ -363,6 +373,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
       deletionList = constructDeletionList(memTable, modsToMemtable, timeLowerBound);
     }
     return new ReadOnlyMemChunk(
+        context,
         partialPath.getMeasurement(),
         partialPath.getMeasurementSchema().getType(),
         partialPath.getMeasurementSchema().getEncodingType(),
@@ -374,7 +385,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
    * construct a deletion list from a memtable.
    *
    * @param memTable memtable
-   * @param timeLowerBound time water mark
+   * @param timeLowerBound time watermark
    */
   private List<TimeRange> constructDeletionList(
       IMemTable memTable, List<Pair<Modification, IMemTable>> modsToMemtable, long timeLowerBound) {

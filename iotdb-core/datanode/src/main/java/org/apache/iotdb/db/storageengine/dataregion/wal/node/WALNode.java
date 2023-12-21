@@ -930,7 +930,7 @@ public class WALNode implements IWALNode {
   }
 
   /** Get the .wal file starts with the specified version id */
-  public File getWALFile(long versionId) {
+  public File getWALFile(long versionId) throws FileNotFoundException {
     return WALFileUtils.getWALFile(logDirectory, versionId);
   }
 

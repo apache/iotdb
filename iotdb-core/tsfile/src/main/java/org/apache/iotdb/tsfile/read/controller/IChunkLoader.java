@@ -35,5 +35,6 @@ public interface IChunkLoader {
   /** close the file reader. */
   void close() throws IOException;
 
-  IChunkReader getChunkReader(IChunkMetadata chunkMetaData, Filter timeFilter) throws IOException;
+  IChunkReader getChunkReader(IChunkMetadata chunkMetaData, Filter globalTimeFilter)
+      throws IOException;
 }

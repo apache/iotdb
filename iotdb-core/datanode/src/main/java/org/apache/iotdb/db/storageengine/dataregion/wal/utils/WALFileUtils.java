@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.regex.Matcher;
@@ -73,12 +74,15 @@ public class WALFileUtils {
   }
 
   /** Get the .wal file starts with the specified version id in the directory. */
-  public static File getWALFile(File dir, long versionId) {
+  public static File getWALFile(File dir, long versionId) throws FileNotFoundException {
     String filePrefix = WAL_FILE_PREFIX + versionId + FILE_NAME_SEPARATOR;
     File[] files =
         dir.listFiles((d, name) -> walFilenameFilter(d, name) && name.startsWith(filePrefix));
     if (files == null || files.length != 1) {
-      return null;
+      throw new FileNotFoundException(
+          String.format(
+              "Fail to get wal file by versionId=%s and files=%s.",
+              versionId, Arrays.toString(files)));
     }
     return files[0];
   }

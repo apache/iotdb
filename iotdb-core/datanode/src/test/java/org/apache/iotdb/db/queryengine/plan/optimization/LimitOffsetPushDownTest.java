@@ -31,10 +31,8 @@ import org.apache.iotdb.db.queryengine.plan.analyze.FakePartitionFetcherImpl;
 import org.apache.iotdb.db.queryengine.plan.analyze.FakeSchemaFetcherImpl;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
-import org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
-import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
@@ -57,6 +55,8 @@ import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.gt;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.intValue;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.timeSeries;
+import static org.apache.iotdb.db.queryengine.plan.optimization.OptimizationTestUtil.checkCannotPushDown;
+import static org.apache.iotdb.db.queryengine.plan.optimization.OptimizationTestUtil.checkPushDown;
 
 public class LimitOffsetPushDownTest {
 
@@ -262,42 +262,19 @@ public class LimitOffsetPushDownTest {
             .filter(
                 "1",
                 Collections.singletonList(timeSeries(schemaMap.get("root.sg.d1.s1"))),
-                gt(timeSeries(schemaMap.get("root.sg.d1.s1")), intValue("10")))
+                gt(timeSeries(schemaMap.get("root.sg.d1.s1")), intValue("10")),
+                false)
             .offset("2", 100)
             .limit("3", 100)
             .getRoot());
   }
 
   private void checkPushDown(String sql, PlanNode rawPlan, PlanNode optPlan) {
-    Statement statement = StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
-
-    MPPQueryContext context = new MPPQueryContext(new QueryId("test_query"));
-    Analyzer analyzer =
-        new Analyzer(context, new FakePartitionFetcherImpl(), new FakeSchemaFetcherImpl());
-    Analysis analysis = analyzer.analyze(statement);
-
-    LogicalPlanner planner = new LogicalPlanner(context, new ArrayList<>());
-    PlanNode actualPlan = planner.plan(analysis).getRootNode();
-    Assert.assertEquals(rawPlan, actualPlan);
-
-    PlanNode actualOptPlan = new LimitOffsetPushDown().optimize(actualPlan, analysis, context);
-    Assert.assertEquals(optPlan, actualOptPlan);
+    OptimizationTestUtil.checkPushDown(new LimitOffsetPushDown(), sql, rawPlan, optPlan);
   }
 
   private void checkCannotPushDown(String sql, PlanNode rawPlan) {
-    Statement statement = StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
-
-    MPPQueryContext context = new MPPQueryContext(new QueryId("test_query"));
-    Analyzer analyzer =
-        new Analyzer(context, new FakePartitionFetcherImpl(), new FakeSchemaFetcherImpl());
-    Analysis analysis = analyzer.analyze(statement);
-
-    LogicalPlanner planner = new LogicalPlanner(context, new ArrayList<>());
-    PlanNode actualPlan = planner.plan(analysis).getRootNode();
-
-    Assert.assertEquals(rawPlan, actualPlan);
-    Assert.assertEquals(
-        actualPlan, new LimitOffsetPushDown().optimize(actualPlan, analysis, context));
+    OptimizationTestUtil.checkCannotPushDown(new LimitOffsetPushDown(), sql, rawPlan);
   }
 
   // test for limit/offset push down in group by time
