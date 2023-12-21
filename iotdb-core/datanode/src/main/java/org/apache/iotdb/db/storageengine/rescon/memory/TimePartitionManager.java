@@ -155,6 +155,12 @@ public class TimePartitionManager {
     }
   }
 
+  public Map<Long, TimePartitionInfo> getTimePartitionInfo(DataRegionId dataRegionId) {
+    synchronized (timePartitionInfoMap) {
+      return timePartitionInfoMap.get(dataRegionId);
+    }
+  }
+
   public void clear() {
     synchronized (timePartitionInfoMap) {
       timePartitionInfoMap.clear();

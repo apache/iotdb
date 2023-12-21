@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.extractor.realtime;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
@@ -49,7 +48,9 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_END_TIME_KEY;
@@ -59,6 +60,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_REALTIME_SKIP_TIME_PARSE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_REALTIME_TIME_SKIP_TIME_PARSE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_START_TIME_KEY;
 
 public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
@@ -75,7 +78,10 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   protected long realtimeDataExtractionStartTime; // Event time
   protected long realtimeDataExtractionEndTime; // Event time
-  private boolean isDbTimePartitionCoveredByTimeRange = true;
+
+  private boolean skipTimeParse;
+  private long startTimePartitionIdLowerBound;
+  private long endTimePartitionIdUpperBound;
 
   protected boolean isForwardingPipeRequests;
 
@@ -149,24 +155,18 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       }
     }
 
-    for (long currentTime = realtimeDataExtractionStartTime;
-        currentTime
-            < realtimeDataExtractionEndTime
-                + CommonDescriptor.getInstance().getConfig().getTimePartitionInterval();
-        currentTime += CommonDescriptor.getInstance().getConfig().getTimePartitionInterval()) {
-      if (currentTime > realtimeDataExtractionEndTime) {
-        currentTime = realtimeDataExtractionEndTime;
-      }
-      TimePartitionInfo timePartitionInfo =
-          TimePartitionManager.getInstance()
-              .getTimePartitionInfo(
-                  new DataRegionId(environment.getRegionId()),
-                  TimePartitionUtils.getTimePartitionId(realtimeDataExtractionStartTime));
-      if (Objects.isNull(timePartitionInfo)) {
-        isDbTimePartitionCoveredByTimeRange = false;
-        break;
-      }
-    }
+    skipTimeParse =
+        parameters.getBooleanOrDefault(
+            SOURCE_REALTIME_SKIP_TIME_PARSE_KEY,
+            SOURCE_REALTIME_TIME_SKIP_TIME_PARSE_DEFAULT_VALUE);
+    startTimePartitionIdLowerBound =
+        (realtimeDataExtractionStartTime % TimePartitionUtils.getTimePartitionInterval() == 0)
+            ? TimePartitionUtils.getTimePartitionId(realtimeDataExtractionStartTime)
+            : TimePartitionUtils.getTimePartitionId(realtimeDataExtractionStartTime) + 1;
+    endTimePartitionIdUpperBound =
+        (realtimeDataExtractionEndTime % TimePartitionUtils.getTimePartitionInterval() == 0)
+            ? TimePartitionUtils.getTimePartitionId(realtimeDataExtractionEndTime)
+            : TimePartitionUtils.getTimePartitionId(realtimeDataExtractionEndTime) - 1;
 
     isForwardingPipeRequests =
         parameters.getBooleanOrDefault(
@@ -224,7 +224,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       event.skipParsingPattern();
     }
 
-    if (isDbTimePartitionCoveredByTimeRange) {
+    if (isDbTimePartitionCoveredByTimeRange()) {
       event.skipParsingTime();
     }
 
@@ -244,6 +244,24 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
         clearPendingQueue();
       }
     }
+  }
+
+  private boolean isDbTimePartitionCoveredByTimeRange() {
+    if (skipTimeParse) {
+      return false;
+    }
+
+    final Map<Long, TimePartitionInfo> timePartitionInfoMap =
+        TimePartitionManager.getInstance()
+            .getTimePartitionInfo(new DataRegionId(Integer.parseInt(dataRegionId)));
+    if (Objects.nonNull(timePartitionInfoMap) && timePartitionInfoMap instanceof TreeMap) {
+      return startTimePartitionIdLowerBound
+              <= ((TreeMap<Long, TimePartitionInfo>) timePartitionInfoMap).firstKey()
+          && ((TreeMap<Long, TimePartitionInfo>) timePartitionInfoMap).lastKey()
+              <= endTimePartitionIdUpperBound;
+    }
+
+    return false;
   }
 
   protected abstract void doExtract(PipeRealtimeEvent event);
