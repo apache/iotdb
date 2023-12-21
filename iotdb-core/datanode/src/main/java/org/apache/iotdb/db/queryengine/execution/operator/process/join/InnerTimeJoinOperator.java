@@ -142,11 +142,16 @@ public class InnerTimeJoinOperator implements ProcessOperator {
       int[][] selectedRowIndexArray = buildTimeColumn(currentEndTime);
 
       // build value columns for each child
-      int columnIndex = 0;
-      for (int i = 0; i < inputOperatorsCount; i++) {
-        columnIndex += buildValueColumns(columnIndex, i, selectedRowIndexArray[i]);
+      if (selectedRowIndexArray[0].length > 0) {
+        int columnIndex = 0;
+        for (int i = 0; i < inputOperatorsCount; i++) {
+          columnIndex += buildValueColumns(columnIndex, i, selectedRowIndexArray[i]);
+        }
       }
     }
+
+    // set corresponding inputTsBlock to null if its index already reach its size, friendly for gc
+    cleanUpInputTsBlock();
 
     TsBlock res = resultBuilder.build();
     resultBuilder.reset();
@@ -189,7 +194,7 @@ public class InnerTimeJoinOperator implements ProcessOperator {
 
     // update inputIndex for each child to the last index larger than currentEndTime
     for (int i = 0; i < inputOperatorsCount; i++) {
-      updateInputIndex(i, currentEndTime);
+      updateInputIndexUntilLargerThan(i, currentEndTime);
     }
 
     return transformListToIntArray(selectedRowIndexArray);
@@ -197,7 +202,7 @@ public class InnerTimeJoinOperator implements ProcessOperator {
 
   private void appendOneSelectedRow(List<List<Integer>> selectedRowIndexArray) {
     for (int i = 0; i < inputOperatorsCount; i++) {
-      selectedRowIndexArray.get(0).add(inputIndex[i] - 1);
+      selectedRowIndexArray.get(i).add(inputIndex[i] - 1);
     }
   }
 
@@ -206,6 +211,24 @@ public class InnerTimeJoinOperator implements ProcessOperator {
     while (inputIndex[i] < size
         && comparator.lessThan(inputTsBlocks[i].getTimeByIndex(inputIndex[i]), currentEndTime)) {
       inputIndex[i]++;
+    }
+  }
+
+  private void updateInputIndexUntilLargerThan(int i, long currentEndTime) {
+    int size = inputTsBlocks[i].getPositionCount();
+    while (inputIndex[i] < size
+        && comparator.canContinueInclusive(
+            inputTsBlocks[i].getTimeByIndex(inputIndex[i]), currentEndTime)) {
+      inputIndex[i]++;
+    }
+  }
+
+  private void cleanUpInputTsBlock() {
+    for (int i = 0; i < inputOperatorsCount; i++) {
+      if (inputTsBlocks[i].getPositionCount() == inputIndex[i]) {
+        inputTsBlocks[i] = null;
+        inputIndex[i] = 0;
+      }
     }
   }
 

@@ -28,6 +28,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.units.Duration;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -83,6 +84,9 @@ public class LeftOuterTimeJoinOperatorTest {
     // 22     22,   null
     // 25     25,   null
 
+    OperatorContext operatorContext = Mockito.mock(OperatorContext.class);
+    Mockito.when(operatorContext.getMaxRunTime()).thenReturn(new Duration(1, TimeUnit.SECONDS));
+
     Operator leftChild =
         new Operator() {
           private final long[][] timeArray =
@@ -112,7 +116,7 @@ public class LeftOuterTimeJoinOperatorTest {
 
           @Override
           public OperatorContext getOperatorContext() {
-            return null;
+            return operatorContext;
           }
 
           @Override
@@ -194,7 +198,7 @@ public class LeftOuterTimeJoinOperatorTest {
 
           @Override
           public OperatorContext getOperatorContext() {
-            return null;
+            return operatorContext;
           }
 
           @Override
@@ -244,9 +248,6 @@ public class LeftOuterTimeJoinOperatorTest {
           }
         };
 
-    OperatorContext operatorContext = Mockito.mock(OperatorContext.class);
-    Mockito.when(operatorContext.getMaxRunTime()).thenReturn(new Duration(1, TimeUnit.SECONDS));
-
     LeftOuterTimeJoinOperator leftOuterTimeJoinOperator =
         new LeftOuterTimeJoinOperator(
             operatorContext,
@@ -272,7 +273,9 @@ public class LeftOuterTimeJoinOperatorTest {
 
     try {
       int count = 0;
-      while (leftOuterTimeJoinOperator.hasNext()) {
+      ListenableFuture<?> listenableFuture = leftOuterTimeJoinOperator.isBlocked();
+      listenableFuture.get();
+      while (!leftOuterTimeJoinOperator.isFinished() && leftOuterTimeJoinOperator.hasNext()) {
         TsBlock tsBlock = leftOuterTimeJoinOperator.next();
         if (tsBlock != null && !tsBlock.isEmpty()) {
           for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++, count++) {
@@ -287,6 +290,8 @@ public class LeftOuterTimeJoinOperatorTest {
             }
           }
         }
+        listenableFuture = leftOuterTimeJoinOperator.isBlocked();
+        listenableFuture.get();
       }
       assertEquals(timeArray.length, count);
     } catch (Exception e) {
@@ -358,6 +363,9 @@ public class LeftOuterTimeJoinOperatorTest {
     // 6     null    7       null    null
     // 3     3       4       30.0    false
 
+    OperatorContext operatorContext = Mockito.mock(OperatorContext.class);
+    Mockito.when(operatorContext.getMaxRunTime()).thenReturn(new Duration(1, TimeUnit.SECONDS));
+
     Operator leftChild =
         new Operator() {
           private final long[][] timeArray =
@@ -379,7 +387,7 @@ public class LeftOuterTimeJoinOperatorTest {
 
           @Override
           public OperatorContext getOperatorContext() {
-            return null;
+            return operatorContext;
           }
 
           @Override
@@ -501,7 +509,7 @@ public class LeftOuterTimeJoinOperatorTest {
 
           @Override
           public OperatorContext getOperatorContext() {
-            return null;
+            return operatorContext;
           }
 
           @Override
@@ -560,9 +568,6 @@ public class LeftOuterTimeJoinOperatorTest {
           }
         };
 
-    OperatorContext operatorContext = Mockito.mock(OperatorContext.class);
-    Mockito.when(operatorContext.getMaxRunTime()).thenReturn(new Duration(1, TimeUnit.SECONDS));
-
     LeftOuterTimeJoinOperator leftOuterTimeJoinOperator =
         new LeftOuterTimeJoinOperator(
             operatorContext,
@@ -589,7 +594,9 @@ public class LeftOuterTimeJoinOperatorTest {
 
     try {
       int count = 0;
-      while (leftOuterTimeJoinOperator.hasNext()) {
+      ListenableFuture<?> listenableFuture = leftOuterTimeJoinOperator.isBlocked();
+      listenableFuture.get();
+      while (!leftOuterTimeJoinOperator.isFinished() && leftOuterTimeJoinOperator.hasNext()) {
         TsBlock tsBlock = leftOuterTimeJoinOperator.next();
         if (tsBlock != null && !tsBlock.isEmpty()) {
           for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++, count++) {
@@ -612,6 +619,8 @@ public class LeftOuterTimeJoinOperatorTest {
             }
           }
         }
+        listenableFuture = leftOuterTimeJoinOperator.isBlocked();
+        listenableFuture.get();
       }
       assertEquals(timeArray.length, count);
     } catch (Exception e) {
