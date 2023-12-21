@@ -26,8 +26,6 @@ import org.apache.iotdb.commons.schema.filter.impl.TemplateFilter;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.STRING_NULL;
-
 public class DeviceFilterVisitor extends SchemaFilterVisitor<IDeviceSchemaInfo> {
   @Override
   public boolean visitNode(SchemaFilter filter, IDeviceSchemaInfo info) {
@@ -45,17 +43,18 @@ public class DeviceFilterVisitor extends SchemaFilterVisitor<IDeviceSchemaInfo> 
 
   @Override
   public boolean visitTemplateFilter(TemplateFilter templateFilter, IDeviceSchemaInfo info) {
-    if (templateFilter.getTemplateName() == null) {
-      return true;
-    }
-    String templateName = STRING_NULL;
     boolean equalAns;
-    int TemplateId = info.getTemplateId();
-    if (TemplateId != -1) {
-      templateName = ClusterTemplateManager.getInstance().getTemplate(TemplateId).getName();
-      equalAns = templateName.equals(templateFilter.getTemplateName());
+    int templateId = info.getTemplateId();
+    String filterTemplateName = templateFilter.getTemplateName();
+    if (templateId != -1) {
+      equalAns =
+          filterTemplateName != null
+              && ClusterTemplateManager.getInstance()
+                  .getTemplate(templateId)
+                  .getName()
+                  .equals(filterTemplateName);
     } else {
-      equalAns = templateName.equalsIgnoreCase(templateFilter.getTemplateName());
+      equalAns = filterTemplateName == null;
     }
 
     if (templateFilter.isEqual()) {

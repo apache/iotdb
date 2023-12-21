@@ -214,7 +214,8 @@ devicesWhereClause
     ;
 
 templateEqualExpression
-    : TEMPLATE (OPERATOR_SEQ | OPERATOR_NEQ)  templateName=identifier
+    : TEMPLATE (OPERATOR_SEQ | OPERATOR_NEQ)  templateName=STRING_LITERAL
+    | TEMPLATE operator_is operator_not? null_literal
     ;
 
 deviceContainsExpression
