@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.extractor.realtime;
+package org.apache.iotdb.db.pipe.extractor.dataregion.realtime;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
@@ -25,7 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
-import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpoch;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -82,11 +82,11 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
               this,
               state -> {
                 switch (state) {
-                  case EMPTY:
-                  case USING_TSFILE:
+                  case TsFileEpoch.State.EMPTY:
+                  case TsFileEpoch.State.USING_TSFILE:
                     return TsFileEpoch.State.USING_TSFILE;
-                  case USING_TABLET:
-                  case USING_BOTH:
+                  case TsFileEpoch.State.USING_TABLET:
+                  case TsFileEpoch.State.USING_BOTH:
                   default:
                     return TsFileEpoch.State.USING_BOTH;
                 }
@@ -134,12 +134,12 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
             this,
             state -> {
               switch (state) {
-                case EMPTY:
-                case USING_TSFILE:
+                case TsFileEpoch.State.EMPTY:
+                case TsFileEpoch.State.USING_TSFILE:
                   return TsFileEpoch.State.USING_TSFILE;
-                case USING_TABLET:
+                case TsFileEpoch.State.USING_TABLET:
                   return TsFileEpoch.State.USING_TABLET;
-                case USING_BOTH:
+                case TsFileEpoch.State.USING_BOTH:
                 default:
                   return TsFileEpoch.State.USING_BOTH;
               }

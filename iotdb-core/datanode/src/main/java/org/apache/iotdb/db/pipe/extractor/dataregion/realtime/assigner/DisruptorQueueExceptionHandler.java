@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,14 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.extractor;
+package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner;
 
-import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb.IoTDBMetaExtractor;
-
+import com.lmax.disruptor.ExceptionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class IoTDBSchemaRegionExtractor extends IoTDBMetaExtractor {
+public class DisruptorQueueExceptionHandler implements ExceptionHandler<Object> {
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(DisruptorQueueExceptionHandler.class);
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSchemaRegionExtractor.class);
+  @Override
+  public void handleEventException(final Throwable ex, final long sequence, final Object event) {
+    LOGGER.error("Exception processing: {} {}", sequence, event, ex);
+  }
+
+  @Override
+  public void handleOnStartException(final Throwable ex) {
+    LOGGER.warn("Exception during onStart()", ex);
+  }
+
+  @Override
+  public void handleOnShutdownException(final Throwable ex) {
+    LOGGER.warn("Exception during onShutdown()", ex);
+  }
 }

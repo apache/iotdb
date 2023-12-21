@@ -17,14 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.extractor.realtime.assigner;
+package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner;
 
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
-import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
-import org.apache.iotdb.db.pipe.extractor.realtime.matcher.CachedSchemaPatternMatcher;
-import org.apache.iotdb.db.pipe.extractor.realtime.matcher.PipeDataRegionMatcher;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher.CachedSchemaPatternMatcher;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher.PipeDataRegionMatcher;
 import org.apache.iotdb.db.pipe.metric.PipeAssignerMetrics;
 
 public class PipeDataRegionAssigner {

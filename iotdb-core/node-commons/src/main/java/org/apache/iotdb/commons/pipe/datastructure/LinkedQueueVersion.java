@@ -17,9 +17,33 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.extractor.realtime.epoch;
+package org.apache.iotdb.commons.pipe.datastructure;
 
-@FunctionalInterface
-public interface TsFileEpochStateMigrator {
-  TsFileEpoch.State migrate(final TsFileEpoch.State state);
+import java.util.HashMap;
+import java.util.Map;
+
+public enum LinkedQueueVersion {
+  VERSION_1((byte) 1),
+  ;
+  private static final Map<Byte, LinkedQueueVersion> VERSION_MAP = new HashMap<>();
+
+  static {
+    for (final LinkedQueueVersion version : LinkedQueueVersion.values()) {
+      VERSION_MAP.put(version.getVersion(), version);
+    }
+  }
+
+  private final byte version;
+
+  LinkedQueueVersion(byte type) {
+    this.version = type;
+  }
+
+  public byte getVersion() {
+    return version;
+  }
+
+  public static LinkedQueueVersion deserialize(byte version) {
+    return VERSION_MAP.get(version);
+  }
 }

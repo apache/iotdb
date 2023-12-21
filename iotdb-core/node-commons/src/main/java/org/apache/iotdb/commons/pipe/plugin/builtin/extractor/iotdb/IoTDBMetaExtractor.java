@@ -62,7 +62,7 @@ public abstract class IoTDBMetaExtractor implements PipeExtractor {
   private boolean enableAuthoritySync = false;
   private boolean atLeastOneEnable = false;
 
-  public IoTDBMetaExtractor() {
+  protected IoTDBMetaExtractor() {
     this.hasBeenStarted = new AtomicBoolean(false);
   }
 

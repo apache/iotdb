@@ -17,12 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.extractor.realtime.matcher;
+package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
-import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import com.github.benmanes.caffeine.cache.Cache;

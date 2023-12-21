@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.extractor.historical;
+package org.apache.iotdb.db.pipe.extractor.dataregion.historical;
 
 import org.apache.iotdb.pipe.api.PipeExtractor;
 

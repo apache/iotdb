@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.extractor.realtime.matcher;
+package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher;
 
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
-import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
 
 import java.util.Set;
 

@@ -17,9 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.extractor.realtime.epoch;
+package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch;
 
-import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.metric.PipeExtractorMetrics;
 
 import java.util.concurrent.ConcurrentHashMap;

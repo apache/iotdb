@@ -17,28 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.extractor.realtime.assigner;
+package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch;
 
-import com.lmax.disruptor.ExceptionHandler;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-public class DisruptorQueueExceptionHandler implements ExceptionHandler<Object> {
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(DisruptorQueueExceptionHandler.class);
-
-  @Override
-  public void handleEventException(final Throwable ex, final long sequence, final Object event) {
-    LOGGER.error("Exception processing: {} {}", sequence, event, ex);
-  }
-
-  @Override
-  public void handleOnStartException(final Throwable ex) {
-    LOGGER.warn("Exception during onStart()", ex);
-  }
-
-  @Override
-  public void handleOnShutdownException(final Throwable ex) {
-    LOGGER.warn("Exception during onShutdown()", ex);
-  }
+@FunctionalInterface
+public interface TsFileEpochStateMigrator {
+  TsFileEpoch.State migrate(final TsFileEpoch.State state);
 }
