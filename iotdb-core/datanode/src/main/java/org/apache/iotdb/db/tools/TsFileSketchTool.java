@@ -540,7 +540,7 @@ public class TsFileSketchTool {
               endOffset = metadataIndexNode.getChildren().get(i + 1).getOffset();
             }
             if (endOffset - metadataIndexNode.getChildren().get(i).getOffset()
-                > Integer.MAX_VALUE) {
+                < Integer.MAX_VALUE) {
               ByteBuffer nextBuffer =
                   readData(metadataIndexNode.getChildren().get(i).getOffset(), endOffset);
               generateMetadataIndexWithOffset(

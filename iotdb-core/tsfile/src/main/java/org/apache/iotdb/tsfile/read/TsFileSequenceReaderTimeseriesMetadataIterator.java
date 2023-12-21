@@ -151,7 +151,7 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
       throw new TsFileSequenceReaderTimeseriesMetadataIteratorException(
           "currentBuffer still has some data left before deserializeLeafMeasurement");
     }
-    if (endOffset - metadataIndexEntry.getOffset() > Integer.MAX_VALUE) {
+    if (endOffset - metadataIndexEntry.getOffset() < Integer.MAX_VALUE) {
       currentBuffer = reader.readData(metadataIndexEntry.getOffset(), endOffset);
       timeseriesMetadataMap
           .computeIfAbsent(currentDeviceId, k -> new ArrayList<>())

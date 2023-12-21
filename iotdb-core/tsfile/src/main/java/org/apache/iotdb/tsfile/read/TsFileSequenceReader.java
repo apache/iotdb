@@ -401,7 +401,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       return null;
     }
     List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
-    if (metadataIndexPair.right - metadataIndexPair.left.getOffset() > Integer.MAX_VALUE) {
+    if (metadataIndexPair.right - metadataIndexPair.left.getOffset() < Integer.MAX_VALUE) {
       buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
       while (buffer.hasRemaining()) {
         try {
@@ -499,7 +499,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
     List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
 
-    if (metadataIndexPair.right - metadataIndexPair.left.getOffset() > Integer.MAX_VALUE) {
+    if (metadataIndexPair.right - metadataIndexPair.left.getOffset() < Integer.MAX_VALUE) {
       ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
       while (buffer.hasRemaining()) {
         TimeseriesMetadata timeseriesMetadata;
@@ -1120,7 +1120,7 @@ public class TsFileSequenceReader implements AutoCloseable {
           if (i != metadataIndexListSize - 1) {
             endOffset = metadataIndexNode.getChildren().get(i + 1).getOffset();
           }
-          if (endOffset - metadataIndexNode.getChildren().get(i).getOffset() > Integer.MAX_VALUE) {
+          if (endOffset - metadataIndexNode.getChildren().get(i).getOffset() < Integer.MAX_VALUE) {
             ByteBuffer nextBuffer =
                 readData(metadataIndexNode.getChildren().get(i).getOffset(), endOffset);
             generateMetadataIndex(
@@ -1214,7 +1214,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       if (i != metadataIndexEntryList.size() - 1) {
         endOffset = metadataIndexEntryList.get(i + 1).getOffset();
       }
-      if (endOffset - metadataIndexEntry.getOffset() > Integer.MAX_VALUE) {
+      if (endOffset - metadataIndexEntry.getOffset() < Integer.MAX_VALUE) {
         ByteBuffer buffer = readData(metadataIndexEntry.getOffset(), endOffset);
         generateMetadataIndex(
             metadataIndexEntry,
