@@ -29,6 +29,7 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.UnknownExpressionTypeException;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
@@ -47,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionNormali
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.GetMeasurementExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.LowercaseNormalizeVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ReplaceRawPathWithGroupedPathVisitor;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.ReplaceSubTreeWithViewVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.BindSchemaForExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.BindSchemaForPredicateVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.ConcatDeviceAndBindSchemaForExpressionVisitor;
@@ -61,6 +63,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
 public class ExpressionAnalyzer {
@@ -406,6 +409,19 @@ public class ExpressionAnalyzer {
     return new BindSchemaForExpressionVisitor().process(expression, schemaTree);
   }
 
+  public static List<Expression> bindSchemaForExpressionWithCountStarCheck(
+      Expression expression, ISchemaTree schemaTree, Analysis analysis) {
+    boolean isCountStar =
+        expression.getExpressionType().equals(ExpressionType.FUNCTION)
+            && ((FunctionExpression) expression).isCountStar();
+    List<Expression> resultExpressions =
+        new BindSchemaForExpressionVisitor().process(expression, schemaTree);
+    if (isCountStar) {
+      resultExpressions.forEach(analysis::markExpressionIsCountStar);
+    }
+    return resultExpressions;
+  }
+
   /**
    * Concat suffix path in WHERE and HAVING clause with the prefix path in the FROM clause. And
    * then, bind schema ({@link PartialPath} -> {@link MeasurementPath}) and removes wildcards in
@@ -424,8 +440,13 @@ public class ExpressionAnalyzer {
 
   public static Expression replaceRawPathWithGroupedPath(
       Expression expression,
-      GroupByLevelController.RawPathToGroupedPathMap rawPathToGroupedPathMap) {
-    return new ReplaceRawPathWithGroupedPathVisitor().process(expression, rawPathToGroupedPathMap);
+      GroupByLevelHelper.RawPathToGroupedPathMap rawPathToGroupedPathMap,
+      UnaryOperator<PartialPath> pathTransformer) {
+    return new ReplaceRawPathWithGroupedPathVisitor()
+        .process(
+            expression,
+            new ReplaceRawPathWithGroupedPathVisitor.Context(
+                rawPathToGroupedPathMap, pathTransformer));
   }
 
   /**
@@ -467,6 +488,10 @@ public class ExpressionAnalyzer {
    */
   public static List<Expression> searchSourceExpressions(Expression expression) {
     return new CollectSourceExpressionsVisitor().process(expression, null);
+  }
+
+  public static Expression replaceSubTreeWithView(Expression expression, Analysis analysis) {
+    return new ReplaceSubTreeWithViewVisitor().process(expression, analysis);
   }
 
   /**

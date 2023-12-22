@@ -107,7 +107,9 @@ public class Analysis {
 
   // An ordered map from cross-timeseries aggregation to list of inner-timeseries aggregations. The
   // keys' order is the output one.
-  private LinkedHashMap<Expression, Set<Expression>> crossGroupByExpressions;
+  private Map<Expression, Set<Expression>> crossGroupByExpressions;
+
+  private final Set<NodeRef<Expression>> countStarExpressions = new HashSet<>();
 
   // tag keys specified in `GROUP BY TAG` clause
   private List<String> tagKeys;
@@ -388,12 +390,11 @@ public class Analysis {
             && ((QueryStatement) statement).isAggregationQuery());
   }
 
-  public LinkedHashMap<Expression, Set<Expression>> getCrossGroupByExpressions() {
+  public Map<Expression, Set<Expression>> getCrossGroupByExpressions() {
     return crossGroupByExpressions;
   }
 
-  public void setCrossGroupByExpressions(
-      LinkedHashMap<Expression, Set<Expression>> crossGroupByExpressions) {
+  public void setCrossGroupByExpressions(Map<Expression, Set<Expression>> crossGroupByExpressions) {
     this.crossGroupByExpressions = crossGroupByExpressions;
   }
 
@@ -862,5 +863,13 @@ public class Analysis {
 
   public boolean isTemplateWildCardQuery() {
     return this.templateWildCardQuery;
+  }
+
+  public void markExpressionIsCountStar(Expression expression) {
+    this.countStarExpressions.add(NodeRef.of(expression));
+  }
+
+  public boolean isCountStar(Expression expression) {
+    return this.countStarExpressions.contains(NodeRef.of(expression));
   }
 }
