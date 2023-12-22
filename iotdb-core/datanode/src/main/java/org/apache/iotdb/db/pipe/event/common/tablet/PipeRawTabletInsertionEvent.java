@@ -92,6 +92,11 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
     this(tablet, isAligned, null, false, null, null, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
+  @TestOnly
+  public PipeRawTabletInsertionEvent(Tablet tablet, long startTime, long endTime) {
+    this(tablet, false, null, false, null, null, null, startTime, endTime);
+  }
+
   @Override
   public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
     allocatedMemoryBlock = PipeResourceManager.memory().forceAllocate(tablet);

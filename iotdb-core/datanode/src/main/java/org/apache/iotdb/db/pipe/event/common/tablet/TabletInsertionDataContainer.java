@@ -54,7 +54,8 @@ public class TabletInsertionDataContainer {
   private static final Logger LOGGER = LoggerFactory.getLogger(TabletInsertionDataContainer.class);
 
   private final PipeTaskMeta pipeTaskMeta; // used to report progress
-  private final EnrichedEvent sourceEvent; // used to report progress
+  private final EnrichedEvent
+      sourceEvent; // used to report progress and filter value columns by time range
 
   private String deviceId;
   private boolean isAligned;

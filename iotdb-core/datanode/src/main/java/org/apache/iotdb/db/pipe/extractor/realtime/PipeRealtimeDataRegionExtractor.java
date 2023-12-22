@@ -166,7 +166,8 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       setDataRegionTimePartitionIdBound(timePartitionIdBound);
     } else {
       LOGGER.warn(
-          "Something unexpected happened when obtaining time partition id bound on data region {}, set enableTimeParseSkipByTimePartition to false.",
+          "Something unexpected happened when PipeRealtimeDataRegionExtractor({}) obtaining time partition id bound on data region {}, set enableTimeParseSkipByTimePartition to false.",
+          taskID,
           dataRegionId);
       enableSkippingTimeParseByTimePartition.set(false);
     }
@@ -273,7 +274,8 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   public void setDataRegionTimePartitionIdBound(Pair<Long, Long> timePartitionIdBound) {
     LOGGER.info(
-        "Observed data region {} time partition growth, recording partition id bound: {}, set enableTimeParseSkipByTimePartition to true.",
+        "PipeRealtimeDataRegionExtractor({}) observed data region {} time partition growth, recording partition id bound: {}, set enableTimeParseSkipByTimePartition to true.",
+        taskID,
         dataRegionId,
         timePartitionIdBound);
     dataRegionTimePartitionIdBound.set(timePartitionIdBound);
