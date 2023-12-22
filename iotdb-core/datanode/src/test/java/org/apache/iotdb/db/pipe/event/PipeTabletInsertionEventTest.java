@@ -302,4 +302,25 @@ public class PipeTabletInsertionEventTest {
     boolean isAligned2 = container2.isAligned();
     Assert.assertFalse(isAligned2);
   }
+
+  @Test
+  public void isEventTimeOverlappedWithTimeRangeTest() {
+    PipeRawTabletInsertionEvent event;
+
+    event = new PipeRawTabletInsertionEvent(tabletForInsertRowNode, 111L, 113L);
+    Assert.assertFalse(event.isEventTimeOverlappedWithTimeRange());
+    event = new PipeRawTabletInsertionEvent(tabletForInsertRowNode, 110L, 110L);
+    Assert.assertTrue(event.isEventTimeOverlappedWithTimeRange());
+
+    event = new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, 111L, 113L);
+    Assert.assertTrue(event.isEventTimeOverlappedWithTimeRange());
+    event = new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, Long.MIN_VALUE, 110L);
+    Assert.assertTrue(event.isEventTimeOverlappedWithTimeRange());
+    event = new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, 114L, Long.MAX_VALUE);
+    Assert.assertTrue(event.isEventTimeOverlappedWithTimeRange());
+    event = new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, Long.MIN_VALUE, 109L);
+    Assert.assertFalse(event.isEventTimeOverlappedWithTimeRange());
+    event = new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, 115L, Long.MAX_VALUE);
+    Assert.assertFalse(event.isEventTimeOverlappedWithTimeRange());
+  }
 }
