@@ -97,7 +97,7 @@ public class IoTDBClusterRestartIT {
       EnvFactory.getEnv().startConfigNode(i);
     }
     try (SyncConfigNodeIServiceClient client =
-           (SyncConfigNodeIServiceClient) getLeaderConfigNodeConnection()) {
+        (SyncConfigNodeIServiceClient) getLeaderConfigNodeConnection()) {
       // Do noting, just try to connect to the ConfigNode-leader
       // in order to ensure the ConfigNode-leader is ready
     } catch (Exception e) {
