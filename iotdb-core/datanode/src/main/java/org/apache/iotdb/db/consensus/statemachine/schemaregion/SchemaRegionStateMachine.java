@@ -73,6 +73,8 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   @Override
   public void loadSnapshot(File latestSnapshotRootDir) {
     schemaRegion.loadSnapshot(latestSnapshotRootDir);
+    SchemaNodeListeningQueue.getInstance(schemaRegion.getSchemaRegionId().getId())
+        .loadSnapshot(latestSnapshotRootDir);
   }
 
   @Override

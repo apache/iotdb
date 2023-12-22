@@ -58,12 +58,13 @@ class PipeSchemaNodeFilter {
 
       NODE_MAP.put(
           new PartialPath("schema.timeseries.create"),
-          Arrays.asList(
-              PlanNodeType.CREATE_TIME_SERIES,
-              PlanNodeType.CREATE_ALIGNED_TIME_SERIES,
-              PlanNodeType.CREATE_MULTI_TIME_SERIES,
-              PlanNodeType.INTERNAL_CREATE_MULTI_TIMESERIES,
-              PlanNodeType.INTERNAL_CREATE_TIMESERIES));
+          Collections.unmodifiableList(
+              Arrays.asList(
+                  PlanNodeType.CREATE_TIME_SERIES,
+                  PlanNodeType.CREATE_ALIGNED_TIME_SERIES,
+                  PlanNodeType.CREATE_MULTI_TIME_SERIES,
+                  PlanNodeType.INTERNAL_CREATE_MULTI_TIMESERIES,
+                  PlanNodeType.INTERNAL_CREATE_TIMESERIES)));
       NODE_MAP.put(
           new PartialPath("schema.timeseries.alter"),
           Collections.singletonList(PlanNodeType.ALTER_TIME_SERIES));
@@ -73,10 +74,11 @@ class PipeSchemaNodeFilter {
 
       NODE_MAP.put(
           new PartialPath("schema.template.activate"),
-          Arrays.asList(
-              PlanNodeType.ACTIVATE_TEMPLATE,
-              PlanNodeType.BATCH_ACTIVATE_TEMPLATE,
-              PlanNodeType.INTERNAL_BATCH_ACTIVATE_TEMPLATE));
+          Collections.unmodifiableList(
+              Arrays.asList(
+                  PlanNodeType.ACTIVATE_TEMPLATE,
+                  PlanNodeType.BATCH_ACTIVATE_TEMPLATE,
+                  PlanNodeType.INTERNAL_BATCH_ACTIVATE_TEMPLATE)));
       NODE_MAP.put(
           new PartialPath("schema.template.deactivate"),
           Collections.singletonList(PlanNodeType.DEACTIVATE_TEMPLATE_NODE));
