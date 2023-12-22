@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
@@ -642,7 +641,8 @@ public class StatementGenerator {
           CompressionType.deserialize(ReadWriteIOUtils.readByte(buffer));
 
       if (measurementName == null) {
-        throw new SemanticException("The name of a measurement in schema template shall not be null.");
+        throw new MetadataException(
+            "The name of a measurement in schema template shall not be null.");
       }
 
       if (alignedPrefix.containsKey(prefix) && !isAlign) {
