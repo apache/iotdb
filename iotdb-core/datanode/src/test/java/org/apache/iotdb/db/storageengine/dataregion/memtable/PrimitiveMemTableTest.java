@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
@@ -152,7 +153,7 @@ public class PrimitiveMemTableTest {
                 TSEncoding.RLE,
                 CompressionType.UNCOMPRESSED,
                 Collections.emptyMap()));
-    ReadOnlyMemChunk memChunk = memTable.query(fullPath, Long.MIN_VALUE, null);
+    ReadOnlyMemChunk memChunk = memTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, null);
     IPointReader iterator = memChunk.getPointReader();
     for (int i = 0; i < dataSize; i++) {
       iterator.hasNextTimeValuePair();
@@ -253,7 +254,8 @@ public class PrimitiveMemTableTest {
     Modification deletion =
         new Deletion(new PartialPath(deviceId, measurementId[0]), Long.MAX_VALUE, 10, dataSize);
     modsToMemtable.add(new Pair<>(deletion, memTable));
-    ReadOnlyMemChunk memChunk = memTable.query(fullPath, Long.MIN_VALUE, modsToMemtable);
+    ReadOnlyMemChunk memChunk =
+        memTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, modsToMemtable);
     IPointReader iterator = memChunk.getPointReader();
     int cnt = 0;
     while (iterator.hasNextTimeValuePair()) {
@@ -308,7 +310,8 @@ public class PrimitiveMemTableTest {
     Modification deletion =
         new Deletion(new PartialPath(deviceId, measurementId[0]), Long.MAX_VALUE, 10, dataSize);
     modsToMemtable.add(new Pair<>(deletion, memTable));
-    ReadOnlyMemChunk memChunk = memTable.query(fullPath, Long.MIN_VALUE, modsToMemtable);
+    ReadOnlyMemChunk memChunk =
+        memTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, modsToMemtable);
     IPointReader iterator = memChunk.getPointReader();
     int cnt = 0;
     while (iterator.hasNextTimeValuePair()) {
@@ -347,7 +350,8 @@ public class PrimitiveMemTableTest {
                 encoding,
                 CompressionType.UNCOMPRESSED,
                 Collections.emptyMap()));
-    IPointReader tvPair = memTable.query(fullPath, Long.MIN_VALUE, null).getPointReader();
+    IPointReader tvPair =
+        memTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, null).getPointReader();
     Arrays.sort(ret);
     TimeValuePair last = null;
     for (int i = 0; i < ret.length; i++) {
@@ -392,7 +396,8 @@ public class PrimitiveMemTableTest {
                     TSEncoding.GORILLA,
                     CompressionType.UNCOMPRESSED,
                     Collections.emptyMap())));
-    IPointReader tvPair = memTable.query(fullPath, Long.MIN_VALUE, null).getPointReader();
+    IPointReader tvPair =
+        memTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, null).getPointReader();
     for (int i = 0; i < 100; i++) {
       tvPair.hasNextTimeValuePair();
       TimeValuePair next = tvPair.nextTimeValuePair();
@@ -418,7 +423,7 @@ public class PrimitiveMemTableTest {
                     CompressionType.UNCOMPRESSED,
                     Collections.emptyMap())));
 
-    tvPair = memTable.query(fullPath, Long.MIN_VALUE, null).getPointReader();
+    tvPair = memTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, null).getPointReader();
     for (int i = 0; i < 100; i++) {
       tvPair.hasNextTimeValuePair();
       TimeValuePair next = tvPair.nextTimeValuePair();

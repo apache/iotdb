@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -52,7 +53,7 @@ public class MemChunkLoaderTest {
     ReadOnlyMemChunk chunk = Mockito.mock(ReadOnlyMemChunk.class);
     ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
 
-    MemChunkLoader memChunkLoader = new MemChunkLoader(chunk);
+    MemChunkLoader memChunkLoader = new MemChunkLoader(new QueryContext(), chunk);
     try {
       memChunkLoader.loadChunk(chunkMetadata);
       fail();
@@ -120,7 +121,7 @@ public class MemChunkLoaderTest {
     ReadOnlyMemChunk chunk = Mockito.mock(ReadOnlyMemChunk.class);
     ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
 
-    MemChunkLoader memChunkLoader = new MemChunkLoader(chunk);
+    MemChunkLoader memChunkLoader = new MemChunkLoader(new QueryContext(), chunk);
     try {
       memChunkLoader.loadChunk(chunkMetadata);
       fail();
@@ -188,7 +189,7 @@ public class MemChunkLoaderTest {
     ReadOnlyMemChunk chunk = Mockito.mock(ReadOnlyMemChunk.class);
     ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
 
-    MemChunkLoader memChunkLoader = new MemChunkLoader(chunk);
+    MemChunkLoader memChunkLoader = new MemChunkLoader(new QueryContext(), chunk);
     try {
       memChunkLoader.loadChunk(chunkMetadata);
       fail();
@@ -256,7 +257,7 @@ public class MemChunkLoaderTest {
     ReadOnlyMemChunk chunk = Mockito.mock(ReadOnlyMemChunk.class);
     ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
 
-    MemChunkLoader memChunkLoader = new MemChunkLoader(chunk);
+    MemChunkLoader memChunkLoader = new MemChunkLoader(new QueryContext(), chunk);
     try {
       memChunkLoader.loadChunk(chunkMetadata);
       fail();
@@ -324,7 +325,7 @@ public class MemChunkLoaderTest {
     ReadOnlyMemChunk chunk = Mockito.mock(ReadOnlyMemChunk.class);
     ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
 
-    MemChunkLoader memChunkLoader = new MemChunkLoader(chunk);
+    MemChunkLoader memChunkLoader = new MemChunkLoader(new QueryContext(), chunk);
     try {
       memChunkLoader.loadChunk(chunkMetadata);
       fail();
@@ -392,7 +393,7 @@ public class MemChunkLoaderTest {
     ReadOnlyMemChunk chunk = Mockito.mock(ReadOnlyMemChunk.class);
     ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
 
-    MemChunkLoader memChunkLoader = new MemChunkLoader(chunk);
+    MemChunkLoader memChunkLoader = new MemChunkLoader(new QueryContext(), chunk);
     try {
       memChunkLoader.loadChunk(chunkMetadata);
       fail();

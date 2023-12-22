@@ -64,11 +64,11 @@ public enum ThreadName {
   TIMED_FLUSH_UNSEQ_MEMTABLE("Timed-Flush-Unseq-Memtable"),
   // -------------------------- SchemaEngine --------------------------
   SCHEMA_REGION_RELEASE_PROCESSOR("SchemaRegion-Release-Task-Processor"),
-  SCHEMA_REGION_RECOVER_TASK("SchemaRegion-recover-task"),
-  SCHEMA_RELEASE_MONITOR("Schema-Release-Task-Monitor"),
-  SCHEMA_REGION_FLUSH_PROCESSOR("SchemaRegion-Flush-Task-Processor"),
-  SCHEMA_FLUSH_MONITOR("Schema-Flush-Task-Monitor"),
+  SCHEMA_REGION_RECOVER_TASK("SchemaRegion-Recover-Task"),
   SCHEMA_FORCE_MLOG("SchemaEngine-TimedForceMLog-Thread"),
+  PBTREE_RELEASE_MONITOR("PBTree-Release-Task-Monitor"),
+  PBTREE_FLUSH_MONITOR("PBTree-Flush-Monitor"),
+  PBTREE_WORKER_POOL("PBTree-Worker-Pool"),
   // -------------------------- ClientService --------------------------
   CLIENT_RPC_SERVICE("ClientRPC-Service"),
   CLIENT_RPC_PROCESSOR("ClientRPC-Processor"),
@@ -124,9 +124,13 @@ public enum ThreadName {
   GROUP_MANAGEMENT("groupManagement"),
   // -------------------------- Compute --------------------------
   PIPE_EXTRACTOR_DISRUPTOR("Pipe-Extractor-Disruptor"),
-  PIPE_ASSIGNER_EXECUTOR_POOL("Pipe-Assigner-Executor-Pool"),
-  PIPE_PROCESSOR_EXECUTOR_POOL("Pipe-Processor-Executor-Pool"),
-  PIPE_CONNECTOR_EXECUTOR_POOL("Pipe-Connector-Executor-Pool"),
+  PIPE_DATAREGION_ASSIGNER_EXECUTOR_POOL("Pipe-DataRegion-Assigner-Executor-Pool"),
+  PIPE_DATAREGION_PROCESSOR_EXECUTOR_POOL("Pipe-DataRegion-Processor-Executor-Pool"),
+  PIPE_DATAREGION_CONNECTOR_EXECUTOR_POOL("Pipe-DataRegion-Connector-Executor-Pool"),
+  PIPE_SCHEMAREGION_ASSIGNER_EXECUTOR_POOL("Pipe-SchemaRegion-Assigner-Executor-Pool"),
+  PIPE_SCHEMAREGION_PROCESSOR_EXECUTOR_POOL("Pipe-SchemaRegion-Processor-Executor-Pool"),
+  PIPE_SCHEMAREGION_CONNECTOR_EXECUTOR_POOL("Pipe-SchemaRegion-Connector-Executor-Pool"),
+  PIPE_CONFIGNODE_EXECUTOR_POOL("Pipe-ConfigNode-Executor-Pool"),
   PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL("Pipe-SubTask-Callback-Executor-Pool"),
   PIPE_RUNTIME_META_SYNCER("Pipe-Runtime-Meta-Syncer"),
   PIPE_RUNTIME_HEARTBEAT("Pipe-Runtime-Heartbeat"),
@@ -220,10 +224,10 @@ public enum ThreadName {
           Arrays.asList(
               SCHEMA_REGION_RELEASE_PROCESSOR,
               SCHEMA_REGION_RECOVER_TASK,
-              SCHEMA_RELEASE_MONITOR,
-              SCHEMA_REGION_FLUSH_PROCESSOR,
-              SCHEMA_FLUSH_MONITOR,
-              SCHEMA_FORCE_MLOG));
+              PBTREE_RELEASE_MONITOR,
+              SCHEMA_FORCE_MLOG,
+              PBTREE_FLUSH_MONITOR,
+              PBTREE_WORKER_POOL));
 
   private static final Set<ThreadName> clientServiceThreadNames =
       new HashSet<>(Arrays.asList(CLIENT_RPC_SERVICE, CLIENT_RPC_PROCESSOR));
@@ -259,9 +263,13 @@ public enum ThreadName {
       new HashSet<>(
           Arrays.asList(
               PIPE_EXTRACTOR_DISRUPTOR,
-              PIPE_ASSIGNER_EXECUTOR_POOL,
-              PIPE_PROCESSOR_EXECUTOR_POOL,
-              PIPE_CONNECTOR_EXECUTOR_POOL,
+              PIPE_DATAREGION_ASSIGNER_EXECUTOR_POOL,
+              PIPE_DATAREGION_PROCESSOR_EXECUTOR_POOL,
+              PIPE_DATAREGION_CONNECTOR_EXECUTOR_POOL,
+              PIPE_SCHEMAREGION_ASSIGNER_EXECUTOR_POOL,
+              PIPE_SCHEMAREGION_PROCESSOR_EXECUTOR_POOL,
+              PIPE_SCHEMAREGION_CONNECTOR_EXECUTOR_POOL,
+              PIPE_CONFIGNODE_EXECUTOR_POOL,
               PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL,
               PIPE_RUNTIME_META_SYNCER,
               PIPE_RUNTIME_HEARTBEAT,

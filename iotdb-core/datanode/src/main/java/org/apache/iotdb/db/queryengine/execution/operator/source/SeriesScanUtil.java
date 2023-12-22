@@ -60,10 +60,6 @@ import java.util.function.ToLongFunction;
 import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.BUILD_TSBLOCK_FROM_MERGE_READER_ALIGNED;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.BUILD_TSBLOCK_FROM_MERGE_READER_NONALIGNED;
-import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.BUILD_TSBLOCK_FROM_PAGE_READER_ALIGNED_DISK;
-import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.BUILD_TSBLOCK_FROM_PAGE_READER_ALIGNED_MEM;
-import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.BUILD_TSBLOCK_FROM_PAGE_READER_NONALIGNED_DISK;
-import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.BUILD_TSBLOCK_FROM_PAGE_READER_NONALIGNED_MEM;
 
 public class SeriesScanUtil {
 
@@ -553,6 +549,7 @@ public class SeriesScanUtil {
         for (IPageReader iPageReader : pageReaderList) {
           seqPageReaders.add(
               new VersionPageReader(
+                  context,
                   chunkMetaData.getVersion(),
                   chunkMetaData.getOffsetOfChunkHeader(),
                   iPageReader,
@@ -562,6 +559,7 @@ public class SeriesScanUtil {
         for (int i = pageReaderList.size() - 1; i >= 0; i--) {
           seqPageReaders.add(
               new VersionPageReader(
+                  context,
                   chunkMetaData.getVersion(),
                   chunkMetaData.getOffsetOfChunkHeader(),
                   pageReaderList.get(i),
@@ -573,6 +571,7 @@ public class SeriesScanUtil {
           pageReader ->
               unSeqPageReaders.add(
                   new VersionPageReader(
+                      context,
                       chunkMetaData.getVersion(),
                       chunkMetaData.getOffsetOfChunkHeader(),
                       pageReader,
@@ -1127,7 +1126,7 @@ public class SeriesScanUtil {
 
   private void unpackSeqTsFileResource() throws IOException {
     ITimeSeriesMetadata timeseriesMetadata =
-        loadTimeSeriesMetadata(orderUtils.getNextSeqFileResource(true));
+        loadTimeSeriesMetadata(orderUtils.getNextSeqFileResource(true), true);
     if (timeseriesMetadata != null) {
       timeseriesMetadata.setSeq(true);
       seqTimeSeriesMetadata.add(timeseriesMetadata);
@@ -1136,20 +1135,22 @@ public class SeriesScanUtil {
 
   private void unpackUnseqTsFileResource() throws IOException {
     ITimeSeriesMetadata timeseriesMetadata =
-        loadTimeSeriesMetadata(orderUtils.getNextUnseqFileResource(true));
+        loadTimeSeriesMetadata(orderUtils.getNextUnseqFileResource(true), false);
     if (timeseriesMetadata != null) {
       timeseriesMetadata.setSeq(false);
       unSeqTimeSeriesMetadata.add(timeseriesMetadata);
     }
   }
 
-  protected ITimeSeriesMetadata loadTimeSeriesMetadata(TsFileResource resource) throws IOException {
+  protected ITimeSeriesMetadata loadTimeSeriesMetadata(TsFileResource resource, boolean isSeq)
+      throws IOException {
     return FileLoaderUtils.loadTimeSeriesMetadata(
         resource,
         seriesPath,
         context,
         scanOptions.getGlobalTimeFilter(),
-        scanOptions.getAllSensors());
+        scanOptions.getAllSensors(),
+        isSeq);
   }
 
   public List<TSDataType> getTsDataTypeList() {
@@ -1169,7 +1170,7 @@ public class SeriesScanUtil {
   }
 
   protected static class VersionPageReader {
-
+    private final QueryContext context;
     private final PriorityMergeReader.MergeReaderPriority version;
     private final IPageReader data;
 
@@ -1177,7 +1178,9 @@ public class SeriesScanUtil {
     private final boolean isAligned;
     private final boolean isMem;
 
-    VersionPageReader(long version, long offset, IPageReader data, boolean isSeq) {
+    VersionPageReader(
+        QueryContext context, long version, long offset, IPageReader data, boolean isSeq) {
+      this.context = context;
       this.version = new PriorityMergeReader.MergeReaderPriority(version, offset);
       this.data = data;
       this.isSeq = isSeq;
@@ -1209,15 +1212,24 @@ public class SeriesScanUtil {
         }
         return tsBlock;
       } finally {
-        SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-            isAligned
-                ? (isMem
-                    ? BUILD_TSBLOCK_FROM_PAGE_READER_ALIGNED_MEM
-                    : BUILD_TSBLOCK_FROM_PAGE_READER_ALIGNED_DISK)
-                : (isMem
-                    ? BUILD_TSBLOCK_FROM_PAGE_READER_NONALIGNED_MEM
-                    : BUILD_TSBLOCK_FROM_PAGE_READER_NONALIGNED_DISK),
-            System.nanoTime() - startTime);
+        long time = System.nanoTime() - startTime;
+        if (isAligned) {
+          if (isMem) {
+            context.getQueryStatistics().pageReadersDecodeAlignedMemCount.getAndAdd(1);
+            context.getQueryStatistics().pageReadersDecodeAlignedMemTime.getAndAdd(time);
+          } else {
+            context.getQueryStatistics().pageReadersDecodeAlignedDiskCount.getAndAdd(1);
+            context.getQueryStatistics().pageReadersDecodeAlignedDiskTime.getAndAdd(time);
+          }
+        } else {
+          if (isMem) {
+            context.getQueryStatistics().pageReadersDecodeNonAlignedMemCount.getAndAdd(1);
+            context.getQueryStatistics().pageReadersDecodeNonAlignedMemTime.getAndAdd(time);
+          } else {
+            context.getQueryStatistics().pageReadersDecodeNonAlignedDiskCount.getAndAdd(1);
+            context.getQueryStatistics().pageReadersDecodeNonAlignedDiskTime.getAndAdd(time);
+          }
+        }
       }
     }
 

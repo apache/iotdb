@@ -48,10 +48,6 @@ import java.util.List;
 import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.LOAD_TIMESERIES_METADATA_ALIGNED_DISK;
-import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.LOAD_TIMESERIES_METADATA_ALIGNED_MEM;
-import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.LOAD_TIMESERIES_METADATA_NONALIGNED_DISK;
-import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.LOAD_TIMESERIES_METADATA_NONALIGNED_MEM;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.TIMESERIES_METADATA_MODIFICATION_ALIGNED;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.TIMESERIES_METADATA_MODIFICATION_NONALIGNED;
 
@@ -72,13 +68,15 @@ public class FileLoaderUtils {
    * @param allSensors measurements queried at the same time of this device
    * @param globalTimeFilter global time filter, only used to check time range
    * @throws IOException may be thrown while reading it from disk.
+   * @param isSeq if it is a sequence file
    */
   public static TimeseriesMetadata loadTimeSeriesMetadata(
       TsFileResource resource,
       PartialPath seriesPath,
       QueryContext context,
       Filter globalTimeFilter,
-      Set<String> allSensors)
+      Set<String> allSensors,
+      boolean isSeq)
       throws IOException {
     long t1 = System.nanoTime();
     boolean loadFromMem = false;
@@ -133,11 +131,24 @@ public class FileLoaderUtils {
       }
       return timeSeriesMetadata;
     } finally {
-      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-          loadFromMem
-              ? LOAD_TIMESERIES_METADATA_NONALIGNED_MEM
-              : LOAD_TIMESERIES_METADATA_NONALIGNED_DISK,
-          System.nanoTime() - t1);
+      long costTime = System.nanoTime() - t1;
+      if (loadFromMem) {
+        if (isSeq) {
+          context.getQueryStatistics().loadTimeSeriesMetadataMemSeqCount.getAndAdd(1);
+          context.getQueryStatistics().loadTimeSeriesMetadataMemSeqTime.getAndAdd(costTime);
+        } else {
+          context.getQueryStatistics().loadTimeSeriesMetadataMemUnSeqCount.getAndAdd(1);
+          context.getQueryStatistics().loadTimeSeriesMetadataMemUnSeqTime.getAndAdd(costTime);
+        }
+      } else {
+        if (isSeq) {
+          context.getQueryStatistics().loadTimeSeriesMetadataDiskSeqCount.getAndAdd(1);
+          context.getQueryStatistics().loadTimeSeriesMetadataDiskSeqTime.getAndAdd(costTime);
+        } else {
+          context.getQueryStatistics().loadTimeSeriesMetadataDiskUnSeqCount.getAndAdd(1);
+          context.getQueryStatistics().loadTimeSeriesMetadataDiskUnSeqTime.getAndAdd(costTime);
+        }
+      }
     }
   }
 
@@ -153,7 +164,8 @@ public class FileLoaderUtils {
       TsFileResource resource,
       AlignedPath alignedPath,
       QueryContext context,
-      Filter globalTimeFilter)
+      Filter globalTimeFilter,
+      boolean isSeq)
       throws IOException {
     final long t1 = System.nanoTime();
     boolean loadFromMem = false;
@@ -191,11 +203,30 @@ public class FileLoaderUtils {
       }
       return alignedTimeSeriesMetadata;
     } finally {
-      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-          loadFromMem
-              ? LOAD_TIMESERIES_METADATA_ALIGNED_MEM
-              : LOAD_TIMESERIES_METADATA_ALIGNED_DISK,
-          System.nanoTime() - t1);
+      long costTime = System.nanoTime() - t1;
+      if (loadFromMem) {
+        if (isSeq) {
+          context.getQueryStatistics().loadTimeSeriesMetadataAlignedMemSeqCount.getAndAdd(1);
+          context.getQueryStatistics().loadTimeSeriesMetadataAlignedMemSeqTime.getAndAdd(costTime);
+        } else {
+          context.getQueryStatistics().loadTimeSeriesMetadataAlignedMemUnSeqCount.getAndAdd(1);
+          context
+              .getQueryStatistics()
+              .loadTimeSeriesMetadataAlignedMemUnSeqTime
+              .getAndAdd(costTime);
+        }
+      } else {
+        if (isSeq) {
+          context.getQueryStatistics().loadTimeSeriesMetadataAlignedDiskSeqCount.getAndAdd(1);
+          context.getQueryStatistics().loadTimeSeriesMetadataAlignedDiskSeqTime.getAndAdd(costTime);
+        } else {
+          context.getQueryStatistics().loadTimeSeriesMetadataAlignedDiskUnSeqCount.getAndAdd(1);
+          context
+              .getQueryStatistics()
+              .loadTimeSeriesMetadataAlignedDiskUnSeqTime
+              .getAndAdd(costTime);
+        }
+      }
     }
   }
 

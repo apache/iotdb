@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class ColumnInjectNode extends SingleChildProcessNode {
 
@@ -119,5 +120,26 @@ public class ColumnInjectNode extends SingleChildProcessNode {
         ColumnGeneratorParameter.deserialize(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new ColumnInjectNode(planNodeId, targetIndex, columnGeneratorParameter);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    ColumnInjectNode that = (ColumnInjectNode) o;
+    return targetIndex == that.targetIndex
+        && columnGeneratorParameter.equals(that.columnGeneratorParameter);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), targetIndex, columnGeneratorParameter);
   }
 }

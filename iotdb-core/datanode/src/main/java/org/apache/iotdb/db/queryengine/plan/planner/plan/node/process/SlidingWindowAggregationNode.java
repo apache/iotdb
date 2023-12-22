@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.process;
 
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
-import org.apache.iotdb.db.queryengine.plan.optimization.base.ColumnInjectionPushDown;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -38,8 +37,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class SlidingWindowAggregationNode extends SingleChildProcessNode
-    implements ColumnInjectionPushDown {
+public class SlidingWindowAggregationNode extends SingleChildProcessNode {
 
   // The list of aggregate functions, each AggregateDescriptor will be output as one column of
   // result TsBlock
@@ -81,7 +79,6 @@ public class SlidingWindowAggregationNode extends SingleChildProcessNode
     return outputEndTime;
   }
 
-  @Override
   public void setOutputEndTime(boolean outputEndTime) {
     this.outputEndTime = outputEndTime;
   }
