@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.read.common;
 
 import org.apache.iotdb.tsfile.exception.PathParseException;
+import org.apache.iotdb.tsfile.read.common.parser.PathVisitor;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -115,6 +116,18 @@ public class PathTest {
     p = new Path("root.sg.contains", true);
     Assert.assertEquals("root.sg", p.getDevice());
     Assert.assertEquals("contains", p.getMeasurement());
+
+    p = new Path("root.sg.`0000`", true);
+    Assert.assertEquals("root.sg", p.getDevice());
+    Assert.assertEquals("`0000`", p.getMeasurement());
+
+    p = new Path("root.sg.`0e38`", true);
+    Assert.assertEquals("root.sg", p.getDevice());
+    Assert.assertEquals("`0e38`", p.getMeasurement());
+
+    p = new Path("root.sg.`00.12`", true);
+    Assert.assertEquals("root.sg", p.getDevice());
+    Assert.assertEquals("`00.12`", p.getMeasurement());
   }
 
   @Test
@@ -170,5 +183,24 @@ public class PathTest {
       fail();
     } catch (PathParseException ignored) {
     }
+
+    try {
+      new Path("root.0e38", true);
+      fail();
+    } catch (PathParseException ignored) {
+    }
+
+    try {
+      new Path("root.0000", true);
+      fail();
+    } catch (PathParseException ignored) {
+    }
+  }
+
+  @Test
+  public void testRealNumber() {
+    Assert.assertTrue(PathVisitor.isRealNumber("0e38"));
+    Assert.assertTrue(PathVisitor.isRealNumber("0000"));
+    Assert.assertTrue(PathVisitor.isRealNumber("00.12"));
   }
 }

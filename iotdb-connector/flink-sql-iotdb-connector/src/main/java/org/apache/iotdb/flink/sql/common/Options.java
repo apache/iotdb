@@ -49,9 +49,16 @@ public class Options {
       ConfigOptions.key("sql").stringType().noDefaultValue();
   public static final ConfigOption<String> PATTERN =
       ConfigOptions.key("cdc.pattern").stringType().noDefaultValue();
+  public static final ConfigOption<CDCMode> CDC_MODE =
+      ConfigOptions.key("cdc.mode").enumType(CDCMode.class).defaultValue(CDCMode.ALL);
 
   public enum Mode {
     CDC,
     BOUNDED
+  }
+
+  public enum CDCMode {
+    REALTIME,
+    ALL
   }
 }

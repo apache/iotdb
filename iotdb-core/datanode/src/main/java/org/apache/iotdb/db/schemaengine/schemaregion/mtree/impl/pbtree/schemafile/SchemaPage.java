@@ -27,6 +27,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * {@link SchemaFile} manages a collection of SchemaPages, which acts like a segment of index entry
@@ -37,6 +40,9 @@ public abstract class SchemaPage implements ISchemaPage {
   // All other attributes are to describe this ByteBuffer
   protected final ByteBuffer pageBuffer;
 
+  protected final AtomicInteger refCnt;
+  protected final ReadWriteLock lock;
+
   protected int pageIndex; // only change when register buffer as a new page
   protected short spareOffset; // bound of the variable length part in a slotted structure
   protected short spareSize; // traces spare space size simultaneously
@@ -44,17 +50,36 @@ public abstract class SchemaPage implements ISchemaPage {
 
   protected boolean dirtyFlag = false; // any modification turns it true
 
-  protected SchemaPage(ByteBuffer pageBuffer) {
+  /** for replacement page state transfer * */
+  protected SchemaPage(ByteBuffer pageBuffer, AtomicInteger ai, ReadWriteLock rwl) {
     this.pageBuffer = pageBuffer;
 
     this.pageBuffer
         .limit(this.pageBuffer.capacity())
         .position(SchemaFileConfig.PAGE_HEADER_INDEX_OFFSET);
 
+    refCnt = ai;
+    lock = rwl;
+
     pageIndex = ReadWriteIOUtils.readInt(this.pageBuffer);
     spareOffset = ReadWriteIOUtils.readShort(this.pageBuffer);
     spareSize = ReadWriteIOUtils.readShort(this.pageBuffer);
     memberNum = ReadWriteIOUtils.readShort(this.pageBuffer);
+  }
+
+  /** compatible constructor with no existing ref or lock */
+  protected SchemaPage(ByteBuffer pageBuffer) {
+    this(pageBuffer, new AtomicInteger(), new ReentrantReadWriteLock());
+  }
+
+  @Override
+  public AtomicInteger getRefCnt() {
+    return refCnt;
+  }
+
+  @Override
+  public ReadWriteLock getLock() {
+    return lock;
   }
 
   @Override
@@ -72,6 +97,16 @@ public abstract class SchemaPage implements ISchemaPage {
     this.pageBuffer.clear();
     channel.write(pageBuffer, SchemaFile.getPageAddress(pageIndex));
     dirtyFlag = false;
+  }
+
+  @Override
+  public boolean isDirtyPage() {
+    return dirtyFlag;
+  }
+
+  @Override
+  public void setDirtyFlag() {
+    this.dirtyFlag = true;
   }
 
   @Override
@@ -127,16 +162,6 @@ public abstract class SchemaPage implements ISchemaPage {
   @Override
   public ByteBuffer getEntireSegmentSlice() throws MetadataException {
     return null;
-  }
-
-  @Override
-  public void markDirty() {
-    dirtyFlag = true;
-  }
-
-  @Override
-  public boolean isDirty() {
-    return dirtyFlag;
   }
 
   @Override
