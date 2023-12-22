@@ -25,7 +25,6 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -33,7 +32,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.pipe.datastructure.PipeInclusionSubstituter.getPartialPaths;
+import static org.apache.iotdb.commons.pipe.datastructure.PipeInclusionNormalizer.getPartialPaths;
 
 /**
  * {@link PipeConfigPlanFilter} is to classify the {@link ConfigPhysicalPlan}s to help linkedList
@@ -97,44 +96,28 @@ class PipeConfigPlanFilter {
   }
 
   static Set<ConfigPhysicalPlanType> getPipeListenSet(
-      List<String> inclusions, List<String> exclusions, boolean forwardPipeRequests)
+      String inclusionStr, String exclusionStr, boolean forwardPipeRequests)
       throws IllegalPathException, IllegalArgumentException {
     Set<ConfigPhysicalPlanType> planTypes = new HashSet<>();
-    List<PartialPath> inclusionPath = getPartialPaths(inclusions);
-    List<PartialPath> exclusionPath = getPartialPaths(exclusions);
-    List<String> exceptionMessages = new ArrayList<>();
+    List<PartialPath> inclusionPath = getPartialPaths(inclusionStr);
+    List<PartialPath> exclusionPath = getPartialPaths(exclusionStr);
     inclusionPath.forEach(
-        inclusion -> {
-          Set<ConfigPhysicalPlanType> types =
-              PLAN_MAP.keySet().stream()
-                  .filter(path -> path.overlapWithFullPathPrefix(inclusion))
-                  .map(PLAN_MAP::get)
-                  .collect(Collectors.toSet());
-          if (types.isEmpty()) {
-            exceptionMessages.add(
-                String.format("The inclusion argument %s is not legal", inclusion.getFullPath()));
-          }
-          planTypes.addAll(types);
-        });
+        inclusion ->
+            planTypes.addAll(
+                PLAN_MAP.keySet().stream()
+                    .filter(path -> path.overlapWithFullPathPrefix(inclusion))
+                    .map(PLAN_MAP::get)
+                    .collect(Collectors.toSet())));
     exclusionPath.forEach(
-        exclusion -> {
-          Set<ConfigPhysicalPlanType> types =
-              PLAN_MAP.keySet().stream()
-                  .filter(path -> path.overlapWithFullPathPrefix(exclusion))
-                  .map(PLAN_MAP::get)
-                  .collect(Collectors.toSet());
-          if (types.isEmpty()) {
-            exceptionMessages.add(
-                String.format("The exclusion argument %s is not legal", exclusion.getFullPath()));
-          }
-          planTypes.removeAll(types);
-        });
+        exclusion ->
+            planTypes.addAll(
+                PLAN_MAP.keySet().stream()
+                    .filter(path -> path.overlapWithFullPathPrefix(exclusion))
+                    .map(PLAN_MAP::get)
+                    .collect(Collectors.toSet())));
 
     if (forwardPipeRequests) {
       planTypes.add(ConfigPhysicalPlanType.PipeEnriched);
-    }
-    if (!exceptionMessages.isEmpty()) {
-      throw new IllegalArgumentException(String.join("; ", exceptionMessages));
     }
     return planTypes;
   }

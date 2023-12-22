@@ -85,8 +85,9 @@ public class ConfigPlanListeningQueue implements SnapshotProcessor {
           if (plan == null) {
             break;
           }
-          ReadWriteIOUtils.write(plan.getSerializedSize(), fileOutputStream);
-          ReadWriteIOUtils.write(plan.serializeToByteBuffer(), fileOutputStream);
+          ByteBuffer planBuffer = plan.serializeToByteBuffer();
+          ReadWriteIOUtils.write(planBuffer.capacity(), fileOutputStream);
+          ReadWriteIOUtils.write(planBuffer, fileOutputStream);
         }
       }
       fileOutputStream.getFD().sync();

@@ -20,7 +20,7 @@
 package org.apache.iotdb.confignode.manager.pipe.transfer.extractor;
 
 import org.apache.iotdb.commons.pipe.datastructure.ConcurrentIterableLinkedQueue;
-import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb.IoTDBMetaExtractor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb.IoTDBCommonExtractor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
@@ -43,31 +43,23 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_EXCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_INCLUSION_KEY;
 
-public class IoTDBConfigRegionExtractor extends IoTDBMetaExtractor {
+public class IoTDBConfigRegionExtractor extends IoTDBCommonExtractor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConfigRegionExtractor.class);
   private ConcurrentIterableLinkedQueue<ConfigPhysicalPlan>.DynamicIterator itr;
-  private Set<ConfigPhysicalPlanType> listenType = new HashSet<>();
+  private Set<ConfigPhysicalPlanType> listenTypes = new HashSet<>();
 
   @Override
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
-    listenType =
+    listenTypes =
         PipeConfigPlanFilter.getPipeListenSet(
-            Arrays.asList(
-                parameters
-                    .getStringOrDefault(
-                        Arrays.asList(EXTRACTOR_INCLUSION_KEY, SOURCE_INCLUSION_KEY),
-                        EXTRACTOR_INCLUSION_DEFAULT_VALUE)
-                    .replace(" ", "")
-                    .split(",")),
-            Arrays.asList(
-                parameters
-                    .getStringOrDefault(
-                        Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
-                        EXTRACTOR_EXCLUSION_DEFAULT_VALUE)
-                    .replace(" ", "")
-                    .split(",")),
+            parameters.getStringOrDefault(
+                Arrays.asList(EXTRACTOR_INCLUSION_KEY, SOURCE_INCLUSION_KEY),
+                EXTRACTOR_INCLUSION_DEFAULT_VALUE),
+            parameters.getStringOrDefault(
+                Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
+                EXTRACTOR_EXCLUSION_DEFAULT_VALUE),
             parameters.getBooleanOrDefault(
                 EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
                 EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE));
@@ -83,7 +75,7 @@ public class IoTDBConfigRegionExtractor extends IoTDBMetaExtractor {
     ConfigPhysicalPlan plan;
     do {
       plan = itr.next(1000);
-    } while (plan != null && !listenType.contains(plan.getType()));
+    } while (plan != null && !listenTypes.contains(plan.getType()));
     // TODO: convert plan to event and configure timeout
     return null;
   }

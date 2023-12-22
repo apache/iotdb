@@ -25,10 +25,16 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import static org.apache.iotdb.commons.pipe.datastructure.PipeInclusionNormalizer.getPartialPaths;
 
 /**
  * {@link PipeSchemaNodeFilter} is to classify the {@link PlanNode}s to help linkedList and pipe to
@@ -77,6 +83,40 @@ class PipeSchemaNodeFilter {
     } catch (IllegalPathException ignore) {
       // There won't be any exceptions here
     }
+  }
+
+  static boolean shouldBeListenedByQueue(PlanNode node) {
+    return NODE_MAP.values().stream().anyMatch(types -> types.contains(node.getType()));
+  }
+
+  static Set<PlanNodeType> getPipeListenSet(
+      String inclusionStr, String exclusionStr, boolean forwardPipeRequests)
+      throws IllegalPathException, IllegalArgumentException {
+    Set<PlanNodeType> planTypes = new HashSet<>();
+    List<PartialPath> inclusionPath = getPartialPaths(inclusionStr);
+    List<PartialPath> exclusionPath = getPartialPaths(exclusionStr);
+    inclusionPath.forEach(
+        inclusion ->
+            planTypes.addAll(
+                NODE_MAP.keySet().stream()
+                    .filter(path -> path.overlapWithFullPathPrefix(inclusion))
+                    .map(NODE_MAP::get)
+                    .flatMap(Collection::stream)
+                    .collect(Collectors.toSet())));
+    exclusionPath.forEach(
+        exclusion ->
+            planTypes.addAll(
+                NODE_MAP.keySet().stream()
+                    .filter(path -> path.overlapWithFullPathPrefix(exclusion))
+                    .map(NODE_MAP::get)
+                    .flatMap(Collection::stream)
+                    .collect(Collectors.toSet())));
+
+    if (forwardPipeRequests) {
+      planTypes.add(PlanNodeType.PIPE_ENRICHED_WRITE_SCHEMA);
+      planTypes.add(PlanNodeType.PIPE_ENRICHED_DELETE_SCHEMA);
+    }
+    return planTypes;
   }
 
   private PipeSchemaNodeFilter() {
