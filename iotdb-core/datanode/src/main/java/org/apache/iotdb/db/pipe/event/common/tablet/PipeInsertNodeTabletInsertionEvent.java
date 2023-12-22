@@ -183,8 +183,8 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       }
     } catch (Exception e) {
       LOGGER.warn(
-          "An exception occurred when determining if the InsertNode event time overlaps with the time range: {}. Returning true to ensure data integrity.",
-          e.getMessage());
+          "Exception occurred when determining the event time of PipeInsertNodeTabletInsertionEvent({}) overlaps with the time range: {}. Returning true to ensure data integrity.",
+          this, e.getMessage());
       return true;
     }
   }
