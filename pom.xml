@@ -193,7 +193,7 @@
     -->
         <thrift.version>0.14.1</thrift.version>
         <!-- This was the last version to support Java 8 -->
-        <tomcat.version>9.0.58</tomcat.version>
+        <tomcat.version>9.0.83</tomcat.version>
         <xz.version>1.9</xz.version>
         <zeppelin.version>0.10.1</zeppelin.version>
         <zstd-jni.version>1.5.5-5</zstd-jni.version>
