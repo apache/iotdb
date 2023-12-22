@@ -371,21 +371,7 @@ public class SessionPool implements ISessionPool {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.formattedNodeUrls = String.format("%s:%s", host, port);
     initThreadPool();
-    this.availableNodes =
-        NodesSupplier.createNodeSupplier(
-            Collections.singletonList(new TEndPoint(host, port)),
-            executorService,
-            user,
-            password,
-            zoneId,
-            thriftDefaultBufferSize,
-            thriftMaxFrameSize,
-            connectionTimeoutInMs,
-            useSSL,
-            trustStore,
-            trustStorePwd,
-            enableCompression,
-            version.toString());
+    initAvailableNodes(Collections.singletonList(new TEndPoint(host, port)));
   }
 
   public SessionPool(
@@ -429,21 +415,7 @@ public class SessionPool implements ISessionPool {
     this.trustStore = trustStore;
     this.trustStorePwd = trustStorePwd;
     initThreadPool();
-    this.availableNodes =
-        NodesSupplier.createNodeSupplier(
-            Collections.singletonList(new TEndPoint(host, port)),
-            executorService,
-            user,
-            password,
-            zoneId,
-            thriftDefaultBufferSize,
-            thriftMaxFrameSize,
-            connectionTimeoutInMs,
-            useSSL,
-            trustStore,
-            trustStorePwd,
-            enableCompression,
-            version.toString());
+    initAvailableNodes(Collections.singletonList(new TEndPoint(host, port)));
   }
 
   @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
@@ -484,21 +456,7 @@ public class SessionPool implements ISessionPool {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.formattedNodeUrls = nodeUrls.toString();
     initThreadPool();
-    this.availableNodes =
-        NodesSupplier.createNodeSupplier(
-            SessionUtils.parseSeedNodeUrls(nodeUrls),
-            executorService,
-            user,
-            password,
-            zoneId,
-            thriftDefaultBufferSize,
-            thriftMaxFrameSize,
-            connectionTimeoutInMs,
-            useSSL,
-            trustStore,
-            trustStorePwd,
-            enableCompression,
-            version.toString());
+    initAvailableNodes(SessionUtils.parseSeedNodeUrls(nodeUrls));
   }
 
   public SessionPool(Builder builder) {
@@ -518,6 +476,9 @@ public class SessionPool implements ISessionPool {
     this.thriftDefaultBufferSize = builder.thriftDefaultBufferSize;
     this.thriftMaxFrameSize = builder.thriftMaxFrameSize;
     this.enableAutoFetch = builder.enableAutoFetch;
+    this.useSSL = builder.useSSL;
+    this.trustStore = builder.trustStore;
+    this.trustStorePwd = builder.trustStorePwd;
     if (enableAutoFetch) {
       initThreadPool();
     }
@@ -530,21 +491,7 @@ public class SessionPool implements ISessionPool {
       this.port = -1;
       this.formattedNodeUrls = builder.nodeUrls.toString();
       if (enableAutoFetch) {
-        this.availableNodes =
-            NodesSupplier.createNodeSupplier(
-                SessionUtils.parseSeedNodeUrls(nodeUrls),
-                executorService,
-                user,
-                password,
-                zoneId,
-                thriftDefaultBufferSize,
-                thriftMaxFrameSize,
-                connectionTimeoutInMs,
-                useSSL,
-                trustStore,
-                trustStorePwd,
-                enableCompression,
-                version.toString());
+        initAvailableNodes(SessionUtils.parseSeedNodeUrls(nodeUrls));
       } else {
         this.availableNodes = new DummyNodesSupplier(SessionUtils.parseSeedNodeUrls(nodeUrls));
       }
@@ -555,29 +502,12 @@ public class SessionPool implements ISessionPool {
       this.nodeUrls = null;
       this.formattedNodeUrls = String.format("%s:%s", host, port);
       if (enableAutoFetch) {
-        this.availableNodes =
-            NodesSupplier.createNodeSupplier(
-                Collections.singletonList(new TEndPoint(host, port)),
-                executorService,
-                user,
-                password,
-                zoneId,
-                thriftDefaultBufferSize,
-                thriftMaxFrameSize,
-                connectionTimeoutInMs,
-                useSSL,
-                trustStore,
-                trustStorePwd,
-                enableCompression,
-                version.toString());
+        initAvailableNodes(Collections.singletonList(new TEndPoint(host, port)));
       } else {
         this.availableNodes =
             new DummyNodesSupplier(Collections.singletonList(new TEndPoint(host, port)));
       }
     }
-    this.useSSL = builder.useSSL;
-    this.trustStore = builder.trustStore;
-    this.trustStorePwd = builder.trustStorePwd;
   }
 
   private Session constructNewSession() {
@@ -637,6 +567,24 @@ public class SessionPool implements ISessionPool {
               }
               return t;
             });
+  }
+
+  private void initAvailableNodes(List<TEndPoint> endPointList) {
+    this.availableNodes =
+        NodesSupplier.createNodeSupplier(
+            endPointList,
+            executorService,
+            user,
+            password,
+            zoneId,
+            thriftDefaultBufferSize,
+            thriftMaxFrameSize,
+            connectionTimeoutInMs,
+            useSSL,
+            trustStore,
+            trustStorePwd,
+            enableCompression,
+            version.toString());
   }
 
   // if this method throws an exception, either the server is broken, or the ip/port/user/password
