@@ -936,7 +936,7 @@ public class DataRegionTest {
         break;
       }
     } while (CompactionTaskManager.getInstance().getFinishedTaskNum()
-        == finishedCompactionTaskNumWhenTestStart);
+        <= finishedCompactionTaskNumWhenTestStart + 1);
 
     QueryDataSource queryDataSource =
         dataRegion.query(
