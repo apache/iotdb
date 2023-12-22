@@ -19,47 +19,65 @@
 
 package org.apache.iotdb.db.pipe.extractor.schemaregion;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * {@link PipeSchemaNodeFilter} is to classify the {@link PlanNode}s to help linkedList and pipe to
  * collect.
  */
-public class PipeSchemaNodeFilter {
+class PipeSchemaNodeFilter {
 
-  // The "default" schema synchronization set
-  private static final Set<PlanNodeType> defaultNodeSet =
-      Collections.unmodifiableSet(
-          new HashSet<>(
-              Arrays.asList(
-                  PlanNodeType.CREATE_TIME_SERIES,
-                  PlanNodeType.CREATE_ALIGNED_TIME_SERIES,
-                  PlanNodeType.CREATE_MULTI_TIME_SERIES,
-                  PlanNodeType.ALTER_TIME_SERIES,
-                  PlanNodeType.INTERNAL_CREATE_TIMESERIES,
-                  PlanNodeType.INTERNAL_CREATE_MULTI_TIMESERIES,
-                  PlanNodeType.ACTIVATE_TEMPLATE,
-                  PlanNodeType.BATCH_ACTIVATE_TEMPLATE,
-                  PlanNodeType.INTERNAL_BATCH_ACTIVATE_TEMPLATE,
-                  PlanNodeType.CREATE_LOGICAL_VIEW,
-                  PlanNodeType.ALTER_LOGICAL_VIEW,
-                  PlanNodeType.PIPE_ENRICHED_WRITE_SCHEMA)));
+  private static final Map<PartialPath, List<PlanNodeType>> NODE_MAP = new HashMap<>();
 
-  // Deletion schema synchronization set
-  private static final Set<PlanNodeType> deletionNodeSet =
-      Collections.unmodifiableSet(
-          new HashSet<>(
-              Arrays.asList(
-                  PlanNodeType.DEACTIVATE_TEMPLATE_NODE,
-                  PlanNodeType.DELETE_TIMESERIES,
-                  PlanNodeType.DELETE_LOGICAL_VIEW,
-                  PlanNodeType.PIPE_ENRICHED_DELETE_SCHEMA)));
+  static {
+    try {
+      NODE_MAP.put(
+          new PartialPath("schema.view.create"),
+          Collections.singletonList(PlanNodeType.CREATE_LOGICAL_VIEW));
+      NODE_MAP.put(
+          new PartialPath("schema.view.rename"),
+          Collections.singletonList(PlanNodeType.ALTER_LOGICAL_VIEW));
+      NODE_MAP.put(
+          new PartialPath("schema.view.drop"),
+          Collections.singletonList(PlanNodeType.DELETE_LOGICAL_VIEW));
+
+      NODE_MAP.put(
+          new PartialPath("schema.timeseries.create"),
+          Arrays.asList(
+              PlanNodeType.CREATE_TIME_SERIES,
+              PlanNodeType.CREATE_ALIGNED_TIME_SERIES,
+              PlanNodeType.CREATE_MULTI_TIME_SERIES,
+              PlanNodeType.INTERNAL_CREATE_MULTI_TIMESERIES,
+              PlanNodeType.INTERNAL_CREATE_TIMESERIES));
+      NODE_MAP.put(
+          new PartialPath("schema.timeseries.alter"),
+          Collections.singletonList(PlanNodeType.ALTER_TIME_SERIES));
+      NODE_MAP.put(
+          new PartialPath("schema.timeseries.delete"),
+          Collections.singletonList(PlanNodeType.DELETE_TIMESERIES));
+
+      NODE_MAP.put(
+          new PartialPath("schema.template.activate"),
+          Arrays.asList(
+              PlanNodeType.ACTIVATE_TEMPLATE,
+              PlanNodeType.BATCH_ACTIVATE_TEMPLATE,
+              PlanNodeType.INTERNAL_BATCH_ACTIVATE_TEMPLATE));
+      NODE_MAP.put(
+          new PartialPath("schema.template.deactivate"),
+          Collections.singletonList(PlanNodeType.DEACTIVATE_TEMPLATE_NODE));
+    } catch (IllegalPathException ignore) {
+      // There won't be any exceptions here
+    }
+  }
 
   private PipeSchemaNodeFilter() {
     // Utility class

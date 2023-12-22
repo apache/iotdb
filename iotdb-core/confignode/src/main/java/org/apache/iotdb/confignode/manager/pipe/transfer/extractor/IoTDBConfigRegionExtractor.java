@@ -30,8 +30,18 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_EXCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_INCLUSION_KEY;
 
 public class IoTDBConfigRegionExtractor extends IoTDBMetaExtractor {
 
@@ -41,7 +51,27 @@ public class IoTDBConfigRegionExtractor extends IoTDBMetaExtractor {
 
   @Override
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
-      throws Exception {}
+      throws Exception {
+    listenType =
+        PipeConfigPlanFilter.getPipeListenSet(
+            Arrays.asList(
+                parameters
+                    .getStringOrDefault(
+                        Arrays.asList(EXTRACTOR_INCLUSION_KEY, SOURCE_INCLUSION_KEY),
+                        EXTRACTOR_INCLUSION_DEFAULT_VALUE)
+                    .replace(" ", "")
+                    .split(",")),
+            Arrays.asList(
+                parameters
+                    .getStringOrDefault(
+                        Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
+                        EXTRACTOR_EXCLUSION_DEFAULT_VALUE)
+                    .replace(" ", "")
+                    .split(",")),
+            parameters.getBooleanOrDefault(
+                EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
+                EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE));
+  }
 
   @Override
   public void start() throws Exception {
@@ -50,8 +80,11 @@ public class IoTDBConfigRegionExtractor extends IoTDBMetaExtractor {
 
   @Override
   public Event supply() {
-    ConfigPhysicalPlan plan = itr.next();
-    // TODO: convert plan to event
+    ConfigPhysicalPlan plan;
+    do {
+      plan = itr.next(1000);
+    } while (plan != null && !listenType.contains(plan.getType()));
+    // TODO: convert plan to event and configure timeout
     return null;
   }
 

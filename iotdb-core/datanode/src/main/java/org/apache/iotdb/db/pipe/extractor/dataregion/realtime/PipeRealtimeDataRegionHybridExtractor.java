@@ -82,11 +82,11 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
               this,
               state -> {
                 switch (state) {
-                  case TsFileEpoch.State.EMPTY:
-                  case TsFileEpoch.State.USING_TSFILE:
+                  case EMPTY:
+                  case USING_TSFILE:
                     return TsFileEpoch.State.USING_TSFILE;
-                  case TsFileEpoch.State.USING_TABLET:
-                  case TsFileEpoch.State.USING_BOTH:
+                  case USING_TABLET:
+                  case USING_BOTH:
                   default:
                     return TsFileEpoch.State.USING_BOTH;
                 }
@@ -134,12 +134,12 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
             this,
             state -> {
               switch (state) {
-                case TsFileEpoch.State.EMPTY:
-                case TsFileEpoch.State.USING_TSFILE:
+                case EMPTY:
+                case USING_TSFILE:
                   return TsFileEpoch.State.USING_TSFILE;
-                case TsFileEpoch.State.USING_TABLET:
+                case USING_TABLET:
                   return TsFileEpoch.State.USING_TABLET;
-                case TsFileEpoch.State.USING_BOTH:
+                case USING_BOTH:
                 default:
                   return TsFileEpoch.State.USING_BOTH;
               }

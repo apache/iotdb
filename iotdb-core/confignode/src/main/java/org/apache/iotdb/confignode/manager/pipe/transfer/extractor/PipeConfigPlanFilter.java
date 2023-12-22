@@ -19,18 +19,21 @@
 
 package org.apache.iotdb.confignode.manager.pipe.transfer.extractor;
 
-import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
+
+import static org.apache.iotdb.commons.pipe.datastructure.PipeInclusionSubstituter.getPartialPaths;
 
 /**
  * {@link PipeConfigPlanFilter} is to classify the {@link ConfigPhysicalPlan}s to help linkedList
@@ -44,84 +47,44 @@ import java.util.Set;
  */
 class PipeConfigPlanFilter {
 
-  // The "default" schema synchronization set
-  private static final Set<ConfigPhysicalPlanType> schemaDefaultPlanSet =
-      Collections.unmodifiableSet(
-          new HashSet<>(
-              Arrays.asList(
-                  ConfigPhysicalPlanType.CreateDatabase,
-                  ConfigPhysicalPlanType.AlterDatabase,
-                  ConfigPhysicalPlanType.CreateSchemaTemplate,
-                  ConfigPhysicalPlanType.ExtendSchemaTemplate,
-                  ConfigPhysicalPlanType.CommitSetSchemaTemplate)));
-
-  // Deletion schema synchronization set
-  private static final Set<ConfigPhysicalPlanType> schemaDeletionPlanSet =
-      Collections.unmodifiableSet(
-          new HashSet<>(
-              Arrays.asList(
-                  ConfigPhysicalPlanType.DeleteDatabase,
-                  ConfigPhysicalPlanType.DropSchemaTemplate,
-                  ConfigPhysicalPlanType.UnsetTemplate)));
-
-  // The "default" authority synchronization set
-  private static final Set<ConfigPhysicalPlanType> authorityDefaultPlanSet =
-      Collections.unmodifiableSet(
-          new HashSet<>(
-              Arrays.asList(
-                  ConfigPhysicalPlanType.CreateUser,
-                  ConfigPhysicalPlanType.CreateRole,
-                  ConfigPhysicalPlanType.GrantRole,
-                  ConfigPhysicalPlanType.GrantUser,
-                  ConfigPhysicalPlanType.GrantRoleToUser,
-                  ConfigPhysicalPlanType.UpdateUser)));
-
-  // Deletion authority synchronization set
-  private static final Set<ConfigPhysicalPlanType> authorityDeletionPlanSet =
-      Collections.unmodifiableSet(
-          new HashSet<>(
-              Arrays.asList(
-                  ConfigPhysicalPlanType.DropUser,
-                  ConfigPhysicalPlanType.DropRole,
-                  ConfigPhysicalPlanType.RevokeUser,
-                  ConfigPhysicalPlanType.RevokeRole,
-                  ConfigPhysicalPlanType.RevokeRoleFromUser)));
-
-  // The "default" TTL synchronization set
-  private static final Set<ConfigPhysicalPlanType> TTLDefaultPlanSet =
-      Collections.unmodifiableSet(
-          new HashSet<>(Collections.singletonList(ConfigPhysicalPlanType.SetTTL)));
-
-  // The "default" function synchronization set
-  private static final Set<ConfigPhysicalPlanType> functionDefaultPlanSet =
-      Collections.unmodifiableSet(
-          new HashSet<>(Collections.singletonList(ConfigPhysicalPlanType.CreateFunction)));
-
-  // Deletion function synchronization set
-  private static final Set<ConfigPhysicalPlanType> functionDeletionPlanSet =
-      Collections.unmodifiableSet(
-          new HashSet<>(Collections.singletonList(ConfigPhysicalPlanType.DropFunction)));
-
-  // The "default" trigger synchronization set
-  private static final Set<ConfigPhysicalPlanType> triggerDefaultPlanSet =
-      Collections.unmodifiableSet(
-          new HashSet<>(
-              Collections.singletonList(ConfigPhysicalPlanType.UpdateTriggerStateInTable)));
-
-  // Deletion trigger synchronization set
-  private static final Set<ConfigPhysicalPlanType> triggerDeletionPlanSet =
-      Collections.unmodifiableSet(
-          new HashSet<>(Collections.singletonList(ConfigPhysicalPlanType.DeleteTriggerInTable)));
-
-  private static final Map<String, Set<ConfigPhysicalPlanType>> INCLUSION_MAP = new HashMap<>();
+  private static final Map<PartialPath, ConfigPhysicalPlanType> PLAN_MAP = new HashMap<>();
 
   static {
-    // TODO: add more possible values and exclusion map
-    INCLUSION_MAP.put(PipeExtractorConstant.EXTRACTOR_SCHEMA_VALUE, schemaDefaultPlanSet);
-    INCLUSION_MAP.put(PipeExtractorConstant.EXTRACTOR_AUTHORITY_VALUE, authorityDefaultPlanSet);
-    INCLUSION_MAP.put(PipeExtractorConstant.EXTRACTOR_FUNCTION_VALUE, functionDefaultPlanSet);
-    INCLUSION_MAP.put(PipeExtractorConstant.EXTRACTOR_TRIGGER_VALUE, triggerDefaultPlanSet);
-    INCLUSION_MAP.put(PipeExtractorConstant.EXTRACTOR_TTL_VALUE, TTLDefaultPlanSet);
+    try {
+      PLAN_MAP.put(
+          new PartialPath("schema.database.create"), ConfigPhysicalPlanType.CreateDatabase);
+      PLAN_MAP.put(new PartialPath("schema.database.alter"), ConfigPhysicalPlanType.AlterDatabase);
+      PLAN_MAP.put(new PartialPath("schema.database.drop"), ConfigPhysicalPlanType.DeleteDatabase);
+
+      PLAN_MAP.put(
+          new PartialPath("schema.template.create"), ConfigPhysicalPlanType.CreateSchemaTemplate);
+      PLAN_MAP.put(
+          new PartialPath("schema.template.set"), ConfigPhysicalPlanType.CommitSetSchemaTemplate);
+      PLAN_MAP.put(
+          new PartialPath("schema.template.alter"), ConfigPhysicalPlanType.ExtendSchemaTemplate);
+      PLAN_MAP.put(
+          new PartialPath("schema.template.drop"), ConfigPhysicalPlanType.DropSchemaTemplate);
+      PLAN_MAP.put(new PartialPath("schema.template.unset"), ConfigPhysicalPlanType.UnsetTemplate);
+
+      PLAN_MAP.put(new PartialPath("auth.role.create"), ConfigPhysicalPlanType.CreateRole);
+      PLAN_MAP.put(new PartialPath("auth.role.drop"), ConfigPhysicalPlanType.DropRole);
+      PLAN_MAP.put(new PartialPath("auth.role.grant"), ConfigPhysicalPlanType.GrantRole);
+      PLAN_MAP.put(new PartialPath("auth.role.revoke"), ConfigPhysicalPlanType.RevokeRole);
+
+      PLAN_MAP.put(new PartialPath("auth.user.create"), ConfigPhysicalPlanType.CreateUser);
+      PLAN_MAP.put(new PartialPath("auth.user.alter"), ConfigPhysicalPlanType.UpdateUser);
+      PLAN_MAP.put(new PartialPath("auth.user.drop"), ConfigPhysicalPlanType.DropUser);
+      PLAN_MAP.put(new PartialPath("auth.user.grant"), ConfigPhysicalPlanType.GrantUser);
+      PLAN_MAP.put(new PartialPath("auth.user.revoke"), ConfigPhysicalPlanType.RevokeUser);
+
+      PLAN_MAP.put(new PartialPath("auth.grantRoleToUser"), ConfigPhysicalPlanType.GrantRoleToUser);
+      PLAN_MAP.put(
+          new PartialPath("auth.revokeRoleFromUser"), ConfigPhysicalPlanType.RevokeRoleFromUser);
+
+      PLAN_MAP.put(new PartialPath("ttl"), ConfigPhysicalPlanType.SetTTL);
+    } catch (IllegalPathException ignore) {
+      // There won't be any exceptions here
+    }
   }
 
   static boolean shouldBeListenedByQueue(ConfigPhysicalPlan plan) {
@@ -130,9 +93,50 @@ class PipeConfigPlanFilter {
         && ((CommitSetSchemaTemplatePlan) plan).isRollback()) {
       return false;
     }
-    return INCLUSION_MAP.values().stream()
-        .flatMap(Collection::stream)
-        .anyMatch(o -> o.equals(type));
+    return PLAN_MAP.containsValue(type);
+  }
+
+  static Set<ConfigPhysicalPlanType> getPipeListenSet(
+      List<String> inclusions, List<String> exclusions, boolean forwardPipeRequests)
+      throws IllegalPathException, IllegalArgumentException {
+    Set<ConfigPhysicalPlanType> planTypes = new HashSet<>();
+    List<PartialPath> inclusionPath = getPartialPaths(inclusions);
+    List<PartialPath> exclusionPath = getPartialPaths(exclusions);
+    List<String> exceptionMessages = new ArrayList<>();
+    inclusionPath.forEach(
+        inclusion -> {
+          Set<ConfigPhysicalPlanType> types =
+              PLAN_MAP.keySet().stream()
+                  .filter(path -> path.overlapWithFullPathPrefix(inclusion))
+                  .map(PLAN_MAP::get)
+                  .collect(Collectors.toSet());
+          if (types.isEmpty()) {
+            exceptionMessages.add(
+                String.format("The inclusion argument %s is not legal", inclusion.getFullPath()));
+          }
+          planTypes.addAll(types);
+        });
+    exclusionPath.forEach(
+        exclusion -> {
+          Set<ConfigPhysicalPlanType> types =
+              PLAN_MAP.keySet().stream()
+                  .filter(path -> path.overlapWithFullPathPrefix(exclusion))
+                  .map(PLAN_MAP::get)
+                  .collect(Collectors.toSet());
+          if (types.isEmpty()) {
+            exceptionMessages.add(
+                String.format("The exclusion argument %s is not legal", exclusion.getFullPath()));
+          }
+          planTypes.removeAll(types);
+        });
+
+    if (forwardPipeRequests) {
+      planTypes.add(ConfigPhysicalPlanType.PipeEnriched);
+    }
+    if (!exceptionMessages.isEmpty()) {
+      throw new IllegalArgumentException(String.join("; ", exceptionMessages));
+    }
+    return planTypes;
   }
 
   private PipeConfigPlanFilter() {
