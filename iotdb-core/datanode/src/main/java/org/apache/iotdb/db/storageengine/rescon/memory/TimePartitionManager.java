@@ -196,6 +196,7 @@ public class TimePartitionManager {
       Map<Long, TimePartitionInfo> timePartitionInfoMapForDataRegion =
           timePartitionInfoMap.get(dataRegionId);
       if (Objects.nonNull(timePartitionInfoMapForDataRegion)
+          && !timePartitionInfoMapForDataRegion.isEmpty()
           && timePartitionInfoMapForDataRegion instanceof TreeMap) {
         return new Pair<>(
             ((TreeMap<Long, TimePartitionInfo>) timePartitionInfoMapForDataRegion).firstKey(),

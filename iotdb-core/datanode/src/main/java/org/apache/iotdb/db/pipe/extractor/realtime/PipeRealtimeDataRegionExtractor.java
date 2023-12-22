@@ -73,7 +73,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   protected long realtimeDataExtractionStartTime; // Event time
   protected long realtimeDataExtractionEndTime; // Event time
 
-  private boolean enableSkippingTimeParseByTimePartition;
+  private final AtomicBoolean enableSkippingTimeParseByTimePartition = new AtomicBoolean(false);
   private long startTimePartitionIdLowerBound; // calculated by realtimeDataExtractionStartTime
   private long endTimePartitionIdUpperBound; // calculated by realtimeDataExtractionEndTime
 
@@ -168,7 +168,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       LOGGER.warn(
           "Something unexpected happened when obtaining time partition id bound on data region {}, set enableTimeParseSkipByTimePartition to false.",
           dataRegionId);
-      enableSkippingTimeParseByTimePartition = false;
+      enableSkippingTimeParseByTimePartition.set(false);
     }
 
     isForwardingPipeRequests =
@@ -229,7 +229,8 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       event.skipParsingPattern();
     }
 
-    if (enableSkippingTimeParseByTimePartition && isDataRegionTimePartitionCoveredByTimeRange()) {
+    if (enableSkippingTimeParseByTimePartition.get()
+        && isDataRegionTimePartitionCoveredByTimeRange()) {
       event.skipParsingTime();
     }
 
@@ -271,8 +272,12 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   }
 
   public void setDataRegionTimePartitionIdBound(Pair<Long, Long> timePartitionIdBound) {
+    LOGGER.info(
+        "Observed data region {} time partition growth, recording partition id bound: {}, set enableTimeParseSkipByTimePartition to true.",
+        dataRegionId,
+        timePartitionIdBound);
     dataRegionTimePartitionIdBound.set(timePartitionIdBound);
-    enableSkippingTimeParseByTimePartition = true;
+    enableSkippingTimeParseByTimePartition.set(true);
   }
 
   private boolean isDataRegionTimePartitionCoveredByTimeRange() {
