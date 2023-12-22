@@ -187,6 +187,11 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.ALIGNED_SERIES_SCAN;
+  }
+
+  @Override
   public PlanNode clone() {
     return new AlignedSeriesScanNode(
         getPlanNodeId(),

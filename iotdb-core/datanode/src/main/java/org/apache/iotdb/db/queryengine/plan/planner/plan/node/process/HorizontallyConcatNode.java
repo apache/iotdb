@@ -42,6 +42,11 @@ public class HorizontallyConcatNode extends MultiChildProcessNode {
     super(id, new ArrayList<>());
   }
 
+  @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.VERTICALLY_CONCAT;
+  }
+
   public HorizontallyConcatNode(PlanNodeId id, List<PlanNode> children) {
     super(id, children);
   }

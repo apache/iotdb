@@ -116,6 +116,11 @@ public class PipeEnrichedWriteSchemaNode extends WritePlanNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.PIPE_ENRICHED_WRITE_SCHEMA;
+  }
+
+  @Override
   public WritePlanNode clone() {
     return new PipeEnrichedWriteSchemaNode((WritePlanNode) writeSchemaNode.clone());
   }

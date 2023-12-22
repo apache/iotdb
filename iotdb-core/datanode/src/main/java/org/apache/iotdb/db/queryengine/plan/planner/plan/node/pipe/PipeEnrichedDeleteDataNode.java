@@ -93,6 +93,11 @@ public class PipeEnrichedDeleteDataNode extends DeleteDataNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.PIPE_ENRICHED_DELETE_DATA;
+  }
+
+  @Override
   public DeleteDataNode clone() {
     return new PipeEnrichedDeleteDataNode((DeleteDataNode) deleteDataNode.clone());
   }

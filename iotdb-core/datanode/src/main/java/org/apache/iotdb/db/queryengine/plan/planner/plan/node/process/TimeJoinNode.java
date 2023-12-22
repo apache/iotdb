@@ -58,6 +58,11 @@ public class TimeJoinNode extends MultiChildProcessNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.TIME_JOIN;
+  }
+
+  @Override
   public PlanNode clone() {
     return new TimeJoinNode(getPlanNodeId(), getMergeOrder());
   }

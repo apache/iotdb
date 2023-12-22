@@ -73,6 +73,8 @@ public abstract class PlanNode implements IConsensusRequest {
 
   public abstract void addChild(PlanNode child);
 
+  public abstract PlanNodeType getType();
+
   @Override
   public abstract PlanNode clone();
 
