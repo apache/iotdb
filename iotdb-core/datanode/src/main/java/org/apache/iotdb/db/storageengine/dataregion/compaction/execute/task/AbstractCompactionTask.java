@@ -135,7 +135,8 @@ public abstract class AbstractCompactionTask {
   public void handleTaskCleanup() {}
 
   protected void printLogWhenException(Logger logger, Exception e) {
-    if (e instanceof CompactionLastTimeCheckFailedException) {
+    if (e instanceof CompactionLastTimeCheckFailedException
+        || e instanceof CompactionValidationFailedException) {
       logger.error(
           "{}-{} [Compaction] Meet errors {}: {}.",
           getCompactionTaskType(),
