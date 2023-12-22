@@ -59,7 +59,8 @@ public class WebSocketConnectorServer extends WebSocketServer {
   private final BidiMap<String, WebSocket> router =
       new DualTreeBidiMap<String, WebSocket>(null, Comparator.comparing(Object::hashCode)) {};
 
-  private static final AtomicReference<WebSocketConnectorServer> instance = new AtomicReference<>();
+  private static final AtomicReference<WebSocketConnectorServer> instance =
+      new AtomicReference<>(new WebSocketConnectorServer(18080));
   private static final AtomicBoolean isStarted = new AtomicBoolean(false);
 
   private WebSocketConnectorServer(int port) {
@@ -68,9 +69,6 @@ public class WebSocketConnectorServer extends WebSocketServer {
   }
 
   public static synchronized WebSocketConnectorServer getOrCreateInstance(int port) {
-    if (null == instance.get()) {
-      instance.set(new WebSocketConnectorServer(port));
-    }
     return instance.get();
   }
 
@@ -173,6 +171,13 @@ public class WebSocketConnectorServer extends WebSocketServer {
           webSocket.getRemoteSocketAddress().getPort());
 
       handleBind(webSocket, s.replace("BIND:", ""));
+    } else if (s.startsWith("UNBIND")) {
+      LOGGER.warn(
+          "Received an unbind message {} from {}:{}",
+          s,
+          webSocket.getRemoteSocketAddress().getHostName(),
+          webSocket.getRemoteSocketAddress().getPort());
+      handleUnbind(webSocket);
     } else if (s.startsWith("ACK")) {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
@@ -208,6 +213,10 @@ public class WebSocketConnectorServer extends WebSocketServer {
 
     broadcast("READY", Collections.singletonList(webSocket));
     router.put(pipeName, webSocket);
+  }
+
+  private void handleUnbind(WebSocket webSocket) {
+    router.remove(router.getKey(webSocket));
   }
 
   private void handleAck(WebSocket webSocket, long eventId) {

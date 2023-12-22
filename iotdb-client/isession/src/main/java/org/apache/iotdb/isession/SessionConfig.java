@@ -49,6 +49,8 @@ public class SessionConfig {
   public static final int DEFAULT_SESSION_POOL_MAX_SIZE = 5;
 
   public static final Version DEFAULT_VERSION = Version.V_1_0;
+  public static final int DEFAULT_BROKER_PORT = 18080;
+  public static final int DEFAULT_TABLET_BUFFER_SIZE = 10;
 
   private SessionConfig() {}
 }

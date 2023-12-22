@@ -87,6 +87,10 @@
             <artifactId>powermock-reflect</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.java-websocket</groupId>
+            <artifactId>Java-WebSocket</artifactId>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
