@@ -33,6 +33,7 @@ import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ConcurrentModificationException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -71,6 +72,9 @@ public class PipeTsFileResourceManager {
               entry.getKey(),
               entry.getValue().getReferenceCount());
         }
+      } catch (ConcurrentModificationException e) {
+        LOGGER.info(
+            "Concurrent modification issues happened, skipping the file in this round of ttl check");
       } catch (IOException e) {
         LOGGER.warn("failed to close PipeTsFileResource when checking TTL: ", e);
       } finally {
@@ -315,6 +319,11 @@ public class PipeTsFileResourceManager {
   }
 
   public int getLinkedTsfileCount() {
-    return hardlinkOrCopiedFileToPipeTsFileResourceMap.size();
+    lock.lock();
+    try {
+      return hardlinkOrCopiedFileToPipeTsFileResourceMap.size();
+    } finally {
+      lock.unlock();
+    }
   }
 }
