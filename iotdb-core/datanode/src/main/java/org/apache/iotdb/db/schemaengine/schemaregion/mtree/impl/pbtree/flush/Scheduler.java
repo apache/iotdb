@@ -176,6 +176,7 @@ public class Scheduler {
     AtomicInteger remainToFlush = new AtomicInteger(BATCH_FLUSH_SUBTREE);
     for (int regionId : regionIds) {
       if (flushingRegionSet.contains(regionId)) {
+        regionToStore.get(regionId).getLockManager().globalReadUnlock();
         continue;
       }
       flushingRegionSet.add(regionId);
@@ -187,7 +188,6 @@ public class Scheduler {
             LockManager lockManager = store.getLockManager();
             long startTime = System.currentTimeMillis();
             try {
-              lockManager.globalReadLock();
               if (file == null) {
                 // store has been closed
                 return;
