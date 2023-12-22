@@ -165,12 +165,6 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
             .getTimePartitionIdBound(new DataRegionId(Integer.parseInt(dataRegionId)));
     if (Objects.nonNull(timePartitionIdBound)) {
       setDataRegionTimePartitionIdBound(timePartitionIdBound);
-      if (!isDataRegionTimePartitionCoveredByTimeRange()) {
-        // Since we only record the upper and lower bounds that time partition have ever reached, if
-        // the time partition cannot be covered by the time range during initialization, it will not
-        // be possible later.
-        disableSkippingTimeParse = true;
-      }
     } else {
       LOGGER.warn(
           "Something unexpected happened when PipeRealtimeDataRegionExtractor({}) obtaining time partition id bound on data region {}, set enableTimeParseSkipByTimePartition to false.",
@@ -237,17 +231,22 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       event.skipParsingPattern();
     }
 
-    if (!disableSkippingTimeParse
-        && enableSkippingTimeParseByTimePartition.get()
-        && isDataRegionTimePartitionCoveredByTimeRange()) {
-      event.skipParsingTime();
+    if (!disableSkippingTimeParse && enableSkippingTimeParseByTimePartition.get()) {
+      if (isDataRegionTimePartitionCoveredByTimeRange()) {
+        event.skipParsingTime();
+      } else {
+        // Since we only record the upper and lower bounds that time partition have ever reached, if
+        // the time partition cannot be covered by the time range during query, it will not be
+        // possible later.
+        disableSkippingTimeParse = true;
+      }
     }
 
     // 1. Check if time parsing is necessary. If not, it means that the timestamps of the data
     // contained in this event are definitely within the time range (start time ~ end time).
     // Otherwise,
-    // 2. Check if the timestamps of the data contained in this event intersect with the time
-    // range. If there is no intersection, it indicates that this data will be filtered out by the
+    // 2. Check if the timestamps of the data contained in this event intersect with the time range.
+    // If there is no intersection, it indicates that this data will be filtered out by the
     // extractor, and the extract process is skipped.
     if (!event.shouldParseTime() || event.getEvent().isEventTimeOverlappedWithTimeRange()) {
       doExtract(event);
