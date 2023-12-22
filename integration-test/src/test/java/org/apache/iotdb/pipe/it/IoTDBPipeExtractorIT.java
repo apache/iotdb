@@ -738,7 +738,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualIT {
       TestUtils.assertDataOnEnv(
           receiverEnv,
           "select count(*) from root.**",
-          "count(root.db.d1.at1),count(root.db.d3.at1)",
+          "count(root.db.d1.at1),count(root.db.d3.at1),",
           Collections.singleton("3,3,"));
 
       // insert realtime data that does not overlap with time range
@@ -753,7 +753,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualIT {
       TestUtils.assertDataOnEnv(
           receiverEnv,
           "select count(*) from root.**",
-          "count(root.db.d1.at1),count(root.db.d3.at1)",
+          "count(root.db.d1.at1),count(root.db.d3.at1),",
           Collections.singleton("3,3,"));
     }
   }
@@ -806,7 +806,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualIT {
           "count(root.db.d1.at1),",
           Collections.singleton("3,"));
 
-      extractorAttributes.remove("extractor.pattern");
+      extractorAttributes.remove("source.pattern");
       status =
           client.createPipe(
               new TCreatePipeReq("p2", connectorAttributes)
