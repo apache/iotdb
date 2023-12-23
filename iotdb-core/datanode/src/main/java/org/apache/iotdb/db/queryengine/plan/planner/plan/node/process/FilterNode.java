@@ -18,23 +18,38 @@
  */
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.process;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
 public class FilterNode extends TransformNode {
 
   private final Expression predicate;
+  // this variable is only use in TemplatedLogicalPlan process.
+  private String[] devicePathNodes;
+
+  /** This construction method are only used in TemplatedLogicalPlan. */
+  public FilterNode(PlanNodeId id, PlanNode childPlanNode, String[] devicePathNodes) {
+    super(id, childPlanNode, null, false, null, null);
+    this.predicate = null;
+    this.devicePathNodes = devicePathNodes;
+  }
 
   public FilterNode(
       PlanNodeId id,
@@ -54,9 +69,11 @@ public class FilterNode extends TransformNode {
       Expression predicate,
       boolean keepNull,
       ZoneId zoneId,
-      Ordering scanOrder) {
+      Ordering scanOrder,
+      String[] devicePathNodes) {
     super(id, outputExpressions, keepNull, zoneId, scanOrder);
     this.predicate = predicate;
+    this.devicePathNodes = devicePathNodes;
   }
 
   @Override
@@ -67,7 +84,13 @@ public class FilterNode extends TransformNode {
   @Override
   public PlanNode clone() {
     return new FilterNode(
-        getPlanNodeId(), outputExpressions, predicate, keepNull, zoneId, scanOrder);
+        getPlanNodeId(),
+        outputExpressions,
+        predicate,
+        keepNull,
+        zoneId,
+        scanOrder,
+        devicePathNodes);
   }
 
   @Override
@@ -107,7 +130,52 @@ public class FilterNode extends TransformNode {
     ZoneId zoneId = ZoneId.of(Objects.requireNonNull(ReadWriteIOUtils.readString(byteBuffer)));
     Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new FilterNode(planNodeId, outputExpressions, predicate, keepNull, zoneId, scanOrder);
+    return new FilterNode(
+        planNodeId, outputExpressions, predicate, keepNull, zoneId, scanOrder, null);
+  }
+
+  @Override
+  public void serializeUseTemplate(DataOutputStream stream, TypeProvider typeProvider)
+      throws IOException {
+    PlanNodeType.FILTER.serialize(stream);
+    id.serialize(stream);
+    ReadWriteIOUtils.write(devicePathNodes.length, stream);
+    for (String node : devicePathNodes) {
+      ReadWriteIOUtils.write(node, stream);
+    }
+    ReadWriteIOUtils.write(getChildren().size(), stream);
+    for (PlanNode planNode : getChildren()) {
+      planNode.serializeUseTemplate(stream, typeProvider);
+    }
+  }
+
+  public static FilterNode deserializeUseTemplate(
+      ByteBuffer byteBuffer, TypeProvider typeProvider) {
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    int devicePathNodesLength = ReadWriteIOUtils.readInt(byteBuffer);
+    String[] devicePathNodes = new String[devicePathNodesLength];
+    for (int i = 0; i < devicePathNodesLength; i++) {
+      devicePathNodes[i] = ReadWriteIOUtils.readString(byteBuffer);
+    }
+
+    List<String> measurementList = typeProvider.getTemplatedInfo().getMeasurementList();
+    List<IMeasurementSchema> schemaList = typeProvider.getTemplatedInfo().getSchemaList();
+    Expression[] outputExpressions = new Expression[measurementList.size()];
+    for (int i = 0; i < measurementList.size(); i++) {
+      String[] measurementPathNodes = Arrays.copyOf(devicePathNodes, devicePathNodesLength + 1);
+      measurementPathNodes[devicePathNodesLength] = measurementList.get(i);
+      outputExpressions[i] =
+          new TimeSeriesOperand(new MeasurementPath(measurementPathNodes, schemaList.get(i)));
+    }
+
+    return new FilterNode(
+        planNodeId,
+        outputExpressions,
+        typeProvider.getTemplatedInfo().whereExpression,
+        typeProvider.getTemplatedInfo().keepNull,
+        typeProvider.getTemplatedInfo().zoneId,
+        typeProvider.getTemplatedInfo().getScanOrder(),
+        devicePathNodes);
   }
 
   public Expression getPredicate() {

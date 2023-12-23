@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner;
 
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
@@ -130,10 +129,7 @@ public class TemplatedLogicalPlan {
 
     // to fix this query: `select s1 from root.** where s2>1 align by device`
     // or `select s1 from root.** order by s2 align by device`.
-    Expression whereExpression =
-        analysis.getDeviceToWhereExpression() != null
-            ? analysis.getDeviceToWhereExpression().get(devicePath.getFullPath())
-            : null;
+    Expression whereExpression = analysis.getWhereExpression();
     if (whereExpression != null && !analysis.isTemplateWildCardQuery()) {
       mergedMeasurementList = new ArrayList<>(measurementList);
       mergedSchemaList = new ArrayList<>(schemaList);
@@ -163,21 +159,17 @@ public class TemplatedLogicalPlan {
             analysis.isLastLevelUseWildcard());
 
     if (whereExpression != null) {
-      Expression[] outputExpressions = new Expression[measurementList.size()];
-      for (int i = 0; i < analysis.getMeasurementList().size(); i++) {
-        outputExpressions[i] =
-            new TimeSeriesOperand(
-                new MeasurementPath(
-                    devicePath.concatNode(measurementList.get(i)).getNodes(), schemaList.get(i)));
-      }
+      //      Expression[] outputExpressions = new Expression[measurementList.size()];
+      //      for (int i = 0; i < analysis.getMeasurementList().size(); i++) {
+      //        outputExpressions[i] =
+      //            new TimeSeriesOperand(
+      //                new MeasurementPath(
+      //                    devicePath.concatNode(measurementList.get(i)).getNodes(),
+      // schemaList.get(i)));
+      //      }
 
       planBuilder =
-          planBuilder.planFilter(
-              whereExpression,
-              outputExpressions,
-              queryStatement.isGroupByTime(),
-              queryStatement.getSelectComponent().getZoneId(),
-              queryStatement.getResultTimeOrder());
+          planBuilder.planFilter(devicePath, whereExpression, queryStatement.isGroupByTime());
     }
 
     if (context.getTypeProvider().getTemplatedInfo() == null) {
@@ -198,7 +190,9 @@ public class TemplatedLogicalPlan {
                       .collect(Collectors.toList()),
                   analysis.getDeviceViewInputIndexesMap().values().iterator().next(),
                   0,
-                  limitValue));
+                  limitValue,
+                  whereExpression,
+                  queryStatement.getSelectComponent().getZoneId()));
     }
 
     return planBuilder.getRoot();

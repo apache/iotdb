@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
@@ -50,7 +49,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -62,7 +60,6 @@ import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.PART
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.CONFIG;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.DEVICE_EXPRESSION;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.END_TIME_EXPRESSION;
-import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.WHERE_WRONG_TYPE_ERROR_MSG;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyzeDeviceViewSpecialProcess;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyzeExpressionType;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyzeFill;
@@ -70,7 +67,6 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyz
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.getTimePartitionSlotList;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.concatDeviceAndBindSchemaForExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.getMeasurementExpression;
-import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.normalizeExpression;
 
 /**
  * This class provides accelerated implementation for multiple devices align by device query. This
@@ -249,33 +245,36 @@ public class TemplatedAnalyze {
       return;
     }
 
-    analysis.setOnlyQueryTemplateMeasurements(false);
-    Map<String, Expression> deviceToWhereExpression = new HashMap<>();
-    Iterator<PartialPath> deviceIterator = deviceList.iterator();
-    while (deviceIterator.hasNext()) {
-      PartialPath devicePath = deviceIterator.next();
-      Expression whereExpression;
-      try {
-        // can move this judgement to TemplatedLogicalPlan?
-        whereExpression =
-            normalizeExpression(analyzeWhereSplitByDevice(queryStatement, devicePath, schemaTree));
-      } catch (MeasurementNotExistException e) {
-        LOGGER.warn(
-            "Meets MeasurementNotExistException in analyzeDeviceToWhere "
-                + "when executing align by device, error msg: {}",
-            e.getMessage());
-        deviceIterator.remove();
-        continue;
-      }
+    Expression wherePredicate = queryStatement.getWhereCondition().getPredicate();
+    analysis.setWhereExpression(wherePredicate);
 
-      TSDataType outputType = analyzeExpressionType(analysis, whereExpression);
-      if (outputType != TSDataType.BOOLEAN) {
-        throw new SemanticException(String.format(WHERE_WRONG_TYPE_ERROR_MSG, outputType));
-      }
-
-      deviceToWhereExpression.put(devicePath.getFullPath(), whereExpression);
-    }
-    analysis.setDeviceToWhereExpression(deviceToWhereExpression);
+    //    analysis.setOnlyQueryTemplateMeasurements(false);
+    //    Map<String, Expression> deviceToWhereExpression = new HashMap<>();
+    //    Iterator<PartialPath> deviceIterator = deviceList.iterator();
+    //    while (deviceIterator.hasNext()) {
+    //      PartialPath devicePath = deviceIterator.next();
+    //      Expression whereExpression;
+    //      try {
+    //        // can move this judgement to TemplatedLogicalPlan?
+    //        whereExpression =
+    //            normalizeExpression(analyzeWhereSplitByDevice(queryStatement, devicePath,
+    // schemaTree));
+    //      } catch (MeasurementNotExistException e) {
+    //        LOGGER.warn(
+    //            "Meets MeasurementNotExistException in analyzeDeviceToWhere "
+    //                + "when executing align by device, error msg: {}",
+    //            e.getMessage());
+    //        deviceIterator.remove();
+    //        continue;
+    //      }
+    //
+    //      TSDataType outputType = analyzeExpressionType(analysis, whereExpression);
+    //      if (outputType != TSDataType.BOOLEAN) {
+    //        throw new SemanticException(String.format(WHERE_WRONG_TYPE_ERROR_MSG, outputType));
+    //      }
+    //
+    //      deviceToWhereExpression.put(devicePath.getFullPath(), whereExpression);
+    // analysis.setDeviceToWhereExpression(deviceToWhereExpression);
   }
 
   private static Expression analyzeWhereSplitByDevice(

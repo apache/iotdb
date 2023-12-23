@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
+import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -28,9 +29,11 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -48,6 +51,9 @@ public class TemplatedInfo {
   private List<Integer> deviceToMeasurementIndexes;
   private long offsetValue;
   private long limitValue;
+  public Expression whereExpression;
+  public ZoneId zoneId;
+  public boolean keepNull;
 
   public TemplatedInfo(
       List<String> measurementList,
@@ -59,7 +65,9 @@ public class TemplatedInfo {
       List<String> selectMeasurements,
       List<Integer> deviceToMeasurementIndexes,
       long offsetValue,
-      long limitValue) {
+      long limitValue,
+      Expression whereExpression,
+      ZoneId zoneId) {
     this.measurementList = measurementList;
     this.schemaList = schemaList;
     this.dataTypes = dataTypes;
@@ -70,6 +78,8 @@ public class TemplatedInfo {
     this.deviceToMeasurementIndexes = deviceToMeasurementIndexes;
     this.offsetValue = offsetValue;
     this.limitValue = limitValue;
+    this.whereExpression = whereExpression;
+    this.zoneId = zoneId;
   }
 
   public void setMeasurementList(List<String> measurementList) {
@@ -148,6 +158,14 @@ public class TemplatedInfo {
     return this.deviceToMeasurementIndexes;
   }
 
+  public static class FilterInfo {
+    private Expression predicate;
+    boolean keepNull;
+    ZoneId zoneId;
+
+    public FilterInfo(Expression predicate) {}
+  }
+
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(measurementList.size(), byteBuffer);
     for (String measurement : measurementList) {
@@ -178,6 +196,14 @@ public class TemplatedInfo {
 
     ReadWriteIOUtils.write(offsetValue, byteBuffer);
     ReadWriteIOUtils.write(limitValue, byteBuffer);
+
+    if (whereExpression != null) {
+      ReadWriteIOUtils.write((byte) 1, byteBuffer);
+      Expression.serialize(whereExpression, byteBuffer);
+      ReadWriteIOUtils.write(zoneId.getId(), byteBuffer);
+    } else {
+      ReadWriteIOUtils.write((byte) 0, byteBuffer);
+    }
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
@@ -210,6 +236,14 @@ public class TemplatedInfo {
 
     ReadWriteIOUtils.write(offsetValue, stream);
     ReadWriteIOUtils.write(limitValue, stream);
+
+    if (whereExpression != null) {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      Expression.serialize(whereExpression, stream);
+      ReadWriteIOUtils.write(zoneId.getId(), stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    }
   }
 
   public static TemplatedInfo deserialize(ByteBuffer byteBuffer) {
@@ -260,6 +294,14 @@ public class TemplatedInfo {
 
     long limitValue = ReadWriteIOUtils.readLong(byteBuffer);
 
+    Expression predicate = null;
+    ZoneId zone = null;
+    byte hasFilter = ReadWriteIOUtils.readByte(byteBuffer);
+    if (hasFilter == 1) {
+      predicate = Expression.deserialize(byteBuffer);
+      zone = ZoneId.of(Objects.requireNonNull(ReadWriteIOUtils.readString(byteBuffer)));
+    }
+
     return new TemplatedInfo(
         measurementList,
         measurementSchemaList,
@@ -270,6 +312,8 @@ public class TemplatedInfo {
         selectMeasurements,
         deviceToMeasurementIndexes,
         offsetValue,
-        limitValue);
+        limitValue,
+        predicate,
+        zone);
   }
 }
