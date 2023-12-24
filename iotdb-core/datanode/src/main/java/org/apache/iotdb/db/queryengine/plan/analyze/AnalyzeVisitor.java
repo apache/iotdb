@@ -2130,7 +2130,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (alias != null) {
       if (aliasSet.contains(alias)) {
         throw new SemanticException(
-            String.format("alias '%s' can only be matched with one column", alias));
+            String.format("alias '%s' can only be matched with one time series", alias));
       }
       aliasSet.add(alias);
     }
