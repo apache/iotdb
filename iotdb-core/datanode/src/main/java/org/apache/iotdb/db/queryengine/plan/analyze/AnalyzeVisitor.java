@@ -548,8 +548,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       QueryStatement queryStatement,
       ISchemaTree schemaTree,
       GroupByLevelHelper groupByLevelHelper) {
-    Set<Pair<Expression, String>> outputExpressionSet = new LinkedHashSet<>();
+    Map<Integer, Set<Pair<Expression, String>>> outputExpressionMap = new HashMap<>();
+    int columnIndex = 0;
+
     for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
+      Set<Pair<Expression, String>> outputExpressionSet = new LinkedHashSet<>();
+
       List<Expression> resultExpressions =
           bindSchemaForExpression(resultColumn.getExpression(), schemaTree);
       boolean isCountStar =
@@ -571,6 +575,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                     normalizedOutputExpression,
                     queryStatement)));
       }
+
+      outputExpressionMap.put(columnIndex++, outputExpressionSet);
     }
 
     // construct output expressions
@@ -578,15 +584,18 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         new ColumnPaginationController(
             queryStatement.getSeriesLimit(), queryStatement.getSeriesOffset());
     List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
-    for (Pair<Expression, String> outputExpression : outputExpressionSet) {
-      if (paginationController.hasCurOffset()) {
-        paginationController.consumeOffset();
-      } else if (paginationController.hasCurLimit()) {
-        outputExpressions.add(outputExpression);
-        groupByLevelHelper.updateGroupByLevelExpressions(outputExpression.left);
-        paginationController.consumeLimit();
-      } else {
-        break;
+
+    for (Set<Pair<Expression, String>> outputExpressionSet : outputExpressionMap.values()) {
+      for (Pair<Expression, String> outputExpression : outputExpressionSet) {
+        if (paginationController.hasCurOffset()) {
+          paginationController.consumeOffset();
+        } else if (paginationController.hasCurLimit()) {
+          outputExpressions.add(outputExpression);
+          groupByLevelHelper.updateGroupByLevelExpressions(outputExpression.left);
+          paginationController.consumeLimit();
+        } else {
+          break;
+        }
       }
     }
     return new ArrayList<>(outputExpressions);
