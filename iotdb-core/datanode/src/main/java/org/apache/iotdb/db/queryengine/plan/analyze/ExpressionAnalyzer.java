@@ -29,7 +29,6 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
-import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.UnknownExpressionTypeException;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
@@ -407,19 +406,6 @@ public class ExpressionAnalyzer {
   public static List<Expression> bindSchemaForExpression(
       Expression expression, ISchemaTree schemaTree) {
     return new BindSchemaForExpressionVisitor().process(expression, schemaTree);
-  }
-
-  public static List<Expression> bindSchemaForExpressionWithCountStarCheck(
-      Expression expression, ISchemaTree schemaTree, Analysis analysis) {
-    boolean isCountStar =
-        expression.getExpressionType().equals(ExpressionType.FUNCTION)
-            && ((FunctionExpression) expression).isCountStar();
-    List<Expression> resultExpressions =
-        new BindSchemaForExpressionVisitor().process(expression, schemaTree);
-    if (isCountStar) {
-      resultExpressions.forEach(analysis::markExpressionIsCountStar);
-    }
-    return resultExpressions;
   }
 
   /**

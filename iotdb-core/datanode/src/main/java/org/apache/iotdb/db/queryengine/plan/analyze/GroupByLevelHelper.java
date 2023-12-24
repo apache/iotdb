@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -36,24 +37,44 @@ import java.util.Set;
 import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyzeExpressionType;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.normalizeExpression;
+import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.searchAggregationExpressions;
 
 public class GroupByLevelHelper {
 
   private final int[] levels;
 
-  private final RawPathToGroupedPathMap rawPathToGroupedPathMap = new RawPathToGroupedPathMap();
+  /** count(root.sg.d1.s1) with level = 1 -> { count(root.*.d1.s1) : count(root.sg.d1.s1) } */
+  private final Map<Expression, Set<Expression>> groupedAggregationExpressionToRawExpressionsMap;
 
-  private final Map<Expression, Set<Expression>> groupByLevelExpressions = new LinkedHashMap<>();
+  /** count(root.sg.d1.s1) with level = 1 -> { root.sg.d1.s1 : root.sg.*.s1 } */
+  private final RawPathToGroupedPathMap rawPathToGroupedPathMap;
+
+  /** count(root.*.d1.s1) -> alias */
+  private final Map<String, String> columnToAliasMap;
+
+  /**
+   * Only used to check whether one alisa is corresponding to only one column. i.e. Different
+   * columns can't have the same alias.
+   */
+  private final Map<String, String> aliasToColumnMap;
+
+  private final Map<Expression, Set<Expression>> groupByLevelExpressions;
 
   public GroupByLevelHelper(int[] levels) {
     this.levels = levels;
+    this.groupedAggregationExpressionToRawExpressionsMap = new HashMap<>();
+    this.rawPathToGroupedPathMap = new RawPathToGroupedPathMap();
+    this.columnToAliasMap = new HashMap<>();
+    this.aliasToColumnMap = new HashMap<>();
+    this.groupByLevelExpressions = new LinkedHashMap<>();
   }
 
   public Expression applyLevels(Expression expression, Analysis analysis) {
-    return applyLevels(false, expression, analysis);
+    return applyLevels(false, expression, null, analysis);
   }
 
-  public Expression applyLevels(boolean isCountStar, Expression expression, Analysis analysis) {
+  public Expression applyLevels(
+      boolean isCountStar, Expression expression, String alias, Analysis analysis) {
     analyzeExpressionType(analysis, expression);
     Expression outputExpression = ExpressionAnalyzer.replaceSubTreeWithView(expression, analysis);
 
@@ -64,8 +85,11 @@ public class GroupByLevelHelper {
             outputExpression,
             rawPathToGroupedPathMap,
             path -> transformPathByLevels(isCountStar, path));
+    if (alias != null) {
+      checkAliasAndUpdateAliasMap(alias, groupedOutputExpression.toString());
+    }
 
-    // update groupByLevelExpressions
+    // update groupedAggregationExpressionToRawExpressionsMap
     Set<Expression> rawAggregationExpressions =
         new HashSet<>(ExpressionAnalyzer.searchAggregationExpressions(expression));
     for (Expression rawAggregationExpression : rawAggregationExpressions) {
@@ -82,11 +106,41 @@ public class GroupByLevelHelper {
       rawAggregationExpression = ExpressionAnalyzer.normalizeExpression(rawAggregationExpression);
       analyzeExpressionType(analysis, rawAggregationExpression);
 
-      groupByLevelExpressions
+      groupedAggregationExpressionToRawExpressionsMap
           .computeIfAbsent(groupedOutputAggregationExpression, key -> new HashSet<>())
           .add(rawAggregationExpression);
     }
     return groupedOutputExpression;
+  }
+
+  public void updateGroupByLevelExpressions(Expression groupedExpression) {
+    for (Expression groupedAggregationExpression :
+        searchAggregationExpressions(groupedExpression)) {
+      Set<Expression> groupedExpressionSet =
+          groupedAggregationExpressionToRawExpressionsMap.get(groupedAggregationExpression);
+      groupByLevelExpressions
+          .computeIfAbsent(groupedAggregationExpression, key -> new HashSet<>())
+          .addAll(groupedExpressionSet);
+    }
+  }
+
+  private void checkAliasAndUpdateAliasMap(String alias, String groupedExpressionString) {
+    // If an alias is corresponding to more than one result column, throw an exception
+    if (columnToAliasMap.get(groupedExpressionString) == null) {
+      if (aliasToColumnMap.get(alias) != null) {
+        throw new SemanticException(
+            String.format("alias '%s' can only be matched with one result column", alias));
+      } else {
+        columnToAliasMap.put(groupedExpressionString, alias);
+        aliasToColumnMap.put(alias, groupedExpressionString);
+      }
+      // If a result column is corresponding to more than one alias, throw an exception
+    } else if (!columnToAliasMap.get(groupedExpressionString).equals(alias)) {
+      throw new SemanticException(
+          String.format(
+              "Result column %s with more than one alias[%s, %s]",
+              groupedExpressionString, columnToAliasMap.get(groupedExpressionString), alias));
+    }
   }
 
   /**
@@ -98,7 +152,7 @@ public class GroupByLevelHelper {
    *
    * @return result partial path
    */
-  public PartialPath transformPathByLevels(boolean isCountStar, PartialPath rawPath) {
+  private PartialPath transformPathByLevels(boolean isCountStar, PartialPath rawPath) {
     String[] nodes = rawPath.getNodes();
     Set<Integer> levelSet = new HashSet<>();
     for (int level : levels) {
@@ -136,6 +190,10 @@ public class GroupByLevelHelper {
 
   public Map<Expression, Set<Expression>> getGroupByLevelExpressions() {
     return groupByLevelExpressions;
+  }
+
+  public String getAlias(String columnName) {
+    return columnToAliasMap.get(columnName) != null ? columnToAliasMap.get(columnName) : null;
   }
 
   public static class RawPathToGroupedPathMap {
