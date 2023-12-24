@@ -1096,7 +1096,6 @@ public class IoTDBConfig {
 
   // TODO: remove loadMemoryTotalSizeFromQueryInBytes after introducing queryEngine memory manager
   private long loadMemoryTotalSizeFromQueryInBytes = 200 * 1024 * 1024L;
-  private long initLoadMemoryTotalSizeInBytes = 100 * 1024 * 1024L; // 100MB
   private long loadMemoryAllocateRetryIntervalMs = 1000;
   private int loadMemoryAllocateMaxRetries = 10;
   private long loadMemoryAllocateMinSizeInBytes = 32;
@@ -3741,14 +3740,6 @@ public class IoTDBConfig {
 
   public void setLoadMemoryTotalSizeFromQueryInBytes(long loadMemoryTotalSizeFromQueryInBytes) {
     this.loadMemoryTotalSizeFromQueryInBytes = loadMemoryTotalSizeFromQueryInBytes;
-  }
-
-  public long getInitLoadMemoryTotalSizeInBytes() {
-    return initLoadMemoryTotalSizeInBytes;
-  }
-
-  public void setInitLoadMemoryTotalSizeInBytes(long initLoadMemoryTotalSizeInBytes) {
-    this.initLoadMemoryTotalSizeInBytes = initLoadMemoryTotalSizeInBytes;
   }
 
   public int getMaxLoadingTimeseriesNumber() {
