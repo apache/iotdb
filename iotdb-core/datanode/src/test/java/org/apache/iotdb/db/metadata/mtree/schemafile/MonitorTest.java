@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.metadata.mtree.schemafile;
 
+import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaRegionStatistics;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.CachedMTreeStore;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.ReleaseFlushMonitor;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -26,6 +29,7 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -45,8 +49,23 @@ public class MonitorTest {
     releaseFlushMonitor.clear();
   }
 
+  private void mockCachedMTreeStore(int size) {
+    for (int i = 1; i <= size; i++) {
+      CachedMTreeStore mockStore = Mockito.mock(CachedMTreeStore.class);
+      int finalI = i;
+      CachedSchemaRegionStatistics mockStatistics =
+          Mockito.mock(CachedSchemaRegionStatistics.class);
+      Mockito.when(mockStore.getRegionStatistics()).then(o -> mockStatistics);
+      Mockito.when(mockStatistics.getSchemaRegionId()).then(o -> finalI);
+      LockManager lockManager = new LockManager();
+      Mockito.when(mockStore.getLockManager()).then(o -> lockManager);
+      releaseFlushMonitor.registerCachedMTreeStore(mockStore);
+    }
+  }
+
   @Test
   public void testGetRegionsToFlush() {
+    mockCachedMTreeStore(5);
     // free = 500
     setRecord(
         1, Arrays.asList(0L, 2L, 3L, 3000L, 4000L), Arrays.asList(100L, 2500L, 200L, 5000L, 6000L));
@@ -68,6 +87,7 @@ public class MonitorTest {
 
   @Test
   public void testGetRegionsToFlush2() {
+    mockCachedMTreeStore(2);
     setRecord(1, Arrays.asList(0L, 2000L), Arrays.asList(100L, 7000L));
     setRecord(2, Collections.singletonList(3000L), Collections.singletonList(3500L));
     List<Pair<Integer, Long>> regions = releaseFlushMonitor.getRegionsToFlush(7000);
