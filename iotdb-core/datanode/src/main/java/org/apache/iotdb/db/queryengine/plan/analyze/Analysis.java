@@ -109,8 +109,6 @@ public class Analysis {
   // keys' order is the output one.
   private Map<Expression, Set<Expression>> crossGroupByExpressions;
 
-  private final Set<NodeRef<Expression>> countStarExpressions = new HashSet<>();
-
   // tag keys specified in `GROUP BY TAG` clause
   private List<String> tagKeys;
 
@@ -863,13 +861,5 @@ public class Analysis {
 
   public boolean isTemplateWildCardQuery() {
     return this.templateWildCardQuery;
-  }
-
-  public void markExpressionIsCountStar(Expression expression) {
-    this.countStarExpressions.add(NodeRef.of(expression));
-  }
-
-  public boolean isCountStar(Expression expression) {
-    return this.countStarExpressions.contains(NodeRef.of(expression));
   }
 }
