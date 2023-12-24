@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.load.exception;
+package org.apache.iotdb.db.exception;
 
 public class LoadRuntimeOutOfMemoryException extends RuntimeException {
   public LoadRuntimeOutOfMemoryException(String message) {
