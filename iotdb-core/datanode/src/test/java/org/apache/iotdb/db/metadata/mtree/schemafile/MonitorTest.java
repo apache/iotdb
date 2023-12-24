@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.metadata.mtree.schemafile;
 
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.ReleaseFlushMonitor;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -58,20 +59,20 @@ public class MonitorTest {
     setRecord(4, Arrays.asList(700L, 800L, 2500L), Arrays.asList(1000L, 1500L, 5000L));
     // free =2100
     setRecord(5, Arrays.asList(0L, 2000L), Arrays.asList(1000L, 3900L));
-    List<Integer> regions = releaseFlushMonitor.getRegionsToFlush(5000);
+    List<Pair<Integer, Long>> regions = releaseFlushMonitor.getRegionsToFlush(5000);
     Assert.assertEquals(3, regions.size());
-    Assert.assertEquals(5, regions.get(0).intValue());
-    Assert.assertEquals(2, regions.get(1).intValue());
-    Assert.assertEquals(4, regions.get(2).intValue());
+    Assert.assertEquals(5, regions.get(0).left.intValue());
+    Assert.assertEquals(2, regions.get(1).left.intValue());
+    Assert.assertEquals(4, regions.get(2).left.intValue());
   }
 
   @Test
   public void testGetRegionsToFlush2() {
     setRecord(1, Arrays.asList(0L, 2000L), Arrays.asList(100L, 7000L));
     setRecord(2, Collections.singletonList(3000L), Collections.singletonList(3500L));
-    List<Integer> regions = releaseFlushMonitor.getRegionsToFlush(7000);
+    List<Pair<Integer, Long>> regions = releaseFlushMonitor.getRegionsToFlush(7000);
     Assert.assertEquals(1, regions.size());
-    Assert.assertEquals(2, regions.get(0).intValue());
+    Assert.assertEquals(2, regions.get(0).left.intValue());
   }
 
   private void setRecord(int regionId, List<Long> startTimes, List<Long> eneTimes) {

@@ -42,6 +42,7 @@ import javax.annotation.concurrent.NotThreadSafe;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -189,9 +190,10 @@ public class ReleaseFlushMonitor {
     regionToTraverserTime.computeIfAbsent(regionId, k -> new RecordList());
   }
 
-  public List<Integer> getRegionsToFlush(long windowsEndTime) {
+  public List<Pair<Integer, Long>> getRegionsToFlush(long windowsEndTime) {
     long windowsStartTime = windowsEndTime - MONITOR_INETRVAL_MILLISECONDS;
     List<Pair<Integer, Long>> regionAndFreeTimeList = new ArrayList<>();
+    Map<Integer, Long> storeToLockStamp = new HashMap<>();
     for (Map.Entry<Integer, RecordList> entry : regionToTraverserTime.entrySet()) {
       int regionId = entry.getKey();
       CachedMTreeStore store = regionToStoreMap.get(regionId);
@@ -201,7 +203,7 @@ public class ReleaseFlushMonitor {
       }
 
       LockManager lockManager = store.getLockManager();
-      lockManager.globalReadLock();
+      long lockStamp = lockManager.globalStampedReadLock();
       boolean needReleaseLock = true;
       try {
         if (!regionToStoreMap.containsKey(regionId)) {
@@ -235,16 +237,20 @@ public class ReleaseFlushMonitor {
         }
         if (traverserFreeTime > FREE_FLUSH_PROPORTION * MONITOR_INETRVAL_MILLISECONDS) {
           regionAndFreeTimeList.add(new Pair<>(regionId, traverserFreeTime));
+          storeToLockStamp.put(regionId, lockStamp);
           needReleaseLock = false;
         }
       } finally {
         if (needReleaseLock) {
           lockManager.globalReadUnlock();
+          lockManager.globalStampedReadUnlock(lockStamp);
         }
       }
     }
     regionAndFreeTimeList.sort(Comparator.comparing((Pair<Integer, Long> o) -> o.right).reversed());
-    return regionAndFreeTimeList.stream().map(Pair::getLeft).collect(Collectors.toList());
+    return regionAndFreeTimeList.stream()
+        .map(o -> new Pair<>(o.getLeft(), storeToLockStamp.get(o.getLeft())))
+        .collect(Collectors.toList());
   }
 
   @TestOnly
