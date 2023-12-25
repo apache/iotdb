@@ -35,7 +35,7 @@ public abstract class IoTDBReceiverAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBReceiverAgent.class);
 
-  protected ThreadLocal<IoTDBThriftReceiver> receiverThreadLocal;
+  protected ThreadLocal<IoTDBThriftReceiver> receiverThreadLocal = new ThreadLocal<>();
 
   protected static final Map<Byte, Supplier<IoTDBThriftReceiver>> RECEIVER_CONSTRUCTORS =
       new HashMap<>();
