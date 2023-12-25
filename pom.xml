@@ -2782,6 +2782,7 @@
                                             </includes>
                                         </fileSet>
                                     </fileSets>
+                                    <failIfNoFiles>false</failIfNoFiles>
                                 </configuration>
                             </execution>
                         </executions>
