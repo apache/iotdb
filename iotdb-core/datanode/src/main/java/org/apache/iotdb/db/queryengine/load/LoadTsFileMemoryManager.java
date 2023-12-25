@@ -35,12 +35,13 @@ public class LoadTsFileMemoryManager {
   private static final int MEMORY_ALLOCATE_MAX_RETRIES = CONFIG.getLoadMemoryAllocateMaxRetries();
   private static final long MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS =
       CONFIG.getLoadMemoryAllocateRetryIntervalMs();
-  private static final long MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES =
-      CONFIG.getLoadMemoryAllocateMinSizeInBytes();
 
   private long usedMemorySizeInBytes;
 
-  private synchronized void allocatedFromQuery(long sizeInBytes) {
+  private LoadTsFileDataCacheMemoryBlock dataCacheMemoryBlock;
+
+  private synchronized void forceAllocatedFromQuery(long sizeInBytes)
+      throws LoadRuntimeOutOfMemoryException {
     for (int i = 0; i < MEMORY_ALLOCATE_MAX_RETRIES; i++) {
       // allocate memory from queryEngine
       // TODO: queryEngine provides a method to allocate memory
@@ -69,6 +70,13 @@ public class LoadTsFileMemoryManager {
             sizeInBytes));
   }
 
+  public synchronized long tryAllocateFromQuery(long sizeInBytes) {
+    // TODO: queryEngine provides a method to allocate memory
+    long allocatedSizeInBytes =
+        Math.min(sizeInBytes, QUERY_TOTAL_MEMORY_SIZE_IN_BYTES - usedMemorySizeInBytes);
+    return Math.max(0L, allocatedSizeInBytes);
+  }
+
   public synchronized void releaseToQuery(long sizeInBytes) {
     // todo: queryEngine provides a method to release memory
     usedMemorySizeInBytes -= sizeInBytes;
@@ -77,8 +85,25 @@ public class LoadTsFileMemoryManager {
 
   public synchronized LoadTsFileAnalyzeSchemaMemoryBlock allocateAnalyzeSchemaMemoryBlock(
       long sizeInBytes) throws LoadRuntimeOutOfMemoryException {
-    allocatedFromQuery(sizeInBytes);
+    try {
+      forceAllocatedFromQuery(sizeInBytes);
+    } catch (LoadRuntimeOutOfMemoryException e) {
+      if (dataCacheMemoryBlock != null && dataCacheMemoryBlock.doShrink(sizeInBytes)) {
+        return new LoadTsFileAnalyzeSchemaMemoryBlock(sizeInBytes);
+      }
+      throw e;
+    }
     return new LoadTsFileAnalyzeSchemaMemoryBlock(sizeInBytes);
+  }
+
+  public synchronized LoadTsFileDataCacheMemoryBlock allocateDataCacheMemoryBlock()
+      throws LoadRuntimeOutOfMemoryException {
+    if (dataCacheMemoryBlock == null) {
+      dataCacheMemoryBlock =
+          new LoadTsFileDataCacheMemoryBlock(
+              tryAllocateFromQuery(QUERY_TOTAL_MEMORY_SIZE_IN_BYTES >> 1));
+    }
+    return dataCacheMemoryBlock;
   }
 
   ///////////////////////////// SINGLETON /////////////////////////////
