@@ -707,7 +707,7 @@ public class LoadTsfileAnalyzer {
     public void addAlreadySetDatabase(PartialPath database) {
       long memoryUsageSizeInBytes = 0;
       if (alreadySetDatabases.add(database)) {
-        memoryUsageSizeInBytes += estimateStringSize(database.getFullPath());
+        memoryUsageSizeInBytes += PartialPath.estimateSize(database);
       }
 
       if (memoryUsageSizeInBytes > 0) {
@@ -717,7 +717,7 @@ public class LoadTsfileAnalyzer {
     }
 
     public boolean shouldFlushTimeSeries() {
-      return block.hasEnoughMemory(0L)
+      return block.hasEnoughMemory()
           || currentBatchTimeSeriesCount > FLUSH_BATCH_TIME_SERIES_NUMBER;
     }
 

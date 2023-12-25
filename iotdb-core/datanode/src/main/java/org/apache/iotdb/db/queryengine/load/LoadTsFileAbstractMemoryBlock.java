@@ -32,6 +32,10 @@ public abstract class LoadTsFileAbstractMemoryBlock implements AutoCloseable {
 
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
 
+  public boolean hasEnoughMemory() {
+    return hasEnoughMemory(0L);
+  }
+
   public abstract boolean hasEnoughMemory(long memoryTobeAddedInBytes);
 
   public abstract void addMemoryUsage(long memoryInBytes);

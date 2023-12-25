@@ -1095,10 +1095,9 @@ public class IoTDBConfig {
   private int maxLoadingTimeseriesNumber = 2000;
 
   // TODO: remove loadMemoryTotalSizeFromQueryInBytes after introducing queryEngine memory manager
-  private long loadMemoryTotalSizeFromQueryInBytes = 200 * 1024 * 1024L;
+  private long loadMemoryTotalSizeFromQueryInBytes = 512 * 1024 * 1024L;
   private long loadMemoryAllocateRetryIntervalMs = 1000;
   private int loadMemoryAllocateMaxRetries = 10;
-  private long loadMemoryAllocateMinSizeInBytes = 32;
 
   /** Pipe related */
   /** initialized as empty, updated based on the latest `systemDir` during querying */
@@ -3764,14 +3763,6 @@ public class IoTDBConfig {
 
   public void setLoadMemoryAllocateMaxRetries(int loadMemoryAllocateMaxRetries) {
     this.loadMemoryAllocateMaxRetries = loadMemoryAllocateMaxRetries;
-  }
-
-  public long getLoadMemoryAllocateMinSizeInBytes() {
-    return loadMemoryAllocateMinSizeInBytes;
-  }
-
-  public void setLoadMemoryAllocateMinSizeInBytes(long loadMemoryAllocateMinSizeInBytes) {
-    this.loadMemoryAllocateMinSizeInBytes = loadMemoryAllocateMinSizeInBytes;
   }
 
   public void setPipeReceiverFileDirs(String[] pipeReceiverFileDirs) {
