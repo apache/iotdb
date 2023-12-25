@@ -293,6 +293,9 @@ public class TsFileProcessor {
     startTime = System.nanoTime();
 
     PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowNode);
+    if (!insertRowNode.isGeneratedByPipe()) {
+      workMemTable.markAsNotGeneratedByPipe();
+    }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
@@ -406,6 +409,9 @@ public class TsFileProcessor {
     startTime = System.nanoTime();
 
     PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertTabletNode);
+    if (!insertTabletNode.isGeneratedByPipe()) {
+      workMemTable.markAsNotGeneratedByPipe();
+    }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
@@ -710,7 +716,7 @@ public class TsFileProcessor {
 
   private void updateMemoryInfo(
       long memTableIncrement, long chunkMetadataIncrement, long textDataIncrement)
-      throws WriteProcessException {
+      throws WriteProcessRejectException {
     memTableIncrement += textDataIncrement;
     dataRegionInfo.addStorageGroupMemCost(memTableIncrement);
     tsFileProcessorInfo.addTSPMemCost(chunkMetadataIncrement);
@@ -917,7 +923,10 @@ public class TsFileProcessor {
       try {
         PipeInsertionDataNodeListener.getInstance()
             .listenToTsFile(
-                dataRegionInfo.getDataRegion().getDataRegionId(), tsFileResource, false, false);
+                dataRegionInfo.getDataRegion().getDataRegionId(),
+                tsFileResource,
+                false,
+                tmpMemTable.isTotallyGeneratedByPipe());
 
         // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
         // flushing memTable in System module.

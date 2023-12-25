@@ -305,7 +305,6 @@ public class DataRegionStateMachine extends BaseStateMachine {
     // To fix the atomicity problem, we only need to add retry for system reject.
     // In other cases, such as readonly, we can return directly because there are retries at the
     // consensus layer.
-    return statusCode == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()
-        || statusCode == TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode();
+    return statusCode == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode();
   }
 }

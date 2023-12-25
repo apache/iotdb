@@ -479,9 +479,12 @@ public class DatabasePartitionTable {
   }
 
   public List<TConsensusGroupId> getRegionId(
-      TConsensusGroupType type, TSeriesPartitionSlot seriesSlotId, TTimePartitionSlot timeSlotId) {
+      TConsensusGroupType type,
+      TSeriesPartitionSlot seriesSlotId,
+      TTimePartitionSlot startTimeSlotId,
+      TTimePartitionSlot endTimeSlotId) {
     if (type == TConsensusGroupType.DataRegion) {
-      return dataPartitionTable.getRegionId(seriesSlotId, timeSlotId);
+      return dataPartitionTable.getRegionId(seriesSlotId, startTimeSlotId, endTimeSlotId);
     } else if (type == TConsensusGroupType.SchemaRegion) {
       return schemaPartitionTable.getRegionId(seriesSlotId);
     } else {

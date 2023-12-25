@@ -92,9 +92,18 @@ public class IoTDBClusterRestartIT {
     TimeUnit.SECONDS.sleep(1);
 
     // Restart all cluster nodes
+    logger.info("Restarting all ConfigNodes...");
     for (int i = 0; i < testConfigNodeNum; i++) {
       EnvFactory.getEnv().startConfigNode(i);
     }
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+      // Do noting, just try to connect to the ConfigNode-leader
+      // in order to ensure the ConfigNode-leader is ready
+    } catch (Exception e) {
+      logger.error("Failed to get ConfigNode-leader connection", e);
+    }
+    logger.info("Restarting all DataNodes...");
     for (int i = 0; i < testDataNodeNum; i++) {
       EnvFactory.getEnv().startDataNode(i);
     }
