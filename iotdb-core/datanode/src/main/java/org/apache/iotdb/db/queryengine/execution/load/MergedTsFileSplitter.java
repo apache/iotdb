@@ -111,7 +111,7 @@ public class MergedTsFileSplitter {
 
       File tsFile = tsFiles.get(fileIndex);
       SplitTask splitTask = new SplitTask(tsFile, asyncExecutor, fileIndex);
-      logger.info("Start to split {}", tsFiles.get(fileIndex));
+      logger.debug("Start to split {}", tsFiles.get(fileIndex));
       if (splitTask.hasNext()) {
         taskPriorityQueue.add(splitTask);
       }

@@ -101,7 +101,11 @@ public class BatchedTsFileExtractor extends PipeHistoricalDataRegionTsFileExtrac
 
     event.setExtractorOnConnectorTimeout(this::onConnectorTimeout);
     event.setExtractorOnConnectorSuccess(this::onConnectorSuccess);
-    LOGGER.info("Generated a TsFile event: {}", event);
+    LOGGER.info(
+        "Generated a TsFile event: {}, max file num: {}, max file size: {}",
+        event,
+        maxBatchSize,
+        maxFileTotalSize);
     return event;
   }
 

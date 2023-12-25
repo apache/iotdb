@@ -73,7 +73,7 @@ public class TsFileSplitSenderTest extends TestBase {
   private long dummyDelayMS = 0;
   private double packetLossRatio = 0.00;
   private Random random = new Random();
-  private long maxSplitSize = 128 * 1024 * 1024;
+  private long maxSplitSize = 128 * 1024 * 1024L;
   // simulating jvm stall like GC
   private long minStuckIntervalMS = 50000;
   private long maxStuckIntervalMS = 100000;
@@ -109,27 +109,35 @@ public class TsFileSplitSenderTest extends TestBase {
             });
     thread.start();
 
-    LoadTsFileNode loadTsFileNode =
-        new LoadTsFileNode(new PlanNodeId("testPlanNode"), tsFileResources);
-    DataPartitionBatchFetcher partitionBatchFetcher = dummyDataPartitionBatchFetcher();
-    TsFileSplitSender splitSender =
-        new TsFileSplitSender(
-            loadTsFileNode,
-            partitionBatchFetcher,
-            TimePartitionUtils.getTimePartitionInterval(),
-            internalServiceClientManager,
-            false,
-            maxSplitSize,
-            100,
-            "root",
-            "root");
+    int filesPerNode = 2;
+    int startFileIndex = 0;
     long start = System.currentTimeMillis();
-    splitSender.start();
+    long transmissionTime = 0;
+    while (startFileIndex < tsFileResources.size()) {
+      int endFileIndex = Math.min(tsFileResources.size(), startFileIndex + filesPerNode);
+      LoadTsFileNode loadTsFileNode =
+          new LoadTsFileNode(new PlanNodeId("testPlanNode"), tsFileResources.subList(startFileIndex, endFileIndex));
+      DataPartitionBatchFetcher partitionBatchFetcher = dummyDataPartitionBatchFetcher();
+      TsFileSplitSender splitSender =
+          new TsFileSplitSender(
+              loadTsFileNode,
+              partitionBatchFetcher,
+              TimePartitionUtils.getTimePartitionInterval(),
+              internalServiceClientManager,
+              false,
+              maxSplitSize,
+              100,
+              "root",
+              "root");
+      splitSender.start();
+      transmissionTime += splitSender.getStatistic().getCompressedSize().get() / nodeThroughput;
+      startFileIndex = endFileIndex;
+    }
+
     long timeConsumption = System.currentTimeMillis() - start;
     thread.interrupt();
 
     printPhaseResult();
-    long transmissionTime = splitSender.getStatistic().getCompressedSize().get() / nodeThroughput;
     System.out.printf(
         "Split ends after %dms + %dms (Transmission) = %dms\n",
         timeConsumption, transmissionTime, timeConsumption + transmissionTime);

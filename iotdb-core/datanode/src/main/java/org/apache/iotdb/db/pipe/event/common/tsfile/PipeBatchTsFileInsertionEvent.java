@@ -273,10 +273,9 @@ public class PipeBatchTsFileInsertionEvent extends EnrichedEvent
   @Override
   public String toString() {
     return "PipeBatchTsFileInsertionEvent{"
-        + "resources="
+        + resources.size()
+        + " resources="
         + resources
-        + ", tsFiles="
-        + tsFiles
         + ", totalSize="
         + totalSize
         + '}';

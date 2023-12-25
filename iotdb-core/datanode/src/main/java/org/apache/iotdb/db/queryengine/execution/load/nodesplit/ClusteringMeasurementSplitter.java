@@ -97,7 +97,9 @@ public class ClusteringMeasurementSplitter implements PieceNodeSplitter {
           loadTsFilePieceNodes.stream()
               .map(l -> l.getAllTsFileData().size())
               .collect(Collectors.toList()));
-      refineClusters(loadTsFilePieceNodes);
+    }
+    refineClusters(loadTsFilePieceNodes);
+    if (logger.isDebugEnabled()) {
       logger.debug(
           "Split distribution after refinement: {}",
           loadTsFilePieceNodes.stream()
