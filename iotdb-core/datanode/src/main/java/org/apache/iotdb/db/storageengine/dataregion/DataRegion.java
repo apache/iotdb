@@ -1127,24 +1127,18 @@ public class DataRegion implements IDataRegionForQuery {
     }
 
     if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
-      if ((!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
-          || !insertRowNode.isSyncFromLeaderWhenUsingIoTConsensus())) {
-        // disable updating last cache on follower
-        long startTime = System.nanoTime();
-        tryToUpdateInsertRowLastCache(insertRowNode);
-        PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(
-            System.nanoTime() - startTime);
+      if ((config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+          && insertRowNode.isSyncFromLeaderWhenUsingIoTConsensus())) {
+        return;
       }
+      // disable updating last cache on follower
+      long startTime = System.nanoTime();
+      tryToUpdateInsertRowLastCache(insertRowNode);
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(System.nanoTime() - startTime);
     }
   }
 
   private void tryToUpdateInsertRowLastCache(InsertRowNode node) {
-    if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable()
-        || (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
-            && node.isSyncFromLeaderWhenUsingIoTConsensus())) {
-      // disable updating last cache on follower
-      return;
-    }
     long latestFlushedTime =
         lastFlushTimeMap.getGlobalFlushedTime(node.getDevicePath().getFullPath());
     String[] measurements = node.getMeasurements();
@@ -1204,16 +1198,48 @@ public class DataRegion implements IDataRegionForQuery {
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(costsForMetrics[3]);
 
     if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
-      if ((!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
-          || !insertRowsNode.isSyncFromLeaderWhenUsingIoTConsensus())) {
-        // disable updating last cache on follower
-        long startTime = System.nanoTime();
-        for (InsertRowNode insertRowNode : executedInsertRowNodeList) {
-          tryToUpdateInsertRowLastCache(insertRowNode);
-        }
-        PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(
-            System.nanoTime() - startTime);
+      if ((config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+          && insertRowsNode.isSyncFromLeaderWhenUsingIoTConsensus())) {
+        return;
       }
+      // disable updating last cache on follower
+      long startTime = System.nanoTime();
+      tryToUpdateInsertRowsLastCache(executedInsertRowNodeList);
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(System.nanoTime() - startTime);
+    }
+  }
+
+  private void tryToUpdateInsertRowsLastCache(List<InsertRowNode> nodeList) {
+    DataNodeSchemaCache.getInstance().takeReadLock();
+    try {
+      for (InsertRowNode node : nodeList) {
+        long latestFlushedTime =
+            lastFlushTimeMap.getGlobalFlushedTime(node.getDevicePath().getFullPath());
+        String[] measurements = node.getMeasurements();
+        MeasurementSchema[] measurementSchemas = node.getMeasurementSchemas();
+        String[] rawMeasurements = new String[measurements.length];
+        for (int i = 0; i < measurements.length; i++) {
+          if (measurementSchemas[i] != null) {
+            // get raw measurement rather than alias
+            rawMeasurements[i] = measurementSchemas[i].getMeasurementId();
+          } else {
+            rawMeasurements[i] = measurements[i];
+          }
+        }
+        DataNodeSchemaCache.getInstance()
+            .updateLastCacheWithoutLock(
+                getDatabaseName(),
+                node.getDevicePath(),
+                rawMeasurements,
+                node.getMeasurementSchemas(),
+                node.isAligned(),
+                node::composeTimeValuePair,
+                index -> node.getValues()[index] != null,
+                true,
+                latestFlushedTime);
+      }
+    } finally {
+      DataNodeSchemaCache.getInstance().releaseReadLock();
     }
   }
 
