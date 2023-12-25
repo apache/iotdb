@@ -108,7 +108,6 @@ public class TemplatedLogicalPlanBuilder extends LogicalPlanBuilder {
   }
 
   public TemplatedLogicalPlanBuilder planFilter(
-      PartialPath devicePath,
       Expression filterExpression,
       Expression[] outputExpressions,
       boolean isGroupByTime,
@@ -127,8 +126,7 @@ public class TemplatedLogicalPlanBuilder extends LogicalPlanBuilder {
             filterExpression,
             isGroupByTime,
             zoneId,
-            scanOrder,
-            devicePath.getNodes());
+            scanOrder);
 
     return this;
   }

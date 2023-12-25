@@ -173,7 +173,6 @@ public class TemplatedLogicalPlan {
 
       planBuilder =
           planBuilder.planFilter(
-              devicePath,
               whereExpression,
               outputExpressions,
               queryStatement.isGroupByTime(),

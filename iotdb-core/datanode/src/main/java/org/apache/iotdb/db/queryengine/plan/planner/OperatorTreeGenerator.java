@@ -1164,14 +1164,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitFilter(FilterNode node, LocalExecutionPlanContext context) {
     Expression filterExpression = node.getPredicate();
-    if (node.getDevicePathNodes() != null) {
-      PartialPath devicePath = new PartialPath(node.getDevicePathNodes());
-      filterExpression =
-          new TemplatedConcatDeviceAndPredicateVisitor()
-              .process(
-                  filterExpression,
-                  new TemplatedConcatDeviceAndPredicateVisitor.Context(
-                      devicePath, context.getTypeProvider().getTemplatedInfo().getSchemaMap()));
+    if (context.getTypeProvider().getTemplatedInfo().getPredicate() != null) {
+      filterExpression = buildForTemplatedAlignByQuery(filterExpression, node, context);
     }
     final Map<NodeRef<Expression>, TSDataType> expressionTypes = new HashMap<>();
     ExpressionTypeAnalyzer.analyzeExpression(expressionTypes, filterExpression);
@@ -1307,6 +1301,27 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     } catch (QueryProcessException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  private Expression buildForTemplatedAlignByQuery(
+      Expression filterExpression, FilterNode node, LocalExecutionPlanContext context) {
+    PartialPath devicePath = null;
+    if (node.getChild() instanceof AlignedSeriesScanNode) {
+      devicePath = ((AlignedSeriesScanNode) node.getChild()).getAlignedPath().getDevicePath();
+    } else if (node.getChild() instanceof SeriesScanNode) {
+      devicePath = ((SeriesScanNode) node.getChild()).getSeriesPath().getDevicePath();
+    } else if (node.getChild() instanceof TimeJoinNode) {
+      devicePath =
+          ((SeriesScanNode) node.getChild().getChildren().get(0)).getSeriesPath().getDevicePath();
+    } else {
+      throw new UnsupportedOperationException(
+          String.format("Child of FilterNode cannot be %s", node.getChild().getClass()));
+    }
+    return new TemplatedConcatDeviceAndPredicateVisitor()
+        .process(
+            filterExpression,
+            new TemplatedConcatDeviceAndPredicateVisitor.Context(
+                devicePath, context.getTypeProvider().getTemplatedInfo().getSchemaMap()));
   }
 
   @Override

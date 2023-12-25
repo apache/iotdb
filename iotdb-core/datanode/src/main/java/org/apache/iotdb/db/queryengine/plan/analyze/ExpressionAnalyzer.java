@@ -43,7 +43,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.UnaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.BindTypeForTimeSeriesOperandVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.CollectAggregationExpressionsVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.CollectSourceExpressionsVisitor;
-import org.apache.iotdb.db.queryengine.plan.expression.visitor.ConcatDeviceAndBindSchemaForPredicateVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionNormalizeVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.GetMeasurementExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.LowercaseNormalizeVisitor;
@@ -51,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.ReplaceRawPathWit
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.BindSchemaForExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.BindSchemaForPredicateVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.ConcatDeviceAndBindSchemaForExpressionVisitor;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.ConcatDeviceAndBindSchemaForPredicateVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.ConcatExpressionWithSuffixPathsVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.utils.constant.SqlConstant;

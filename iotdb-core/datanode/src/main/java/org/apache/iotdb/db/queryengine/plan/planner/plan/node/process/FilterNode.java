@@ -42,9 +42,6 @@ public class FilterNode extends TransformNode {
 
   private final Expression predicate;
 
-  // this variable is only use in TemplatedLogicalPlan process.
-  private final String[] devicePathNodes;
-
   public FilterNode(
       PlanNodeId id,
       PlanNode childPlanNode,
@@ -52,11 +49,9 @@ public class FilterNode extends TransformNode {
       Expression predicate,
       boolean keepNull,
       ZoneId zoneId,
-      Ordering scanOrder,
-      String[] devicePathNodes) {
+      Ordering scanOrder) {
     super(id, childPlanNode, outputExpressions, keepNull, zoneId, scanOrder);
     this.predicate = predicate;
-    this.devicePathNodes = devicePathNodes;
   }
 
   /** This construction method is only used in inner of class `FilterNode`. */
@@ -66,11 +61,9 @@ public class FilterNode extends TransformNode {
       Expression predicate,
       boolean keepNull,
       ZoneId zoneId,
-      Ordering scanOrder,
-      String[] devicePathNodes) {
+      Ordering scanOrder) {
     super(id, outputExpressions, keepNull, zoneId, scanOrder);
     this.predicate = predicate;
-    this.devicePathNodes = devicePathNodes;
   }
 
   @Override
@@ -81,13 +74,7 @@ public class FilterNode extends TransformNode {
   @Override
   public PlanNode clone() {
     return new FilterNode(
-        getPlanNodeId(),
-        outputExpressions,
-        predicate,
-        keepNull,
-        zoneId,
-        scanOrder,
-        devicePathNodes);
+        getPlanNodeId(), outputExpressions, predicate, keepNull, zoneId, scanOrder);
   }
 
   @Override
@@ -127,8 +114,7 @@ public class FilterNode extends TransformNode {
     ZoneId zoneId = ZoneId.of(Objects.requireNonNull(ReadWriteIOUtils.readString(byteBuffer)));
     Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new FilterNode(
-        planNodeId, outputExpressions, predicate, keepNull, zoneId, scanOrder, null);
+    return new FilterNode(planNodeId, outputExpressions, predicate, keepNull, zoneId, scanOrder);
   }
 
   @Override
@@ -136,10 +122,6 @@ public class FilterNode extends TransformNode {
       throws IOException {
     PlanNodeType.FILTER.serialize(stream);
     id.serialize(stream);
-    ReadWriteIOUtils.write(devicePathNodes.length, stream);
-    for (String node : devicePathNodes) {
-      ReadWriteIOUtils.write(node, stream);
-    }
     ReadWriteIOUtils.write(getChildren().size(), stream);
     for (PlanNode planNode : getChildren()) {
       planNode.serializeUseTemplate(stream, typeProvider);
@@ -171,16 +153,11 @@ public class FilterNode extends TransformNode {
         typeProvider.getTemplatedInfo().getPredicate(),
         typeProvider.getTemplatedInfo().isKeepNull(),
         typeProvider.getTemplatedInfo().getZoneId(),
-        typeProvider.getTemplatedInfo().getScanOrder(),
-        devicePathNodes);
+        typeProvider.getTemplatedInfo().getScanOrder());
   }
 
   public Expression getPredicate() {
     return predicate;
-  }
-
-  public String[] getDevicePathNodes() {
-    return this.devicePathNodes;
   }
 
   @Override

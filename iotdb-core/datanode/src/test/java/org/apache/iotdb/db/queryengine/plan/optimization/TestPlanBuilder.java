@@ -286,8 +286,7 @@ public class TestPlanBuilder {
             predicate,
             isGroupByTime,
             ZonedDateTime.now().getOffset(),
-            Ordering.ASC,
-            null);
+            Ordering.ASC);
     return this;
   }
 

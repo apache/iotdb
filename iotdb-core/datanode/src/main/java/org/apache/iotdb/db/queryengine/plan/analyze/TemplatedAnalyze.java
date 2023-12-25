@@ -165,7 +165,7 @@ public class TemplatedAnalyze {
 
     List<PartialPath> deviceList = analyzeFrom(queryStatement, schemaTree);
 
-    analyzeDeviceToWhere(analysis, queryStatement, schemaTree, deviceList);
+    analyzeDeviceToWhere(analysis, queryStatement);
 
     if (deviceList.isEmpty()) {
       analysis.setFinishQueryAfterAnalyze(true);
@@ -236,54 +236,13 @@ public class TemplatedAnalyze {
         : deviceSet.stream().sorted(Comparator.reverseOrder()).collect(Collectors.toList());
   }
 
-  private static void analyzeDeviceToWhere(
-      Analysis analysis,
-      QueryStatement queryStatement,
-      ISchemaTree schemaTree,
-      List<PartialPath> deviceList) {
+  private static void analyzeDeviceToWhere(Analysis analysis, QueryStatement queryStatement) {
     if (!queryStatement.hasWhere()) {
       return;
     }
 
     Expression wherePredicate = queryStatement.getWhereCondition().getPredicate();
     analysis.setWhereExpression(wherePredicate);
-
-    //    analysis.setOnlyQueryTemplateMeasurements(false);
-    //    Map<String, Expression> deviceToWhereExpression = new HashMap<>();
-    //    Iterator<PartialPath> deviceIterator = deviceList.iterator();
-    //    while (deviceIterator.hasNext()) {
-    //      PartialPath devicePath = deviceIterator.next();
-    //      Expression whereExpression;
-    //      try {
-    //        // can move this judgement to TemplatedLogicalPlan?
-    //        whereExpression =
-    //            normalizeExpression(analyzeWhereSplitByDevice(queryStatement, devicePath,
-    // schemaTree));
-    //      } catch (MeasurementNotExistException e) {
-    //        LOGGER.warn(
-    //            "Meets MeasurementNotExistException in analyzeDeviceToWhere "
-    //                + "when executing align by device, error msg: {}",
-    //            e.getMessage());
-    //        deviceIterator.remove();
-    //        continue;
-    //      }
-    //
-    //      TSDataType outputType = analyzeExpressionType(analysis, whereExpression);
-    //      if (outputType != TSDataType.BOOLEAN) {
-    //        throw new SemanticException(String.format(WHERE_WRONG_TYPE_ERROR_MSG, outputType));
-    //      }
-    //
-    //      deviceToWhereExpression.put(devicePath.getFullPath(), whereExpression);
-    // analysis.setDeviceToWhereExpression(deviceToWhereExpression);
-  }
-
-  private static Expression analyzeWhereSplitByDevice(
-      QueryStatement queryStatement, PartialPath devicePath, ISchemaTree schemaTree) {
-    List<Expression> conJunctions =
-        ExpressionAnalyzer.concatDeviceAndBindSchemaForPredicate(
-            queryStatement.getWhereCondition().getPredicate(), devicePath, schemaTree, true);
-    return PredicateUtils.combineConjuncts(
-        conJunctions.stream().distinct().collect(Collectors.toList()));
   }
 
   private static void analyzeDeviceToOrderBy(
