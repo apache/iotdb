@@ -65,8 +65,6 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   protected DataRegion region;
 
-  private static final int MAX_WRITE_RETRY_TIMES = 5;
-
   private static final long WRITE_RETRY_WAIT_TIME_IN_MS = 1000;
 
   public DataRegionStateMachine(DataRegion region) {
@@ -251,7 +249,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
         retryTime++;
         logger.debug(
             "write operation failed because {}, retryTime: {}.", result.getCode(), retryTime);
-        if (retryTime % MAX_WRITE_RETRY_TIMES == 0) {
+        if (retryTime % 5 == 0) {
           logger.error(
               "write operation still failed after {} retry times, because {}.",
               retryTime,
