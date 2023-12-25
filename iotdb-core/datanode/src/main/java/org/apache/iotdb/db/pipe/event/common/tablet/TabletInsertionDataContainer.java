@@ -370,6 +370,7 @@ public class TabletInsertionDataContainer {
     }
 
     List<Integer> rowIndexList = new ArrayList<>();
+    // We assume that `originTimestampColumn` is ordered.
     if (originTimestampColumn[originTimestampColumn.length - 1] < sourceEvent.getStartTime()
         || originTimestampColumn[0] > sourceEvent.getEndTime()) {
       return rowIndexList;

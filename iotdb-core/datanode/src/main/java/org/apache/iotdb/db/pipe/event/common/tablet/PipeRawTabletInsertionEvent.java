@@ -147,6 +147,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
     if (Objects.isNull(timestamps) || timestamps.length == 0) {
       return false;
     }
+    // We assume that `timestamps` is ordered.
     return startTime <= timestamps[timestamps.length - 1] && timestamps[0] <= endTime;
   }
 
