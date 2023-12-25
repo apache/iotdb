@@ -97,12 +97,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       }
     }
 
-    isForwardingPipeRequests =
-        parameters.getBooleanOrDefault(
-            Arrays.asList(
-                PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
-                PipeExtractorConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
-            PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
+    isForwardingPipeRequests = true;
 
     // Metrics related to TsFileEpoch are managed in PipeExtractorMetrics. These metrics are
     // indexed by the taskID of IoTDBDataRegionExtractor. To avoid PipeRealtimeDataRegionExtractor
