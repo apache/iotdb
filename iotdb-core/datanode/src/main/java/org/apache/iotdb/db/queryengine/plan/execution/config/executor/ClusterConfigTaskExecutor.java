@@ -45,6 +45,7 @@ import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFClassLoader;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountDatabaseResp;
@@ -2023,9 +2024,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         tGetRegionIdReq.setDatabase(getRegionIdStatement.getDatabase());
       }
-      if (getRegionIdStatement.getTimeStamp() >= 0) {
-        tGetRegionIdReq.setTimeStamp(getRegionIdStatement.getTimeStamp());
-      }
+      tGetRegionIdReq.setStartTimeSlot(
+          TimePartitionUtils.getTimePartitionSlot(getRegionIdStatement.getStartTimeStamp()));
+      tGetRegionIdReq.setEndTimeSlot(
+          TimePartitionUtils.getTimePartitionSlot(getRegionIdStatement.getEndTimeStamp()));
       resp = configNodeClient.getRegionId(tGetRegionIdReq);
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         future.setException(new IoTDBException(resp.getStatus().message, resp.getStatus().code));

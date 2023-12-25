@@ -18,13 +18,17 @@
  */
 package org.apache.iotdb.session.it;
 
+import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.isession.template.Template;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -44,6 +48,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -423,6 +428,35 @@ public class IoTDBSessionSyntaxConventionIT {
       }
       SessionDataSet dataSet = session.executeQueryStatement("show timeseries root");
       assertFalse(dataSet.hasNext());
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void createSchemaTemplateWithIllegalMeasurementNameTest() {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+
+      Template template = new Template("null_t", true);
+      MeasurementNode mNode =
+          new MeasurementNode(null, TSDataType.FLOAT, TSEncoding.GORILLA, CompressionType.LZ4);
+      template.addToTemplate(mNode);
+
+      try {
+        session.createSchemaTemplate(template);
+        fail();
+      } catch (StatementExecutionException e) {
+        TSStatusCode statusCode =
+            TSStatusCode.representOf(TSStatusCode.METADATA_ERROR.getStatusCode());
+        String message =
+            String.format(
+                "[%s] Exception occurred: %s failed. %s",
+                statusCode,
+                OperationType.CREATE_SCHEMA_TEMPLATE,
+                "The name of a measurement in schema template shall not be null.");
+        assertEquals(TSStatusCode.METADATA_ERROR.getStatusCode() + ": " + message, e.getMessage());
+      }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
