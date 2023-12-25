@@ -18,7 +18,7 @@
 # under the License.
 #
 IOTDB_SBIN_HOME="$(dirname "$(readlink -f "$0")")"
-SYSTEMD_DIR="/usr/lib/systemd/system"
+SYSTEMD_DIR="/etc/systemd/system"
 
 if [ ! -d "$SYSTEMD_DIR" ]; then
     echo "Current system can't support systemd"
