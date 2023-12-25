@@ -44,6 +44,7 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
   private final boolean needChunkMetadata;
   private final int timeseriesBatchReadNumber;
   private ByteBuffer currentBuffer = null;
+  private long currentEndOffset = Long.MIN_VALUE;
   private final Deque<MetadataIndexEntryInfo> metadataIndexEntryStack = new ArrayDeque<>();
   private String currentDeviceId;
   private int currentTimeseriesMetadataCount = 0;
@@ -98,6 +99,19 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
         timeseriesMetadataMap
             .computeIfAbsent(currentDeviceId, k -> new ArrayList<>())
             .addAll(deserializeTimeseriesMetadata());
+      } else if (currentEndOffset > Long.MIN_VALUE) {
+        try {
+          timeseriesMetadataMap
+              .computeIfAbsent(currentDeviceId, k -> new ArrayList<>())
+              .addAll(deserializeTimeseriesMetadataUsingTsFileInput(currentEndOffset));
+        } catch (IOException e) {
+          throw new TsFileSequenceReaderTimeseriesMetadataIteratorException(
+              String.format(
+                  "TsFileSequenceReaderTimeseriesMetadataIterator: deserializeTimeseriesMetadataUsingTsFileInput failed, "
+                      + "currentEndOffset: %d, "
+                      + e.getMessage(),
+                  currentEndOffset));
+        }
       }
 
       if (currentTimeseriesMetadataCount >= timeseriesBatchReadNumber
@@ -165,6 +179,7 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
           .computeIfAbsent(currentDeviceId, k -> new ArrayList<>())
           .addAll(deserializeTimeseriesMetadata());
     } else {
+      currentEndOffset = endOffset;
       reader.position(metadataIndexEntry.getOffset());
       timeseriesMetadataMap
           .computeIfAbsent(currentDeviceId, k -> new ArrayList<>())
@@ -187,10 +202,13 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
       throws IOException {
     final List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
     while (reader.position() < endOffset
-        && currentTimeseriesMetadataCount < MAX_TIMESERIES_METADATA_COUNT) {
+        && currentTimeseriesMetadataCount < DEFAULT_TIMESERIES_BATCH_READ_NUMBER) {
       timeseriesMetadataList.add(
           TimeseriesMetadata.deserializeFrom(reader.tsFileInput, needChunkMetadata));
       currentTimeseriesMetadataCount++;
+    }
+    if (reader.position() >= endOffset) {
+      currentEndOffset = Long.MIN_VALUE;
     }
     return timeseriesMetadataList;
   }
