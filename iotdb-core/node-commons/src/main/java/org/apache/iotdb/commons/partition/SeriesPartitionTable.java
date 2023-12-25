@@ -148,20 +148,20 @@ public class SeriesPartitionTable {
   /**
    * Query a timePartition's corresponding dataRegionIds.
    *
-   * @param timeSlotId Time partition's timeSlotId
-   * @return the timePartition's corresponding dataRegionIds
+   * @param startTimeSlotId start Time partition's timeSlotId
+   * @param endTimeSlotId end Time partition's timeSlotId
+   * @return the timePartition's corresponding dataRegionIds. return the dataRegions which
+   *     timeslotIds are in the time range [startTimeSlotId, endTimeSlotId].
    */
-  List<TConsensusGroupId> getRegionId(TTimePartitionSlot timeSlotId) {
-    if (timeSlotId.getStartTime() != -1) {
-      if (!seriesPartitionMap.containsKey(timeSlotId)) {
-        return new ArrayList<>();
-      }
-      return seriesPartitionMap.get(timeSlotId);
-    } else {
-      return seriesPartitionMap.values().stream()
-          .flatMap(List::stream)
-          .collect(Collectors.toList());
-    }
+  List<TConsensusGroupId> getRegionId(
+      TTimePartitionSlot startTimeSlotId, TTimePartitionSlot endTimeSlotId) {
+    return seriesPartitionMap.entrySet().stream()
+        .filter(
+            entry ->
+                entry.getKey().getStartTime() >= startTimeSlotId.getStartTime()
+                    && entry.getKey().getStartTime() <= endTimeSlotId.getStartTime())
+        .flatMap(entry -> entry.getValue().stream())
+        .collect(Collectors.toList());
   }
 
   List<TTimePartitionSlot> getTimeSlotList(

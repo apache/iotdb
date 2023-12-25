@@ -186,24 +186,26 @@ public class DataPartitionTable {
    * Query a timePartition's corresponding dataRegionIds
    *
    * @param seriesSlotId SeriesPartitionSlot
-   * @param timeSlotId TimePartitionSlot
-   * @return the timePartition's corresponding dataRegionIds, if seriesSlotId==-1, then return all
-   *     seriesPartitionTable's dataRegionIds; if timeSlotId == -1, then return all the seriesSlot's
-   *     dataRegionIds.
+   * @param startTimeSlotId startTimePartitionSlot
+   * @param endTimeSlotId endTimePartitionSlot
+   * @return the timePartition' s corresponding dataRegionIds, if seriesSlotId==-1, then return all
+   *     seriesPartitionTable's dataRegionIds;
    */
   public List<TConsensusGroupId> getRegionId(
-      TSeriesPartitionSlot seriesSlotId, TTimePartitionSlot timeSlotId) {
+      TSeriesPartitionSlot seriesSlotId,
+      TTimePartitionSlot startTimeSlotId,
+      TTimePartitionSlot endTimeSlotId) {
     if (seriesSlotId.getSlotId() == -1) {
       List<TConsensusGroupId> regionIds = new ArrayList<>();
       dataPartitionMap.forEach(
           (seriesPartitionSlot, seriesPartitionTable) ->
-              regionIds.addAll(seriesPartitionTable.getRegionId(timeSlotId)));
+              regionIds.addAll(seriesPartitionTable.getRegionId(startTimeSlotId, endTimeSlotId)));
       return regionIds;
     } else if (!dataPartitionMap.containsKey(seriesSlotId)) {
       return new ArrayList<>();
     } else {
       SeriesPartitionTable seriesPartitionTable = dataPartitionMap.get(seriesSlotId);
-      return seriesPartitionTable.getRegionId(timeSlotId);
+      return seriesPartitionTable.getRegionId(startTimeSlotId, endTimeSlotId);
     }
   }
 

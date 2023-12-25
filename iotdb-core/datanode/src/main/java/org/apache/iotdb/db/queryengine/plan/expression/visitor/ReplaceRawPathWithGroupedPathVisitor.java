@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.expression.visitor;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.queryengine.plan.analyze.GroupByLevelController;
+import org.apache.iotdb.db.queryengine.plan.analyze.GroupByLevelHelper;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
@@ -29,19 +29,19 @@ import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.UnaryOperator;
 
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructFunctionExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructTimeSeriesOperand;
 
 public class ReplaceRawPathWithGroupedPathVisitor
-    extends ReconstructVisitor<GroupByLevelController.RawPathToGroupedPathMap> {
+    extends ReconstructVisitor<ReplaceRawPathWithGroupedPathVisitor.Context> {
   @Override
   public Expression visitFunctionExpression(
-      FunctionExpression functionExpression,
-      GroupByLevelController.RawPathToGroupedPathMap rawPathToGroupedPathMap) {
+      FunctionExpression functionExpression, Context context) {
     List<Expression> childrenExpressions = new ArrayList<>();
     for (Expression childExpression : functionExpression.getExpressions()) {
-      childrenExpressions.add(process(childExpression, rawPathToGroupedPathMap));
+      childrenExpressions.add(process(childExpression, context));
 
       // We just process first input Expression of AggregationFunction.
       // If AggregationFunction need more than one input series,
@@ -58,23 +58,41 @@ public class ReplaceRawPathWithGroupedPathVisitor
   }
 
   @Override
-  public Expression visitTimeSeriesOperand(
-      TimeSeriesOperand timeSeriesOperand,
-      GroupByLevelController.RawPathToGroupedPathMap rawPathToGroupedPathMap) {
+  public Expression visitTimeSeriesOperand(TimeSeriesOperand timeSeriesOperand, Context context) {
     PartialPath rawPath = timeSeriesOperand.getPath();
-    PartialPath groupedPath = rawPathToGroupedPathMap.get(rawPath);
+    PartialPath groupedPath = context.transform(rawPath);
     return reconstructTimeSeriesOperand(timeSeriesOperand, groupedPath);
   }
 
   @Override
-  public Expression visitTimeStampOperand(
-      TimestampOperand timestampOperand, GroupByLevelController.RawPathToGroupedPathMap context) {
+  public Expression visitTimeStampOperand(TimestampOperand timestampOperand, Context context) {
     return timestampOperand;
   }
 
   @Override
-  public Expression visitConstantOperand(
-      ConstantOperand constantOperand, GroupByLevelController.RawPathToGroupedPathMap context) {
+  public Expression visitConstantOperand(ConstantOperand constantOperand, Context context) {
     return constantOperand;
+  }
+
+  public static class Context {
+
+    private final GroupByLevelHelper.RawPathToGroupedPathMap rawPathToGroupedPathMap;
+    private final UnaryOperator<PartialPath> pathTransformer;
+
+    public Context(
+        GroupByLevelHelper.RawPathToGroupedPathMap rawPathToGroupedPathMap,
+        UnaryOperator<PartialPath> pathTransformer) {
+      this.rawPathToGroupedPathMap = rawPathToGroupedPathMap;
+      this.pathTransformer = pathTransformer;
+    }
+
+    private PartialPath transform(PartialPath path) {
+      if (rawPathToGroupedPathMap.containsKey(path)) {
+        return rawPathToGroupedPathMap.get(path);
+      }
+      PartialPath groupedPath = pathTransformer.apply(path);
+      rawPathToGroupedPathMap.put(path, groupedPath);
+      return groupedPath;
+    }
   }
 }

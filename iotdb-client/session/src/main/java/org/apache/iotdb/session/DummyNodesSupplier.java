@@ -16,25 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.it.env.remote.config;
 
-import org.apache.iotdb.itbase.env.DataNodeConfig;
+package org.apache.iotdb.session;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.isession.INodeSupplier;
+
+import java.util.Collections;
 import java.util.List;
 
-public class RemoteDataNodeConfig implements DataNodeConfig {
-  @Override
-  public DataNodeConfig setMetricReporterType(List<String> metricReporterTypes) {
-    return this;
+public class DummyNodesSupplier implements INodeSupplier {
+
+  private final List<TEndPoint> availableNodes;
+
+  public DummyNodesSupplier(List<TEndPoint> availableNodes) {
+    this.availableNodes = Collections.unmodifiableList(availableNodes);
   }
 
   @Override
-  public DataNodeConfig setEnableRestService(boolean enableRestService) {
-    return this;
+  public void close() {
+    // do nothing
   }
 
   @Override
-  public DataNodeConfig setConnectionTimeoutInMS(int connectionTimeoutInMS) {
-    return this;
+  public List<TEndPoint> get() {
+    return availableNodes;
   }
 }
