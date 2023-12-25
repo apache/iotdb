@@ -40,6 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
+import java.util.Objects;
 import java.util.function.BiConsumer;
 
 public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
@@ -170,22 +171,22 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
         long timestamp = ((InsertRowNode) insertNode).getTime();
         return startTime <= timestamp && timestamp <= endTime;
       } else if (insertNode instanceof InsertTabletNode) {
-        long maxTimestamp = Long.MIN_VALUE;
-        long minTimestamp = Long.MAX_VALUE;
-        for (long timestamp : ((InsertTabletNode) insertNode).getTimes()) {
-          maxTimestamp = Math.max(maxTimestamp, timestamp);
-          minTimestamp = Math.min(minTimestamp, timestamp);
+        long[] timestamps = ((InsertTabletNode) insertNode).getTimes();
+        if (Objects.isNull(timestamps) || timestamps.length == 0) {
+          return false;
         }
-        return startTime <= maxTimestamp && minTimestamp <= endTime;
+        return startTime <= timestamps[timestamps.length - 1] && timestamps[0] <= endTime;
       } else {
         throw new UnSupportedDataTypeException(
             String.format("InsertNode type %s is not supported.", insertNode.getClass().getName()));
       }
     } catch (Exception e) {
       LOGGER.warn(
-          "Exception occurred when determining the event time of PipeInsertNodeTabletInsertionEvent({}) overlaps with the time range: {}. Returning true to ensure data integrity.",
+          "Exception occurred when determining the event time of PipeInsertNodeTabletInsertionEvent({}) overlaps with the time range: [{}, {}]. Returning true to ensure data integrity.",
           this,
-          e.getMessage());
+          startTime,
+          endTime,
+          e);
       return true;
     }
   }

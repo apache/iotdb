@@ -143,13 +143,11 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   @Override
   public boolean isEventTimeOverlappedWithTimeRange() {
-    long maxTimestamp = Long.MIN_VALUE;
-    long minTimestamp = Long.MAX_VALUE;
-    for (long timestamp : tablet.timestamps) {
-      maxTimestamp = Math.max(maxTimestamp, timestamp);
-      minTimestamp = Math.min(minTimestamp, timestamp);
+    long[] timestamps = tablet.timestamps;
+    if (Objects.isNull(timestamps) || timestamps.length == 0) {
+      return false;
     }
-    return startTime <= maxTimestamp && minTimestamp <= endTime;
+    return startTime <= timestamps[timestamps.length - 1] && timestamps[0] <= endTime;
   }
 
   public void markAsNeedToReport() {

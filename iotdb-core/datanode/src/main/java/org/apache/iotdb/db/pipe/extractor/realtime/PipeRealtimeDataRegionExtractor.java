@@ -243,7 +243,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     }
 
     // 1. Check if time parsing is necessary. If not, it means that the timestamps of the data
-    // contained in this event are definitely within the time range (start time ~ end time).
+    // contained in this event are definitely within the time range [start time, end time].
     // Otherwise,
     // 2. Check if the timestamps of the data contained in this event intersect with the time range.
     // If there is no intersection, it indicates that this data will be filtered out by the

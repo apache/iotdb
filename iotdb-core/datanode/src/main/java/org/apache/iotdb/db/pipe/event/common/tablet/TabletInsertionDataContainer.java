@@ -41,9 +41,12 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
@@ -70,6 +73,16 @@ public class TabletInsertionDataContainer {
   private int rowCount;
 
   private Tablet tablet;
+
+  private static final Integer CACHED_FULL_ROW_INDEX_LIST_ROW_COUNT_UPPER = 16;
+  private static final Map<Integer, List<Integer>> cachedFullRowIndexList = new HashMap<>();
+
+  static {
+    for (int rowCount = 0; rowCount <= CACHED_FULL_ROW_INDEX_LIST_ROW_COUNT_UPPER; ++rowCount) {
+      cachedFullRowIndexList.put(
+          rowCount, IntStream.range(0, rowCount).boxed().collect(Collectors.toList()));
+    }
+  }
 
   public TabletInsertionDataContainer(
       PipeTaskMeta pipeTaskMeta, EnrichedEvent sourceEvent, InsertNode insertNode, String pattern) {
@@ -117,11 +130,7 @@ public class TabletInsertionDataContainer {
     this.isAligned = insertRowNode.isAligned();
 
     final long[] originTimestampColumn = new long[] {insertRowNode.getTime()};
-    List<Integer> rowIndexList =
-        IntStream.range(0, originTimestampColumn.length)
-            .filter(i -> isRowTimeCoveredByTimeRange(originTimestampColumn[i]))
-            .boxed()
-            .collect(Collectors.toList());
+    List<Integer> rowIndexList = generateRowIndexList(originTimestampColumn);
     this.timestampColumn = rowIndexList.stream().mapToLong(i -> originTimestampColumn[i]).toArray();
 
     generateColumnIndexMapper(
@@ -159,8 +168,8 @@ public class TabletInsertionDataContainer {
 
     rowCount = rowIndexList.size();
     if (rowCount == 0) {
-      LOGGER.warn(
-          "InsertRowNode({}) is parsed to zero rows according to the pattern({}) and time range({} ~ {}), the corresponding source event({}) will be ignored.",
+      LOGGER.info(
+          "InsertRowNode({}) is parsed to zero rows according to the pattern({}) and time range [{}, {}], the corresponding source event({}) will be ignored.",
           insertRowNode,
           pattern,
           sourceEvent.getStartTime(),
@@ -177,11 +186,7 @@ public class TabletInsertionDataContainer {
     this.isAligned = insertTabletNode.isAligned();
 
     final long[] originTimestampColumn = insertTabletNode.getTimes();
-    List<Integer> rowIndexList =
-        IntStream.range(0, originTimestampColumn.length)
-            .filter(i -> isRowTimeCoveredByTimeRange(originTimestampColumn[i]))
-            .boxed()
-            .collect(Collectors.toList());
+    List<Integer> rowIndexList = generateRowIndexList(originTimestampColumn);
     this.timestampColumn = rowIndexList.stream().mapToLong(i -> originTimestampColumn[i]).toArray();
 
     generateColumnIndexMapper(
@@ -234,8 +239,8 @@ public class TabletInsertionDataContainer {
 
     rowCount = timestampColumn.length;
     if (rowCount == 0) {
-      LOGGER.warn(
-          "InsertTabletNode({}) is parsed to zero rows according to the pattern({}) and time range({} ~ {}), the corresponding source event({}) will be ignored.",
+      LOGGER.info(
+          "InsertTabletNode({}) is parsed to zero rows according to the pattern({}) and time range [{}, {}], the corresponding source event({}) will be ignored.",
           insertTabletNode,
           pattern,
           sourceEvent.getStartTime(),
@@ -252,11 +257,7 @@ public class TabletInsertionDataContainer {
     this.isAligned = isAligned;
 
     final long[] originTimestampColumn = tablet.timestamps;
-    List<Integer> rowIndexList =
-        IntStream.range(0, originTimestampColumn.length)
-            .filter(i -> isRowTimeCoveredByTimeRange(originTimestampColumn[i]))
-            .boxed()
-            .collect(Collectors.toList());
+    List<Integer> rowIndexList = generateRowIndexList(originTimestampColumn);
     this.timestampColumn = rowIndexList.stream().mapToLong(i -> originTimestampColumn[i]).toArray();
 
     final List<MeasurementSchema> originMeasurementSchemaList = tablet.getSchemas();
@@ -315,20 +316,14 @@ public class TabletInsertionDataContainer {
 
     rowCount = tablet.rowSize;
     if (rowCount == 0) {
-      LOGGER.warn(
-          "Tablet({}) is parsed to zero rows according to the pattern({}) and time range({} ~ {}), the corresponding source event({}) will be ignored.",
+      LOGGER.info(
+          "Tablet({}) is parsed to zero rows according to the pattern({}) and time range [{}, {}], the corresponding source event({}) will be ignored.",
           tablet,
           pattern,
           sourceEvent.getStartTime(),
           sourceEvent.getEndTime(),
           sourceEvent);
     }
-  }
-
-  private boolean isRowTimeCoveredByTimeRange(long timestamp) {
-    return Objects.isNull(sourceEvent)
-        || !sourceEvent.shouldParseTime()
-        || (sourceEvent.getStartTime() <= timestamp && timestamp <= sourceEvent.getEndTime());
   }
 
   private void generateColumnIndexMapper(
@@ -366,6 +361,35 @@ public class TabletInsertionDataContainer {
         }
       }
     }
+  }
+
+  private List<Integer> generateRowIndexList(final long[] originTimestampColumn) {
+    final int rowCount = originTimestampColumn.length;
+    if (Objects.isNull(sourceEvent) || !sourceEvent.shouldParseTime()) {
+      return generateFullRowIndexList(rowCount);
+    }
+
+    List<Integer> rowIndexList = new ArrayList<>();
+    if (originTimestampColumn[originTimestampColumn.length - 1] < sourceEvent.getStartTime()
+        || originTimestampColumn[0] > sourceEvent.getEndTime()) {
+      return rowIndexList;
+    }
+
+    for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
+      if (sourceEvent.getStartTime() <= originTimestampColumn[rowIndex]
+          && originTimestampColumn[rowIndex] <= sourceEvent.getEndTime()) {
+        rowIndexList.add(rowIndex);
+      }
+    }
+
+    return rowIndexList;
+  }
+
+  private static List<Integer> generateFullRowIndexList(int rowCount) {
+    if (rowCount <= CACHED_FULL_ROW_INDEX_LIST_ROW_COUNT_UPPER) {
+      return cachedFullRowIndexList.get(rowCount);
+    }
+    return IntStream.range(0, rowCount).boxed().collect(Collectors.toList());
   }
 
   private static Object filterValueColumnsByRowIndexList(
