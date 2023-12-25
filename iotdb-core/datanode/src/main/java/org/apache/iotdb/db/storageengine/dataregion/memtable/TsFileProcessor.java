@@ -707,7 +707,7 @@ public class TsFileProcessor {
 
   private void updateMemoryInfo(
       long memTableIncrement, long chunkMetadataIncrement, long textDataIncrement)
-      throws WriteProcessException {
+      throws WriteProcessRejectException {
     memTableIncrement += textDataIncrement;
     dataRegionInfo.addStorageGroupMemCost(memTableIncrement);
     tsFileProcessorInfo.addTSPMemCost(chunkMetadataIncrement);
