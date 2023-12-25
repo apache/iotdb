@@ -286,6 +286,9 @@ public class TsFileProcessor {
     startTime = System.nanoTime();
 
     PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowNode);
+    if (!insertRowNode.isGeneratedByPipe()) {
+      workMemTable.markAsNotGeneratedByPipe();
+    }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
@@ -397,6 +400,9 @@ public class TsFileProcessor {
     startTime = System.nanoTime();
 
     PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertTabletNode);
+    if (!insertTabletNode.isGeneratedByPipe()) {
+      workMemTable.markAsNotGeneratedByPipe();
+    }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
@@ -908,7 +914,10 @@ public class TsFileProcessor {
       try {
         PipeInsertionDataNodeListener.getInstance()
             .listenToTsFile(
-                dataRegionInfo.getDataRegion().getDataRegionId(), tsFileResource, false, false);
+                dataRegionInfo.getDataRegion().getDataRegionId(),
+                tsFileResource,
+                false,
+                tmpMemTable.isTotallyGeneratedByPipe());
 
         // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
         // flushing memTable in System module.
