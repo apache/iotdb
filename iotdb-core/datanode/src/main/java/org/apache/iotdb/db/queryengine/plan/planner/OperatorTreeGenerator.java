@@ -238,6 +238,7 @@ import org.apache.iotdb.tsfile.read.filter.operator.TimeFilterOperators.TimeGtEq
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TimeDuration;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -249,6 +250,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -1164,7 +1166,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitFilter(FilterNode node, LocalExecutionPlanContext context) {
     Expression filterExpression = node.getPredicate();
-    if (context.getTypeProvider().getTemplatedInfo().getPredicate() != null) {
+    TypeProvider typeProvider = context.getTypeProvider();
+    if (typeProvider != null
+        && typeProvider.getTemplatedInfo() != null
+        && typeProvider.getTemplatedInfo().getPredicate() != null) {
       filterExpression = buildForTemplatedAlignByQuery(filterExpression, node, context);
     }
     final Map<NodeRef<Expression>, TSDataType> expressionTypes = new HashMap<>();
@@ -1305,6 +1310,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   private Expression buildForTemplatedAlignByQuery(
       Expression filterExpression, FilterNode node, LocalExecutionPlanContext context) {
+
     PartialPath devicePath = null;
     if (node.getChild() instanceof AlignedSeriesScanNode) {
       devicePath = ((AlignedSeriesScanNode) node.getChild()).getAlignedPath().getDevicePath();
@@ -1317,6 +1323,20 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       throw new UnsupportedOperationException(
           String.format("Child of FilterNode cannot be %s", node.getChild().getClass()));
     }
+
+    TypeProvider typeProvider = context.getTypeProvider();
+    List<String> measurementList = typeProvider.getTemplatedInfo().getMeasurementList();
+    List<IMeasurementSchema> schemaList = typeProvider.getTemplatedInfo().getSchemaList();
+    Expression[] outputExpressions = new Expression[measurementList.size()];
+    for (int i = 0; i < measurementList.size(); i++) {
+      String[] measurementPathNodes =
+          Arrays.copyOf(devicePath.getNodes(), devicePath.getNodes().length + 1);
+      measurementPathNodes[measurementPathNodes.length - 1] = measurementList.get(i);
+      outputExpressions[i] =
+          new TimeSeriesOperand(new MeasurementPath(measurementPathNodes, schemaList.get(i)));
+    }
+    node.setOutputExpressions(outputExpressions);
+
     return new TemplatedConcatDeviceAndPredicateVisitor()
         .process(
             filterExpression,

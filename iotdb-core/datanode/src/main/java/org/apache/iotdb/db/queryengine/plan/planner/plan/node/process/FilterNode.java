@@ -18,24 +18,19 @@
  */
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.process;
 
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
-import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Objects;
 
 public class FilterNode extends TransformNode {
@@ -131,25 +126,10 @@ public class FilterNode extends TransformNode {
   public static FilterNode deserializeUseTemplate(
       ByteBuffer byteBuffer, TypeProvider typeProvider) {
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    int devicePathNodesLength = ReadWriteIOUtils.readInt(byteBuffer);
-    String[] devicePathNodes = new String[devicePathNodesLength];
-    for (int i = 0; i < devicePathNodesLength; i++) {
-      devicePathNodes[i] = ReadWriteIOUtils.readString(byteBuffer);
-    }
-
-    List<String> measurementList = typeProvider.getTemplatedInfo().getMeasurementList();
-    List<IMeasurementSchema> schemaList = typeProvider.getTemplatedInfo().getSchemaList();
-    Expression[] outputExpressions = new Expression[measurementList.size()];
-    for (int i = 0; i < measurementList.size(); i++) {
-      String[] measurementPathNodes = Arrays.copyOf(devicePathNodes, devicePathNodesLength + 1);
-      measurementPathNodes[devicePathNodesLength] = measurementList.get(i);
-      outputExpressions[i] =
-          new TimeSeriesOperand(new MeasurementPath(measurementPathNodes, schemaList.get(i)));
-    }
 
     return new FilterNode(
         planNodeId,
-        outputExpressions,
+        null,
         typeProvider.getTemplatedInfo().getPredicate(),
         typeProvider.getTemplatedInfo().isKeepNull(),
         typeProvider.getTemplatedInfo().getZoneId(),
@@ -158,6 +138,10 @@ public class FilterNode extends TransformNode {
 
   public Expression getPredicate() {
     return predicate;
+  }
+
+  public void setOutputExpressions(Expression[] outputExpressions) {
+    this.outputExpressions = outputExpressions;
   }
 
   @Override

@@ -28,6 +28,11 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.Map;
 
+/**
+ * This class is only used for align by device query with template and value filter. We just
+ * serialize the predicate only once, so in be, we need combine the devicePath and predicate to
+ * generate the actual Filter Expression.
+ */
 public class TemplatedConcatDeviceAndPredicateVisitor
     extends ReconstructVisitor<TemplatedConcatDeviceAndPredicateVisitor.Context> {
 
@@ -36,9 +41,8 @@ public class TemplatedConcatDeviceAndPredicateVisitor
       TimeSeriesOperand predicate, TemplatedConcatDeviceAndPredicateVisitor.Context context) {
     PartialPath measurementPath = predicate.getPath();
     PartialPath concatPath = context.getDevicePath().concatPath(measurementPath);
-    IMeasurementSchema schema = null;
     if (context.getSchemaMap().containsKey(measurementPath.getMeasurement())) {
-      schema = context.getSchemaMap().get(measurementPath.getMeasurement());
+      IMeasurementSchema schema = context.getSchemaMap().get(measurementPath.getMeasurement());
       MeasurementPath fullMeasurementPath = new MeasurementPath(concatPath, schema);
       return new TimeSeriesOperand(fullMeasurementPath);
     } else {

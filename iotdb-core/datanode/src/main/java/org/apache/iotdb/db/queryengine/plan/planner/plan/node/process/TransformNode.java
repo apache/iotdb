@@ -38,7 +38,7 @@ import java.util.Objects;
 
 public class TransformNode extends SingleChildProcessNode {
 
-  protected final Expression[] outputExpressions;
+  protected Expression[] outputExpressions;
   protected final boolean keepNull;
   protected final ZoneId zoneId;
 

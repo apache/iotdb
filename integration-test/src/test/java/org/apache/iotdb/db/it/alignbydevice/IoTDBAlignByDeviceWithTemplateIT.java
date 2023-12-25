@@ -316,6 +316,25 @@ public class IoTDBAlignByDeviceWithTemplateIT {
         "SELECT * FROM root.sg1.** WHERE s_null > 1 ALIGN BY DEVICE;", expectedHeader, retArray);
     resultSetEqualTest(
         "SELECT * FROM root.sg2.** WHERE s_null > 1 ALIGN BY DEVICE;", expectedHeader, retArray);
+
+    retArray =
+        new String[] {
+          "4,root.sg1.d3,44,444.4,true,", "2,root.sg1.d2,22,22.2,false,",
+        };
+    resultSetEqualTest(
+        "SELECT * FROM root.sg1.** WHERE s_null > 1 or "
+            + "(time > 1 and time < 5 and s3>=11 and s3<=1111 and s1 != 11.1) ORDER BY TIME DESC ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+    retArray =
+        new String[] {
+          "4,root.sg2.d3,44,444.4,true,", "2,root.sg2.d2,22,22.2,false,",
+        };
+    resultSetEqualTest(
+        "SELECT * FROM root.sg2.** WHERE s_null > 1 or "
+            + "(time > 1 and time < 5 and s3>=11 and s3<=1111 and s1 != 11.1) ORDER BY TIME DESC ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
   }
 
   @Test
@@ -375,6 +394,26 @@ public class IoTDBAlignByDeviceWithTemplateIT {
         retArray);
     resultSetEqualTest(
         "SELECT s3,s2 FROM root.sg2.** WHERE s_null > 1 ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+
+    retArray =
+        new String[] {
+          "4,root.sg1.d3,44,true,", "2,root.sg1.d2,22,false,",
+        };
+    resultSetEqualTest(
+        "SELECT s3,s2 FROM root.sg1.** where s_null > 1 or (time > 1 and time < 5 and s3>=11 and s3<=1111 and s1 != 11.1) "
+            + "ORDER BY TIME DESC ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+
+    retArray =
+        new String[] {
+          "4,root.sg2.d3,44,true,", "2,root.sg2.d2,22,false,",
+        };
+    resultSetEqualTest(
+        "SELECT s3,s2 FROM root.sg2.** where s_null > 1 or (time > 1 and time < 5 and s3>=11 and s3<=1111 and s1 != 11.1) "
+            + "ORDER BY TIME DESC ALIGN BY DEVICE;",
         expectedHeader,
         retArray);
   }
