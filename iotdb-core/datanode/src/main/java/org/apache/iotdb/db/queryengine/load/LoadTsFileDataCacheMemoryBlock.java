@@ -37,6 +37,7 @@ public class LoadTsFileDataCacheMemoryBlock extends LoadTsFileAbstractMemoryBloc
   private final AtomicLong limitedMemorySizeInBytes;
   private final AtomicLong memoryUsageInBytes;
   private final AtomicInteger askForMemoryCount;
+  private final AtomicInteger referenceCount;
 
   LoadTsFileDataCacheMemoryBlock(long initialLimitedMemorySizeInBytes) {
     super();
@@ -51,6 +52,7 @@ public class LoadTsFileDataCacheMemoryBlock extends LoadTsFileAbstractMemoryBloc
     this.limitedMemorySizeInBytes = new AtomicLong(initialLimitedMemorySizeInBytes);
     this.memoryUsageInBytes = new AtomicLong(0L);
     this.askForMemoryCount = new AtomicInteger(1);
+    this.referenceCount = new AtomicInteger(0);
   }
 
   @Override
@@ -110,6 +112,14 @@ public class LoadTsFileDataCacheMemoryBlock extends LoadTsFileAbstractMemoryBloc
 
     limitedMemorySizeInBytes.addAndGet(-shrinkMemoryInBytes);
     return true;
+  }
+
+  void updateReferenceCount(int delta) {
+    referenceCount.addAndGet(delta);
+  }
+
+  int getReferenceCount() {
+    return referenceCount.get();
   }
 
   @Override
