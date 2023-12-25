@@ -34,6 +34,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
@@ -102,11 +103,13 @@ public class IoTDBThriftReceiverV1 extends IoTDBFileReceiverV1 {
             return handleTransferHandshake(
                 PipeTransferDataNodeHandshakeReq.fromTPipeTransferReq(req));
           case TRANSFER_TABLET_INSERT_NODE:
-          case TRANSFER_TABLET_BINARY:
             return handleTransferTabletInsertNode(
                 PipeTransferTabletInsertNodeReq.fromTPipeTransferReq(req));
           case TRANSFER_TABLET_RAW:
             return handleTransferTabletRaw(PipeTransferTabletRawReq.fromTPipeTransferReq(req));
+          case TRANSFER_TABLET_BINARY:
+            return handleTransferTabletBinary(
+                PipeTransferTabletBinaryReq.fromTPipeTransferReq(req));
           case TRANSFER_TABLET_BATCH:
             return handleTransferTabletBatch(PipeTransferTabletBatchReq.fromTPipeTransferReq(req));
           case TRANSFER_TS_FILE_PIECE:
@@ -152,6 +155,10 @@ public class IoTDBThriftReceiverV1 extends IoTDBFileReceiverV1 {
   }
 
   private TPipeTransferResp handleTransferTabletInsertNode(PipeTransferTabletInsertNodeReq req) {
+    return new TPipeTransferResp(executeStatement(req.constructStatement()));
+  }
+
+  private TPipeTransferResp handleTransferTabletBinary(PipeTransferTabletBinaryReq req) {
     return new TPipeTransferResp(executeStatement(req.constructStatement()));
   }
 
