@@ -115,7 +115,7 @@ public class TemplatedAnalyze {
     List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
     ColumnPaginationController paginationController =
         new ColumnPaginationController(
-            queryStatement.getSeriesLimit(), queryStatement.getSeriesOffset(), false);
+            queryStatement.getSeriesLimit(), queryStatement.getSeriesOffset());
     if (template != null) {
       for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
         Expression expression = resultColumn.getExpression();
