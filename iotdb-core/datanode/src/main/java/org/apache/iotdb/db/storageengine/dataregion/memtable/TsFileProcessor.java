@@ -917,7 +917,7 @@ public class TsFileProcessor {
                 dataRegionInfo.getDataRegion().getDataRegionId(),
                 tsFileResource,
                 false,
-                workMemTable.isTotallyGeneratedByPipe());
+                tmpMemTable.isTotallyGeneratedByPipe());
 
         // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
         // flushing memTable in System module.

@@ -720,6 +720,6 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public boolean isTotallyGeneratedByPipe() {
-    return isTotallyGeneratedByPipe.get();
+    return this.isTotallyGeneratedByPipe.get();
   }
 }
