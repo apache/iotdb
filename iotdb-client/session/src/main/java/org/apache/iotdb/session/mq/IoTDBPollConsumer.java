@@ -1,3 +1,22 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.apache.iotdb.session.mq;
 
 import org.apache.iotdb.isession.SessionConfig;
@@ -37,6 +56,8 @@ public class IoTDBPollConsumer {
   private final AtomicReference<String> topic = new AtomicReference<>();
 
   private final AtomicReference<TabletWrapper> lastTabletWrapper = new AtomicReference<>();
+
+  private final ClientsDaemonThread clientsDaemonThread = new ClientsDaemonThread();
 
   public IoTDBPollConsumer(Builder builder) {
     String host = builder.host;
@@ -78,6 +99,7 @@ public class IoTDBPollConsumer {
         }
       }
     }
+    clientsDaemonThread.start();
   }
 
   public void close() throws IoTDBConnectionException {
@@ -88,10 +110,13 @@ public class IoTDBPollConsumer {
     if (session != null) {
       session.close();
     }
+
+    if (clientsDaemonThread.isAlive()) {
+      clientsDaemonThread.stop();
+    }
   }
 
-  public void subscribe(String topic)
-      throws InterruptedException, IoTDBConnectionException, StatementExecutionException {
+  public void subscribe(String topic) throws IoTDBConnectionException, StatementExecutionException {
     if (this.topic.get() != null) {
       LOGGER.warn("This consumer has subscribed a topic, please unsubscribe it first!");
       return;
@@ -114,7 +139,11 @@ public class IoTDBPollConsumer {
     for (IoTDBWebSocketClient client : clients) {
       client.send(String.format("BIND:%s", topic));
       while (IoTDBWebSocketClient.Status.WAITING == client.getStatus()) {
-        Thread.sleep(100);
+        try {
+          Thread.sleep(100);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        }
       }
       if (IoTDBWebSocketClient.Status.ERROR == client.getStatus()) {
         throw new IoTDBConnectionException(
@@ -123,7 +152,6 @@ public class IoTDBPollConsumer {
                 topic));
       }
     }
-
     this.topic.set(topic);
   }
 
@@ -135,7 +163,7 @@ public class IoTDBPollConsumer {
     this.topic.set(null);
   }
 
-  public TabletWrapper poll(int timeout) throws InterruptedException {
+  public synchronized TabletWrapper poll(int timeout) throws InterruptedException {
     TabletWrapper oldTabletWrapper = lastTabletWrapper.get();
     if (oldTabletWrapper != null) {
       commit(oldTabletWrapper);
@@ -145,7 +173,7 @@ public class IoTDBPollConsumer {
     return newTabletWrapper;
   }
 
-  public TabletWrapper poll() {
+  public synchronized TabletWrapper poll() {
     TabletWrapper oldTabletWrapper = lastTabletWrapper.get();
     if (oldTabletWrapper != null) {
       commit(oldTabletWrapper);
@@ -178,11 +206,15 @@ public class IoTDBPollConsumer {
     }
   }
 
-  private IoTDBWebSocketClient initAndGetClient(URI uri) throws InterruptedException {
+  private IoTDBWebSocketClient initAndGetClient(URI uri) {
     IoTDBWebSocketClient client = new IoTDBWebSocketClient(uri, this);
     client.connect();
     while (!client.getReadyState().equals(ReadyState.OPEN)) {
-      Thread.sleep(1000);
+      try {
+        Thread.sleep(1000);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
     }
     return client;
   }
@@ -227,6 +259,46 @@ public class IoTDBPollConsumer {
 
     public IoTDBPollConsumer build() {
       return new IoTDBPollConsumer(this);
+    }
+  }
+
+  // To keep clients and session alive.
+  private class ClientsDaemonThread extends Thread {
+
+    @Override
+    public void run() {
+      while (true) {
+        for (IoTDBWebSocketClient client : clients) {
+          try {
+            if (client.getReadyState().equals(ReadyState.OPEN)) {
+              continue;
+            }
+            while (!isURIAvailable(client.getURI())) {
+              String log =
+                  String.format(
+                      "The websocket server %s:%d is not available now, sleep 5 seconds.",
+                      client.getURI().getHost(), client.getURI().getPort());
+              LOGGER.warn(log);
+              Thread.sleep(5000);
+            }
+            client.reconnect();
+            while (!client.getReadyState().equals(ReadyState.OPEN)) {
+              Thread.sleep(1000);
+            }
+            String currentTopic = topic.getAndSet(null);
+            subscribe(currentTopic);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          } catch (IoTDBConnectionException | StatementExecutionException e) {
+            LOGGER.warn(String.format("Failed to subscribe topic, because: %s.", e.getMessage()));
+          }
+        }
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException e) {
+          throw new RuntimeException(e);
+        }
+      }
     }
   }
 }

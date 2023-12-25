@@ -48,6 +48,7 @@
         <module>flink-sql</module>
         <module>schema</module>
         <module>pipe-count-point-processor</module>
+        <module>simple-mq</module>
     </modules>
     <build>
         <pluginManagement>
