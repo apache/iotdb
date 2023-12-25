@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian;
+package org.apache.iotdb.db.queryengine.plan.expression.visitor;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.CartesianProductVisitor;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -41,6 +42,7 @@ import static org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.
 
 public class ConcatDeviceAndBindSchemaForPredicateVisitor
     extends CartesianProductVisitor<ConcatDeviceAndBindSchemaForPredicateVisitor.Context> {
+
   @Override
   public List<Expression> visitFunctionExpression(FunctionExpression predicate, Context context) {
     if (predicate.isBuiltInAggregationFunctionExpression() && context.isWhere()) {

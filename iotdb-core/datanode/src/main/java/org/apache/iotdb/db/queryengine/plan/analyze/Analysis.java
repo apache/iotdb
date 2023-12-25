@@ -282,7 +282,7 @@ public class Analysis {
   // when deviceTemplate is not empty and all expressions in this query are templated measurements,
   // i.e. no aggregation and arithmetic expression
   private boolean onlyQueryTemplateMeasurements = true;
-  // if it is wildcard query
+  // if it is wildcard query in templated align by device query
   private boolean templateWildCardQuery;
   // all queried measurementList and schemaList in deviceTemplate.
   private List<String> measurementList;

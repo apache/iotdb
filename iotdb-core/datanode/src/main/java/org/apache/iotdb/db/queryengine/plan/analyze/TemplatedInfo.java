@@ -31,8 +31,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -49,11 +51,13 @@ public class TemplatedInfo {
   private boolean queryAllSensors;
   private List<String> selectMeasurements;
   private List<Integer> deviceToMeasurementIndexes;
-  private long offsetValue;
+  private final long offsetValue;
   private long limitValue;
-  public Expression whereExpression;
-  public ZoneId zoneId;
-  public boolean keepNull;
+  // these variables below are use in value filter condition
+  private final Expression predicate;
+  private final ZoneId zoneId;
+  private boolean keepNull;
+  private Map<String, IMeasurementSchema> schemaMap;
 
   public TemplatedInfo(
       List<String> measurementList,
@@ -66,8 +70,9 @@ public class TemplatedInfo {
       List<Integer> deviceToMeasurementIndexes,
       long offsetValue,
       long limitValue,
-      Expression whereExpression,
-      ZoneId zoneId) {
+      Expression predicate,
+      ZoneId zoneId,
+      Map<String, IMeasurementSchema> schemaMap) {
     this.measurementList = measurementList;
     this.schemaList = schemaList;
     this.dataTypes = dataTypes;
@@ -78,8 +83,9 @@ public class TemplatedInfo {
     this.deviceToMeasurementIndexes = deviceToMeasurementIndexes;
     this.offsetValue = offsetValue;
     this.limitValue = limitValue;
-    this.whereExpression = whereExpression;
+    this.predicate = predicate;
     this.zoneId = zoneId;
+    this.schemaMap = schemaMap;
   }
 
   public void setMeasurementList(List<String> measurementList) {
@@ -158,12 +164,20 @@ public class TemplatedInfo {
     return this.deviceToMeasurementIndexes;
   }
 
-  public static class FilterInfo {
-    private Expression predicate;
-    boolean keepNull;
-    ZoneId zoneId;
+  public Expression getPredicate() {
+    return this.predicate;
+  }
 
-    public FilterInfo(Expression predicate) {}
+  public ZoneId getZoneId() {
+    return this.zoneId;
+  }
+
+  public boolean isKeepNull() {
+    return this.keepNull;
+  }
+
+  public Map<String, IMeasurementSchema> getSchemaMap() {
+    return this.schemaMap;
   }
 
   public void serialize(ByteBuffer byteBuffer) {
@@ -197,9 +211,9 @@ public class TemplatedInfo {
     ReadWriteIOUtils.write(offsetValue, byteBuffer);
     ReadWriteIOUtils.write(limitValue, byteBuffer);
 
-    if (whereExpression != null) {
+    if (predicate != null) {
       ReadWriteIOUtils.write((byte) 1, byteBuffer);
-      Expression.serialize(whereExpression, byteBuffer);
+      Expression.serialize(predicate, byteBuffer);
       ReadWriteIOUtils.write(zoneId.getId(), byteBuffer);
     } else {
       ReadWriteIOUtils.write((byte) 0, byteBuffer);
@@ -237,9 +251,9 @@ public class TemplatedInfo {
     ReadWriteIOUtils.write(offsetValue, stream);
     ReadWriteIOUtils.write(limitValue, stream);
 
-    if (whereExpression != null) {
+    if (predicate != null) {
       ReadWriteIOUtils.write((byte) 1, stream);
-      Expression.serialize(whereExpression, stream);
+      Expression.serialize(predicate, stream);
       ReadWriteIOUtils.write(zoneId.getId(), stream);
     } else {
       ReadWriteIOUtils.write((byte) 0, stream);
@@ -297,9 +311,14 @@ public class TemplatedInfo {
     Expression predicate = null;
     ZoneId zone = null;
     byte hasFilter = ReadWriteIOUtils.readByte(byteBuffer);
+    Map<String, IMeasurementSchema> currentSchemaMap = null;
     if (hasFilter == 1) {
       predicate = Expression.deserialize(byteBuffer);
       zone = ZoneId.of(Objects.requireNonNull(ReadWriteIOUtils.readString(byteBuffer)));
+      currentSchemaMap = new HashMap<>();
+      for (IMeasurementSchema measurementSchema : measurementSchemaList) {
+        currentSchemaMap.put(measurementSchema.getMeasurementId(), measurementSchema);
+      }
     }
 
     return new TemplatedInfo(
@@ -314,6 +333,7 @@ public class TemplatedInfo {
         offsetValue,
         limitValue,
         predicate,
-        zone);
+        zone,
+        currentSchemaMap);
   }
 }

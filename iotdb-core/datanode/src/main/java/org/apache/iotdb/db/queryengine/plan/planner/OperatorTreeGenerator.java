@@ -145,6 +145,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ColumnTransformerVisitor;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.TemplatedConcatDeviceAndPredicateVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
@@ -1162,7 +1163,16 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   @Override
   public Operator visitFilter(FilterNode node, LocalExecutionPlanContext context) {
-    final Expression filterExpression = node.getPredicate();
+    Expression filterExpression = node.getPredicate();
+    if (node.getDevicePathNodes() != null) {
+      PartialPath devicePath = new PartialPath(node.getDevicePathNodes());
+      filterExpression =
+          new TemplatedConcatDeviceAndPredicateVisitor()
+              .process(
+                  filterExpression,
+                  new TemplatedConcatDeviceAndPredicateVisitor.Context(
+                      devicePath, context.getTypeProvider().getTemplatedInfo().getSchemaMap()));
+    }
     final Map<NodeRef<Expression>, TSDataType> expressionTypes = new HashMap<>();
     ExpressionTypeAnalyzer.analyzeExpression(expressionTypes, filterExpression);
 

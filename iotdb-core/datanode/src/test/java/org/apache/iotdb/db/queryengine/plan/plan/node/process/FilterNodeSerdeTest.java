@@ -53,7 +53,8 @@ public class FilterNodeSerdeTest {
                 new ConstantOperand(TSDataType.INT64, "100")),
             false,
             ZoneId.systemDefault(),
-            Ordering.ASC);
+            Ordering.ASC,
+            null);
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     filterNode.serialize(byteBuffer);

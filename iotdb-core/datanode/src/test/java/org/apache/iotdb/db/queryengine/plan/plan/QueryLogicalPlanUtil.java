@@ -232,7 +232,8 @@ public class QueryLogicalPlanUtil {
             predicate,
             false,
             ZonedDateTime.now().getOffset(),
-            Ordering.DESC);
+            Ordering.DESC,
+            null);
 
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), filterNode, 100);
     LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), offsetNode, 100);
@@ -285,7 +286,8 @@ public class QueryLogicalPlanUtil {
             predicate1,
             false,
             ZonedDateTime.now().getOffset(),
-            Ordering.DESC);
+            Ordering.DESC,
+            null);
 
     List<PlanNode> sourceNodeList2 = new ArrayList<>();
     sourceNodeList2.add(
@@ -324,7 +326,8 @@ public class QueryLogicalPlanUtil {
             predicate2,
             false,
             ZonedDateTime.now().getOffset(),
-            Ordering.DESC);
+            Ordering.DESC,
+            null);
 
     Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
     deviceToMeasurementIndexesMap.put("root.sg.d1", Arrays.asList(1, 2, 3));
@@ -790,7 +793,8 @@ public class QueryLogicalPlanUtil {
             predicate,
             false,
             ZonedDateTime.now().getOffset(),
-            Ordering.DESC);
+            Ordering.DESC,
+            null);
 
     AggregationNode aggregationNode =
         new AggregationNode(
@@ -910,7 +914,8 @@ public class QueryLogicalPlanUtil {
             predicate1,
             false,
             ZonedDateTime.now().getOffset(),
-            Ordering.DESC);
+            Ordering.DESC,
+            null);
 
     AggregationNode aggregationNode1 =
         new AggregationNode(
@@ -966,7 +971,8 @@ public class QueryLogicalPlanUtil {
             predicate2,
             false,
             ZonedDateTime.now().getOffset(),
-            Ordering.DESC);
+            Ordering.DESC,
+            null);
 
     AggregationNode aggregationNode2 =
         new AggregationNode(

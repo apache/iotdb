@@ -132,8 +132,8 @@ public class TemplatedAnalyze {
             }
           }
           if (queryStatement.getSelectComponent().getResultColumns().size() == 1
-              && !paginationController.hasCurOffset()
-              && !paginationController.hasCurLimit()) {
+              && queryStatement.getSeriesOffset() == 0
+              && queryStatement.getSeriesLimit() == 0) {
             analysis.setTemplateWildCardQuery();
           }
         } else if (expression instanceof TimeSeriesOperand) {

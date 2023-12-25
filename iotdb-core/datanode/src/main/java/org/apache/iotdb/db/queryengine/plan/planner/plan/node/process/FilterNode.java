@@ -41,15 +41,9 @@ import java.util.Objects;
 public class FilterNode extends TransformNode {
 
   private final Expression predicate;
-  // this variable is only use in TemplatedLogicalPlan process.
-  private String[] devicePathNodes;
 
-  /** This construction method are only used in TemplatedLogicalPlan. */
-  public FilterNode(PlanNodeId id, PlanNode childPlanNode, String[] devicePathNodes) {
-    super(id, childPlanNode, null, false, null, null);
-    this.predicate = null;
-    this.devicePathNodes = devicePathNodes;
-  }
+  // this variable is only use in TemplatedLogicalPlan process.
+  private final String[] devicePathNodes;
 
   public FilterNode(
       PlanNodeId id,
@@ -58,11 +52,14 @@ public class FilterNode extends TransformNode {
       Expression predicate,
       boolean keepNull,
       ZoneId zoneId,
-      Ordering scanOrder) {
+      Ordering scanOrder,
+      String[] devicePathNodes) {
     super(id, childPlanNode, outputExpressions, keepNull, zoneId, scanOrder);
     this.predicate = predicate;
+    this.devicePathNodes = devicePathNodes;
   }
 
+  /** This construction method is only used in inner of class `FilterNode`. */
   public FilterNode(
       PlanNodeId id,
       Expression[] outputExpressions,
@@ -171,15 +168,19 @@ public class FilterNode extends TransformNode {
     return new FilterNode(
         planNodeId,
         outputExpressions,
-        typeProvider.getTemplatedInfo().whereExpression,
-        typeProvider.getTemplatedInfo().keepNull,
-        typeProvider.getTemplatedInfo().zoneId,
+        typeProvider.getTemplatedInfo().getPredicate(),
+        typeProvider.getTemplatedInfo().isKeepNull(),
+        typeProvider.getTemplatedInfo().getZoneId(),
         typeProvider.getTemplatedInfo().getScanOrder(),
         devicePathNodes);
   }
 
   public Expression getPredicate() {
     return predicate;
+  }
+
+  public String[] getDevicePathNodes() {
+    return this.devicePathNodes;
   }
 
   @Override

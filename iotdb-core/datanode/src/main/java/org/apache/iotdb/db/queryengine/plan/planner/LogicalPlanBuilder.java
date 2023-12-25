@@ -1142,7 +1142,8 @@ public class LogicalPlanBuilder {
             filterExpression,
             isGroupByTime,
             zoneId,
-            scanOrder);
+            scanOrder,
+            null);
     updateTypeProvider(selectExpressions);
     return this;
   }
