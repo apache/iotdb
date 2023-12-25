@@ -92,8 +92,6 @@ public class BTreePageManager extends PageManager {
    * In this implementation, subordinate index builds on alias.
    *
    * @param parNode node needs to build subordinate index.
-   * @throws MetadataException
-   * @throws IOException
    */
   @Override
   protected void buildSubIndex(ICachedMNode parNode, SchemaPageContext cxt)
