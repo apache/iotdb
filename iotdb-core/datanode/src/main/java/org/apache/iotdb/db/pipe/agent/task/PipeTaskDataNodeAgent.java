@@ -198,9 +198,8 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
             new PipeDataNodeTaskSchemaRegionBuilder(pipeStaticMeta, consensusGroupId, pipeTaskMeta)
                 .build();
       } else {
-        pipeTask =
-            new PipeDataNodeTaskSchemaRegionBuilder(pipeStaticMeta, consensusGroupId, pipeTaskMeta)
-                .build();
+        throw new UnsupportedOperationException(
+                "Unsupported consensus group id: " + consensusGroupId);
       }
       pipeTask.create();
       pipeTaskManager.addPipeTask(pipeStaticMeta, consensusGroupId, pipeTask);
