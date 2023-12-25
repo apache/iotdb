@@ -199,7 +199,7 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
                 .build();
       } else {
         throw new UnsupportedOperationException(
-                "Unsupported consensus group id: " + consensusGroupId);
+            "Unsupported consensus group id: " + consensusGroupId);
       }
       pipeTask.create();
       pipeTaskManager.addPipeTask(pipeStaticMeta, consensusGroupId, pipeTask);
