@@ -79,7 +79,7 @@ public abstract class SchemaPage implements ISchemaPage {
 
   @Override
   public int incrementAndGetRefCnt() {
-    return refCnt.decrementAndGet();
+    return refCnt.incrementAndGet();
   }
 
   @Override
