@@ -20,9 +20,11 @@
 package org.apache.iotdb.confignode.manager.pipe.transfer.execution;
 
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.commons.pipe.task.DecoratingLock;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.task.subtask.PipeSubtask;
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -57,6 +59,8 @@ public class PipeConfigNodeSubtask extends PipeSubtask {
 
   private PipeConnector connector;
 
+  private final PipeTaskMeta pipeTaskMeta;
+
   // For thread pool to execute callbacks
   private final DecoratingLock callbackDecoratingLock = new DecoratingLock();
   private ExecutorService subtaskCallbackListeningExecutor;
@@ -70,9 +74,11 @@ public class PipeConfigNodeSubtask extends PipeSubtask {
       long creationTime,
       Map<String, String> extractorAttributes,
       Map<String, String> processorAttributes,
-      Map<String, String> connectorAttributes)
+      Map<String, String> connectorAttributes,
+      PipeTaskMeta pipeTaskMeta)
       throws Exception {
     super(pipeName, creationTime);
+    this.pipeTaskMeta = pipeTaskMeta;
 
     initExtractor(extractorAttributes);
     initProcessor(processorAttributes);
@@ -93,7 +99,8 @@ public class PipeConfigNodeSubtask extends PipeSubtask {
     final PipeTaskRuntimeConfiguration runtimeConfiguration =
         new PipeTaskRuntimeConfiguration(
             // TODO: check CONFIG_REGION_ID.getId()
-            new PipeTaskRuntimeEnvironment(taskID, creationTime, CONFIG_REGION_ID.getId()));
+            new PipeTaskExtractorRuntimeEnvironment(
+                taskID, creationTime, CONFIG_REGION_ID.getId(), pipeTaskMeta));
     extractor.customize(extractorParameters, runtimeConfiguration);
   }
 

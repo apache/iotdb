@@ -19,36 +19,43 @@
 
 package org.apache.iotdb.confignode.manager.pipe.transfer.agent;
 
-import org.apache.iotdb.confignode.manager.pipe.transfer.agent.plugin.PipeConfigRegionPluginAgent;
+import org.apache.iotdb.confignode.manager.pipe.transfer.agent.plugin.PipePluginConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.task.PipeTaskConfigNodeAgent;
+import org.apache.iotdb.confignode.service.ConfigNode;
+import org.apache.iotdb.db.pipe.agent.plugin.PipePluginDataNodeAgent;
 
-/** PipeAgent is the entry point of the pipe module in DataNode. */
+/** PipeAgent is the entry point of the pipe module in {@link ConfigNode}. */
 public class PipeConfigNodeAgent {
 
   private final PipeTaskConfigNodeAgent pipeConfigNodeTaskAgent;
-  private final PipeConfigRegionPluginAgent pipeConfigRegionPluginAgent;
+  private final PipePluginConfigNodeAgent pipePluginConfigNodeAgent;
 
   /** Private constructor to prevent users from creating a new instance. */
   private PipeConfigNodeAgent() {
     pipeConfigNodeTaskAgent = new PipeTaskConfigNodeAgent();
-    pipeConfigRegionPluginAgent = new PipeConfigRegionPluginAgent();
+    pipePluginConfigNodeAgent = new PipePluginConfigNodeAgent();
   }
 
-  /** The singleton holder of PipeAgent. */
+  /** The singleton holder of {@link PipeConfigNodeAgent}. */
   private static class PipeConfigNodeAgentHolder {
     private static final PipeConfigNodeAgent HANDLE = new PipeConfigNodeAgent();
   }
 
   /**
-   * Get the singleton instance of PipeTaskAgent.
+   * Get the singleton instance of {@link PipeTaskConfigNodeAgent}.
    *
-   * @return the singleton instance of PipeTaskAgent
+   * @return the singleton instance of {@link PipeTaskConfigNodeAgent}
    */
   public static PipeTaskConfigNodeAgent task() {
     return PipeConfigNodeAgentHolder.HANDLE.pipeConfigNodeTaskAgent;
   }
 
-  public static PipeConfigRegionPluginAgent plugin() {
-    return PipeConfigNodeAgentHolder.HANDLE.pipeConfigRegionPluginAgent;
+  /**
+   * Get the singleton instance of {@link PipePluginDataNodeAgent}.
+   *
+   * @return the singleton instance of {@link PipePluginDataNodeAgent}
+   */
+  public static PipePluginConfigNodeAgent plugin() {
+    return PipeConfigNodeAgentHolder.HANDLE.pipePluginConfigNodeAgent;
   }
 }

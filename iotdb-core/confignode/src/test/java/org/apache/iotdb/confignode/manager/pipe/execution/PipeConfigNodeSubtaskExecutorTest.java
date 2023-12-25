@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.confignode.manager.pipe.execution;
 
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.execution.executor.PipeSubtaskExecutor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.task.subtask.PipeSubtask;
 import org.apache.iotdb.confignode.manager.pipe.transfer.execution.PipeConfigNodeSubtask;
 import org.apache.iotdb.confignode.manager.pipe.transfer.execution.PipeConfigNodeSubtaskExecutor;
@@ -59,7 +61,8 @@ public class PipeConfigNodeSubtaskExecutorTest {
                         PipeConnectorConstant.CONNECTOR_KEY,
                         BuiltinPipePlugin.DO_NOTHING_CONNECTOR.getPipePluginName());
                   }
-                }));
+                },
+                new PipeTaskMeta(MinimumProgressIndex.INSTANCE, Integer.MIN_VALUE)));
   }
 
   @After

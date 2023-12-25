@@ -110,7 +110,7 @@ class PipeConfigPlanFilter {
                     .collect(Collectors.toSet())));
     exclusionPath.forEach(
         exclusion ->
-            planTypes.addAll(
+            planTypes.removeAll(
                 PLAN_MAP.keySet().stream()
                     .filter(path -> path.overlapWithFullPathPrefix(exclusion))
                     .map(PLAN_MAP::get)

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.manager.pipe.transfer.task;
 
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.task.stage.PipeTaskStage;
 import org.apache.iotdb.confignode.manager.pipe.transfer.execution.PipeConfigNodeSubtask;
 import org.apache.iotdb.confignode.manager.pipe.transfer.execution.PipeConfigNodeSubtaskExecutor;
@@ -35,7 +36,8 @@ public class PipeConfigNodeTaskStage extends PipeTaskStage {
       long creationTime,
       Map<String, String> extractorAttributes,
       Map<String, String> processorAttributes,
-      Map<String, String> connectorAttributes) {
+      Map<String, String> connectorAttributes,
+      PipeTaskMeta pipeTaskMeta) {
 
     try {
       subtask =
@@ -44,7 +46,8 @@ public class PipeConfigNodeTaskStage extends PipeTaskStage {
               creationTime,
               extractorAttributes,
               processorAttributes,
-              connectorAttributes);
+              connectorAttributes,
+              pipeTaskMeta);
     } catch (Exception e) {
       throw new PipeException(
           String.format(

@@ -17,25 +17,33 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.pipe.transfer.agent.plugin;
+package org.apache.iotdb.commons.pipe.datastructure;
 
-import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginAgent;
-import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginConstructor;
+import java.util.HashMap;
+import java.util.Map;
 
-public class PipeConfigRegionPluginAgent extends PipePluginAgent {
+public enum LinkedQueueSerializerType {
+  PLAIN((byte) 1),
+  ;
+  private static final Map<Byte, LinkedQueueSerializerType> TYPE_MAP = new HashMap<>();
 
-  @Override
-  protected PipePluginConstructor createPipeExtractorConstructor() {
-    return new PipeConfigRegionExtractorConstructor();
+  static {
+    for (final LinkedQueueSerializerType version : LinkedQueueSerializerType.values()) {
+      TYPE_MAP.put(version.getType(), version);
+    }
   }
 
-  @Override
-  protected PipePluginConstructor createPipeProcessorConstructor() {
-    return new PipeConfigRegionProcessorConstructor();
+  private final byte type;
+
+  LinkedQueueSerializerType(byte type) {
+    this.type = type;
   }
 
-  @Override
-  protected PipePluginConstructor createPipeConnectorConstructor() {
-    return new PipeConfigRegionConnectorConstructor();
+  public byte getType() {
+    return type;
+  }
+
+  public static LinkedQueueSerializerType deserialize(byte type) {
+    return TYPE_MAP.get(type);
   }
 }

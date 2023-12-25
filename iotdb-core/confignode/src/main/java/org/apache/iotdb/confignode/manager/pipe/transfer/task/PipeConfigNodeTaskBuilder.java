@@ -60,7 +60,8 @@ public class PipeConfigNodeTaskBuilder {
                         pipeStaticMeta.getCreationTime(),
                         pipeStaticMeta.getExtractorParameters().getAttribute(),
                         pipeStaticMeta.getProcessorParameters().getAttribute(),
-                        pipeStaticMeta.getConnectorParameters().getAttribute())));
+                        pipeStaticMeta.getConnectorParameters().getAttribute(),
+                        consensusGroupIdToPipeTaskMeta.getValue())));
           }
           break;
         default:

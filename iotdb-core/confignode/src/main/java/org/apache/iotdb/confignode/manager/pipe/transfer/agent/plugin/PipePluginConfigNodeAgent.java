@@ -17,33 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.datastructure;
+package org.apache.iotdb.confignode.manager.pipe.transfer.agent.plugin;
 
-import java.util.HashMap;
-import java.util.Map;
+import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginAgent;
+import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginConstructor;
 
-public enum LinkedQueueVersion {
-  VERSION_1((byte) 1),
-  ;
-  private static final Map<Byte, LinkedQueueVersion> VERSION_MAP = new HashMap<>();
+public class PipePluginConfigNodeAgent extends PipePluginAgent {
 
-  static {
-    for (final LinkedQueueVersion version : LinkedQueueVersion.values()) {
-      VERSION_MAP.put(version.getVersion(), version);
-    }
+  @Override
+  protected PipePluginConstructor createPipeExtractorConstructor() {
+    return new PipeConfigRegionExtractorConstructor();
   }
 
-  private final byte version;
-
-  LinkedQueueVersion(byte type) {
-    this.version = type;
+  @Override
+  protected PipePluginConstructor createPipeProcessorConstructor() {
+    return new PipeConfigRegionProcessorConstructor();
   }
 
-  public byte getVersion() {
-    return version;
-  }
-
-  public static LinkedQueueVersion deserialize(byte version) {
-    return VERSION_MAP.get(version);
+  @Override
+  protected PipePluginConstructor createPipeConnectorConstructor() {
+    return new PipeConfigRegionConnectorConstructor();
   }
 }

@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.confignode.manager.pipe.transfer.extractor;
 
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.datastructure.ConcurrentIterableLinkedQueue;
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb.IoTDBCommonExtractor;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
@@ -46,12 +48,18 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 public class IoTDBConfigRegionExtractor extends IoTDBCommonExtractor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConfigRegionExtractor.class);
-  private ConcurrentIterableLinkedQueue<ConfigPhysicalPlan>.DynamicIterator itr;
+
+  private PipeTaskMeta pipeTaskMeta;
   private Set<ConfigPhysicalPlanType> listenTypes = new HashSet<>();
+
+  private ConcurrentIterableLinkedQueue<ConfigPhysicalPlan>.DynamicIterator itr;
 
   @Override
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
+    pipeTaskMeta =
+        ((PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment())
+            .getPipeTaskMeta();
     listenTypes =
         PipeConfigPlanFilter.getPipeListenSet(
             parameters.getStringOrDefault(
@@ -67,6 +75,7 @@ public class IoTDBConfigRegionExtractor extends IoTDBCommonExtractor {
 
   @Override
   public void start() throws Exception {
+    // TODO: integrate progress
     itr = ConfigPlanListeningQueue.getInstance().newIterator(0);
   }
 

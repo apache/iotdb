@@ -107,7 +107,7 @@ class PipeSchemaNodeFilter {
                     .collect(Collectors.toSet())));
     exclusionPath.forEach(
         exclusion ->
-            planTypes.addAll(
+            planTypes.removeAll(
                 NODE_MAP.keySet().stream()
                     .filter(path -> path.overlapWithFullPathPrefix(exclusion))
                     .map(NODE_MAP::get)
