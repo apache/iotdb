@@ -116,6 +116,7 @@ public class LoadTsFileScheduler implements IScheduler {
   private final PlanFragmentId fragmentId;
   private final Set<TRegionReplicaSet> allReplicaSets;
   private final boolean isGeneratedByPipe;
+  private final LoadTsFileDataCacheMemoryBlock block;
 
   public LoadTsFileScheduler(
       DistributedQueryPlan distributedQueryPlan,
@@ -132,6 +133,7 @@ public class LoadTsFileScheduler implements IScheduler {
     this.partitionFetcher = new DataPartitionBatchFetcher(partitionFetcher);
     this.allReplicaSets = new HashSet<>();
     this.isGeneratedByPipe = isGeneratedByPipe;
+    this.block = LoadTsFileMemoryManager.getInstance().allocateDataCacheMemoryBlock();
 
     for (FragmentInstance fragmentInstance : distributedQueryPlan.getInstances()) {
       tsFileNodeList.add((LoadSingleTsFileNode) fragmentInstance.getFragment().getPlanNodeTree());
@@ -202,10 +204,11 @@ public class LoadTsFileScheduler implements IScheduler {
     if (isLoadSuccess) {
       stateMachine.transitionToFinished();
     }
+    LoadTsFileMemoryManager.getInstance().releaseDataCacheMemoryBlock();
   }
 
   private boolean firstPhase(LoadSingleTsFileNode node) {
-    final TsFileDataManager tsFileDataManager = new TsFileDataManager(this, node);
+    final TsFileDataManager tsFileDataManager = new TsFileDataManager(this, node, block);
     try {
       new TsFileSplitter(
               node.getTsFileResource().getTsFile(), tsFileDataManager::addOrSendTsFileData)
@@ -411,13 +414,16 @@ public class LoadTsFileScheduler implements IScheduler {
     private final List<ChunkData> nonDirectionalChunkData;
     private final LoadTsFileDataCacheMemoryBlock block;
 
-    public TsFileDataManager(LoadTsFileScheduler scheduler, LoadSingleTsFileNode singleTsFileNode) {
+    public TsFileDataManager(
+        LoadTsFileScheduler scheduler,
+        LoadSingleTsFileNode singleTsFileNode,
+        LoadTsFileDataCacheMemoryBlock block) {
       this.scheduler = scheduler;
       this.singleTsFileNode = singleTsFileNode;
       this.dataSize = 0;
       this.replicaSet2Piece = new HashMap<>();
       this.nonDirectionalChunkData = new ArrayList<>();
-      this.block = LoadTsFileMemoryManager.getInstance().allocateDataCacheMemoryBlock();
+      this.block = block;
     }
 
     private boolean addOrSendTsFileData(TsFileData tsFileData) {

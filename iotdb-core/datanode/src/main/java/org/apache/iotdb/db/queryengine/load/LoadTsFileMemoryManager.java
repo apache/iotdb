@@ -99,11 +99,25 @@ public class LoadTsFileMemoryManager {
   public synchronized LoadTsFileDataCacheMemoryBlock allocateDataCacheMemoryBlock()
       throws LoadRuntimeOutOfMemoryException {
     if (dataCacheMemoryBlock == null) {
-      dataCacheMemoryBlock =
-          new LoadTsFileDataCacheMemoryBlock(
-              tryAllocateFromQuery(QUERY_TOTAL_MEMORY_SIZE_IN_BYTES >> 1));
+      long actuallyAllocateMemoryInBytes =
+          tryAllocateFromQuery(QUERY_TOTAL_MEMORY_SIZE_IN_BYTES >> 1);
+      dataCacheMemoryBlock = new LoadTsFileDataCacheMemoryBlock(actuallyAllocateMemoryInBytes);
+      LOGGER.info(
+          "Create Data Cache Memory Block {}, allocate memory {}",
+          dataCacheMemoryBlock,
+          actuallyAllocateMemoryInBytes);
     }
+    dataCacheMemoryBlock.updateReferenceCount(1);
     return dataCacheMemoryBlock;
+  }
+
+  public synchronized void releaseDataCacheMemoryBlock() {
+    dataCacheMemoryBlock.updateReferenceCount(-1);
+    if (dataCacheMemoryBlock.getReferenceCount() == 0) {
+      LOGGER.info("Release Data Cache Memory Block {}", dataCacheMemoryBlock);
+      dataCacheMemoryBlock.close();
+      dataCacheMemoryBlock = null;
+    }
   }
 
   ///////////////////////////// SINGLETON /////////////////////////////
