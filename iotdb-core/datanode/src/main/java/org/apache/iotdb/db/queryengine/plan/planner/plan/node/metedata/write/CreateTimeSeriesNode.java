@@ -187,7 +187,7 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
 
   public static CreateTimeSeriesNode deserialize(ByteBuffer byteBuffer) {
     String id;
-    PartialPath path = null;
+    PartialPath path;
     TSDataType dataType;
     TSEncoding encoding;
     CompressionType compressor;

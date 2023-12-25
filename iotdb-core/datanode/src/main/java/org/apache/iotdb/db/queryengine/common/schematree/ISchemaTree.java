@@ -21,7 +21,7 @@ package org.apache.iotdb.db.queryengine.common.schematree;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -36,9 +36,16 @@ public interface ISchemaTree {
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    * @return Left: all measurement paths; Right: remaining series offset
    */
+  @TestOnly
   Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(
       PartialPath pathPattern, int slimit, int soffset, boolean isPrefixMatch);
 
+  /**
+   * Return all measurement paths for given path pattern.
+   *
+   * @param pathPattern can be a pattern or a full path of timeseries.
+   * @return Left: all measurement paths; Right: remaining series offset
+   */
   Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(PartialPath pathPattern);
 
   /**
@@ -99,6 +106,4 @@ public interface ISchemaTree {
    * @return whether there's view in this schema tree
    */
   boolean hasLogicalViewMeasurement();
-
-  void setAuthorityScope(PathPatternTree scope);
 }

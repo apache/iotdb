@@ -59,6 +59,7 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.MQTT_HOST;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.MQTT_PORT;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.PAGE_SIZE_IN_BYTE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.PIPE_AIR_GAP_RECEIVER_PORT;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.REST_SERVICE_PORT;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCHEMA_REPLICATION_FACTOR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.SYSTEM_PROPERTIES_FILE;
@@ -72,6 +73,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
   private final int dataRegionConsensusPort;
   private final int schemaRegionConsensusPort;
   private final int mqttPort;
+  private final int restServicePort;
   private final int pipeAirGapReceiverPort;
 
   private final String defaultNodePropertiesFile;
@@ -94,6 +96,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     this.schemaRegionConsensusPort = portList[4];
     this.mqttPort = portList[5];
     this.pipeAirGapReceiverPort = portList[6];
+    this.restServicePort = portList[10] + 6000;
     this.defaultNodePropertiesFile =
         EnvUtils.getFilePathFromSysVar(DEFAULT_DATA_NODE_PROPERTIES, clusterIndex);
     this.defaultCommonPropertiesFile =
@@ -107,6 +110,8 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     immutableCommonProperties.setProperty(MQTT_PORT, String.valueOf(this.mqttPort));
     immutableCommonProperties.setProperty(
         PIPE_AIR_GAP_RECEIVER_PORT, String.valueOf(this.pipeAirGapReceiverPort));
+
+    immutableNodeProperties.setProperty(REST_SERVICE_PORT, String.valueOf(restServicePort));
 
     immutableNodeProperties.setProperty(IoTDBConstant.DN_SEED_CONFIG_NODE, seedConfigNode);
     immutableNodeProperties.setProperty(DN_SYSTEM_DIR, MppBaseConfig.NULL_VALUE);
@@ -181,6 +186,8 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
 
     mutableCommonProperties.setProperty(SCHEMA_REPLICATION_FACTOR, "1");
     mutableCommonProperties.setProperty(DATA_REPLICATION_FACTOR, "1");
+
+    mutableNodeProperties.put(REST_SERVICE_PORT, String.valueOf(this.restServicePort));
 
     mutableCommonProperties.put(MAX_TSBLOCK_SIZE_IN_BYTES, "1024");
     mutableCommonProperties.put(PAGE_SIZE_IN_BYTE, "1024");
@@ -260,5 +267,9 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
 
   public int getPipeAirGapReceiverPort() {
     return pipeAirGapReceiverPort;
+  }
+
+  public int getRestServicePort() {
+    return restServicePort;
   }
 }

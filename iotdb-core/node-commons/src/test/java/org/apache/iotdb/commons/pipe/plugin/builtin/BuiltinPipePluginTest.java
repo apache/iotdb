@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.commons.pipe.plugin.builtin;
 
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.DoNothingConnector;
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBLegacyPipeConnector;
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBThriftConnector;
-import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.IoTDBExtractor;
-import org.apache.iotdb.commons.pipe.plugin.builtin.processor.DoNothingProcessor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.donothing.DoNothingConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.thrift.IoTDBLegacyPipeConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.thrift.IoTDBThriftConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb.IoTDBExtractor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.donothing.DoNothingProcessor;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.PipeProcessor;

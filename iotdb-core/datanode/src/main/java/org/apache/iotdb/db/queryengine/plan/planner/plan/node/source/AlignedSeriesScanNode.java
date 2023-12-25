@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
+import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -30,8 +32,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
@@ -55,17 +55,14 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
   // The default order is TIMESTAMP_ASC, which means "order by timestamp asc"
   private Ordering scanOrder = Ordering.ASC;
 
-  // time filter for current series, could be null if it doesn't exist
-  @Nullable private Filter timeFilter;
+  // push down predicate for current series, could be null if it doesn't exist
+  @Nullable private Expression pushDownPredicate;
 
-  // value filter for current series, could be null if it doesn't exist
-  @Nullable private Filter valueFilter;
+  // push down limit for result set. The default value is -1, which means no limit
+  private long pushDownLimit;
 
-  // Limit for result set. The default value is -1, which means no limit
-  private long limit;
-
-  // offset for result set. The default value is 0
-  private long offset;
+  // push down offset for result set. The default value is 0
+  private long pushDownOffset;
 
   // used for limit and offset push down optimizer, if we select all columns from aligned device, we
   // can use statistics to skip
@@ -90,17 +87,29 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
       PlanNodeId id,
       AlignedPath alignedPath,
       Ordering scanOrder,
-      @Nullable Filter timeFilter,
-      @Nullable Filter valueFilter,
-      long limit,
-      long offset,
+      long pushDownLimit,
+      long pushDownOffset,
       TRegionReplicaSet dataRegionReplicaSet,
       boolean lastLevelUseWildcard) {
     this(id, alignedPath, scanOrder, lastLevelUseWildcard);
-    this.timeFilter = timeFilter;
-    this.valueFilter = valueFilter;
-    this.limit = limit;
-    this.offset = offset;
+    this.pushDownLimit = pushDownLimit;
+    this.pushDownOffset = pushDownOffset;
+    this.regionReplicaSet = dataRegionReplicaSet;
+  }
+
+  public AlignedSeriesScanNode(
+      PlanNodeId id,
+      AlignedPath alignedPath,
+      Ordering scanOrder,
+      @Nullable Expression pushDownPredicate,
+      long pushDownLimit,
+      long pushDownOffset,
+      TRegionReplicaSet dataRegionReplicaSet,
+      boolean lastLevelUseWildcard) {
+    this(id, alignedPath, scanOrder, lastLevelUseWildcard);
+    this.pushDownPredicate = pushDownPredicate;
+    this.pushDownLimit = pushDownLimit;
+    this.pushDownOffset = pushDownOffset;
     this.regionReplicaSet = dataRegionReplicaSet;
   }
 
@@ -113,37 +122,29 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
   }
 
   @Nullable
-  public Filter getTimeFilter() {
-    return timeFilter;
+  @Override
+  public Expression getPushDownPredicate() {
+    return pushDownPredicate;
   }
 
-  public void setTimeFilter(@Nullable Filter timeFilter) {
-    this.timeFilter = timeFilter;
+  public void setPushDownPredicate(@Nullable Expression pushDownPredicate) {
+    this.pushDownPredicate = pushDownPredicate;
   }
 
-  @Nullable
-  public Filter getValueFilter() {
-    return valueFilter;
+  public long getPushDownLimit() {
+    return pushDownLimit;
   }
 
-  public void setValueFilter(@Nullable Filter valueFilter) {
-    this.valueFilter = valueFilter;
+  public long getPushDownOffset() {
+    return pushDownOffset;
   }
 
-  public long getLimit() {
-    return limit;
+  public void setPushDownLimit(long pushDownLimit) {
+    this.pushDownLimit = pushDownLimit;
   }
 
-  public long getOffset() {
-    return offset;
-  }
-
-  public void setLimit(long limit) {
-    this.limit = limit;
-  }
-
-  public void setOffset(long offset) {
-    this.offset = offset;
+  public void setPushDownOffset(long pushDownOffset) {
+    this.pushDownOffset = pushDownOffset;
   }
 
   @Override
@@ -191,10 +192,9 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
         getPlanNodeId(),
         getAlignedPath(),
         getScanOrder(),
-        getTimeFilter(),
-        getValueFilter(),
-        getLimit(),
-        getOffset(),
+        getPushDownPredicate(),
+        getPushDownLimit(),
+        getPushDownOffset(),
         this.regionReplicaSet,
         this.queryAllSensors);
   }
@@ -219,20 +219,14 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
     PlanNodeType.ALIGNED_SERIES_SCAN.serialize(byteBuffer);
     alignedPath.serialize(byteBuffer);
     ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
-    if (timeFilter == null) {
+    if (pushDownPredicate == null) {
       ReadWriteIOUtils.write((byte) 0, byteBuffer);
     } else {
       ReadWriteIOUtils.write((byte) 1, byteBuffer);
-      timeFilter.serialize(byteBuffer);
+      Expression.serialize(pushDownPredicate, byteBuffer);
     }
-    if (valueFilter == null) {
-      ReadWriteIOUtils.write((byte) 0, byteBuffer);
-    } else {
-      ReadWriteIOUtils.write((byte) 1, byteBuffer);
-      valueFilter.serialize(byteBuffer);
-    }
-    ReadWriteIOUtils.write(limit, byteBuffer);
-    ReadWriteIOUtils.write(offset, byteBuffer);
+    ReadWriteIOUtils.write(pushDownLimit, byteBuffer);
+    ReadWriteIOUtils.write(pushDownOffset, byteBuffer);
     ReadWriteIOUtils.write(queryAllSensors, byteBuffer);
   }
 
@@ -241,20 +235,14 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
     PlanNodeType.ALIGNED_SERIES_SCAN.serialize(stream);
     alignedPath.serialize(stream);
     ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
-    if (timeFilter == null) {
+    if (pushDownPredicate == null) {
       ReadWriteIOUtils.write((byte) 0, stream);
     } else {
       ReadWriteIOUtils.write((byte) 1, stream);
-      timeFilter.serialize(stream);
+      Expression.serialize(pushDownPredicate, stream);
     }
-    if (valueFilter == null) {
-      ReadWriteIOUtils.write((byte) 0, stream);
-    } else {
-      ReadWriteIOUtils.write((byte) 1, stream);
-      valueFilter.serialize(stream);
-    }
-    ReadWriteIOUtils.write(limit, stream);
-    ReadWriteIOUtils.write(offset, stream);
+    ReadWriteIOUtils.write(pushDownLimit, stream);
+    ReadWriteIOUtils.write(pushDownOffset, stream);
     ReadWriteIOUtils.write(queryAllSensors, stream);
   }
 
@@ -262,14 +250,9 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
     AlignedPath alignedPath = (AlignedPath) PathDeserializeUtil.deserialize(byteBuffer);
     Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     byte isNull = ReadWriteIOUtils.readByte(byteBuffer);
-    Filter timeFilter = null;
+    Expression pushDownPredicate = null;
     if (isNull == 1) {
-      timeFilter = FilterFactory.deserialize(byteBuffer);
-    }
-    isNull = ReadWriteIOUtils.readByte(byteBuffer);
-    Filter valueFilter = null;
-    if (isNull == 1) {
-      valueFilter = FilterFactory.deserialize(byteBuffer);
+      pushDownPredicate = Expression.deserialize(byteBuffer);
     }
     long limit = ReadWriteIOUtils.readLong(byteBuffer);
     long offset = ReadWriteIOUtils.readLong(byteBuffer);
@@ -279,12 +262,45 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
         planNodeId,
         alignedPath,
         scanOrder,
-        timeFilter,
-        valueFilter,
+        pushDownPredicate,
         limit,
         offset,
         null,
         queryAllSensors);
+  }
+
+  @Override
+  public void serializeUseTemplate(DataOutputStream stream, TypeProvider typeProvider)
+      throws IOException {
+    PlanNodeType.ALIGNED_SERIES_SCAN.serialize(stream);
+    id.serialize(stream);
+    ReadWriteIOUtils.write(alignedPath.getNodes().length, stream);
+    for (String node : alignedPath.getNodes()) {
+      ReadWriteIOUtils.write(node, stream);
+    }
+  }
+
+  public static AlignedSeriesScanNode deserializeUseTemplate(
+      ByteBuffer byteBuffer, TypeProvider typeProvider) {
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+
+    int nodeSize = ReadWriteIOUtils.readInt(byteBuffer);
+    String[] nodes = new String[nodeSize];
+    for (int i = 0; i < nodeSize; i++) {
+      nodes[i] = ReadWriteIOUtils.readString(byteBuffer);
+    }
+    AlignedPath alignedPath = new AlignedPath(new PartialPath(nodes));
+    alignedPath.setMeasurementList(typeProvider.getTemplatedInfo().getMeasurementList());
+    alignedPath.addSchemas(typeProvider.getTemplatedInfo().getSchemaList());
+
+    return new AlignedSeriesScanNode(
+        planNodeId,
+        alignedPath,
+        typeProvider.getTemplatedInfo().getScanOrder(),
+        typeProvider.getTemplatedInfo().getLimitValue(),
+        typeProvider.getTemplatedInfo().getOffsetValue(),
+        null,
+        typeProvider.getTemplatedInfo().isQueryAllSensors());
   }
 
   @Override
@@ -299,12 +315,11 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
       return false;
     }
     AlignedSeriesScanNode that = (AlignedSeriesScanNode) o;
-    return limit == that.limit
-        && offset == that.offset
+    return pushDownLimit == that.pushDownLimit
+        && pushDownOffset == that.pushDownOffset
         && alignedPath.equals(that.alignedPath)
         && scanOrder == that.scanOrder
-        && Objects.equals(timeFilter, that.timeFilter)
-        && Objects.equals(valueFilter, that.valueFilter)
+        && Objects.equals(pushDownPredicate, that.pushDownPredicate)
         && Objects.equals(queryAllSensors, that.queryAllSensors)
         && Objects.equals(regionReplicaSet, that.regionReplicaSet);
   }
@@ -315,10 +330,9 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
         super.hashCode(),
         alignedPath,
         scanOrder,
-        timeFilter,
-        valueFilter,
-        limit,
-        offset,
+        pushDownPredicate,
+        pushDownLimit,
+        pushDownOffset,
         regionReplicaSet,
         queryAllSensors);
   }
@@ -333,11 +347,6 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
 
   @Override
   public PartialPath getPartitionPath() {
-    return alignedPath;
-  }
-
-  @Override
-  public Filter getPartitionTimeFilter() {
-    return timeFilter;
+    return getAlignedPath();
   }
 }

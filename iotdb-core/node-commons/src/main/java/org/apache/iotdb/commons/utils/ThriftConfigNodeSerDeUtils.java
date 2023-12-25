@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
@@ -132,6 +133,7 @@ public class ThriftConfigNodeSerDeUtils {
     return configNodeLocation;
   }
 
+  // Deprecated, restored for compatibility
   public static void serializeTPipeSinkInfo(TPipeSinkInfo pipeSinkInfo, DataOutputStream stream) {
     try {
       pipeSinkInfo.write(generateWriteProtocol(stream));
@@ -140,6 +142,7 @@ public class ThriftConfigNodeSerDeUtils {
     }
   }
 
+  // Deprecated, restored for compatibility
   public static TPipeSinkInfo deserializeTPipeSinkInfo(ByteBuffer buffer) {
     TPipeSinkInfo pipeSinkInfo = new TPipeSinkInfo();
     try {

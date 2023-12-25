@@ -29,40 +29,34 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
-import org.apache.iotdb.tsfile.read.reader.IAlignedPageReader;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 import static org.apache.iotdb.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
 
-public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
+public class MemAlignedPageReader implements IPageReader {
 
   private final TsBlock tsBlock;
   private final AlignedChunkMetadata chunkMetadata;
 
-  // only used for limit and offset push down optimizer, if we select all columns from aligned
-  // device, we
-  // can use statistics to skip.
-  // it's only exact while using limit & offset push down
-  private final boolean queryAllSensors;
-
-  private Filter valueFilter;
+  private Filter recordFilter;
   private PaginationController paginationController = UNLIMITED_PAGINATION_CONTROLLER;
 
   private TsBlockBuilder builder;
 
   public MemAlignedPageReader(
-      TsBlock tsBlock, AlignedChunkMetadata chunkMetadata, Filter filter, boolean queryAllSensors) {
+      TsBlock tsBlock, AlignedChunkMetadata chunkMetadata, Filter recordFilter) {
     this.tsBlock = tsBlock;
     this.chunkMetadata = chunkMetadata;
-    this.valueFilter = filter;
-    this.queryAllSensors = queryAllSensors;
+    this.recordFilter = recordFilter;
   }
 
   @Override
@@ -73,82 +67,30 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
   @Override
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
     BatchData batchData = BatchDataFactory.createBatchData(TSDataType.VECTOR, ascending, false);
-    for (int row = 0; row < tsBlock.getPositionCount(); row++) {
-      // save the first not null value of each row
-      Object firstNotNullObject = getFirstNotNullObject(row);
-      // if all the sub sensors' value are null in current time
-      // or current row is not satisfied with the filter, just discard it
-      if (firstNotNullObject != null) {
-        doFilter(firstNotNullObject, row, batchData);
+
+    boolean[] satisfyInfo = buildSatisfyInfoArray();
+    boolean[] hasValue = buildHasValueArray();
+
+    for (int rowIndex = 0; rowIndex < tsBlock.getPositionCount(); rowIndex++) {
+      if (satisfyInfo[rowIndex] && hasValue[rowIndex]) {
+        long time = tsBlock.getTimeByIndex(rowIndex);
+        TsPrimitiveType[] values = new TsPrimitiveType[tsBlock.getValueColumnCount()];
+        for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
+          if (tsBlock.getColumn(column) != null && !tsBlock.getColumn(column).isNull(rowIndex)) {
+            values[column] = tsBlock.getColumn(column).getTsPrimitiveType(rowIndex);
+          }
+        }
+        batchData.putVector(time, values);
       }
     }
     return batchData.flip();
   }
 
-  private Object getFirstNotNullObject(int rowIndex) {
-    for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
-      if (!tsBlock.getColumn(column).isNull(rowIndex)) {
-        return tsBlock.getColumn(column).getObject(rowIndex);
-      }
-    }
-    return null;
-  }
-
-  private void doFilter(Object row, int rowIndex, BatchData batchData) {
-    if (valueFilter == null || valueFilter.satisfy(tsBlock.getTimeByIndex(rowIndex), row)) {
-      TsPrimitiveType[] values = new TsPrimitiveType[tsBlock.getValueColumnCount()];
-      for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
-        if (tsBlock.getColumn(column) != null && !tsBlock.getColumn(column).isNull(rowIndex)) {
-          values[column] = tsBlock.getColumn(column).getTsPrimitiveType(rowIndex);
-        }
-      }
-      batchData.putVector(tsBlock.getTimeByIndex(rowIndex), values);
-    }
-  }
-
-  private boolean pageSatisfy() {
-    Statistics<? extends Serializable> statistics = getStatistics();
-    if (valueFilter == null || valueFilter.allSatisfy(statistics)) {
-      // For aligned series, When we only query some measurements under an aligned device, if any
-      // values of these queried measurements has the same value count as the time column, the
-      // timestamp will be selected.
-      // NOTE: if we change the query semantic in the future for aligned series, we need to remove
-      // this check here.
-      long rowCount = getTimeStatistics().getCount();
-      boolean canUse = queryAllSensors || getValueStatisticsList().isEmpty();
-      if (!canUse) {
-        for (Statistics<? extends Serializable> vStatistics : getValueStatisticsList()) {
-          if (vStatistics != null && !vStatistics.hasNullValue(rowCount)) {
-            canUse = true;
-            break;
-          }
-        }
-      }
-      if (!canUse) {
-        return true;
-      }
-      // When the number of points in all value pages is the same as that in the time page, it means
-      // that there is no null value, and all timestamps will be selected.
-      if (paginationController.hasCurOffset(rowCount)) {
-        paginationController.consumeOffset(rowCount);
-        return false;
-      } else {
-        return true;
-      }
-    } else {
-      return valueFilter.satisfy(statistics);
-    }
-  }
-
   @Override
   public TsBlock getAllSatisfiedData() {
     builder.reset();
-    if (!pageSatisfy()) {
-      return builder.build();
-    }
 
     boolean[] satisfyInfo = buildSatisfyInfoArray();
-
     boolean[] hasValue = buildHasValueArray();
 
     // build time column
@@ -161,15 +103,12 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
   }
 
   private boolean[] buildSatisfyInfoArray() {
-    boolean[] satisfyInfo = new boolean[tsBlock.getPositionCount()];
-    for (int row = 0; row < tsBlock.getPositionCount(); row++) {
-      long time = tsBlock.getTimeByIndex(row);
-      // ValueFilter in MPP will only contain time filter now.
-      if ((valueFilter == null || valueFilter.satisfy(time, null))) {
-        satisfyInfo[row] = true;
-      }
+    if (recordFilter == null || recordFilter.allSatisfy(this)) {
+      boolean[] satisfyInfo = new boolean[tsBlock.getPositionCount()];
+      Arrays.fill(satisfyInfo, true);
+      return satisfyInfo;
     }
-    return satisfyInfo;
+    return recordFilter.satisfyTsBlock(tsBlock);
   }
 
   private boolean[] buildHasValueArray() {
@@ -237,26 +176,24 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
   }
 
   @Override
-  public Statistics<? extends Serializable> getStatistics(int index) {
-    return chunkMetadata.getStatistics(index);
-  }
-
-  @Override
   public Statistics<? extends Serializable> getTimeStatistics() {
     return chunkMetadata.getTimeStatistics();
   }
 
-  private List<Statistics<? extends Serializable>> getValueStatisticsList() {
-    return chunkMetadata.getValueStatisticsList();
+  @Override
+  public Optional<Statistics<? extends Serializable>> getMeasurementStatistics(
+      int measurementIndex) {
+    return chunkMetadata.getMeasurementStatistics(measurementIndex);
   }
 
   @Override
-  public void setFilter(Filter filter) {
-    if (valueFilter == null) {
-      this.valueFilter = filter;
-    } else {
-      valueFilter = new AndFilter(this.valueFilter, filter);
-    }
+  public boolean hasNullValue(int measurementIndex) {
+    return chunkMetadata.hasNullValue(measurementIndex);
+  }
+
+  @Override
+  public void addRecordFilter(Filter filter) {
+    this.recordFilter = FilterFactory.and(recordFilter, filter);
   }
 
   @Override

@@ -326,7 +326,9 @@ public class IoTDBInterpreterIT {
   public void testShowDevices() {
     InterpreterResult actual = interpreter.internalInterpret("show devices", null);
     String gt =
-        "Device\tIsAligned\n" + "root.test.wf01.wt01\tfalse\n" + "root.test.wf02.wt02\tfalse";
+        "Device\tIsAligned\tTemplate\n"
+            + "root.test.wf01.wt01\tfalse\tnull\n"
+            + "root.test.wf02.wt02\tfalse\tnull";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
     Assert.assertEquals(gt, actual.message().get(0).getData());
@@ -336,9 +338,9 @@ public class IoTDBInterpreterIT {
   public void testShowDevicesWithSg() {
     InterpreterResult actual = interpreter.internalInterpret("show devices with database", null);
     String gt =
-        "Device\tDatabase\tIsAligned\n"
-            + "root.test.wf01.wt01\troot.test.wf01\tfalse\n"
-            + "root.test.wf02.wt02\troot.test.wf02\tfalse";
+        "Device\tDatabase\tIsAligned\tTemplate\n"
+            + "root.test.wf01.wt01\troot.test.wf01\tfalse\tnull\n"
+            + "root.test.wf02.wt02\troot.test.wf02\tfalse\tnull";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
     Assert.assertEquals(gt, actual.message().get(0).getData());

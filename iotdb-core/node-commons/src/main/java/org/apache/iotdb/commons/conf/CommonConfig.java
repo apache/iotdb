@@ -156,13 +156,14 @@ public class CommonConfig {
   private int pipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount = 10_000;
   private long pipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration = 10 * 1000L;
   private long pipeSubtaskExecutorPendingQueueMaxBlockingTimeMs = 1000;
-  private long pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds = 30;
+  private long pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds = 20;
 
   private int pipeExtractorAssignerDisruptorRingBufferSize = 65536;
   private long pipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes = 50; // 50B
   private int pipeExtractorMatcherCacheSize = 1024;
 
-  private long pipeConnectorTimeoutMs = 15 * 60 * 1000L; // 15 minutes
+  private long pipeConnectorHandshakeTimeoutMs = 10 * 1000L; // 10 seconds
+  private long pipeConnectorTransferTimeoutMs = 15 * 60 * 1000L; // 15 minutes
   private int pipeConnectorReadFileBufferSize = 8388608;
   private long pipeConnectorRetryIntervalMs = 1000L;
   // recommend to set this value to 3 * pipeSubtaskExecutorMaxThreadNum *
@@ -170,7 +171,7 @@ public class CommonConfig {
   private int pipeConnectorPendingQueueSize = 256;
   private boolean pipeConnectorRPCThriftCompressionEnabled = false;
 
-  private int pipeAsyncConnectorSelectorNumber = 1;
+  private int pipeAsyncConnectorSelectorNumber = 8;
   private int pipeAsyncConnectorCoreClientNumber = 8;
   private int pipeAsyncConnectorMaxClientNumber = 16;
 
@@ -561,12 +562,20 @@ public class CommonConfig {
     this.pipeExtractorMatcherCacheSize = pipeExtractorMatcherCacheSize;
   }
 
-  public long getPipeConnectorTimeoutMs() {
-    return pipeConnectorTimeoutMs;
+  public long getPipeConnectorHandshakeTimeoutMs() {
+    return pipeConnectorHandshakeTimeoutMs;
   }
 
-  public void setPipeConnectorTimeoutMs(long pipeConnectorTimeoutMs) {
-    this.pipeConnectorTimeoutMs = pipeConnectorTimeoutMs;
+  public void setPipeConnectorHandshakeTimeoutMs(long pipeConnectorHandshakeTimeoutMs) {
+    this.pipeConnectorHandshakeTimeoutMs = pipeConnectorHandshakeTimeoutMs;
+  }
+
+  public long getPipeConnectorTransferTimeoutMs() {
+    return pipeConnectorTransferTimeoutMs;
+  }
+
+  public void setPipeConnectorTransferTimeoutMs(long pipeConnectorTransferTimeoutMs) {
+    this.pipeConnectorTransferTimeoutMs = pipeConnectorTransferTimeoutMs;
   }
 
   public int getPipeConnectorReadFileBufferSize() {

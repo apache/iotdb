@@ -267,9 +267,9 @@ public class AlignByDeviceOrderByLimitOffsetTest {
   private void assertScanNodeLimitValue(PlanNode root, long limitValue) {
     for (PlanNode node : root.getChildren()) {
       if (node instanceof SeriesScanNode) {
-        assertEquals(limitValue, ((SeriesScanNode) node).getLimit());
+        assertEquals(limitValue, ((SeriesScanNode) node).getPushDownLimit());
       } else if (node instanceof AlignedSeriesScanNode) {
-        assertEquals(limitValue, ((AlignedSeriesScanNode) node).getLimit());
+        assertEquals(limitValue, ((AlignedSeriesScanNode) node).getPushDownLimit());
       } else {
         assertScanNodeLimitValue(node, limitValue);
       }

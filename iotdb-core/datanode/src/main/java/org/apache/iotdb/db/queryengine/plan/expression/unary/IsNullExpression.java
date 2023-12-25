@@ -56,11 +56,6 @@ public class IsNullExpression extends UnaryExpression {
   }
 
   @Override
-  protected Expression constructExpression(Expression childExpression) {
-    return new IsNullExpression(childExpression, isNot);
-  }
-
-  @Override
   protected void serialize(ByteBuffer byteBuffer) {
     super.serialize(byteBuffer);
     ReadWriteIOUtils.write(isNot, byteBuffer);

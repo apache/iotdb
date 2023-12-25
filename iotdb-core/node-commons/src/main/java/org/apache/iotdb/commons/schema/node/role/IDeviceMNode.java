@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.schema.node.IMNode;
 
 import java.util.Map;
 
-public interface IDeviceMNode<N extends IMNode<N>> extends IMNode<N> {
+public interface IDeviceMNode<N extends IMNode<N>> extends IInternalMNode<N> {
   boolean addAlias(String alias, IMeasurementMNode<N> child);
 
   void deleteAliasChild(String alias);

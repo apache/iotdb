@@ -36,7 +36,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiT
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
@@ -65,6 +64,10 @@ public class DataRegionStateMachine extends BaseStateMachine {
       FragmentInstanceManager.getInstance();
 
   protected DataRegion region;
+
+  private static final int MAX_WRITE_RETRY_TIMES = 5;
+
+  private static final long WRITE_RETRY_WAIT_TIME_IN_MS = 1000;
 
   public DataRegionStateMachine(DataRegion region) {
     this.region = region;
@@ -192,25 +195,17 @@ public class DataRegionStateMachine extends BaseStateMachine {
       }
       result =
           new InsertMultiTabletsNode(insertNodes.get(0).getPlanNodeId(), index, insertTabletNodes);
-    } else { // merge to InsertRowsNode or InsertRowsOfOneDeviceNode
-      boolean sameDevice = true;
+    } else { // merge to InsertRowsNode
       PartialPath device = insertNodes.get(0).getDevicePath();
       List<Integer> index = new ArrayList<>(size);
       List<InsertRowNode> insertRowNodes = new ArrayList<>(size);
       int i = 0;
       for (InsertNode insertNode : insertNodes) {
-        if (sameDevice && !insertNode.getDevicePath().equals(device)) {
-          sameDevice = false;
-        }
         insertRowNodes.add((InsertRowNode) insertNode);
         index.add(i);
         i++;
       }
-      result =
-          sameDevice
-              ? new InsertRowsOfOneDeviceNode(
-                  insertNodes.get(0).getPlanNodeId(), index, insertRowNodes)
-              : new InsertRowsNode(insertNodes.get(0).getPlanNodeId(), index, insertRowNodes);
+      result = new InsertRowsNode(insertNodes.get(0).getPlanNodeId(), index, insertRowNodes);
     }
     result.setSearchIndex(insertNodes.get(0).getSearchIndex());
     result.setDevicePath(insertNodes.get(0).getDevicePath());
@@ -246,7 +241,32 @@ public class DataRegionStateMachine extends BaseStateMachine {
   }
 
   protected TSStatus write(PlanNode planNode) {
-    return planNode.accept(new DataExecutionVisitor(), region);
+    // To ensure the Data inconsistency between multiple replications, we add retry in write
+    // operation.
+    TSStatus result = null;
+    int retryTime = 0;
+    while (retryTime < MAX_WRITE_RETRY_TIMES) {
+      result = planNode.accept(new DataExecutionVisitor(), region);
+      if (needRetry(result.getCode())) {
+        retryTime++;
+        logger.debug(
+            "write operation failed because {}, retryTime: {}.", result.getCode(), retryTime);
+        if (retryTime == MAX_WRITE_RETRY_TIMES) {
+          logger.error(
+              "write operation still failed after {} retry times, because {}.",
+              MAX_WRITE_RETRY_TIMES,
+              result.getCode());
+        }
+        try {
+          Thread.sleep(WRITE_RETRY_WAIT_TIME_IN_MS);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        }
+      } else {
+        break;
+      }
+    }
+    return result;
   }
 
   @Override
@@ -279,5 +299,13 @@ public class DataRegionStateMachine extends BaseStateMachine {
       logger.warn("{}: cannot get the canonical file of {} due to {}", this, snapshotDir, e);
       return null;
     }
+  }
+
+  public static boolean needRetry(int statusCode) {
+    // To fix the atomicity problem, we only need to add retry for system reject.
+    // In other cases, such as readonly, we can return directly because there are retries at the
+    // consensus layer.
+    return statusCode == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()
+        || statusCode == TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode();
   }
 }

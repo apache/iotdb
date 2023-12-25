@@ -20,23 +20,21 @@
 package org.apache.iotdb.pipe.it;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
-import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2;
-import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -44,32 +42,17 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.assertNonQueryTestFail;
+import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
+import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
+import static org.apache.iotdb.db.it.utils.TestUtils.executeQueryWithRetry;
+import static org.apache.iotdb.db.it.utils.TestUtils.grantUserSystemPrivileges;
+import static org.apache.iotdb.db.it.utils.TestUtils.tryExecuteNonQueriesWithRetry;
+import static org.apache.iotdb.db.it.utils.TestUtils.tryExecuteNonQueryWithRetry;
+
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
-public class IoTDBPipeLifeCycleIT {
-
-  private BaseEnv senderEnv;
-  private BaseEnv receiverEnv;
-
-  @Before
-  public void setUp() throws Exception {
-    MultiEnvFactory.createEnv(2);
-    senderEnv = MultiEnvFactory.getEnv(0);
-    receiverEnv = MultiEnvFactory.getEnv(1);
-
-    senderEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
-    receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
-
-    senderEnv.initClusterEnvironment();
-    receiverEnv.initClusterEnvironment();
-  }
-
-  @After
-  public void tearDown() {
-    senderEnv.cleanClusterEnvironment();
-    receiverEnv.cleanClusterEnvironment();
-  }
-
+public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
   @Test
   public void testLifeCycleWithHistoryEnabled() throws Exception {
     DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -149,11 +132,8 @@ public class IoTDBPipeLifeCycleIT {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)")) {
-        return;
-      }
-      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv, Arrays.asList("insert into root.db.d1(time, s1) values (1, 1)", "flush"))) {
         return;
       }
 
@@ -447,8 +427,13 @@ public class IoTDBPipeLifeCycleIT {
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
     }
 
-    TestUtils.restartCluster(senderEnv);
-    TestUtils.restartCluster(receiverEnv);
+    try {
+      TestUtils.restartCluster(senderEnv);
+      TestUtils.restartCluster(receiverEnv);
+    } catch (Exception e) {
+      e.printStackTrace();
+      return;
+    }
 
     try (SyncConfigNodeIServiceClient ignored =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -511,7 +496,12 @@ public class IoTDBPipeLifeCycleIT {
               });
       t.start();
 
-      TestUtils.restartCluster(receiverEnv);
+      try {
+        TestUtils.restartCluster(receiverEnv);
+      } catch (Exception e) {
+        e.printStackTrace();
+        return;
+      }
       t.join();
 
       TestUtils.assertDataOnEnv(
@@ -610,6 +600,8 @@ public class IoTDBPipeLifeCycleIT {
       Map<String, String> processorAttributes = new HashMap<>();
       Map<String, String> connectorAttributes = new HashMap<>();
 
+      // add this property to avoid to make self cycle.
+      connectorAttributes.put("source.forwarding-pipe-requests", "false");
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
@@ -648,6 +640,8 @@ public class IoTDBPipeLifeCycleIT {
       Map<String, String> processorAttributes = new HashMap<>();
       Map<String, String> connectorAttributes = new HashMap<>();
 
+      // add this property to avoid to make self cycle.
+      connectorAttributes.put("source.forwarding-pipe-requests", "false");
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", senderIp);
@@ -680,8 +674,13 @@ public class IoTDBPipeLifeCycleIT {
     TestUtils.assertDataOnEnv(
         receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
 
-    TestUtils.restartCluster(senderEnv);
-    TestUtils.restartCluster(receiverEnv);
+    try {
+      TestUtils.restartCluster(senderEnv);
+      TestUtils.restartCluster(receiverEnv);
+    } catch (Exception e) {
+      e.printStackTrace();
+      return;
+    }
 
     for (int i = 400; i < 500; ++i) {
       if (!TestUtils.tryExecuteNonQueryWithRetry(
@@ -709,5 +708,93 @@ public class IoTDBPipeLifeCycleIT {
         senderEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
     TestUtils.assertDataOnEnv(
         receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+  }
+
+  @Test
+  public void testPermission() {
+    createUser(senderEnv, "test", "test123");
+
+    assertNonQueryTestFail(
+        senderEnv,
+        "create pipe testPipe\n"
+            + "with connector (\n"
+            + "  'connector'='iotdb-thrift-connector',\n"
+            + "  'connector.ip'='127.0.0.1',\n"
+            + "  'connector.port'='6668'\n"
+            + ")",
+        "803: No permissions for this operation, please add privilege USE_PIPE",
+        "test",
+        "test123");
+    assertNonQueryTestFail(
+        senderEnv,
+        "drop pipe testPipe",
+        "803: No permissions for this operation, please add privilege USE_PIPE",
+        "test",
+        "test123");
+    assertTestFail(
+        senderEnv,
+        "show pipes",
+        "803: No permissions for this operation, please add privilege USE_PIPE",
+        "test",
+        "test123");
+    assertNonQueryTestFail(
+        senderEnv,
+        "start pipe testPipe",
+        "803: No permissions for this operation, please add privilege USE_PIPE",
+        "test",
+        "test123");
+    assertNonQueryTestFail(
+        senderEnv,
+        "stop pipe testPipe",
+        "803: No permissions for this operation, please add privilege USE_PIPE",
+        "test",
+        "test123");
+
+    assertNonQueryTestFail(
+        senderEnv,
+        "create pipePlugin TestProcessor as 'org.apache.iotdb.db.pipe.example.TestProcessor' USING URI 'xxx'",
+        "803: No permissions for this operation, please add privilege USE_PIPE",
+        "test",
+        "test123");
+    assertNonQueryTestFail(
+        senderEnv,
+        "drop pipePlugin TestProcessor",
+        "803: No permissions for this operation, please add privilege USE_PIPE",
+        "test",
+        "test123");
+    assertTestFail(
+        senderEnv,
+        "show pipe plugins",
+        "803: No permissions for this operation, please add privilege USE_PIPE",
+        "test",
+        "test123");
+
+    grantUserSystemPrivileges(senderEnv, "test", PrivilegeType.USE_PIPE);
+
+    tryExecuteNonQueryWithRetry(
+        senderEnv,
+        "create pipe testPipe\n"
+            + "with connector (\n"
+            + "  'connector'='iotdb-thrift-connector',\n"
+            + "  'connector.ip'='127.0.0.1',\n"
+            + "  'connector.port'='6668'\n"
+            + ")",
+        "test",
+        "test123");
+    executeQueryWithRetry(senderEnv, "show pipes", "test", "test123");
+    tryExecuteNonQueriesWithRetry(
+        senderEnv,
+        Arrays.asList("start pipe testPipe", "stop pipe testPipe", "drop pipe testPipe"),
+        "test",
+        "test123");
+
+    assertNonQueryTestFail(
+        senderEnv,
+        "create pipePlugin TestProcessor as 'org.apache.iotdb.db.pipe.example.TestProcessor' USING URI 'xxx'",
+        "1603: The scheme of URI is not set, please specify the scheme of URI.",
+        "test",
+        "test123");
+    tryExecuteNonQueryWithRetry(senderEnv, "drop pipePlugin TestProcessor", "test", "test123");
+    executeQueryWithRetry(senderEnv, "show pipe plugins", "test", "test123");
   }
 }

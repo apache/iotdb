@@ -22,6 +22,7 @@ package org.apache.iotdb.tsfile.file.metadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
+import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -29,15 +30,18 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.openjdk.jol.info.ClassLayout;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import static io.airlift.slice.SizeOf.sizeOfCharArray;
 import static io.airlift.slice.SizeOf.sizeOfObjectArray;
+import static org.apache.iotdb.tsfile.utils.Preconditions.checkArgument;
 
 public class TimeseriesMetadata implements ITimeSeriesMetadata {
 
@@ -129,6 +133,32 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
       timeseriesMetaData.chunkMetadataList.trimToSize();
     }
     buffer.position(buffer.position() + chunkMetaDataListDataSize);
+    return timeseriesMetaData;
+  }
+
+  public static TimeseriesMetadata deserializeFrom(
+      TsFileInput tsFileInput, boolean needChunkMetadata) throws IOException {
+    InputStream inputStream = tsFileInput.wrapAsInputStream();
+    TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
+    timeseriesMetaData.setTimeSeriesMetadataType(ReadWriteIOUtils.readByte(inputStream));
+    timeseriesMetaData.setMeasurementId(ReadWriteIOUtils.readVarIntString(inputStream));
+    timeseriesMetaData.setTsDataType(ReadWriteIOUtils.readDataType(inputStream));
+    int chunkMetaDataListDataSize = ReadWriteForEncodingUtils.readUnsignedVarInt(inputStream);
+    timeseriesMetaData.setDataSizeOfChunkMetaDataList(chunkMetaDataListDataSize);
+    timeseriesMetaData.setStatistics(
+        Statistics.deserialize(inputStream, timeseriesMetaData.dataType));
+    long startOffset = tsFileInput.position();
+    if (needChunkMetadata) {
+      timeseriesMetaData.chunkMetadataList = new ArrayList<>();
+      while (tsFileInput.position() < startOffset + chunkMetaDataListDataSize) {
+        timeseriesMetaData.chunkMetadataList.add(
+            ChunkMetadata.deserializeFrom(inputStream, timeseriesMetaData));
+      }
+      // minimize the storage of an ArrayList instance.
+      timeseriesMetaData.chunkMetadataList.trimToSize();
+    } else {
+      tsFileInput.position(startOffset + chunkMetaDataListDataSize);
+    }
     return timeseriesMetaData;
   }
 
@@ -228,8 +258,37 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
     this.statistics = statistics;
   }
 
+  @Override
+  public Statistics<? extends Serializable> getTimeStatistics() {
+    return getStatistics();
+  }
+
+  @Override
+  public Optional<Statistics<? extends Serializable>> getMeasurementStatistics(
+      int measurementIndex) {
+    checkArgument(
+        measurementIndex == 0,
+        "Non-aligned timeseries only has one measurement, but measurementIndex is "
+            + measurementIndex);
+    return Optional.ofNullable(statistics);
+  }
+
+  @Override
+  public boolean hasNullValue(int measurementIndex) {
+    return false;
+  }
+
   public void setChunkMetadataLoader(IChunkMetadataLoader chunkMetadataLoader) {
     this.chunkMetadataLoader = chunkMetadataLoader;
+  }
+
+  @Override
+  public boolean typeMatch(List<TSDataType> dataTypes) {
+    return typeMatch(dataTypes.get(0));
+  }
+
+  public boolean typeMatch(TSDataType dataType) {
+    return this.dataType == dataType;
   }
 
   @Override

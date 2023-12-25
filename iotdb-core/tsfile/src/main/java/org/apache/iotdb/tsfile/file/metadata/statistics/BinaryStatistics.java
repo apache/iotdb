@@ -42,8 +42,10 @@ public class BinaryStatistics extends Statistics<Binary> {
       ClassLayout.parseClass(BinaryStatistics.class).instanceSize()
           + 2 * ClassLayout.parseClass(Binary.class).instanceSize();
 
-  private Binary firstValue = new Binary("", TSFileConfig.STRING_CHARSET);
-  private Binary lastValue = new Binary("", TSFileConfig.STRING_CHARSET);
+  private static final Binary EMPTY_VALUE = new Binary("", TSFileConfig.STRING_CHARSET);
+
+  private Binary firstValue = EMPTY_VALUE;
+  private Binary lastValue = EMPTY_VALUE;
 
   @Override
   public TSDataType getType() {

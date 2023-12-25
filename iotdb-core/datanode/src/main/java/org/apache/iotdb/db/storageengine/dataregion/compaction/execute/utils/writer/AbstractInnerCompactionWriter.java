@@ -51,13 +51,15 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
                 / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
                 * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
     boolean enableMemoryControl = IoTDBDescriptor.getInstance().getConfig().isEnableMemControl();
+    this.targetResource = targetFileResource;
     this.fileWriter =
         new CompactionTsFileWriter(
             targetFileResource.getTsFile(),
             enableMemoryControl,
             sizeForFileWriter,
-            CompactionType.INNER_UNSEQ_COMPACTION);
-    this.targetResource = targetFileResource;
+            targetResource.isSeq()
+                ? CompactionType.INNER_SEQ_COMPACTION
+                : CompactionType.INNER_UNSEQ_COMPACTION);
     isEmptyFile = true;
   }
 
@@ -81,10 +83,12 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
 
   @Override
   public void write(TimeValuePair timeValuePair, int subTaskId) throws IOException {
+    checkPreviousTimestamp(timeValuePair.getTimestamp(), subTaskId);
     writeDataPoint(timeValuePair.getTimestamp(), timeValuePair.getValue(), chunkWriters[subTaskId]);
     chunkPointNumArray[subTaskId]++;
     checkChunkSizeAndMayOpenANewChunk(fileWriter, chunkWriters[subTaskId], subTaskId);
     isEmptyFile = false;
+    lastTime[subTaskId] = timeValuePair.getTimestamp();
   }
 
   @Override

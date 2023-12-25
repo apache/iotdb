@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.SubPlanTypeExtractor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.IPartitionRelatedNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.VirtualSourceNode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -145,31 +146,52 @@ public class PlanFragment {
 
   public void serialize(DataOutputStream stream) throws IOException {
     id.serialize(stream);
-    planNodeTree.serialize(stream);
     if (typeProvider == null) {
       ReadWriteIOUtils.write((byte) 0, stream);
     } else {
       ReadWriteIOUtils.write((byte) 1, stream);
+
+      // templated device, the serialized attribute basically same,
+      // so there is no need to serialize all the SeriesScanNode repeated
+      if (typeProvider.getTemplatedInfo() != null) {
+        typeProvider.serialize(stream);
+        planNodeTree.serializeUseTemplate(stream, typeProvider);
+        return;
+      }
+
       typeProvider.serialize(stream);
     }
+    planNodeTree.serialize(stream);
   }
 
   public static PlanFragment deserialize(ByteBuffer byteBuffer) {
-    PlanFragment planFragment =
-        new PlanFragment(PlanFragmentId.deserialize(byteBuffer), deserializeHelper(byteBuffer));
+    PlanFragmentId planFragmentId = PlanFragmentId.deserialize(byteBuffer);
     byte hasTypeProvider = ReadWriteIOUtils.readByte(byteBuffer);
+    TypeProvider typeProvider = null;
     if (hasTypeProvider == 1) {
-      planFragment.setTypeProvider(TypeProvider.deserialize(byteBuffer));
+      typeProvider = TypeProvider.deserialize(byteBuffer);
     }
+    PlanFragment planFragment =
+        new PlanFragment(planFragmentId, deserializeHelper(byteBuffer, typeProvider));
+    planFragment.setTypeProvider(typeProvider);
     return planFragment;
   }
 
   // deserialize the plan node recursively
-  public static PlanNode deserializeHelper(ByteBuffer byteBuffer) {
-    PlanNode root = PlanNodeType.deserialize(byteBuffer);
+  public static PlanNode deserializeHelper(ByteBuffer byteBuffer, TypeProvider typeProvider) {
+    PlanNode root;
+    if (typeProvider != null && typeProvider.getTemplatedInfo() != null) {
+      root = PlanNodeType.deserializeWithTemplate(byteBuffer, typeProvider);
+      if (root instanceof AlignedSeriesScanNode) {
+        return root;
+      }
+    } else {
+      root = PlanNodeType.deserialize(byteBuffer);
+    }
+
     int childrenCount = byteBuffer.getInt();
     for (int i = 0; i < childrenCount; i++) {
-      root.addChild(deserializeHelper(byteBuffer));
+      root.addChild(deserializeHelper(byteBuffer, typeProvider));
     }
     return root;
   }

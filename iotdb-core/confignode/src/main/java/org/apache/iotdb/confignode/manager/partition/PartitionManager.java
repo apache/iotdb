@@ -30,13 +30,10 @@ import org.apache.iotdb.commons.cluster.RegionRoleType;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
@@ -74,6 +71,7 @@ import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
+import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
@@ -123,8 +121,6 @@ public class PartitionManager {
       CONF.getSchemaRegionGroupExtensionPolicy();
   private static final RegionGroupExtensionPolicy DATA_REGION_GROUP_EXTENSION_POLICY =
       CONF.getDataRegionGroupExtensionPolicy();
-
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   private final IManager configManager;
   private final PartitionInfo partitionInfo;
@@ -754,6 +750,22 @@ public class PartitionManager {
   /**
    * Only leader use this interface.
    *
+   * <p>Count the scatter width of the specified DataNode
+   *
+   * @param dataNodeId The specified DataNode
+   * @param type SchemaRegion or DataRegion
+   * @return The schema/data scatter width of the specified DataNode. The scatter width refers to
+   *     the number of other DataNodes in the cluster which have at least one identical schema/data
+   *     replica as the specified DataNode.
+   */
+  public int countDataNodeScatterWidth(int dataNodeId, TConsensusGroupType type) {
+    int clusterNodeCount = getNodeManager().getRegisteredNodeCount();
+    return partitionInfo.countDataNodeScatterWidth(dataNodeId, type, clusterNodeCount);
+  }
+
+  /**
+   * Only leader use this interface.
+   *
    * <p>Get the number of RegionGroups currently owned by the specified Database
    *
    * @param database DatabaseName
@@ -1019,10 +1031,17 @@ public class PartitionManager {
       // Return empty result if Database not specified
       return new GetRegionIdResp(RpcUtils.SUCCESS_STATUS, new ArrayList<>());
     }
-
-    if (req.isSetTimeStamp()) {
-      plan.setTimeSlotId(TimePartitionUtils.getTimePartitionSlot(req.getTimeStamp()));
+    if (req.isSetStartTimeSlot()) {
+      plan.setStartTimeSlotId(req.getStartTimeSlot());
+    } else {
+      plan.setStartTimeSlotId(new TTimePartitionSlot(0));
     }
+    if (req.isSetEndTimeSlot()) {
+      plan.setEndTimeSlotId(req.getEndTimeSlot());
+    } else {
+      plan.setEndTimeSlotId(new TTimePartitionSlot(Long.MAX_VALUE));
+    }
+
     try {
       return (GetRegionIdResp) getConsensusManager().read(plan);
     } catch (ConsensusException e) {
@@ -1376,6 +1395,17 @@ public class PartitionManager {
   }
 
   /**
+   * Get the {@link TConsensusGroupType} of the given integer regionId.
+   *
+   * @param regionId The specified integer regionId
+   * @return {@link Optional#of(Object tConsensusGroupType)} of the given integer regionId, or
+   *     {@link Optional#empty()} if the integer regionId does not match any of the regionGroups.
+   */
+  public Optional<TConsensusGroupType> getRegionType(int regionId) {
+    return partitionInfo.getRegionType(regionId);
+  }
+
+  /**
    * Get the last DataAllotTable of the specified Database.
    *
    * @param database The specified Database
@@ -1403,5 +1433,9 @@ public class PartitionManager {
 
   private ProcedureManager getProcedureManager() {
     return configManager.getProcedureManager();
+  }
+
+  private NodeManager getNodeManager() {
+    return configManager.getNodeManager();
   }
 }

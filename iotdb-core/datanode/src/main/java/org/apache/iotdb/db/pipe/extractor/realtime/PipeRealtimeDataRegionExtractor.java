@@ -20,13 +20,14 @@
 package org.apache.iotdb.db.pipe.extractor.realtime;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
-import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.listener.PipeInsertionDataNodeListener;
-import org.apache.iotdb.db.pipe.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.db.pipe.metric.PipeDataRegionEventCounter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.pipe.api.PipeExtractor;
@@ -38,10 +39,11 @@ import org.apache.iotdb.pipe.api.event.Event;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_KEY;
 
 public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
@@ -57,7 +59,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   // This queue is used to store pending events extracted by the method extract(). The method
   // supply() will poll events from this queue and send them to the next pipe plugin.
   protected final UnboundedBlockingPendingQueue<Event> pendingQueue =
-      new UnboundedBlockingPendingQueue<>();
+      new UnboundedBlockingPendingQueue<>(new PipeDataRegionEventCounter());
 
   protected final AtomicBoolean isClosed = new AtomicBoolean(false);
 
@@ -119,7 +121,9 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   @Override
   public void close() throws Exception {
-    PipeInsertionDataNodeListener.getInstance().stopListenAndAssign(dataRegionId, this);
+    if (Objects.nonNull(dataRegionId)) {
+      PipeInsertionDataNodeListener.getInstance().stopListenAndAssign(dataRegionId, this);
+    }
 
     synchronized (isClosed) {
       clearPendingQueue();

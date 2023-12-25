@@ -33,6 +33,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class SegmentedPage extends SchemaPage implements ISegmentedPage {
 
@@ -67,8 +70,19 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
    *       #deleteSegment} mentioned.
    * </ul>
    */
+  public SegmentedPage(ByteBuffer pageBuffer, AtomicInteger ai, ReadWriteLock rwl) {
+    super(pageBuffer, ai, rwl);
+    segCacheMap = new ConcurrentHashMap<>();
+    segOffsetLst = new ArrayList<>();
+
+    pageBuffer.position(pageBuffer.capacity() - SchemaFileConfig.SEG_OFF_DIG * memberNum);
+    for (int idx = 0; idx < memberNum; idx++) {
+      segOffsetLst.add(ReadWriteIOUtils.readShort(pageBuffer));
+    }
+  }
+
   public SegmentedPage(ByteBuffer pageBuffer) {
-    super(pageBuffer);
+    super(pageBuffer, new AtomicInteger(), new ReentrantReadWriteLock());
     segCacheMap = new ConcurrentHashMap<>();
     segOffsetLst = new ArrayList<>();
 

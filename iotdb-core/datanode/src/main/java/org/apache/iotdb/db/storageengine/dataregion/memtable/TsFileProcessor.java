@@ -1482,14 +1482,14 @@ public class TsFileProcessor {
             }
             ReadOnlyMemChunk memChunk =
                 flushingMemTable.query(
-                    seriesPath, context.getQueryTimeLowerBound(), modsToMemtable);
+                    context, seriesPath, context.getQueryTimeLowerBound(), modsToMemtable);
             if (memChunk != null) {
               readOnlyMemChunks.add(memChunk);
             }
           }
           if (workMemTable != null) {
             ReadOnlyMemChunk memChunk =
-                workMemTable.query(seriesPath, context.getQueryTimeLowerBound(), null);
+                workMemTable.query(context, seriesPath, context.getQueryTimeLowerBound(), null);
             if (memChunk != null) {
               readOnlyMemChunks.add(memChunk);
             }

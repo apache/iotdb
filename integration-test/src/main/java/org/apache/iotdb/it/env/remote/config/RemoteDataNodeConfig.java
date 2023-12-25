@@ -27,4 +27,14 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
   public DataNodeConfig setMetricReporterType(List<String> metricReporterTypes) {
     return this;
   }
+
+  @Override
+  public DataNodeConfig setEnableRestService(boolean enableRestService) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setConnectionTimeoutInMS(int connectionTimeoutInMS) {
+    return this;
+  }
 }

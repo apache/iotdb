@@ -194,12 +194,14 @@ public class Util2 {
   private static ISchemaFetcher getFakeSchemaFetcher() {
     return new ISchemaFetcher() {
       @Override
-      public ISchemaTree fetchSchema(PathPatternTree patternTree, MPPQueryContext context) {
+      public ISchemaTree fetchSchema(
+          PathPatternTree patternTree, boolean withTemplate, MPPQueryContext context) {
         return ANALYSIS.getSchemaTree();
       }
 
       @Override
-      public ISchemaTree fetchSchemaWithTags(PathPatternTree patternTree, MPPQueryContext context) {
+      public ISchemaTree fetchSchemaWithTags(
+          PathPatternTree patternTree, boolean withTemplate, MPPQueryContext context) {
         return ANALYSIS.getSchemaTree();
       }
 

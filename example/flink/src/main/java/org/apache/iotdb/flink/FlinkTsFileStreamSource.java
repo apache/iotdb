@@ -42,7 +42,7 @@ import java.util.stream.Collectors;
 /** The example of reading TsFile via Flink DataStream API. */
 public class FlinkTsFileStreamSource {
 
-  private static Logger logger = LoggerFactory.getLogger(FlinkTsFileStreamSource.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(FlinkTsFileStreamSource.class);
 
   public static void main(String[] args) throws Exception {
     String path = "test.tsfile";
@@ -78,7 +78,7 @@ public class FlinkTsFileStreamSource {
     Iterator<String> result = rowString.executeAndCollect();
     while (result.hasNext()) {
       String next = result.next();
-      logger.info(next);
+      LOGGER.info(next);
     }
   }
 }

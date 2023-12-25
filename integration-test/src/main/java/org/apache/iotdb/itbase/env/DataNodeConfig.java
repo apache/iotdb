@@ -24,4 +24,8 @@ import java.util.List;
 /** This interface is used to handle properties in iotdb-datanode.properties. */
 public interface DataNodeConfig {
   DataNodeConfig setMetricReporterType(List<String> metricReporterTypes);
+
+  DataNodeConfig setEnableRestService(boolean enableRestService);
+
+  DataNodeConfig setConnectionTimeoutInMS(int connectionTimeoutInMS);
 }

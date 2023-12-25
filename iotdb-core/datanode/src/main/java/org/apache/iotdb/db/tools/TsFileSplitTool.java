@@ -59,7 +59,7 @@ import java.util.Set;
 
 public class TsFileSplitTool {
 
-  private static final Logger logger = LoggerFactory.getLogger(TsFileSplitTool.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileSplitTool.class);
 
   private final String filename;
 
@@ -90,7 +90,7 @@ public class TsFileSplitTool {
   public static void main(String[] args) throws IOException {
     checkArgs(args);
     String fileName = args[0];
-    logger.info("Splitting TsFile {} ...", fileName);
+    LOGGER.info("Splitting TsFile {} ...", fileName);
     new TsFileSplitTool(fileName).run();
   }
 
@@ -197,7 +197,7 @@ public class TsFileSplitTool {
                       ((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.CHUNK_HEADER);
               ByteBuffer pageData = reader.readPage(pageHeader, chunkHeader.getCompressionType());
               PageReader pageReader =
-                  new PageReader(pageData, dataType, valueDecoder, defaultTimeDecoder, null);
+                  new PageReader(pageData, dataType, valueDecoder, defaultTimeDecoder);
               BatchData batchData = pageReader.getAllSatisfiedPageData();
 
               while (batchData.hasCurrent()) {

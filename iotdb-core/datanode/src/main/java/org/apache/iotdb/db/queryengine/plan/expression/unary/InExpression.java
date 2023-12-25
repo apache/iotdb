@@ -67,15 +67,16 @@ public class InExpression extends UnaryExpression {
 
   @Override
   protected String getExpressionStringInternal() {
+    String operator = isNotIn ? " NOT IN (" : " IN (";
     StringBuilder stringBuilder = new StringBuilder();
     if (expression instanceof FunctionExpression || expression instanceof LeafOperand) {
-      stringBuilder.append(expression.getExpressionString()).append(" IN (");
+      stringBuilder.append(expression.getExpressionString()).append(operator);
     } else {
       stringBuilder
           .append('(')
           .append(expression.getExpressionString())
           .append(')')
-          .append(" IN (");
+          .append(operator);
     }
     return appendValuesToBuild(stringBuilder).toString();
   }
@@ -96,11 +97,6 @@ public class InExpression extends UnaryExpression {
   @Override
   public ExpressionType getExpressionType() {
     return ExpressionType.IN;
-  }
-
-  @Override
-  protected Expression constructExpression(Expression childExpression) {
-    return new InExpression(childExpression, isNotIn, values);
   }
 
   @Override
@@ -125,13 +121,14 @@ public class InExpression extends UnaryExpression {
 
   @Override
   public String getOutputSymbolInternal() {
+    String operator = isNotIn ? " NOT IN (" : " IN (";
     StringBuilder stringBuilder = new StringBuilder();
     if (expression instanceof FunctionExpression
         || expression instanceof ConstantOperand
         || expression instanceof TimeSeriesOperand) {
-      stringBuilder.append(expression.getOutputSymbol()).append(" IN (");
+      stringBuilder.append(expression.getOutputSymbol()).append(operator);
     } else {
-      stringBuilder.append('(').append(expression.getOutputSymbol()).append(')').append(" IN (");
+      stringBuilder.append('(').append(expression.getOutputSymbol()).append(')').append(operator);
     }
     return appendValuesToBuild(stringBuilder).toString();
   }

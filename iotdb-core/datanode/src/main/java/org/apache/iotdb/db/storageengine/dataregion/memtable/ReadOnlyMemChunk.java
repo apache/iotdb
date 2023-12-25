@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.MemChunkLoader;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -46,6 +47,8 @@ import java.util.Map;
  */
 public class ReadOnlyMemChunk {
 
+  protected final QueryContext context;
+
   private String measurementUid;
 
   private TSDataType dataType;
@@ -56,9 +59,12 @@ public class ReadOnlyMemChunk {
 
   protected TsBlock tsBlock;
 
-  protected ReadOnlyMemChunk() {}
+  protected ReadOnlyMemChunk(QueryContext context) {
+    this.context = context;
+  }
 
   public ReadOnlyMemChunk(
+      QueryContext context,
       String measurementUid,
       TSDataType dataType,
       TSEncoding encoding,
@@ -66,6 +72,7 @@ public class ReadOnlyMemChunk {
       Map<String, String> props,
       List<TimeRange> deletionList)
       throws IOException, QueryProcessException {
+    this.context = context;
     this.measurementUid = measurementUid;
     this.dataType = dataType;
     int floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
@@ -129,7 +136,7 @@ public class ReadOnlyMemChunk {
       }
     }
     statsByType.setEmpty(isEmpty());
-    metaData.setChunkLoader(new MemChunkLoader(this));
+    metaData.setChunkLoader(new MemChunkLoader(context, this));
     metaData.setVersion(Long.MAX_VALUE);
     cachedMetaData = metaData;
   }

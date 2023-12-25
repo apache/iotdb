@@ -35,7 +35,7 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.consensus.exception.RatisUnderRecoveryException;
+import org.apache.iotdb.consensus.exception.RatisReadUnavailableException;
 
 import org.apache.ratis.thirdparty.com.google.common.base.Preconditions;
 import org.apache.ratis.util.FileUtils;
@@ -65,9 +65,11 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 public class TestUtils {
+
   private static final Logger logger = LoggerFactory.getLogger(TestUtils.class);
 
   public static class TestDataSet implements DataSet {
+
     private int number;
 
     public void setNumber(int number) {
@@ -80,6 +82,7 @@ public class TestUtils {
   }
 
   public static class TestRequest implements IConsensusRequest {
+
     private final int cmd;
 
     public TestRequest(ByteBuffer buffer) {
@@ -113,6 +116,7 @@ public class TestUtils {
   }
 
   public static class IntegerCounter implements IStateMachine, IStateMachine.EventApi {
+
     protected AtomicInteger integer;
     private final Logger logger = LoggerFactory.getLogger(IntegerCounter.class);
     private List<Peer> configuration;
@@ -214,6 +218,7 @@ public class TestUtils {
 
   /** A Mini Raft CLuster Wrapper for Test Env. */
   static class MiniCluster {
+
     private final ConsensusGroupId gid;
     private final int replicas;
     private final List<Peer> peers;
@@ -341,12 +346,21 @@ public class TestUtils {
       return group;
     }
 
-    void waitUntilActiveLeader() throws InterruptedException {
+    void waitUntilActiveLeaderElected() throws InterruptedException {
       JavaUtils.attemptUntilTrue(
-          () -> getServer(0).getLeader(gid) != null,
-          100,
+          () -> servers.stream().anyMatch(server -> server.isLeader(gid)),
+          600,
           TimeDuration.valueOf(100, TimeUnit.MILLISECONDS),
-          "wait leader",
+          "wait leader elected",
+          null);
+    }
+
+    void waitUntilActiveLeaderElectedAndReady() throws InterruptedException {
+      JavaUtils.attemptUntilTrue(
+          () -> servers.stream().anyMatch(server -> server.isLeaderReady(gid)),
+          600,
+          TimeDuration.valueOf(100, TimeUnit.MILLISECONDS),
+          "wait leader elected and become ready",
           null);
     }
 
@@ -395,7 +409,7 @@ public class TestUtils {
     int mustRead(int serverIndex) throws InterruptedException {
       final ByteBufferConsensusRequest readRequest = TestUtils.TestRequest.getRequest();
 
-      waitUntilActiveLeader();
+      waitUntilActiveLeaderElectedAndReady();
 
       final TimeDuration maxTryDuration = TimeDuration.valueOf(3, TimeUnit.MINUTES);
       final TimeDuration waitDuration = TimeDuration.valueOf(1000, TimeUnit.MILLISECONDS);
@@ -406,7 +420,7 @@ public class TestUtils {
         try {
           readResp = readThrough(serverIndex);
           break;
-        } catch (RatisUnderRecoveryException e) {
+        } catch (RatisReadUnavailableException e) {
           logger.warn("ratis is redoing raft log, shall wait some time: ", e);
           waitDuration.sleep();
         } catch (ConsensusException e) {
@@ -430,6 +444,7 @@ public class TestUtils {
   }
 
   static class MiniClusterFactory {
+
     private final int replicas = 3;
     private ConsensusGroupId gid = new DataRegionId(1);
     private final Function<Integer, File> peerStorageProvider =

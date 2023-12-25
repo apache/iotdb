@@ -40,7 +40,7 @@ import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 
 public class SSLClient {
-  private static final Logger logger = LoggerFactory.getLogger(SSLClient.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SSLClient.class);
   private static SSLConnectionSocketFactory sslConnectionSocketFactory = null;
   private static PoolingHttpClientConnectionManager poolingHttpClientConnectionManager = null;
 
@@ -84,7 +84,7 @@ public class SSLClient {
       poolingHttpClientConnectionManager = new PoolingHttpClientConnectionManager(registryBuilder);
       poolingHttpClientConnectionManager.setMaxTotal(10);
     } catch (NoSuchAlgorithmException | KeyStoreException | KeyManagementException e) {
-      logger.error("Build error", e);
+      LOGGER.error("Build error", e);
     }
   }
 

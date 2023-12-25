@@ -59,7 +59,7 @@ import org.apache.iotdb.confignode.manager.load.cache.node.ConfigNodeHeartbeatCa
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
-import org.apache.iotdb.confignode.manager.pipe.PipeManager;
+import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
@@ -426,6 +426,15 @@ public class NodeManager {
       response.setStatus(res);
       return response;
     }
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * @return The number of registered Nodes
+   */
+  public int getRegisteredNodeCount() {
+    return nodeInfo.getRegisteredNodeCount();
   }
 
   /**

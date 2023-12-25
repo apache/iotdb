@@ -59,7 +59,7 @@ ddlStatement
     // CQ
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
-    | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes
+    | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes | showClusterId
     | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList | migrateRegion
     // Quota
     | setSpaceQuota | showSpaceQuota | setThrottleQuota | showThrottleQuota
@@ -210,7 +210,11 @@ countNodes
 
 // ---- Timeseries Where Clause
 devicesWhereClause
-    : WHERE deviceContainsExpression
+    : WHERE (deviceContainsExpression | templateEqualExpression)
+    ;
+
+templateEqualExpression
+    : TEMPLATE (OPERATOR_SEQ | OPERATOR_NEQ)  templateName=identifier
     ;
 
 deviceContainsExpression
@@ -475,11 +479,16 @@ showConfigNodes
     : SHOW CONFIGNODES
     ;
 
+// ---- Show Cluster Id
+showClusterId
+    : SHOW CLUSTERID
+    ;
+
 // ---- Get Region Id
 getRegionId
     : SHOW (DATA|SCHEMA) REGIONID WHERE (DATABASE operator_eq database=prefixPath
         |DEVICE operator_eq device=prefixPath)
-        (operator_and (TIMESTAMP|TIME) operator_eq time = timeValue)?
+        (operator_and timeRangeExpression = expression )?
     ;
 
 // ---- Get Time Slot List

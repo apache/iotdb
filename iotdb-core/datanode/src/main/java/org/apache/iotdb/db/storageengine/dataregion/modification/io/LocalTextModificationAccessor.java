@@ -63,8 +63,6 @@ public class LocalTextModificationAccessor
    *
    * @param filePath the path of the file that is used for storing modifications.
    */
-
-  // 针对每个路径都有一个 accessor
   public LocalTextModificationAccessor(String filePath) {
     this.filePath = filePath;
   }
@@ -248,7 +246,6 @@ public class LocalTextModificationAccessor
   }
 
   private static String encodeDeletion(Deletion del) {
-    // deletion, path , fileoffest,
     return del.getType()
         + SEPARATOR
         + del.getPathString()

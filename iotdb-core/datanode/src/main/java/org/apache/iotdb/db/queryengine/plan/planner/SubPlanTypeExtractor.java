@@ -46,12 +46,9 @@ public class SubPlanTypeExtractor {
   private SubPlanTypeExtractor() {}
 
   public static TypeProvider extractor(PlanNode root, TypeProvider allTypes) {
+
     TypeProvider typeProvider =
-        new TypeProvider(
-            allTypes.getMeasurementList(),
-            allTypes.getSchemaList(),
-            allTypes.getDataTypes(),
-            allTypes.getAllSensors());
+        new TypeProvider(allTypes.getTypeMap(), allTypes.getTemplatedInfo());
     root.accept(new Visitor(typeProvider, allTypes), null);
     return typeProvider;
   }
@@ -164,7 +161,7 @@ public class SubPlanTypeExtractor {
 
     @Override
     public Void visitSingleDeviceView(SingleDeviceViewNode node, Void context) {
-      if (typeProvider.getMeasurementList() != null) {
+      if (typeProvider.getTemplatedInfo() != null) {
         return null;
       }
       return visitPlan(node, context);

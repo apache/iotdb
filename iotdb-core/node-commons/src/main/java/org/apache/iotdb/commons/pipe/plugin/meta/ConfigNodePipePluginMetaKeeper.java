@@ -33,7 +33,7 @@ public class ConfigNodePipePluginMetaKeeper extends PipePluginMetaKeeper {
   protected final Map<String, Integer> jarNameToReferenceCountMap;
 
   public ConfigNodePipePluginMetaKeeper() {
-    loadBuiltInPlugins();
+    super();
 
     jarNameToMd5Map = new HashMap<>();
     jarNameToReferenceCountMap = new HashMap<>();

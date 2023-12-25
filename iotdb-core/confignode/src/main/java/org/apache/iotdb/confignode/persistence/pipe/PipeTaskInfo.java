@@ -176,12 +176,6 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
 
     final PipeStatus pipeStatus = getPipeStatus(pipeName);
-    if (pipeStatus == PipeStatus.RUNNING) {
-      final String exceptionMessage =
-          String.format("Failed to start pipe %s, the pipe is already running", pipeName);
-      LOGGER.info(exceptionMessage);
-      throw new PipeException(exceptionMessage);
-    }
     if (pipeStatus == PipeStatus.DROPPED) {
       final String exceptionMessage =
           String.format("Failed to start pipe %s, the pipe is already dropped", pipeName);
@@ -208,12 +202,6 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
 
     final PipeStatus pipeStatus = getPipeStatus(pipeName);
-    if (pipeStatus == PipeStatus.STOPPED) {
-      final String exceptionMessage =
-          String.format("Failed to stop pipe %s, the pipe is already stop", pipeName);
-      LOGGER.info(exceptionMessage);
-      throw new PipeException(exceptionMessage);
-    }
     if (pipeStatus == PipeStatus.DROPPED) {
       final String exceptionMessage =
           String.format("Failed to stop pipe %s, the pipe is already dropped", pipeName);
@@ -256,6 +244,26 @@ public class PipeTaskInfo implements SnapshotProcessor {
     acquireReadLock();
     try {
       return pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta().getStatus().get();
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public boolean isPipeRunning(String pipeName) {
+    acquireReadLock();
+    try {
+      return pipeMetaKeeper.containsPipeMeta(pipeName)
+          && PipeStatus.RUNNING.equals(getPipeStatus(pipeName));
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public boolean isPipeStopped(String pipeName) {
+    acquireReadLock();
+    try {
+      return pipeMetaKeeper.containsPipeMeta(pipeName)
+          && PipeStatus.STOPPED.equals(getPipeStatus(pipeName));
     } finally {
       releaseReadLock();
     }
@@ -721,5 +729,23 @@ public class PipeTaskInfo implements SnapshotProcessor {
   @Override
   public String toString() {
     return pipeMetaKeeper.toString();
+  }
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  public long runningPipeCount() {
+    return pipeMetaKeeper.runningPipeCount();
+  }
+
+  public long droppedPipeCount() {
+    return pipeMetaKeeper.droppedPipeCount();
+  }
+
+  public long userStoppedPipeCount() {
+    return pipeMetaKeeper.userStoppedPipeCount();
+  }
+
+  public long exceptionStoppedPipeCount() {
+    return pipeMetaKeeper.exceptionStoppedPipeCount();
   }
 }

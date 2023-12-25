@@ -29,12 +29,16 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.openjdk.jol.info.ClassLayout;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
+
+import static org.apache.iotdb.tsfile.utils.Preconditions.checkArgument;
 
 /** Metadata of one chunk. */
 public class ChunkMetadata implements IChunkMetadata {
@@ -194,6 +198,25 @@ public class ChunkMetadata implements IChunkMetadata {
     return chunkMetaData;
   }
 
+  public static ChunkMetadata deserializeFrom(
+      InputStream inputStream, TimeseriesMetadata timeseriesMetadata) throws IOException {
+    ChunkMetadata chunkMetaData = new ChunkMetadata();
+
+    chunkMetaData.measurementUid = timeseriesMetadata.getMeasurementId();
+    chunkMetaData.tsDataType = timeseriesMetadata.getTsDataType();
+    chunkMetaData.offsetOfChunkHeader = ReadWriteIOUtils.readLong(inputStream);
+    // if the TimeSeriesMetadataType is not 0, it means it has more than one chunk
+    // and each chunk's metadata has its own statistics
+    if ((timeseriesMetadata.getTimeSeriesMetadataType() & 0x3F) != 0) {
+      chunkMetaData.statistics = Statistics.deserialize(inputStream, chunkMetaData.tsDataType);
+    } else {
+      // if the TimeSeriesMetadataType is 0, it means it has only one chunk
+      // and that chunk's metadata has no statistic
+      chunkMetaData.statistics = timeseriesMetadata.getStatistics();
+    }
+    return chunkMetaData;
+  }
+
   public static ChunkMetadata deserializeFrom(ByteBuffer buffer, TSDataType dataType) {
     ChunkMetadata chunkMetadata = new ChunkMetadata();
     chunkMetadata.tsDataType = dataType;
@@ -343,5 +366,24 @@ public class ChunkMetadata implements IChunkMetadata {
         isSeq,
         isClosed,
         mask);
+  }
+
+  @Override
+  public Statistics<? extends Serializable> getTimeStatistics() {
+    return getStatistics();
+  }
+
+  @Override
+  public Optional<Statistics<? extends Serializable>> getMeasurementStatistics(
+      int measurementIndex) {
+    checkArgument(
+        measurementIndex == 0,
+        "Non-aligned chunk only has one measurement, but measurementIndex is " + measurementIndex);
+    return Optional.ofNullable(statistics);
+  }
+
+  @Override
+  public boolean hasNullValue(int measurementIndex) {
+    return false;
   }
 }

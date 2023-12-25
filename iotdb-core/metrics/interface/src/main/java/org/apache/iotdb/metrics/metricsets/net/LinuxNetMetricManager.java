@@ -44,7 +44,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class LinuxNetMetricManager implements INetMetricManager {
-  private final Logger log = LoggerFactory.getLogger(LinuxNetMetricManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(LinuxNetMetricManager.class);
 
   @SuppressWarnings("squid:S1075")
   private static final String IFACE_ID_PATH = "/sys/class/net/";
@@ -136,7 +136,7 @@ public class LinuxNetMetricManager implements INetMetricManager {
     File ifaceIdFolder = new File(IFACE_ID_PATH);
     if (!ifaceIdFolder.exists()) {
       ifaceSet = Collections.emptySet();
-      log.warn("Cannot find {}", IFACE_ID_PATH);
+      LOGGER.warn("Cannot find {}", IFACE_ID_PATH);
       return;
     }
     ifaceSet =
@@ -147,7 +147,7 @@ public class LinuxNetMetricManager implements INetMetricManager {
   private void collectNetStatusIndex() {
     File netStatusFile = new File(NET_STATUS_PATH);
     if (!netStatusFile.exists()) {
-      log.warn("Cannot find {}", NET_STATUS_PATH);
+      LOGGER.warn("Cannot find {}", NET_STATUS_PATH);
       return;
     }
     try (FileInputStream inputStream = new FileInputStream(netStatusFile)) {
@@ -173,7 +173,7 @@ public class LinuxNetMetricManager implements INetMetricManager {
         }
       }
     } catch (IOException e) {
-      log.error("Meets exception when reading {}", NET_STATUS_PATH, e);
+      LOGGER.error("Meets exception when reading {}", NET_STATUS_PATH, e);
     }
   }
 
@@ -213,7 +213,7 @@ public class LinuxNetMetricManager implements INetMetricManager {
         transmittedPacketsMapForIface.put(iface, transmittedPackets);
       }
     } catch (IOException e) {
-      log.error("Meets error when reading {} for net status", NET_STATUS_PATH, e);
+      LOGGER.error("Meets error when reading {} for net status", NET_STATUS_PATH, e);
     }
 
     if (MetricLevel.higherOrEqual(MetricLevel.NORMAL, METRIC_CONFIG.getMetricLevel())) {
@@ -230,7 +230,7 @@ public class LinuxNetMetricManager implements INetMetricManager {
         }
         this.connectionNum = Integer.parseInt(result.toString().trim());
       } catch (IOException e) {
-        log.error("Failed to get socket num", e);
+        LOGGER.error("Failed to get socket num", e);
       }
     }
   }

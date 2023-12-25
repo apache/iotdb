@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
-import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
@@ -138,7 +137,10 @@ public class MTreeBelowSGCachedImpl {
       throws MetadataException, IOException {
     this.tagGetter = tagGetter;
     this.regionStatistics = regionStatistics;
-    store = new CachedMTreeStore(storageGroupPath, schemaRegionId, regionStatistics, flushCallback);
+    store =
+        PBTreeFactory.getInstance()
+            .createNewCachedMTreeStore(
+                storageGroupPath, schemaRegionId, regionStatistics, flushCallback);
     this.storageGroupMNode = store.getRoot();
     this.storageGroupMNode.setParent(storageGroupMNode.getParent());
     this.rootNode = store.generatePrefix(storageGroupPath);
@@ -209,13 +211,6 @@ public class MTreeBelowSGCachedImpl {
     storageGroupMNode = null;
   }
 
-  protected void replaceStorageGroupMNode(IDatabaseMNode<ICachedMNode> newMNode) {
-    this.storageGroupMNode
-        .getParent()
-        .replaceChild(this.storageGroupMNode.getName(), newMNode.getAsMNode());
-    this.storageGroupMNode = newMNode.getAsMNode();
-  }
-
   public boolean createSnapshot(File snapshotDir) {
     return store.createSnapshot(snapshotDir);
   }
@@ -232,8 +227,9 @@ public class MTreeBelowSGCachedImpl {
       throws IOException, MetadataException {
     return new MTreeBelowSGCachedImpl(
         new PartialPath(storageGroupFullPath),
-        CachedMTreeStore.loadFromSnapshot(
-            snapshotDir, storageGroupFullPath, schemaRegionId, regionStatistics, flushCallback),
+        PBTreeFactory.getInstance()
+            .createCachedMTreeStoreFromSnapshot(
+                snapshotDir, storageGroupFullPath, schemaRegionId, regionStatistics, flushCallback),
         measurementProcess,
         deviceProcess,
         tagGetter,
@@ -317,9 +313,6 @@ public class MTreeBelowSGCachedImpl {
             entityMNode = device.getAsDeviceMNode();
           } else {
             entityMNode = store.setToEntity(device);
-            if (entityMNode.isDatabase()) {
-              replaceStorageGroupMNode(entityMNode.getAsDatabaseMNode());
-            }
             device = entityMNode.getAsMNode();
           }
 
@@ -407,9 +400,6 @@ public class MTreeBelowSGCachedImpl {
           } else {
             entityMNode = store.setToEntity(device);
             entityMNode.setAligned(true);
-            if (entityMNode.isDatabase()) {
-              replaceStorageGroupMNode(entityMNode.getAsDatabaseMNode());
-            }
             device = entityMNode.getAsMNode();
           }
 
@@ -601,9 +591,11 @@ public class MTreeBelowSGCachedImpl {
     IMeasurementMNode<ICachedMNode> deletedNode = getMeasurementMNode(path);
     ICachedMNode parent = deletedNode.getParent();
     // delete the last node of path
-    store.deleteChild(parent, path.getMeasurement());
-    if (deletedNode.getAlias() != null) {
-      parent.getAsDeviceMNode().deleteAliasChild(deletedNode.getAlias());
+    synchronized (this) {
+      store.deleteChild(parent, path.getMeasurement());
+      if (deletedNode.getAlias() != null) {
+        parent.getAsDeviceMNode().deleteAliasChild(deletedNode.getAlias());
+      }
     }
     deleteAndUnpinEmptyInternalMNode(parent.getAsDeviceMNode());
     return deletedNode;
@@ -619,47 +611,50 @@ public class MTreeBelowSGCachedImpl {
       throws MetadataException {
     ICachedMNode curNode = entityMNode.getAsMNode();
     if (!entityMNode.isUseTemplate()) {
-      boolean hasMeasurement = false;
-      boolean hasNonViewMeasurement = false;
-      ICachedMNode child;
-      IMNodeIterator<ICachedMNode> iterator = store.getChildrenIterator(curNode);
-      try {
-        while (iterator.hasNext()) {
-          child = iterator.next();
-          unPinMNode(child);
-          if (child.isMeasurement()) {
-            hasMeasurement = true;
-            if (!child.getAsMeasurementMNode().isLogicalView()) {
-              hasNonViewMeasurement = true;
-              break;
+      synchronized (this) {
+        boolean hasMeasurement = false;
+        boolean hasNonViewMeasurement = false;
+        ICachedMNode child;
+        IMNodeIterator<ICachedMNode> iterator = store.getChildrenIterator(curNode);
+        try {
+          while (iterator.hasNext()) {
+            child = iterator.next();
+            unPinMNode(child);
+            if (child.isMeasurement()) {
+              hasMeasurement = true;
+              if (!child.getAsMeasurementMNode().isLogicalView()) {
+                hasNonViewMeasurement = true;
+                break;
+              }
             }
           }
+        } finally {
+          iterator.close();
         }
-      } finally {
-        iterator.close();
-      }
 
-      if (!hasMeasurement) {
-        synchronized (this) {
+        if (!hasMeasurement) {
           curNode = store.setToInternal(entityMNode);
-          if (curNode.isDatabase()) {
-            replaceStorageGroupMNode(curNode.getAsDatabaseMNode());
-          }
+        } else if (!hasNonViewMeasurement) {
+          // has some measurement but they are all logical view
+          store.updateMNode(entityMNode.getAsMNode(), o -> o.getAsDeviceMNode().setAligned(null));
         }
-      } else if (!hasNonViewMeasurement) {
-        // has some measurement but they are all logical view
-        store.updateMNode(entityMNode.getAsMNode(), o -> o.getAsDeviceMNode().setAligned(null));
       }
     }
 
     // delete all empty ancestors except database and MeasurementMNode
-    while (isEmptyInternalMNode(curNode)) {
+    while (true) {
       // if current database has no time series, return the database name
       if (curNode.isDatabase()) {
         return;
       }
-      store.deleteChild(curNode.getParent(), curNode.getName());
-      curNode = curNode.getParent();
+
+      synchronized (this) {
+        if (!isEmptyInternalMNode(curNode)) {
+          break;
+        }
+        store.deleteChild(curNode.getParent(), curNode.getName());
+        curNode = curNode.getParent();
+      }
     }
     unPinMNode(curNode);
   }
@@ -812,7 +807,10 @@ public class MTreeBelowSGCachedImpl {
 
   // region Interfaces and Implementation for metadata info Query
   public ClusterSchemaTree fetchSchema(
-      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
+      PartialPath pathPattern,
+      Map<Integer, Template> templateMap,
+      boolean withTags,
+      boolean withTemplate)
       throws MetadataException {
     ClusterSchemaTree schemaTree = new ClusterSchemaTree();
     try (MeasurementCollector<Void, ICachedMNode> collector =
@@ -822,7 +820,7 @@ public class MTreeBelowSGCachedImpl {
             IDeviceMNode<ICachedMNode> deviceMNode =
                 getParentOfNextMatchedNode().getAsDeviceMNode();
             int templateId = deviceMNode.getSchemaTemplateIdWithState();
-            if (templateId >= 0) {
+            if (withTemplate && templateId >= 0) {
               schemaTree.appendTemplateDevice(
                   deviceMNode.getPartialPath(), deviceMNode.isAligned(), templateId, null);
               skipTemplateChildren(deviceMNode);
@@ -848,7 +846,10 @@ public class MTreeBelowSGCachedImpl {
   }
 
   public ClusterSchemaTree fetchSchemaWithoutWildcard(
-      PathPatternTree patternTree, Map<Integer, Template> templateMap, boolean withTags)
+      PathPatternTree patternTree,
+      Map<Integer, Template> templateMap,
+      boolean withTags,
+      boolean withTemplate)
       throws MetadataException {
     ClusterSchemaTree schemaTree = new ClusterSchemaTree();
     try (MeasurementCollector<Void, ICachedMNode> collector =
@@ -858,7 +859,7 @@ public class MTreeBelowSGCachedImpl {
             IDeviceMNode<ICachedMNode> deviceMNode =
                 getParentOfNextMatchedNode().getAsDeviceMNode();
             int templateId = deviceMNode.getSchemaTemplateIdWithState();
-            if (templateId >= 0) {
+            if (withTemplate && templateId >= 0) {
               schemaTree.appendTemplateDevice(
                   deviceMNode.getPartialPath(), deviceMNode.isAligned(), templateId, null);
               skipTemplateChildren(deviceMNode);
@@ -964,9 +965,6 @@ public class MTreeBelowSGCachedImpl {
             entityMNode = device.getAsDeviceMNode();
           } else {
             entityMNode = store.setToEntity(device);
-            if (entityMNode.isDatabase()) {
-              replaceStorageGroupMNode(entityMNode.getAsDatabaseMNode());
-            }
             // this parent has no measurement before. The leafName is his first child who is a
             // logical
             // view.
@@ -1089,9 +1087,6 @@ public class MTreeBelowSGCachedImpl {
           entityMNode = cur.getAsDeviceMNode();
         } else {
           entityMNode = store.setToEntity(cur);
-          if (entityMNode.isDatabase()) {
-            replaceStorageGroupMNode(entityMNode.getAsDatabaseMNode());
-          }
         }
 
         if (entityMNode.isUseTemplate()) {
@@ -1138,9 +1133,6 @@ public class MTreeBelowSGCachedImpl {
         entityMNode = cur.getAsDeviceMNode();
       } else {
         entityMNode = store.setToEntity(cur);
-        if (entityMNode.isDatabase()) {
-          replaceStorageGroupMNode(entityMNode.getAsDatabaseMNode());
-        }
       }
 
       store.updateMNode(
@@ -1287,7 +1279,8 @@ public class MTreeBelowSGCachedImpl {
 
           protected IDeviceSchemaInfo collectEntity(IDeviceMNode<ICachedMNode> node) {
             PartialPath device = getPartialPathFromRootToNode(node.getAsMNode());
-            return new ShowDevicesResult(device.getFullPath(), node.isAlignedNullable());
+            return new ShowDevicesResult(
+                device.getFullPath(), node.isAlignedNullable(), node.getSchemaTemplateId());
           }
         };
     if (showDevicesPlan.usingSchemaTemplate()) {
@@ -1432,7 +1425,7 @@ public class MTreeBelowSGCachedImpl {
 
           protected INodeSchemaInfo collectMNode(ICachedMNode node) {
             return new ShowNodesResult(
-                getPartialPathFromRootToNode(node).getFullPath(), node.getMNodeType(false));
+                getPartialPathFromRootToNode(node).getFullPath(), node.getMNodeType());
           }
         };
     collector.setTargetLevel(showNodesPlan.getLevel());

@@ -40,6 +40,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.apache.commons.lang3.StringUtils;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -70,6 +71,44 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
 
   public SchemaRegionBasicTest(SchemaRegionTestParams testParams) {
     super(testParams);
+  }
+
+  @Test
+  @Ignore
+  public void testFetchSchemaPerfomance() throws Exception {
+    System.out.println(testParams.getTestModeName());
+    int deviceNum = 1000;
+    int measurementNum = 40;
+    ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
+    for (int i = 0; i < deviceNum; i++) {
+      for (int j = 0; j < measurementNum; j++) {
+        schemaRegion.createTimeseries(
+            SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
+                new PartialPath("root.sg.d" + i + ".s" + j),
+                TSDataType.BOOLEAN,
+                TSEncoding.PLAIN,
+                CompressionType.SNAPPY,
+                null,
+                null,
+                null,
+                null),
+            -1);
+      }
+    }
+    PathPatternTree patternTree = new PathPatternTree();
+    for (int i = 0; i < deviceNum; i++) {
+      for (int j = 0; j < measurementNum; j++) {
+        patternTree.appendFullPath(new PartialPath("root.sg.d" + i + ".s" + j));
+      }
+    }
+    patternTree.constructTree();
+    schemaRegion.fetchSchema(patternTree, Collections.EMPTY_MAP, false, true);
+    long startTime;
+    startTime = System.currentTimeMillis();
+    for (int i = 0; i < 10; i++) {
+      schemaRegion.fetchSchema(patternTree, Collections.EMPTY_MAP, false, true);
+    }
+    System.out.println("cost time: " + (System.currentTimeMillis() - startTime));
   }
 
   @Test
@@ -112,7 +151,8 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     patternTree.appendPathPattern(new PartialPath("root.sg.wf01.wt01.*"));
     patternTree.constructTree();
     ;
-    ClusterSchemaTree schemas = schemaRegion.fetchSchema(patternTree, Collections.EMPTY_MAP, true);
+    ClusterSchemaTree schemas =
+        schemaRegion.fetchSchema(patternTree, Collections.EMPTY_MAP, true, true);
     List<MeasurementPath> measurementPaths =
         schemas.searchMeasurementPaths(new PartialPath("root.sg.wf01.wt01.*")).left;
     Assert.assertEquals(measurementPaths.size(), 2);
@@ -141,7 +181,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     patternTree = new PathPatternTree();
     patternTree.appendPathPattern(new PartialPath("root.sg.wf01.wt01.temp"));
     patternTree.constructTree();
-    schemas = schemaRegion.fetchSchema(patternTree, Collections.EMPTY_MAP, false);
+    schemas = schemaRegion.fetchSchema(patternTree, Collections.EMPTY_MAP, false, true);
     measurementPaths =
         schemas.searchMeasurementPaths(new PartialPath("root.sg.wf01.wt01.temp")).left;
     Assert.assertEquals(measurementPaths.size(), 1);
@@ -327,7 +367,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     schemaRegion.deleteTimeseriesInBlackList(patternTree);
     List<MeasurementPath> schemas =
         schemaRegion
-            .fetchSchema(ALL_MATCH_SCOPE, Collections.EMPTY_MAP, false)
+            .fetchSchema(ALL_MATCH_SCOPE, Collections.EMPTY_MAP, false, true)
             .searchMeasurementPaths(ALL_MATCH_PATTERN)
             .left;
     Assert.assertEquals(1, schemas.size());
@@ -639,29 +679,29 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
 
     // CASE 02. Query an existing device.
     Assert.assertEquals(
-        Collections.singletonList(new ShowDevicesResult("root.laptop.d1", false)),
+        Collections.singletonList(new ShowDevicesResult("root.laptop.d1", false, -1)),
         SchemaRegionTestUtil.getMatchedDevices(schemaRegion, new PartialPath("root.laptop.d1")));
     Assert.assertEquals(
-        Collections.singletonList(new ShowDevicesResult("root.laptop.d2", false)),
+        Collections.singletonList(new ShowDevicesResult("root.laptop.d2", false, -1)),
         SchemaRegionTestUtil.getMatchedDevices(schemaRegion, new PartialPath("root.laptop.d2")));
 
     // CASE 03. Query an existing device, which has a sub device
     Assert.assertEquals(
-        Collections.singletonList(new ShowDevicesResult("root.laptop", false)),
+        Collections.singletonList(new ShowDevicesResult("root.laptop", false, -1)),
         SchemaRegionTestUtil.getMatchedDevices(schemaRegion, new PartialPath("root.laptop")));
 
     // CASE 04. Query devices using '*'
     Assert.assertEquals(
-        Collections.singletonList(new ShowDevicesResult("root.laptop", false)),
+        Collections.singletonList(new ShowDevicesResult("root.laptop", false, -1)),
         SchemaRegionTestUtil.getMatchedDevices(schemaRegion, new PartialPath("root.*")));
 
     // CASE 05. Query all devices using 'root.**'
     List<IDeviceSchemaInfo> expectedList =
         Arrays.asList(
-            new ShowDevicesResult("root.laptop", false),
-            new ShowDevicesResult("root.laptop.d1", false),
-            new ShowDevicesResult("root.laptop.d2", false),
-            new ShowDevicesResult("root.laptop.d1.s2", false));
+            new ShowDevicesResult("root.laptop", false, -1),
+            new ShowDevicesResult("root.laptop.d1", false, -1),
+            new ShowDevicesResult("root.laptop.d2", false, -1),
+            new ShowDevicesResult("root.laptop.d1.s2", false, -1));
     List<IDeviceSchemaInfo> actualResult =
         SchemaRegionTestUtil.getMatchedDevices(schemaRegion, new PartialPath("root.**"));
     // Compare hash sets because the order does not matter.
@@ -672,8 +712,8 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     // CASE 06. show devices root.**.d*
     expectedList =
         Arrays.asList(
-            new ShowDevicesResult("root.laptop.d1", false),
-            new ShowDevicesResult("root.laptop.d2", false));
+            new ShowDevicesResult("root.laptop.d1", false, -1),
+            new ShowDevicesResult("root.laptop.d2", false, -1));
     actualResult =
         SchemaRegionTestUtil.getMatchedDevices(schemaRegion, new PartialPath("root.**.d*"));
     // Compare hash sets because the order does not matter.
@@ -704,10 +744,10 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     // CASE 11. show devices root.** where device contains 'laptop'
     expectedList =
         Arrays.asList(
-            new ShowDevicesResult("root.laptop", false),
-            new ShowDevicesResult("root.laptop.d1", false),
-            new ShowDevicesResult("root.laptop.d1.s2", false),
-            new ShowDevicesResult("root.laptop.d2", false));
+            new ShowDevicesResult("root.laptop", false, -1),
+            new ShowDevicesResult("root.laptop.d1", false, -1),
+            new ShowDevicesResult("root.laptop.d1.s2", false, -1),
+            new ShowDevicesResult("root.laptop.d2", false, -1));
     actualResult =
         SchemaRegionTestUtil.getMatchedDevices(
             schemaRegion,
@@ -722,8 +762,8 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     // CASE 11. show devices root.** where device contains 'laptop.d' limit 2 offset 0
     expectedList =
         Arrays.asList(
-            new ShowDevicesResult("root.laptop.d1", false),
-            new ShowDevicesResult("root.laptop.d1.s2", false));
+            new ShowDevicesResult("root.laptop.d1", false, -1),
+            new ShowDevicesResult("root.laptop.d1.s2", false, -1));
     actualResult =
         SchemaRegionTestUtil.getMatchedDevices(
             schemaRegion,
@@ -928,9 +968,9 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
 
     List<IDeviceSchemaInfo> expectedList =
         Arrays.asList(
-            new ShowDevicesResult("root.test.d1", false),
-            new ShowDevicesResult("root.test.dac.device1", false),
-            new ShowDevicesResult("root.test.dac.device1.d1", false));
+            new ShowDevicesResult("root.test.d1", false, -1),
+            new ShowDevicesResult("root.test.dac.device1", false, -1),
+            new ShowDevicesResult("root.test.dac.device1.d1", false, -1));
     List<IDeviceSchemaInfo> actualResult =
         SchemaRegionTestUtil.getMatchedDevices(schemaRegion, new PartialPath("root.**.d*"));
     // Compare hash sets because the order does not matter.
@@ -968,8 +1008,8 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     // case1: show devices root.**.*b*.*
     List<IDeviceSchemaInfo> expectedList =
         Arrays.asList(
-            new ShowDevicesResult("root.test.abc57.bcde22.def89", false),
-            new ShowDevicesResult("root.test.abc57.bcd22.def89", false));
+            new ShowDevicesResult("root.test.abc57.bcde22.def89", false, -1),
+            new ShowDevicesResult("root.test.abc57.bcd22.def89", false, -1));
     List<IDeviceSchemaInfo> actualResult =
         SchemaRegionTestUtil.getMatchedDevices(schemaRegion, new PartialPath("root.**.*b*.*"));
     // Compare hash sets because the order does not matter.

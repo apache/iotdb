@@ -27,8 +27,10 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.progress.assigner.SimpleConsensusProgressIndexAssigner;
 import org.apache.iotdb.db.pipe.resource.PipeHardlinkFileDirStartupCleaner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.service.ResourcesInformationHolder;
@@ -133,5 +135,26 @@ public class PipeRuntimeAgent implements IService {
     if (pipeRuntimeException instanceof PipeRuntimeCriticalException) {
       PipeAgent.task().stopAllPipesWithCriticalException();
     }
+  }
+
+  /////////////////////////// Periodical Job Executor ///////////////////////////
+
+  public void registerPeriodicalJob(String id, Runnable periodicalJob, long intervalInSeconds) {
+    pipePeriodicalJobExecutor.register(id, periodicalJob, intervalInSeconds);
+  }
+
+  @TestOnly
+  public void startPeriodicalJobExecutor() {
+    pipePeriodicalJobExecutor.start();
+  }
+
+  @TestOnly
+  public void stopPeriodicalJobExecutor() {
+    pipePeriodicalJobExecutor.stop();
+  }
+
+  @TestOnly
+  public void clearPeriodicalJobExecutor() {
+    pipePeriodicalJobExecutor.clear();
   }
 }

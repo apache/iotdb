@@ -56,12 +56,12 @@ public class FileSeriesReader extends AbstractFileSeriesReader {
       for (IChunkMetadata metadata : alignedChunkMetadata.getValueChunkMetadataList()) {
         valueChunkList.add(chunkLoader.loadChunk((ChunkMetadata) metadata));
       }
-      this.chunkReader = new AlignedChunkReader(timeChunk, valueChunkList, filter, false);
+      this.chunkReader = new AlignedChunkReader(timeChunk, valueChunkList, filter);
     }
   }
 
   @Override
-  protected boolean chunkSatisfied(IChunkMetadata chunkMetaData) {
-    return filter == null || filter.satisfy(chunkMetaData.getStatistics());
+  protected boolean chunkCanSkip(IChunkMetadata chunkMetaData) {
+    return filter != null && filter.canSkip(chunkMetaData);
   }
 }
