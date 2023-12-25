@@ -51,6 +51,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.assertNonQueryTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
@@ -63,6 +64,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.grantUserSystemPrivileges;
 public class IOTDBLoadTsFileIT {
   private static final Logger LOGGER = LoggerFactory.getLogger(IOTDBLoadTsFileIT.class);
   private static final long PARTITION_INTERVAL = 10 * 1000L;
+  private static final int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(300);
 
   private File tmpDir;
 
@@ -70,6 +72,10 @@ public class IOTDBLoadTsFileIT {
   public void setUp() throws Exception {
     tmpDir = new File(Files.createTempDirectory("load").toUri());
     EnvFactory.getEnv().getConfig().getCommonConfig().setTimePartitionInterval(PARTITION_INTERVAL);
+    EnvFactory.getEnv()
+        .getConfig()
+        .getDataNodeConfig()
+        .setConnectionTimeoutInMS(connectionTimeoutInMS);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 

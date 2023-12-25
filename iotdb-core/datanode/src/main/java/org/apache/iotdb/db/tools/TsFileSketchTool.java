@@ -539,12 +539,84 @@ public class TsFileSketchTool {
             if (i != metadataIndexListSize - 1) {
               endOffset = metadataIndexNode.getChildren().get(i + 1).getOffset();
             }
-            ByteBuffer nextBuffer =
-                readData(metadataIndexNode.getChildren().get(i).getOffset(), endOffset);
-            generateMetadataIndexWithOffset(
+            if (endOffset - metadataIndexNode.getChildren().get(i).getOffset()
+                < Integer.MAX_VALUE) {
+              ByteBuffer nextBuffer =
+                  readData(metadataIndexNode.getChildren().get(i).getOffset(), endOffset);
+              generateMetadataIndexWithOffset(
+                  metadataIndexNode.getChildren().get(i).getOffset(),
+                  metadataIndexNode.getChildren().get(i),
+                  nextBuffer,
+                  deviceId,
+                  metadataIndexNode.getNodeType(),
+                  timeseriesMetadataMap,
+                  needChunkMetadata);
+            } else {
+              // when the buffer length is over than Integer.MAX_VALUE,
+              // using tsFileInput to get timeseriesMetadataList
+              generateMetadataIndexWithOffsetUsingTsFileInput(
+                  metadataIndexNode.getChildren().get(i).getOffset(),
+                  endOffset,
+                  metadataIndexNode.getChildren().get(i),
+                  deviceId,
+                  metadataIndexNode.getNodeType(),
+                  timeseriesMetadataMap,
+                  needChunkMetadata);
+            }
+          }
+        }
+      } catch (BufferOverflowException e) {
+        throw e;
+      }
+    }
+
+    /**
+     * Traverse the metadata index from MetadataIndexEntry to get TimeseriesMetadatas
+     *
+     * @param metadataIndex MetadataIndexEntry
+     * @param deviceId String
+     * @param timeseriesMetadataMap map: deviceId -> timeseriesMetadata list
+     * @param needChunkMetadata deserialize chunk metadata list or not
+     */
+    private void generateMetadataIndexWithOffsetUsingTsFileInput(
+        long start,
+        long end,
+        MetadataIndexEntry metadataIndex,
+        String deviceId,
+        MetadataIndexNodeType type,
+        Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap,
+        boolean needChunkMetadata)
+        throws IOException {
+      try {
+        tsFileInput.position(start);
+        if (type.equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
+          while (tsFileInput.position() < end) {
+            long pos = tsFileInput.position();
+            TimeseriesMetadata timeseriesMetadata =
+                TimeseriesMetadata.deserializeFrom(tsFileInput, needChunkMetadata);
+            timeseriesMetadataMap.put(
+                pos,
+                new Pair<>(
+                    new Path(deviceId, timeseriesMetadata.getMeasurementId(), true),
+                    timeseriesMetadata));
+          }
+        } else {
+          // deviceId should be determined by LEAF_DEVICE node
+          if (type.equals(MetadataIndexNodeType.LEAF_DEVICE)) {
+            deviceId = metadataIndex.getName();
+          }
+          MetadataIndexNode metadataIndexNode =
+              MetadataIndexNode.deserializeFrom(tsFileInput.wrapAsInputStream());
+          int metadataIndexListSize = metadataIndexNode.getChildren().size();
+          for (int i = 0; i < metadataIndexListSize; i++) {
+            long endOffset = metadataIndexNode.getEndOffset();
+            if (i != metadataIndexListSize - 1) {
+              endOffset = metadataIndexNode.getChildren().get(i + 1).getOffset();
+            }
+            generateMetadataIndexWithOffsetUsingTsFileInput(
                 metadataIndexNode.getChildren().get(i).getOffset(),
+                endOffset,
                 metadataIndexNode.getChildren().get(i),
-                nextBuffer,
                 deviceId,
                 metadataIndexNode.getNodeType(),
                 timeseriesMetadataMap,

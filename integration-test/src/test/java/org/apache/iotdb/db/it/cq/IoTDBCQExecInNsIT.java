@@ -67,6 +67,10 @@ public class IoTDBCQExecInNsIT {
       statement.execute("create timeseries root.sg.d1.s1 WITH DATATYPE=INT64");
       statement.execute("create timeseries root.sg.d1.s1_max WITH DATATYPE=INT64");
 
+      // firstly write one row to init data region, just for accelerating the following insert
+      // statement.
+      statement.execute("INSERT INTO root.sg.d1(time, s1) VALUES (0,0)");
+
       statement.execute(
           String.format(
               insertTemplate,
@@ -102,7 +106,13 @@ public class IoTDBCQExecInNsIT {
               + "  GROUP BY(1s) \n"
               + "END");
 
-      long targetTime = firstExecutionTime / 1_000_000L + 5_000;
+      // if the insert cost too much time
+      if (System.currentTimeMillis() > firstExecutionTime / 1_000_000L) {
+        statement.execute("DROP CQ cq1");
+        return;
+      }
+
+      long targetTime = firstExecutionTime / 1_000_000L + 10_000;
 
       while (System.currentTimeMillis() - targetTime < 0) {
         TimeUnit.SECONDS.sleep(1);
@@ -147,6 +157,10 @@ public class IoTDBCQExecInNsIT {
       statement.execute("create timeseries root.sg.d2.s1 WITH DATATYPE=INT64");
       statement.execute("create timeseries root.sg.d2.s1_max WITH DATATYPE=INT64");
 
+      // firstly write one row to init data region, just for accelerating the following insert
+      // statement.
+      statement.execute("INSERT INTO root.sg.d2(time, s1) VALUES (0,0)");
+
       statement.execute(
           String.format(
               insertTemplate,
@@ -183,7 +197,13 @@ public class IoTDBCQExecInNsIT {
               + "  GROUP BY(1s) \n"
               + "END");
 
-      long targetTime = firstExecutionTime / 1_000_000L + 5_000;
+      // if the insert cost too much time
+      if (System.currentTimeMillis() > firstExecutionTime / 1_000_000L) {
+        statement.execute("DROP CQ cq2");
+        return;
+      }
+
+      long targetTime = firstExecutionTime / 1_000_000L + 10_000;
 
       while (System.currentTimeMillis() - targetTime < 0) {
         TimeUnit.SECONDS.sleep(1);
@@ -229,6 +249,10 @@ public class IoTDBCQExecInNsIT {
       statement.execute("create timeseries root.sg.d3.s1 WITH DATATYPE=INT64");
       statement.execute("create timeseries root.sg.d3.s1_max WITH DATATYPE=INT64");
 
+      // firstly write one row to init data region, just for accelerating the following insert
+      // statement.
+      statement.execute("INSERT INTO root.sg.d3(time, s1) VALUES (0,0)");
+
       statement.execute(
           String.format(
               insertTemplate,
@@ -266,7 +290,13 @@ public class IoTDBCQExecInNsIT {
               + "  FILL(100)\n"
               + "END");
 
-      long targetTime = firstExecutionTime / 1_000_000L + 5_000;
+      // if the insert cost too much time
+      if (System.currentTimeMillis() > firstExecutionTime / 1_000_000L) {
+        statement.execute("DROP CQ cq3");
+        return;
+      }
+
+      long targetTime = firstExecutionTime / 1_000_000L + 10_000;
 
       while (System.currentTimeMillis() - targetTime < 0) {
         TimeUnit.SECONDS.sleep(1);
@@ -318,6 +348,10 @@ public class IoTDBCQExecInNsIT {
       statement.execute("create timeseries root.sg.d4.s1 WITH DATATYPE=INT64");
       statement.execute("create timeseries root.sg.d4.s1_max WITH DATATYPE=INT64");
 
+      // firstly write one row to init data region, just for accelerating the following insert
+      // statement.
+      statement.execute("INSERT INTO root.sg.d4(time, s1) VALUES (0,0)");
+
       statement.execute(
           String.format(
               insertTemplate,
@@ -354,7 +388,13 @@ public class IoTDBCQExecInNsIT {
               + "  GROUP BY(1s) \n"
               + "END");
 
-      long targetTime = firstExecutionTime / 1_000_000L + 5_000;
+      // if the insert cost too much time
+      if (System.currentTimeMillis() > firstExecutionTime / 1_000_000L) {
+        statement.execute("DROP CQ cq4");
+        return;
+      }
+
+      long targetTime = firstExecutionTime / 1_000_000L + 10_000;
 
       while (System.currentTimeMillis() - targetTime < 0) {
         TimeUnit.SECONDS.sleep(1);
@@ -394,6 +434,10 @@ public class IoTDBCQExecInNsIT {
       statement.execute("create timeseries root.sg.d5.s1 WITH DATATYPE=INT64");
       statement.execute("create timeseries root.sg.d5.precalculated_s1 WITH DATATYPE=DOUBLE");
 
+      // firstly write one row to init data region, just for accelerating the following insert
+      // statement.
+      statement.execute("INSERT INTO root.sg.d5(time, s1) VALUES (0,0)");
+
       statement.execute(
           String.format(
               insertTemplate,
@@ -430,7 +474,13 @@ public class IoTDBCQExecInNsIT {
               + "  align by device\n"
               + "END");
 
-      long targetTime = firstExecutionTime / 1_000_000L + 5_000;
+      // if the insert cost too much time
+      if (System.currentTimeMillis() > firstExecutionTime / 1_000_000L) {
+        statement.execute("DROP CQ cq5");
+        return;
+      }
+
+      long targetTime = firstExecutionTime / 1_000_000L + 10_000;
 
       while (System.currentTimeMillis() - targetTime < 0) {
         TimeUnit.SECONDS.sleep(1);
