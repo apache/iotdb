@@ -19,6 +19,41 @@
 
 -->
 
+# Apache IoTDB 1.3.0
+
+## Features & Improvements
+
+- Optimize the permission module and support timeseries permission control
+- Optimize heap and off-heap memory configuration in startup script
+- Computed-type view timeseries support LAST queries
+- Add pipe-related monitoring metrics
+- Pipe rename 'Extractor' to 'Source' and 'Connector' to 'Sink'
+- [IOTDB-6138] Support Negative timestamp
+- [IOTDB-6193] Reject Node startup when loading configuration file failed
+- [IOTDB-6194] Rename target_config_node_list to seed_config_node
+- [IOTDB-6200] Change schema template to device template
+- [IOTDB-6207] Add Write Point Metrics for load function
+- [IOTDB-6208] Node error detection through broken thrift pipe
+- [IOTDB-6217] When the number of time series reaches the upper limit, the prompt message should be changed to prioritize using device templates
+- [IOTDB-6218] Rename storage_query_schema_consensus_free_memory_proportion to datanode_memory_proportion
+- [IOTDB-6219] Fix the display problem of explain that the print result is not aligned
+- [IOTDB-6220] Pipe: Add check logic to avoid self-transmission
+- [IOTDB-6222] Optimize the performance of Python client
+- [IOTDB-6230] Add HEAPDUMP configuration in datanode-env.sh
+- [IOTDB-6231]SchemaCache supports precise eviction
+- [IOTDB-6232] Adding SSL function to dn_rpc_port
+
+## Bugs
+
+- [IOTDB-6160] while using ` in target path, select into will throw error
+- [IOTDB-6167] DataNode can't register to cluster when fetch system configuration throws NPE
+- [IOTDB-6168] ConfigNode register retry logic does not worked
+- [IOTDB-6171] NPE will be thrown while printing FI with debug on
+- [IOTDB-6184] Merge Sort finishes one iterator too long
+- [IOTDB-6191] Fix group by year not considering leap years
+- [IOTDB-6226] Fix the problem of inaccurate GC monitor detection at the beginning and adjusting the alert threshold
+- [IOTDB-6239] Show regions display error create time
+
 # Apache IoTDB 1.1.0
 
 ## New Features
