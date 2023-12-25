@@ -243,18 +243,18 @@ public class DataRegionStateMachine extends BaseStateMachine {
   protected TSStatus write(PlanNode planNode) {
     // To ensure the Data inconsistency between multiple replications, we add retry in write
     // operation.
-    TSStatus result = null;
+    TSStatus result;
     int retryTime = 0;
-    while (retryTime < MAX_WRITE_RETRY_TIMES) {
+    while (true) {
       result = planNode.accept(new DataExecutionVisitor(), region);
       if (needRetry(result.getCode())) {
         retryTime++;
         logger.debug(
             "write operation failed because {}, retryTime: {}.", result.getCode(), retryTime);
-        if (retryTime == MAX_WRITE_RETRY_TIMES) {
+        if (retryTime % MAX_WRITE_RETRY_TIMES == 0) {
           logger.error(
               "write operation still failed after {} retry times, because {}.",
-              MAX_WRITE_RETRY_TIMES,
+              retryTime,
               result.getCode());
         }
         try {
