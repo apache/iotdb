@@ -16,31 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.storageengine.dataregion.flush;
 
-import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
-import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
+package org.apache.iotdb.session;
 
-/**
- * Only used in sync flush and async close to start a flush task This memtable is not managed by
- * MemTablePool and does not store any data.
- */
-public class NotifyFlushMemTable extends AbstractMemTable {
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.isession.INodeSupplier;
 
-  @Override
-  public IMemTable copy() {
-    return null;
+import java.util.Collections;
+import java.util.List;
+
+public class DummyNodesSupplier implements INodeSupplier {
+
+  private final List<TEndPoint> availableNodes;
+
+  public DummyNodesSupplier(List<TEndPoint> availableNodes) {
+    this.availableNodes = Collections.unmodifiableList(availableNodes);
   }
 
   @Override
-  public boolean isSignalMemTable() {
-    return true;
+  public void close() {
+    // do nothing
   }
 
   @Override
-  public boolean isTotallyGeneratedByPipe() {
-    // Even though the `isTotallyGeneratedByPipe` for the corresponding memory table of this
-    // `NotifyFlushMemTable` might be true, we still return false to ensure data integrity.
-    return false;
+  public List<TEndPoint> get() {
+    return availableNodes;
   }
 }

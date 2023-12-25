@@ -21,9 +21,9 @@
 
 # How to get a complete CPP client demo project
 
-## get a project
+## Get a project
 
-using maven to build this example project:
+Using maven to build this example project:
 
 * cd the root path of the whole project
 * run `mvn package -DskipTests -P compile-cpp -pl example/client-cpp-example -am`

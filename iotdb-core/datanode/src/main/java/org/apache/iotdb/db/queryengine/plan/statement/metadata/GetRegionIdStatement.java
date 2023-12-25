@@ -49,7 +49,25 @@ public class GetRegionIdStatement extends Statement implements IConfigStatement 
 
   private String device;
   private final TConsensusGroupType partitionType;
-  private long timeStamp = -1;
+  private long startTimeStamp;
+
+  private long endTimeStamp;
+
+  public long getEndTimeStamp() {
+    return endTimeStamp;
+  }
+
+  public void setEndTimeStamp(long endTimeStamp) {
+    this.endTimeStamp = endTimeStamp;
+  }
+
+  public long getStartTimeStamp() {
+    return startTimeStamp;
+  }
+
+  public void setStartTimeStamp(long startTimeStamp) {
+    this.startTimeStamp = startTimeStamp;
+  }
 
   private static final Logger LOGGER = LoggerFactory.getLogger(GetRegionIdStatement.class);
 
@@ -70,20 +88,12 @@ public class GetRegionIdStatement extends Statement implements IConfigStatement 
     return device;
   }
 
-  public long getTimeStamp() {
-    return timeStamp;
-  }
-
   public void setDatabase(String database) {
     this.database = database;
   }
 
   public void setDevice(String device) {
     this.device = device;
-  }
-
-  public void setTimeStamp(long timeStamp) {
-    this.timeStamp = timeStamp;
   }
 
   @Override
