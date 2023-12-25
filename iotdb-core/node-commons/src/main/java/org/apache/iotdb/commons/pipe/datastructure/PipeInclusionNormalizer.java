@@ -119,7 +119,7 @@ public class PipeInclusionNormalizer {
     List<PartialPath> result;
     AtomicReference<IllegalPathException> exception = new AtomicReference<>();
     result =
-        Arrays.stream(prefixesRawStr.replace(" ", "").split(","))
+        Arrays.stream(prefixesRawStr.toLowerCase().replace(" ", "").split(","))
             .flatMap(
                 prefix ->
                     SUBSTITUTION_MAP.getOrDefault(prefix, Collections.singleton(prefix)).stream())
