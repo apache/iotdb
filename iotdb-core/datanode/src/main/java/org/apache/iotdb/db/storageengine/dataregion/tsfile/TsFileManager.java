@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 
 import java.io.IOException;
@@ -119,10 +120,14 @@ public class TsFileManager {
         if (!seqResource.isClosed()) {
           continue;
         }
-        Set<String> deviceSet = seqResource.getDevices();
-        if (deviceSet.contains(devicePath)) {
-          lastFlushTime = seqTsFileResourceList.get(i).getEndTime(devicePath);
-          break;
+        if (seqResource.getTimeIndexType() == ITimeIndex.DEVICE_TIME_INDEX_TYPE) {
+          Set<String> deviceSet = seqResource.getDevices();
+          if (deviceSet.contains(devicePath)) {
+            lastFlushTime = Math.max(lastFlushTime, seqResource.getEndTime(devicePath));
+            break;
+          }
+        } else {
+          lastFlushTime = Math.max(lastFlushTime, seqResource.getEndTime(devicePath));
         }
       }
       List<TsFileResource> unseqTsFileResourceList =

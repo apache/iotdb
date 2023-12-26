@@ -165,7 +165,7 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
 
       prepareForTimeHeap();
 
-    } while (comparator.canContinue(currentTime, currentEndTime) && !timeSelector.isEmpty());
+    } while (comparator.lessThan(currentTime, currentEndTime) && !timeSelector.isEmpty());
 
     resultTsBlock = tsBlockBuilder.build();
     return checkTsBlockSizeAndGetResult();

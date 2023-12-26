@@ -17,33 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.operator.process.join.merge;
+package org.apache.iotdb.isession;
 
-public class DescTimeComparator implements TimeComparator {
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 
-  /** return if order by time desc, return true if time >= endTime, otherwise false. */
-  @Override
-  public boolean satisfyCurEndTime(long time, long endTime) {
-    return time >= endTime;
-  }
+import java.util.List;
+import java.util.function.Supplier;
 
-  @Override
-  public long getCurrentEndTime(long time1, long time2) {
-    return Math.max(time1, time2);
-  }
+public interface INodeSupplier extends Supplier<List<TEndPoint>> {
 
-  @Override
-  public boolean lessThan(long time, long endTime) {
-    return time > endTime;
-  }
-
-  @Override
-  public boolean largerThan(long time, long endTime) {
-    return time < endTime;
-  }
-
-  @Override
-  public boolean canContinueInclusive(long time, long endTime) {
-    return time >= endTime;
-  }
+  void close();
 }

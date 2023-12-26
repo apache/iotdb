@@ -50,5 +50,7 @@ public class SessionConfig {
 
   public static final Version DEFAULT_VERSION = Version.V_1_0;
 
+  public static final boolean DEFAULT_ENABLE_AUTO_FETCH = true;
+
   private SessionConfig() {}
 }

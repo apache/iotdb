@@ -179,4 +179,8 @@ public interface IMemTable extends WALEntryValue {
   String getDataRegionId();
 
   void setDatabaseAndDataRegionId(String database, String dataRegionId);
+
+  void markAsNotGeneratedByPipe();
+
+  boolean isTotallyGeneratedByPipe();
 }
