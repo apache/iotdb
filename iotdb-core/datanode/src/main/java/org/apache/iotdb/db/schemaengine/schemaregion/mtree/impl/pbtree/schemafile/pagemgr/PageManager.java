@@ -740,7 +740,6 @@ public abstract class PageManager implements IPageManager {
 
   protected ISchemaPage replacePageInCache(ISchemaPage page, SchemaPageContext cxt) {
     // no need to lock since the root of B+Tree is locked
-    // fixme
     cxt.markDirty(page, true);
     addPageToCache(page);
     return page;
