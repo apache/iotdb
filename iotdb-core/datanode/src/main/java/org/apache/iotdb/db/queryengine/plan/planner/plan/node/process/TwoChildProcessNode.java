@@ -42,6 +42,14 @@ public abstract class TwoChildProcessNode extends ProcessNode {
     this.rightChild = rightChild;
   }
 
+  public PlanNode getLeftChild() {
+    return leftChild;
+  }
+
+  public PlanNode getRightChild() {
+    return rightChild;
+  }
+
   @Override
   public List<PlanNode> getChildren() {
     return ImmutableList.of(leftChild, rightChild);
