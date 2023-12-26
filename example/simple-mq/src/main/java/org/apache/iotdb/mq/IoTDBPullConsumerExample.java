@@ -24,6 +24,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.mq.IoTDBPollConsumer;
 import org.apache.iotdb.session.mq.TabletWrapper;
+import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import java.net.URISyntaxException;
 
@@ -76,17 +77,25 @@ public class IoTDBPullConsumerExample {
   public static void main(String[] args)
       throws IoTDBConnectionException, URISyntaxException, InterruptedException,
           StatementExecutionException {
-    IoTDBPollConsumer pollConsumer = new IoTDBPollConsumer.Builder().build();
+    IoTDBPollConsumer pollConsumer = new IoTDBPollConsumer.Builder()
+            .host("127.0.0.1")
+            .port(6667)
+            .brokerPort(18080)
+            .username("root")
+            .password("root")
+            .tabletBufferSize(10)
+            .build();
     pollConsumer.open();
 
+    pollConsumer.subscribe("topic_root");
     Session sessionPool = new Session.Builder().port(6668).build();
 
     int count = 0;
     while (true) {
       try {
-        TabletWrapper wrapper = pollConsumer.poll(1);
-        if (wrapper != null) {
-          sessionPool.insertTablet(wrapper.getTablet());
+        Tablet tablet = pollConsumer.poll(1);
+        if (tablet != null) {
+          sessionPool.insertTablet(tablet);
           System.out.println(String.format("Sent tablet: %d", ++count));
         } else {
           System.out.println(String.format("No data"));

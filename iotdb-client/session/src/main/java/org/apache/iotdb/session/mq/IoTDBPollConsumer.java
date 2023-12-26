@@ -26,6 +26,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
+import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.java_websocket.enums.ReadyState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -163,24 +164,30 @@ public class IoTDBPollConsumer {
     this.topic.set(null);
   }
 
-  public synchronized TabletWrapper poll(int timeout) throws InterruptedException {
+  public synchronized Tablet poll(int timeout) throws InterruptedException {
     TabletWrapper oldTabletWrapper = lastTabletWrapper.get();
     if (oldTabletWrapper != null) {
       commit(oldTabletWrapper);
     }
     TabletWrapper newTabletWrapper = tabletBuffer.poll(timeout, TimeUnit.SECONDS);
     lastTabletWrapper.set(newTabletWrapper);
-    return newTabletWrapper;
+    if (lastTabletWrapper == null) {
+      return null;
+    }
+    return newTabletWrapper.getTablet();
   }
 
-  public synchronized TabletWrapper poll() {
+  public synchronized Tablet poll() {
     TabletWrapper oldTabletWrapper = lastTabletWrapper.get();
     if (oldTabletWrapper != null) {
       commit(oldTabletWrapper);
     }
     TabletWrapper newTabletWrapper = tabletBuffer.poll();
     lastTabletWrapper.set(newTabletWrapper);
-    return newTabletWrapper;
+    if (lastTabletWrapper == null) {
+      return null;
+    }
+    return newTabletWrapper.getTablet();
   }
 
   private void commit(TabletWrapper tabletWrapper) {
