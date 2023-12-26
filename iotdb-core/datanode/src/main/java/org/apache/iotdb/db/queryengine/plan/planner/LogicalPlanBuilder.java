@@ -403,7 +403,7 @@ public class LogicalPlanBuilder {
       GroupByTimeParameter groupByTimeParameter,
       Set<Expression> aggregationExpressions,
       Set<Expression> sourceTransformExpressions,
-      LinkedHashMap<Expression, Set<Expression>> crossGroupByAggregations,
+      Map<Expression, Set<Expression>> crossGroupByAggregations,
       List<String> tagKeys,
       Map<List<String>, LinkedHashMap<Expression, List<Expression>>>
           tagValuesToGroupedTimeseriesOperands) {
@@ -449,7 +449,7 @@ public class LogicalPlanBuilder {
       GroupByTimeParameter groupByTimeParameter,
       Set<Expression> aggregationExpressions,
       Set<Expression> sourceTransformExpressions,
-      LinkedHashMap<Expression, Set<Expression>> crossGroupByExpressions,
+      Map<Expression, Set<Expression>> crossGroupByExpressions,
       List<Integer> deviceViewInputIndexes,
       boolean outputEndTime) {
     checkArgument(
@@ -628,7 +628,7 @@ public class LogicalPlanBuilder {
       Ordering scanOrder,
       GroupByTimeParameter groupByTimeParameter,
       Set<Expression> aggregationExpressions,
-      LinkedHashMap<Expression, Set<Expression>> crossGroupByExpressions,
+      Map<Expression, Set<Expression>> crossGroupByExpressions,
       List<String> tagKeys,
       Map<List<String>, LinkedHashMap<Expression, List<Expression>>>
           tagValuesToGroupedTimeseriesOperands) {

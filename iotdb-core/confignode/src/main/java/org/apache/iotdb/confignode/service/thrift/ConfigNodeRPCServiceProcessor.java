@@ -20,7 +20,6 @@
 package org.apache.iotdb.confignode.service.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -950,11 +949,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TGetRegionIdResp getRegionId(TGetRegionIdReq req) {
-    if (req.isSetTimeStamp() && req.getType() != TConsensusGroupType.DataRegion) {
-      TSStatus status = new TSStatus(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode());
-      status.setMessage("Only data region can set time");
-      return new TGetRegionIdResp(status);
-    }
     return configManager.getRegionId(req);
   }
 

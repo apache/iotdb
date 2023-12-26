@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 
 public class TestHelper {
 
@@ -53,7 +54,7 @@ public class TestHelper {
     return new MeasurementSchema(measurementuid, TSDataType.INT64, TSEncoding.RLE);
   }
 
-  public static TimeseriesMetadata createSimpleTimseriesMetaData(String measurementuid) {
+  public static TimeseriesMetadata createSimpleTimeseriesMetaData(String measurementuid) {
     Statistics<? extends Serializable> statistics =
         Statistics.getStatsByType(PageHeaderTest.DATA_TYPE);
     statistics.setEmpty(false);
@@ -63,6 +64,7 @@ public class TestHelper {
     timeseriesMetaData.setDataSizeOfChunkMetaDataList(0);
     timeseriesMetaData.setChunkMetadataListBuffer(new PublicBAOS());
     timeseriesMetaData.setStatistics(statistics);
+    timeseriesMetaData.setChunkMetadataList(new ArrayList<>());
     return timeseriesMetaData;
   }
 
