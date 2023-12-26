@@ -173,40 +173,47 @@ public class CreateRegionGroupsProcedure
         // Build RegionGroupCache immediately to make these successfully built RegionGroup available
         createRegionGroupsPlan
             .getRegionGroupMap()
+            .entrySet()
+            .parallelStream()
             .forEach(
-                (storageGroup, regionReplicaSets) ->
-                    regionReplicaSets.forEach(
-                        regionReplicaSet -> {
-                          Map<Integer, RegionStatus> statusMap = new ConcurrentHashMap<>();
-                          regionReplicaSet
-                              .getDataNodeLocations()
-                              .forEach(
-                                  dataNodeLocation ->
-                                      statusMap.put(
-                                          dataNodeLocation.getDataNodeId(), RegionStatus.Running));
-
-                          if (!failedRegionReplicaSets.containsKey(
-                              regionReplicaSet.getRegionId())) {
-                            // All RegionReplicas created successfully
-                            // All RegionStatus are Running
-                            env.activateRegionGroup(regionReplicaSet.getRegionId(), statusMap);
-                          } else {
-                            TRegionReplicaSet failedRegionReplicas =
-                                failedRegionReplicaSets.get(regionReplicaSet.getRegionId());
-                            if (failedRegionReplicas.getDataNodeLocationsSize()
-                                <= (regionReplicaSet.getDataNodeLocationsSize() - 1) / 2) {
-                              // Replace the RegionStatus of those RegionReplicas to Unknown
-                              failedRegionReplicas
+                regionReplicaEntry ->
+                    regionReplicaEntry
+                        .getValue()
+                        .parallelStream()
+                        .forEach(
+                            regionReplicaSet -> {
+                              Map<Integer, RegionStatus> statusMap = new ConcurrentHashMap<>();
+                              regionReplicaSet
                                   .getDataNodeLocations()
                                   .forEach(
                                       dataNodeLocation ->
-                                          statusMap.replace(
+                                          statusMap.put(
                                               dataNodeLocation.getDataNodeId(),
-                                              RegionStatus.Unknown));
-                              env.activateRegionGroup(regionReplicaSet.getRegionId(), statusMap);
-                            }
-                          }
-                        }));
+                                              RegionStatus.Running));
+
+                              if (!failedRegionReplicaSets.containsKey(
+                                  regionReplicaSet.getRegionId())) {
+                                // All RegionReplicas created successfully
+                                // All RegionStatus are Running
+                                env.activateRegionGroup(regionReplicaSet.getRegionId(), statusMap);
+                              } else {
+                                TRegionReplicaSet failedRegionReplicas =
+                                    failedRegionReplicaSets.get(regionReplicaSet.getRegionId());
+                                if (failedRegionReplicas.getDataNodeLocationsSize()
+                                    <= (regionReplicaSet.getDataNodeLocationsSize() - 1) / 2) {
+                                  // Replace the RegionStatus of those RegionReplicas to Unknown
+                                  failedRegionReplicas
+                                      .getDataNodeLocations()
+                                      .forEach(
+                                          dataNodeLocation ->
+                                              statusMap.replace(
+                                                  dataNodeLocation.getDataNodeId(),
+                                                  RegionStatus.Unknown));
+                                  env.activateRegionGroup(
+                                      regionReplicaSet.getRegionId(), statusMap);
+                                }
+                              }
+                            }));
         setNextState(CreateRegionGroupsState.CREATE_REGION_GROUPS_FINISH);
         break;
       case CREATE_REGION_GROUPS_FINISH:
