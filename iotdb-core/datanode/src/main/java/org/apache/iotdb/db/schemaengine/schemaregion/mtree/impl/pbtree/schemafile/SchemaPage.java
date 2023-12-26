@@ -78,6 +78,16 @@ public abstract class SchemaPage implements ISchemaPage {
   }
 
   @Override
+  public int incrementAndGetRefCnt() {
+    return refCnt.incrementAndGet();
+  }
+
+  @Override
+  public int decrementAndGetRefCnt() {
+    return refCnt.decrementAndGet();
+  }
+
+  @Override
   public ReadWriteLock getLock() {
     return lock;
   }

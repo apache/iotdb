@@ -19,20 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
-/** apply MaxQueryDeduplicatedPathNum and SLIMIT & SOFFSET */
+/** apply SLIMIT & SOFFSET */
 public class ColumnPaginationController {
-
-  // for ALIGN BY DEVICE / DISABLE ALIGN / GROUP BY LEVEL / LAST, controller does is disabled
-  private final boolean isDisabled;
 
   private final boolean hasLimit;
 
   private long curLimit;
   private long curOffset;
 
-  public ColumnPaginationController(long seriesLimit, long seriesOffset, boolean isDisabled) {
-    this.isDisabled = isDisabled;
-
+  public ColumnPaginationController(long seriesLimit, long seriesOffset) {
     // for series limit, the default value is 0, which means no limit
     this.hasLimit = seriesLimit > 0;
     this.curLimit = seriesLimit;
@@ -42,28 +37,22 @@ public class ColumnPaginationController {
   }
 
   public boolean hasCurOffset() {
-    if (isDisabled) {
-      return false;
-    }
     return curOffset != 0;
   }
 
   public boolean hasCurLimit() {
-    if (isDisabled || !hasLimit) {
+    if (!hasLimit) {
       return true;
     }
     return curLimit != 0;
   }
 
   public void consumeOffset() {
-    if (isDisabled) {
-      return;
-    }
     curOffset--;
   }
 
   public void consumeLimit() {
-    if (isDisabled || !hasLimit) {
+    if (!hasLimit) {
       return;
     }
     curLimit--;

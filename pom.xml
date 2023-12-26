@@ -193,7 +193,7 @@
     -->
         <thrift.version>0.14.1</thrift.version>
         <!-- This was the last version to support Java 8 -->
-        <tomcat.version>9.0.58</tomcat.version>
+        <tomcat.version>9.0.83</tomcat.version>
         <xz.version>1.9</xz.version>
         <zeppelin.version>0.10.1</zeppelin.version>
         <zstd-jni.version>1.5.5-5</zstd-jni.version>
@@ -1463,7 +1463,7 @@
             <dependency>
                 <groupId>org.apache.zookeeper</groupId>
                 <artifactId>zookeeper</artifactId>
-                <version>3.6.3</version>
+                <version>3.7.2</version>
             </dependency>
             <!-- Conflict:
         hive-common (pulls in 9.3.20.v20170531)
@@ -1482,7 +1482,7 @@
             <dependency>
                 <groupId>org.apache.avro</groupId>
                 <artifactId>avro</artifactId>
-                <version>1.8.2</version>
+                <version>1.11.3</version>
                 <exclusions>
                     <!-- Jackson moved from codehaus to fasterxml and is now the new version -->
                     <exclusion>
@@ -2788,6 +2788,7 @@
                                             </includes>
                                         </fileSet>
                                     </fileSets>
+                                    <failIfNoFiles>false</failIfNoFiles>
                                 </configuration>
                             </execution>
                         </executions>
