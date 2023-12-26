@@ -33,7 +33,17 @@ public class AscTimeComparator implements TimeComparator {
   }
 
   @Override
-  public boolean canContinue(long time, long endTime) {
+  public boolean lessThan(long time, long endTime) {
     return time < endTime;
+  }
+
+  @Override
+  public boolean largerThan(long time, long endTime) {
+    return time > endTime;
+  }
+
+  @Override
+  public boolean canContinueInclusive(long time, long endTime) {
+    return time <= endTime;
   }
 }
