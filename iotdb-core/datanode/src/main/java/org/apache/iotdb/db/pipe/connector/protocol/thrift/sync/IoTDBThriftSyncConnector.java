@@ -35,7 +35,6 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.SyncClientManager;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -85,7 +84,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
 
   private IoTDBThriftSyncPipeTransferBatchReqBuilder tabletBatchBuilder;
 
-  private SyncClientManager clientManager;
+  private IoTDBThriftSyncClientManager clientManager;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -164,7 +163,8 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
             CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE);
 
     clientManager =
-        new SyncClientManager(nodeUrls, useSSL, trustStorePath, trustStorePwd, useLeaderCache);
+        new IoTDBThriftSyncClientManager(
+            nodeUrls, useSSL, trustStorePath, trustStorePwd, useLeaderCache);
   }
 
   @Override

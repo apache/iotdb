@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.protocol.thrift;
+package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorClient;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.LeaderCacheManager;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
@@ -41,9 +42,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class SyncClientManager implements Closeable {
+public class IoTDBThriftSyncClientManager implements Closeable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SyncClientManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftSyncClientManager.class);
 
   private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
 
@@ -61,7 +62,7 @@ public class SyncClientManager implements Closeable {
 
   private long currentClientIndex = 0;
 
-  public SyncClientManager(
+  public IoTDBThriftSyncClientManager(
       List<TEndPoint> endPoints,
       boolean useSSL,
       String trustStorePath,
