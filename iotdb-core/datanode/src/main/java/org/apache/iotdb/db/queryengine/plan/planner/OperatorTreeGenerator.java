@@ -2588,7 +2588,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         dataTypes.add(((SeriesScanNode) child).getSeriesPath().getSeriesType());
       } else if (child instanceof AlignedSeriesScanNode) {
         dataTypes.add(((AlignedSeriesScanNode) child).getAlignedPath().getSeriesType());
-      } else if (child instanceof FullOuterTimeJoinNode) {
+      } else if (child instanceof FullOuterTimeJoinNode
+          || child instanceof InnerTimeJoinNode
+          || child instanceof LeftOuterTimeJoinNode) {
         dataTypes.addAll(getOutputColumnTypesOfTimeJoinNode(child));
       } else {
         LOGGER.error(

@@ -88,7 +88,6 @@ public class InnerTimeJoinNode extends MultiChildProcessNode {
     return children.stream()
         .map(PlanNode::getOutputColumnNames)
         .flatMap(List::stream)
-        .distinct()
         .collect(Collectors.toList());
   }
 
