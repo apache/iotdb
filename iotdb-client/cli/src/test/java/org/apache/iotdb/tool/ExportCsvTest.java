@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.tool.integration;
+package org.apache.iotdb.tool;
 
 import org.apache.iotdb.cli.AbstractScript;
 
@@ -28,7 +28,7 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 
-public class ImportCsvTestIT extends AbstractScript {
+public class ExportCsvTest extends AbstractScript {
 
   @Before
   public void setUp() {}
@@ -50,9 +50,9 @@ public class ImportCsvTestIT extends AbstractScript {
   protected void testOnWindows() throws IOException {
     final String[] output = {
       "````````````````````````````````````````````````",
-      "Starting IoTDB Client Import Script",
+      "Starting IoTDB Client Export Script",
       "````````````````````````````````````````````````",
-      "Encounter an error when connecting to server, because Fail to reconnect to server. "
+      "Connect failed because Fail to reconnect to server. "
           + "Please check server status.127.0.0.1:6668"
     };
     String dir = getCliPath();
@@ -60,7 +60,7 @@ public class ImportCsvTestIT extends AbstractScript {
         new ProcessBuilder(
             "cmd.exe",
             "/c",
-            dir + File.separator + "tools" + File.separator + "import-csv.bat",
+            dir + File.separator + "tools" + File.separator + "export-csv.bat",
             "-h",
             "127.0.0.1",
             "-p",
@@ -69,7 +69,7 @@ public class ImportCsvTestIT extends AbstractScript {
             "root",
             "-pw",
             "root",
-            "-f",
+            "-td",
             "./",
             "&",
             "exit",
@@ -81,16 +81,16 @@ public class ImportCsvTestIT extends AbstractScript {
   protected void testOnUnix() throws IOException {
     final String[] output = {
       "------------------------------------------",
-      "Starting IoTDB Client Import Script",
+      "Starting IoTDB Client Export Script",
       "------------------------------------------",
-      "Encounter an error when connecting to server, because Fail to reconnect to server. "
+      "Connect failed because Fail to reconnect to server. "
           + "Please check server status.127.0.0.1:6668"
     };
     String dir = getCliPath();
     ProcessBuilder builder =
         new ProcessBuilder(
             "bash",
-            dir + File.separator + "tools" + File.separator + "import-csv.sh",
+            dir + File.separator + "tools" + File.separator + "export-csv.sh",
             "-h",
             "127.0.0.1",
             "-p",
@@ -99,7 +99,7 @@ public class ImportCsvTestIT extends AbstractScript {
             "root",
             "-pw",
             "root",
-            "-f",
+            "-td",
             "./");
     testOutput(builder, output, 1);
   }

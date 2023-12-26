@@ -17,9 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.tool.unit;
-
-import org.apache.iotdb.tool.AbstractCsvTool;
+package org.apache.iotdb.tool;
 
 import org.junit.Test;
 
@@ -29,7 +27,7 @@ import java.util.List;
 
 import static org.junit.Assert.assertTrue;
 
-public class WriteCsvFileTestUT {
+public class WriteCsvFileTest {
   @Test
   public void writeCsvFileTest() {
     List<String> headerNames =
