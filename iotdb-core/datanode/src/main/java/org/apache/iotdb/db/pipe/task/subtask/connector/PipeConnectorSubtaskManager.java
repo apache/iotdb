@@ -67,28 +67,29 @@ public class PipeConnectorSubtaskManager {
     PipeEventCommitManager.getInstance()
         .register(environment.getPipeName(), environment.getRegionId(), connectorKey);
 
-    final String attributeSortedString =
-        new TreeMap<>(pipeConnectorParameters.getAttribute()).toString();
+    String attributeSortedString = new TreeMap<>(pipeConnectorParameters.getAttribute()).toString();
 
+    final PipeConnector pipeConnector;
+    final int connectorNum;
+
+    if (StorageEngine.getInstance()
+        .getAllDataRegionIds()
+        .contains(new DataRegionId(environment.getRegionId()))) {
+      pipeConnector = PipeAgent.plugin().dataRegion().reflectConnector(pipeConnectorParameters);
+      connectorNum =
+          pipeConnectorParameters.getIntOrDefault(
+              Arrays.asList(
+                  PipeConnectorConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_KEY,
+                  PipeConnectorConstant.SINK_IOTDB_PARALLEL_TASKS_KEY),
+              PipeConnectorConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_DEFAULT_VALUE);
+      attributeSortedString = attributeSortedString + "data";
+    } else {
+      pipeConnector = PipeAgent.plugin().schemaRegion().reflectConnector(pipeConnectorParameters);
+      // Do not allow parallel connector for schema transmission to avoid disorder
+      connectorNum = 1;
+      attributeSortedString = attributeSortedString + "schema";
+    }
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
-      final PipeConnector pipeConnector;
-      final int connectorNum;
-
-      if (StorageEngine.getInstance()
-          .getAllDataRegionIds()
-          .contains(new DataRegionId(environment.getRegionId()))) {
-        pipeConnector = PipeAgent.plugin().dataRegion().reflectConnector(pipeConnectorParameters);
-        connectorNum =
-            pipeConnectorParameters.getIntOrDefault(
-                Arrays.asList(
-                    PipeConnectorConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_KEY,
-                    PipeConnectorConstant.SINK_IOTDB_PARALLEL_TASKS_KEY),
-                PipeConnectorConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_DEFAULT_VALUE);
-      } else {
-        pipeConnector = PipeAgent.plugin().schemaRegion().reflectConnector(pipeConnectorParameters);
-        // Do not allow parallel connector for schema transmission to avoid disorder
-        connectorNum = 1;
-      }
       final List<PipeConnectorSubtaskLifeCycle> pipeConnectorSubtaskLifeCycleList =
           new ArrayList<>(connectorNum);
 
