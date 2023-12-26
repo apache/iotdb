@@ -931,6 +931,7 @@ public class PipelineBuilderTest {
     assertEquals(1, context.getPipelineNumber());
     assertEquals(2, childrenOperator.size());
 
+    // Validate the first pipeline
     assertEquals(SeriesScanOperator.class, childrenOperator.get(0).getClass());
     assertEquals(
         "root.sg.d0.s1", leftOuterTimeJoinNode.getLeftChild().getOutputColumnNames().get(0));
@@ -947,34 +948,65 @@ public class PipelineBuilderTest {
   /**
    * This test will test dop = 3. Expected result is two pipelines:
    *
-   * <p>The first is: LeftOuterTimeJoin1 - [SeriesScan0, ExchangeOperator];
+   * <p>The first is: LeftOuterTimeJoin1 - [ExchangeOperator1, ExchangeOperator2];
    *
-   * <p>The second is: ExchangeOperator - SeriesScan1.
+   * <p>The second is: ExchangeOperator1 - SeriesScan0.
+   *
+   * <p>The third is: ExchangeOperator2 - SeriesScan1.
    */
   @Test
   public void testLeftOuterTimeJoinPipelineBuilder3() throws IllegalPathException {
     TypeProvider typeProvider = new TypeProvider();
     LeftOuterTimeJoinNode leftOuterTimeJoinNode = initLeftOuterTimeJoinNode(typeProvider);
     LocalExecutionPlanContext context = createLocalExecutionPlanContext(typeProvider);
-    context.setDegreeOfParallelism(2);
+    context.setDegreeOfParallelism(3);
 
     List<Operator> childrenOperator =
         operatorTreeGenerator.dealWithConsumeAllChildrenPipelineBreaker(
             leftOuterTimeJoinNode, context);
-    assertEquals(1, context.getPipelineNumber());
+    assertEquals(2, context.getPipelineNumber());
     assertEquals(2, childrenOperator.size());
 
-    assertEquals(SeriesScanOperator.class, childrenOperator.get(0).getClass());
-    assertEquals(
-        "root.sg.d0.s1", leftOuterTimeJoinNode.getLeftChild().getOutputColumnNames().get(0));
-
-    // Validate the second pipeline
-    ExchangeOperator exchangeOperator = (ExchangeOperator) childrenOperator.get(1);
-    assertEquals("SeriesScanNode1", exchangeOperator.getSourceId().getId());
+    // Validate the first pipeline
+    ExchangeOperator exchangeOperator1 = (ExchangeOperator) childrenOperator.get(0);
+    assertEquals("SeriesScanNode0", exchangeOperator1.getSourceId().getId());
     assertEquals(-1, context.getPipelineDriverFactories().get(0).getDependencyPipelineIndex());
 
+    // Validate the second pipeline
+    ExchangeOperator exchangeOperator2 = (ExchangeOperator) childrenOperator.get(1);
+    assertEquals("SeriesScanNode1", exchangeOperator2.getSourceId().getId());
+    assertEquals(-1, context.getPipelineDriverFactories().get(1).getDependencyPipelineIndex());
+
     // Validate the number exchange operator
-    assertEquals(1, context.getExchangeSumNum());
+    assertEquals(2, context.getExchangeSumNum());
+  }
+
+  /** This test will test dop > 3. Expected result is same as dop = 3. */
+  @Test
+  public void testLeftOuterTimeJoinPipelineBuilder4() throws IllegalPathException {
+    TypeProvider typeProvider = new TypeProvider();
+    LeftOuterTimeJoinNode leftOuterTimeJoinNode = initLeftOuterTimeJoinNode(typeProvider);
+    LocalExecutionPlanContext context = createLocalExecutionPlanContext(typeProvider);
+    context.setDegreeOfParallelism(4);
+
+    List<Operator> childrenOperator =
+        operatorTreeGenerator.dealWithConsumeAllChildrenPipelineBreaker(
+            leftOuterTimeJoinNode, context);
+    assertEquals(2, context.getPipelineNumber());
+    assertEquals(2, childrenOperator.size());
+
+    // Validate the first pipeline
+    ExchangeOperator exchangeOperator1 = (ExchangeOperator) childrenOperator.get(0);
+    assertEquals("SeriesScanNode0", exchangeOperator1.getSourceId().getId());
+    assertEquals(-1, context.getPipelineDriverFactories().get(0).getDependencyPipelineIndex());
+
+    // Validate the second pipeline
+    ExchangeOperator exchangeOperator2 = (ExchangeOperator) childrenOperator.get(1);
+    assertEquals("SeriesScanNode1", exchangeOperator2.getSourceId().getId());
+    assertEquals(-1, context.getPipelineDriverFactories().get(1).getDependencyPipelineIndex());
+
+    // Validate the number exchange operator
+    assertEquals(2, context.getExchangeSumNum());
   }
 
   private LocalExecutionPlanContext createLocalExecutionPlanContext(TypeProvider typeProvider) {
