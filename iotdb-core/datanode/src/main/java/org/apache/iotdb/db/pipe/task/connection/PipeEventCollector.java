@@ -47,7 +47,6 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
 
   @Override
   public synchronized void collect(Event event) {
-    System.out.println(regionId + " " + event);
     if (event instanceof EnrichedEvent) {
       ((EnrichedEvent) event).increaseReferenceCount(PipeEventCollector.class.getName());
 
