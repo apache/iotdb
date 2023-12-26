@@ -69,13 +69,13 @@ public class PipeConnectorSubtaskManager {
 
     String attributeSortedString = new TreeMap<>(pipeConnectorParameters.getAttribute()).toString();
 
-    final PipeConnector pipeConnector;
     final int connectorNum;
 
-    if (StorageEngine.getInstance()
-        .getAllDataRegionIds()
-        .contains(new DataRegionId(environment.getRegionId()))) {
-      pipeConnector = PipeAgent.plugin().dataRegion().reflectConnector(pipeConnectorParameters);
+    boolean isDataRegion =
+        StorageEngine.getInstance()
+            .getAllDataRegionIds()
+            .contains(new DataRegionId(environment.getRegionId()));
+    if (isDataRegion) {
       connectorNum =
           pipeConnectorParameters.getIntOrDefault(
               Arrays.asList(
@@ -84,7 +84,6 @@ public class PipeConnectorSubtaskManager {
               PipeConnectorConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_DEFAULT_VALUE);
       attributeSortedString = attributeSortedString + "data";
     } else {
-      pipeConnector = PipeAgent.plugin().schemaRegion().reflectConnector(pipeConnectorParameters);
       // Do not allow parallel connector for schema transmission to avoid disorder
       connectorNum = 1;
       attributeSortedString = attributeSortedString + "schema";
@@ -100,6 +99,10 @@ public class PipeConnectorSubtaskManager {
               new PipeDataRegionEventCounter());
 
       for (int connectorIndex = 0; connectorIndex < connectorNum; connectorIndex++) {
+        final PipeConnector pipeConnector =
+            isDataRegion
+                ? PipeAgent.plugin().dataRegion().reflectConnector(pipeConnectorParameters)
+                : PipeAgent.plugin().schemaRegion().reflectConnector(pipeConnectorParameters);
         // 1. Construct, validate and customize PipeConnector, and then handshake (create
         // connection) with the target
         try {
