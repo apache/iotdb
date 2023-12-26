@@ -34,7 +34,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.DeviceViewOper
 import org.apache.iotdb.db.queryengine.execution.operator.process.MergeSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.SingleDeviceViewOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TopKOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.join.RowBasedTimeJoinOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.join.FullOuterTimeJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.DescTimeComparator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator;
@@ -177,11 +177,11 @@ public class TopKOperatorTest {
       driverContext.addOperatorContext(
           6, new PlanNodeId("6"), SingleDeviceViewOperator.class.getSimpleName());
       driverContext.addOperatorContext(
-          7, new PlanNodeId("7"), RowBasedTimeJoinOperator.class.getSimpleName());
+          7, new PlanNodeId("7"), FullOuterTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(
           8, new PlanNodeId("8"), SingleDeviceViewOperator.class.getSimpleName());
       driverContext.addOperatorContext(
-          9, new PlanNodeId("9"), RowBasedTimeJoinOperator.class.getSimpleName());
+          9, new PlanNodeId("9"), FullOuterTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(
           10, new PlanNodeId("10"), SingleDeviceViewOperator.class.getSimpleName());
       driverContext.addOperatorContext(
@@ -264,8 +264,8 @@ public class TopKOperatorTest {
               Collections.singletonList(1),
               tsDataTypes);
 
-      RowBasedTimeJoinOperator timeJoinOperator1 =
-          new RowBasedTimeJoinOperator(
+      FullOuterTimeJoinOperator timeJoinOperator1 =
+          new FullOuterTimeJoinOperator(
               driverContext.getOperatorContexts().get(6),
               Arrays.asList(seriesScanOperator2, seriesScanOperator3),
               timeOrdering,
@@ -292,8 +292,8 @@ public class TopKOperatorTest {
               Arrays.asList(2, 3),
               tsDataTypes);
 
-      RowBasedTimeJoinOperator timeJoinOperator2 =
-          new RowBasedTimeJoinOperator(
+      FullOuterTimeJoinOperator timeJoinOperator2 =
+          new FullOuterTimeJoinOperator(
               driverContext.getOperatorContexts().get(8),
               Arrays.asList(seriesScanOperator4, seriesScanOperator5),
               timeOrdering,
@@ -474,11 +474,11 @@ public class TopKOperatorTest {
       driverContext.addOperatorContext(7, planNodeId7, SeriesScanOperator.class.getSimpleName());
 
       driverContext.addOperatorContext(
-          8, new PlanNodeId("8"), RowBasedTimeJoinOperator.class.getSimpleName());
+          8, new PlanNodeId("8"), FullOuterTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(
-          9, new PlanNodeId("9"), RowBasedTimeJoinOperator.class.getSimpleName());
+          9, new PlanNodeId("9"), FullOuterTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(
-          10, new PlanNodeId("10"), RowBasedTimeJoinOperator.class.getSimpleName());
+          10, new PlanNodeId("10"), FullOuterTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(
           11, new PlanNodeId("11"), SingleDeviceViewOperator.class.getSimpleName());
       driverContext.addOperatorContext(
@@ -592,8 +592,8 @@ public class TopKOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      RowBasedTimeJoinOperator timeJoinOperator1 =
-          new RowBasedTimeJoinOperator(
+      FullOuterTimeJoinOperator timeJoinOperator1 =
+          new FullOuterTimeJoinOperator(
               driverContext.getOperatorContexts().get(7),
               Arrays.asList(seriesScanOperator2, seriesScanOperator3),
               timeOrdering,
@@ -614,8 +614,8 @@ public class TopKOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      RowBasedTimeJoinOperator timeJoinOperator2 =
-          new RowBasedTimeJoinOperator(
+      FullOuterTimeJoinOperator timeJoinOperator2 =
+          new FullOuterTimeJoinOperator(
               driverContext.getOperatorContexts().get(8),
               Arrays.asList(seriesScanOperator4, seriesScanOperator5),
               timeOrdering,
@@ -636,8 +636,8 @@ public class TopKOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      RowBasedTimeJoinOperator timeJoinOperator3 =
-          new RowBasedTimeJoinOperator(
+      FullOuterTimeJoinOperator timeJoinOperator3 =
+          new FullOuterTimeJoinOperator(
               driverContext.getOperatorContexts().get(9),
               Arrays.asList(seriesScanOperator6, seriesScanOperator7),
               timeOrdering,
@@ -877,11 +877,11 @@ public class TopKOperatorTest {
       driverContext.addOperatorContext(7, planNodeId7, SeriesScanOperator.class.getSimpleName());
 
       driverContext.addOperatorContext(
-          8, new PlanNodeId("8"), RowBasedTimeJoinOperator.class.getSimpleName());
+          8, new PlanNodeId("8"), FullOuterTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(
-          9, new PlanNodeId("9"), RowBasedTimeJoinOperator.class.getSimpleName());
+          9, new PlanNodeId("9"), FullOuterTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(
-          10, new PlanNodeId("10"), RowBasedTimeJoinOperator.class.getSimpleName());
+          10, new PlanNodeId("10"), FullOuterTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(
           11, new PlanNodeId("11"), DeviceViewOperator.class.getSimpleName());
       driverContext.addOperatorContext(
@@ -975,8 +975,8 @@ public class TopKOperatorTest {
 
       List<TSDataType> tsDataTypes =
           new LinkedList<>(Arrays.asList(TSDataType.TEXT, TSDataType.INT32, TSDataType.INT32));
-      RowBasedTimeJoinOperator timeJoinOperator1 =
-          new RowBasedTimeJoinOperator(
+      FullOuterTimeJoinOperator timeJoinOperator1 =
+          new FullOuterTimeJoinOperator(
               driverContext.getOperatorContexts().get(7),
               Arrays.asList(seriesScanOperator2, seriesScanOperator3),
               timeOrdering,
@@ -994,8 +994,8 @@ public class TopKOperatorTest {
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
       OperatorContext.setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
-      RowBasedTimeJoinOperator timeJoinOperator2 =
-          new RowBasedTimeJoinOperator(
+      FullOuterTimeJoinOperator timeJoinOperator2 =
+          new FullOuterTimeJoinOperator(
               driverContext.getOperatorContexts().get(8),
               Arrays.asList(seriesScanOperator4, seriesScanOperator5),
               timeOrdering,
@@ -1013,8 +1013,8 @@ public class TopKOperatorTest {
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
       OperatorContext.setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
-      RowBasedTimeJoinOperator timeJoinOperator3 =
-          new RowBasedTimeJoinOperator(
+      FullOuterTimeJoinOperator timeJoinOperator3 =
+          new FullOuterTimeJoinOperator(
               driverContext.getOperatorContexts().get(9),
               Arrays.asList(seriesScanOperator6, seriesScanOperator7),
               timeOrdering,
@@ -1365,11 +1365,11 @@ public class TopKOperatorTest {
       driverContext.addOperatorContext(
           6, new PlanNodeId("6"), SingleDeviceViewOperator.class.getSimpleName());
       driverContext.addOperatorContext(
-          7, new PlanNodeId("7"), RowBasedTimeJoinOperator.class.getSimpleName());
+          7, new PlanNodeId("7"), FullOuterTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(
           8, new PlanNodeId("8"), SingleDeviceViewOperator.class.getSimpleName());
       driverContext.addOperatorContext(
-          9, new PlanNodeId("9"), RowBasedTimeJoinOperator.class.getSimpleName());
+          9, new PlanNodeId("9"), FullOuterTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(
           10, new PlanNodeId("10"), SingleDeviceViewOperator.class.getSimpleName());
       driverContext.addOperatorContext(
@@ -1457,8 +1457,8 @@ public class TopKOperatorTest {
               Collections.singletonList(1),
               tsDataTypes);
 
-      RowBasedTimeJoinOperator timeJoinOperator1 =
-          new RowBasedTimeJoinOperator(
+      FullOuterTimeJoinOperator timeJoinOperator1 =
+          new FullOuterTimeJoinOperator(
               driverContext.getOperatorContexts().get(6),
               Arrays.asList(seriesScanOperator2, seriesScanOperator3),
               timeOrdering,
@@ -1485,8 +1485,8 @@ public class TopKOperatorTest {
               Arrays.asList(2, 3),
               tsDataTypes);
 
-      RowBasedTimeJoinOperator timeJoinOperator2 =
-          new RowBasedTimeJoinOperator(
+      FullOuterTimeJoinOperator timeJoinOperator2 =
+          new FullOuterTimeJoinOperator(
               driverContext.getOperatorContexts().get(8),
               Arrays.asList(seriesScanOperator4, seriesScanOperator5),
               timeOrdering,

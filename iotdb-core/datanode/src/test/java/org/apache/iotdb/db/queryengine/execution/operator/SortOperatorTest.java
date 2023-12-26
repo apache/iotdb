@@ -31,7 +31,7 @@ import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.operator.process.SortOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.join.RowBasedTimeJoinOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.join.FullOuterTimeJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.DescTimeComparator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.SingleColumnMerger;
@@ -131,7 +131,7 @@ public class SortOperatorTest {
       PlanNodeId planNodeId2 = new PlanNodeId("2");
       driverContext.addOperatorContext(2, planNodeId2, SeriesScanOperator.class.getSimpleName());
       driverContext.addOperatorContext(
-          3, new PlanNodeId("3"), RowBasedTimeJoinOperator.class.getSimpleName());
+          3, new PlanNodeId("3"), FullOuterTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(4, new PlanNodeId("4"), SortOperator.class.getSimpleName());
 
       MeasurementPath measurementPath1 =
@@ -166,8 +166,8 @@ public class SortOperatorTest {
       List<TSDataType> tsDataTypes =
           new LinkedList<>(Arrays.asList(TSDataType.INT32, TSDataType.INT32));
 
-      RowBasedTimeJoinOperator timeJoinOperator1 =
-          new RowBasedTimeJoinOperator(
+      FullOuterTimeJoinOperator timeJoinOperator1 =
+          new FullOuterTimeJoinOperator(
               driverContext.getOperatorContexts().get(2),
               Arrays.asList(seriesScanOperator1, seriesScanOperator2),
               timeOrdering,
