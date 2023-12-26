@@ -103,6 +103,24 @@ public class ModificationFile implements AutoCloseable {
     }
   }
 
+  /**
+   * Write a modification in this file. The modification will first be written to the persistent
+   * store then the memory cache. Notice that this method does not synchronize to physical disk
+   * after
+   *
+   * @param mod the modification to be written.
+   * @throws IOException if IOException is thrown when writing the modification to the store.
+   */
+  public void writeWithoutSync(Modification mod) throws IOException {
+    synchronized (this) {
+      if (needVerify && new File(filePath).exists()) {
+        writer.mayTruncateLastLine();
+        needVerify = false;
+      }
+      writer.writeWithOutSync(mod);
+    }
+  }
+
   @GuardedBy("TsFileResource-WriteLock")
   public void truncate(long size) {
     writer.truncate(size);
