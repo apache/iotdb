@@ -42,14 +42,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
       TsFileEpoch tsFileEpoch,
       Map<String, String[]> device2Measurements,
       String pattern) {
-    // pipeTaskMeta is used to report the progress of the event, the PipeRealtimeEvent
-    // is only used in the realtime event extractor, which does not need to report the progress
-    // of the event, so the pipeTaskMeta is always null.
-    super(event != null ? event.getPipeName() : null, null, pattern);
-
-    this.event = event;
-    this.tsFileEpoch = tsFileEpoch;
-    this.device2Measurements = device2Measurements;
+    this(event, tsFileEpoch, device2Measurements, null, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   public PipeRealtimeEvent(
@@ -57,11 +50,13 @@ public class PipeRealtimeEvent extends EnrichedEvent {
       TsFileEpoch tsFileEpoch,
       Map<String, String[]> device2Measurements,
       PipeTaskMeta pipeTaskMeta,
-      String pattern) {
+      String pattern,
+      long startTime,
+      long endTime) {
     // pipeTaskMeta is used to report the progress of the event, the PipeRealtimeEvent
     // is only used in the realtime event extractor, which does not need to report the progress
     // of the event, so the pipeTaskMeta is always null.
-    super(event != null ? event.getPipeName() : null, pipeTaskMeta, pattern);
+    super(event != null ? event.getPipeName() : null, pipeTaskMeta, pattern, startTime, endTime);
 
     this.event = event;
     this.tsFileEpoch = tsFileEpoch;
@@ -135,19 +130,32 @@ public class PipeRealtimeEvent extends EnrichedEvent {
   }
 
   @Override
+  public void skipParsingTime() {
+    event.skipParsingTime();
+  }
+
+  @Override
   public PipeRealtimeEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern) {
+      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime) {
     return new PipeRealtimeEvent(
-        event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(pipeName, pipeTaskMeta, pattern),
+        event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+            pipeName, pipeTaskMeta, pattern, startTime, endTime),
         this.tsFileEpoch,
         this.device2Measurements,
         pipeTaskMeta,
-        pattern);
+        pattern,
+        startTime,
+        endTime);
   }
 
   @Override
   public boolean isGeneratedByPipe() {
     return event.isGeneratedByPipe();
+  }
+
+  @Override
+  public boolean isEventTimeOverlappedWithTimeRange() {
+    return event.isEventTimeOverlappedWithTimeRange();
   }
 
   @Override

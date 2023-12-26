@@ -25,18 +25,22 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
+import java.util.Objects;
 import java.util.function.BiConsumer;
 
 public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
@@ -57,7 +61,16 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       ProgressIndex progressIndex,
       boolean isAligned,
       boolean isGeneratedByPipe) {
-    this(walEntryHandler, progressIndex, isAligned, isGeneratedByPipe, null, null, null);
+    this(
+        walEntryHandler,
+        progressIndex,
+        isAligned,
+        isGeneratedByPipe,
+        null,
+        null,
+        null,
+        Long.MIN_VALUE,
+        Long.MAX_VALUE);
   }
 
   private PipeInsertNodeTabletInsertionEvent(
@@ -67,8 +80,10 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       boolean isGeneratedByPipe,
       String pipeName,
       PipeTaskMeta pipeTaskMeta,
-      String pattern) {
-    super(pipeName, pipeTaskMeta, pattern);
+      String pattern,
+      long startTime,
+      long endTime) {
+    super(pipeName, pipeTaskMeta, pattern, startTime, endTime);
     this.walEntryHandler = walEntryHandler;
     this.progressIndex = progressIndex;
     this.isAligned = isAligned;
@@ -130,7 +145,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   @Override
   public PipeInsertNodeTabletInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern) {
+      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime) {
     return new PipeInsertNodeTabletInsertionEvent(
         walEntryHandler,
         progressIndex,
@@ -138,12 +153,43 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
         isGeneratedByPipe,
         pipeName,
         pipeTaskMeta,
-        pattern);
+        pattern,
+        startTime,
+        endTime);
   }
 
   @Override
   public boolean isGeneratedByPipe() {
     return isGeneratedByPipe;
+  }
+
+  @Override
+  public boolean isEventTimeOverlappedWithTimeRange() {
+    try {
+      InsertNode insertNode = getInsertNode();
+      if (insertNode instanceof InsertRowNode) {
+        long timestamp = ((InsertRowNode) insertNode).getTime();
+        return startTime <= timestamp && timestamp <= endTime;
+      } else if (insertNode instanceof InsertTabletNode) {
+        long[] timestamps = ((InsertTabletNode) insertNode).getTimes();
+        if (Objects.isNull(timestamps) || timestamps.length == 0) {
+          return false;
+        }
+        // We assume that `timestamps` is ordered.
+        return startTime <= timestamps[timestamps.length - 1] && timestamps[0] <= endTime;
+      } else {
+        throw new UnSupportedDataTypeException(
+            String.format("InsertNode type %s is not supported.", insertNode.getClass().getName()));
+      }
+    } catch (Exception e) {
+      LOGGER.warn(
+          "Exception occurred when determining the event time of PipeInsertNodeTabletInsertionEvent({}) overlaps with the time range: [{}, {}]. Returning true to ensure data integrity.",
+          this,
+          startTime,
+          endTime,
+          e);
+      return true;
+    }
   }
 
   /////////////////////////// TabletInsertionEvent ///////////////////////////

@@ -235,7 +235,7 @@ public abstract class PageManager implements IPageManager {
   /** release referents and evict likely useless page if necessary */
   protected void releaseReferent(SchemaPageContext cxt) {
     for (ISchemaPage p : cxt.referredPages.values()) {
-      p.getRefCnt().decrementAndGet();
+      p.decrementAndGetRefCnt();
     }
 
     if (pageInstCache.size() > SchemaFileConfig.PAGE_CACHE_SIZE) {
@@ -652,7 +652,7 @@ public abstract class PageManager implements IPageManager {
       cxt.lastLeafPage.getLock().writeLock().unlock();
       cxt.lockTraces.remove(cxt.lastLeafPage.getPageIndex());
     }
-    cxt.lastLeafPage.getRefCnt().decrementAndGet();
+    cxt.lastLeafPage.decrementAndGetRefCnt();
 
     // can be reclaimed since the page only referred by pageInstCache
     cxt.referredPages.remove(cxt.lastLeafPage.getPageIndex());
@@ -1024,7 +1024,7 @@ public abstract class PageManager implements IPageManager {
     // referred pages will not be evicted until operation finished
     private void refer(ISchemaPage page) {
       if (!referredPages.containsKey(page.getPageIndex())) {
-        page.getRefCnt().incrementAndGet();
+        page.incrementAndGetRefCnt();
         referredPages.put(page.getPageIndex(), page);
       }
     }
