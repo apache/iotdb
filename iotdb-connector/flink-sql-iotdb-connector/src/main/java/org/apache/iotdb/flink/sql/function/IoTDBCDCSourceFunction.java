@@ -70,6 +70,7 @@ public class IoTDBCDCSourceFunction extends RichSourceFunction<RowData> {
   private final BlockingQueue<TabletWrapper> tabletWrappers;
   private final List<Tuple2<String, DataType>> tableSchema;
   private final String pipeName;
+  private final Options.CDCMode mode;
   private transient ExecutorService consumeExecutor;
 
   public IoTDBCDCSourceFunction(ReadableConfig options, SchemaWrapper schemaWrapper) {
@@ -83,6 +84,7 @@ public class IoTDBCDCSourceFunction extends RichSourceFunction<RowData> {
     password = options.get(Options.PASSWORD);
     timeseriesList =
         tableSchema.stream().map(field -> String.valueOf(field.f0)).collect(Collectors.toList());
+    mode = options.get(Options.CDC_MODE);
 
     tabletWrappers = new ArrayBlockingQueue<>(nodeUrls.size() * 10);
   }
@@ -96,19 +98,38 @@ public class IoTDBCDCSourceFunction extends RichSourceFunction<RowData> {
     try (SessionDataSet dataSet =
         session.executeQueryStatement(String.format("show pipe %s", pipeName))) {
       if (!dataSet.hasNext()) {
-        String createPipeCommand =
-            String.format(
-                "CREATE PIPE %s\n"
-                    + "WITH EXTRACTOR (\n"
-                    + "'extractor' = 'iotdb-extractor',\n"
-                    + "'extractor.pattern' = '%s',\n"
-                    + ") WITH CONNECTOR (\n"
-                    + "'connector' = 'websocket-connector',\n"
-                    + "'connector.websocket.port' = '%d',\n"
-                    // avoid to reuse the pipe's connector
-                    + "'connector.websocket.id' = '%d'"
-                    + ")",
-                pipeName, pattern, cdcPort, System.currentTimeMillis());
+        String createPipeCommand;
+        if (Options.CDCMode.REALTIME.equals(mode)) {
+          createPipeCommand =
+              String.format(
+                  "CREATE PIPE %s\n"
+                      + "WITH EXTRACTOR (\n"
+                      + "'extractor' = 'iotdb-extractor',\n"
+                      + "'extractor.history.enable' = 'false',\n"
+                      + "'extractor.pattern' = '%s',\n"
+                      + ") WITH CONNECTOR (\n"
+                      + "'connector' = 'websocket-connector',\n"
+                      + "'connector.websocket.port' = '%d',\n"
+                      // avoid to reuse the pipe's connector
+                      + "'connector.websocket.id' = '%d'"
+                      + ")",
+                  pipeName, pattern, cdcPort, System.currentTimeMillis());
+        } else {
+          createPipeCommand =
+              String.format(
+                  "CREATE PIPE %s\n"
+                      + "WITH EXTRACTOR (\n"
+                      + "'extractor' = 'iotdb-extractor',\n"
+                      + "'extractor.pattern' = '%s',\n"
+                      + ") WITH CONNECTOR (\n"
+                      + "'connector' = 'websocket-connector',\n"
+                      + "'connector.websocket.port' = '%d',\n"
+                      // avoid to reuse the pipe's connector
+                      + "'connector.websocket.id' = '%d'"
+                      + ")",
+                  pipeName, pattern, cdcPort, System.currentTimeMillis());
+        }
+
         session.executeNonQueryStatement(createPipeCommand);
         session.executeNonQueryStatement(String.format("start pipe %s", pipeName));
       } else {

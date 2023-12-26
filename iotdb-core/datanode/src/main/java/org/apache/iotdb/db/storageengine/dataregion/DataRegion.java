@@ -3056,10 +3056,10 @@ public class DataRegion implements IDataRegionForQuery {
       InsertTabletNode insertTabletNode = insertMultiTabletsNode.getInsertTabletNodeList().get(i);
       try {
         insertTablet(insertTabletNode);
-      } catch (WriteProcessException | BatchProcessException e) {
+      } catch (WriteProcessException e) {
         insertMultiTabletsNode
             .getResults()
-            .put(i, new TSStatus(TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode()));
+            .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       }
     }
 

@@ -48,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
@@ -249,16 +250,22 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
       PipeTransferTabletInsertNodeReq req,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
+    InsertBaseStatement statement = req.constructStatement();
     return new TPipeTransferResp(
-        executeStatement(req.constructStatement(), partitionFetcher, schemaFetcher));
+        statement.isEmpty()
+            ? RpcUtils.SUCCESS_STATUS
+            : executeStatement(statement, partitionFetcher, schemaFetcher));
   }
 
   private TPipeTransferResp handleTransferTabletBinary(
       PipeTransferTabletBinaryReq req,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
+    InsertBaseStatement statement = req.constructStatement();
     return new TPipeTransferResp(
-        executeStatement(req.constructStatement(), partitionFetcher, schemaFetcher));
+        statement.isEmpty()
+            ? RpcUtils.SUCCESS_STATUS
+            : executeStatement(statement, partitionFetcher, schemaFetcher));
   }
 
   private TPipeTransferResp handleTransferTabletRaw(

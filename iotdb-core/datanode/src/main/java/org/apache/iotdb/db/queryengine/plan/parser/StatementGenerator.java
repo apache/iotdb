@@ -640,6 +640,11 @@ public class StatementGenerator {
       CompressionType compressionType =
           CompressionType.deserialize(ReadWriteIOUtils.readByte(buffer));
 
+      if (measurementName == null) {
+        throw new MetadataException(
+            "The name of a measurement in schema template shall not be null.");
+      }
+
       if (alignedPrefix.containsKey(prefix) && !isAlign) {
         throw new MetadataException("Align designation incorrect at: " + prefix);
       }

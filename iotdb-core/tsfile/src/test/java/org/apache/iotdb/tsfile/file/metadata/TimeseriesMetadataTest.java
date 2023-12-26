@@ -20,9 +20,12 @@ package org.apache.iotdb.tsfile.file.metadata;
 
 import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
+import org.apache.iotdb.tsfile.read.reader.LocalTsFileInput;
+import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -32,6 +35,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.Paths;
 
 public class TimeseriesMetadataTest {
 
@@ -53,10 +57,12 @@ public class TimeseriesMetadataTest {
   @Test
   public void testWriteIntoFile() {
     TimeseriesMetadata timeseriesMetadata =
-        TestHelper.createSimpleTimseriesMetaData(measurementUID);
+        TestHelper.createSimpleTimeseriesMetaData(measurementUID);
     serialized(timeseriesMetadata);
     TimeseriesMetadata readMetadata = deSerialized();
-    timeseriesMetadata.equals(readMetadata);
+    Assert.assertEquals(timeseriesMetadata.toString(), readMetadata.toString());
+    readMetadata = deSerializedByTsFileInput();
+    Assert.assertEquals(timeseriesMetadata.toString(), readMetadata.toString());
     serialized(readMetadata);
   }
 
@@ -64,7 +70,7 @@ public class TimeseriesMetadataTest {
     FileInputStream fis = null;
     TimeseriesMetadata metaData = null;
     try {
-      fis = new FileInputStream(new File(PATH));
+      fis = new FileInputStream(PATH);
       FileChannel fch = fis.getChannel();
       ByteBuffer buffer = ByteBuffer.allocate((int) fch.size());
       fch.read(buffer);
@@ -78,6 +84,28 @@ public class TimeseriesMetadataTest {
       if (fis != null) {
         try {
           fis.close();
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
+      }
+    }
+    return metaData;
+  }
+
+  private TimeseriesMetadata deSerializedByTsFileInput() {
+    TsFileInput tsFileInput = null;
+    TimeseriesMetadata metaData = null;
+    try {
+      tsFileInput = new LocalTsFileInput(Paths.get(PATH));
+      metaData = TimeseriesMetadata.deserializeFrom(tsFileInput, true);
+      metaData.setChunkMetadataListBuffer(new PublicBAOS());
+      return metaData;
+    } catch (IOException e) {
+      e.printStackTrace();
+    } finally {
+      if (tsFileInput != null) {
+        try {
+          tsFileInput.close();
         } catch (IOException e) {
           e.printStackTrace();
         }

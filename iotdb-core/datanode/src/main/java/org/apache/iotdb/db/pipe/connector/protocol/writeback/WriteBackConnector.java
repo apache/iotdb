@@ -45,12 +45,14 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
+import java.util.Objects;
 
 public class WriteBackConnector implements PipeConnector {
 
@@ -116,20 +118,25 @@ public class WriteBackConnector implements PipeConnector {
 
   private void doTransfer(PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, WALPipeException {
-    final TSStatus status =
-        pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible() == null
-            ? PipeAgent.receiver()
-                .thrift()
-                .receive(
-                    PipeTransferTabletBinaryReq.toTPipeTransferReq(
-                        pipeInsertNodeTabletInsertionEvent.getByteBuffer()),
-                    ClusterPartitionFetcher.getInstance(),
-                    ClusterSchemaFetcher.getInstance())
-                .getStatus()
-            : executeStatement(
-                PipeTransferTabletInsertNodeReq.toTPipeTransferRawReq(
-                        pipeInsertNodeTabletInsertionEvent.getInsertNode())
-                    .constructStatement());
+    TSStatus status;
+
+    if (Objects.isNull(pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible())) {
+      status =
+          PipeAgent.receiver()
+              .thrift()
+              .receive(
+                  PipeTransferTabletBinaryReq.toTPipeTransferReq(
+                      pipeInsertNodeTabletInsertionEvent.getByteBuffer()),
+                  ClusterPartitionFetcher.getInstance(),
+                  ClusterSchemaFetcher.getInstance())
+              .getStatus();
+    } else {
+      InsertBaseStatement statement =
+          PipeTransferTabletInsertNodeReq.toTPipeTransferRawReq(
+                  pipeInsertNodeTabletInsertionEvent.getInsertNode())
+              .constructStatement();
+      status = statement.isEmpty() ? RpcUtils.SUCCESS_STATUS : executeStatement(statement);
+    }
 
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
@@ -141,12 +148,13 @@ public class WriteBackConnector implements PipeConnector {
 
   private void doTransfer(PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException {
+    InsertBaseStatement statement =
+        PipeTransferTabletRawReq.toTPipeTransferRawReq(
+                pipeRawTabletInsertionEvent.convertToTablet(),
+                pipeRawTabletInsertionEvent.isAligned())
+            .constructStatement();
     final TSStatus status =
-        executeStatement(
-            PipeTransferTabletRawReq.toTPipeTransferRawReq(
-                    pipeRawTabletInsertionEvent.convertToTablet(),
-                    pipeRawTabletInsertionEvent.isAligned())
-                .constructStatement());
+        statement.isEmpty() ? RpcUtils.SUCCESS_STATUS : executeStatement(statement);
 
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
