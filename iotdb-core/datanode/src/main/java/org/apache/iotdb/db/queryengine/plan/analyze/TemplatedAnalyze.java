@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.TemplatedConcatRemoveUnExistentMeasurementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
@@ -60,6 +61,7 @@ import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.PART
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.CONFIG;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.DEVICE_EXPRESSION;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.END_TIME_EXPRESSION;
+import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.WHERE_WRONG_TYPE_ERROR_MSG;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyzeDeviceViewSpecialProcess;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyzeExpressionType;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyzeFill;
@@ -67,6 +69,7 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyz
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.getTimePartitionSlotList;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.concatDeviceAndBindSchemaForExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.getMeasurementExpression;
+import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer.analyzeExpressionForTemplatedQuery;
 
 /**
  * This class provides accelerated implementation for multiple devices align by device query. This
@@ -241,8 +244,18 @@ public class TemplatedAnalyze {
       return;
     }
 
-    Expression wherePredicate = queryStatement.getWhereCondition().getPredicate();
+    analysis.setOnlyQueryTemplateMeasurements(false);
+    Expression wherePredicate =
+        new TemplatedConcatRemoveUnExistentMeasurementVisitor()
+            .process(
+                queryStatement.getWhereCondition().getPredicate(),
+                analysis.getDeviceTemplate().getSchemaMap());
     analysis.setWhereExpression(wherePredicate);
+
+    TSDataType outputType = analyzeExpressionForTemplatedQuery(analysis, wherePredicate);
+    if (outputType != TSDataType.BOOLEAN) {
+      throw new SemanticException(String.format(WHERE_WRONG_TYPE_ERROR_MSG, outputType));
+    }
   }
 
   private static void analyzeDeviceToOrderBy(

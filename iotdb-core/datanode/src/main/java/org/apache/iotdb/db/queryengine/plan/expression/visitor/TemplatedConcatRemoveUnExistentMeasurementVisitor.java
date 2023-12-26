@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.visitor;
 
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.NullOperand;
@@ -29,43 +28,21 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import java.util.Map;
 
 /**
- * This class is only used for align by device query with template and value filter. We just
- * serialize the predicate only once, so in be, we need combine the devicePath and predicate to
- * generate the actual Filter Expression.
+ * This class is only used for align by device query with template and value filter.
+ *
+ * <p>The function of this class is used to remove timeseries which is not in the template.
  */
-public class TemplatedConcatDeviceAndPredicateVisitor
-    extends ReconstructVisitor<TemplatedConcatDeviceAndPredicateVisitor.Context> {
+public class TemplatedConcatRemoveUnExistentMeasurementVisitor
+    extends ReconstructVisitor<Map<String, IMeasurementSchema>> {
 
   @Override
   public Expression visitTimeSeriesOperand(
-      TimeSeriesOperand predicate, TemplatedConcatDeviceAndPredicateVisitor.Context context) {
+      TimeSeriesOperand predicate, Map<String, IMeasurementSchema> context) {
     PartialPath measurementPath = predicate.getPath();
-    PartialPath concatPath = context.getDevicePath().concatPath(measurementPath);
-    if (context.getSchemaMap().containsKey(measurementPath.getMeasurement())) {
-      IMeasurementSchema schema = context.getSchemaMap().get(measurementPath.getMeasurement());
-      MeasurementPath fullMeasurementPath = new MeasurementPath(concatPath, schema);
-      return new TimeSeriesOperand(fullMeasurementPath);
+    if (context.containsKey(measurementPath.getMeasurement())) {
+      return predicate;
     } else {
       return new NullOperand();
-    }
-  }
-
-  public static class Context {
-    private final PartialPath devicePath;
-
-    private final Map<String, IMeasurementSchema> schemaMap;
-
-    public Context(PartialPath devicePath, Map<String, IMeasurementSchema> schemaMap) {
-      this.devicePath = devicePath;
-      this.schemaMap = schemaMap;
-    }
-
-    public PartialPath getDevicePath() {
-      return devicePath;
-    }
-
-    public Map<String, IMeasurementSchema> getSchemaMap() {
-      return this.schemaMap;
     }
   }
 }

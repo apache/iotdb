@@ -32,6 +32,7 @@ import org.junit.runner.RunWith;
 import java.sql.Connection;
 import java.sql.Statement;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 
 @RunWith(IoTDBTestRunner.class)
@@ -614,6 +615,21 @@ public class IoTDBAlignByDeviceWithTemplateIT {
         };
     resultSetEqualTest(
         "select count(s1+1) from root.sg1.** align by device;", expectedHeader, retArray);
+    expectedHeader = new String[] {"Device,count(s1 + 1)"};
+    retArray =
+        new String[] {
+          "root.sg2.d1,2,", "root.sg2.d2,2,", "root.sg2.d3,2,", "root.sg2.d4,2,",
+        };
+    resultSetEqualTest(
+        "select count(s1+1) from root.sg2.** align by device;", expectedHeader, retArray);
+
+    assertTestFail(
+        "select s1 from root.sg1.** where s1 align by device;",
+        "The output type of the expression in WHERE clause should be BOOLEAN, actual data type: FLOAT.");
+
+    assertTestFail(
+        "select s1 from root.sg2.** where s1 align by device;",
+        "The output type of the expression in WHERE clause should be BOOLEAN, actual data type: FLOAT.");
   }
 
   @Test
