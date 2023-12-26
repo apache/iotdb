@@ -479,11 +479,15 @@ public class BTreePageManager extends PageManager {
           try {
             ISchemaPage nPage;
             while (children.isEmpty() && nextSeg >= 0) {
+              boolean hasThisPage = cxt.referredPages.containsKey(getPageIndex(nextSeg));
               nPage = getPageInstance(getPageIndex(nextSeg), cxt);
               children = nPage.getAsSegmentedPage().getChildren(getSegIndex(nextSeg));
               nextSeg = nPage.getAsSegmentedPage().getNextSegAddress(getSegIndex(nextSeg));
               // children iteration need not pin page, consistency is guaranteed by upper layer
-              nPage.decrementAndGetRefCnt();
+              if (!hasThisPage) {
+                cxt.referredPages.remove(nPage.getPageIndex());
+                nPage.decrementAndGetRefCnt();
+              }
             }
           } catch (MetadataException | IOException e) {
             logger.error(e.getMessage());
