@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorClient;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.IoTDBConnector;
@@ -41,7 +42,6 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -80,17 +80,12 @@ import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.IOT
 import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_SSL_SINK;
 
 public class IoTDBThriftSyncConnector extends IoTDBConnector {
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftSyncConnector.class);
 
-  private boolean useLeaderCache;
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftSyncConnector.class);
 
   private IoTDBThriftSyncPipeTransferBatchReqBuilder tabletBatchBuilder;
 
   private SyncClientManager clientManager;
-
-  public IoTDBThriftSyncConnector() {
-    // Do nothing
-  }
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -143,24 +138,27 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       throws Exception {
     super.customize(parameters, configuration);
 
+    // tablet batch mode configuration
     if (isTabletBatchModeEnabled) {
       tabletBatchBuilder = new IoTDBThriftSyncPipeTransferBatchReqBuilder(parameters);
     }
 
+    // ssl transport configuration
     final String userSpecifiedConnectorName =
         parameters
             .getStringOrDefault(
                 ImmutableList.of(CONNECTOR_KEY, SINK_KEY),
                 IOTDB_THRIFT_CONNECTOR.getPipePluginName())
             .toLowerCase();
-    boolean useSSL =
+    final boolean useSSL =
         IOTDB_THRIFT_SSL_CONNECTOR.getPipePluginName().equals(userSpecifiedConnectorName)
             || IOTDB_THRIFT_SSL_SINK.getPipePluginName().equals(userSpecifiedConnectorName)
             || parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false);
-    String trustStorePath = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY);
-    String trustStorePwd = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY);
+    final String trustStorePath = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY);
+    final String trustStorePwd = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY);
 
-    useLeaderCache =
+    // leader cache configuration
+    final boolean useLeaderCache =
         parameters.getBooleanOrDefault(
             Arrays.asList(SINK_LEADER_CACHE_ENABLE_KEY, CONNECTOR_LEADER_CACHE_ENABLE_KEY),
             CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE);
@@ -171,7 +169,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
 
   @Override
   public void handshake() throws Exception {
-    clientManager.initClients();
+    clientManager.checkClientStatusAndTryReconstructIfNecessary();
   }
 
   @Override
@@ -202,23 +200,33 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
     if (((EnrichedEvent) tabletInsertionEvent).shouldParsePatternOrTime()) {
       if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
         transfer(
-            ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).parseEventWithPattern());
+            ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent)
+                .parseEventWithPatternOrTime());
       } else { // tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
-        transfer(((PipeRawTabletInsertionEvent) tabletInsertionEvent).parseEventWithPattern());
+        transfer(
+            ((PipeRawTabletInsertionEvent) tabletInsertionEvent).parseEventWithPatternOrTime());
       }
       return;
     }
 
-    if (isTabletBatchModeEnabled) {
-      if (tabletBatchBuilder.onEvent(tabletInsertionEvent)) {
-        doTransfer();
-      }
-    } else {
-      if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-        doTransfer((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
+    try {
+      if (isTabletBatchModeEnabled) {
+        if (tabletBatchBuilder.onEvent(tabletInsertionEvent)) {
+          doTransfer();
+        }
       } else {
-        doTransfer((PipeRawTabletInsertionEvent) tabletInsertionEvent);
+        if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+          doTransfer((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
+        } else {
+          doTransfer((PipeRawTabletInsertionEvent) tabletInsertionEvent);
+        }
       }
+    } catch (Exception e) {
+      throw new PipeConnectionException(
+          String.format(
+              "Failed to transfer tablet insertion event %s, because %s.",
+              tabletInsertionEvent, e.getMessage()),
+          e);
     }
   }
 
@@ -246,12 +254,20 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       return;
     }
 
-    // in order to commit in order
-    if (isTabletBatchModeEnabled && !tabletBatchBuilder.isEmpty()) {
-      doTransfer();
-    }
+    try {
+      // in order to commit in order
+      if (isTabletBatchModeEnabled && !tabletBatchBuilder.isEmpty()) {
+        doTransfer();
+      }
 
-    doTransfer((PipeTsFileInsertionEvent) tsFileInsertionEvent);
+      doTransfer((PipeTsFileInsertionEvent) tsFileInsertionEvent);
+    } catch (Exception e) {
+      throw new PipeConnectionException(
+          String.format(
+              "Failed to transfer tsfile insertion event %s, because %s.",
+              tsFileInsertionEvent, e.getMessage()),
+          e);
+    }
   }
 
   @Override
@@ -268,8 +284,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
   }
 
   private void doTransfer() throws IOException {
-    Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus =
-        clientManager.getOneConnectedClientAndStatus();
+    Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus = clientManager.getClient();
     final TPipeTransferResp resp;
     try {
       resp =
@@ -278,11 +293,10 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
               .pipeTransfer(
                   PipeTransferTabletBatchReq.toTPipeTransferReq(
                       tabletBatchBuilder.getTPipeTransferReqs()));
-    } catch (TException e) {
+    } catch (Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
-          String.format(
-              "Network error when transfer tablet insertion event, because %s.", e.getMessage()),
+          String.format("Network error when transfer tablet batch, because %s.", e.getMessage()),
           e);
     }
 
@@ -296,52 +310,59 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
   }
 
   private void doTransfer(PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
-      throws PipeException, WALPipeException {
-    Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus =
-        clientManager.getClientAndStatusByEvent(pipeInsertNodeTabletInsertionEvent);
+      throws PipeException {
+    InsertNode insertNode;
+    Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus = null;
     final TPipeTransferResp resp;
+
     try {
-      resp =
-          pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible() == null
-              ? clientAndStatus
-                  .getLeft()
-                  .pipeTransfer(
-                      PipeTransferTabletBinaryReq.toTPipeTransferReq(
-                          pipeInsertNodeTabletInsertionEvent.getByteBuffer()))
-              : clientAndStatus
-                  .getLeft()
-                  .pipeTransfer(
-                      PipeTransferTabletInsertNodeReq.toTPipeTransferReq(
-                          pipeInsertNodeTabletInsertionEvent.getInsertNode()));
-    } catch (TException e) {
-      clientAndStatus.setRight(false);
+      insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
+
+      if (insertNode != null) {
+        clientAndStatus = clientManager.getClient(insertNode.getDevicePath().getFullPath());
+        resp =
+            clientAndStatus
+                .getLeft()
+                .pipeTransfer(PipeTransferTabletInsertNodeReq.toTPipeTransferReq(insertNode));
+      } else {
+        clientAndStatus = clientManager.getClient();
+        resp =
+            clientAndStatus
+                .getLeft()
+                .pipeTransfer(
+                    PipeTransferTabletBinaryReq.toTPipeTransferReq(
+                        pipeInsertNodeTabletInsertionEvent.getByteBuffer()));
+      }
+    } catch (Exception e) {
+      if (clientAndStatus != null) {
+        clientAndStatus.setRight(false);
+      }
       throw new PipeConnectionException(
           String.format(
-              "Network error when transfer tablet insertion event, because %s.", e.getMessage()),
+              "Network error when transfer insert node tablet insertion event, because %s.",
+              e.getMessage()),
           e);
     }
 
-    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    final TSStatus status = resp.getStatus();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format(
               "Transfer PipeInsertNodeTabletInsertionEvent %s error, result status %s",
-              pipeInsertNodeTabletInsertionEvent, resp.status));
+              pipeInsertNodeTabletInsertionEvent, status));
     }
-
-    if (resp.getStatus().isSetRedirectNode() && useLeaderCache) {
-      InsertNode insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
-      if (insertNode != null) {
-        clientManager.updateOrCreate(
-            insertNode.getDevicePath().getFullPath(), resp.getStatus().getRedirectNode());
-      }
+    if (insertNode != null && status.isSetRedirectNode()) {
+      clientManager.updateOrCreate(
+          insertNode.getDevicePath().getFullPath(), status.getRedirectNode());
     }
   }
 
   private void doTransfer(PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
-      throws PipeException, IOException {
-    Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus =
-        clientManager.getClientAndStatusByEvent(pipeRawTabletInsertionEvent);
+      throws PipeException {
+    final Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus =
+        clientManager.getClient(pipeRawTabletInsertionEvent.getDeviceId());
     final TPipeTransferResp resp;
+
     try {
       resp =
           clientAndStatus
@@ -350,7 +371,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
                   PipeTransferTabletRawReq.toTPipeTransferReq(
                       pipeRawTabletInsertionEvent.convertToTablet(),
                       pipeRawTabletInsertionEvent.isAligned()));
-    } catch (TException e) {
+    } catch (Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
           String.format(
@@ -359,24 +380,24 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
           e);
     }
 
-    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    final TSStatus status = resp.getStatus();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format(
               "Transfer PipeRawTabletInsertionEvent %s error, result status %s",
-              pipeRawTabletInsertionEvent, resp.status));
+              pipeRawTabletInsertionEvent, status));
     }
-
-    if (useLeaderCache && resp.getStatus().isSetRedirectNode()) {
+    if (status.isSetRedirectNode()) {
       clientManager.updateOrCreate(
-          pipeRawTabletInsertionEvent.getDeviceId(), resp.getStatus().getRedirectNode());
+          pipeRawTabletInsertionEvent.getDeviceId(), status.getRedirectNode());
     }
   }
 
   private void doTransfer(PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
       throws PipeException, IOException {
-    Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus =
-        clientManager.getClientAndStatusByEvent(pipeTsFileInsertionEvent);
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
+    final Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus =
+        clientManager.getClient(tsFile);
 
     // 1. Transfer file piece by piece
     final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
@@ -402,14 +423,14 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
                               readLength == readFileBufferSize
                                   ? readBuffer
                                   : Arrays.copyOfRange(readBuffer, 0, readLength))));
-        } catch (TException e) {
+        } catch (Exception e) {
           clientAndStatus.setRight(false);
           throw new PipeConnectionException(
               String.format(
-                  "Network error when transfer raw tablet insertion event, because %s.",
-                  e.getMessage()),
+                  "Network error when transfer file %s, because %s.", tsFile, e.getMessage()),
               e);
         }
+
         position += readLength;
 
         // This case only happens when the connection is broken, and the connector is reconnected
@@ -437,14 +458,12 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
               .getLeft()
               .pipeTransfer(
                   PipeTransferFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()));
-    } catch (TException e) {
+    } catch (Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
-          String.format(
-              "Network error when transfer raw tablet insertion event, because %s.",
-              e.getMessage()),
-          e);
+          String.format("Network error when seal file %s, because %s.", tsFile, e.getMessage()), e);
     }
+
     if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format("Seal file %s error, result status %s.", tsFile, resp.getStatus()));
@@ -456,7 +475,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
   @Override
   public void close() {
     if (clientManager != null) {
-      clientManager.clean();
+      clientManager.close();
     }
 
     if (tabletBatchBuilder != null) {
