@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -70,10 +71,21 @@ public abstract class AbstractSerializableListeningQueue<E> {
   /////////////////////////////// Snapshot ///////////////////////////////
 
   public final boolean serializeToFile(File snapshotName) throws IOException {
-    return serializerMap
-        .get(currentType)
-        .get()
-        .writeQueueToFile(snapshotName, queue, this::serializeToByteBuffer);
+    final File snapshotFile = new File(String.valueOf(snapshotName));
+    if (snapshotFile.exists() && snapshotFile.isFile()) {
+      LOGGER.error(
+          "Failed to take snapshot, because snapshot file [{}] is already exist.",
+          snapshotFile.getAbsolutePath());
+      return false;
+    }
+
+    try (final FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile)) {
+      ReadWriteIOUtils.write(currentType.getType(), fileOutputStream);
+      return serializerMap
+          .get(currentType)
+          .get()
+          .writeQueueToFile(fileOutputStream, queue, this::serializeToByteBuffer);
+    }
   }
 
   public final void deserializeFromFile(File snapshotName) throws IOException {

@@ -21,15 +21,15 @@ package org.apache.iotdb.commons.pipe.datastructure.serializer;
 
 import org.apache.iotdb.commons.pipe.datastructure.ConcurrentIterableLinkedQueue;
 
-import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.function.Function;
 
 public interface QueueSerializer<E> {
   boolean writeQueueToFile(
-      File snapshotName,
+      FileOutputStream fileOutputStream,
       ConcurrentIterableLinkedQueue<E> queue,
       Function<E, ByteBuffer> elementSerializationFunction)
       throws IOException;

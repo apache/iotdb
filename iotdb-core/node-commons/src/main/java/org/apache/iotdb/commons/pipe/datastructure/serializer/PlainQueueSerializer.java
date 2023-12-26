@@ -20,13 +20,8 @@
 package org.apache.iotdb.commons.pipe.datastructure.serializer;
 
 import org.apache.iotdb.commons.pipe.datastructure.ConcurrentIterableLinkedQueue;
-import org.apache.iotdb.commons.pipe.datastructure.LinkedQueueSerializerType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -35,41 +30,26 @@ import java.nio.channels.FileChannel;
 import java.util.function.Function;
 
 public class PlainQueueSerializer<E> implements QueueSerializer<E> {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(PlainQueueSerializer.class);
-
   @Override
   public boolean writeQueueToFile(
-      File snapshotName,
+      FileOutputStream fileOutputStream,
       ConcurrentIterableLinkedQueue<E> queue,
       Function<E, ByteBuffer> elementSerializationFunction)
       throws IOException {
-    final File snapshotFile = new File(String.valueOf(snapshotName));
-    if (snapshotFile.exists() && snapshotFile.isFile()) {
-      LOGGER.error(
-          "Failed to take snapshot, because snapshot file [{}] is already exist.",
-          snapshotFile.getAbsolutePath());
-      return false;
-    }
-
-    try (final FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile)) {
-      ReadWriteIOUtils.write(LinkedQueueSerializerType.PLAIN.getType(), fileOutputStream);
-      ReadWriteIOUtils.write(queue.getFirstIndex(), fileOutputStream);
-      try (ConcurrentIterableLinkedQueue<E>.DynamicIterator itr = queue.iterateFromEarliest()) {
-        E element;
-        while (true) {
-          element = itr.next(0);
-          if (element == null) {
-            break;
-          }
-          ByteBuffer planBuffer = elementSerializationFunction.apply(element);
-          ReadWriteIOUtils.write(planBuffer.capacity(), fileOutputStream);
-          ReadWriteIOUtils.write(planBuffer, fileOutputStream);
+    ReadWriteIOUtils.write(queue.getFirstIndex(), fileOutputStream);
+    try (ConcurrentIterableLinkedQueue<E>.DynamicIterator itr = queue.iterateFromEarliest()) {
+      E element;
+      while (true) {
+        element = itr.next(0);
+        if (element == null) {
+          break;
         }
+        ByteBuffer planBuffer = elementSerializationFunction.apply(element);
+        ReadWriteIOUtils.write(planBuffer.capacity(), fileOutputStream);
+        ReadWriteIOUtils.write(planBuffer, fileOutputStream);
       }
-      fileOutputStream.getFD().sync();
     }
-
+    fileOutputStream.getFD().sync();
     return true;
   }
 
