@@ -18,10 +18,6 @@
 # under the License.
 #
 
-
-# this function is for parsing the variables like "A=B" in  `start-server.sh -D A=B`
-# The command just parse IOTDB-prefixed variables and ignore all other variables
-
 if [ -z "${IOTDB_HOME}" ]; then
     export IOTDB_HOME="`dirname "$0"`/.."
 fi

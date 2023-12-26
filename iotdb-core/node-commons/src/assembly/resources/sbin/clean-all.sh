@@ -18,11 +18,6 @@
 # under the License.
 #
 
-
-# this function is for parsing the variables like "A=B" in  `start-server.sh -D A=B`
-# The command just parse IOTDB-prefixed variables and ignore all other variables
-
-#set -x
 read -p "Do you want to clean all the data in the IoTDB ? y/n (default n): " CLEAN_SERVICE
 if [[ "$CLEAN_SERVICE" != "y" && "$CLEAN_SERVICE" != "Y" ]]; then
   echo "Exiting..."
