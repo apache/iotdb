@@ -265,6 +265,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.calculateMaxAggregationResultSize;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.calculateMaxAggregationResultSizeForLastQuery;
@@ -1925,8 +1926,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitLeftOuterTimeJoin(
       LeftOuterTimeJoinNode node, LocalExecutionPlanContext context) {
-    Operator leftChild = node.getLeftChild().accept(this, context);
-    Operator rightChild = node.getRightChild().accept(this, context);
+    List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
+    checkState(children.size() == 2);
+    Operator leftChild = children.get(0);
+    Operator rightChild = children.get(1);
 
     OperatorContext operatorContext =
         context
