@@ -17,9 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.extractor.realtime.listener;
+package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener;
 
-import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.HashMap;
