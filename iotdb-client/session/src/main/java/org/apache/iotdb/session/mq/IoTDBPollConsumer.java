@@ -25,8 +25,8 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
-
 import org.apache.iotdb.tsfile.write.record.Tablet;
+
 import org.java_websocket.enums.ReadyState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
