@@ -65,7 +65,7 @@ public abstract class PipeTaskAgent {
   protected final PipeMetaKeeper pipeMetaKeeper;
   protected final PipeTaskManager pipeTaskManager;
 
-  public PipeTaskAgent() {
+  protected PipeTaskAgent() {
     pipeMetaKeeper = new PipeMetaKeeper();
     pipeTaskManager = new PipeTaskManager();
   }
