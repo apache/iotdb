@@ -88,7 +88,12 @@ class PipeSchemaNodeFilter {
   }
 
   static boolean shouldBeListenedByQueue(PlanNode node) {
-    return NODE_MAP.values().stream().anyMatch(types -> types.contains(node.getType()));
+    try {
+      return NODE_MAP.values().stream().anyMatch(types -> types.contains(node.getType()));
+    } catch (Exception e) {
+      // Some plan nodes may not contain "getType()" implementation
+      return false;
+    }
   }
 
   static Set<PlanNodeType> getPipeListenSet(
