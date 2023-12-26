@@ -88,15 +88,11 @@ public class LoadTsFileDataCacheMemoryBlock extends LoadTsFileAbstractMemoryBloc
 
   @Override
   protected void releaseAllMemory() {
-    if (!isClosed()) {
-      if (memoryUsageInBytes.get() != 0) {
-        LOGGER.warn(
-            "Try to release memory from a memory block {} which has not released all memory", this);
-      }
-      MEMORY_MANAGER.releaseToQuery(limitedMemorySizeInBytes.get());
-    } else {
-      LOGGER.warn("Try to release memory from a closed memory block {}", this);
+    if (memoryUsageInBytes.get() != 0) {
+      LOGGER.warn(
+          "Try to release memory from a memory block {} which has not released all memory", this);
     }
+    MEMORY_MANAGER.releaseToQuery(limitedMemorySizeInBytes.get());
   }
 
   public boolean doShrink(long shrinkMemoryInBytes) {

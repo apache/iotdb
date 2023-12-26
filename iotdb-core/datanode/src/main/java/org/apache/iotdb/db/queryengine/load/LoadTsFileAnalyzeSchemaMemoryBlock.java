@@ -57,15 +57,11 @@ public class LoadTsFileAnalyzeSchemaMemoryBlock extends LoadTsFileAbstractMemory
 
   @Override
   protected void releaseAllMemory() {
-    if (!isClosed()) {
-      if (memoryUsageInBytes.get() != 0) {
-        LOGGER.warn(
-            "Try to release memory from a memory block {} which has not released all memory", this);
-      }
-      MEMORY_MANAGER.releaseToQuery(totalMemorySizeInBytes);
-    } else {
-      LOGGER.warn("Try to release memory from a closed memory block {}", this);
+    if (memoryUsageInBytes.get() != 0) {
+      LOGGER.warn(
+          "Try to release memory from a memory block {} which has not released all memory", this);
     }
+    MEMORY_MANAGER.releaseToQuery(totalMemorySizeInBytes);
   }
 
   @Override

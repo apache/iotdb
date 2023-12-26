@@ -84,6 +84,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -97,6 +98,8 @@ public class LoadTsfileAnalyzer {
       ConfigNodeClientManager.getInstance();
   private static final long ANALYZE_SCHEMA_MEMORY_BLOCK_SIZE_IN_BYTES = 16 * 1024 * 1024L; // 16 MB
   private static final int FLUSH_BATCH_TIME_SERIES_NUMBER = 4096;
+  private static final long FLUSH_ALIGNED_CACHE_MEMORY_SIZE_IN_BYTES =
+      ANALYZE_SCHEMA_MEMORY_BLOCK_SIZE_IN_BYTES >> 1; // 8 MB
 
   private final LoadTsFileStatement loadTsFileStatement;
   private final MPPQueryContext context;
@@ -235,6 +238,8 @@ public class LoadTsfileAnalyzer {
           }
           writePointCount += getWritePointCount(device2TimeseriesMetadata);
         }
+
+        schemaAutoCreatorAndVerifier.flushAndClearDeviceIsAlignedCacheIfNecessary();
       }
 
       TimestampPrecisionUtils.checkTimestampPrecision(tsFileResource.getFileEndTime());
@@ -277,6 +282,8 @@ public class LoadTsfileAnalyzer {
         for (final TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
           final TSDataType dataType = timeseriesMetadata.getTsDataType();
           if (TSDataType.VECTOR.equals(dataType)) {
+            schemaCache
+                .clearDeviceIsAlignedCacheIfNecessary(); // must execute before add aligned cache
             schemaCache.addIsAlignedCache(device, true, false);
 
             // not a timeseries, skip
@@ -320,6 +327,9 @@ public class LoadTsfileAnalyzer {
                     compressionEncodingPair.getLeft()));
 
             schemaCache.addIsAlignedCache(device, false, true);
+            if (!schemaCache.getDeviceIsAligned(device)) {
+              schemaCache.clearDeviceIsAlignedCacheIfNecessary();
+            }
           }
 
           if (schemaCache.shouldFlushTimeSeries()) {
@@ -327,6 +337,17 @@ public class LoadTsfileAnalyzer {
           }
         }
       }
+    }
+
+    /**
+     * This can only be invoked after all timeseries in the current tsfile have been processed.
+     * Otherwise, the isAligned status may be wrong.
+     */
+    public void flushAndClearDeviceIsAlignedCacheIfNecessary()
+        throws SemanticException, AuthException {
+      // avoid OOM when loading a tsfile with too many timeseries
+      // or loading too many tsfiles at the same time
+      schemaCache.clearDeviceIsAlignedCacheIfNecessary();
     }
 
     public void flush() throws AuthException {
@@ -341,7 +362,7 @@ public class LoadTsfileAnalyzer {
       doAutoCreateAndVerify();
       LOGGER.info("finish auto create");
 
-      schemaCache.clearTimeSeriesAndAlignedCache();
+      schemaCache.clearTimeSeries();
     }
 
     private void doAutoCreateAndVerify() throws SemanticException, AuthException {
@@ -717,18 +738,47 @@ public class LoadTsfileAnalyzer {
 
     public boolean shouldFlushTimeSeries() {
       return !block.hasEnoughMemory()
-          || currentBatchTimeSeriesCount > FLUSH_BATCH_TIME_SERIES_NUMBER;
+          || currentBatchTimeSeriesCount >= FLUSH_BATCH_TIME_SERIES_NUMBER;
     }
 
-    public void clearTimeSeriesAndAlignedCache() {
+    public boolean shouldFlushAlignedCache() {
+      return tsFileDevice2IsAlignedMemoryUsageSizeInBytes
+          >= FLUSH_ALIGNED_CACHE_MEMORY_SIZE_IN_BYTES;
+    }
+
+    public void clearTimeSeries() {
       currentBatchDevice2TimeSeriesSchemas.clear();
       block.reduceMemoryUsage(batchDevice2TimeSeriesSchemasMemoryUsageSizeInBytes);
       batchDevice2TimeSeriesSchemasMemoryUsageSizeInBytes = 0;
       currentBatchTimeSeriesCount = 0;
+    }
 
+    public void clearAlignedCache() {
       tsFileDevice2IsAligned.clear();
       block.reduceMemoryUsage(tsFileDevice2IsAlignedMemoryUsageSizeInBytes);
       tsFileDevice2IsAlignedMemoryUsageSizeInBytes = 0;
+    }
+
+    public void clearDeviceIsAlignedCacheIfNecessary() {
+      if (!shouldFlushAlignedCache()) {
+        return;
+      }
+
+      long releaseMemoryInBytes = 0;
+      final Set<String> timeSeriesCacheKeySet =
+          new HashSet<>(currentBatchDevice2TimeSeriesSchemas.keySet());
+      Iterator<Map.Entry<String, Boolean>> iterator = tsFileDevice2IsAligned.entrySet().iterator();
+      while (iterator.hasNext()) {
+        Map.Entry<String, Boolean> entry = iterator.next();
+        if (!timeSeriesCacheKeySet.contains(entry.getKey())) {
+          releaseMemoryInBytes += estimateStringSize(entry.getKey()) + Byte.BYTES;
+          iterator.remove();
+        }
+      }
+      if (releaseMemoryInBytes > 0) {
+        tsFileDevice2IsAlignedMemoryUsageSizeInBytes -= releaseMemoryInBytes;
+        block.reduceMemoryUsage(releaseMemoryInBytes);
+      }
     }
 
     private void clearDatabasesCache() {
@@ -738,7 +788,8 @@ public class LoadTsfileAnalyzer {
     }
 
     public void close() {
-      clearTimeSeriesAndAlignedCache();
+      clearTimeSeries();
+      clearAlignedCache();
       clearDatabasesCache();
 
       block.close();

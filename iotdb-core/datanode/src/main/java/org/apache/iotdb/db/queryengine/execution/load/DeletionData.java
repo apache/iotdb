@@ -50,7 +50,7 @@ public class DeletionData implements TsFileData {
         new ModificationFile(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX)) {
       writer.flush();
       deletion.setFileOffset(tsFile.length());
-      modificationFile.write(deletion);
+      modificationFile.writeWithoutSync(deletion);
     }
   }
 

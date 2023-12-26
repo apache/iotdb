@@ -203,6 +203,10 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
         throw new FragmentInstanceDispatchException(
             new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode()));
       }
+      LOGGER.info(
+          "Send piece node to local, piece node size {}, piece node replica set {}",
+          pieceNode.getDataSize(),
+          groupId);
       TSStatus resultStatus =
           StorageEngine.getInstance().writeLoadTsFileNode((DataRegionId) groupId, pieceNode, uuid);
 
