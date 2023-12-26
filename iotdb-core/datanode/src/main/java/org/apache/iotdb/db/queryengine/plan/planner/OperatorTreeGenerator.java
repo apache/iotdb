@@ -186,6 +186,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWin
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TwoChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.InnerTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.LeftOuterTimeJoinNode;
@@ -2745,7 +2746,16 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           afterwardsNodes.add(partialParentNode);
           finalExchangeNum += subContext.getExchangeSumNum() - context.getExchangeSumNum() + 1;
         }
-        ((MultiChildProcessNode) node).setChildren(afterwardsNodes);
+
+        if (node instanceof MultiChildProcessNode) {
+          ((MultiChildProcessNode) node).setChildren(afterwardsNodes);
+        } else if (node instanceof TwoChildProcessNode) {
+          checkState(afterwardsNodes.size() == 2);
+          ((TwoChildProcessNode) node).setLeftChild(afterwardsNodes.get(0));
+          ((TwoChildProcessNode) node).setRightChild(afterwardsNodes.get(1));
+        } else {
+          throw new IllegalArgumentException("Unknown node type: " + node.getClass().getName());
+        }
       }
     }
     context.setExchangeSumNum(finalExchangeNum);

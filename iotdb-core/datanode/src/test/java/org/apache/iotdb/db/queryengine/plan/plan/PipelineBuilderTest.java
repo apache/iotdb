@@ -49,6 +49,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.LeftOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
@@ -89,7 +90,7 @@ public class PipelineBuilderTest {
   @Test
   public void testConsumeAllChildrenPipelineBuilder1() throws IllegalPathException {
     TypeProvider typeProvider = new TypeProvider();
-    FullOuterTimeJoinNode fullOuterTimeJoinNode = initTimeJoinNode(typeProvider, 4);
+    FullOuterTimeJoinNode fullOuterTimeJoinNode = initFullOuterTimeJoinNode(typeProvider, 4);
     LocalExecutionPlanContext context = createLocalExecutionPlanContext(typeProvider);
     context.setDegreeOfParallelism(1);
 
@@ -121,7 +122,7 @@ public class PipelineBuilderTest {
   @Test
   public void testConsumeAllChildrenPipelineBuilder2() throws IllegalPathException {
     TypeProvider typeProvider = new TypeProvider();
-    FullOuterTimeJoinNode fullOuterTimeJoinNode = initTimeJoinNode(typeProvider, 4);
+    FullOuterTimeJoinNode fullOuterTimeJoinNode = initFullOuterTimeJoinNode(typeProvider, 4);
     LocalExecutionPlanContext context = createLocalExecutionPlanContext(typeProvider);
     context.setDegreeOfParallelism(2);
 
@@ -175,7 +176,7 @@ public class PipelineBuilderTest {
   @Test
   public void testConsumeAllChildrenPipelineBuilder3() throws IllegalPathException {
     TypeProvider typeProvider = new TypeProvider();
-    FullOuterTimeJoinNode fullOuterTimeJoinNode = initTimeJoinNode(typeProvider, 4);
+    FullOuterTimeJoinNode fullOuterTimeJoinNode = initFullOuterTimeJoinNode(typeProvider, 4);
     LocalExecutionPlanContext context = createLocalExecutionPlanContext(typeProvider);
     context.setDegreeOfParallelism(3);
 
@@ -236,7 +237,7 @@ public class PipelineBuilderTest {
   @Test
   public void testConsumeAllChildrenPipelineBuilder4() throws IllegalPathException {
     TypeProvider typeProvider = new TypeProvider();
-    FullOuterTimeJoinNode fullOuterTimeJoinNode = initTimeJoinNode(typeProvider, 4);
+    FullOuterTimeJoinNode fullOuterTimeJoinNode = initFullOuterTimeJoinNode(typeProvider, 4);
     LocalExecutionPlanContext context = createLocalExecutionPlanContext(typeProvider);
     context.setDegreeOfParallelism(4);
 
@@ -295,7 +296,7 @@ public class PipelineBuilderTest {
   @Test
   public void testConsumeAllChildrenPipelineBuilder5() throws IllegalPathException {
     TypeProvider typeProvider = new TypeProvider();
-    FullOuterTimeJoinNode fullOuterTimeJoinNode = initTimeJoinNode(typeProvider, 4);
+    FullOuterTimeJoinNode fullOuterTimeJoinNode = initFullOuterTimeJoinNode(typeProvider, 4);
     LocalExecutionPlanContext context = createLocalExecutionPlanContext(typeProvider);
     context.setDegreeOfParallelism(5);
 
@@ -357,7 +358,7 @@ public class PipelineBuilderTest {
   @Test
   public void testConsumeAllChildrenPipelineBuilder6() throws IllegalPathException {
     TypeProvider typeProvider = new TypeProvider();
-    FullOuterTimeJoinNode fullOuterTimeJoinNode = initTimeJoinNode(typeProvider, 4);
+    FullOuterTimeJoinNode fullOuterTimeJoinNode = initFullOuterTimeJoinNode(typeProvider, 4);
     LocalExecutionPlanContext context = createLocalExecutionPlanContext(typeProvider);
     context.setDegreeOfParallelism(6);
 
@@ -874,6 +875,108 @@ public class PipelineBuilderTest {
     assertEquals(5, childNumInEachPipeline[2]);
   }
 
+  /**
+   * The operator structure is [LeftOuterTimeJoin - [SeriesScan0,SeriesScan1]].
+   *
+   * <p>The next three tests, I will test this LeftOuterTimeJoinOperator with different dop.
+   *
+   * <p>The first test will test dop = 1. Expected result is that no child pipelines will be
+   * divided.
+   */
+  @Test
+  public void testLeftOuterTimeJoinPipelineBuilder1() throws IllegalPathException {
+    TypeProvider typeProvider = new TypeProvider();
+    LeftOuterTimeJoinNode leftOuterTimeJoinNode = initLeftOuterTimeJoinNode(typeProvider);
+    LocalExecutionPlanContext context = createLocalExecutionPlanContext(typeProvider);
+    context.setDegreeOfParallelism(1);
+
+    List<Operator> childrenOperator =
+        operatorTreeGenerator.dealWithConsumeAllChildrenPipelineBreaker(
+            leftOuterTimeJoinNode, context);
+    assertEquals(0, context.getPipelineNumber());
+    assertEquals(2, childrenOperator.size());
+    assertEquals(2, leftOuterTimeJoinNode.getChildren().size());
+
+    assertEquals(SeriesScanOperator.class, childrenOperator.get(0).getClass());
+    assertEquals(SeriesScanNode.class, leftOuterTimeJoinNode.getLeftChild().getClass());
+    assertEquals(
+        "root.sg.d0.s1", leftOuterTimeJoinNode.getLeftChild().getOutputColumnNames().get(0));
+
+    assertEquals(SeriesScanOperator.class, childrenOperator.get(1).getClass());
+    assertEquals(SeriesScanNode.class, leftOuterTimeJoinNode.getRightChild().getClass());
+    assertEquals(
+        "root.sg.d1.s1", leftOuterTimeJoinNode.getRightChild().getOutputColumnNames().get(0));
+
+    // Validate the number exchange operator
+    assertEquals(0, context.getExchangeSumNum());
+  }
+
+  /**
+   * This test will test dop = 2. Expected result is two pipelines:
+   *
+   * <p>The first is: LeftOuterTimeJoin1 - [SeriesScan0, ExchangeOperator];
+   *
+   * <p>The second is: ExchangeOperator - SeriesScan1.
+   */
+  @Test
+  public void testLeftOuterTimeJoinPipelineBuilder2() throws IllegalPathException {
+    TypeProvider typeProvider = new TypeProvider();
+    LeftOuterTimeJoinNode leftOuterTimeJoinNode = initLeftOuterTimeJoinNode(typeProvider);
+    LocalExecutionPlanContext context = createLocalExecutionPlanContext(typeProvider);
+    context.setDegreeOfParallelism(2);
+
+    List<Operator> childrenOperator =
+        operatorTreeGenerator.dealWithConsumeAllChildrenPipelineBreaker(
+            leftOuterTimeJoinNode, context);
+    assertEquals(1, context.getPipelineNumber());
+    assertEquals(2, childrenOperator.size());
+
+    assertEquals(SeriesScanOperator.class, childrenOperator.get(0).getClass());
+    assertEquals(
+        "root.sg.d0.s1", leftOuterTimeJoinNode.getLeftChild().getOutputColumnNames().get(0));
+
+    // Validate the second pipeline
+    ExchangeOperator exchangeOperator = (ExchangeOperator) childrenOperator.get(1);
+    assertEquals("SeriesScanNode1", exchangeOperator.getSourceId().getId());
+    assertEquals(-1, context.getPipelineDriverFactories().get(0).getDependencyPipelineIndex());
+
+    // Validate the number exchange operator
+    assertEquals(1, context.getExchangeSumNum());
+  }
+
+  /**
+   * This test will test dop = 3. Expected result is two pipelines:
+   *
+   * <p>The first is: LeftOuterTimeJoin1 - [SeriesScan0, ExchangeOperator];
+   *
+   * <p>The second is: ExchangeOperator - SeriesScan1.
+   */
+  @Test
+  public void testLeftOuterTimeJoinPipelineBuilder3() throws IllegalPathException {
+    TypeProvider typeProvider = new TypeProvider();
+    LeftOuterTimeJoinNode leftOuterTimeJoinNode = initLeftOuterTimeJoinNode(typeProvider);
+    LocalExecutionPlanContext context = createLocalExecutionPlanContext(typeProvider);
+    context.setDegreeOfParallelism(2);
+
+    List<Operator> childrenOperator =
+        operatorTreeGenerator.dealWithConsumeAllChildrenPipelineBreaker(
+            leftOuterTimeJoinNode, context);
+    assertEquals(1, context.getPipelineNumber());
+    assertEquals(2, childrenOperator.size());
+
+    assertEquals(SeriesScanOperator.class, childrenOperator.get(0).getClass());
+    assertEquals(
+        "root.sg.d0.s1", leftOuterTimeJoinNode.getLeftChild().getOutputColumnNames().get(0));
+
+    // Validate the second pipeline
+    ExchangeOperator exchangeOperator = (ExchangeOperator) childrenOperator.get(1);
+    assertEquals("SeriesScanNode1", exchangeOperator.getSourceId().getId());
+    assertEquals(-1, context.getPipelineDriverFactories().get(0).getDependencyPipelineIndex());
+
+    // Validate the number exchange operator
+    assertEquals(1, context.getExchangeSumNum());
+  }
+
   private LocalExecutionPlanContext createLocalExecutionPlanContext(TypeProvider typeProvider) {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
@@ -898,7 +1001,7 @@ public class PipelineBuilderTest {
    * @param childNum the number of children
    * @return a timeJoinNode with @childNum seriesScanNode as children
    */
-  private FullOuterTimeJoinNode initTimeJoinNode(TypeProvider typeProvider, int childNum)
+  private FullOuterTimeJoinNode initFullOuterTimeJoinNode(TypeProvider typeProvider, int childNum)
       throws IllegalPathException {
     FullOuterTimeJoinNode fullOuterTimeJoinNode =
         new FullOuterTimeJoinNode(new PlanNodeId("TimeJoinNode"), Ordering.ASC);
@@ -911,6 +1014,21 @@ public class PipelineBuilderTest {
       fullOuterTimeJoinNode.addChild(seriesScanNode);
     }
     return fullOuterTimeJoinNode;
+  }
+
+  private LeftOuterTimeJoinNode initLeftOuterTimeJoinNode(TypeProvider typeProvider)
+      throws IllegalPathException {
+    LeftOuterTimeJoinNode leftOuterTimeJoinNode =
+        new LeftOuterTimeJoinNode(new PlanNodeId("TimeJoinNode"), Ordering.ASC);
+    for (int i = 0; i < 2; i++) {
+      SeriesScanNode seriesScanNode =
+          new SeriesScanNode(
+              new PlanNodeId(String.format("SeriesScanNode%d", i)),
+              new MeasurementPath(String.format("root.sg.d%d.s1", i), TSDataType.INT32));
+      typeProvider.setType(seriesScanNode.getSeriesPath().toString(), TSDataType.INT32);
+      leftOuterTimeJoinNode.addChild(seriesScanNode);
+    }
+    return leftOuterTimeJoinNode;
   }
 
   /**

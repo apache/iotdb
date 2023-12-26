@@ -46,8 +46,16 @@ public abstract class TwoChildProcessNode extends ProcessNode {
     return leftChild;
   }
 
+  public void setLeftChild(PlanNode leftChild) {
+    this.leftChild = leftChild;
+  }
+
   public PlanNode getRightChild() {
     return rightChild;
+  }
+
+  public void setRightChild(PlanNode rightChild) {
+    this.rightChild = rightChild;
   }
 
   @Override
