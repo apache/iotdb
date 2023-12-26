@@ -49,6 +49,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.AlterLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
@@ -155,11 +156,15 @@ public class IoTDBThriftReceiverV1 extends IoTDBFileReceiverV1 {
   }
 
   private TPipeTransferResp handleTransferTabletInsertNode(PipeTransferTabletInsertNodeReq req) {
-    return new TPipeTransferResp(executeStatement(req.constructStatement()));
+    InsertBaseStatement statement = req.constructStatement();
+    return new TPipeTransferResp(
+        statement.isEmpty() ? RpcUtils.SUCCESS_STATUS : executeStatement(statement));
   }
 
   private TPipeTransferResp handleTransferTabletBinary(PipeTransferTabletBinaryReq req) {
-    return new TPipeTransferResp(executeStatement(req.constructStatement()));
+    InsertBaseStatement statement = req.constructStatement();
+    return new TPipeTransferResp(
+        statement.isEmpty() ? RpcUtils.SUCCESS_STATUS : executeStatement(statement));
   }
 
   private TPipeTransferResp handleTransferTabletRaw(PipeTransferTabletRawReq req) {
