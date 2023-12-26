@@ -1261,7 +1261,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               commonTransformerList,
               filterOutputDataTypes,
               inputLocations.size() - 1,
-              context.getTypeProvider());
+              null);
 
       for (Expression expression : projectExpressions) {
         projectOutputTransformerList.add(
