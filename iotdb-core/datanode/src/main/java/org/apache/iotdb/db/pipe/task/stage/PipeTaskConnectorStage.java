@@ -31,7 +31,7 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 public class PipeTaskConnectorStage extends PipeTaskStage {
 
   private final String pipeName;
-  private final int dataRegionId;
+  private final int regionId;
   protected final PipeParameters pipeConnectorParameters;
 
   protected String connectorSubtaskId;
@@ -40,10 +40,10 @@ public class PipeTaskConnectorStage extends PipeTaskStage {
       String pipeName,
       long creationTime,
       PipeParameters pipeConnectorParameters,
-      int dataRegionId,
+      int regionId,
       PipeConnectorSubtaskExecutor executor) {
     this.pipeName = pipeName;
-    this.dataRegionId = dataRegionId;
+    this.regionId = regionId;
     this.pipeConnectorParameters = pipeConnectorParameters;
 
     connectorSubtaskId =
@@ -52,7 +52,7 @@ public class PipeTaskConnectorStage extends PipeTaskStage {
                 executor,
                 pipeConnectorParameters,
                 new PipeTaskConnectorRuntimeEnvironment(
-                    this.pipeName, creationTime, this.dataRegionId));
+                    this.pipeName, creationTime, this.regionId));
   }
 
   @Override
@@ -72,7 +72,7 @@ public class PipeTaskConnectorStage extends PipeTaskStage {
 
   @Override
   public void dropSubtask() throws PipeException {
-    PipeConnectorSubtaskManager.instance().deregister(pipeName, dataRegionId, connectorSubtaskId);
+    PipeConnectorSubtaskManager.instance().deregister(pipeName, regionId, connectorSubtaskId);
   }
 
   public BoundedBlockingPendingQueue<Event> getPipeConnectorPendingQueue() {

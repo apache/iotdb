@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
@@ -119,7 +120,10 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     // Though the configRegion's id is 0, here we still use Integer.MIN_VALUE to tell from
     // SchemaRegion and DataRegion's Ids since their ids start from 0 together.
     consensusGroupIdToTaskMetaMap.put(
-        Integer.MIN_VALUE, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 0));
+        Integer.MIN_VALUE,
+        new PipeTaskMeta(
+            MinimumProgressIndex.INSTANCE,
+            ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()));
     pipeRuntimeMeta = new PipeRuntimeMeta(consensusGroupIdToTaskMetaMap);
     pipeRuntimeMeta.getStatus().set(PipeStatus.RUNNING);
     pipeRuntimeMeta.setShouldBeRunning(true);

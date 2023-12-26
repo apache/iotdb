@@ -550,10 +550,10 @@ public abstract class PipeTaskAgent {
   ////////////////////////// Checker //////////////////////////
 
   /**
-   * Check if we need to create pipe tasks.
+   * Check if we need to create {@link PipeTask}s.
    *
-   * @return {@code true} if need to create pipe tasks, {@code false} if no need to create.
-   * @throws IllegalStateException if current pipe status is illegal.
+   * @return {@code true} if need to create {@link PipeTask}s, {@code false} if no need to create.
+   * @throws IllegalStateException if current {@link PipeStatus} is illegal.
    */
   protected boolean checkBeforeCreatePipe(
       PipeMeta existedPipeMeta, String pipeName, long creationTime) throws IllegalStateException {
@@ -594,10 +594,10 @@ public abstract class PipeTaskAgent {
   }
 
   /**
-   * Check if we need to actually start the pipe tasks.
+   * Check if we need to actually start the {@link PipeTask}s.
    *
-   * @return {@code true} if need to start the pipe tasks, {@code false} if no need to start.
-   * @throws IllegalStateException if current pipe status is illegal.
+   * @return {@code true} if need to start the {@link PipeTask}s, {@code false} if no need to start.
+   * @throws IllegalStateException if current {@link PipeStatus} is illegal.
    */
   protected boolean checkBeforeStartPipe(
       PipeMeta existedPipeMeta, String pipeName, long creationTime) throws IllegalStateException {
@@ -660,10 +660,10 @@ public abstract class PipeTaskAgent {
   }
 
   /**
-   * Check if we need to actually stop the pipe tasks.
+   * Check if we need to actually stop the {@link PipeTask}s.
    *
-   * @return {@code true} if need to stop the pipe tasks, {@code false} if no need to stop.
-   * @throws IllegalStateException if current pipe status is illegal.
+   * @return {@code true} if need to stop the {@link PipeTask}s, {@code false} if no need to stop.
+   * @throws IllegalStateException if current {@link PipeStatus} is illegal.
    */
   protected boolean checkBeforeStopPipe(
       PipeMeta existedPipeMeta, String pipeName, long creationTime) throws IllegalStateException {
@@ -724,10 +724,10 @@ public abstract class PipeTaskAgent {
   }
 
   /**
-   * Check if we need to drop pipe tasks.
+   * Check if we need to drop {@link PipeTask}s.
    *
-   * @return {@code true} if need to drop pipe tasks, {@code false} if no need to drop.
-   * @throws IllegalStateException if current pipe status is illegal.
+   * @return {@code true} if need to drop {@link PipeTask}s, {@code false} if no need to drop.
+   * @throws IllegalStateException if current {@link PipeStatus} is illegal.
    */
   protected boolean checkBeforeDropPipe(
       PipeMeta existedPipeMeta, String pipeName, long creationTime) throws IllegalStateException {
@@ -754,10 +754,10 @@ public abstract class PipeTaskAgent {
   }
 
   /**
-   * Check if we need to drop pipe tasks.
+   * Check if we need to drop {@link PipeTask}s.
    *
-   * @return {@code true} if need to drop pipe tasks, {@code false} if no need to drop.
-   * @throws IllegalStateException if current pipe status is illegal.
+   * @return {@code true} if need to drop {@link PipeTask}s, {@code false} if no need to drop.
+   * @throws IllegalStateException if current {@link PipeStatus} is illegal.
    */
   protected boolean checkBeforeDropPipe(PipeMeta existedPipeMeta, String pipeName)
       throws IllegalStateException {

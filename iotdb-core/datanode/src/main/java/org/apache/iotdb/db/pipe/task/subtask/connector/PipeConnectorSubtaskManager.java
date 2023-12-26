@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.task.subtask.connector;
 
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
@@ -29,6 +30,7 @@ import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.metric.PipeDataRegionEventCounter;
 import org.apache.iotdb.db.pipe.progress.committer.PipeEventCommitManager;
+import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -69,12 +71,24 @@ public class PipeConnectorSubtaskManager {
         new TreeMap<>(pipeConnectorParameters.getAttribute()).toString();
 
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
-      final int connectorNum =
-          pipeConnectorParameters.getIntOrDefault(
-              Arrays.asList(
-                  PipeConnectorConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_KEY,
-                  PipeConnectorConstant.SINK_IOTDB_PARALLEL_TASKS_KEY),
-              PipeConnectorConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_DEFAULT_VALUE);
+      final PipeConnector pipeConnector;
+      final int connectorNum;
+
+      if (StorageEngine.getInstance()
+          .getAllDataRegionIds()
+          .contains(new DataRegionId(environment.getRegionId()))) {
+        pipeConnector = PipeAgent.plugin().dataRegion().reflectConnector(pipeConnectorParameters);
+        connectorNum =
+            pipeConnectorParameters.getIntOrDefault(
+                Arrays.asList(
+                    PipeConnectorConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_KEY,
+                    PipeConnectorConstant.SINK_IOTDB_PARALLEL_TASKS_KEY),
+                PipeConnectorConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_DEFAULT_VALUE);
+      } else {
+        pipeConnector = PipeAgent.plugin().schemaRegion().reflectConnector(pipeConnectorParameters);
+        // Do not allow parallel connector for schema transmission to avoid disorder
+        connectorNum = 1;
+      }
       final List<PipeConnectorSubtaskLifeCycle> pipeConnectorSubtaskLifeCycleList =
           new ArrayList<>(connectorNum);
 
@@ -85,9 +99,6 @@ public class PipeConnectorSubtaskManager {
               new PipeDataRegionEventCounter());
 
       for (int connectorIndex = 0; connectorIndex < connectorNum; connectorIndex++) {
-        final PipeConnector pipeConnector =
-            PipeAgent.plugin().dataRegion().reflectConnector(pipeConnectorParameters);
-
         // 1. Construct, validate and customize PipeConnector, and then handshake (create
         // connection) with the target
         try {
