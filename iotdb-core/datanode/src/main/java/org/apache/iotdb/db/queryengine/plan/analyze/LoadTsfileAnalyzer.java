@@ -97,8 +97,6 @@ public class LoadTsfileAnalyzer {
       ConfigNodeClientManager.getInstance();
   private static final long ANALYZE_SCHEMA_MEMORY_BLOCK_SIZE_IN_BYTES = 16 * 1024 * 1024L; // 16 MB
   private static final int FLUSH_BATCH_TIME_SERIES_NUMBER = 4096;
-  private static final long FLUSH_ALIGNED_CACHE_MEMORY_SIZE_IN_BYTES =
-      ANALYZE_SCHEMA_MEMORY_BLOCK_SIZE_IN_BYTES >> 2; // 4 MB
 
   private final LoadTsFileStatement loadTsFileStatement;
   private final MPPQueryContext context;
@@ -237,8 +235,6 @@ public class LoadTsfileAnalyzer {
           }
           writePointCount += getWritePointCount(device2TimeseriesMetadata);
         }
-
-        schemaAutoCreatorAndVerifier.flushAndClearDeviceIsAlignedCacheIfNecessary();
       }
 
       TimestampPrecisionUtils.checkTimestampPrecision(tsFileResource.getFileEndTime());
@@ -333,24 +329,19 @@ public class LoadTsfileAnalyzer {
       }
     }
 
-    /**
-     * This can only be invoked after all timeseries in the current tsfile have been processed.
-     * Otherwise, the isAligned status may be wrong.
-     */
-    public void flushAndClearDeviceIsAlignedCacheIfNecessary()
-        throws SemanticException, AuthException {
-      // avoid OOM when loading a tsfile with too many timeseries
-      // or loading too many tsfiles at the same time
-      if (schemaCache.shouldFlushAlignedCache()) {
-        flush();
-        schemaCache.clearAlignedCache();
-      }
-    }
-
     public void flush() throws AuthException {
+      LOGGER.info(
+          "flush {} timeseries. current timeseries memory usage {}, aligned cache usage {}, aligned cache size {}, databases usage {}, memory is enough {}",
+          schemaCache.currentBatchTimeSeriesCount,
+          schemaCache.batchDevice2TimeSeriesSchemasMemoryUsageSizeInBytes,
+          schemaCache.tsFileDevice2IsAlignedMemoryUsageSizeInBytes,
+          schemaCache.tsFileDevice2IsAligned.size(),
+          schemaCache.alreadySetDatabasesMemoryUsageSizeInBytes,
+          schemaCache.block.hasEnoughMemory());
       doAutoCreateAndVerify();
+      LOGGER.info("finish auto create");
 
-      schemaCache.clearTimeSeries();
+      schemaCache.clearTimeSeriesAndAlignedCache();
     }
 
     private void doAutoCreateAndVerify() throws SemanticException, AuthException {
@@ -361,18 +352,22 @@ public class LoadTsfileAnalyzer {
       try {
         if (loadTsFileStatement.isVerifySchema()) {
           makeSureNoDuplicatedMeasurementsInDevices();
+          LOGGER.info("finish make sure no duplicated measurements in devices");
         }
 
         if (loadTsFileStatement.isAutoCreateDatabase()) {
           autoCreateDatabase();
+          LOGGER.info("finish auto create database");
         }
 
         // schema fetcher will not auto create if config set
         // isAutoCreateSchemaEnabled is false.
         final ISchemaTree schemaTree = autoCreateSchema();
+        LOGGER.info("finish auto create schema");
 
         if (loadTsFileStatement.isVerifySchema()) {
           verifySchema(schemaTree);
+          LOGGER.info("finish verify schema");
         }
       } catch (AuthException e) {
         throw e;
@@ -522,6 +517,10 @@ public class LoadTsfileAnalyzer {
         isAlignedList.add(schemaCache.getDeviceIsAligned(entry.getKey()));
       }
 
+      LOGGER.info(
+          "start to validate schema measurement list size {}, is aligned List size {}",
+          measurementList.size(),
+          isAlignedList.size());
       return SchemaValidator.validate(
           schemaFetcher,
           deviceList,
@@ -717,23 +716,16 @@ public class LoadTsfileAnalyzer {
     }
 
     public boolean shouldFlushTimeSeries() {
-      return block.hasEnoughMemory()
+      return !block.hasEnoughMemory()
           || currentBatchTimeSeriesCount > FLUSH_BATCH_TIME_SERIES_NUMBER;
     }
 
-    public boolean shouldFlushAlignedCache() {
-      return tsFileDevice2IsAlignedMemoryUsageSizeInBytes
-          > FLUSH_ALIGNED_CACHE_MEMORY_SIZE_IN_BYTES;
-    }
-
-    public void clearTimeSeries() {
+    public void clearTimeSeriesAndAlignedCache() {
       currentBatchDevice2TimeSeriesSchemas.clear();
       block.reduceMemoryUsage(batchDevice2TimeSeriesSchemasMemoryUsageSizeInBytes);
       batchDevice2TimeSeriesSchemasMemoryUsageSizeInBytes = 0;
       currentBatchTimeSeriesCount = 0;
-    }
 
-    public void clearAlignedCache() {
       tsFileDevice2IsAligned.clear();
       block.reduceMemoryUsage(tsFileDevice2IsAlignedMemoryUsageSizeInBytes);
       tsFileDevice2IsAlignedMemoryUsageSizeInBytes = 0;
@@ -746,8 +738,7 @@ public class LoadTsfileAnalyzer {
     }
 
     public void close() {
-      clearTimeSeries();
-      clearAlignedCache();
+      clearTimeSeriesAndAlignedCache();
       clearDatabasesCache();
 
       block.close();

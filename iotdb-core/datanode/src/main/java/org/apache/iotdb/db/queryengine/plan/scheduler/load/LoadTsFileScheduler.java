@@ -103,7 +103,9 @@ public class LoadTsFileScheduler implements IScheduler {
     SINGLE_SCHEDULER_MAX_MEMORY_SIZE =
         Math.min(
             config.getThriftMaxFrameSize() >> 2,
-            (long) (config.getAllocateMemoryForStorageEngine() * config.getLoadTsFileProportion()));
+            (long)
+                (config.getAllocateMemoryForStorageEngine()
+                    * config.getLoadTsFileProportion())); // TODO: change it to query engine
     TRANSMIT_LIMIT =
         CommonDescriptor.getInstance().getConfig().getTTimePartitionSlotTransmitLimit();
   }
