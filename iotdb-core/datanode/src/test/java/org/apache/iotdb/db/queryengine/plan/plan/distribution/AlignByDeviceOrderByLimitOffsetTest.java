@@ -32,8 +32,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
@@ -215,7 +215,7 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     assertTrue(firstFiTopNode instanceof TopKNode);
     for (PlanNode node : firstFiTopNode.getChildren().get(0).getChildren()) {
       assertTrue(node instanceof DeviceViewNode);
-      assertTrue(node.getChildren().get(0) instanceof TimeJoinNode);
+      assertTrue(node.getChildren().get(0) instanceof FullOuterTimeJoinNode);
     }
     assertTrue(firstFiTopNode.getChildren().get(1) instanceof ExchangeNode);
     assertTrue(firstFiTopNode.getChildren().get(2) instanceof ExchangeNode);

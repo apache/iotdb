@@ -78,9 +78,12 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChil
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TwoChildProcessNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.InnerTimeJoinNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.LeftOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
@@ -208,6 +211,16 @@ public abstract class PlanVisitor<R, C> {
     return visitSingleChildProcess(node, context);
   }
 
+  // two child -----------------------------------------------------------------------------------
+
+  public R visitTwoChildProcess(TwoChildProcessNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitLeftOuterTimeJoin(LeftOuterTimeJoinNode node, C context) {
+    return visitTwoChildProcess(node, context);
+  }
+
   // multi child --------------------------------------------------------------------------------
 
   public R visitMultiChildProcess(MultiChildProcessNode node, C context) {
@@ -234,7 +247,11 @@ public abstract class PlanVisitor<R, C> {
     return visitMultiChildProcess(node, context);
   }
 
-  public R visitTimeJoin(TimeJoinNode node, C context) {
+  public R visitFullOuterTimeJoin(FullOuterTimeJoinNode node, C context) {
+    return visitMultiChildProcess(node, context);
+  }
+
+  public R visitInnerTimeJoin(InnerTimeJoinNode node, C context) {
     return visitMultiChildProcess(node, context);
   }
 

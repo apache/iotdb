@@ -47,7 +47,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChild
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TimeJoinNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
@@ -462,17 +462,19 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   // TODO: (xingtanzjr) a temporary way to resolve the distribution of single SeriesScanNode issue
   @Override
   public List<PlanNode> visitSeriesScan(SeriesScanNode node, DistributionPlanContext context) {
-    TimeJoinNode timeJoinNode =
-        new TimeJoinNode(context.queryContext.getQueryId().genPlanNodeId(), node.getScanOrder());
-    return processRawSeriesScan(node, context, timeJoinNode);
+    FullOuterTimeJoinNode fullOuterTimeJoinNode =
+        new FullOuterTimeJoinNode(
+            context.queryContext.getQueryId().genPlanNodeId(), node.getScanOrder());
+    return processRawSeriesScan(node, context, fullOuterTimeJoinNode);
   }
 
   @Override
   public List<PlanNode> visitAlignedSeriesScan(
       AlignedSeriesScanNode node, DistributionPlanContext context) {
-    TimeJoinNode timeJoinNode =
-        new TimeJoinNode(context.queryContext.getQueryId().genPlanNodeId(), node.getScanOrder());
-    return processRawSeriesScan(node, context, timeJoinNode);
+    FullOuterTimeJoinNode fullOuterTimeJoinNode =
+        new FullOuterTimeJoinNode(
+            context.queryContext.getQueryId().genPlanNodeId(), node.getScanOrder());
+    return processRawSeriesScan(node, context, fullOuterTimeJoinNode);
   }
 
   @Override
@@ -683,7 +685,8 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   }
 
   @Override
-  public List<PlanNode> visitTimeJoin(TimeJoinNode node, DistributionPlanContext context) {
+  public List<PlanNode> visitFullOuterTimeJoin(
+      FullOuterTimeJoinNode node, DistributionPlanContext context) {
     // Although some logic is similar between Aggregation and RawDataQuery,
     // we still use separate method to process the distribution planning now
     // to make the planning procedure more clear
@@ -693,7 +696,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     return Collections.singletonList(processRawMultiChildNode(node, context, true));
   }
 
-  // Only `visitTimeJoin` and `visitLastQuery` invoke this method
+  // Only `visitFullOuterTimeJoin` and `visitLastQuery` invoke this method
   private PlanNode processRawMultiChildNode(
       MultiChildProcessNode node, DistributionPlanContext context, boolean isTimeJoin) {
     MultiChildProcessNode root = (MultiChildProcessNode) node.clone();
@@ -785,7 +788,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     return sourceGroup;
   }
 
-  private boolean containsAggregationSource(TimeJoinNode node) {
+  private boolean containsAggregationSource(FullOuterTimeJoinNode node) {
     for (PlanNode child : node.getChildren()) {
       if (child instanceof SeriesAggregationScanNode
           || child instanceof AlignedSeriesAggregationScanNode) {
@@ -807,7 +810,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   }
 
   private List<PlanNode> planAggregationWithTimeJoin(
-      TimeJoinNode root, DistributionPlanContext context) {
+      FullOuterTimeJoinNode root, DistributionPlanContext context) {
     Map<TRegionReplicaSet, List<SeriesAggregationSourceNode>> sourceGroup;
 
     // construct newRoot

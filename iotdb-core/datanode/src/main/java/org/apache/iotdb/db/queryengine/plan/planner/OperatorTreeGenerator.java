@@ -89,8 +89,10 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.FloatPreviousFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.IntPreviousFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.LongPreviousFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.join.FullOuterTimeJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.HorizontallyConcatOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.join.RowBasedTimeJoinOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.join.InnerTimeJoinOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.join.LeftOuterTimeJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.ColumnMerger;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.DescTimeComparator;
@@ -182,9 +184,12 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TwoChildProcessNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.InnerTimeJoinNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.LeftOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
@@ -261,6 +266,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.calculateMaxAggregationResultSize;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.calculateMaxAggregationResultSizeForLastQuery;
@@ -1869,9 +1875,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     }
   }
 
-  @Deprecated
   @Override
-  public Operator visitTimeJoin(TimeJoinNode node, LocalExecutionPlanContext context) {
+  public Operator visitFullOuterTimeJoin(
+      FullOuterTimeJoinNode node, LocalExecutionPlanContext context) {
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
     OperatorContext operatorContext =
         context
@@ -1879,7 +1885,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                RowBasedTimeJoinOperator.class.getSimpleName());
+                FullOuterTimeJoinOperator.class.getSimpleName());
     TimeComparator timeComparator =
         node.getMergeOrder() == Ordering.ASC ? ASC_TIME_COMPARATOR : DESC_TIME_COMPARATOR;
     List<OutputColumn> outputColumns = generateOutputColumnsFromChildren(node);
@@ -1889,12 +1895,63 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             ? getOutputColumnTypesOfTimeJoinNode(node)
             : getOutputColumnTypes(node, context.getTypeProvider());
 
-    return new RowBasedTimeJoinOperator(
+    return new FullOuterTimeJoinOperator(
         operatorContext,
         children,
         node.getMergeOrder(),
         outputColumnTypes,
         mergers,
+        timeComparator);
+  }
+
+  @Override
+  public Operator visitInnerTimeJoin(InnerTimeJoinNode node, LocalExecutionPlanContext context) {
+    List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                InnerTimeJoinOperator.class.getSimpleName());
+    TimeComparator timeComparator =
+        node.getMergeOrder() == Ordering.ASC ? ASC_TIME_COMPARATOR : DESC_TIME_COMPARATOR;
+    List<TSDataType> outputColumnTypes =
+        context.getTypeProvider().getTemplatedInfo() != null
+            ? getOutputColumnTypesOfTimeJoinNode(node)
+            : getOutputColumnTypes(node, context.getTypeProvider());
+
+    return new InnerTimeJoinOperator(operatorContext, children, outputColumnTypes, timeComparator);
+  }
+
+  @Override
+  public Operator visitLeftOuterTimeJoin(
+      LeftOuterTimeJoinNode node, LocalExecutionPlanContext context) {
+    List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
+    checkState(children.size() == 2);
+    Operator leftChild = children.get(0);
+    Operator rightChild = children.get(1);
+
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                LeftOuterTimeJoinOperator.class.getSimpleName());
+    TimeComparator timeComparator =
+        node.getMergeOrder() == Ordering.ASC ? ASC_TIME_COMPARATOR : DESC_TIME_COMPARATOR;
+    List<TSDataType> outputColumnTypes =
+        context.getTypeProvider().getTemplatedInfo() != null
+            ? getOutputColumnTypesOfTimeJoinNode(node)
+            : getOutputColumnTypes(node, context.getTypeProvider());
+
+    return new LeftOuterTimeJoinOperator(
+        operatorContext,
+        leftChild,
+        node.getLeftChild().getOutputColumnNames().size(),
+        rightChild,
+        outputColumnTypes,
         timeComparator);
   }
 
@@ -2535,7 +2592,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         dataTypes.add(((SeriesScanNode) child).getSeriesPath().getSeriesType());
       } else if (child instanceof AlignedSeriesScanNode) {
         dataTypes.add(((AlignedSeriesScanNode) child).getAlignedPath().getSeriesType());
-      } else if (child instanceof TimeJoinNode) {
+      } else if (child instanceof FullOuterTimeJoinNode
+          || child instanceof InnerTimeJoinNode
+          || child instanceof LeftOuterTimeJoinNode) {
         dataTypes.addAll(getOutputColumnTypesOfTimeJoinNode(child));
       } else {
         LOGGER.error(
@@ -2687,7 +2746,16 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           afterwardsNodes.add(partialParentNode);
           finalExchangeNum += subContext.getExchangeSumNum() - context.getExchangeSumNum() + 1;
         }
-        ((MultiChildProcessNode) node).setChildren(afterwardsNodes);
+
+        if (node instanceof MultiChildProcessNode) {
+          ((MultiChildProcessNode) node).setChildren(afterwardsNodes);
+        } else if (node instanceof TwoChildProcessNode) {
+          checkState(afterwardsNodes.size() == 2);
+          ((TwoChildProcessNode) node).setLeftChild(afterwardsNodes.get(0));
+          ((TwoChildProcessNode) node).setRightChild(afterwardsNodes.get(1));
+        } else {
+          throw new IllegalArgumentException("Unknown node type: " + node.getClass().getName());
+        }
       }
     }
     context.setExchangeSumNum(finalExchangeNum);
