@@ -88,14 +88,16 @@ public class IoTDBPullConsumerExample {
     pollConsumer.open();
 
     pollConsumer.subscribe("topic_root");
-    Session sessionPool = new Session.Builder().port(6668).build();
+    Session session = new Session.Builder().port(6668).build();
+    session.open(false);
 
-    for (int i = 0; i < 10; i++) {
+    int counter = 0;
+    while (true) {
       try {
         Tablet tablet = pollConsumer.poll(1);
         if (tablet != null) {
-          sessionPool.insertTablet(tablet);
-          System.out.println(String.format("Sent tablet: %d", ++i));
+          session.insertTablet(tablet);
+          System.out.println(String.format("Sent tablet: %d", ++counter));
         } else {
           System.out.println(String.format("No data"));
         }
@@ -105,8 +107,5 @@ public class IoTDBPullConsumerExample {
         throw new RuntimeException(e);
       }
     }
-
-    pollConsumer.unsubscribe();
-    pollConsumer.close();
   }
 }
