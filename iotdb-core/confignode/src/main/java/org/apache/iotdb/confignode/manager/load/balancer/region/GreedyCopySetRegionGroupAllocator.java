@@ -54,7 +54,7 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
   List<int[]> optimalReplicaSets;
   private static final int MAX_OPTIMAL_PLAN_NUM = 10;
 
-  private final Random random = new Random();
+  private final Random random;
 
   private class DataNodeEntry {
 
@@ -88,7 +88,7 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
   }
 
   public GreedyCopySetRegionGroupAllocator() {
-    // Empty constructor
+    this.random = new Random();
   }
 
   @Override
