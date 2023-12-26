@@ -34,9 +34,10 @@ fi
 
 rm -rf ${IOTDB_HOME}/data/confignode/
 
-cn_system_dir=$(echo $(grep '^cn_system_dir=' ${IOTDB_HOME}/conf/iotdb-confignode.properties || echo "data/confignode/system") | sed 's/.*=//')
+IOTDB_CONFIGNODE_CONFIG=${IOTDB_HOME}/conf/iotdb-confignode.properties
+cn_system_dir=$(echo $(grep '^cn_system_dir=' ${IOTDB_CONFIGNODE_CONFIG} || echo "data/confignode/system") | sed 's/.*=//')
 echo clean $cn_system_dir
-cn_consensus_dir=$(echo $(grep '^cn_consensus_dir=' ${IOTDB_HOME}/conf/iotdb-confignode.properties || echo "data/confignode/consensus") | sed 's/.*=//')
+cn_consensus_dir=$(echo $(grep '^cn_consensus_dir=' ${IOTDB_CONFIGNODE_CONFIG} || echo "data/confignode/consensus") | sed 's/.*=//')
 echo clean $cn_consensus_dir
 
 function clearPath {

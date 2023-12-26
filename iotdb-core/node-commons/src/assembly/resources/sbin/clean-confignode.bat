@@ -34,9 +34,9 @@ if not "%CLEAN_SERVICE%"=="y" if not "%CLEAN_SERVICE%"=="Y" (
 )
 
 rmdir /s /q "%IOTDB_HOME%\data\confignode\"
-
+set IOTDB_CONFIGNODE_CONFIG=%IOTDB_HOME%\conf\iotdb-confignode.properties
 for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^cn_system_dir"
-  %IOTDB_HOME%\conf\iotdb-confignode.properties') do (
+  %IOTDB_CONFIGNODE_CONFIG%') do (
   set cn_system_dir=%%i
 )
 
@@ -55,7 +55,7 @@ if "%cn_system_dir:~0,2%"=="\\" (
 )
 
 for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^cn_consensus_dir"
-  %IOTDB_HOME%\conf\iotdb-confignode.properties') do (
+  %IOTDB_CONFIGNODE_CONFIG%') do (
   set cn_consensus_dir=%%i
 )
 echo %cn_consensus_dir%

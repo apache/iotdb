@@ -25,19 +25,20 @@ if [[ "$CLEAN_SERVICE" != "y" && "$CLEAN_SERVICE" != "Y" ]]; then
 fi
 
 export IOTDB_HOME="`dirname "$0"`/.."
+IOTDB_CLUSTER_PATH="${IOTDB_HOME}"/conf/iotdb-cluster.properties
 # iotdb-cluster.properties does not exist, the current ICID is cleaned
-if [ ! -f ${IOTDB_HOME}/conf/iotdb-cluster.properties ]; then
+if [ ! -f ${IOTDB_CLUSTER_PATH} ]; then
   exec rm -rf ${IOTDB_HOME}/data/
 else
-  confignodeStr=$(sed '/^confignode_address_list=/!d;s/.*=//' "${IOTDB_HOME}"/conf/iotdb-cluster.properties)
+  confignodeStr=$(sed '/^confignode_address_list=/!d;s/.*=//' "${IOTDB_CLUSTER_PATH}")
   confignodeIps=(${confignodeStr//,/ })
-  datanodeStr=$(sed '/^datanode_address_list=/!d;s/.*=//' "${IOTDB_HOME}"/conf/iotdb-cluster.properties)
+  datanodeStr=$(sed '/^datanode_address_list=/!d;s/.*=//' "${IOTDB_CLUSTER_PATH}")
   datanodeIps=(${datanodeStr//,/ })
-  serverPort=$(sed '/^ssh_port=/!d;s/.*=//' "${IOTDB_HOME}"/conf/iotdb-cluster.properties)
-  confignodePath=$(sed '/^confignode_deploy_path=/!d;s/.*=//' "${IOTDB_HOME}"/conf/iotdb-cluster.properties)
-  datanodePath=$(sed '/^datanode_deploy_path=/!d;s/.*=//' "${IOTDB_HOME}"/conf/iotdb-cluster.properties)
-  account=$(sed '/^ssh_account=/!d;s/.*=//' "${IOTDB_HOME}"/conf/iotdb-cluster.properties)
-  echo $confignodeIps $datanodeIps $confignodePaths $datanodePaths $account $serverPort
+  serverPort=$(sed '/^ssh_port=/!d;s/.*=//' "${IOTDB_CLUSTER_PATH}")
+  confignodePath=$(sed '/^confignode_deploy_path=/!d;s/.*=//' "${IOTDB_CLUSTER_PATH}")
+  datanodePath=$(sed '/^datanode_deploy_path=/!d;s/.*=//' "${IOTDB_CLUSTER_PATH}")
+  account=$(sed '/^ssh_account=/!d;s/.*=//' "${IOTDB_CLUSTER_PATH}")
+#  echo $confignodeIps $datanodeIps $confignodePaths $datanodePaths $account $serverPort
 fi
 
 function validateParam() {

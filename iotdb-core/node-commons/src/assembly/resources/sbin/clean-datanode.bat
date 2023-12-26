@@ -35,9 +35,9 @@ if not "%CLEAN_SERVICE%"=="y" if not "%CLEAN_SERVICE%"=="Y" (
 )
 
 rmdir /s /q "%IOTDB_HOME%\data\datanode\"
-
+set IOTDB_DATANODE_CONFIG=%IOTDB_HOME%\conf\iotdb-datanode.properties
 for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_system_dir"
-  %IOTDB_HOME%\conf\iotdb-datanode.properties') do (
+  %IOTDB_DATANODE_CONFIG%') do (
   set dn_system_dir=%%i
 )
 if "%dn_system_dir%"=="" (
@@ -55,7 +55,7 @@ if "%dn_system_dir:~0,2%"=="\\" (
 )
 
 for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_data_dirs"
-  %IOTDB_HOME%\conf\iotdb-datanode.properties') do (
+  %IOTDB_DATANODE_CONFIG%') do (
   set dn_data_dirs=%%i
 )
 if "%dn_data_dirs%"=="" (
@@ -73,7 +73,7 @@ if "%dn_data_dirs:~0,2%"=="\\" (
 )
 
 for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_consensus_dir"
-  %IOTDB_HOME%\conf\iotdb-datanode.properties') do (
+  %IOTDB_DATANODE_CONFIG%') do (
   set dn_consensus_dir=%%i
 )
 if "%dn_consensus_dir%"=="" (
@@ -91,7 +91,7 @@ if "%dn_consensus_dir:~0,2%"=="\\" (
 )
 
 for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_wal_dirs"
-  %IOTDB_HOME%\conf\iotdb-datanode.properties') do (
+  %IOTDB_DATANODE_CONFIG%') do (
   set dn_wal_dirs=%%i
 )
 if "%dn_wal_dirs%"=="" (
@@ -109,7 +109,7 @@ if "%dn_wal_dirs:~0,2%"=="\\" (
 )
 
 for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_tracing_dir"
-  %IOTDB_HOME%\conf\iotdb-datanode.properties') do (
+  %IOTDB_DATANODE_CONFIG%') do (
   set dn_tracing_dir=%%i
 )
 if "%dn_tracing_dir%"=="" (
@@ -127,7 +127,7 @@ if "%dn_tracing_dir:~0,2%"=="\\" (
 )
 
 for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_sync_dir"
-  %IOTDB_HOME%\conf\iotdb-datanode.properties') do (
+  %IOTDB_DATANODE_CONFIG%') do (
   set dn_sync_dir=%%i
 )
 if "%dn_sync_dir%"=="" (
@@ -145,7 +145,7 @@ if "%dn_sync_dir:~0,2%"=="\\" (
 )
 
 for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^pipe_receiver_file_dir"
-  %IOTDB_HOME%\conf\iotdb-datanode.properties') do (
+  %IOTDB_DATANODE_CONFIG%') do (
   set pipe_receiver_file_dir=%%i
 )
 if "%pipe_receiver_file_dir%"=="" (
@@ -163,7 +163,7 @@ if "%pipe_receiver_file_dir:~0,2%"=="\\" (
 )
 
 for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^sort_tmp_dir"
-  %IOTDB_HOME%\conf\iotdb-datanode.properties') do (
+  %IOTDB_DATANODE_CONFIG%') do (
   set sort_tmp_dir=%%i
 )
 if "%sort_tmp_dir%"=="" (
