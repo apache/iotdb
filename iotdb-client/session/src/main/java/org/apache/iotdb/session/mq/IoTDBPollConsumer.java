@@ -171,7 +171,7 @@ public class IoTDBPollConsumer {
     }
     TabletWrapper newTabletWrapper = tabletBuffer.poll(timeout, TimeUnit.SECONDS);
     lastTabletWrapper.set(newTabletWrapper);
-    if (lastTabletWrapper == null) {
+    if (newTabletWrapper == null) {
       return null;
     }
     return newTabletWrapper.getTablet();
@@ -184,7 +184,7 @@ public class IoTDBPollConsumer {
     }
     TabletWrapper newTabletWrapper = tabletBuffer.poll();
     lastTabletWrapper.set(newTabletWrapper);
-    if (lastTabletWrapper == null) {
+    if (newTabletWrapper == null) {
       return null;
     }
     return newTabletWrapper.getTablet();
