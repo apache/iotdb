@@ -17,33 +17,29 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.operator.process.join.merge;
+package org.apache.iotdb.session;
 
-public class DescTimeComparator implements TimeComparator {
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.isession.INodeSupplier;
 
-  /** return if order by time desc, return true if time >= endTime, otherwise false. */
-  @Override
-  public boolean satisfyCurEndTime(long time, long endTime) {
-    return time >= endTime;
+import java.util.Collections;
+import java.util.List;
+
+public class DummyNodesSupplier implements INodeSupplier {
+
+  private final List<TEndPoint> availableNodes;
+
+  public DummyNodesSupplier(List<TEndPoint> availableNodes) {
+    this.availableNodes = Collections.unmodifiableList(availableNodes);
   }
 
   @Override
-  public long getCurrentEndTime(long time1, long time2) {
-    return Math.max(time1, time2);
+  public void close() {
+    // do nothing
   }
 
   @Override
-  public boolean lessThan(long time, long endTime) {
-    return time > endTime;
-  }
-
-  @Override
-  public boolean largerThan(long time, long endTime) {
-    return time < endTime;
-  }
-
-  @Override
-  public boolean canContinueInclusive(long time, long endTime) {
-    return time >= endTime;
+  public List<TEndPoint> get() {
+    return availableNodes;
   }
 }

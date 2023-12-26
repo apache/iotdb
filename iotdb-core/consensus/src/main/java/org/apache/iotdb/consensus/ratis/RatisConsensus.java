@@ -124,7 +124,6 @@ class RatisConsensus implements IConsensus {
   private final AtomicLong localFakeCallId = new AtomicLong(0);
 
   private static final int DEFAULT_PRIORITY = 0;
-  private static final int LEADER_PRIORITY = 1;
 
   private static final int DEFAULT_WAIT_LEADER_READY_TIMEOUT = (int) TimeUnit.SECONDS.toMillis(20);
 
@@ -531,51 +530,19 @@ class RatisConsensus implements IConsensus {
     sendReconfiguration(RaftGroup.valueOf(raftGroupId, newConfig));
   }
 
-  /**
-   * NOTICE: transferLeader *does not guarantee* the leader be transferred to newLeader.
-   * transferLeader is implemented by 1. modify peer priority 2. ask current leader to step down
-   *
-   * <p>1. call setConfiguration to upgrade newLeader's priority to 1 and degrade all follower peers
-   * to 0. By default, Ratis gives every Raft Peer same priority 0. Ratis does not allow a peer with
-   * priority <= currentLeader.priority to becomes the leader, so we have to upgrade leader's
-   * priority to 1
-   *
-   * <p>2. call transferLeadership to force current leader to step down and raise a new round of
-   * election. In this election, the newLeader peer with priority 1 is guaranteed to be elected.
-   */
+  /** NOTICE: transferLeader *does not guarantee* the leader be transferred to newLeader. */
   @Override
   public void transferLeader(ConsensusGroupId groupId, Peer newLeader) throws ConsensusException {
-
     // first fetch the newest information
-    RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
-    RaftGroup raftGroup =
+    final RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
+    final RaftGroup raftGroup =
         Optional.ofNullable(getGroupInfo(raftGroupId))
             .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
 
-    RaftPeer newRaftLeader = Utils.fromPeerAndPriorityToRaftPeer(newLeader, LEADER_PRIORITY);
+    final RaftPeer newRaftLeader = Utils.fromPeerAndPriorityToRaftPeer(newLeader, DEFAULT_PRIORITY);
 
-    ArrayList<RaftPeer> newConfiguration = new ArrayList<>();
-    for (RaftPeer raftPeer : raftGroup.getPeers()) {
-      if (raftPeer.getId().equals(newRaftLeader.getId())) {
-        newConfiguration.add(newRaftLeader);
-      } else {
-        // degrade every other peer to default priority
-        newConfiguration.add(
-            Utils.fromNodeInfoAndPriorityToRaftPeer(
-                Utils.fromRaftPeerIdToNodeId(raftPeer.getId()),
-                Utils.fromRaftPeerAddressToTEndPoint(raftPeer.getAddress()),
-                DEFAULT_PRIORITY));
-      }
-    }
-
-    RaftClientReply reply;
-    try (RatisClient client = getRaftClient(raftGroup)) {
-      RaftClientReply configChangeReply =
-          client.getRaftClient().admin().setConfiguration(newConfiguration);
-      if (!configChangeReply.isSuccess()) {
-        throw new RatisRequestFailedException(configChangeReply.getException());
-      }
-
+    final RaftClientReply reply;
+    try {
       reply = transferLeader(raftGroup, newRaftLeader);
       if (!reply.isSuccess()) {
         throw new RatisRequestFailedException(reply.getException());

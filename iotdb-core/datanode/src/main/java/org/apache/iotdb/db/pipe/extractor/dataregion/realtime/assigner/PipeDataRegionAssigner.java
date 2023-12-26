@@ -69,7 +69,11 @@ public class PipeDataRegionAssigner {
 
               final PipeRealtimeEvent copiedEvent =
                   event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-                      extractor.getPipeName(), extractor.getPipeTaskMeta(), extractor.getPattern());
+                      extractor.getPipeName(),
+                      extractor.getPipeTaskMeta(),
+                      extractor.getPattern(),
+                      extractor.getRealtimeDataExtractionStartTime(),
+                      extractor.getRealtimeDataExtractionEndTime());
 
               copiedEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName());
               extractor.extract(copiedEvent);

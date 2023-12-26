@@ -60,7 +60,8 @@ public interface ISession extends AutoCloseable {
   void open(
       boolean enableRPCCompression,
       int connectionTimeoutInMs,
-      Map<String, TEndPoint> deviceIdToEndpoint)
+      Map<String, TEndPoint> deviceIdToEndpoint,
+      INodeSupplier nodeSupplier)
       throws IoTDBConnectionException;
 
   void close() throws IoTDBConnectionException;
