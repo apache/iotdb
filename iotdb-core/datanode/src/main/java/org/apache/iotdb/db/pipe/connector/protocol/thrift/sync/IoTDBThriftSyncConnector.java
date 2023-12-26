@@ -352,7 +352,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
               pipeInsertNodeTabletInsertionEvent, status));
     }
     if (insertNode != null && status.isSetRedirectNode()) {
-      clientManager.updateOrCreate(
+      clientManager.updateLeaderCache(
           insertNode.getDevicePath().getFullPath(), status.getRedirectNode());
     }
   }
@@ -388,7 +388,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
               pipeRawTabletInsertionEvent, status));
     }
     if (status.isSetRedirectNode()) {
-      clientManager.updateOrCreate(
+      clientManager.updateLeaderCache(
           pipeRawTabletInsertionEvent.getDeviceId(), status.getRedirectNode());
     }
   }
@@ -396,8 +396,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
   private void doTransfer(PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
       throws PipeException, IOException {
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
-    final Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus =
-        clientManager.getClient(tsFile);
+    final Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus = clientManager.getClient();
 
     // 1. Transfer file piece by piece
     final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();

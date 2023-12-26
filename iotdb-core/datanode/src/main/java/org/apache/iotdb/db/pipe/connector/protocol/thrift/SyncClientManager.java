@@ -36,7 +36,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
-import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -83,17 +82,19 @@ public class SyncClientManager implements Closeable {
   public void checkClientStatusAndTryReconstructIfNecessary()
       throws IOException, TTransportException {
     // reconstruct all dead clients
-    for (final TEndPoint endPoint : endPoints) {
-      if (Boolean.TRUE.equals(endPoint2ClientAndStatus.get(endPoint).getRight())) {
+    for (final Map.Entry<TEndPoint, Pair<IoTDBThriftSyncConnectorClient, Boolean>> entry :
+        endPoint2ClientAndStatus.entrySet()) {
+      if (Boolean.TRUE.equals(entry.getValue().getRight())) {
         continue;
       }
 
-      reconstructClient(endPoint);
+      reconstructClient(entry.getKey());
     }
 
     // check whether any clients are available
-    for (TEndPoint nodeUrl : endPoint2ClientAndStatus.keySet()) {
-      if (Boolean.TRUE.equals(endPoint2ClientAndStatus.get(nodeUrl).getRight())) {
+    for (final Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus :
+        endPoint2ClientAndStatus.values()) {
+      if (Boolean.TRUE.equals(clientAndStatus.getRight())) {
         return;
       }
     }
@@ -189,28 +190,26 @@ public class SyncClientManager implements Closeable {
         : getClient();
   }
 
-  public Pair<IoTDBThriftSyncConnectorClient, Boolean> getClient(File tsFile) {
-    // TODO: use the best endpoint
-    return getClient();
-  }
-
-  public void updateOrCreate(String deviceId, TEndPoint endPoint) {
+  public void updateLeaderCache(String deviceId, TEndPoint endPoint) {
     if (!useLeaderCache) {
       return;
     }
 
     try {
-      endPoints.add(endPoint);
-      reconstructClient(endPoint);
+      if (!endPoint2ClientAndStatus.containsKey(endPoint)) {
+        endPoints.add(endPoint);
+        endPoint2ClientAndStatus.put(endPoint, new Pair<>(null, false));
+        reconstructClient(endPoint);
+      }
+
       leaderCacheManager.updateLeaderEndPoint(deviceId, endPoint);
-    } catch (TTransportException e) {
+    } catch (Exception e) {
       LOGGER.warn(
-          "Unable to create client with target server ip: {}, port: {}, because: {}.",
+          "Failed to update leader cache for device {} with endpoint {}:{}.",
+          deviceId,
           endPoint.getIp(),
           endPoint.getPort(),
-          e.getMessage());
-    } catch (IOException e) {
-      LOGGER.warn("Unable to create a handshake request.");
+          e);
     }
   }
 
