@@ -80,7 +80,12 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   @Override
   public TSStatus write(IConsensusRequest request) {
     try {
-      return ((PlanNode) request).accept(new SchemaExecutionVisitor(), schemaRegion);
+      TSStatus result = ((PlanNode) request).accept(new SchemaExecutionVisitor(), schemaRegion);
+      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        SchemaNodeListeningQueue.getInstance(schemaRegion.getSchemaRegionId().getId())
+            .tryListenToNode((PlanNode) request);
+      }
+      return result;
     } catch (IllegalArgumentException e) {
       logger.error(e.getMessage(), e);
       return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());

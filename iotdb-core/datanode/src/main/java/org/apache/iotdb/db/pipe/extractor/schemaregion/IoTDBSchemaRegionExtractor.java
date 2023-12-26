@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.pipe.extractor.schemaregion;
 
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.datastructure.ConcurrentIterableLinkedQueue;
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb.IoTDBCommonExtractor;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
@@ -46,13 +48,21 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 public class IoTDBSchemaRegionExtractor extends IoTDBCommonExtractor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSchemaRegionExtractor.class);
+  private PipeTaskMeta pipeTaskMeta;
 
+  private int schemaRegionId;
   private ConcurrentIterableLinkedQueue<PlanNode>.DynamicIterator itr;
   private Set<PlanNodeType> listenTypes = new HashSet<>();
 
   @Override
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
+    final PipeTaskExtractorRuntimeEnvironment environment =
+        (PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment();
+
+    pipeTaskMeta = environment.getPipeTaskMeta();
+    schemaRegionId = environment.getRegionId();
+
     listenTypes =
         PipeSchemaNodeFilter.getPipeListenSet(
             parameters.getStringOrDefault(
@@ -68,7 +78,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBCommonExtractor {
 
   @Override
   public void start() throws Exception {
-    itr = SchemaNodeListeningQueue.getInstance(0).newIterator(0);
+    itr = SchemaNodeListeningQueue.getInstance(schemaRegionId).newIterator(0);
   }
 
   @Override
