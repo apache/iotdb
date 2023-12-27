@@ -1168,7 +1168,6 @@ public class DataRegion implements IDataRegionForQuery {
   private void insertToTsFileProcessors(
       InsertRowsNode insertRowsNode, boolean[] areSequence, long[] timePartitionIds)
       throws WriteProcessException {
-    List<Long> globalLatestFlushTimeList = new ArrayList<>();
     List<InsertRowNode> executedInsertRowNodeList = new ArrayList<>();
     long[] costsForMetrics = new long[4];
     for (int i = 0; i < areSequence.length; i++) {
@@ -1183,8 +1182,6 @@ public class DataRegion implements IDataRegionForQuery {
       }
       tsFileProcessor.insert(insertRowNode, costsForMetrics);
       executedInsertRowNodeList.add(insertRowNode);
-      globalLatestFlushTimeList.add(
-          lastFlushTimeMap.getGlobalFlushedTime(insertRowNode.getDevicePath().getFullPath()));
 
       // check memtable size and may asyncTryToFlush the work memtable
       if (tsFileProcessor.shouldFlush()) {
