@@ -27,12 +27,15 @@ import org.apache.iotdb.db.pipe.extractor.realtime.matcher.CachedSchemaPatternMa
 import org.apache.iotdb.db.pipe.extractor.realtime.matcher.PipeDataRegionMatcher;
 import org.apache.iotdb.db.pipe.metric.PipeAssignerMetrics;
 
-public class PipeDataRegionAssigner {
+public class PipeDataRegionAssigner implements AutoCloseable {
 
-  /** The matcher is used to match the event with the extractor based on the pattern. */
+  /**
+   * The {@link PipeDataRegionMatcher} is used to match the event with the extractor based on the
+   * pattern.
+   */
   private final PipeDataRegionMatcher matcher;
 
-  /** The disruptor is used to assign the event to the extractor. */
+  /** The {@link DisruptorQueue} is used to assign the event to the extractor. */
   private final DisruptorQueue disruptor;
 
   private final String dataRegionId;
@@ -101,10 +104,11 @@ public class PipeDataRegionAssigner {
   }
 
   /**
-   * Clear the matcher and disruptor. The method publishToAssign should be work after calling this
-   * method.
+   * Clear the matcher and disruptor. The method {@link PipeDataRegionAssigner#publishToAssign}
+   * should not be used after calling this method.
    */
-  public void gc() {
+  @Override
+  public void close() {
     PipeAssignerMetrics.getInstance().deregister(dataRegionId);
     matcher.clear();
     disruptor.clear();

@@ -25,8 +25,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -57,7 +57,8 @@ public class ConcurrentIterableLinkedQueue<E> {
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
   private final Condition hasNextCondition = lock.writeLock().newCondition();
 
-  private final Map<DynamicIterator, DynamicIterator> iteratorSet = new ConcurrentHashMap<>();
+  private final ConcurrentMap<DynamicIterator, DynamicIterator> iteratorSet =
+      new ConcurrentHashMap<>();
 
   /**
    * Add an element to the tail of the queue.

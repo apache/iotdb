@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
@@ -28,6 +26,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
@@ -103,27 +102,31 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             createPipeRequest.getProcessorAttributes(),
             createPipeRequest.getConnectorAttributes());
 
-    final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMap = new HashMap<>();
+    final Map<Integer, PipeTaskMeta> consensusGroupIdToTaskMetaMap = new HashMap<>();
     env.getConfigManager()
         .getLoadManager()
         .getRegionLeaderMap()
         .forEach(
             (regionGroupId, regionLeaderNodeId) -> {
-              if (regionGroupId.getType().equals(TConsensusGroupType.DataRegion)) {
-                final String databaseName =
-                    env.getConfigManager()
-                        .getPartitionManager()
-                        .getRegionStorageGroup(regionGroupId);
-                if (databaseName != null && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)) {
-                  // Pipe only collect user's data, filter metric database here.
-                  consensusGroupIdToTaskMetaMap.put(
-                      regionGroupId,
-                      new PipeTaskMeta(MinimumProgressIndex.INSTANCE, regionLeaderNodeId));
-                }
+              final String databaseName =
+                  env.getConfigManager().getPartitionManager().getRegionStorageGroup(regionGroupId);
+              if (databaseName != null && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)) {
+                // Pipe only collect user's data, filter metric database here.
+                consensusGroupIdToTaskMetaMap.put(
+                    regionGroupId.getId(),
+                    new PipeTaskMeta(MinimumProgressIndex.INSTANCE, regionLeaderNodeId));
               }
             });
+    // Though the configRegion's id is 0, here we still use Integer.MIN_VALUE to tell from
+    // SchemaRegion and DataRegion's Ids since their ids start from 0 together.
+    consensusGroupIdToTaskMetaMap.put(
+        Integer.MIN_VALUE,
+        new PipeTaskMeta(
+            MinimumProgressIndex.INSTANCE,
+            ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()));
     pipeRuntimeMeta = new PipeRuntimeMeta(consensusGroupIdToTaskMetaMap);
     pipeRuntimeMeta.getStatus().set(PipeStatus.RUNNING);
+    pipeRuntimeMeta.setShouldBeRunning(true);
   }
 
   @Override
