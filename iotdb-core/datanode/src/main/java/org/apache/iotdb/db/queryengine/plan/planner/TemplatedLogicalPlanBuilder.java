@@ -108,11 +108,7 @@ public class TemplatedLogicalPlanBuilder extends LogicalPlanBuilder {
   }
 
   public TemplatedLogicalPlanBuilder planFilter(
-      Expression filterExpression,
-      Expression[] outputExpressions,
-      boolean isGroupByTime,
-      ZoneId zoneId,
-      Ordering scanOrder) {
+      Expression filterExpression, boolean isGroupByTime, ZoneId zoneId, Ordering scanOrder) {
 
     if (filterExpression == null) {
       return this;
@@ -122,7 +118,7 @@ public class TemplatedLogicalPlanBuilder extends LogicalPlanBuilder {
         new FilterNode(
             context.getQueryId().genPlanNodeId(),
             this.getRoot(),
-            outputExpressions,
+            null,
             filterExpression,
             isGroupByTime,
             zoneId,
