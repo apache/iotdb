@@ -215,7 +215,7 @@ public class LocalTextModificationAccessor
   public void mayTruncateLastLine() {
     try (RandomAccessFile file = new RandomAccessFile(filePath, "r")) {
       long filePointer = file.length() - 1;
-      if (filePointer == 0) {
+      if (filePointer <= 0) {
         return;
       }
 

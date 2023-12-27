@@ -66,6 +66,7 @@ public class ModificationFile implements AutoCloseable {
   private static final long COMPACT_THRESHOLD = 1024 * 1024;
 
   private boolean hasCompacted = false;
+
   /**
    * Construct a ModificationFile using a file as its storage.
    *
