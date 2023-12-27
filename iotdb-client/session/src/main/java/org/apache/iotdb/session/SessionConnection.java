@@ -77,8 +77,10 @@ import org.slf4j.LoggerFactory;
 import java.security.SecureRandom;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.StringJoiner;
+import java.util.function.Supplier;
 
 public class SessionConnection {
 
@@ -95,15 +97,21 @@ public class SessionConnection {
   private List<TEndPoint> endPointList = new ArrayList<>();
   private boolean enableRedirect = false;
 
-  // TestOnly
-  public SessionConnection() {}
+  private final Supplier<List<TEndPoint>> availableNodes;
 
-  public SessionConnection(Session session, TEndPoint endPoint, ZoneId zoneId)
+  // TestOnly
+  public SessionConnection() {
+    availableNodes = Collections::emptyList;
+  }
+
+  public SessionConnection(
+      Session session, TEndPoint endPoint, ZoneId zoneId, Supplier<List<TEndPoint>> availableNodes)
       throws IoTDBConnectionException {
     this.session = session;
     this.endPoint = endPoint;
     endPointList.add(endPoint);
     this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
+    this.availableNodes = availableNodes;
     try {
       init(endPoint, session.useSSL, session.trustStore, session.trustStorePwd);
     } catch (IoTDBConnectionException e) {
@@ -111,10 +119,12 @@ public class SessionConnection {
     }
   }
 
-  public SessionConnection(Session session, ZoneId zoneId) throws IoTDBConnectionException {
+  public SessionConnection(Session session, ZoneId zoneId, Supplier<List<TEndPoint>> availableNodes)
+      throws IoTDBConnectionException {
     this.session = session;
     this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
     this.endPointList = SessionUtils.parseSeedNodeUrls(session.nodeUrls);
+    this.availableNodes = availableNodes;
     initClusterConn();
   }
 
@@ -956,13 +966,13 @@ public class SessionConnection {
     for (int i = 1; i <= SessionConfig.RETRY_NUM; i++) {
       if (transport != null) {
         transport.close();
+        endPointList = availableNodes.get();
         int currHostIndex = random.nextInt(endPointList.size());
         int tryHostNum = 0;
         for (int j = currHostIndex; j < endPointList.size(); j++) {
           if (tryHostNum == endPointList.size()) {
             break;
           }
-          session.defaultEndPoint = endPointList.get(j);
           this.endPoint = endPointList.get(j);
           if (j == endPointList.size() - 1) {
             j = -1;
@@ -979,6 +989,11 @@ public class SessionConnection {
         }
       }
       if (connectedSuccess) {
+        // remove the broken end point
+        session.removeBrokenSessionConnection(this);
+        session.defaultEndPoint = this.endPoint;
+        session.defaultSessionConnection = this;
+        session.endPointToSessionConnection.put(session.defaultEndPoint, this);
         break;
       }
     }

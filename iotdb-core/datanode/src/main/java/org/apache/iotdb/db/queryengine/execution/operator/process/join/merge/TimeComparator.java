@@ -24,9 +24,15 @@ public interface TimeComparator {
   /** return true if time is satisfied with endTime, otherwise false. */
   boolean satisfyCurEndTime(long time, long endTime);
 
+  /** return time < endTime if order by time asc, time > endTime if order by desc. */
+  boolean lessThan(long time, long endTime);
+
+  /** return time > endTime if order by time asc, time < endTime if order by desc. */
+  boolean largerThan(long time, long endTime);
+
   /** return min(time1, time2) if order by time asc, max(time1, time2) if order by desc. */
   long getCurrentEndTime(long time1, long time2);
 
-  /** return time < endTime if order by time asc, time > endTime if order by desc. */
-  boolean canContinue(long time, long endTime);
+  /** return time <= endTime if order by time asc, time => endTime if order by desc. */
+  boolean canContinueInclusive(long time, long endTime);
 }
