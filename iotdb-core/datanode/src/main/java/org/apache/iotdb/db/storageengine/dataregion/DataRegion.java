@@ -3109,26 +3109,6 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  /**
-   * insert batch of rows belongs to multiple devices
-   *
-   * @param insertRowsNode batch of rows belongs to multiple devices
-   */
-  public void insertOld(InsertRowsNode insertRowsNode) throws BatchProcessException {
-    for (int i = 0; i < insertRowsNode.getInsertRowNodeList().size(); i++) {
-      InsertRowNode insertRowNode = insertRowsNode.getInsertRowNodeList().get(i);
-      try {
-        insert(insertRowNode);
-      } catch (WriteProcessException e) {
-        insertRowsNode.getResults().put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
-      }
-    }
-
-    if (!insertRowsNode.getResults().isEmpty()) {
-      throw new BatchProcessException("Partial failed inserting rows");
-    }
-  }
-
   public void insert(InsertRowsNode insertRowsNode) throws WriteProcessException {
     if (enableMemControl) {
       StorageEngine.blockInsertionIfReject(null);
