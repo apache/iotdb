@@ -536,6 +536,7 @@ public class LoadCache {
    * @param regionGroupIds Specified RegionGroupIds
    */
   public void waitForLeaderElection(List<TConsensusGroupId> regionGroupIds) {
+    LOGGER.info("[RegionElection] Wait for leader election of RegionGroups: {}", regionGroupIds);
     for (int retry = 0; retry < 10; retry++) {
       AtomicBoolean allRegionLeaderElected = new AtomicBoolean(true);
       regionGroupIds.forEach(
