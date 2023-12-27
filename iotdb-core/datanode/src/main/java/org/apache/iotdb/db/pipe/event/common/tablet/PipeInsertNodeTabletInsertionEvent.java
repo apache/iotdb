@@ -240,7 +240,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   /////////////////////////// parsePattern ///////////////////////////
 
-  public TabletInsertionEvent parseEventWithPattern() {
+  public TabletInsertionEvent parseEventWithPatternOrTime() {
     return new PipeRawTabletInsertionEvent(
         convertToTablet(), isAligned, pipeName, pipeTaskMeta, this, true);
   }
