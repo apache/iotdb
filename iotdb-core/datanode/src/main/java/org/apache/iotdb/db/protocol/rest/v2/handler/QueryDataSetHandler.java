@@ -92,6 +92,8 @@ public class QueryDataSetHandler {
     for (int i = 0; i < datasetHeader.getRespColumns().size(); i++) {
       targetDataSet.addExpressionsItem(datasetHeader.getRespColumns().get(i));
       targetDataSet.addValuesItem(new ArrayList<>());
+      targetDataSet.addDataTypesItem(
+          datasetHeader.getColumnHeaders().get(i).getColumnType().name());
       targetDataSetIndexToSourceDataSetIndex[i] =
           datasetHeader.getColumnNameIndexMap().get(datasetHeader.getRespColumns().get(i));
     }
@@ -137,9 +139,11 @@ public class QueryDataSetHandler {
 
     DatasetHeader header = queryExecution.getDatasetHeader();
     List<String> resultColumns = header.getRespColumns();
+    List<TSDataType> dataTypes = header.getRespDataTypes();
     Map<String, Integer> headerMap = header.getColumnNameIndexMap();
-    for (String resultColumn : resultColumns) {
-      targetDataSet.addExpressionsItem(resultColumn);
+    for (int i = 0; i < resultColumns.size(); i++) {
+      targetDataSet.addExpressionsItem(resultColumns.get(i));
+      targetDataSet.addDataTypesItem(dataTypes.get(i).name());
       targetDataSet.addValuesItem(new ArrayList<>());
     }
 

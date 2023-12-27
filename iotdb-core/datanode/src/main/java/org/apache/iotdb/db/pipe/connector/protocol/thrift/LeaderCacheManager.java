@@ -17,33 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.operator.process.join.merge;
+package org.apache.iotdb.db.pipe.connector.protocol.thrift;
 
-public class DescTimeComparator implements TimeComparator {
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 
-  /** return if order by time desc, return true if time >= endTime, otherwise false. */
-  @Override
-  public boolean satisfyCurEndTime(long time, long endTime) {
-    return time >= endTime;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+public class LeaderCacheManager {
+
+  private final Map<String, TEndPoint> device2endpoint = new ConcurrentHashMap<>();
+
+  public TEndPoint getLeaderEndPoint(String deviceId) {
+    return deviceId == null ? null : device2endpoint.get(deviceId);
   }
 
-  @Override
-  public long getCurrentEndTime(long time1, long time2) {
-    return Math.max(time1, time2);
-  }
-
-  @Override
-  public boolean lessThan(long time, long endTime) {
-    return time > endTime;
-  }
-
-  @Override
-  public boolean largerThan(long time, long endTime) {
-    return time < endTime;
-  }
-
-  @Override
-  public boolean canContinueInclusive(long time, long endTime) {
-    return time >= endTime;
+  public void updateLeaderEndPoint(String deviceId, TEndPoint endPoint) {
+    device2endpoint.put(deviceId, endPoint);
   }
 }

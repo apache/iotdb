@@ -82,7 +82,7 @@ public abstract class PageManager implements IPageManager {
   protected final Lock cacheLock;
   protected final Condition cacheFull;
 
-  private final Map<Long, SchemaPageContext> threadContexts;
+  protected final Map<Long, SchemaPageContext> threadContexts;
 
   protected final AtomicInteger lastPageIndex;
 
@@ -235,7 +235,7 @@ public abstract class PageManager implements IPageManager {
   /** release referents and evict likely useless page if necessary */
   protected void releaseReferent(SchemaPageContext cxt) {
     for (ISchemaPage p : cxt.referredPages.values()) {
-      p.getRefCnt().decrementAndGet();
+      p.decrementAndGetRefCnt();
     }
 
     if (pageInstCache.size() > SchemaFileConfig.PAGE_CACHE_SIZE) {
@@ -652,7 +652,7 @@ public abstract class PageManager implements IPageManager {
       cxt.lastLeafPage.getLock().writeLock().unlock();
       cxt.lockTraces.remove(cxt.lastLeafPage.getPageIndex());
     }
-    cxt.lastLeafPage.getRefCnt().decrementAndGet();
+    cxt.lastLeafPage.decrementAndGetRefCnt();
 
     // can be reclaimed since the page only referred by pageInstCache
     cxt.referredPages.remove(cxt.lastLeafPage.getPageIndex());
@@ -760,22 +760,28 @@ public abstract class PageManager implements IPageManager {
       return targetPage.getAsSegmentedPage();
     }
 
-    // pageIndexBuckets sorts pages within pageInstCache into buckets to expedite access
-    targetPage = pageIndexBuckets.getNearestFitPage(size, true);
-    if (targetPage != null) {
-      cxt.markDirty(targetPage);
-      cxt.traceLock(targetPage);
+    cacheLock.lock();
+    try {
+      // pageIndexBuckets sorts pages within pageInstCache into buckets to expedite access
+      targetPage = pageIndexBuckets.getNearestFitPage(size, true);
+      if (targetPage != null) {
+        cxt.markDirty(targetPage);
+        cxt.traceLock(targetPage);
 
-      // transfer the page from pageIndexBuckets to cxt.buckets thus not be accessed by other WRITE
-      // thread
+        // transfer the page from pageIndexBuckets to cxt.buckets thus not be accessed by other
+        // WRITE
+        // thread
+        cxt.indexBuckets.sortIntoBucket(targetPage, size);
+        return targetPage.getAsSegmentedPage();
+      }
+
+      // due to be dirty thus its index only sorted into local buckets
+      targetPage = allocNewSegmentedPage(cxt);
       cxt.indexBuckets.sortIntoBucket(targetPage, size);
       return targetPage.getAsSegmentedPage();
+    } finally {
+      cacheLock.unlock();
     }
-
-    // due to be dirty thus its index only sorted into local buckets
-    targetPage = allocNewSegmentedPage(cxt);
-    cxt.indexBuckets.sortIntoBucket(targetPage, size);
-    return targetPage.getAsSegmentedPage();
   }
 
   protected ISchemaPage allocNewSegmentedPage(SchemaPageContext cxt) {
@@ -1024,7 +1030,7 @@ public abstract class PageManager implements IPageManager {
     // referred pages will not be evicted until operation finished
     private void refer(ISchemaPage page) {
       if (!referredPages.containsKey(page.getPageIndex())) {
-        page.getRefCnt().incrementAndGet();
+        page.incrementAndGetRefCnt();
         referredPages.put(page.getPageIndex(), page);
       }
     }
