@@ -75,4 +75,6 @@ read -r ADD_STARTUP
 echo - - - - - - - - - -
 if [[ "$ADD_STARTUP" =~ ^[Yy]$ ]]; then
    systemctl enable iotdb-datanode
+else
+   systemctl disable iotdb-datanode
 fi
