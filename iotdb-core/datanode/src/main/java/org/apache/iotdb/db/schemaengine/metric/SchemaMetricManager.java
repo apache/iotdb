@@ -59,6 +59,10 @@ public class SchemaMetricManager {
     }
   }
 
+  public ISchemaRegionMetric getSchemaRegionMetric(int schemaRegionId) {
+    return schemaRegionMetricMap.get(schemaRegionId);
+  }
+
   public void clear() {
     MetricService.getInstance().removeMetricSet(engineMetric);
     for (ISchemaRegionMetric regionMetric : schemaRegionMetricMap.values()) {

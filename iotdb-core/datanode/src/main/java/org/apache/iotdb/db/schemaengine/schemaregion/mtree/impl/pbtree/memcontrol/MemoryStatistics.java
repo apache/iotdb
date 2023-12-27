@@ -63,7 +63,7 @@ public class MemoryStatistics {
     regionStatistics.releaseMemory(size);
   }
 
-  public void releaseMemResource(List<ICachedMNode> evictedNodes) {
+  public int releaseMemResource(List<ICachedMNode> evictedNodes) {
     int size = 0;
     for (ICachedMNode node : evictedNodes) {
       size += node.estimateSize();
@@ -71,6 +71,7 @@ public class MemoryStatistics {
     regionStatistics.updateUnpinnedMNodeNum(-evictedNodes.size());
     regionStatistics.updateUnpinnedMemorySize(-size);
     regionStatistics.releaseMemory(size);
+    return size;
   }
 
   public void updatePinnedSize(int deltaSize) {
@@ -80,5 +81,13 @@ public class MemoryStatistics {
       regionStatistics.releaseMemory(-deltaSize);
     }
     regionStatistics.updatePinnedMemorySize(deltaSize);
+  }
+
+  public void addVolatileNode() {
+    regionStatistics.updateVolatileMNodeNum(1);
+  }
+
+  public void removeVolatileNode() {
+    regionStatistics.updateVolatileMNodeNum(-1);
   }
 }

@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
+import org.apache.iotdb.db.schemaengine.SchemaEngine;
+import org.apache.iotdb.db.schemaengine.metric.SchemaRegionMemMetric;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.IMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
@@ -50,7 +52,7 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
   private final MemSchemaRegionStatistics regionStatistics;
   private final IMNodeFactory<IMemMNode> nodeFactory =
       MNodeFactoryLoader.getInstance().getMemMNodeIMNodeFactory();
-
+  private final SchemaRegionMemMetric metric;
   private IMemMNode root;
 
   public MemMTreeStore(PartialPath rootPath, MemSchemaRegionStatistics regionStatistics) {
@@ -62,11 +64,17 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
                 CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs())
             .getAsMNode();
     this.regionStatistics = regionStatistics;
+    this.metric =
+        (SchemaRegionMemMetric)
+            SchemaEngine.getInstance().getSchemaRegionMetric(regionStatistics.getSchemaRegionId());
   }
 
   private MemMTreeStore(IMemMNode root, MemSchemaRegionStatistics regionStatistics) {
     this.root = root;
     this.regionStatistics = regionStatistics;
+    this.metric =
+        (SchemaRegionMemMetric)
+            SchemaEngine.getInstance().getSchemaRegionMetric(regionStatistics.getSchemaRegionId());
   }
 
   @Override
@@ -223,6 +231,11 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
   public ReleaseFlushMonitor.RecordNode recordTraverserStatistics() {
     // do nothing
     return null;
+  }
+
+  @Override
+  public void recordTraverserMetric(long costTime) {
+    metric.recordTraverser(costTime);
   }
 
   private void requestMemory(int size) {
