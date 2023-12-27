@@ -84,10 +84,11 @@ public class IoTDBPullConsumerExample {
             .username("root")
             .password("root")
             .tabletBufferSize(10)
+            .pattern("root")
+            .id("1")
             .build();
     pollConsumer.open();
 
-    pollConsumer.subscribe("topic_root");
     Session session = new Session.Builder().port(6668).build();
     session.open(false);
 

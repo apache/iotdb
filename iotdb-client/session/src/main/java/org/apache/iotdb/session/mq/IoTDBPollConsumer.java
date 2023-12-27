@@ -54,24 +54,36 @@ public class IoTDBPollConsumer {
 
   private final BlockingQueue<TabletWrapper> tabletBuffer;
 
-  private final AtomicReference<String> topic = new AtomicReference<>();
-
   private final AtomicReference<TabletWrapper> lastTabletWrapper = new AtomicReference<>();
 
   private final ClientsDaemonThread clientsDaemonThread = new ClientsDaemonThread();
 
-  public IoTDBPollConsumer(Builder builder) {
+  private final String pattern;
+
+  private final String id;
+
+  private final String pipeName;
+
+  public IoTDBPollConsumer(Builder builder) throws IoTDBConnectionException {
     String host = builder.host;
     int rpcPort = builder.rpcPort;
     this.brokerPort = builder.brokerPort;
     String username = builder.username;
     String pw = builder.pw;
     int tabletBufferSize = builder.tabletBufferSize;
+    pattern = builder.pattern;
+
+    if ("".equals(builder.id)) {
+      throw new IoTDBConnectionException("The option `id` is required.");
+    }
+    id = builder.id;
 
     session =
         new Session.Builder().host(host).port(rpcPort).username(username).password(pw).build();
 
     tabletBuffer = new ArrayBlockingQueue<>(tabletBufferSize);
+
+    pipeName = String.format("topic_%s", id);
   }
 
   public void open()
@@ -79,31 +91,19 @@ public class IoTDBPollConsumer {
           InterruptedException {
     session.open();
 
-    try (SessionDataSet clusterDetails = session.executeQueryStatement("show cluster details")) {
-      List<String> columnNames = clusterDetails.getColumnNames();
-      while (clusterDetails.hasNext()) {
-        RowRecord record = clusterDetails.next();
-        if ("DataNode"
-            .equals(record.getFields().get(columnNames.indexOf("NodeType")).getStringValue())) {
-          String address =
-              record.getFields().get(columnNames.indexOf("InternalAddress")).getStringValue();
-          URI uri = new URI(String.format("ws://%s:%d", address, brokerPort));
+    createAndStartPipeIfNecessary();
+    createWebsocketConnections();
+    sendBindMessages();
 
-          if (!isURIAvailable(uri)) {
-            throw new IoTDBConnectionException(
-                String.format(
-                    "Websocket server %s:%d is not available!", uri.getHost(), uri.getPort()));
-          }
-
-          IoTDBWebSocketClient client = initAndGetClient(uri);
-          clients.add(client);
-        }
-      }
-    }
+    // start the daemon thread of clients
     clientsDaemonThread.start();
   }
 
-  public void close() throws IoTDBConnectionException {
+  public void close(boolean dropPipe) throws IoTDBConnectionException, StatementExecutionException {
+    if (dropPipe) {
+      session.executeNonQueryStatement(String.format("drop pipe %s", pipeName));
+    }
+
     for (IoTDBWebSocketClient client : clients) {
       client.close();
     }
@@ -115,53 +115,6 @@ public class IoTDBPollConsumer {
     if (clientsDaemonThread.isAlive()) {
       clientsDaemonThread.stop();
     }
-  }
-
-  public void subscribe(String topic) throws IoTDBConnectionException, StatementExecutionException {
-    if (this.topic.get() != null) {
-      LOGGER.warn("This consumer has subscribed a topic, please unsubscribe it first!");
-      return;
-    }
-
-    try (SessionDataSet pipes =
-        session.executeQueryStatement(String.format("show pipe `%s`", topic))) {
-      if (!pipes.hasNext()) {
-        throw new StatementExecutionException(
-            String.format("Topic `%s` has not been created.", topic));
-      }
-      List<String> columnNames = pipes.getColumnNames();
-      RowRecord pipe = pipes.next();
-      String state = pipe.getFields().get(columnNames.indexOf("State")).getStringValue();
-      if (!"RUNNING".equals(state)) {
-        session.executeNonQueryStatement(String.format("start pipe `%s`", topic));
-      }
-    }
-
-    for (IoTDBWebSocketClient client : clients) {
-      client.send(String.format("BIND:%s", topic));
-      while (IoTDBWebSocketClient.Status.WAITING == client.getStatus()) {
-        try {
-          Thread.sleep(100);
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-        }
-      }
-      if (IoTDBWebSocketClient.Status.ERROR == client.getStatus()) {
-        throw new IoTDBConnectionException(
-            String.format(
-                "Unable to subscribe this topic. Topic `%s` was subscribed in another program, stop it first.",
-                topic));
-      }
-    }
-    this.topic.set(topic);
-  }
-
-  public void unsubscribe() {
-    for (IoTDBWebSocketClient client : clients) {
-      client.send("UNBIND");
-    }
-
-    this.topic.set(null);
   }
 
   public synchronized Tablet poll(int timeout) throws InterruptedException {
@@ -188,6 +141,88 @@ public class IoTDBPollConsumer {
       return null;
     }
     return newTabletWrapper.getTablet();
+  }
+
+  private void createAndStartPipeIfNecessary()
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (SessionDataSet pipes =
+        session.executeQueryStatement(String.format("show pipe %s", pipeName))) {
+      // create pipe if necessary
+      if (!pipes.hasNext()) {
+        String createStatement =
+            String.format(
+                "create pipe %s\n"
+                    + "with extractor (\n"
+                    + "    'extractor.pattern'='%s'\n"
+                    + ")\n"
+                    + "with connector (\n"
+                    + "    'connector'='websocket-connector',\n"
+                    + "    'connector.websocket.port'='18080',\n"
+                    + "    'connector.websocket.id'='%s'\n"
+                    + ")",
+                pipeName, pattern, id);
+        session.executeNonQueryStatement(createStatement);
+        session.executeNonQueryStatement(String.format("start pipe %s", pipeName));
+      } else {
+        // start pipe if necessary
+        List<String> columnNames = pipes.getColumnNames();
+        RowRecord pipe = pipes.next();
+        String state = pipe.getFields().get(columnNames.indexOf("State")).getStringValue();
+        if (!"RUNNING".equals(state)) {
+          session.executeNonQueryStatement(String.format("start pipe %s", pipeName));
+        }
+      }
+    }
+  }
+
+  private void createWebsocketConnections()
+      throws IoTDBConnectionException, StatementExecutionException, URISyntaxException {
+    try (SessionDataSet clusterDetails = session.executeQueryStatement("show cluster details")) {
+      List<String> columnNames = clusterDetails.getColumnNames();
+      while (clusterDetails.hasNext()) {
+        RowRecord record = clusterDetails.next();
+        if ("DataNode"
+            .equals(record.getFields().get(columnNames.indexOf("NodeType")).getStringValue())) {
+          String address =
+              record.getFields().get(columnNames.indexOf("InternalAddress")).getStringValue();
+          URI uri = new URI(String.format("ws://%s:%d", address, brokerPort));
+
+          if (!isURIAvailable(uri)) {
+            throw new IoTDBConnectionException(
+                String.format(
+                    "Websocket server %s:%d is not available!", uri.getHost(), uri.getPort()));
+          }
+
+          IoTDBWebSocketClient client = initAndGetClient(uri);
+          clients.add(client);
+        }
+      }
+    }
+  }
+
+  private void sendBindMessages() throws IoTDBConnectionException, StatementExecutionException {
+    for (IoTDBWebSocketClient client : clients) {
+      sendBindMessage(client);
+    }
+  }
+
+  private void sendBindMessage(IoTDBWebSocketClient client)
+      throws IoTDBConnectionException, StatementExecutionException {
+    client.send(String.format("BIND:%s", pipeName));
+    while (IoTDBWebSocketClient.Status.WAITING == client.getStatus()) {
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+    }
+    if (IoTDBWebSocketClient.Status.ERROR == client.getStatus()) {
+      close(false);
+      throw new IoTDBConnectionException(
+          String.format(
+              "Unable to subscribe this topic. Topic `%s` was subscribed in another program, stop it first.",
+              pipeName));
+    }
   }
 
   private void commit(TabletWrapper tabletWrapper) {
@@ -233,6 +268,8 @@ public class IoTDBPollConsumer {
     private String username = SessionConfig.DEFAULT_USER;
     private String pw = SessionConfig.DEFAULT_PASSWORD;
     private int tabletBufferSize = SessionConfig.DEFAULT_TABLET_BUFFER_SIZE;
+    private String pattern = SessionConfig.DEFAULT_PATTERN;
+    private String id = "";
 
     public Builder host(String host) {
       this.host = host;
@@ -264,7 +301,17 @@ public class IoTDBPollConsumer {
       return this;
     }
 
-    public IoTDBPollConsumer build() {
+    public Builder pattern(String pattern) {
+      this.pattern = pattern;
+      return this;
+    }
+
+    public Builder id(String id) {
+      this.id = id;
+      return this;
+    }
+
+    public IoTDBPollConsumer build() throws IoTDBConnectionException {
       return new IoTDBPollConsumer(this);
     }
   }
@@ -292,12 +339,8 @@ public class IoTDBPollConsumer {
             while (!client.getReadyState().equals(ReadyState.OPEN)) {
               Thread.sleep(1000);
             }
-            String currentTopic = topic.getAndSet(null);
-            subscribe(currentTopic);
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-          } catch (IoTDBConnectionException | StatementExecutionException e) {
-            LOGGER.warn(String.format("Failed to subscribe topic, because: %s.", e.getMessage()));
           }
         }
         try {
