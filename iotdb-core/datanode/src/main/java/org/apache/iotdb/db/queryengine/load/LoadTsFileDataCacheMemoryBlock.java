@@ -118,6 +118,10 @@ public class LoadTsFileDataCacheMemoryBlock extends LoadTsFileAbstractMemoryBloc
     return referenceCount.get();
   }
 
+  long getMemoryUsageInBytes() {
+    return memoryUsageInBytes.get();
+  }
+
   @Override
   public String toString() {
     return "LoadTsFileDataCacheMemoryBlock{"

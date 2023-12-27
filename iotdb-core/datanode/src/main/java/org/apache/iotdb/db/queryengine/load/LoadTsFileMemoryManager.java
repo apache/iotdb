@@ -26,6 +26,8 @@ import org.apache.iotdb.db.exception.LoadRuntimeOutOfMemoryException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 public class LoadTsFileMemoryManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileMemoryManager.class);
@@ -36,8 +38,7 @@ public class LoadTsFileMemoryManager {
   private static final long MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS =
       CONFIG.getLoadMemoryAllocateRetryIntervalMs();
 
-  private long usedMemorySizeInBytes;
-
+  private final AtomicLong usedMemorySizeInBytes = new AtomicLong(0);
   private LoadTsFileDataCacheMemoryBlock dataCacheMemoryBlock;
 
   private synchronized void forceAllocatedFromQuery(long sizeInBytes)
@@ -45,8 +46,8 @@ public class LoadTsFileMemoryManager {
     for (int i = 0; i < MEMORY_ALLOCATE_MAX_RETRIES; i++) {
       // allocate memory from queryEngine
       // TODO: queryEngine provides a method to allocate memory
-      if (usedMemorySizeInBytes + sizeInBytes <= QUERY_TOTAL_MEMORY_SIZE_IN_BYTES) {
-        usedMemorySizeInBytes += sizeInBytes;
+      if (usedMemorySizeInBytes.get() + sizeInBytes <= QUERY_TOTAL_MEMORY_SIZE_IN_BYTES) {
+        usedMemorySizeInBytes.addAndGet(sizeInBytes);
         return;
       }
 
@@ -66,20 +67,22 @@ public class LoadTsFileMemoryManager {
                 + "requested memory size %d bytes",
             MEMORY_ALLOCATE_MAX_RETRIES,
             QUERY_TOTAL_MEMORY_SIZE_IN_BYTES,
-            usedMemorySizeInBytes,
+            usedMemorySizeInBytes.get(),
             sizeInBytes));
   }
 
   public synchronized long tryAllocateFromQuery(long sizeInBytes) {
     // TODO: queryEngine provides a method to allocate memory
     long allocatedSizeInBytes =
-        Math.min(sizeInBytes, QUERY_TOTAL_MEMORY_SIZE_IN_BYTES - usedMemorySizeInBytes);
-    return Math.max(0L, allocatedSizeInBytes);
+        Math.min(sizeInBytes, QUERY_TOTAL_MEMORY_SIZE_IN_BYTES - usedMemorySizeInBytes.get());
+    long result = Math.max(0L, allocatedSizeInBytes);
+    usedMemorySizeInBytes.addAndGet(result);
+    return result;
   }
 
   public synchronized void releaseToQuery(long sizeInBytes) {
     // todo: queryEngine provides a method to release memory
-    usedMemorySizeInBytes -= sizeInBytes;
+    usedMemorySizeInBytes.addAndGet(-sizeInBytes);
     this.notifyAll();
   }
 
@@ -118,6 +121,17 @@ public class LoadTsFileMemoryManager {
       dataCacheMemoryBlock.close();
       dataCacheMemoryBlock = null;
     }
+  }
+
+  // used for Metrics
+  public long getUsedMemorySizeInMB() {
+    return usedMemorySizeInBytes.get() / 1024 / 1024;
+  }
+
+  public long getDataCacheUsedMemorySizeInMB() {
+    return dataCacheMemoryBlock == null
+        ? 0
+        : dataCacheMemoryBlock.getMemoryUsageInBytes() / 1024 / 1024;
   }
 
   ///////////////////////////// SINGLETON /////////////////////////////

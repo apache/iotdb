@@ -19,6 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.load;
 
+import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.queryengine.metric.LoadTsFileMemMetricSet;
+import org.apache.iotdb.metrics.utils.MetricLevel;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,6 +52,14 @@ public class LoadTsFileAnalyzeSchemaMemoryBlock extends LoadTsFileAbstractMemory
   @Override
   public void addMemoryUsage(long memoryInBytes) {
     memoryUsageInBytes.addAndGet(memoryInBytes);
+
+    MetricService.getInstance()
+        .getOrCreateGauge(
+            Metric.LOAD_MEM.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            LoadTsFileMemMetricSet.LOAD_TSFILE_ANALYZE_SCHEMA_MEMORY)
+        .incr(memoryInBytes / 1024 / 1024); // MB
   }
 
   @Override
@@ -53,6 +67,14 @@ public class LoadTsFileAnalyzeSchemaMemoryBlock extends LoadTsFileAbstractMemory
     if (memoryUsageInBytes.addAndGet(-memoryInBytes) < 0) {
       LOGGER.warn("{} has reduce memory usage to negative", this);
     }
+
+    MetricService.getInstance()
+        .getOrCreateGauge(
+            Metric.LOAD_MEM.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            LoadTsFileMemMetricSet.LOAD_TSFILE_ANALYZE_SCHEMA_MEMORY)
+        .decr(memoryInBytes / 1024 / 1024); // MB
   }
 
   @Override
