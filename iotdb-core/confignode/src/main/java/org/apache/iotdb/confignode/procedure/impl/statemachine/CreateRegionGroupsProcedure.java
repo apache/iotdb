@@ -173,12 +173,9 @@ public class CreateRegionGroupsProcedure
         // Build RegionGroupCache immediately to make these successfully built RegionGroup available
         createRegionGroupsPlan
             .getRegionGroupMap()
-            .entrySet()
-            .parallelStream()
             .forEach(
-                regionReplicaEntry ->
-                    regionReplicaEntry
-                        .getValue()
+                (database, regionReplicaSets) ->
+                    regionReplicaSets
                         .parallelStream()
                         .forEach(
                             regionReplicaSet -> {
