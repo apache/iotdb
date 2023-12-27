@@ -303,7 +303,8 @@ public class SchemaEngine {
     ISchemaRegionParams schemaRegionParams =
         new SchemaRegionParams(database, schemaRegionId, schemaEngineStatistics);
     ISchemaRegion schemaRegion = schemaRegionLoader.createSchemaRegion(schemaRegionParams);
-    schemaMetricManager.createSchemaRegionMetric(schemaRegion);
+    schemaMetricManager.addSchemaRegionMetric(
+        schemaRegionId.getId(), schemaRegion.getSchemaRegionMetric());
     return schemaRegion;
   }
 
@@ -315,7 +316,7 @@ public class SchemaEngine {
       return;
     }
     schemaRegion.deleteSchemaRegion();
-    schemaMetricManager.deleteSchemaRegionMetric(schemaRegionId.getId());
+    schemaMetricManager.removeSchemaRegionMetric(schemaRegionId.getId());
     schemaRegionMap.remove(schemaRegionId);
 
     // check whether the sg dir is empty

@@ -229,6 +229,26 @@ public class SchemaRegionCachedMetric implements ISchemaRegionMetric {
             regionTagValue,
             Tag.DATABASE.toString(),
             database);
+    loadNode =
+        metricService.getOrCreateCounter(
+            Metric.SCHEMA_REGION.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            LOAD_NODE,
+            Tag.REGION.toString(),
+            regionTagValue,
+            Tag.DATABASE.toString(),
+            database);
+    loadMem =
+        metricService.getOrCreateCounter(
+            Metric.SCHEMA_REGION.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            LOAD_MEM,
+            Tag.REGION.toString(),
+            regionTagValue,
+            Tag.DATABASE.toString(),
+            database);
     flushPageNum =
         metricService.getOrCreateCounter(
             Metric.SCHEMA_REGION.toString(),
@@ -340,7 +360,7 @@ public class SchemaRegionCachedMetric implements ISchemaRegionMetric {
   }
 
   public void recordLoadPageNum(int pageNum) {
-    flushPageNum.inc(pageNum);
+    loadPageNum.inc(pageNum);
   }
 
   public void recordTraverser(long time) {

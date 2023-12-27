@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
-import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionCachedMetric;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.IMTreeStore;
@@ -72,13 +71,14 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   private final IMNodeFactory<ICachedMNode> nodeFactory =
       MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
   private final CachedSchemaRegionStatistics regionStatistics;
+  private final SchemaRegionCachedMetric metric;
   private final ReleaseFlushMonitor releaseFlushMonitor = ReleaseFlushMonitor.getInstance();
   private final LockManager lockManager;
-  private final SchemaRegionCachedMetric metric;
 
   public CachedMTreeStore(
       int schemaRegionId,
       CachedSchemaRegionStatistics regionStatistics,
+      SchemaRegionCachedMetric metric,
       Runnable flushCallback,
       ISchemaFile schemaFile,
       IMemoryManager memoryManager,
@@ -97,8 +97,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     this.memoryStatistics = memoryStatistics;
 
     this.memoryManager = memoryManager;
-    this.metric =
-        (SchemaRegionCachedMetric) SchemaEngine.getInstance().getSchemaRegionMetric(schemaRegionId);
+    this.metric = metric;
     memoryManager.initRootStatus(root);
 
     ensureMemoryStatus();

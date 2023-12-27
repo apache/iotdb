@@ -41,6 +41,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.schemaengine.metric.SchemaRegionCachedMetric;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
@@ -133,14 +134,15 @@ public class MTreeBelowSGCachedImpl {
       Consumer<IMeasurementMNode<ICachedMNode>> measurementProcess,
       Consumer<IDeviceMNode<ICachedMNode>> deviceProcess,
       int schemaRegionId,
-      CachedSchemaRegionStatistics regionStatistics)
+      CachedSchemaRegionStatistics regionStatistics,
+      SchemaRegionCachedMetric metric)
       throws MetadataException, IOException {
     this.tagGetter = tagGetter;
     this.regionStatistics = regionStatistics;
     store =
         PBTreeFactory.getInstance()
             .createNewCachedMTreeStore(
-                storageGroupPath, schemaRegionId, regionStatistics, flushCallback);
+                storageGroupPath, schemaRegionId, regionStatistics, metric, flushCallback);
     this.storageGroupMNode = store.getRoot();
     this.storageGroupMNode.setParent(storageGroupMNode.getParent());
     this.rootNode = store.generatePrefix(storageGroupPath);
@@ -220,6 +222,7 @@ public class MTreeBelowSGCachedImpl {
       String storageGroupFullPath,
       int schemaRegionId,
       CachedSchemaRegionStatistics regionStatistics,
+      SchemaRegionCachedMetric metric,
       Consumer<IMeasurementMNode<ICachedMNode>> measurementProcess,
       Consumer<IDeviceMNode<ICachedMNode>> deviceProcess,
       Function<IMeasurementMNode<ICachedMNode>, Map<String, String>> tagGetter,
@@ -229,7 +232,12 @@ public class MTreeBelowSGCachedImpl {
         new PartialPath(storageGroupFullPath),
         PBTreeFactory.getInstance()
             .createCachedMTreeStoreFromSnapshot(
-                snapshotDir, storageGroupFullPath, schemaRegionId, regionStatistics, flushCallback),
+                snapshotDir,
+                storageGroupFullPath,
+                schemaRegionId,
+                regionStatistics,
+                metric,
+                flushCallback),
         measurementProcess,
         deviceProcess,
         tagGetter,
