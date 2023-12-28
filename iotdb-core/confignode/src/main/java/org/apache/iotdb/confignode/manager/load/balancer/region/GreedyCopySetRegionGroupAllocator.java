@@ -38,6 +38,8 @@ import static java.util.Map.Entry.comparingByValue;
 /** Allocate Region through Greedy and CopySet Algorithm. */
 public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator {
 
+  private static final Random RANDOM = new Random();
+
   private int replicationFactor;
   // Sorted available DataNodeIds
   private int[] dataNodeIds;
@@ -54,9 +56,7 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
   List<int[]> optimalReplicaSets;
   private static final int MAX_OPTIMAL_PLAN_NUM = 10;
 
-  private final Random random;
-
-  private class DataNodeEntry {
+  private static class DataNodeEntry {
 
     private final int dataNodeId;
 
@@ -71,7 +71,7 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
       this.dataNodeId = dataNodeId;
       this.regionCount = regionCount;
       this.scatterWidth = scatterWidth;
-      this.randomWeight = random.nextInt();
+      this.randomWeight = RANDOM.nextInt();
     }
 
     public int getDataNodeId() {
@@ -88,7 +88,7 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
   }
 
   public GreedyCopySetRegionGroupAllocator() {
-    this.random = new Random();
+    // Empty constructor
   }
 
   @Override
