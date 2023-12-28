@@ -82,7 +82,7 @@ public abstract class PageManager implements IPageManager {
   protected final Lock cacheLock;
   protected final Condition cacheFull;
 
-  private final Map<Long, SchemaPageContext> threadContexts;
+  protected final Map<Long, SchemaPageContext> threadContexts;
 
   protected final AtomicInteger lastPageIndex;
 
@@ -760,22 +760,28 @@ public abstract class PageManager implements IPageManager {
       return targetPage.getAsSegmentedPage();
     }
 
-    // pageIndexBuckets sorts pages within pageInstCache into buckets to expedite access
-    targetPage = pageIndexBuckets.getNearestFitPage(size, true);
-    if (targetPage != null) {
-      cxt.markDirty(targetPage);
-      cxt.traceLock(targetPage);
+    cacheLock.lock();
+    try {
+      // pageIndexBuckets sorts pages within pageInstCache into buckets to expedite access
+      targetPage = pageIndexBuckets.getNearestFitPage(size, true);
+      if (targetPage != null) {
+        cxt.markDirty(targetPage);
+        cxt.traceLock(targetPage);
 
-      // transfer the page from pageIndexBuckets to cxt.buckets thus not be accessed by other WRITE
-      // thread
+        // transfer the page from pageIndexBuckets to cxt.buckets thus not be accessed by other
+        // WRITE
+        // thread
+        cxt.indexBuckets.sortIntoBucket(targetPage, size);
+        return targetPage.getAsSegmentedPage();
+      }
+
+      // due to be dirty thus its index only sorted into local buckets
+      targetPage = allocNewSegmentedPage(cxt);
       cxt.indexBuckets.sortIntoBucket(targetPage, size);
       return targetPage.getAsSegmentedPage();
+    } finally {
+      cacheLock.unlock();
     }
-
-    // due to be dirty thus its index only sorted into local buckets
-    targetPage = allocNewSegmentedPage(cxt);
-    cxt.indexBuckets.sortIntoBucket(targetPage, size);
-    return targetPage.getAsSegmentedPage();
   }
 
   protected ISchemaPage allocNewSegmentedPage(SchemaPageContext cxt) {

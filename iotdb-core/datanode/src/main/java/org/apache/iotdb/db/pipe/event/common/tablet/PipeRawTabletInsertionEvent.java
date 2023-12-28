@@ -155,6 +155,10 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
     this.needToReport = true;
   }
 
+  public String getDeviceId() {
+    return tablet.deviceId;
+  }
+
   /////////////////////////// TabletInsertionEvent ///////////////////////////
 
   @Override
@@ -196,7 +200,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   /////////////////////////// parsePattern ///////////////////////////
 
-  public TabletInsertionEvent parseEventWithPattern() {
+  public TabletInsertionEvent parseEventWithPatternOrTime() {
     return new PipeRawTabletInsertionEvent(
         convertToTablet(), isAligned, pipeName, pipeTaskMeta, this, needToReport);
   }

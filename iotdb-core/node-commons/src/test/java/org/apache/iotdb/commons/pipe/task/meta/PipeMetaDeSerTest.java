@@ -19,12 +19,11 @@
 
 package org.apache.iotdb.commons.pipe.task.meta;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.consensus.index.impl.HybridProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.SchemaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
@@ -44,18 +43,18 @@ public class PipeMetaDeSerTest {
         new PipeStaticMeta(
             "pipeName",
             123L,
-            new HashMap() {
+            new HashMap<String, String>() {
               {
                 put("extractor-key", "extractor-value");
               }
             },
-            new HashMap() {
+            new HashMap<String, String>() {
               {
                 put("processor-key-1", "processor-value-1");
                 put("processor-key-2", "processor-value-2");
               }
             },
-            new HashMap() {});
+            new HashMap<String, String>() {});
     ByteBuffer staticByteBuffer = pipeStaticMeta.serialize();
     PipeStaticMeta pipeStaticMeta1 = PipeStaticMeta.deserialize(staticByteBuffer);
     Assert.assertEquals(pipeStaticMeta, pipeStaticMeta1);
@@ -67,24 +66,17 @@ public class PipeMetaDeSerTest {
 
     PipeRuntimeMeta pipeRuntimeMeta =
         new PipeRuntimeMeta(
-            new HashMap() {
+            new HashMap<Integer, PipeTaskMeta>() {
               {
+                put(123, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 987));
+                put(234, new PipeTaskMeta(new IoTProgressIndex(1, 2L), 789));
+                put(345, new PipeTaskMeta(new SimpleProgressIndex(3, 4), 789));
+                put(456, new PipeTaskMeta(hybridProgressIndex, 789));
                 put(
-                    new TConsensusGroupId(TConsensusGroupType.DataRegion, 123),
-                    new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 987));
-                put(
-                    new TConsensusGroupId(TConsensusGroupType.DataRegion, 234),
-                    new PipeTaskMeta(new IoTProgressIndex(1, 2L), 789));
-                put(
-                    new TConsensusGroupId(TConsensusGroupType.DataRegion, 345),
-                    new PipeTaskMeta(new SimpleProgressIndex(3, 4), 789));
-                put(
-                    new TConsensusGroupId(TConsensusGroupType.DataRegion, 456),
-                    new PipeTaskMeta(hybridProgressIndex, 789));
-                put(
-                    new TConsensusGroupId(TConsensusGroupType.DataRegion, 567),
+                    567,
                     new PipeTaskMeta(
                         new RecoverProgressIndex(1, new SimpleProgressIndex(1, 9)), 123));
+                put(Integer.MIN_VALUE, new PipeTaskMeta(new SchemaProgressIndex(987), 0));
               }
             });
     ByteBuffer runtimeByteBuffer = pipeRuntimeMeta.serialize();
@@ -92,7 +84,7 @@ public class PipeMetaDeSerTest {
     Assert.assertEquals(pipeRuntimeMeta, pipeRuntimeMeta1);
 
     pipeRuntimeMeta.getStatus().set(PipeStatus.RUNNING);
-    pipeRuntimeMeta.setIsStoppedByRuntimeException(false);
+    pipeRuntimeMeta.setShouldBeRunning(false);
     pipeRuntimeMeta.setExceptionsClearTime(123456789L);
     pipeRuntimeMeta
         .getDataNodeId2PipeRuntimeExceptionMap()
@@ -103,7 +95,7 @@ public class PipeMetaDeSerTest {
     Assert.assertEquals(pipeRuntimeMeta, pipeRuntimeMeta1);
 
     pipeRuntimeMeta.getStatus().set(PipeStatus.DROPPED);
-    pipeRuntimeMeta.setIsStoppedByRuntimeException(true);
+    pipeRuntimeMeta.setShouldBeRunning(true);
     pipeRuntimeMeta.setExceptionsClearTime(0);
     pipeRuntimeMeta
         .getDataNodeId2PipeRuntimeExceptionMap()
@@ -113,7 +105,7 @@ public class PipeMetaDeSerTest {
         .put(345, new PipeRuntimeCriticalException("test345"));
     pipeRuntimeMeta
         .getConsensusGroupId2TaskMetaMap()
-        .get(new TConsensusGroupId(TConsensusGroupType.DataRegion, 456))
+        .get(456)
         .trackExceptionMessage(new PipeRuntimeConnectorCriticalException("test456"));
 
     runtimeByteBuffer = pipeRuntimeMeta.serialize();

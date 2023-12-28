@@ -654,13 +654,17 @@ public class TestUtils {
   }
 
   public static void restartCluster(BaseEnv env) throws Exception {
+    restartCluster(env, 1);
+  }
+
+  public static void restartCluster(BaseEnv env, long waitSeconds) throws Exception {
     for (int i = 0; i < env.getConfigNodeWrapperList().size(); ++i) {
       env.shutdownConfigNode(i);
     }
     for (int i = 0; i < env.getDataNodeWrapperList().size(); ++i) {
       env.shutdownDataNode(i);
     }
-    TimeUnit.SECONDS.sleep(1);
+    TimeUnit.SECONDS.sleep(waitSeconds);
     for (int i = 0; i < env.getConfigNodeWrapperList().size(); ++i) {
       env.startConfigNode(i);
     }
@@ -672,11 +676,20 @@ public class TestUtils {
 
   public static void assertDataOnEnv(
       BaseEnv env, String sql, String expectedHeader, Set<String> expectedResSet) {
+    assertDataOnEnv(env, sql, expectedHeader, expectedResSet, 600);
+  }
+
+  public static void assertDataOnEnv(
+      BaseEnv env,
+      String sql,
+      String expectedHeader,
+      Set<String> expectedResSet,
+      long timeoutSeconds) {
     try (Connection connection = env.getConnection();
         Statement statement = connection.createStatement()) {
       // Keep retrying if there are execution failure
       await()
-          .atMost(600, TimeUnit.SECONDS)
+          .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
                 try {

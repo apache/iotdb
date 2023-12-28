@@ -34,6 +34,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimedQuota;
 import org.apache.iotdb.common.rpc.thrift.ThrottleType;
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
@@ -1112,8 +1113,8 @@ public class ConfigPhysicalPlanSerDeTest {
     processorAttributes.put("processor", "org.apache.iotdb.pipe.processor.SDTFilterProcessor");
     connectorAttributes.put("connector", "org.apache.iotdb.pipe.protocal.ThriftTransporter");
     PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
-    Map<TConsensusGroupId, PipeTaskMeta> pipeTasks = new HashMap<>();
-    pipeTasks.put(new TConsensusGroupId(DataRegion, 1), pipeTaskMeta);
+    Map<Integer, PipeTaskMeta> pipeTasks = new HashMap<>();
+    pipeTasks.put(1, pipeTaskMeta);
     PipeStaticMeta pipeStaticMeta =
         new PipeStaticMeta(
             "testPipe", 121, extractorAttributes, processorAttributes, connectorAttributes);
@@ -1185,6 +1186,8 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void pipeHandleLeaderChangePlanTest() throws IOException {
     Map<TConsensusGroupId, Integer> newLeaderMap = new HashMap<>();
+    // Do not test SchemaRegion or ConfigRegion since the Type is always "DataRegion" when
+    // deserialized
     newLeaderMap.put(new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), 2);
     newLeaderMap.put(new TConsensusGroupId(TConsensusGroupType.DataRegion, 2), 3);
     newLeaderMap.put(new TConsensusGroupId(TConsensusGroupType.DataRegion, 3), 5);
@@ -1195,8 +1198,8 @@ public class ConfigPhysicalPlanSerDeTest {
         (PipeHandleLeaderChangePlan)
             ConfigPhysicalPlan.Factory.create(pipeHandleLeaderChangePlan.serializeToByteBuffer());
     Assert.assertEquals(
-        pipeHandleLeaderChangePlan.getConsensusGroupId2NewDataRegionLeaderIdMap(),
-        pipeHandleLeaderChangePlan1.getConsensusGroupId2NewDataRegionLeaderIdMap());
+        pipeHandleLeaderChangePlan.getConsensusGroupId2NewLeaderIdMap(),
+        pipeHandleLeaderChangePlan1.getConsensusGroupId2NewLeaderIdMap());
   }
 
   @Test
@@ -1206,30 +1209,24 @@ public class ConfigPhysicalPlanSerDeTest {
         new PipeStaticMeta(
             "pipeName",
             123L,
-            new HashMap() {
+            new HashMap<String, String>() {
               {
                 put("extractor-key", "extractor-value");
               }
             },
-            new HashMap() {
+            new HashMap<String, String>() {
               {
                 put("processor-key-1", "processor-value-1");
                 put("processor-key-2", "processor-value-2");
               }
             },
-            new HashMap() {});
+            new HashMap<String, String>() {});
     PipeRuntimeMeta pipeRuntimeMeta =
         new PipeRuntimeMeta(
-            new HashMap() {
+            new HashMap<Integer, PipeTaskMeta>() {
               {
-                put(
-                    new TConsensusGroupId(TConsensusGroupType.DataRegion, 456),
-                    new PipeTaskMeta(
-                        MinimumProgressIndex.INSTANCE, 987)); // TODO: replace with IoTConsensus
-                put(
-                    new TConsensusGroupId(TConsensusGroupType.DataRegion, 123),
-                    new PipeTaskMeta(
-                        MinimumProgressIndex.INSTANCE, 789)); // TODO: replace with IoTConsensus
+                put(456, new PipeTaskMeta(new IoTProgressIndex(1, 2L), 987));
+                put(123, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 789));
               }
             });
     pipeMetaList.add(new PipeMeta(pipeStaticMeta, pipeRuntimeMeta));

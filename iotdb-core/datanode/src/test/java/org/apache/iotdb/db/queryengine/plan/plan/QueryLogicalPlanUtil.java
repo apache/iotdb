@@ -38,7 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TimeJoinNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
@@ -176,9 +176,9 @@ public class QueryLogicalPlanUtil {
             Ordering.ASC,
             false));
 
-    TimeJoinNode timeJoinNode =
-        new TimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC, sourceNodeList);
-    OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), timeJoinNode, 10);
+    FullOuterTimeJoinNode fullOuterTimeJoinNode =
+        new FullOuterTimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC, sourceNodeList);
+    OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), fullOuterTimeJoinNode, 10);
     LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), offsetNode, 10);
 
     querySQLs.add(sql);
@@ -209,8 +209,8 @@ public class QueryLogicalPlanUtil {
             (MeasurementPath) schemaMap.get("root.sg.d1.s2"),
             Ordering.DESC));
 
-    TimeJoinNode timeJoinNode =
-        new TimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList);
+    FullOuterTimeJoinNode fullOuterTimeJoinNode =
+        new FullOuterTimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList);
 
     GreaterThanExpression valueFilter1 =
         new GreaterThanExpression(
@@ -227,7 +227,7 @@ public class QueryLogicalPlanUtil {
     FilterNode filterNode =
         new FilterNode(
             queryId.genPlanNodeId(),
-            timeJoinNode,
+            fullOuterTimeJoinNode,
             new Expression[] {new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1"))},
             predicate,
             false,
@@ -265,8 +265,8 @@ public class QueryLogicalPlanUtil {
             (MeasurementPath) schemaMap.get("root.sg.d1.s2"),
             Ordering.DESC));
 
-    TimeJoinNode timeJoinNode1 =
-        new TimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList1);
+    FullOuterTimeJoinNode fullOuterTimeJoinNode1 =
+        new FullOuterTimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList1);
 
     GreaterThanExpression predicate1 =
         new GreaterThanExpression(
@@ -276,7 +276,7 @@ public class QueryLogicalPlanUtil {
     FilterNode filterNode1 =
         new FilterNode(
             queryId.genPlanNodeId(),
-            timeJoinNode1,
+            fullOuterTimeJoinNode1,
             new Expression[] {
               new TimeSeriesOperand(schemaMap.get("root.sg.d1.s3")),
               new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1")),
@@ -304,8 +304,8 @@ public class QueryLogicalPlanUtil {
             (MeasurementPath) schemaMap.get("root.sg.d2.s4"),
             Ordering.DESC));
 
-    TimeJoinNode timeJoinNode2 =
-        new TimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList2);
+    FullOuterTimeJoinNode fullOuterTimeJoinNode2 =
+        new FullOuterTimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList2);
 
     GreaterThanExpression predicate2 =
         new GreaterThanExpression(
@@ -315,7 +315,7 @@ public class QueryLogicalPlanUtil {
     FilterNode filterNode2 =
         new FilterNode(
             queryId.genPlanNodeId(),
-            timeJoinNode2,
+            fullOuterTimeJoinNode2,
             new Expression[] {
               new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
               new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2")),
@@ -465,9 +465,9 @@ public class QueryLogicalPlanUtil {
             Ordering.DESC,
             null));
 
-    TimeJoinNode timeJoinNode =
-        new TimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC, sourceNodeList);
-    OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), timeJoinNode, 10);
+    FullOuterTimeJoinNode fullOuterTimeJoinNode =
+        new FullOuterTimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC, sourceNodeList);
+    OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), fullOuterTimeJoinNode, 10);
     LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), offsetNode, 10);
 
     querySQLs.add(sql);
@@ -676,8 +676,8 @@ public class QueryLogicalPlanUtil {
             Ordering.DESC,
             null));
 
-    TimeJoinNode timeJoinNode1 =
-        new TimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList1);
+    FullOuterTimeJoinNode fullOuterTimeJoinNode1 =
+        new FullOuterTimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList1);
 
     List<PlanNode> sourceNodeList2 = new ArrayList<>();
     sourceNodeList2.add(
@@ -710,8 +710,8 @@ public class QueryLogicalPlanUtil {
             Ordering.DESC,
             null));
 
-    TimeJoinNode timeJoinNode2 =
-        new TimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList2);
+    FullOuterTimeJoinNode fullOuterTimeJoinNode2 =
+        new FullOuterTimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList2);
 
     Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
     deviceToMeasurementIndexesMap.put("root.sg.d1", Arrays.asList(2, 1, 3));
@@ -726,8 +726,8 @@ public class QueryLogicalPlanUtil {
             Arrays.asList(
                 ColumnHeaderConstant.DEVICE, "count(s1)", "max_value(s2)", "last_value(s1)"),
             deviceToMeasurementIndexesMap);
-    deviceViewNode.addChildDeviceNode("root.sg.d1", timeJoinNode1);
-    deviceViewNode.addChildDeviceNode("root.sg.d2", timeJoinNode2);
+    deviceViewNode.addChildDeviceNode("root.sg.d1", fullOuterTimeJoinNode1);
+    deviceViewNode.addChildDeviceNode("root.sg.d2", fullOuterTimeJoinNode2);
 
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), deviceViewNode, 100);
     LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), offsetNode, 100);
@@ -765,8 +765,8 @@ public class QueryLogicalPlanUtil {
             (MeasurementPath) schemaMap.get("root.sg.d1.s2"),
             Ordering.DESC));
 
-    TimeJoinNode timeJoinNode =
-        new TimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList);
+    FullOuterTimeJoinNode fullOuterTimeJoinNode =
+        new FullOuterTimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList);
 
     GreaterThanExpression valueFilter1 =
         new GreaterThanExpression(
@@ -780,7 +780,7 @@ public class QueryLogicalPlanUtil {
     FilterNode filterNode =
         new FilterNode(
             queryId.genPlanNodeId(),
-            timeJoinNode,
+            fullOuterTimeJoinNode,
             new Expression[] {
               new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
               new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1")),
@@ -891,8 +891,8 @@ public class QueryLogicalPlanUtil {
             (MeasurementPath) schemaMap.get("root.sg.d1.s2"),
             Ordering.DESC));
 
-    TimeJoinNode timeJoinNode1 =
-        new TimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList1);
+    FullOuterTimeJoinNode fullOuterTimeJoinNode1 =
+        new FullOuterTimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList1);
 
     GreaterThanExpression predicate1 =
         new GreaterThanExpression(
@@ -902,7 +902,7 @@ public class QueryLogicalPlanUtil {
     FilterNode filterNode1 =
         new FilterNode(
             queryId.genPlanNodeId(),
-            timeJoinNode1,
+            fullOuterTimeJoinNode1,
             new Expression[] {
               new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1")),
               new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
@@ -947,8 +947,8 @@ public class QueryLogicalPlanUtil {
             (MeasurementPath) schemaMap.get("root.sg.d2.s2"),
             Ordering.DESC));
 
-    TimeJoinNode timeJoinNode2 =
-        new TimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList2);
+    FullOuterTimeJoinNode fullOuterTimeJoinNode2 =
+        new FullOuterTimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList2);
 
     GreaterThanExpression predicate2 =
         new GreaterThanExpression(
@@ -958,7 +958,7 @@ public class QueryLogicalPlanUtil {
     FilterNode filterNode2 =
         new FilterNode(
             queryId.genPlanNodeId(),
-            timeJoinNode2,
+            fullOuterTimeJoinNode2,
             new Expression[] {
               new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
               new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2")),

@@ -160,7 +160,7 @@ public class PipeMetaKeeper {
         .filter(
             pipeMeta ->
                 PipeStatus.STOPPED.equals(pipeMeta.getRuntimeMeta().getStatus().get())
-                    && !pipeMeta.getRuntimeMeta().getIsStoppedByRuntimeException())
+                    && !pipeMeta.getRuntimeMeta().getShouldBeRunning())
         .count();
   }
 
@@ -169,7 +169,7 @@ public class PipeMetaKeeper {
         .filter(
             pipeMeta ->
                 PipeStatus.STOPPED.equals(pipeMeta.getRuntimeMeta().getStatus().get())
-                    && pipeMeta.getRuntimeMeta().getIsStoppedByRuntimeException())
+                    && pipeMeta.getRuntimeMeta().getShouldBeRunning())
         .count();
   }
 }

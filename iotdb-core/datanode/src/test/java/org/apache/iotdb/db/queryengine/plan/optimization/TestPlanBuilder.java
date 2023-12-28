@@ -34,8 +34,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
@@ -199,7 +199,8 @@ public class TestPlanBuilder {
     }
 
     this.root =
-        new TimeJoinNode(new PlanNodeId(String.valueOf(planId)), Ordering.ASC, seriesSourceNodes);
+        new FullOuterTimeJoinNode(
+            new PlanNodeId(String.valueOf(planId)), Ordering.ASC, seriesSourceNodes);
     return this;
   }
 
@@ -213,7 +214,8 @@ public class TestPlanBuilder {
       planId++;
     }
     this.root =
-        new TimeJoinNode(new PlanNodeId(String.valueOf(planId)), Ordering.ASC, seriesSourceNodes);
+        new FullOuterTimeJoinNode(
+            new PlanNodeId(String.valueOf(planId)), Ordering.ASC, seriesSourceNodes);
     return this;
   }
 

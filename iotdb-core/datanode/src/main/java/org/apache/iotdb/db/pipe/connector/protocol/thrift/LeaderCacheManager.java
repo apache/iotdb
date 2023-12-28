@@ -17,15 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.execution.executor.schemaregion;
+package org.apache.iotdb.db.pipe.connector.protocol.thrift;
 
-import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 
-public class PipeSchemaRegionConnectorSubtaskExecutor extends PipeConnectorSubtaskExecutor {
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-  public PipeSchemaRegionConnectorSubtaskExecutor() {
-    // TODO: configure thread pool size
-    super(1, ThreadName.PIPE_SCHEMAREGION_CONNECTOR_EXECUTOR_POOL);
+public class LeaderCacheManager {
+
+  private final Map<String, TEndPoint> device2endpoint = new ConcurrentHashMap<>();
+
+  public TEndPoint getLeaderEndPoint(String deviceId) {
+    return deviceId == null ? null : device2endpoint.get(deviceId);
+  }
+
+  public void updateLeaderEndPoint(String deviceId, TEndPoint endPoint) {
+    device2endpoint.put(deviceId, endPoint);
   }
 }

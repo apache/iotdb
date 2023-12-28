@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.pipe.task.builder;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
@@ -27,6 +28,8 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.schemaengine.SchemaEngine;
+import org.apache.iotdb.db.storageengine.StorageEngine;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -41,37 +44,27 @@ public class PipeDataNodeBuilder {
     this.pipeMeta = pipeMeta;
   }
 
-  public Map<TConsensusGroupId, PipeTask> build() {
+  public Map<Integer, PipeTask> build() {
     final PipeStaticMeta pipeStaticMeta = pipeMeta.getStaticMeta();
+
     final PipeRuntimeMeta pipeRuntimeMeta = pipeMeta.getRuntimeMeta();
 
-    final Map<TConsensusGroupId, PipeTask> consensusGroupIdToPipeTaskMap = new HashMap<>();
-    for (Map.Entry<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToPipeTaskMeta :
+    final Map<Integer, PipeTask> consensusGroupIdToPipeTaskMap = new HashMap<>();
+    for (Map.Entry<Integer, PipeTaskMeta> consensusGroupIdToPipeTaskMeta :
         pipeRuntimeMeta.getConsensusGroupId2TaskMetaMap().entrySet()) {
-      final TConsensusGroupId consensusGroupId = consensusGroupIdToPipeTaskMeta.getKey();
+      final int consensusGroupId = consensusGroupIdToPipeTaskMeta.getKey();
       final PipeTaskMeta pipeTaskMeta = consensusGroupIdToPipeTaskMeta.getValue();
 
-      switch (consensusGroupId.getType()) {
-        case DataRegion:
-          if (pipeTaskMeta.getLeaderDataNodeId() == CONFIG.getDataNodeId()) {
-            consensusGroupIdToPipeTaskMap.put(
-                consensusGroupId,
-                new PipeDataNodeTaskDataRegionBuilder(
-                        pipeStaticMeta, consensusGroupId, pipeTaskMeta)
-                    .build());
-          }
-          break;
-        case SchemaRegion:
-          if (pipeTaskMeta.getLeaderDataNodeId() == CONFIG.getDataNodeId()) {
-            consensusGroupIdToPipeTaskMap.put(
-                consensusGroupId,
-                new PipeDataNodeTaskSchemaRegionBuilder(
-                        pipeStaticMeta, consensusGroupId, pipeTaskMeta)
-                    .build());
-          }
-          break;
-        default:
-          break;
+      if (pipeTaskMeta.getLeaderNodeId() == CONFIG.getDataNodeId()
+          && (StorageEngine.getInstance()
+                  .getAllDataRegionIds()
+                  .contains(new DataRegionId(consensusGroupId))
+              || SchemaEngine.getInstance()
+                  .getAllSchemaRegionIds()
+                  .contains(new SchemaRegionId(consensusGroupId)))) {
+        consensusGroupIdToPipeTaskMap.put(
+            consensusGroupId,
+            new PipeDataNodeTaskBuilder(pipeStaticMeta, consensusGroupId, pipeTaskMeta).build());
       }
     }
     return consensusGroupIdToPipeTaskMap;

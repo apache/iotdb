@@ -755,7 +755,7 @@ public abstract class AbstractCli {
 
   private static void outputTracingInfo(List<List<String>> lists, List<Integer> maxSizeList) {
     println();
-    println("Tracing Activties:");
+    println("Tracing Activities:");
     printBlockLine(maxSizeList);
     printRow(lists, 0, maxSizeList);
     printBlockLine(maxSizeList);
@@ -783,7 +783,7 @@ public abstract class AbstractCli {
     }
     String[] cmds = s.trim().split(";");
     for (String cmd : cmds) {
-      if (cmd != null && !"".equals(cmd.trim())) {
+      if (cmd != null && !cmd.trim().isEmpty()) {
         OperationResult result = handleInputCmd(cmd, connection);
         switch (result) {
           case STOP_OPER:
