@@ -391,6 +391,8 @@ public class ProcedureExecutor<Env> {
       rootProcStack.release();
 
       if (proc.isSuccess()) {
+        // update metrics on finishing the procedure
+        proc.updateMetricsOnFinish(getEnvironment(), proc.elapsedTime(), true);
         LOG.info("{} finished in {}ms successfully.", proc, proc.elapsedTime());
         if (proc.getProcId() == rootProcId) {
           rootProcedureCleanup(proc);
@@ -509,6 +511,7 @@ public class ProcedureExecutor<Env> {
    */
   private void submitChildrenProcedures(Procedure<Env>[] subprocs) {
     for (Procedure<Env> subproc : subprocs) {
+      subproc.updateMetricsOnSubmit(getEnvironment());
       procedures.put(subproc.getProcId(), subproc);
       scheduler.addFront(subproc);
     }
@@ -662,6 +665,10 @@ public class ProcedureExecutor<Env> {
       if (!procedure.isSuccess()) {
         procedure.setState(ProcedureState.ROLLEDBACK);
       }
+
+      // update metrics on finishing the procedure (fail)
+      procedure.updateMetricsOnFinish(getEnvironment(), procedure.elapsedTime(), false);
+
       if (procedure.hasParent()) {
         store.delete(procedure.getProcId());
         procedures.remove(procedure.getProcId());
@@ -709,6 +716,8 @@ public class ProcedureExecutor<Env> {
    */
   private long pushProcedure(Procedure<Env> procedure) {
     final long currentProcId = procedure.getProcId();
+    // Update metrics on start of a procedure
+    procedure.updateMetricsOnSubmit(getEnvironment());
     RootProcedureStack<Env> stack = new RootProcedureStack<>();
     rollbackStack.put(currentProcId, stack);
     procedures.put(currentProcId, procedure);
@@ -852,6 +861,16 @@ public class ProcedureExecutor<Env> {
 
   public int getWorkerThreadCount() {
     return workerThreads.size();
+  }
+
+  public int getActiveWorkerThreadCount() {
+    int count = 0;
+    for (WorkerThread worker : workerThreads) {
+      if (worker.keepAlive(System.currentTimeMillis())) {
+        count += 1;
+      }
+    }
+    return count;
   }
 
   public boolean isRunning() {
