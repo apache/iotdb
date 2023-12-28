@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager.pipe.transfer.agent;
 
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.plugin.PipePluginConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.receiver.PipeReceiverConfigNodeAgent;
+import org.apache.iotdb.confignode.manager.pipe.transfer.agent.runtime.PipeRuntimeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.task.PipeTaskConfigNodeAgent;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.db.pipe.agent.plugin.PipePluginDataNodeAgent;
@@ -30,12 +31,14 @@ public class PipeConfigNodeAgent {
 
   private final PipeTaskConfigNodeAgent pipeConfigNodeTaskAgent;
   private final PipePluginConfigNodeAgent pipePluginConfigNodeAgent;
+  private final PipeRuntimeConfigNodeAgent pipeRuntimeConfigNodeAgent;
   private final PipeReceiverConfigNodeAgent pipeReceiverConfigNodeAgent;
 
   /** Private constructor to prevent users from creating a new instance. */
   private PipeConfigNodeAgent() {
     pipeConfigNodeTaskAgent = new PipeTaskConfigNodeAgent();
     pipePluginConfigNodeAgent = new PipePluginConfigNodeAgent();
+    pipeRuntimeConfigNodeAgent = new PipeRuntimeConfigNodeAgent();
     pipeReceiverConfigNodeAgent = new PipeReceiverConfigNodeAgent();
   }
 
@@ -60,6 +63,15 @@ public class PipeConfigNodeAgent {
    */
   public static PipePluginConfigNodeAgent plugin() {
     return PipeConfigNodeAgentHolder.HANDLE.pipePluginConfigNodeAgent;
+  }
+
+  /**
+   * Get the singleton instance of {@link PipeRuntimeConfigNodeAgent}.
+   *
+   * @return the singleton instance of {@link PipeRuntimeConfigNodeAgent}
+   */
+  public static PipeRuntimeConfigNodeAgent runtime() {
+    return PipeConfigNodeAgentHolder.HANDLE.pipeRuntimeConfigNodeAgent;
   }
 
   /**

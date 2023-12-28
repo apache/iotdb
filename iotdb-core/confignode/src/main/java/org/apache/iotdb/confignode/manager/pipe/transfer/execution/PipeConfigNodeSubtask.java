@@ -152,10 +152,11 @@ public class PipeConfigNodeSubtask extends PipeSubtask {
   }
 
   /**
-   * Try to consume an event by the pipe plugin.
+   * Try to consume an {@link Event} by the pipe plugin.
    *
-   * @return true if the event is consumed successfully, false if no more event can be consumed
-   * @throws Exception if any error occurs when consuming the event
+   * @return true if the {@link Event} is consumed successfully, false if no more {@link Event} can
+   *     be consumed
+   * @throws Exception if any error occurs when consuming the {@link Event}
    */
   @SuppressWarnings("squid:S112") // Allow to throw Exception
   @Override

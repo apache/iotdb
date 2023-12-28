@@ -25,23 +25,17 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.transfer.task.PipeConfigNodeTask;
 import org.apache.iotdb.confignode.manager.pipe.transfer.task.PipeConfigNodeTaskBuilder;
 import org.apache.iotdb.confignode.manager.pipe.transfer.task.PipeConfigNodeTaskStage;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.Map;
 
 public class PipeTaskConfigNodeAgent extends PipeTaskAgent {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskConfigNodeAgent.class);
-
   @Override
   protected boolean isShutdown() {
-    // TODO: return actual shutdown status
-    return false;
+    return PipeConfigNodeAgent.runtime().isShutdown();
   }
 
   @Override
@@ -73,5 +67,10 @@ public class PipeTaskConfigNodeAgent extends PipeTaskAgent {
         .getRuntimeMeta()
         .getConsensusGroupId2TaskMetaMap()
         .put(consensusGroupId, pipeTaskMeta);
+  }
+
+  public synchronized void stopAllPipesWithCriticalException() {
+    super.stopAllPipesWithCriticalException(
+        ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId());
   }
 }

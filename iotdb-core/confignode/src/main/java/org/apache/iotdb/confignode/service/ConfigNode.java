@@ -42,6 +42,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.pipe.metric.PipeConfigNodeMetrics;
+import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
@@ -122,6 +123,8 @@ public class ConfigNode implements ConfigNodeMBean {
       setUpInternalServices();
       // Init ConfigManager
       initConfigManager();
+      // Init Pipe tasks
+      registerManager.register(PipeConfigNodeAgent.runtime());
 
       /* Restart */
       if (SystemPropertiesUtils.isRestarted()) {

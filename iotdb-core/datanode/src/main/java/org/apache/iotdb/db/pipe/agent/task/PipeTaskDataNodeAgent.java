@@ -21,15 +21,10 @@ package org.apache.iotdb.db.pipe.agent.task;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
-import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
-import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -40,11 +35,9 @@ import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeBuilder;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeTaskBuilder;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.storageengine.StorageEngine;
-import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -53,7 +46,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -73,112 +65,6 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
   @Override
   protected Map<Integer, PipeTask> buildPipeTasks(PipeMeta pipeMetaFromConfigNode) {
     return new PipeDataNodeBuilder(pipeMetaFromConfigNode).build();
-  }
-
-  public synchronized void stopAllPipesWithCriticalException() {
-    acquireWriteLock();
-    try {
-      stopAllPipesWithCriticalExceptionInternal();
-    } finally {
-      releaseWriteLock();
-    }
-  }
-
-  private void stopAllPipesWithCriticalExceptionInternal() {
-    // 1. track exception in all pipe tasks that share the same connector that have critical
-    // exceptions.
-    final int currentDataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
-    final Map<PipeParameters, PipeRuntimeConnectorCriticalException>
-        reusedConnectorParameters2ExceptionMap = new HashMap<>();
-
-    pipeMetaKeeper
-        .getPipeMetaList()
-        .forEach(
-            pipeMeta -> {
-              final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
-              final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
-
-              runtimeMeta
-                  .getConsensusGroupId2TaskMetaMap()
-                  .values()
-                  .forEach(
-                      pipeTaskMeta -> {
-                        if (pipeTaskMeta.getLeaderNodeId() != currentDataNodeId) {
-                          return;
-                        }
-
-                        for (final PipeRuntimeException e : pipeTaskMeta.getExceptionMessages()) {
-                          if (e instanceof PipeRuntimeConnectorCriticalException) {
-                            reusedConnectorParameters2ExceptionMap.putIfAbsent(
-                                staticMeta.getConnectorParameters(),
-                                (PipeRuntimeConnectorCriticalException) e);
-                          }
-                        }
-                      });
-            });
-    pipeMetaKeeper
-        .getPipeMetaList()
-        .forEach(
-            pipeMeta -> {
-              final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
-              final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
-
-              runtimeMeta
-                  .getConsensusGroupId2TaskMetaMap()
-                  .values()
-                  .forEach(
-                      pipeTaskMeta -> {
-                        if (pipeTaskMeta.getLeaderNodeId() == currentDataNodeId
-                            && reusedConnectorParameters2ExceptionMap.containsKey(
-                                staticMeta.getConnectorParameters())
-                            && !pipeTaskMeta.containsExceptionMessage(
-                                reusedConnectorParameters2ExceptionMap.get(
-                                    staticMeta.getConnectorParameters()))) {
-                          final PipeRuntimeConnectorCriticalException exception =
-                              reusedConnectorParameters2ExceptionMap.get(
-                                  staticMeta.getConnectorParameters());
-                          pipeTaskMeta.trackExceptionMessage(exception);
-                          LOGGER.warn(
-                              "Pipe {} (creation time = {}) will be stopped because of critical exception "
-                                  + "(occurred time {}) in connector {}.",
-                              staticMeta.getPipeName(),
-                              DateTimeUtils.convertLongToDate(staticMeta.getCreationTime(), "ms"),
-                              DateTimeUtils.convertLongToDate(exception.getTimeStamp(), "ms"),
-                              staticMeta.getConnectorParameters());
-                        }
-                      });
-            });
-
-    // 2. stop all pipes that have critical exceptions.
-    pipeMetaKeeper
-        .getPipeMetaList()
-        .forEach(
-            pipeMeta -> {
-              final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
-              final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
-
-              if (runtimeMeta.getStatus().get() == PipeStatus.RUNNING) {
-                runtimeMeta
-                    .getConsensusGroupId2TaskMetaMap()
-                    .values()
-                    .forEach(
-                        pipeTaskMeta -> {
-                          for (final PipeRuntimeException e : pipeTaskMeta.getExceptionMessages()) {
-                            if (e instanceof PipeRuntimeCriticalException) {
-                              stopPipe(staticMeta.getPipeName(), staticMeta.getCreationTime());
-                              LOGGER.warn(
-                                  "Pipe {} (creation time = {}) was stopped because of critical exception "
-                                      + "(occurred time {}).",
-                                  staticMeta.getPipeName(),
-                                  DateTimeUtils.convertLongToDate(
-                                      staticMeta.getCreationTime(), "ms"),
-                                  DateTimeUtils.convertLongToDate(e.getTimeStamp(), "ms"));
-                              return;
-                            }
-                          }
-                        });
-              }
-            });
   }
 
   ///////////////////////// Manage by regionGroupId /////////////////////////
@@ -209,6 +95,11 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
         .getRuntimeMeta()
         .getConsensusGroupId2TaskMetaMap()
         .put(consensusGroupId, pipeTaskMeta);
+  }
+
+  public synchronized void stopAllPipesWithCriticalException() {
+    super.stopAllPipesWithCriticalException(
+        IoTDBDescriptor.getInstance().getConfig().getDataNodeId());
   }
 
   ///////////////////////// Heartbeat /////////////////////////
