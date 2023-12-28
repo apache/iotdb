@@ -26,28 +26,66 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.BitSet;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
+import java.util.stream.Collectors;
+
+import static java.util.Map.Entry.comparingByValue;
 
 /** Allocate Region through Greedy and CopySet Algorithm. */
 public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator {
 
-  int replicationFactor;
-  // RegionGroup allocation BitSet
-  private List<BitSet> allocatedBitSets;
-  // Map<DataNodeId, RegionGroup count>
-  private Map<Integer, Integer> regionCounter;
-  // Available DataNodeIds
-  private Integer[] dataNodeIds;
+  private static final Random RANDOM = new Random();
+
+  private int replicationFactor;
+  // Sorted available DataNodeIds
+  private int[] dataNodeIds;
+  // The number of allocated Regions in each DataNode
+  private int[] regionCounter;
+  // The number of 2-Region combinations in current cluster
+  private int[][] combinationCounter;
 
   // First Key: the sum of Regions at the DataNodes in the allocation result is minimal
   int optimalRegionSum;
-  // Second Key: the sum of intersected Regions with other allocated RegionGroups is minimal
-  int optimalIntersectionSum;
+  // Second Key: the sum of overlapped 2-Region combination Regions with other allocated
+  // RegionGroups is minimal
+  int optimalCombinationSum;
   List<int[]> optimalReplicaSets;
+  private static final int MAX_OPTIMAL_PLAN_NUM = 10;
+
+  private static class DataNodeEntry {
+
+    private final int dataNodeId;
+
+    // First key: the number of Regions in the DataNode
+    private final int regionCount;
+    // Second key: the scatter width of the DataNode
+    private final int scatterWidth;
+    // Third key: a random weight
+    private final int randomWeight;
+
+    public DataNodeEntry(int dataNodeId, int regionCount, int scatterWidth) {
+      this.dataNodeId = dataNodeId;
+      this.regionCount = regionCount;
+      this.scatterWidth = scatterWidth;
+      this.randomWeight = RANDOM.nextInt();
+    }
+
+    public int getDataNodeId() {
+      return dataNodeId;
+    }
+
+    public int compare(DataNodeEntry e) {
+      return regionCount != e.regionCount
+          ? Integer.compare(regionCount, e.regionCount)
+          : scatterWidth != e.scatterWidth
+              ? Integer.compare(scatterWidth, e.scatterWidth)
+              : Integer.compare(randomWeight, e.randomWeight);
+    }
+  }
 
   public GreedyCopySetRegionGroupAllocator() {
     // Empty constructor
@@ -62,7 +100,7 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
       TConsensusGroupId consensusGroupId) {
     try {
       prepare(replicationFactor, availableDataNodeMap, allocatedRegionGroups);
-      dfs(-1, 0, new int[replicationFactor], 0, 0);
+      dfs(-1, 0, new int[replicationFactor], 0);
 
       // Randomly pick one optimal plan as result
       Collections.shuffle(optimalReplicaSets);
@@ -91,43 +129,66 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
       List<TRegionReplicaSet> allocatedRegionGroups) {
 
     this.replicationFactor = replicationFactor;
-    int maxDataNodeId = availableDataNodeMap.keySet().stream().max(Integer::compareTo).orElse(0);
-    for (TRegionReplicaSet regionReplicaSet : allocatedRegionGroups) {
-      for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
-        // Store the maximum DataNodeId in this algorithm loop
-        maxDataNodeId = Math.max(maxDataNodeId, dataNodeLocation.getDataNodeId());
-      }
-    }
+    // Store the maximum DataNodeId
+    int maxDataNodeId =
+        Math.max(
+            availableDataNodeMap.keySet().stream().max(Integer::compareTo).orElse(0),
+            allocatedRegionGroups.stream()
+                .flatMap(regionGroup -> regionGroup.getDataNodeLocations().stream())
+                .mapToInt(TDataNodeLocation::getDataNodeId)
+                .max()
+                .orElse(0));
 
-    // Convert the allocatedRegionGroups into allocatedBitSets,
-    // where a true in BitSet corresponding to a DataNodeId in the RegionGroup
-    allocatedBitSets = new ArrayList<>(allocatedRegionGroups.size());
-    for (TRegionReplicaSet regionReplicaSet : allocatedRegionGroups) {
-      BitSet bitSet = new BitSet(maxDataNodeId + 1);
-      for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
-        bitSet.set(dataNodeLocation.getDataNodeId());
-      }
-      allocatedBitSets.add(bitSet);
-    }
-
-    // Count the number of Regions in each DataNode
-    regionCounter = new HashMap<>(maxDataNodeId + 1);
+    // Compute regionCounter and combinationCounter
+    regionCounter = new int[maxDataNodeId + 1];
+    Arrays.fill(regionCounter, 0);
+    combinationCounter = new int[maxDataNodeId + 1][maxDataNodeId + 1];
     for (int i = 0; i <= maxDataNodeId; i++) {
-      regionCounter.put(i, 0);
+      Arrays.fill(combinationCounter[i], 0);
     }
-    allocatedRegionGroups.forEach(
-        regionGroup ->
-            regionGroup
-                .getDataNodeLocations()
-                .forEach(
-                    dataNodeLocation ->
-                        regionCounter.merge(dataNodeLocation.getDataNodeId(), 1, Integer::sum)));
+    for (TRegionReplicaSet regionReplicaSet : allocatedRegionGroups) {
+      List<TDataNodeLocation> dataNodeLocations = regionReplicaSet.getDataNodeLocations();
+      for (int i = 0; i < dataNodeLocations.size(); i++) {
+        regionCounter[dataNodeLocations.get(i).getDataNodeId()]++;
+        for (int j = i + 1; j < dataNodeLocations.size(); j++) {
+          combinationCounter[dataNodeLocations.get(i).getDataNodeId()][
+              dataNodeLocations.get(j).getDataNodeId()]++;
+          combinationCounter[dataNodeLocations.get(j).getDataNodeId()][
+              dataNodeLocations.get(i).getDataNodeId()]++;
+        }
+      }
+    }
+
+    // Compute the DataNodeIds through sorting the DataNodeEntryMap
+    Map<Integer, DataNodeEntry> dataNodeEntryMap = new HashMap<>(maxDataNodeId + 1);
+    availableDataNodeMap
+        .keySet()
+        .forEach(
+            dataNodeId -> {
+              int scatterWidth = 0;
+              for (int j = 0; j <= maxDataNodeId; j++) {
+                if (combinationCounter[dataNodeId][j] > 0) {
+                  // Each exists 2-Region combination extends
+                  // the scatter width of current DataNode by 1
+                  scatterWidth++;
+                }
+              }
+              dataNodeEntryMap.put(
+                  dataNodeId,
+                  new DataNodeEntry(dataNodeId, regionCounter[dataNodeId], scatterWidth));
+            });
+    dataNodeIds =
+        dataNodeEntryMap.entrySet().stream()
+            .sorted(comparingByValue(DataNodeEntry::compare))
+            .map(Map.Entry::getKey)
+            .collect(Collectors.toList())
+            .stream()
+            .mapToInt(Integer::intValue)
+            .toArray();
 
     // Reset the optimal result
-    dataNodeIds = new Integer[availableDataNodeMap.size()];
-    availableDataNodeMap.keySet().toArray(dataNodeIds);
     optimalRegionSum = Integer.MAX_VALUE;
-    optimalIntersectionSum = Integer.MAX_VALUE;
+    optimalCombinationSum = Integer.MAX_VALUE;
     optimalReplicaSets = new ArrayList<>();
   }
 
@@ -140,27 +201,27 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
    * @param currentReplica current replica index
    * @param currentReplicaSet current allocation plan
    * @param regionSum the sum of Regions at the DataNodes in the current allocation plan
-   * @param intersectionSum the sum of intersected Regions with other allocated RegionGroups in
-   *     current allocation plan
    */
-  private void dfs(
-      int lastIndex,
-      int currentReplica,
-      int[] currentReplicaSet,
-      int regionSum,
-      int intersectionSum) {
-    if (regionSum > optimalRegionSum || intersectionSum > optimalRegionSum) {
-      // Pruning: no needs for further searching when either the first key or the second key
+  private void dfs(int lastIndex, int currentReplica, int[] currentReplicaSet, int regionSum) {
+    if (regionSum > optimalRegionSum) {
+      // Pruning: no needs for further searching when the first key
       // is bigger than the historical optimal result
       return;
     }
 
     if (currentReplica == replicationFactor) {
       // A complete allocation plan is found
-      if (regionSum < optimalRegionSum || intersectionSum < optimalRegionSum) {
+      int combinationSum = 0;
+      for (int i = 0; i < replicationFactor; i++) {
+        for (int j = i + 1; j < replicationFactor; j++) {
+          combinationSum += combinationCounter[currentReplicaSet[i]][currentReplicaSet[j]];
+        }
+      }
+
+      if (regionSum < optimalRegionSum || combinationSum < optimalCombinationSum) {
         // Reset the optimal result when a better one is found
         optimalRegionSum = regionSum;
-        optimalIntersectionSum = intersectionSum;
+        optimalCombinationSum = combinationSum;
         optimalReplicaSets.clear();
       }
       optimalReplicaSets.add(Arrays.copyOf(currentReplicaSet, replicationFactor));
@@ -170,22 +231,16 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
     for (int i = lastIndex + 1; i < dataNodeIds.length; i++) {
       // Decide the next DataNodeId in the allocation plan
       currentReplicaSet[currentReplica] = dataNodeIds[i];
-      int intersectionDelta = 0;
-      for (BitSet bitSet : allocatedBitSets) {
-        intersectionDelta += bitSet.get(dataNodeIds[i]) ? 1 : 0;
+      dfs(i, currentReplica + 1, currentReplicaSet, regionSum + regionCounter[dataNodeIds[i]]);
+      if (optimalReplicaSets.size() == MAX_OPTIMAL_PLAN_NUM) {
+        // Pruning: no needs for further searching when
+        // the number of optimal plans reaches the limitation
+        return;
       }
-      dfs(
-          i,
-          currentReplica + 1,
-          currentReplicaSet,
-          regionSum + regionCounter.get(dataNodeIds[i]),
-          intersectionSum + intersectionDelta);
     }
   }
 
   void clear() {
-    allocatedBitSets.clear();
-    regionCounter.clear();
     optimalReplicaSets.clear();
   }
 }
