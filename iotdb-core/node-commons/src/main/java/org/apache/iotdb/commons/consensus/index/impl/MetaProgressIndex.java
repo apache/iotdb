@@ -32,22 +32,27 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
- * {@link SchemaProgressIndex} is used only for schema progress recording. It shall not be blended
- * or compared to {@link ProgressIndex}es other than {@link SchemaProgressIndex} or {@link
+ * {@link MetaProgressIndex} is used only for meta transfer progress recording. It shall not be
+ * blended or compared to {@link ProgressIndex}es other than {@link MetaProgressIndex} or {@link
  * MinimumProgressIndex}.
  */
-public class SchemaProgressIndex extends ProgressIndex {
+public class MetaProgressIndex extends ProgressIndex {
 
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
   private int index;
 
-  public SchemaProgressIndex() {
+  public MetaProgressIndex() {
     // Empty constructor
   }
 
-  public SchemaProgressIndex(int index) {
+  public MetaProgressIndex(int index) {
     this.index = index;
+  }
+
+  // Meta extractors need to set index to iterate from the listening queue
+  public int getIndex() {
+    return index;
   }
 
   @Override
@@ -82,13 +87,13 @@ public class SchemaProgressIndex extends ProgressIndex {
         return true;
       }
 
-      if (!(progressIndex instanceof SchemaProgressIndex)) {
+      if (!(progressIndex instanceof MetaProgressIndex)) {
         return false;
       }
 
-      final SchemaProgressIndex thisSchemaProgressIndex = this;
-      final SchemaProgressIndex thatSchemaProgressIndex = (SchemaProgressIndex) progressIndex;
-      return thatSchemaProgressIndex.index < thisSchemaProgressIndex.index;
+      final MetaProgressIndex thisMetaProgressIndex = this;
+      final MetaProgressIndex thatMetaProgressIndex = (MetaProgressIndex) progressIndex;
+      return thatMetaProgressIndex.index < thisMetaProgressIndex.index;
     } finally {
       lock.readLock().unlock();
     }
@@ -98,13 +103,13 @@ public class SchemaProgressIndex extends ProgressIndex {
   public boolean equals(ProgressIndex progressIndex) {
     lock.readLock().lock();
     try {
-      if (!(progressIndex instanceof SchemaProgressIndex)) {
+      if (!(progressIndex instanceof MetaProgressIndex)) {
         return false;
       }
 
-      final SchemaProgressIndex thisSchemaProgressIndex = this;
-      final SchemaProgressIndex thatSchemaProgressIndex = (SchemaProgressIndex) progressIndex;
-      return thisSchemaProgressIndex.index == thatSchemaProgressIndex.index;
+      final MetaProgressIndex thisMetaProgressIndex = this;
+      final MetaProgressIndex thatMetaProgressIndex = (MetaProgressIndex) progressIndex;
+      return thisMetaProgressIndex.index == thatMetaProgressIndex.index;
     } finally {
       lock.readLock().unlock();
     }
@@ -118,10 +123,10 @@ public class SchemaProgressIndex extends ProgressIndex {
     if (this == obj) {
       return true;
     }
-    if (!(obj instanceof SchemaProgressIndex)) {
+    if (!(obj instanceof MetaProgressIndex)) {
       return false;
     }
-    return this.equals((SchemaProgressIndex) obj);
+    return this.equals((MetaProgressIndex) obj);
   }
 
   @Override
@@ -133,11 +138,11 @@ public class SchemaProgressIndex extends ProgressIndex {
   public ProgressIndex updateToMinimumIsAfterProgressIndex(ProgressIndex progressIndex) {
     lock.writeLock().lock();
     try {
-      if (!(progressIndex instanceof SchemaProgressIndex)) {
+      if (!(progressIndex instanceof MetaProgressIndex)) {
         return this;
       }
 
-      this.index = Math.max(this.index, ((SchemaProgressIndex) progressIndex).index);
+      this.index = Math.max(this.index, ((MetaProgressIndex) progressIndex).index);
       return this;
     } finally {
       lock.writeLock().unlock();
@@ -153,16 +158,16 @@ public class SchemaProgressIndex extends ProgressIndex {
     return null;
   }
 
-  public static SchemaProgressIndex deserializeFrom(ByteBuffer byteBuffer) {
-    final SchemaProgressIndex schemaProgressIndex = new SchemaProgressIndex();
-    schemaProgressIndex.index = ReadWriteIOUtils.readInt(byteBuffer);
-    return schemaProgressIndex;
+  public static MetaProgressIndex deserializeFrom(ByteBuffer byteBuffer) {
+    final MetaProgressIndex metaProgressIndex = new MetaProgressIndex();
+    metaProgressIndex.index = ReadWriteIOUtils.readInt(byteBuffer);
+    return metaProgressIndex;
   }
 
-  public static SchemaProgressIndex deserializeFrom(InputStream stream) throws IOException {
-    final SchemaProgressIndex schemaProgressIndex = new SchemaProgressIndex();
-    schemaProgressIndex.index = ReadWriteIOUtils.readInt(stream);
-    return schemaProgressIndex;
+  public static MetaProgressIndex deserializeFrom(InputStream stream) throws IOException {
+    final MetaProgressIndex metaProgressIndex = new MetaProgressIndex();
+    metaProgressIndex.index = ReadWriteIOUtils.readInt(stream);
+    return metaProgressIndex;
   }
 
   @Override

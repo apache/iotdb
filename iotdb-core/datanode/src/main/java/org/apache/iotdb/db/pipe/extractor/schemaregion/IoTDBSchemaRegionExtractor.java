@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.extractor.schemaregion;
 
+import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.datastructure.ConcurrentIterableLinkedQueue;
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb.IoTDBCommonExtractor;
@@ -78,7 +79,9 @@ public class IoTDBSchemaRegionExtractor extends IoTDBCommonExtractor {
 
   @Override
   public void start() throws Exception {
-    itr = SchemaNodeListeningQueue.getInstance(schemaRegionId).newIterator(0);
+    itr =
+        SchemaNodeListeningQueue.getInstance(schemaRegionId)
+            .newIterator(((MetaProgressIndex) pipeTaskMeta.getProgressIndex()).getIndex());
   }
 
   @Override

@@ -26,28 +26,29 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.Closeable;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.EnumMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
-public abstract class AbstractSerializableListeningQueue<E> {
+public abstract class AbstractSerializableListeningQueue<E> implements Closeable {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AbstractSerializableListeningQueue.class);
 
   private final LinkedQueueSerializerType currentType;
 
-  private final Map<LinkedQueueSerializerType, Supplier<QueueSerializer<E>>> serializerMap =
-      new HashMap<>();
+  private final EnumMap<LinkedQueueSerializerType, Supplier<QueueSerializer<E>>> serializerMap =
+      new EnumMap<>(LinkedQueueSerializerType.class);
 
   protected final ConcurrentIterableLinkedQueue<E> queue = new ConcurrentIterableLinkedQueue<>();
 
-  /////////////////////////////// Function ///////////////////////////////
+  private final AtomicBoolean isSealed = new AtomicBoolean();
 
   protected AbstractSerializableListeningQueue(LinkedQueueSerializerType serializerType) {
     currentType = serializerType;
@@ -57,7 +58,9 @@ public abstract class AbstractSerializableListeningQueue<E> {
   /////////////////////////////// Function ///////////////////////////////
 
   public void listenToElement(E plan) {
-    queue.add(plan);
+    if (!isSealed.get()) {
+      queue.add(plan);
+    }
   }
 
   public ConcurrentIterableLinkedQueue<E>.DynamicIterator newIterator(int index) {
@@ -122,4 +125,16 @@ public abstract class AbstractSerializableListeningQueue<E> {
    * @return The deserialized element or null if a failure is encountered.
    */
   protected abstract E deserializeFromByteBuffer(ByteBuffer byteBuffer);
+
+  /////////////////////////////// Open & Close ///////////////////////////////
+
+  public synchronized void open() {
+    isSealed.set(false);
+  }
+
+  @Override
+  public synchronized void close() throws IOException {
+    isSealed.set(true);
+    queue.clear();
+  }
 }

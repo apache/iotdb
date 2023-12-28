@@ -27,7 +27,9 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher.CachedSche
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher.PipeDataRegionMatcher;
 import org.apache.iotdb.db.pipe.metric.PipeAssignerMetrics;
 
-public class PipeDataRegionAssigner implements AutoCloseable {
+import java.io.Closeable;
+
+public class PipeDataRegionAssigner implements Closeable {
 
   /**
    * The {@link PipeDataRegionMatcher} is used to match the event with the extractor based on the

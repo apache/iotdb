@@ -22,8 +22,8 @@ package org.apache.iotdb.commons.pipe.task.meta;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
-import org.apache.iotdb.commons.consensus.index.impl.SchemaProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
@@ -54,12 +54,12 @@ public class PipeRuntimeMeta {
    * <p>1. {@link DataRegionId} Used to store progress for schema transmission on DataRegion,
    * usually updated since the data synchronization is basic function of pipe.
    *
-   * <p>2. {@link SchemaRegionId} Used to store {@link SchemaProgressIndex} for schema transmission
-   * on SchemaRegion, always {@link MinimumProgressIndex} if the pipe has no relation to schema
+   * <p>2. {@link SchemaRegionId} Used to store {@link MetaProgressIndex} for schema transmission on
+   * SchemaRegion, always {@link MinimumProgressIndex} if the pipe has no relation to schema
    * synchronization.
    *
-   * <p>3. {@link ConfigRegionId} Used to store {@link SchemaProgressIndex} for schema transmission
-   * on ConfigNode, always {@link MinimumProgressIndex} if the pipe has no relation to schema
+   * <p>3. {@link ConfigRegionId} Used to store {@link MetaProgressIndex} for schema transmission on
+   * ConfigNode, always {@link MinimumProgressIndex} if the pipe has no relation to schema
    * synchronization.
    *
    * <p>

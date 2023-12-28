@@ -17,12 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.agent.receiver;
+package org.apache.iotdb.confignode.manager.pipe.transfer.agent.receiver;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.receiver.airgap.IoTDBAirGapReceiverAgent;
-import org.apache.iotdb.db.pipe.receiver.legacy.IoTDBLegacyPipeReceiverAgent;
-import org.apache.iotdb.db.pipe.receiver.thrift.IoTDBThriftReceiverAgent;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.pipe.receiver.IoTDBConfigReceiverAgent;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -30,33 +29,18 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
 
-/** {@link PipeReceiverAgent} is the entry point of all pipe receivers' logic. */
-public class PipeReceiverAgent {
+public class PipeReceiverConfigNodeAgent {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeReceiverConfigNodeAgent.class);
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeReceiverAgent.class);
+  private final IoTDBConfigReceiverAgent configAgent;
 
-  private final IoTDBThriftReceiverAgent thriftAgent;
-  private final IoTDBAirGapReceiverAgent airGapAgent;
-  private final IoTDBLegacyPipeReceiverAgent legacyAgent;
-
-  public PipeReceiverAgent() {
-    thriftAgent = new IoTDBThriftReceiverAgent();
-    airGapAgent = new IoTDBAirGapReceiverAgent();
-    legacyAgent = new IoTDBLegacyPipeReceiverAgent();
+  public PipeReceiverConfigNodeAgent(ConfigManager configManager) {
+    configAgent = new IoTDBConfigReceiverAgent(configManager);
   }
 
-  public IoTDBThriftReceiverAgent thrift() {
-    return thriftAgent;
-  }
-
-  public IoTDBAirGapReceiverAgent airGap() {
-    return airGapAgent;
-  }
-
-  public IoTDBLegacyPipeReceiverAgent legacy() {
-    return legacyAgent;
+  public IoTDBConfigReceiverAgent config() {
+    return configAgent;
   }
 
   private static void cleanPipeReceiverDir(File receiverFileDir) {
@@ -75,11 +59,9 @@ public class PipeReceiverAgent {
     }
   }
 
-  public void cleanPipeReceiverDirs() {
-    String[] pipeReceiverFileDirs =
-        IoTDBDescriptor.getInstance().getConfig().getPipeReceiverFileDirs();
-    Arrays.stream(pipeReceiverFileDirs)
-        .map(File::new)
-        .forEach(PipeReceiverAgent::cleanPipeReceiverDir);
+  public void cleanPipeReceiverDir() {
+    String pipeReceiverFileDir =
+        ConfigNodeDescriptor.getInstance().getConf().getPipeReceiverFileDir();
+    cleanPipeReceiverDir(new File(pipeReceiverFileDir));
   }
 }

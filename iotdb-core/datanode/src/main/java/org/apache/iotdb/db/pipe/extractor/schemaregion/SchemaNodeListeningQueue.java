@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.extractor.schemaregion;
 
 import org.apache.iotdb.commons.pipe.datastructure.AbstractSerializableListeningQueue;
-import org.apache.iotdb.commons.pipe.datastructure.ConcurrentIterableLinkedQueue;
 import org.apache.iotdb.commons.pipe.datastructure.LinkedQueueSerializerType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -38,9 +37,6 @@ public class SchemaNodeListeningQueue extends AbstractSerializableListeningQueue
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SchemaNodeListeningQueue.class);
   private static final String SNAPSHOT_FILE_NAME = "pipe_listening_queue.bin";
-
-  private final ConcurrentIterableLinkedQueue<PlanNode> queue =
-      new ConcurrentIterableLinkedQueue<>();
 
   private SchemaNodeListeningQueue() {
     super(LinkedQueueSerializerType.PLAIN);

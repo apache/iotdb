@@ -72,7 +72,7 @@ public class InnerTimeJoinNode extends MultiChildProcessNode {
 
   @Override
   public PlanNodeType getType() {
-    return PlanNodeType.TIME_JOIN;
+    return PlanNodeType.INNER_TIME_JOIN;
   }
 
   @Override

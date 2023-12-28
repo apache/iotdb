@@ -23,11 +23,11 @@ import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorReq
 import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiverAgent;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 
-public class PipeReceiverCoordinator extends IoTDBReceiverAgent {
+public class IoTDBConfigReceiverAgent extends IoTDBReceiverAgent {
 
   private final ConfigManager configManager;
 
-  public PipeReceiverCoordinator(ConfigManager configManager) {
+  public IoTDBConfigReceiverAgent(ConfigManager configManager) {
     this.configManager = configManager;
   }
 
