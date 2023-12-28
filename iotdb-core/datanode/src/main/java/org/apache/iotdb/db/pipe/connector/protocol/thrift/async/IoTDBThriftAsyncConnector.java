@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.thrift.async;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.IoTDBConnector;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftAsyncPipeTransferBatchReqBuilder;
@@ -295,6 +296,12 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       LOGGER.warn(
           "IoTDBThriftAsyncConnector does not support transferring generic event: {}.", event);
     }
+  }
+
+  //////////////////////////// Leader cache update ////////////////////////////
+
+  public void updateLeaderCache(String deviceId, TEndPoint endPoint) {
+    clientManager.updateLeaderCache(deviceId, endPoint);
   }
 
   //////////////////////////// Exception handlers ////////////////////////////
