@@ -36,7 +36,7 @@ public class PipeConfigRegionSnapshotEvent extends EnrichedEvent {
 
   public PipeConfigRegionSnapshotEvent(
       String snapshotPath, String pipeName, PipeTaskMeta pipeTaskMeta, String pattern) {
-    super(pipeName, pipeTaskMeta, pattern);
+    super(pipeName, pipeTaskMeta, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
     this.snapshotPath = snapshotPath;
   }
 
@@ -79,12 +79,17 @@ public class PipeConfigRegionSnapshotEvent extends EnrichedEvent {
 
   @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern) {
+      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime) {
     return new PipeConfigRegionSnapshotEvent(snapshotPath, pipeName, pipeTaskMeta, pattern);
   }
 
   @Override
   public boolean isGeneratedByPipe() {
     return false;
+  }
+
+  @Override
+  public boolean isEventTimeOverlappedWithTimeRange() {
+    return true;
   }
 }

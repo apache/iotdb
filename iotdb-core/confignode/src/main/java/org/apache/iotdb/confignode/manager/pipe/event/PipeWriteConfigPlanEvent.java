@@ -43,7 +43,7 @@ public class PipeWriteConfigPlanEvent extends EnrichedEvent {
       String pipeName,
       PipeTaskMeta pipeTaskMeta,
       String pattern) {
-    super(pipeName, pipeTaskMeta, pattern);
+    super(pipeName, pipeTaskMeta, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
     this.request = request;
     this.isGeneratedByPipe = isGeneratedByPipe;
   }
@@ -82,7 +82,7 @@ public class PipeWriteConfigPlanEvent extends EnrichedEvent {
 
   @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern) {
+      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime) {
     return new PipeWriteConfigPlanEvent(
         request, isGeneratedByPipe, pipeName, pipeTaskMeta, pattern);
   }
@@ -90,5 +90,10 @@ public class PipeWriteConfigPlanEvent extends EnrichedEvent {
   @Override
   public boolean isGeneratedByPipe() {
     return isGeneratedByPipe;
+  }
+
+  @Override
+  public boolean isEventTimeOverlappedWithTimeRange() {
+    return true;
   }
 }
