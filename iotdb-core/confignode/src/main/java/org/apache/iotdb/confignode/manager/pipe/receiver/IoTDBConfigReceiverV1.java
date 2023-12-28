@@ -38,6 +38,7 @@ import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.reque
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
+import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -56,11 +57,9 @@ public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConfigReceiverV1.class);
   private static final AtomicInteger queryIndex = new AtomicInteger(0);
 
-  private final ConfigManager configManager;
+  private final ConfigManager configManager = ConfigNode.getInstance().getConfigManager();
 
-  IoTDBConfigReceiverV1(ConfigManager configManager) {
-    this.configManager = configManager;
-  }
+  IoTDBConfigReceiverV1() {}
 
   @Override
   public IoTDBConnectorRequestVersion getVersion() {
