@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.manager.pipe.event;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 
 import org.slf4j.Logger;
@@ -32,24 +33,24 @@ import java.util.concurrent.atomic.AtomicLong;
 public class PipeWriteConfigPlanEvent extends EnrichedEvent {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeWriteConfigPlanEvent.class);
 
-  private final IConsensusRequest request;
+  private final ConfigPhysicalPlan physicalPlan;
 
   private final AtomicLong referenceCount = new AtomicLong(0);
   private final boolean isGeneratedByPipe;
 
   public PipeWriteConfigPlanEvent(
-      IConsensusRequest request,
+      ConfigPhysicalPlan physicalPlan,
       boolean isGeneratedByPipe,
       String pipeName,
       PipeTaskMeta pipeTaskMeta,
       String pattern) {
     super(pipeName, pipeTaskMeta, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
-    this.request = request;
+    this.physicalPlan = physicalPlan;
     this.isGeneratedByPipe = isGeneratedByPipe;
   }
 
-  public IConsensusRequest getRequest() {
-    return request;
+  public IConsensusRequest getPhysicalPlan() {
+    return physicalPlan;
   }
 
   /**
@@ -84,7 +85,7 @@ public class PipeWriteConfigPlanEvent extends EnrichedEvent {
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime) {
     return new PipeWriteConfigPlanEvent(
-        request, isGeneratedByPipe, pipeName, pipeTaskMeta, pattern);
+        physicalPlan, isGeneratedByPipe, pipeName, pipeTaskMeta, pattern);
   }
 
   @Override
