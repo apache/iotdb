@@ -30,7 +30,6 @@ import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.metric.PipeDataRegionEventCounter;
-import org.apache.iotdb.db.pipe.progress.committer.PipeEventCommitManager;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
