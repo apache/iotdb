@@ -117,7 +117,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
     final PipeParameters parameters = validator.getParameters();
     validator.validate(
         useSSL -> !((boolean) useSSL),
-        "IoTDBThriftAsyncConnector does not support SSL transmission currently",
+        "Only 'iotdb-thrift-ssl-sink' supports SSL transmission currently.",
         parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false));
   }
 

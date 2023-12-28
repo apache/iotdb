@@ -31,6 +31,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 
+import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -168,19 +169,26 @@ public abstract class IoTDBMetaConnector extends IoTDBConnector {
         }
       }
 
-      clients.set(
-          i,
-          new IoTDBThriftSyncConnectorClient(
-              new ThriftClientProperty.Builder()
-                  .setConnectionTimeoutMs((int) PIPE_CONFIG.getPipeConnectorHandshakeTimeoutMs())
-                  .setRpcThriftCompressionEnabled(
-                      PIPE_CONFIG.isPipeConnectorRPCThriftCompressionEnabled())
-                  .build(),
-              ip,
-              port,
-              false,
-              null,
-              null));
+      try {
+        clients.set(
+            i,
+            new IoTDBThriftSyncConnectorClient(
+                new ThriftClientProperty.Builder()
+                    .setConnectionTimeoutMs((int) PIPE_CONFIG.getPipeConnectorHandshakeTimeoutMs())
+                    .setRpcThriftCompressionEnabled(
+                        PIPE_CONFIG.isPipeConnectorRPCThriftCompressionEnabled())
+                    .build(),
+                ip,
+                port,
+                false,
+                null,
+                null));
+      } catch (TTransportException e) {
+        throw new PipeConnectionException(
+            String.format(
+                PipeConnectionException.CONNECTION_ERROR_FORMATTER, ip, port, e.getMessage()),
+            e);
+      }
 
       // TODO: validate client connectivity here, just like in ThriftSync.
       isClientAlive.set(i, true);
