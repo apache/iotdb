@@ -114,10 +114,8 @@ public class GreedyCopySetRegionGroupAllocatorTest {
                             dataNodeLocation.getDataNodeId(), 1, Integer::sum)));
     // Map<DataNodeId, ScatterWidth> for greedy algorithm
     // where a true in the bitset denotes the corresponding DataNode can help the DataNode in
-    // Map-Key to
-    // share the RegionGroup-leader and restore data when restarting. The more true in the bitset,
-    // the
-    // more safety the cluster DataNode in Map-Key is.
+    // Map-Key to share the RegionGroup-leader and restore data when restarting.
+    // The more true in the bitset, the more safety the cluster DataNode in Map-Key is.
     Map<Integer, BitSet> greedyScatterWidth = new HashMap<>();
     for (TRegionReplicaSet replicaSet : greedyResult) {
       for (int i = 0; i < replicationFactor; i++) {
@@ -158,11 +156,6 @@ public class GreedyCopySetRegionGroupAllocatorTest {
     }
 
     /* Check result */
-    int avgDataRegionNum = dataRegionGroupNum * replicationFactor;
-    avgDataRegionNum =
-        avgDataRegionNum % replicationFactor == 0
-            ? avgDataRegionNum / replicationFactor
-            : avgDataRegionNum / replicationFactor + 1;
     int greedyScatterWidthSum = 0;
     int greedyMinScatterWidth = Integer.MAX_VALUE;
     int greedyMaxScatterWidth = Integer.MIN_VALUE;
@@ -170,8 +163,8 @@ public class GreedyCopySetRegionGroupAllocatorTest {
     int greedyCopySetMinScatterWidth = Integer.MAX_VALUE;
     int greedyCopySetMaxScatterWidth = Integer.MIN_VALUE;
     for (int i = 1; i <= TEST_DATA_NODE_NUM; i++) {
-      Assert.assertTrue(greedyRegionCounter.get(i) <= avgDataRegionNum);
-      Assert.assertTrue(greedyCopySetRegionCounter.get(i) <= avgDataRegionNum);
+      Assert.assertTrue(greedyRegionCounter.get(i) <= DATA_REGION_PER_DATA_NODE);
+      Assert.assertTrue(greedyCopySetRegionCounter.get(i) <= DATA_REGION_PER_DATA_NODE);
 
       int scatterWidth = greedyScatterWidth.get(i).cardinality();
       greedyScatterWidthSum += scatterWidth;
