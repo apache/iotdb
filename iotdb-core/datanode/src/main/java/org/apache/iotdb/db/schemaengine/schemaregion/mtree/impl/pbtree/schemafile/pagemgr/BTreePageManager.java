@@ -400,7 +400,7 @@ public class BTreePageManager extends PageManager {
 
     // a single read lock on initial page is sufficient to mutex write, no need to trace it
     int initIndex = getPageIndex(getNodeAddress(parent));
-    getPageInstance(initIndex, cxt).getLock().readLock().lock();
+    getPageInstance(initIndex, cxt).lockReadLock();
     try {
       long actualSegAddr = getTargetSegmentAddress(getNodeAddress(parent), childName, cxt);
       ICachedMNode child =
@@ -423,7 +423,7 @@ public class BTreePageManager extends PageManager {
       }
       return child;
     } finally {
-      getPageInstance(initIndex, cxt).getLock().readLock().unlock();
+      getPageInstance(initIndex, cxt).unlockReadLock();
       releaseReferent(cxt);
       threadContexts.remove(Thread.currentThread().getId(), cxt);
     }
@@ -453,9 +453,15 @@ public class BTreePageManager extends PageManager {
     SchemaPageContext cxt = new SchemaPageContext();
     int pageIdx = getPageIndex(getNodeAddress(parent));
 
-    short segId = getSegIndex(getNodeAddress(parent));
     ISchemaPage page = getPageInstance(pageIdx, cxt);
-    page.getLock().readLock().lock();
+    page.lockReadLock();
+
+    // if blocked by a write thread which replaced first page, it's necessary to read again
+    ISchemaPage pageHoldLock = page;
+    pageIdx = getPageIndex(getNodeAddress(parent));
+    short segId = getSegIndex(getNodeAddress(parent));
+    cxt.referredPages.remove(pageHoldLock.getPageIndex());
+    page = getPageInstance(pageIdx, cxt);
 
     try {
       while (page.getAsSegmentedPage() == null) {
@@ -506,7 +512,7 @@ public class BTreePageManager extends PageManager {
       };
     } finally {
       // safety of iterator should be guaranteed by upper layer
-      getPageInstance(pageIdx, cxt).getLock().readLock().unlock();
+      pageHoldLock.unlockReadLock();
       releaseReferent(cxt);
     }
   }

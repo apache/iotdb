@@ -21,6 +21,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafi
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.schemafile.SegmentNotFoundException;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.pagemgr.PageManager;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -90,6 +91,27 @@ public abstract class SchemaPage implements ISchemaPage {
   @Override
   public ReadWriteLock getLock() {
     return lock;
+  }
+
+  @Override
+  public void lockReadLock() {
+    lock.readLock().lock();
+  }
+
+  @Override
+  public void unlockReadLock() {
+    lock.readLock().unlock();
+  }
+
+  @Override
+  public void lockWriteLock(PageManager.SchemaPageContext cxt) {
+    lock.writeLock().lock();
+    cxt.traceLock(this);
+  }
+
+  @Override
+  public void unlockWriteLock() {
+    lock.writeLock().unlock();
   }
 
   @Override

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafi
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.schemafile.SegmentNotFoundException;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.pagemgr.PageManager;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -131,6 +132,14 @@ public interface ISchemaPage {
   int decrementAndGetRefCnt();
 
   ReadWriteLock getLock();
+
+  void lockReadLock();
+
+  void unlockReadLock();
+
+  void lockWriteLock(PageManager.SchemaPageContext cxt);
+
+  void unlockWriteLock();
 
   void syncPageBuffer();
 

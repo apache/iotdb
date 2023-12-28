@@ -228,7 +228,7 @@ public abstract class PageManager implements IPageManager {
   /** Context only tracks write locks, and so it shall be released. */
   protected void releaseLocks(SchemaPageContext cxt) {
     for (int i : cxt.lockTraces) {
-      pageInstCache.get(i).getLock().writeLock().unlock();
+      cxt.referredPages.get(i).unlockWriteLock();
     }
   }
 
@@ -266,14 +266,8 @@ public abstract class PageManager implements IPageManager {
     ISchemaPage page;
 
     if (node.isDatabase()) {
-      if (initPageIndex < 0) {
-        // node is using template
-        return;
-      }
-
       page = getPageInstance(initPageIndex, cxt);
-      page.getLock().writeLock().lock();
-      cxt.traceLock(page);
+      page.lockWriteLock(cxt);
       cxt.indexBuckets.sortIntoBucket(page, (short) -1);
     } else {
       int parIndex = getPageIndex(getNodeAddress(node.getParent()));
@@ -284,23 +278,20 @@ public abstract class PageManager implements IPageManager {
       // as InternalPage will not transplant, its parent pointer needs no lock
       page = getPageInstance(initPageIndex, cxt);
       if (page.getAsInternalPage() != null) {
-        page.getLock().writeLock().lock();
-        cxt.traceLock(page);
+        page.lockWriteLock(cxt);
         cxt.indexBuckets.sortIntoBucket(page, (short) -1);
         return;
       }
 
       if (minPageIndex > 0) {
         page = getPageInstance(minPageIndex, cxt);
-        page.getLock().writeLock().lock();
-        cxt.traceLock(page);
+        page.lockWriteLock(cxt);
         cxt.indexBuckets.sortIntoBucket(page, (short) -1);
       }
 
       if (minPageIndex != maxPageIndex && maxPageIndex > 0) {
         page = getPageInstance(maxPageIndex, cxt);
-        page.getLock().writeLock().lock();
-        cxt.traceLock(page);
+        page.lockWriteLock(cxt);
         cxt.indexBuckets.sortIntoBucket(page, (short) -1);
       }
     }
@@ -649,7 +640,7 @@ public abstract class PageManager implements IPageManager {
 
     // unlock and deref the page from context
     if (cxt.lockTraces.contains(cxt.lastLeafPage.getPageIndex())) {
-      cxt.lastLeafPage.getLock().writeLock().unlock();
+      cxt.lastLeafPage.unlockWriteLock();
       cxt.lockTraces.remove(cxt.lastLeafPage.getPageIndex());
     }
     cxt.lastLeafPage.decrementAndGetRefCnt();
@@ -740,9 +731,14 @@ public abstract class PageManager implements IPageManager {
 
   protected ISchemaPage replacePageInCache(ISchemaPage page, SchemaPageContext cxt) {
     // no need to lock since the root of B+Tree is locked
-    cxt.markDirty(page, true);
-    addPageToCache(page);
-    return page;
+    cacheLock.lock();
+    try {
+      pageInstCache.replace(page.getPageIndex(), page);
+      cxt.markDirty(page, true);
+      return page;
+    } finally {
+      cacheLock.unlock();
+    }
   }
 
   /**
@@ -790,8 +786,7 @@ public abstract class PageManager implements IPageManager {
             ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH), lastPageIndex.incrementAndGet());
     // lock and mark to be consistent with # getMinApplSegmentedPageInMem
     cxt.markDirty(newPage);
-    newPage.getLock().writeLock().lock();
-    cxt.traceLock(newPage);
+    newPage.lockWriteLock(cxt);
     addPageToCache(newPage);
     return newPage;
   }
@@ -976,7 +971,7 @@ public abstract class PageManager implements IPageManager {
   // endregion
 
   /** Thread local variables about write/update process. */
-  protected static class SchemaPageContext {
+  public static class SchemaPageContext {
     final long threadID;
     final PageIndexSortBuckets indexBuckets;
     // locked and dirty pages are all referred pages, they all reside in page cache
@@ -1006,23 +1001,19 @@ public abstract class PageManager implements IPageManager {
     }
 
     private void markDirty(ISchemaPage page, boolean forceReplace) {
-      if (!page.isDirtyPage()) {
-        dirtyCnt++;
-      }
       page.setDirtyFlag();
-      refer(page);
-      if (forceReplace && referredPages.containsKey(page.getPageIndex())) {
-
-        // previous page is dirty, so it's not a new dirty page
-        if (referredPages.get(page.getPageIndex()).isDirtyPage()) {
-          dirtyCnt--;
+      if (referredPages.containsKey(page.getPageIndex()) && forceReplace) {
+        if (!referredPages.get(page.getPageIndex()).isDirtyPage()) {
+          dirtyCnt++;
         }
-        // force to replace
         referredPages.put(page.getPageIndex(), page);
+        return;
       }
+      dirtyCnt++;
+      refer(page);
     }
 
-    private void traceLock(ISchemaPage page) {
+    public void traceLock(ISchemaPage page) {
       refer(page);
       lockTraces.add(page.getPageIndex());
     }
@@ -1032,6 +1023,12 @@ public abstract class PageManager implements IPageManager {
       if (!referredPages.containsKey(page.getPageIndex())) {
         page.incrementAndGetRefCnt();
         referredPages.put(page.getPageIndex(), page);
+      } else if (referredPages.get(page.getPageIndex()) != page) {
+        logger.warn(
+            "Thread try to refer different page object with same ID, at stack:{}.",
+            Arrays.stream(Thread.currentThread().getStackTrace())
+                .map(StackTraceElement::toString)
+                .collect(Collectors.joining("\r\n")));
       }
     }
 
@@ -1137,7 +1134,7 @@ public abstract class PageManager implements IPageManager {
             if (targetPage.getAsSegmentedPage().isCapableForSegSize(size)) {
               return targetPage.getAsSegmentedPage();
             }
-            targetPage.getLock().writeLock().unlock();
+            targetPage.unlockWriteLock();
           }
 
           // only in local dirty pages which are always write locked by itself
