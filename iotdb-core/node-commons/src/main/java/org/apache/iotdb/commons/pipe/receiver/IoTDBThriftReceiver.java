@@ -17,15 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.execution.executor.schemaregion;
+package org.apache.iotdb.commons.pipe.receiver;
 
-import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
+import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
-public class PipeSchemaRegionConnectorSubtaskExecutor extends PipeConnectorSubtaskExecutor {
+public interface IoTDBThriftReceiver {
+  IoTDBConnectorRequestVersion getVersion();
 
-  public PipeSchemaRegionConnectorSubtaskExecutor() {
-    // TODO: configure thread pool size
-    super(1, ThreadName.PIPE_SCHEMAREGION_CONNECTOR_EXECUTOR_POOL);
-  }
+  TPipeTransferResp receive(TPipeTransferReq req);
+
+  void handleExit();
 }

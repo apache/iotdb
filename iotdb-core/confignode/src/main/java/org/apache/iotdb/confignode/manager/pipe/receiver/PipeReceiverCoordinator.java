@@ -17,8 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.connector.payload.request;
+package org.apache.iotdb.confignode.manager.pipe.receiver;
 
-import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
+import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
+import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiverAgent;
+import org.apache.iotdb.confignode.manager.ConfigManager;
 
-public abstract class TransferConfigPlanReq extends TPipeTransferReq {}
+public class PipeReceiverCoordinator extends IoTDBReceiverAgent {
+
+  private final ConfigManager configManager;
+
+  public PipeReceiverCoordinator(ConfigManager configManager) {
+    this.configManager = configManager;
+  }
+
+  @Override
+  protected void initConstructors() {
+    RECEIVER_CONSTRUCTORS.put(
+        IoTDBConnectorRequestVersion.VERSION_1.getVersion(),
+        () -> new IoTDBConfigReceiverV1(configManager));
+  }
+}

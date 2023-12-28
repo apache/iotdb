@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.it.utils;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
@@ -152,7 +153,13 @@ public class TestUtils {
   public static void resultSetEqualTest(
       String sql, String expectedHeader, String[] expectedRetArray) {
     resultSetEqualTest(
-        sql, expectedHeader, expectedRetArray, null, "root", "root", TimeUnit.MILLISECONDS);
+        sql,
+        expectedHeader,
+        expectedRetArray,
+        null,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        TimeUnit.MILLISECONDS);
   }
 
   public static void resultSetEqualTest(
@@ -176,7 +183,13 @@ public class TestUtils {
       header.append(s).append(",");
     }
     resultSetEqualTest(
-        sql, header.toString(), expectedRetArray, df, "root", "root", TimeUnit.MILLISECONDS);
+        sql,
+        header.toString(),
+        expectedRetArray,
+        df,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        TimeUnit.MILLISECONDS);
   }
 
   public static void resultSetEqualTest(
@@ -189,7 +202,14 @@ public class TestUtils {
     for (String s : expectedHeader) {
       header.append(s).append(",");
     }
-    resultSetEqualTest(sql, header.toString(), expectedRetArray, df, "root", "root", currPrecision);
+    resultSetEqualTest(
+        sql,
+        header.toString(),
+        expectedRetArray,
+        df,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        currPrecision);
   }
 
   public static void resultSetEqualTest(
@@ -255,7 +275,7 @@ public class TestUtils {
   }
 
   public static void assertTestFail(String sql, String errMsg) {
-    assertTestFail(sql, errMsg, "root", "root");
+    assertTestFail(sql, errMsg, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
 
   public static void assertTestFail(String sql, String errMsg, String userName, String password) {
@@ -274,7 +294,7 @@ public class TestUtils {
   }
 
   public static void assertNonQueryTestFail(String sql, String errMsg) {
-    assertNonQueryTestFail(sql, errMsg, "root", "root");
+    assertNonQueryTestFail(sql, errMsg, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
 
   public static void assertNonQueryTestFail(
@@ -366,7 +386,7 @@ public class TestUtils {
   }
 
   public static void executeNonQuery(String sql) {
-    executeNonQuery(sql, "root", "root");
+    executeNonQuery(sql, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
 
   public static void executeNonQuery(String sql, String userName, String password) {
@@ -400,7 +420,8 @@ public class TestUtils {
   }
 
   public static boolean tryExecuteNonQueryWithRetry(BaseEnv env, String sql) {
-    return tryExecuteNonQueryWithRetry(env, sql, "root", "root");
+    return tryExecuteNonQueryWithRetry(
+        env, sql, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
 
   public static boolean tryExecuteNonQueryWithRetry(
@@ -409,7 +430,8 @@ public class TestUtils {
   }
 
   public static boolean tryExecuteNonQueriesWithRetry(BaseEnv env, List<String> sqlList) {
-    return tryExecuteNonQueriesWithRetry(env, sqlList, "root", "root");
+    return tryExecuteNonQueriesWithRetry(
+        env, sqlList, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
 
   // This method will not throw failure given that a failure is encountered.
@@ -496,7 +518,7 @@ public class TestUtils {
   }
 
   public static void executeQuery(String sql) {
-    executeQuery(sql, "root", "root");
+    executeQuery(sql, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
 
   public static void executeQuery(String sql, String userName, String password) {
@@ -632,13 +654,17 @@ public class TestUtils {
   }
 
   public static void restartCluster(BaseEnv env) throws Exception {
+    restartCluster(env, 1);
+  }
+
+  public static void restartCluster(BaseEnv env, long waitSeconds) throws Exception {
     for (int i = 0; i < env.getConfigNodeWrapperList().size(); ++i) {
       env.shutdownConfigNode(i);
     }
     for (int i = 0; i < env.getDataNodeWrapperList().size(); ++i) {
       env.shutdownDataNode(i);
     }
-    TimeUnit.SECONDS.sleep(1);
+    TimeUnit.SECONDS.sleep(waitSeconds);
     for (int i = 0; i < env.getConfigNodeWrapperList().size(); ++i) {
       env.startConfigNode(i);
     }
@@ -650,11 +676,20 @@ public class TestUtils {
 
   public static void assertDataOnEnv(
       BaseEnv env, String sql, String expectedHeader, Set<String> expectedResSet) {
+    assertDataOnEnv(env, sql, expectedHeader, expectedResSet, 600);
+  }
+
+  public static void assertDataOnEnv(
+      BaseEnv env,
+      String sql,
+      String expectedHeader,
+      Set<String> expectedResSet,
+      long timeoutSeconds) {
     try (Connection connection = env.getConnection();
         Statement statement = connection.createStatement()) {
       // Keep retrying if there are execution failure
       await()
-          .atMost(600, TimeUnit.SECONDS)
+          .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
                 try {

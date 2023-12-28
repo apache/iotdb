@@ -20,70 +20,12 @@
 package org.apache.iotdb.db.pipe.receiver.thrift;
 
 import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
-import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
-import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
-import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
+import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiverAgent;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-public class IoTDBThriftReceiverAgent {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftReceiverAgent.class);
-
-  private final ThreadLocal<IoTDBThriftReceiver> receiverThreadLocal = new ThreadLocal<>();
-
-  public TPipeTransferResp receive(
-      TPipeTransferReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
-    final byte reqVersion = req.getVersion();
-    if (reqVersion == IoTDBConnectorRequestVersion.VERSION_1.getVersion()) {
-      return getReceiver(reqVersion).receive(req, partitionFetcher, schemaFetcher);
-    } else {
-      return new TPipeTransferResp(
-          RpcUtils.getStatus(
-              TSStatusCode.PIPE_VERSION_ERROR,
-              String.format("Unsupported pipe version %d", reqVersion)));
-    }
-  }
-
-  private IoTDBThriftReceiver getReceiver(byte reqVersion) {
-    if (receiverThreadLocal.get() == null) {
-      return setAndGetReceiver(reqVersion);
-    }
-
-    final byte receiverThreadLocalVersion = receiverThreadLocal.get().getVersion().getVersion();
-    if (receiverThreadLocalVersion != reqVersion) {
-      LOGGER.warn(
-          "The receiver version {} is different from the sender version {},"
-              + " the receiver will be reset to the sender version.",
-          receiverThreadLocalVersion,
-          reqVersion);
-      receiverThreadLocal.get().handleExit();
-      receiverThreadLocal.remove();
-      return setAndGetReceiver(reqVersion);
-    }
-
-    return receiverThreadLocal.get();
-  }
-
-  private IoTDBThriftReceiver setAndGetReceiver(byte reqVersion) {
-    if (reqVersion == IoTDBConnectorRequestVersion.VERSION_1.getVersion()) {
-      receiverThreadLocal.set(new IoTDBThriftReceiverV1());
-    } else {
-      throw new UnsupportedOperationException(
-          String.format("Unsupported pipe version %d", reqVersion));
-    }
-    return receiverThreadLocal.get();
-  }
-
-  public void handleClientExit() {
-    final IoTDBThriftReceiver receiver = receiverThreadLocal.get();
-    if (receiver != null) {
-      receiver.handleExit();
-      receiverThreadLocal.remove();
-    }
+public class IoTDBThriftReceiverAgent extends IoTDBReceiverAgent {
+  @Override
+  protected void initConstructors() {
+    RECEIVER_CONSTRUCTORS.put(
+        IoTDBConnectorRequestVersion.VERSION_1.getVersion(), IoTDBThriftReceiverV1::new);
   }
 }

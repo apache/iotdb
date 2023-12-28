@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.commons.pipe.task.DecoratingLock;
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.task.subtask.PipeSubtask;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -289,10 +290,10 @@ public class PipeConnectorSubtask extends PipeDataNodeSubtask {
   }
 
   /**
-   * Submit a subTask to the executor to keep it running. Note that the function will be called when
-   * connector starts or the subTask finishes the last round, Thus the "isRunning" sign is added to
-   * avoid concurrent problem of the two, ensuring two or more submitting threads generates only one
-   * winner.
+   * Submit a {@link PipeSubtask} to the executor to keep it running. Note that the function will be
+   * called when connector starts or the subTask finishes the last round, Thus the {@link
+   * PipeConnectorSubtask#isSubmitted} sign is added to avoid concurrent problem of the two,
+   * ensuring two or more submitting threads generates only one winner.
    */
   @Override
   public synchronized void submitSelf() {

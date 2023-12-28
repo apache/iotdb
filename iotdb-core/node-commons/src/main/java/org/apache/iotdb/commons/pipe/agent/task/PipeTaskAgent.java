@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.commons.pipe.agent.task;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.commons.pipe.task.PipeTaskManager;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
@@ -174,16 +173,16 @@ public abstract class PipeTaskAgent {
       /* @NotNull */ PipeRuntimeMeta runtimeMetaFromCoordinator,
       /* @NotNull */ PipeRuntimeMeta runtimeMetaInAgent) {
     // 1. Handle region group leader changed first
-    final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMapFromCoordinator =
+    final Map<Integer, PipeTaskMeta> consensusGroupIdToTaskMetaMapFromCoordinator =
         runtimeMetaFromCoordinator.getConsensusGroupId2TaskMetaMap();
-    final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMapInAgent =
+    final Map<Integer, PipeTaskMeta> consensusGroupIdToTaskMetaMapInAgent =
         runtimeMetaInAgent.getConsensusGroupId2TaskMetaMap();
 
     // 1.1 Iterate over all consensus group ids in coordinator's pipe runtime meta, decide if we
     // need to drop and create a new task for each consensus group id
-    for (final Map.Entry<TConsensusGroupId, PipeTaskMeta> entryFromCoordinator :
+    for (final Map.Entry<Integer, PipeTaskMeta> entryFromCoordinator :
         consensusGroupIdToTaskMetaMapFromCoordinator.entrySet()) {
-      final TConsensusGroupId consensusGroupIdFromCoordinator = entryFromCoordinator.getKey();
+      final int consensusGroupIdFromCoordinator = entryFromCoordinator.getKey();
 
       final PipeTaskMeta taskMetaFromCoordinator = entryFromCoordinator.getValue();
       final PipeTaskMeta taskMetaInAgent =
@@ -204,8 +203,8 @@ public abstract class PipeTaskAgent {
       }
 
       // If task meta exists on local agent, check if it has changed
-      final int nodeIdFromCoordinator = taskMetaFromCoordinator.getLeaderDataNodeId();
-      final int nodeIdInAgent = taskMetaInAgent.getLeaderDataNodeId();
+      final int nodeIdFromCoordinator = taskMetaFromCoordinator.getLeaderNodeId();
+      final int nodeIdInAgent = taskMetaInAgent.getLeaderNodeId();
 
       if (nodeIdFromCoordinator != nodeIdInAgent) {
         dropPipeTask(consensusGroupIdFromCoordinator, pipeStaticMeta);
@@ -225,9 +224,9 @@ public abstract class PipeTaskAgent {
     // need
     // to drop any task. we do not need to create any new task here because we have already done
     // that in 1.1.
-    for (final Map.Entry<TConsensusGroupId, PipeTaskMeta> entryInAgent :
+    for (final Map.Entry<Integer, PipeTaskMeta> entryInAgent :
         consensusGroupIdToTaskMetaMapInAgent.entrySet()) {
-      final TConsensusGroupId consensusGroupIdInAgent = entryInAgent.getKey();
+      final int consensusGroupIdInAgent = entryInAgent.getKey();
       final PipeTaskMeta taskMetaFromCoordinator =
           consensusGroupIdToTaskMetaMapFromCoordinator.get(consensusGroupIdInAgent);
       if (taskMetaFromCoordinator == null) {
@@ -409,7 +408,7 @@ public abstract class PipeTaskAgent {
     }
 
     // Create pipe tasks and trigger create() method for each pipe task
-    final Map<TConsensusGroupId, PipeTask> pipeTasks = buildPipeTasks(pipeMetaFromCoordinator);
+    final Map<Integer, PipeTask> pipeTasks = buildPipeTasks(pipeMetaFromCoordinator);
     for (PipeTask pipeTask : pipeTasks.values()) {
       pipeTask.create();
     }
@@ -429,8 +428,7 @@ public abstract class PipeTaskAgent {
     return needToStartPipe;
   }
 
-  protected abstract Map<TConsensusGroupId, PipeTask> buildPipeTasks(
-      PipeMeta pipeMetaFromCoordinator);
+  protected abstract Map<Integer, PipeTask> buildPipeTasks(PipeMeta pipeMetaFromCoordinator);
 
   private void dropPipe(String pipeName, long creationTime) {
     final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
@@ -445,7 +443,7 @@ public abstract class PipeTaskAgent {
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
 
     // Drop pipe tasks and trigger drop() method for each pipe task
-    final Map<TConsensusGroupId, PipeTask> pipeTasks =
+    final Map<Integer, PipeTask> pipeTasks =
         pipeTaskManager.removePipeTasks(existedPipeMeta.getStaticMeta());
     if (pipeTasks == null) {
       LOGGER.info(
@@ -476,7 +474,7 @@ public abstract class PipeTaskAgent {
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
 
     // Drop pipe tasks and trigger drop() method for each pipe task
-    final Map<TConsensusGroupId, PipeTask> pipeTasks =
+    final Map<Integer, PipeTask> pipeTasks =
         pipeTaskManager.removePipeTasks(existedPipeMeta.getStaticMeta());
     if (pipeTasks == null) {
       LOGGER.info(
@@ -499,7 +497,7 @@ public abstract class PipeTaskAgent {
     }
 
     // Trigger start() method for each pipe task
-    final Map<TConsensusGroupId, PipeTask> pipeTasks =
+    final Map<Integer, PipeTask> pipeTasks =
         pipeTaskManager.getPipeTasks(existedPipeMeta.getStaticMeta());
     if (pipeTasks == null) {
       LOGGER.info(
@@ -531,7 +529,7 @@ public abstract class PipeTaskAgent {
     }
 
     // Trigger stop() method for each pipe task
-    final Map<TConsensusGroupId, PipeTask> pipeTasks =
+    final Map<Integer, PipeTask> pipeTasks =
         pipeTaskManager.getPipeTasks(existedPipeMeta.getStaticMeta());
     if (pipeTasks == null) {
       LOGGER.info(
@@ -552,10 +550,10 @@ public abstract class PipeTaskAgent {
   ////////////////////////// Checker //////////////////////////
 
   /**
-   * Check if we need to create pipe tasks.
+   * Check if we need to create {@link PipeTask}s.
    *
-   * @return {@code true} if need to create pipe tasks, {@code false} if no need to create.
-   * @throws IllegalStateException if current pipe status is illegal.
+   * @return {@code true} if need to create {@link PipeTask}s, {@code false} if no need to create.
+   * @throws IllegalStateException if current {@link PipeStatus} is illegal.
    */
   protected boolean checkBeforeCreatePipe(
       PipeMeta existedPipeMeta, String pipeName, long creationTime) throws IllegalStateException {
@@ -596,10 +594,10 @@ public abstract class PipeTaskAgent {
   }
 
   /**
-   * Check if we need to actually start the pipe tasks.
+   * Check if we need to actually start the {@link PipeTask}s.
    *
-   * @return {@code true} if need to start the pipe tasks, {@code false} if no need to start.
-   * @throws IllegalStateException if current pipe status is illegal.
+   * @return {@code true} if need to start the {@link PipeTask}s, {@code false} if no need to start.
+   * @throws IllegalStateException if current {@link PipeStatus} is illegal.
    */
   protected boolean checkBeforeStartPipe(
       PipeMeta existedPipeMeta, String pipeName, long creationTime) throws IllegalStateException {
@@ -662,10 +660,10 @@ public abstract class PipeTaskAgent {
   }
 
   /**
-   * Check if we need to actually stop the pipe tasks.
+   * Check if we need to actually stop the {@link PipeTask}s.
    *
-   * @return {@code true} if need to stop the pipe tasks, {@code false} if no need to stop.
-   * @throws IllegalStateException if current pipe status is illegal.
+   * @return {@code true} if need to stop the {@link PipeTask}s, {@code false} if no need to stop.
+   * @throws IllegalStateException if current {@link PipeStatus} is illegal.
    */
   protected boolean checkBeforeStopPipe(
       PipeMeta existedPipeMeta, String pipeName, long creationTime) throws IllegalStateException {
@@ -726,10 +724,10 @@ public abstract class PipeTaskAgent {
   }
 
   /**
-   * Check if we need to drop pipe tasks.
+   * Check if we need to drop {@link PipeTask}s.
    *
-   * @return {@code true} if need to drop pipe tasks, {@code false} if no need to drop.
-   * @throws IllegalStateException if current pipe status is illegal.
+   * @return {@code true} if need to drop {@link PipeTask}s, {@code false} if no need to drop.
+   * @throws IllegalStateException if current {@link PipeStatus} is illegal.
    */
   protected boolean checkBeforeDropPipe(
       PipeMeta existedPipeMeta, String pipeName, long creationTime) throws IllegalStateException {
@@ -756,10 +754,10 @@ public abstract class PipeTaskAgent {
   }
 
   /**
-   * Check if we need to drop pipe tasks.
+   * Check if we need to drop {@link PipeTask}s.
    *
-   * @return {@code true} if need to drop pipe tasks, {@code false} if no need to drop.
-   * @throws IllegalStateException if current pipe status is illegal.
+   * @return {@code true} if need to drop {@link PipeTask}s, {@code false} if no need to drop.
+   * @throws IllegalStateException if current {@link PipeStatus} is illegal.
    */
   protected boolean checkBeforeDropPipe(PipeMeta existedPipeMeta, String pipeName)
       throws IllegalStateException {
@@ -775,9 +773,9 @@ public abstract class PipeTaskAgent {
   ///////////////////////// Manage by consensusGroupId /////////////////////////
 
   protected abstract void createPipeTask(
-      TConsensusGroupId consensusGroupId, PipeStaticMeta pipeStaticMeta, PipeTaskMeta pipeTaskMeta);
+      int consensusGroupId, PipeStaticMeta pipeStaticMeta, PipeTaskMeta pipeTaskMeta);
 
-  private void dropPipeTask(TConsensusGroupId consensusGroupId, PipeStaticMeta pipeStaticMeta) {
+  private void dropPipeTask(int consensusGroupId, PipeStaticMeta pipeStaticMeta) {
     pipeMetaKeeper
         .getPipeMeta(pipeStaticMeta.getPipeName())
         .getRuntimeMeta()
@@ -789,7 +787,7 @@ public abstract class PipeTaskAgent {
     }
   }
 
-  private void startPipeTask(TConsensusGroupId consensusGroupId, PipeStaticMeta pipeStaticMeta) {
+  private void startPipeTask(int consensusGroupId, PipeStaticMeta pipeStaticMeta) {
     final PipeTask pipeTask = pipeTaskManager.getPipeTask(pipeStaticMeta, consensusGroupId);
     if (pipeTask != null) {
       pipeTask.start();

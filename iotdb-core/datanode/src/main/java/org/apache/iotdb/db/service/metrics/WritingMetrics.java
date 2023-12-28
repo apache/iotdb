@@ -343,11 +343,37 @@ public class WritingMetrics implements IMetricSet {
       "oldest_mem_table_ram_when_cause_flush";
   public static final String FLUSH_TSFILE_SIZE = "flush_tsfile_size";
 
+  private Histogram flushThreholdHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram rejectThreholdHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+
+  private Timer memtableLiveTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+
   public void bindDataRegionMetrics() {
     List<DataRegion> allDataRegions = StorageEngine.getInstance().getAllDataRegions();
     List<DataRegionId> allDataRegionIds = StorageEngine.getInstance().getAllDataRegionIds();
     allDataRegions.forEach(this::createDataRegionMemoryCostMetrics);
     allDataRegionIds.forEach(this::createFlushingMemTableStatusMetrics);
+    allDataRegionIds.forEach(this::createSeriesFullFlushMemTableCounterMetrics);
+    allDataRegionIds.forEach(this::createTimedFlushMemTableCounterMetrics);
+    allDataRegionIds.forEach(this::createWalFlushMemTableCounterMetrics);
+    allDataRegionIds.forEach(this::createActiveMemtableCounterMetrics);
+    createActiveTimePartitionCounterMetrics();
+
+    flushThreholdHistogram =
+        MetricService.getInstance()
+            .getOrCreateHistogram(
+                Metric.FLUSH_THRESHOLD.toString(), MetricLevel.IMPORTANT, "flush_threshold");
+    rejectThreholdHistogram =
+        MetricService.getInstance()
+            .getOrCreateHistogram(
+                Metric.REJECT_THRESHOLD.toString(), MetricLevel.IMPORTANT, "reject_threshold");
+
+    memtableLiveTimer =
+        MetricService.getInstance()
+            .getOrCreateTimer(
+                Metric.MEMTABLE_LIVE_DURATION.toString(),
+                MetricLevel.IMPORTANT,
+                Tag.STAGE.toString());
   }
 
   public void unbindDataRegionMetrics() {
@@ -356,7 +382,16 @@ public class WritingMetrics implements IMetricSet {
         dataRegionId -> {
           removeDataRegionMemoryCostMetrics(dataRegionId);
           removeFlushingMemTableStatusMetrics(dataRegionId);
+          removeSeriesFullFlushMemTableCounterMetrics(dataRegionId);
+          removeTimedFlushMemTableCounterMetrics(dataRegionId);
+          removeWalFlushMemTableCounterMetrics(dataRegionId);
+          removeActiveMemtableCounterMetrics(dataRegionId);
         });
+    removeActiveTimePartitionCounterMetrics();
+    MetricService.getInstance().remove(MetricType.HISTOGRAM, Metric.FLUSH_THRESHOLD.toString());
+    MetricService.getInstance().remove(MetricType.HISTOGRAM, Metric.REJECT_THRESHOLD.toString());
+    MetricService.getInstance()
+        .remove(MetricType.TIMER, Metric.MEMTABLE_LIVE_DURATION.toString(), Tag.STAGE.toString());
   }
 
   public void createDataRegionMemoryCostMetrics(DataRegion dataRegion) {
@@ -432,6 +467,88 @@ public class WritingMetrics implements IMetricSet {
                         name,
                         Tag.REGION.toString(),
                         dataRegionId.toString()));
+  }
+
+  public void createWalFlushMemTableCounterMetrics(DataRegionId dataRegionId) {
+    MetricService.getInstance()
+        .getOrCreateCounter(
+            Metric.WAL_FLUSH_MEMTABLE_COUNT.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.REGION.toString(),
+            dataRegionId.toString());
+  }
+
+  public void createTimedFlushMemTableCounterMetrics(DataRegionId dataRegionId) {
+    MetricService.getInstance()
+        .getOrCreateCounter(
+            Metric.TIMED_FLUSH_MEMTABLE_COUNT.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.REGION.toString(),
+            dataRegionId.toString());
+  }
+
+  public void createSeriesFullFlushMemTableCounterMetrics(DataRegionId dataRegionId) {
+    MetricService.getInstance()
+        .getOrCreateCounter(
+            Metric.SERIES_FULL_FLUSH_MEMTABLE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.REGION.toString(),
+            dataRegionId.toString());
+  }
+
+  public void createActiveMemtableCounterMetrics(DataRegionId dataRegionId) {
+    MetricService.getInstance()
+        .getOrCreateCounter(
+            Metric.ACTIVE_MEMTABLE_COUNT.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.REGION.toString(),
+            dataRegionId.toString());
+  }
+
+  public void createActiveTimePartitionCounterMetrics() {
+    MetricService.getInstance()
+        .getOrCreateCounter(Metric.ACTIVE_MEMTABLE_COUNT.toString(), MetricLevel.IMPORTANT);
+  }
+
+  public void removeSeriesFullFlushMemTableCounterMetrics(DataRegionId dataRegionId) {
+    MetricService.getInstance()
+        .remove(
+            MetricType.COUNTER,
+            Metric.SERIES_FULL_FLUSH_MEMTABLE.toString(),
+            Tag.REGION.toString(),
+            dataRegionId.toString());
+  }
+
+  public void removeTimedFlushMemTableCounterMetrics(DataRegionId dataRegionId) {
+    MetricService.getInstance()
+        .remove(
+            MetricType.COUNTER,
+            Metric.TIMED_FLUSH_MEMTABLE_COUNT.toString(),
+            Tag.REGION.toString(),
+            dataRegionId.toString());
+  }
+
+  public void removeWalFlushMemTableCounterMetrics(DataRegionId dataRegionId) {
+    MetricService.getInstance()
+        .remove(
+            MetricType.COUNTER,
+            Metric.WAL_FLUSH_MEMTABLE_COUNT.toString(),
+            Tag.REGION.toString(),
+            dataRegionId.toString());
+  }
+
+  public void removeActiveMemtableCounterMetrics(DataRegionId dataRegionId) {
+    MetricService.getInstance()
+        .remove(
+            MetricType.COUNTER,
+            Metric.ACTIVE_MEMTABLE_COUNT.toString(),
+            Tag.REGION.toString(),
+            dataRegionId.toString());
+  }
+
+  public void removeActiveTimePartitionCounterMetrics() {
+    MetricService.getInstance()
+        .remove(MetricType.COUNTER, Metric.ACTIVE_TIME_PARTITION_COUNT.toString());
   }
 
   public void removeFlushingMemTableStatusMetrics(DataRegionId dataRegionId) {
@@ -652,6 +769,71 @@ public class WritingMetrics implements IMetricSet {
   public void recordWALBufferEntriesCount(long count) {
     entriesCountHistogram.update(count);
   }
+
+  public void recordFlushThreshold(double flushThreshold) {
+    flushThreholdHistogram.update((long) flushThreshold);
+  }
+
+  public void recordRejectThreshold(double rejectThreshold) {
+    rejectThreholdHistogram.update((long) rejectThreshold);
+  }
+
+  public void recordMemTableLiveDuration(long durationMillis) {
+    memtableLiveTimer.updateMillis(durationMillis);
+  }
+
+  public void recordTimedFlushMemTableCount(String dataRegionId, int number) {
+    MetricService.getInstance()
+        .count(
+            number,
+            Metric.TIMED_FLUSH_MEMTABLE_COUNT.toString(),
+            MetricLevel.CORE,
+            Tag.NAME.toString(),
+            Tag.NAME.toString(),
+            Tag.REGION.toString(),
+            dataRegionId);
+  }
+
+  public void recordWalFlushMemTableCount(String dataRegionId, int number) {
+    MetricService.getInstance()
+        .count(
+            number,
+            Metric.WAL_FLUSH_MEMTABLE_COUNT.toString(),
+            MetricLevel.CORE,
+            Tag.NAME.toString(),
+            Tag.NAME.toString(),
+            Tag.REGION.toString(),
+            dataRegionId);
+  }
+
+  public void recordSeriesFullFlushMemTableCount(String dataRegionId, int number) {
+    MetricService.getInstance()
+        .count(
+            number,
+            Metric.SERIES_FULL_FLUSH_MEMTABLE.toString(),
+            MetricLevel.CORE,
+            Tag.NAME.toString(),
+            Tag.NAME.toString(),
+            Tag.REGION.toString(),
+            dataRegionId);
+  }
+
+  public void recordActiveMemTableCount(String dataRegionId, int number) {
+    MetricService.getInstance()
+        .count(
+            number,
+            Metric.ACTIVE_MEMTABLE_COUNT.toString(),
+            MetricLevel.CORE,
+            Tag.NAME.toString(),
+            Tag.REGION.toString(),
+            dataRegionId);
+  }
+
+  public void recordActiveTimePartitionCount(int number) {
+    MetricService.getInstance()
+        .count(number, Metric.ACTIVE_TIME_PARTITION_COUNT.toString(), MetricLevel.CORE);
+  }
+
   // endregion
 
   @Override

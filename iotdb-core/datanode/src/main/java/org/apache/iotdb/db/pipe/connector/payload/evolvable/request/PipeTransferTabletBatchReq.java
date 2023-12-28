@@ -155,8 +155,7 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
     return batchReq;
   }
 
-  public static PipeTransferTabletBatchReq fromTPipeTransferReq(TPipeTransferReq transferReq)
-      throws IOException {
+  public static PipeTransferTabletBatchReq fromTPipeTransferReq(TPipeTransferReq transferReq) {
     final PipeTransferTabletBatchReq batchReq = new PipeTransferTabletBatchReq();
 
     int size = ReadWriteIOUtils.readInt(transferReq.body);
@@ -171,14 +170,14 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
     size = ReadWriteIOUtils.readInt(transferReq.body);
     for (int i = 0; i < size; ++i) {
       batchReq.insertNodeReqs.add(
-          PipeTransferTabletInsertNodeReq.toTPipeTransferReq(
+          PipeTransferTabletInsertNodeReq.toTPipeTransferRawReq(
               (InsertNode) PlanFragment.deserializeHelper(transferReq.body, null)));
     }
 
     size = ReadWriteIOUtils.readInt(transferReq.body);
     for (int i = 0; i < size; ++i) {
       batchReq.tabletReqs.add(
-          PipeTransferTabletRawReq.toTPipeTransferReq(
+          PipeTransferTabletRawReq.toTPipeTransferRawReq(
               Tablet.deserialize(transferReq.body), ReadWriteIOUtils.readBool(transferReq.body)));
     }
 
