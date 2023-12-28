@@ -55,6 +55,11 @@ public class NodePathsConvertNode extends ProcessNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.NODE_PATHS_CONVERT;
+  }
+
+  @Override
   public PlanNode clone() {
     return new NodePathsConvertNode(getPlanNodeId());
   }

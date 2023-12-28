@@ -55,6 +55,11 @@ public class DeviceViewIntoNode extends SingleChildProcessNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.DEVICE_VIEW_INTO;
+  }
+
+  @Override
   public PlanNode clone() {
     return new DeviceViewIntoNode(getPlanNodeId(), this.deviceViewIntoPathDescriptor);
   }

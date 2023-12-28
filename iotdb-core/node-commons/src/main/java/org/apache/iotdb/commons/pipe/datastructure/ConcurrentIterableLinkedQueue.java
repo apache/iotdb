@@ -182,6 +182,18 @@ public class ConcurrentIterableLinkedQueue<E> {
     }
   }
 
+  public void setFirstIndex(int firstIndex) {
+    lock.writeLock().lock();
+    try {
+      this.firstIndex = firstIndex;
+      if (tailIndex < firstIndex) {
+        tailIndex = firstIndex;
+      }
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
   public boolean hasAnyIterators() {
     return !iteratorSet.isEmpty();
   }

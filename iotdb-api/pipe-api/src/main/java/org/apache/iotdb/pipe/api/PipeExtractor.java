@@ -61,11 +61,11 @@ public interface PipeExtractor extends PipePlugin {
   void validate(PipeParameterValidator validator) throws Exception;
 
   /**
-   * This method is mainly used to customize PipeExtractor. In this method, the user can do the
-   * following things:
+   * This method is mainly used to customize {@link PipeExtractor}. In this method, the user can do
+   * the following things:
    *
    * <ul>
-   *   <li>Use PipeParameters to parse key-value pair attributes entered by the user.
+   *   <li>Use {@link PipeParameters} to parse key-value pair attributes entered by the user.
    *   <li>Set the running configurations in PipeExtractorRuntimeConfiguration.
    * </ul>
    *

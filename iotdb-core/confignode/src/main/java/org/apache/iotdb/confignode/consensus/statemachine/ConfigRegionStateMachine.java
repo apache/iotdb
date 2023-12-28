@@ -34,6 +34,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
+import org.apache.iotdb.confignode.manager.pipe.transfer.extractor.ConfigPlanListeningQueue;
 import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
 import org.apache.iotdb.confignode.writelog.io.SingleFileLogReader;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -121,6 +122,9 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
 
     if (ConsensusFactory.SIMPLE_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
       writeLogForSimpleConsensus(plan);
+    }
+    if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      ConfigPlanListeningQueue.getInstance().tryListenToPlan(plan);
     }
     return result;
   }
@@ -248,6 +252,12 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         () -> configManager.getPipeManager().getPipeRuntimeCoordinator().startPipeMetaSync());
     threadPool.submit(
         () -> configManager.getPipeManager().getPipeRuntimeCoordinator().startPipeHeartbeat());
+    threadPool.submit(
+        () ->
+            configManager
+                .getPipeManager()
+                .getPipeRuntimeCoordinator()
+                .onConfigRegionGroupLeaderChanged());
 
     // To adapt old version, we check cluster ID after state machine has been fully recovered.
     // Do check async because sync will be slow and block every other things.

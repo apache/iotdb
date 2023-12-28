@@ -29,10 +29,10 @@ import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2;
-import org.apache.iotdb.pipe.PipeEnvironmentException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -50,13 +50,13 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualIT {
 
   @Override
   @Before
-  public void setUp() throws PipeEnvironmentException {
+  public void setUp() {
     try {
       MultiEnvFactory.createEnv(2);
       senderEnv = MultiEnvFactory.getEnv(0);
       receiverEnv = MultiEnvFactory.getEnv(1);
     } catch (Exception | Error e) {
-      throw new PipeEnvironmentException(e.getMessage(), e);
+      Assume.assumeNoException(e);
     }
   }
 

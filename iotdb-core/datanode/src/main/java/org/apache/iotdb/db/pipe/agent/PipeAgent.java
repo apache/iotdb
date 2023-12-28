@@ -23,8 +23,9 @@ import org.apache.iotdb.db.pipe.agent.plugin.PipePluginDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.receiver.PipeReceiverAgent;
 import org.apache.iotdb.db.pipe.agent.runtime.PipeRuntimeAgent;
 import org.apache.iotdb.db.pipe.agent.task.PipeTaskDataNodeAgent;
+import org.apache.iotdb.db.service.DataNode;
 
-/** PipeAgent is the entry point of the pipe module in DataNode. */
+/** {@link PipeAgent} is the entry point of the pipe module in {@link DataNode}. */
 public class PipeAgent {
 
   private final PipePluginDataNodeAgent pipePluginDataNodeAgent;
@@ -40,42 +41,42 @@ public class PipeAgent {
     pipeReceiverAgent = new PipeReceiverAgent();
   }
 
-  /** The singleton holder of PipeAgent. */
+  /** The singleton holder of {@link PipeAgent}. */
   private static class PipeAgentHolder {
     private static final PipeAgent HANDLE = new PipeAgent();
   }
 
   /**
-   * Get the singleton instance of PipeTaskAgent.
+   * Get the singleton instance of {@link PipeTaskDataNodeAgent}.
    *
-   * @return the singleton instance of PipeTaskAgent
+   * @return the singleton instance of {@link PipeTaskDataNodeAgent}
    */
   public static PipeTaskDataNodeAgent task() {
     return PipeAgentHolder.HANDLE.pipeTaskDataNodeAgent;
   }
 
   /**
-   * Get the singleton instance of PipePluginAgent.
+   * Get the singleton instance of {@link PipePluginDataNodeAgent}.
    *
-   * @return the singleton instance of PipePluginAgent
+   * @return the singleton instance of {@link PipePluginDataNodeAgent}
    */
   public static PipePluginDataNodeAgent plugin() {
     return PipeAgentHolder.HANDLE.pipePluginDataNodeAgent;
   }
 
   /**
-   * Get the singleton instance of PipeRuntimeAgent.
+   * Get the singleton instance of {@link PipeRuntimeAgent}.
    *
-   * @return the singleton instance of PipeRuntimeAgent
+   * @return the singleton instance of {@link PipeRuntimeAgent}
    */
   public static PipeRuntimeAgent runtime() {
     return PipeAgentHolder.HANDLE.pipeRuntimeAgent;
   }
 
   /**
-   * Get the singleton instance of PipeReceiverAgent.
+   * Get the singleton instance of {@link PipeReceiverAgent}.
    *
-   * @return the singleton instance of PipeReceiverAgent
+   * @return the singleton instance of {@link PipeReceiverAgent}
    */
   public static PipeReceiverAgent receiver() {
     return PipeAgentHolder.HANDLE.pipeReceiverAgent;
