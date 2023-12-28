@@ -210,6 +210,14 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
     useSSL = parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false);
     trustStore = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY);
     trustStorePwd = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY);
+
+    // To avoid security issues, we have removed 'sink.ssl.trust-store-pwd' from the pipe metadata
+    // parameters to prevent the leakage of keys in show pipe results or logs.
+    // The `attributeSortedString2SubtaskLifeCycleMap` in PipeConnectorSubtaskManager fully retains
+    // the parameters corresponding to the connector.
+    if (useSSL) {
+      parameters.getAttribute().remove(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY);
+    }
   }
 
   @Override

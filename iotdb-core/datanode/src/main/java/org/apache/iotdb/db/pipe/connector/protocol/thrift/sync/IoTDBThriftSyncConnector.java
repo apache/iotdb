@@ -156,6 +156,14 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
     final String trustStorePath = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY);
     final String trustStorePwd = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY);
 
+    // To avoid security issues, we have removed 'sink.ssl.trust-store-pwd' from the pipe metadata
+    // parameters to prevent the leakage of keys in show pipe results or logs.
+    // The `attributeSortedString2SubtaskLifeCycleMap` in PipeConnectorSubtaskManager fully retains
+    // the parameters corresponding to the connector.
+    if (useSSL) {
+      parameters.getAttribute().remove(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY);
+    }
+
     // leader cache configuration
     final boolean useLeaderCache =
         parameters.getBooleanOrDefault(
