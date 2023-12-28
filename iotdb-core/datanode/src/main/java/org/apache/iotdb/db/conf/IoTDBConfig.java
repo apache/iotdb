@@ -474,13 +474,6 @@ public class IoTDBConfig {
    */
   private boolean enableCompactionMemControl = true;
 
-  /**
-   * Enable lazy load chunk or page for aligned series inner sequence space compaction. This can
-   * reduce the memory usage of aligned series compaction in some cases but may affect compaction
-   * performance.
-   */
-  private boolean enableLazyLoadForAlignedSeriesCompaction = false;
-
   private double chunkMetadataSizeProportion = 0.1;
 
   /** The target tsfile size in compaction, 2 GB by default */
@@ -697,9 +690,6 @@ public class IoTDBConfig {
 
   /** The limit of compaction merge can reach per second */
   private int compactionWriteThroughputMbPerSec = 16;
-
-  /** The limit of compaction rewrite point num can reach per second */
-  private int compactionRewritePointNumPerSec = 0;
 
   /**
    * How many thread will be set up to perform compaction, 10 by default. Set to 1 when less than or
