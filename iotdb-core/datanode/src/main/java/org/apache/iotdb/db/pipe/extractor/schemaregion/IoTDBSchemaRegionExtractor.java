@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.pipe.extractor.schemaregion;
 
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.datastructure.ConcurrentIterableLinkedQueue;
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb.IoTDBCommonExtractor;
@@ -79,9 +81,15 @@ public class IoTDBSchemaRegionExtractor extends IoTDBCommonExtractor {
 
   @Override
   public void start() throws Exception {
-    itr =
-        SchemaNodeListeningQueue.getInstance(schemaRegionId)
-            .newIterator(((MetaProgressIndex) pipeTaskMeta.getProgressIndex()).getIndex());
+    ProgressIndex progressIndex = pipeTaskMeta.getProgressIndex();
+    int index;
+    if (progressIndex instanceof MinimumProgressIndex) {
+      // TODO: Trigger snapshot if not exists and return nearest snapshots' first index
+      index = 0;
+    } else {
+      index = ((MetaProgressIndex) progressIndex).getIndex();
+    }
+    itr = SchemaNodeListeningQueue.getInstance(schemaRegionId).newIterator(index);
   }
 
   @Override

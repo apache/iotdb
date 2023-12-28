@@ -79,13 +79,14 @@ public class IoTDBConfigRegionExtractor extends IoTDBCommonExtractor {
   @Override
   public void start() throws Exception {
     ProgressIndex progressIndex = pipeTaskMeta.getProgressIndex();
+    int index;
     if (progressIndex instanceof MinimumProgressIndex) {
-      // TODO: Listen to snapshot
+      // TODO: Trigger snapshot if not exists and return nearest snapshots' first index
+      index = 0;
     } else {
-      itr =
-          ConfigPlanListeningQueue.getInstance()
-              .newIterator(((MetaProgressIndex) pipeTaskMeta.getProgressIndex()).getIndex());
+      index = ((MetaProgressIndex) progressIndex).getIndex();
     }
+    itr = ConfigPlanListeningQueue.getInstance().newIterator(index);
   }
 
   @Override
