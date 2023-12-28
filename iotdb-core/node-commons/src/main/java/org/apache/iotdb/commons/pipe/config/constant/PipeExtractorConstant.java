@@ -67,6 +67,9 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_REALTIME_MODE_STREAM_MODE_VALUE = "stream";
   public static final String EXTRACTOR_REALTIME_MODE_BATCH_MODE_VALUE = "batch";
 
+  public static final String SOURCE_START_TIME_KEY = "source.start-time";
+  public static final String SOURCE_END_TIME_KEY = "source.end-time";
+
   private PipeExtractorConstant() {
     throw new IllegalStateException("Utility class");
   }

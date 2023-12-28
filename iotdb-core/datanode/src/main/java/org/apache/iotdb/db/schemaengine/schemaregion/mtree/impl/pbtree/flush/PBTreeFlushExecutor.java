@@ -79,6 +79,7 @@ public class PBTreeFlushExecutor {
         processFlushDatabase(databaseMNode);
       } catch (Exception e) {
         exceptions.add(e);
+        logger.warn(e.getMessage(), e);
       }
     }
     while (subtreeRoots.hasNext() && checkRemainToFlush()) {
@@ -86,6 +87,7 @@ public class PBTreeFlushExecutor {
         processFlushNonDatabase(subtreeRoots.next());
       } catch (Exception e) {
         exceptions.add(e);
+        logger.warn(e.getMessage(), e);
       }
     }
     if (!exceptions.isEmpty()) {

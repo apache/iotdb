@@ -82,14 +82,14 @@ public abstract class PageManager implements IPageManager {
   protected final Lock cacheLock;
   protected final Condition cacheFull;
 
-  private final Map<Long, SchemaPageContext> threadContexts;
+  protected final Map<Long, SchemaPageContext> threadContexts;
 
   protected final AtomicInteger lastPageIndex;
 
   private final FileChannel channel;
 
   // handle timeout interruption during reading
-  private File pmtFile;
+  private final File pmtFile;
   private FileChannel readChannel;
 
   private final AtomicInteger logCounter;
@@ -160,8 +160,7 @@ public abstract class PageManager implements IPageManager {
     if (!res.isEmpty()) {
       try (FileOutputStream outputStream = new FileOutputStream(logPath, true)) {
         outputStream.write(new byte[] {SchemaFileConfig.SF_COMMIT_MARK});
-        long length = outputStream.getChannel().size();
-        return length;
+        return outputStream.getChannel().size();
       }
     }
     return 0L;
@@ -227,23 +226,26 @@ public abstract class PageManager implements IPageManager {
   }
 
   /** Context only tracks write locks, and so it shall be released. */
-  protected void releaseLocks(SchemaPageContext cxt) throws IOException, MetadataException {
+  protected void releaseLocks(SchemaPageContext cxt) {
     for (int i : cxt.lockTraces) {
       pageInstCache.get(i).getLock().writeLock().unlock();
     }
   }
 
   /** release referents and evict likely useless page if necessary */
-  protected void releaseReferent(SchemaPageContext cxt) throws IOException, MetadataException {
+  protected void releaseReferent(SchemaPageContext cxt) {
     for (ISchemaPage p : cxt.referredPages.values()) {
-      p.getRefCnt().decrementAndGet();
+      p.decrementAndGetRefCnt();
     }
 
     if (pageInstCache.size() > SchemaFileConfig.PAGE_CACHE_SIZE) {
       cacheLock.lock();
       try {
         for (ISchemaPage p : cxt.referredPages.values()) {
-          if (p.getRefCnt().get() == 0) {
+          // unnecessary to evict the page object in context by 2 case:
+          //  1. it is held by another thread, e.g., RefCnt != 0
+          //  2. it had already been evicted, e.g., pageCache.get(id) != page
+          if (p.getRefCnt().get() == 0 && pageInstCache.get(p.getPageIndex()) == p) {
             pageInstCache.remove(p.getPageIndex());
           }
         }
@@ -402,7 +404,7 @@ public abstract class PageManager implements IPageManager {
 
   private void writeUpdatedChildren(ICachedMNode node, SchemaPageContext cxt)
       throws MetadataException, IOException {
-    boolean removeOldSubEntry = false, insertNewSubEntry = false;
+    boolean removeOldSubEntry, insertNewSubEntry;
     int subIndex;
     long curSegAddr = getNodeAddress(node);
     long actualAddress; // actual segment to write record
@@ -528,11 +530,7 @@ public abstract class PageManager implements IPageManager {
       ISchemaPage curPage, String key, ByteBuffer childBuffer, SchemaPageContext cxt)
       throws MetadataException, IOException;
 
-  /**
-   * Same as {@linkplain #multiPageInsertOverflowOperation}
-   *
-   * @return the top internal page
-   */
+  /** Same as {@linkplain #multiPageInsertOverflowOperation} */
   protected abstract void multiPageUpdateOverflowOperation(
       ISchemaPage curPage, String key, ByteBuffer childBuffer, SchemaPageContext cxt)
       throws MetadataException, IOException;
@@ -654,12 +652,12 @@ public abstract class PageManager implements IPageManager {
       cxt.lastLeafPage.getLock().writeLock().unlock();
       cxt.lockTraces.remove(cxt.lastLeafPage.getPageIndex());
     }
-    cxt.lastLeafPage.getRefCnt().decrementAndGet();
+    cxt.lastLeafPage.decrementAndGetRefCnt();
 
     // can be reclaimed since the page only referred by pageInstCache
     cxt.referredPages.remove(cxt.lastLeafPage.getPageIndex());
     // alleviate eviction pressure
-    pageInstCache.remove(cxt.lastLeafPage);
+    pageInstCache.remove(cxt.lastLeafPage.getPageIndex());
 
     cxt.lastLeafPage = page.getAsSegmentedPage();
   }
@@ -762,22 +760,28 @@ public abstract class PageManager implements IPageManager {
       return targetPage.getAsSegmentedPage();
     }
 
-    // pageIndexBuckets sorts pages within pageInstCache into buckets to expedite access
-    targetPage = pageIndexBuckets.getNearestFitPage(size, true);
-    if (targetPage != null) {
-      cxt.markDirty(targetPage);
-      cxt.traceLock(targetPage);
+    cacheLock.lock();
+    try {
+      // pageIndexBuckets sorts pages within pageInstCache into buckets to expedite access
+      targetPage = pageIndexBuckets.getNearestFitPage(size, true);
+      if (targetPage != null) {
+        cxt.markDirty(targetPage);
+        cxt.traceLock(targetPage);
 
-      // transfer the page from pageIndexBuckets to cxt.buckets thus not be accessed by other WRITE
-      // thread
+        // transfer the page from pageIndexBuckets to cxt.buckets thus not be accessed by other
+        // WRITE
+        // thread
+        cxt.indexBuckets.sortIntoBucket(targetPage, size);
+        return targetPage.getAsSegmentedPage();
+      }
+
+      // due to be dirty thus its index only sorted into local buckets
+      targetPage = allocNewSegmentedPage(cxt);
       cxt.indexBuckets.sortIntoBucket(targetPage, size);
       return targetPage.getAsSegmentedPage();
+    } finally {
+      cacheLock.unlock();
     }
-
-    // due to be dirty thus its index only sorted into local buckets
-    targetPage = allocNewSegmentedPage(cxt);
-    cxt.indexBuckets.sortIntoBucket(targetPage, size);
-    return targetPage.getAsSegmentedPage();
   }
 
   protected ISchemaPage allocNewSegmentedPage(SchemaPageContext cxt) {
@@ -842,12 +846,7 @@ public abstract class PageManager implements IPageManager {
         + SchemaFileConfig.FILE_HEADER_SIZE;
   }
 
-  /**
-   * Estimate segment size for pre-allocate
-   *
-   * @param node
-   * @return
-   */
+  /** Estimate segment size for pre-allocate */
   private static short estimateSegmentSize(ICachedMNode node) {
     int childNum = node.getChildren().size();
     if (childNum < SchemaFileConfig.SEG_SIZE_METRIC[0]) {
@@ -891,7 +890,6 @@ public abstract class PageManager implements IPageManager {
    * @param expSize expected size calculated from next new record
    * @param batchSize size of children within one #writeNewChildren(ICachedMNode)
    * @return estimated size
-   * @throws MetadataException
    */
   private static short reEstimateSegSize(int expSize, int batchSize) throws MetadataException {
     if (batchSize < SchemaFileConfig.SEG_SIZE_METRIC[0]) {
@@ -1032,7 +1030,7 @@ public abstract class PageManager implements IPageManager {
     // referred pages will not be evicted until operation finished
     private void refer(ISchemaPage page) {
       if (!referredPages.containsKey(page.getPageIndex())) {
-        page.getRefCnt().incrementAndGet();
+        page.incrementAndGetRefCnt();
         referredPages.put(page.getPageIndex(), page);
       }
     }
@@ -1069,7 +1067,7 @@ public abstract class PageManager implements IPageManager {
 
     public PageIndexSortBuckets(short[] borders, Map<Integer, ISchemaPage> container) {
       bounds = Arrays.copyOf(borders, borders.length);
-      buckets = new LinkedList[borders.length];
+      buckets = (LinkedList<Integer>[]) new LinkedList[borders.length];
       pageContainer = container;
       for (int i = 0; i < borders.length; i++) {
         buckets[i] = new LinkedList<>();

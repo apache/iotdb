@@ -51,6 +51,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
@@ -101,6 +102,8 @@ public abstract class AbstractMemTable implements IMemTable {
   private String dataRegionId;
 
   private static final String METRIC_POINT_IN = Metric.POINTS_IN.toString();
+
+  private final AtomicBoolean isTotallyGeneratedByPipe = new AtomicBoolean(true);
 
   protected AbstractMemTable() {
     this.database = null;
@@ -708,5 +711,15 @@ public abstract class AbstractMemTable implements IMemTable {
   public void setDatabaseAndDataRegionId(String database, String dataRegionId) {
     this.database = database;
     this.dataRegionId = dataRegionId;
+  }
+
+  @Override
+  public void markAsNotGeneratedByPipe() {
+    this.isTotallyGeneratedByPipe.set(false);
+  }
+
+  @Override
+  public boolean isTotallyGeneratedByPipe() {
+    return this.isTotallyGeneratedByPipe.get();
   }
 }

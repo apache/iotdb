@@ -244,6 +244,8 @@ public class TsFileProcessor {
       long startTime = System.nanoTime();
       createNewWorkingMemTable();
       PERFORMANCE_OVERVIEW_METRICS.recordCreateMemtableBlockCost(System.nanoTime() - startTime);
+      WritingMetrics.getInstance()
+          .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), 1);
     }
 
     long[] memIncrements = null;
@@ -286,6 +288,9 @@ public class TsFileProcessor {
     startTime = System.nanoTime();
 
     PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowNode);
+    if (!insertRowNode.isGeneratedByPipe()) {
+      workMemTable.markAsNotGeneratedByPipe();
+    }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
@@ -397,6 +402,9 @@ public class TsFileProcessor {
     startTime = System.nanoTime();
 
     PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertTabletNode);
+    if (!insertTabletNode.isGeneratedByPipe()) {
+      workMemTable.markAsNotGeneratedByPipe();
+    }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
@@ -701,7 +709,7 @@ public class TsFileProcessor {
 
   private void updateMemoryInfo(
       long memTableIncrement, long chunkMetadataIncrement, long textDataIncrement)
-      throws WriteProcessException {
+      throws WriteProcessRejectException {
     memTableIncrement += textDataIncrement;
     dataRegionInfo.addStorageGroupMemCost(memTableIncrement);
     tsFileProcessorInfo.addTSPMemCost(chunkMetadataIncrement);
@@ -802,6 +810,8 @@ public class TsFileProcessor {
           "The avg series points num {} of tsfile {} reaches the threshold",
           workMemTable.getTotalPointsNum() / workMemTable.getSeriesNumber(),
           tsFileResource.getTsFile().getAbsolutePath());
+      WritingMetrics.getInstance()
+          .recordSeriesFullFlushMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), 1);
       return true;
     }
     return false;
@@ -908,7 +918,10 @@ public class TsFileProcessor {
       try {
         PipeInsertionDataNodeListener.getInstance()
             .listenToTsFile(
-                dataRegionInfo.getDataRegion().getDataRegionId(), tsFileResource, false, false);
+                dataRegionInfo.getDataRegion().getDataRegionId(),
+                tsFileResource,
+                false,
+                tmpMemTable.isTotallyGeneratedByPipe());
 
         // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
         // flushing memTable in System module.
@@ -1057,6 +1070,10 @@ public class TsFileProcessor {
     if (!(tobeFlushed.isSignalMemTable() || tobeFlushed.isEmpty())) {
       totalMemTableSize += tobeFlushed.memSize();
     }
+    WritingMetrics.getInstance()
+        .recordMemTableLiveDuration(System.currentTimeMillis() - getWorkMemTableCreatedTime());
+    WritingMetrics.getInstance()
+        .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), -1);
     workMemTable = null;
     return FlushManager.getInstance().registerTsFileProcessor(this);
   }
