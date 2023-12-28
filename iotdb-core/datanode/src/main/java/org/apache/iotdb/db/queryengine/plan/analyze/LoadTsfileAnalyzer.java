@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.LoadReadOnlyException;
@@ -96,10 +97,16 @@ public class LoadTsfileAnalyzer {
 
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
-  private static final long ANALYZE_SCHEMA_MEMORY_BLOCK_SIZE_IN_BYTES = 16 * 1024 * 1024L; // 16 MB
-  private static final int FLUSH_BATCH_TIME_SERIES_NUMBER = 4096;
-  private static final long FLUSH_ALIGNED_CACHE_MEMORY_SIZE_IN_BYTES =
-      ANALYZE_SCHEMA_MEMORY_BLOCK_SIZE_IN_BYTES >> 1; // 8 MB
+  private static final long ANALYZE_SCHEMA_MEMORY_SIZE_IN_BYTES;
+  private static final int BATCH_FLUSH_TIME_SERIES_NUMBER;
+  private static final long FLUSH_ALIGNED_CACHE_MEMORY_SIZE_IN_BYTES;
+
+  static {
+    final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+    ANALYZE_SCHEMA_MEMORY_SIZE_IN_BYTES = CONFIG.getLoadTsFileAnalyzeSchemaMemorySizeInByte();
+    BATCH_FLUSH_TIME_SERIES_NUMBER = CONFIG.getLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber();
+    FLUSH_ALIGNED_CACHE_MEMORY_SIZE_IN_BYTES = ANALYZE_SCHEMA_MEMORY_SIZE_IN_BYTES >> 1;
+  }
 
   private final LoadTsFileStatement loadTsFileStatement;
   private final MPPQueryContext context;
@@ -635,9 +642,9 @@ public class LoadTsfileAnalyzer {
 
     private final LoadTsFileAnalyzeSchemaMemoryBlock block;
 
-    private final Map<String, Set<MeasurementSchema>> currentBatchDevice2TimeSeriesSchemas;
-    private final Map<String, Boolean> tsFileDevice2IsAligned;
-    private final Set<PartialPath> alreadySetDatabases;
+    private Map<String, Set<MeasurementSchema>> currentBatchDevice2TimeSeriesSchemas;
+    private Map<String, Boolean> tsFileDevice2IsAligned;
+    private Set<PartialPath> alreadySetDatabases;
 
     private long batchDevice2TimeSeriesSchemasMemoryUsageSizeInBytes = 0;
     private long tsFileDevice2IsAlignedMemoryUsageSizeInBytes = 0;
@@ -648,7 +655,7 @@ public class LoadTsfileAnalyzer {
     public LoadTsFileAnalyzeSchemaCache() throws LoadRuntimeOutOfMemoryException {
       this.block =
           LoadTsFileMemoryManager.getInstance()
-              .allocateAnalyzeSchemaMemoryBlock(ANALYZE_SCHEMA_MEMORY_BLOCK_SIZE_IN_BYTES);
+              .allocateAnalyzeSchemaMemoryBlock(ANALYZE_SCHEMA_MEMORY_SIZE_IN_BYTES);
       this.currentBatchDevice2TimeSeriesSchemas = new HashMap<>();
       this.tsFileDevice2IsAligned = new HashMap<>();
       this.alreadySetDatabases = new HashSet<>();
@@ -721,7 +728,7 @@ public class LoadTsfileAnalyzer {
 
     public boolean shouldFlushTimeSeries() {
       return !block.hasEnoughMemory()
-          || currentBatchTimeSeriesCount >= FLUSH_BATCH_TIME_SERIES_NUMBER;
+          || currentBatchTimeSeriesCount >= BATCH_FLUSH_TIME_SERIES_NUMBER;
     }
 
     public boolean shouldFlushAlignedCache() {
@@ -776,6 +783,10 @@ public class LoadTsfileAnalyzer {
       clearDatabasesCache();
 
       block.close();
+
+      currentBatchDevice2TimeSeriesSchemas = null;
+      tsFileDevice2IsAligned = null;
+      alreadySetDatabases = null;
     }
 
     /**

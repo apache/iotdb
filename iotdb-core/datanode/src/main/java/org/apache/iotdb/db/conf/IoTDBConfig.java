@@ -233,6 +233,7 @@ public class IoTDBConfig {
 
   /** The period when outdated wal files are periodically deleted. Unit: millisecond */
   private volatile long deleteWalFilesPeriodInMs = 20 * 1000L;
+
   // endregion
 
   /**
@@ -541,6 +542,7 @@ public class IoTDBConfig {
    * tasks containing mods files are selected first.
    */
   private long innerCompactionTaskSelectionModsFileThreshold = 10 * 1024 * 1024L;
+
   /**
    * When disk availability is lower than the sum of (disk_space_warning_threshold +
    * inner_compaction_task_selection_disk_redundancy), inner compaction tasks containing mods files
@@ -966,6 +968,7 @@ public class IoTDBConfig {
 
   /** Number of queues per forwarding trigger */
   private int triggerForwardMaxQueueNumber = 8;
+
   /** The length of one of the queues per forwarding trigger */
   private int triggerForwardMaxSizePerQueue = 2000;
 
@@ -1092,12 +1095,14 @@ public class IoTDBConfig {
   private double maxMemoryRatioForQueue = 0.6;
 
   /** Load related */
-  private int maxLoadingTimeseriesNumber = 2000;
+  private int loadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber = 4096;
+
+  private long loadTsFileAnalyzeSchemaMemorySizeInByte = 16 * 1024 * 1024L; // 16 MB
 
   // TODO: remove loadMemoryTotalSizeFromQueryInBytes after introducing queryEngine memory manager
   private long loadMemoryTotalSizeFromQueryInBytes = 512 * 1024 * 1024L;
   private long loadMemoryAllocateRetryIntervalMs = 1000;
-  private int loadMemoryAllocateMaxRetries = 10;
+  private int loadMemoryAllocateMaxRetries = 5;
 
   /** Pipe related */
   /** initialized as empty, updated based on the latest `systemDir` during querying */
@@ -3741,12 +3746,23 @@ public class IoTDBConfig {
     this.loadMemoryTotalSizeFromQueryInBytes = loadMemoryTotalSizeFromQueryInBytes;
   }
 
-  public int getMaxLoadingTimeseriesNumber() {
-    return maxLoadingTimeseriesNumber;
+  public int getLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber() {
+    return loadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber;
   }
 
-  public void setMaxLoadingTimeseriesNumber(int maxLoadingTimeseriesNumber) {
-    this.maxLoadingTimeseriesNumber = maxLoadingTimeseriesNumber;
+  public void setLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber(
+      int loadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber) {
+    this.loadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber =
+        loadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber;
+  }
+
+  public long getLoadTsFileAnalyzeSchemaMemorySizeInByte() {
+    return loadTsFileAnalyzeSchemaMemorySizeInByte;
+  }
+
+  public void setLoadTsFileAnalyzeSchemaMemorySizeInByte(
+      long loadTsFileAnalyzeSchemaMemorySizeInByte) {
+    this.loadTsFileAnalyzeSchemaMemorySizeInByte = loadTsFileAnalyzeSchemaMemorySizeInByte;
   }
 
   public long getLoadMemoryAllocateRetryIntervalMs() {

@@ -43,13 +43,8 @@ public class DeletionData implements TsFileData {
 
   public void writeToModificationFile(ModificationFile modificationFile, long fileOffset)
       throws IOException {
-    //    File tsFile = writer.getFile();
-    //    try (ModificationFile modificationFile =
-    //        new ModificationFile(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX)) {
-    //      writer.flush();
     deletion.setFileOffset(fileOffset);
     modificationFile.writeWithoutSync(deletion);
-    //    }
   }
 
   @Override

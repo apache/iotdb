@@ -42,6 +42,11 @@ public abstract class LoadTsFileAbstractMemoryBlock implements AutoCloseable {
 
   public abstract void reduceMemoryUsage(long memoryInBytes);
 
+  /**
+   * Release all memory of this block.
+   *
+   * <p>NOTE: This method should be called only by {@link LoadTsFileAbstractMemoryBlock#close()}.
+   */
   protected abstract void releaseAllMemory();
 
   public boolean isClosed() {

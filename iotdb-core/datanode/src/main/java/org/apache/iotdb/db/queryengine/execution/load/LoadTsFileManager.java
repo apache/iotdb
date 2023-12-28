@@ -254,7 +254,6 @@ public class LoadTsFileManager {
         throw new IOException(String.format(MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED, taskDir));
       }
       for (Map.Entry<DataPartitionInfo, TsFileIOWriter> entry : dataPartition2Writer.entrySet()) {
-        //        deletionData.writeToFileWriter(entry.getValue());
         final DataPartitionInfo partitionInfo = entry.getKey();
         if (partitionInfo.getDataRegion().equals(dataRegion)) {
           final TsFileIOWriter writer = entry.getValue();
