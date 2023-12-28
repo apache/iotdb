@@ -29,10 +29,6 @@ import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftSyncPipeTransferBatchReqBuilder;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
@@ -420,7 +416,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
                   clientAndStatus
                       .getLeft()
                       .pipeTransfer(
-                          PipeTransferFilePieceReq.toTPipeTransferReq(
+                          PipeTransferTsFilePieceReq.toTPipeTransferReq(
                               tsFile.getName(),
                               position,
                               readLength == readFileBufferSize
@@ -460,7 +456,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
           clientAndStatus
               .getLeft()
               .pipeTransfer(
-                  PipeTransferFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()));
+                  PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()));
     } catch (Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
