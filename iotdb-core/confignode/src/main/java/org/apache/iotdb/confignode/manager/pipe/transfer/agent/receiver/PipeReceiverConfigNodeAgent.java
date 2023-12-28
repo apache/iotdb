@@ -20,7 +20,6 @@
 package org.apache.iotdb.confignode.manager.pipe.transfer.agent.receiver;
 
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.pipe.receiver.IoTDBConfigReceiverAgent;
 
 import org.apache.commons.io.FileUtils;
@@ -35,8 +34,8 @@ public class PipeReceiverConfigNodeAgent {
 
   private final IoTDBConfigReceiverAgent configAgent;
 
-  public PipeReceiverConfigNodeAgent(ConfigManager configManager) {
-    configAgent = new IoTDBConfigReceiverAgent(configManager);
+  public PipeReceiverConfigNodeAgent() {
+    configAgent = new IoTDBConfigReceiverAgent();
   }
 
   public IoTDBConfigReceiverAgent config() {

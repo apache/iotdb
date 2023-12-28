@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.manager.pipe.transfer.agent;
 
-import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.plugin.PipePluginConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.receiver.PipeReceiverConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.task.PipeTaskConfigNodeAgent;
@@ -34,21 +33,15 @@ public class PipeConfigNodeAgent {
   private final PipeReceiverConfigNodeAgent pipeReceiverConfigNodeAgent;
 
   /** Private constructor to prevent users from creating a new instance. */
-  private PipeConfigNodeAgent(ConfigManager configManager) {
+  private PipeConfigNodeAgent() {
     pipeConfigNodeTaskAgent = new PipeTaskConfigNodeAgent();
     pipePluginConfigNodeAgent = new PipePluginConfigNodeAgent();
-    pipeReceiverConfigNodeAgent = new PipeReceiverConfigNodeAgent(configManager);
+    pipeReceiverConfigNodeAgent = new PipeReceiverConfigNodeAgent();
   }
 
   /** The singleton holder of {@link PipeConfigNodeAgent}. */
   private static class PipeConfigNodeAgentHolder {
-    private static PipeConfigNodeAgent handle;
-  }
-
-  public static void createInstance(ConfigManager configManager) {
-    if (PipeConfigNodeAgentHolder.handle == null) {
-      PipeConfigNodeAgentHolder.handle = new PipeConfigNodeAgent(configManager);
-    }
+    private static final PipeConfigNodeAgent HANDLE = new PipeConfigNodeAgent();
   }
 
   /**
@@ -57,7 +50,7 @@ public class PipeConfigNodeAgent {
    * @return the singleton instance of {@link PipeTaskConfigNodeAgent}
    */
   public static PipeTaskConfigNodeAgent task() {
-    return PipeConfigNodeAgentHolder.handle.pipeConfigNodeTaskAgent;
+    return PipeConfigNodeAgentHolder.HANDLE.pipeConfigNodeTaskAgent;
   }
 
   /**
@@ -66,7 +59,7 @@ public class PipeConfigNodeAgent {
    * @return the singleton instance of {@link PipePluginDataNodeAgent}
    */
   public static PipePluginConfigNodeAgent plugin() {
-    return PipeConfigNodeAgentHolder.handle.pipePluginConfigNodeAgent;
+    return PipeConfigNodeAgentHolder.HANDLE.pipePluginConfigNodeAgent;
   }
 
   /**
@@ -75,6 +68,6 @@ public class PipeConfigNodeAgent {
    * @return the singleton instance of {@link PipeReceiverConfigNodeAgent}
    */
   public static PipeReceiverConfigNodeAgent receiver() {
-    return PipeConfigNodeAgentHolder.handle.pipeReceiverConfigNodeAgent;
+    return PipeConfigNodeAgentHolder.HANDLE.pipeReceiverConfigNodeAgent;
   }
 }

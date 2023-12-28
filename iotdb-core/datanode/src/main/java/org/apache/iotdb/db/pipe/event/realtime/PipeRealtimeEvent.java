@@ -27,8 +27,9 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpoch;
 import java.util.Map;
 
 /**
- * PipeRealtimeEvent is an event that decorates the EnrichedEvent with the information of
- * TsFileEpoch and schema info. It only exists in the realtime event extractor.
+ * {@link PipeRealtimeEvent} is an event that decorates the {@link EnrichedEvent} with the
+ * information of {@link TsFileEpoch} and schema info. It only exists in the realtime event
+ * extractor.
  */
 public class PipeRealtimeEvent extends EnrichedEvent {
 
