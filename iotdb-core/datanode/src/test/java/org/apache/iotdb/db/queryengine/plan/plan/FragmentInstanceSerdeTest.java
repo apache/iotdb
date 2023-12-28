@@ -39,7 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TimeJoinNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
@@ -136,7 +136,8 @@ public class FragmentInstanceSerdeTest {
     OffsetNode offsetNode = new OffsetNode(new PlanNodeId("OffsetNode"), 100);
     LimitNode limitNode = new LimitNode(new PlanNodeId("LimitNode"), 100);
 
-    TimeJoinNode timeJoinNode = new TimeJoinNode(new PlanNodeId("TimeJoinNode"), Ordering.DESC);
+    FullOuterTimeJoinNode fullOuterTimeJoinNode =
+        new FullOuterTimeJoinNode(new PlanNodeId("TimeJoinNode"), Ordering.DESC);
     SeriesScanNode seriesScanNode1 =
         new SeriesScanNode(new PlanNodeId("SeriesScanNode1"), new MeasurementPath("root.sg.d1.s2"));
     seriesScanNode1.setScanOrder(Ordering.DESC);
@@ -148,10 +149,10 @@ public class FragmentInstanceSerdeTest {
     seriesScanNode3.setScanOrder(Ordering.DESC);
 
     // build tree
-    timeJoinNode.addChild(seriesScanNode1);
-    timeJoinNode.addChild(seriesScanNode2);
-    timeJoinNode.addChild(seriesScanNode3);
-    limitNode.addChild(timeJoinNode);
+    fullOuterTimeJoinNode.addChild(seriesScanNode1);
+    fullOuterTimeJoinNode.addChild(seriesScanNode2);
+    fullOuterTimeJoinNode.addChild(seriesScanNode3);
+    limitNode.addChild(fullOuterTimeJoinNode);
     offsetNode.addChild(limitNode);
 
     return offsetNode;

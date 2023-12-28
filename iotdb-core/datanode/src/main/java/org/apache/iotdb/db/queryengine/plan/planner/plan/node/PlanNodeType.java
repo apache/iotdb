@@ -79,9 +79,11 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ProjectNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.InnerTimeJoinNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.LeftOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
@@ -118,7 +120,7 @@ public enum PlanNodeType {
   LIMIT((short) 6),
   OFFSET((short) 7),
   SORT((short) 8),
-  TIME_JOIN((short) 9),
+  FULL_OUTER_TIME_JOIN((short) 9),
   FRAGMENT_SINK((short) 10),
   SERIES_SCAN((short) 11),
   SERIES_AGGREGATE_SCAN((short) 12),
@@ -196,7 +198,9 @@ public enum PlanNodeType {
   PIPE_ENRICHED_DELETE_DATA((short) 84),
   PIPE_ENRICHED_WRITE_SCHEMA((short) 85),
   PIPE_ENRICHED_DELETE_SCHEMA((short) 86),
-  ;
+
+  INNER_TIME_JOIN((short) 87),
+  LEFT_OUTER_TIME_JOIN((short) 88);
 
   public static final int BYTES = Short.BYTES;
 
@@ -270,7 +274,7 @@ public enum PlanNodeType {
       case 8:
         return SortNode.deserialize(buffer);
       case 9:
-        return TimeJoinNode.deserialize(buffer);
+        return FullOuterTimeJoinNode.deserialize(buffer);
       case 11:
         return SeriesScanNode.deserialize(buffer);
       case 12:
@@ -417,7 +421,10 @@ public enum PlanNodeType {
         return PipeEnrichedWriteSchemaNode.deserialize(buffer);
       case 86:
         return PipeEnrichedConfigSchemaNode.deserialize(buffer);
-
+      case 87:
+        return InnerTimeJoinNode.deserialize(buffer);
+      case 88:
+        return LeftOuterTimeJoinNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

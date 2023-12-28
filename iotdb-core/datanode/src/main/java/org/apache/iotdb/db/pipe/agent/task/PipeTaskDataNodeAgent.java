@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.pipe.agent.task;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
@@ -36,8 +37,9 @@ import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeBuilder;
-import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeTaskDataRegionBuilder;
-import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeTaskSchemaRegionBuilder;
+import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeTaskBuilder;
+import org.apache.iotdb.db.schemaengine.SchemaEngine;
+import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
@@ -55,8 +57,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.ConfigRegion;
-
 public class PipeTaskDataNodeAgent extends PipeTaskAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskDataNodeAgent.class);
@@ -71,7 +71,7 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
   }
 
   @Override
-  protected Map<TConsensusGroupId, PipeTask> buildPipeTasks(PipeMeta pipeMetaFromConfigNode) {
+  protected Map<Integer, PipeTask> buildPipeTasks(PipeMeta pipeMetaFromConfigNode) {
     return new PipeDataNodeBuilder(pipeMetaFromConfigNode).build();
   }
 
@@ -103,7 +103,7 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
                   .values()
                   .forEach(
                       pipeTaskMeta -> {
-                        if (pipeTaskMeta.getLeaderDataNodeId() != currentDataNodeId) {
+                        if (pipeTaskMeta.getLeaderNodeId() != currentDataNodeId) {
                           return;
                         }
 
@@ -128,7 +128,7 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
                   .values()
                   .forEach(
                       pipeTaskMeta -> {
-                        if (pipeTaskMeta.getLeaderDataNodeId() == currentDataNodeId
+                        if (pipeTaskMeta.getLeaderNodeId() == currentDataNodeId
                             && reusedConnectorParameters2ExceptionMap.containsKey(
                                 staticMeta.getConnectorParameters())
                             && !pipeTaskMeta.containsExceptionMessage(
@@ -181,31 +181,24 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
             });
   }
 
-  ///////////////////////// Manage by dataRegionGroupId /////////////////////////
+  ///////////////////////// Manage by regionGroupId /////////////////////////
 
   @Override
   protected void createPipeTask(
-      TConsensusGroupId consensusGroupId,
-      PipeStaticMeta pipeStaticMeta,
-      PipeTaskMeta pipeTaskMeta) {
-    if (consensusGroupId.getType() != ConfigRegion
-        && pipeTaskMeta.getLeaderDataNodeId() == CONFIG.getDataNodeId()) {
+      int consensusGroupId, PipeStaticMeta pipeStaticMeta, PipeTaskMeta pipeTaskMeta) {
+    if (pipeTaskMeta.getLeaderNodeId() == CONFIG.getDataNodeId()) {
       final PipeDataNodeTask pipeTask;
-      switch (consensusGroupId.getType()) {
-        case DataRegion:
-          pipeTask =
-              new PipeDataNodeTaskDataRegionBuilder(pipeStaticMeta, consensusGroupId, pipeTaskMeta)
-                  .build();
-          break;
-        case SchemaRegion:
-          pipeTask =
-              new PipeDataNodeTaskSchemaRegionBuilder(
-                      pipeStaticMeta, consensusGroupId, pipeTaskMeta)
-                  .build();
-          break;
-        default:
-          throw new UnsupportedOperationException(
-              "Unsupported consensus group type: " + consensusGroupId.getType());
+      if (StorageEngine.getInstance()
+              .getAllDataRegionIds()
+              .contains(new DataRegionId(consensusGroupId))
+          || SchemaEngine.getInstance()
+              .getAllSchemaRegionIds()
+              .contains(new SchemaRegionId(consensusGroupId))) {
+        pipeTask =
+            new PipeDataNodeTaskBuilder(pipeStaticMeta, consensusGroupId, pipeTaskMeta).build();
+      } else {
+        throw new UnsupportedOperationException(
+            "Unsupported consensus group id: " + consensusGroupId);
       }
       pipeTask.create();
       pipeTaskManager.addPipeTask(pipeStaticMeta, consensusGroupId, pipeTask);

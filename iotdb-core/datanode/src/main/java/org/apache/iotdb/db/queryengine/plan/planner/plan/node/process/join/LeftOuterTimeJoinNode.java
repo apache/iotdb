@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,40 +16,54 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.queryengine.plan.planner.plan.node.process;
+
+package org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TwoChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 /**
- * This node is responsible for join two or more TsBlock. The join algorithm is like outer join by
- * timestamp column. It will join two or more TsBlock by Timestamp column. The output result of
- * TimeJoinOperator is sorted by timestamp
+ * This node is responsible for joining two TsBlock.
+ *
+ * <p>The join algorithm is <b>left join</b> on timestamp column —— take the time column of the
+ * <b>left child</b> as the time column of the result. If a timestamp does not exist in the right
+ * child, it will be null in the corresponding row of the result. The output result is sorted by
+ * timestamp.
+ *
+ * <p>e.g.
+ *
+ * <pre>
+ *   [series1]  [series2]  [series1 join series2]
+ *   time, s1   time, s2   time, s1,   s2
+ *      1,  1                 1,  1, null
+ *      2,  2      2,  2      2,  2,    2
+ *                 3,  3
+ * </pre>
  */
-public class TimeJoinNode extends MultiChildProcessNode {
+public class LeftOuterTimeJoinNode extends TwoChildProcessNode {
 
   // This parameter indicates the order when executing multiway merge sort.
   private final Ordering mergeOrder;
 
-  public TimeJoinNode(PlanNodeId id, Ordering mergeOrder) {
-    super(id, new ArrayList<>());
+  public LeftOuterTimeJoinNode(PlanNodeId id, Ordering mergeOrder) {
+    super(id);
     this.mergeOrder = mergeOrder;
   }
 
-  public TimeJoinNode(PlanNodeId id, Ordering mergeOrder, List<PlanNode> children) {
-    super(id, children);
+  public LeftOuterTimeJoinNode(
+      PlanNodeId id, Ordering mergeOrder, PlanNode leftChild, PlanNode rightChild) {
+    super(id, leftChild, rightChild);
     this.mergeOrder = mergeOrder;
   }
 
@@ -58,58 +72,43 @@ public class TimeJoinNode extends MultiChildProcessNode {
   }
 
   @Override
-  public PlanNodeType getType() {
-    return PlanNodeType.TIME_JOIN;
-  }
-
-  @Override
   public PlanNode clone() {
-    return new TimeJoinNode(getPlanNodeId(), getMergeOrder());
-  }
-
-  @Override
-  public PlanNode createSubNode(int subNodeId, int startIndex, int endIndex) {
-    return new TimeJoinNode(
-        new PlanNodeId(String.format("%s-%s", getPlanNodeId(), subNodeId)),
-        getMergeOrder(),
-        new ArrayList<>(children.subList(startIndex, endIndex)));
+    return new LeftOuterTimeJoinNode(getPlanNodeId(), getMergeOrder());
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return children.stream()
-        .map(PlanNode::getOutputColumnNames)
-        .flatMap(List::stream)
-        .distinct()
-        .collect(Collectors.toList());
+    List<String> outputColumnNames = leftChild.getOutputColumnNames();
+    outputColumnNames.addAll(rightChild.getOutputColumnNames());
+    return outputColumnNames;
   }
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitTimeJoin(this, context);
+    return visitor.visitLeftOuterTimeJoin(this, context);
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.TIME_JOIN.serialize(byteBuffer);
+    PlanNodeType.LEFT_OUTER_TIME_JOIN.serialize(byteBuffer);
     ReadWriteIOUtils.write(mergeOrder.ordinal(), byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.TIME_JOIN.serialize(stream);
+    PlanNodeType.LEFT_OUTER_TIME_JOIN.serialize(stream);
     ReadWriteIOUtils.write(mergeOrder.ordinal(), stream);
   }
 
-  public static TimeJoinNode deserialize(ByteBuffer byteBuffer) {
+  public static LeftOuterTimeJoinNode deserialize(ByteBuffer byteBuffer) {
     Ordering mergeOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new TimeJoinNode(planNodeId, mergeOrder);
+    return new LeftOuterTimeJoinNode(planNodeId, mergeOrder);
   }
 
   @Override
   public String toString() {
-    return "TimeJoinNode-" + this.getPlanNodeId();
+    return "LeftOuterTimeJoinNode-" + this.getPlanNodeId();
   }
 
   @Override
@@ -123,12 +122,12 @@ public class TimeJoinNode extends MultiChildProcessNode {
     if (!super.equals(o)) {
       return false;
     }
-    TimeJoinNode that = (TimeJoinNode) o;
-    return mergeOrder == that.mergeOrder && children.equals(that.children);
+    LeftOuterTimeJoinNode that = (LeftOuterTimeJoinNode) o;
+    return mergeOrder == that.mergeOrder;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), mergeOrder, children);
+    return Objects.hash(super.hashCode(), mergeOrder);
   }
 }

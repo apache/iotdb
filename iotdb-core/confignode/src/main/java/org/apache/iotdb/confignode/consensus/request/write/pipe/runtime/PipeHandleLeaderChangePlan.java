@@ -46,7 +46,7 @@ public class PipeHandleLeaderChangePlan extends ConfigPhysicalPlan {
     this.consensusGroupId2NewDataRegionLeaderIdMap = consensusGroupId2NewDataRegionLeaderIdMap;
   }
 
-  public Map<TConsensusGroupId, Integer> getConsensusGroupId2NewDataRegionLeaderIdMap() {
+  public Map<TConsensusGroupId, Integer> getConsensusGroupId2NewLeaderIdMap() {
     return consensusGroupId2NewDataRegionLeaderIdMap;
   }
 

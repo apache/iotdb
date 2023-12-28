@@ -497,7 +497,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
       t.start();
 
       try {
-        TestUtils.restartCluster(receiverEnv);
+        TestUtils.restartCluster(receiverEnv, 10);
       } catch (Exception e) {
         e.printStackTrace();
         return;

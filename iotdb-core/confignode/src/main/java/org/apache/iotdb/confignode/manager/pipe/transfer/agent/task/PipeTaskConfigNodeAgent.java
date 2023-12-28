@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.manager.pipe.transfer.agent.task;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
@@ -35,8 +34,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
-import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.ConfigRegion;
-
 public class PipeTaskConfigNodeAgent extends PipeTaskAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskConfigNodeAgent.class);
@@ -48,18 +45,15 @@ public class PipeTaskConfigNodeAgent extends PipeTaskAgent {
   }
 
   @Override
-  protected Map<TConsensusGroupId, PipeTask> buildPipeTasks(PipeMeta pipeMetaFromConfigNode) {
+  protected Map<Integer, PipeTask> buildPipeTasks(PipeMeta pipeMetaFromConfigNode) {
     return new PipeConfigNodeTaskBuilder(pipeMetaFromConfigNode).build();
   }
 
   @Override
   protected void createPipeTask(
-      TConsensusGroupId consensusGroupId,
-      PipeStaticMeta pipeStaticMeta,
-      PipeTaskMeta pipeTaskMeta) {
-    // TODO: getLeaderDataNodeId -> getLeaderNodeId
-    if (consensusGroupId.getType() == ConfigRegion
-        && pipeTaskMeta.getLeaderDataNodeId()
+      int consensusGroupId, PipeStaticMeta pipeStaticMeta, PipeTaskMeta pipeTaskMeta) {
+    if (consensusGroupId == Integer.MIN_VALUE
+        && pipeTaskMeta.getLeaderNodeId()
             == ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()) {
       final PipeConfigNodeTask pipeTask =
           new PipeConfigNodeTask(

@@ -41,7 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.HorizontallyConcatNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TimeJoinNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesSourceNode;
@@ -391,10 +391,13 @@ public class AggregationDistributionTest {
             TAggregationType.COUNT,
             AggregationStep.PARTIAL,
             null);
-    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC);
-    timeJoinNode.addChild(genAggregationSourceNode(queryId, d3s1Path, TAggregationType.COUNT));
-    timeJoinNode.addChild(genAggregationSourceNode(queryId, d4s1Path, TAggregationType.COUNT));
-    slidingWindowAggregationNode.addChild(timeJoinNode);
+    FullOuterTimeJoinNode fullOuterTimeJoinNode =
+        new FullOuterTimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC);
+    fullOuterTimeJoinNode.addChild(
+        genAggregationSourceNode(queryId, d3s1Path, TAggregationType.COUNT));
+    fullOuterTimeJoinNode.addChild(
+        genAggregationSourceNode(queryId, d4s1Path, TAggregationType.COUNT));
+    slidingWindowAggregationNode.addChild(fullOuterTimeJoinNode);
 
     GroupByLevelNode groupByLevelNode =
         new GroupByLevelNode(
@@ -608,10 +611,14 @@ public class AggregationDistributionTest {
     String groupedPathS1 = "root.sg.*.s1";
     String groupedPathS2 = "root.sg.*.s2";
 
-    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC);
-    timeJoinNode.addChild(genAggregationSourceNode(queryId, d1s1Path, TAggregationType.COUNT));
-    timeJoinNode.addChild(genAggregationSourceNode(queryId, d1s2Path, TAggregationType.COUNT));
-    timeJoinNode.addChild(genAggregationSourceNode(queryId, d2s1Path, TAggregationType.COUNT));
+    FullOuterTimeJoinNode fullOuterTimeJoinNode =
+        new FullOuterTimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC);
+    fullOuterTimeJoinNode.addChild(
+        genAggregationSourceNode(queryId, d1s1Path, TAggregationType.COUNT));
+    fullOuterTimeJoinNode.addChild(
+        genAggregationSourceNode(queryId, d1s2Path, TAggregationType.COUNT));
+    fullOuterTimeJoinNode.addChild(
+        genAggregationSourceNode(queryId, d2s1Path, TAggregationType.COUNT));
 
     SlidingWindowAggregationNode slidingWindowAggregationNode =
         genSlidingWindowAggregationNode(
@@ -621,7 +628,7 @@ public class AggregationDistributionTest {
             TAggregationType.COUNT,
             AggregationStep.PARTIAL,
             null);
-    slidingWindowAggregationNode.addChild(timeJoinNode);
+    slidingWindowAggregationNode.addChild(fullOuterTimeJoinNode);
 
     GroupByLevelNode groupByLevelNode =
         new GroupByLevelNode(

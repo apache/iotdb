@@ -19,36 +19,32 @@
 
 package org.apache.iotdb.db.pipe.task.builder;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.execution.executor.PipeProcessorSubtaskExecutor;
+import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutorManager;
 import org.apache.iotdb.db.pipe.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.task.stage.PipeTaskConnectorStage;
 import org.apache.iotdb.db.pipe.task.stage.PipeTaskExtractorStage;
 import org.apache.iotdb.db.pipe.task.stage.PipeTaskProcessorStage;
 
-public abstract class PipeDataNodeTaskBuilder {
+public class PipeDataNodeTaskBuilder {
 
   private final PipeStaticMeta pipeStaticMeta;
-  private final TConsensusGroupId regionId;
+  private final int regionId;
   private final PipeTaskMeta pipeTaskMeta;
 
   protected final PipeProcessorSubtaskExecutor processorExecutor;
   protected final PipeConnectorSubtaskExecutor connectorExecutor;
 
-  protected PipeDataNodeTaskBuilder(
-      PipeStaticMeta pipeStaticMeta,
-      TConsensusGroupId regionId,
-      PipeTaskMeta pipeTaskMeta,
-      PipeProcessorSubtaskExecutor processorExecutor,
-      PipeConnectorSubtaskExecutor connectorExecutor) {
+  public PipeDataNodeTaskBuilder(
+      PipeStaticMeta pipeStaticMeta, int regionId, PipeTaskMeta pipeTaskMeta) {
     this.pipeStaticMeta = pipeStaticMeta;
     this.regionId = regionId;
     this.pipeTaskMeta = pipeTaskMeta;
-    this.processorExecutor = processorExecutor;
-    this.connectorExecutor = connectorExecutor;
+    this.processorExecutor = PipeSubtaskExecutorManager.getInstance().getProcessorExecutor();
+    this.connectorExecutor = PipeSubtaskExecutorManager.getInstance().getConnectorExecutor();
   }
 
   public PipeDataNodeTask build() {
