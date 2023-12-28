@@ -57,21 +57,8 @@ public class PipeConfigNodeTaskBuilder {
                     pipeStaticMeta.getCreationTime(),
                     pipeStaticMeta.getExtractorParameters().getAttribute(),
                     pipeStaticMeta.getProcessorParameters().getAttribute(),
-                    pipeStaticMeta.getConnectorParameters().getAttribute())));
-            consensusGroupIdToPipeTaskMap.put(
-                consensusGroupId,
-                new PipeConfigNodeTask(
-                    new PipeConfigNodeTaskStage(
-                        pipeStaticMeta.getPipeName(),
-                        pipeStaticMeta.getCreationTime(),
-                        pipeStaticMeta.getExtractorParameters().getAttribute(),
-                        pipeStaticMeta.getProcessorParameters().getAttribute(),
-                        pipeStaticMeta.getConnectorParameters().getAttribute(),
-                        consensusGroupIdToPipeTaskMeta.getValue())));
-          }
-          break;
-        default:
-          break;
+                    pipeStaticMeta.getConnectorParameters().getAttribute(),
+                    consensusGroupIdToPipeTaskMeta.getValue())));
       }
     }
     return consensusGroupIdToPipeTaskMap;
