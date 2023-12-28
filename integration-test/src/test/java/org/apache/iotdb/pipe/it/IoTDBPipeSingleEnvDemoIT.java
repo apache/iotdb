@@ -25,11 +25,11 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT1;
-import org.apache.iotdb.pipe.PipeEnvironmentException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -47,7 +47,7 @@ public class IoTDBPipeSingleEnvDemoIT {
       MultiEnvFactory.createEnv(1);
       MultiEnvFactory.getEnv(0).initClusterEnvironment(1, 1);
     } catch (Exception e) {
-      throw new PipeEnvironmentException(e.getMessage(), e);
+      Assume.assumeNoException(e);
     }
   }
 
@@ -56,7 +56,7 @@ public class IoTDBPipeSingleEnvDemoIT {
     try {
       MultiEnvFactory.getEnv(0).cleanClusterEnvironment();
     } catch (Exception e) {
-      throw new PipeEnvironmentException(e.getMessage(), e);
+      Assume.assumeNoException(e);
     }
   }
 

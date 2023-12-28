@@ -80,6 +80,11 @@ public class InternalCreateMultiTimeSeriesNode extends WritePlanNode {
   public void addChild(PlanNode child) {}
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.INTERNAL_CREATE_MULTI_TIMESERIES;
+  }
+
+  @Override
   public PlanNode clone() {
     return new InternalCreateMultiTimeSeriesNode(getPlanNodeId(), deviceMap, regionReplicaSet);
   }

@@ -253,7 +253,10 @@ public abstract class AbstractEnv implements BaseEnv {
     for (StackTraceElement stackTraceElement : stack) {
       String className = stackTraceElement.getClassName();
       if (className.endsWith("IT")) {
-        return className.substring(className.lastIndexOf(".") + 1);
+        String result = className.substring(className.lastIndexOf(".") + 1);
+        if (!result.startsWith("Abstract")) {
+          return result;
+        }
       }
     }
     return "UNKNOWN-IT";

@@ -32,7 +32,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 
-/** PipeReceiverAgent is the entry point of all pipe receivers' logic. */
+/** {@link PipeReceiverAgent} is the entry point of all pipe receivers' logic. */
 public class PipeReceiverAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeReceiverAgent.class);

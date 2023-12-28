@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorClient;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.IoTDBConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -35,104 +34,24 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
-
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_AUTHORITY_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_DATA_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_FUNCTION_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_MODEL_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_SCHEMA_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_TRIGGER_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_TTL_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_INCLUSION_KEY;
 
 public abstract class IoTDBMetaConnector extends IoTDBConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBMetaConnector.class);
   private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
-
-  private boolean enableSchemaSync = false;
-  private boolean enableTtlSync = false;
-  private boolean enableFunctionSync = false;
-  private boolean enableTriggerSync = false;
-  private boolean enableModelSync = false;
-  private boolean enableAuthoritySync = false;
-  private boolean atLeastOneEnable = false;
-
   private final List<IoTDBThriftSyncConnectorClient> clients = new ArrayList<>();
   private final List<Boolean> isClientAlive = new ArrayList<>();
 
   private long currentClientIndex = 0;
 
-  public IoTDBMetaConnector() {
+  protected IoTDBMetaConnector() {
     // Do nothing
-  }
-
-  @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
-    super.validate(validator);
-
-    validator.validate(
-        arg -> {
-          Set<String> inclusionList =
-              new HashSet<>(Arrays.asList(((String) arg).replace(" ", "").split(",")));
-          if (inclusionList.contains(EXTRACTOR_INCLUSION_SCHEMA_VALUE)) {
-            enableSchemaSync = true;
-          }
-          if (inclusionList.contains(EXTRACTOR_INCLUSION_TTL_VALUE)) {
-            enableTtlSync = true;
-          }
-          if (inclusionList.contains(EXTRACTOR_INCLUSION_FUNCTION_VALUE)) {
-            enableFunctionSync = true;
-          }
-          if (inclusionList.contains(EXTRACTOR_INCLUSION_TRIGGER_VALUE)) {
-            enableTriggerSync = true;
-          }
-          if (inclusionList.contains(EXTRACTOR_INCLUSION_MODEL_VALUE)) {
-            enableModelSync = true;
-          }
-          if (inclusionList.contains(EXTRACTOR_INCLUSION_AUTHORITY_VALUE)) {
-            enableAuthoritySync = true;
-          }
-          atLeastOneEnable =
-              enableSchemaSync
-                  || enableTtlSync
-                  || enableFunctionSync
-                  || enableTriggerSync
-                  || enableModelSync
-                  || enableAuthoritySync;
-          // If none of above are present and data is also absent, then validation will fail.
-          return atLeastOneEnable || inclusionList.contains(EXTRACTOR_INCLUSION_DATA_VALUE);
-        },
-        String.format(
-            "At least one of %s, %s, %s, %s, %s, %s, %s should be present in %s.",
-            EXTRACTOR_INCLUSION_DATA_VALUE,
-            EXTRACTOR_INCLUSION_SCHEMA_VALUE,
-            EXTRACTOR_INCLUSION_TTL_VALUE,
-            EXTRACTOR_INCLUSION_FUNCTION_VALUE,
-            EXTRACTOR_INCLUSION_TRIGGER_VALUE,
-            EXTRACTOR_INCLUSION_MODEL_VALUE,
-            EXTRACTOR_INCLUSION_AUTHORITY_VALUE,
-            SOURCE_INCLUSION_KEY),
-        validator
-            .getParameters()
-            .getStringOrDefault(
-                Arrays.asList(EXTRACTOR_INCLUSION_KEY, SOURCE_INCLUSION_KEY),
-                EXTRACTOR_INCLUSION_DEFAULT_VALUE));
   }
 
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
-    if (!atLeastOneEnable) {
-      return;
-    }
-
     super.customize(parameters, configuration);
 
     for (int i = 0; i < nodeUrls.size(); i++) {
@@ -143,10 +62,6 @@ public abstract class IoTDBMetaConnector extends IoTDBConnector {
 
   @Override
   public void handshake() throws Exception {
-    if (!atLeastOneEnable) {
-      return;
-    }
-
     for (int i = 0; i < clients.size(); i++) {
       if (Boolean.TRUE.equals(isClientAlive.get(i))) {
         continue;
@@ -199,31 +114,23 @@ public abstract class IoTDBMetaConnector extends IoTDBConnector {
 
   @Override
   public void heartbeat() throws Exception {
-    if (!atLeastOneEnable) {
-      return;
-    }
-
     // TODO: heartbeat
   }
 
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
     throw new UnsupportedOperationException(
-        "IoTDBSchemaConnector can't transfer TabletInsertionEvent.");
+        "IoTDBMetaConnector can't transfer TabletInsertionEvent.");
   }
 
   @Override
   public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     throw new UnsupportedOperationException(
-        "IoTDBSchemaConnector can't transfer TsFileInsertionEvent.");
+        "IoTDBMetaConnector can't transfer TsFileInsertionEvent.");
   }
 
   @Override
   public void transfer(Event event) throws Exception {
-    if (!atLeastOneEnable) {
-      return;
-    }
-
     // TODO: transfer schema events
   }
 

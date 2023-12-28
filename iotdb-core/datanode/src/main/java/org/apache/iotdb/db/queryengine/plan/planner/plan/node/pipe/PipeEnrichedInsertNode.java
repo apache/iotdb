@@ -97,6 +97,11 @@ public class PipeEnrichedInsertNode extends InsertNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.PIPE_ENRICHED_INSERT;
+  }
+
+  @Override
   public PlanNode clone() {
     return new PipeEnrichedInsertNode((InsertNode) insertNode.clone());
   }

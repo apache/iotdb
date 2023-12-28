@@ -75,6 +75,11 @@ public class TopKNode extends MultiChildProcessNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.TOP_K;
+  }
+
+  @Override
   public PlanNode clone() {
     return new TopKNode(getPlanNodeId(), getTopValue(), getMergeOrderParameter(), outputColumns);
   }

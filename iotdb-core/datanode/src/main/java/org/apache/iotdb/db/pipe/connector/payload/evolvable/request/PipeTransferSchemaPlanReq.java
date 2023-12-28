@@ -71,7 +71,7 @@ public class PipeTransferSchemaPlanReq extends TPipeTransferReq {
   }
 
   /////////////////////////////// Air Gap ///////////////////////////////
-  public static byte[] toTransferInsertNodeBytes(PlanNode planNode) throws IOException {
+  public static byte[] toTPipeTransferBytes(PlanNode planNode) throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);

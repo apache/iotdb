@@ -23,6 +23,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.plugin.PipePluginCoordinator;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.PipeRuntimeCoordinator;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.task.PipeTaskCoordinator;
+import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
 
 public class PipeManager {
@@ -38,6 +39,7 @@ public class PipeManager {
         new PipePluginCoordinator(configManager, pipeInfo.getPipePluginInfo());
     this.pipeTaskCoordinator = new PipeTaskCoordinator(configManager, pipeInfo.getPipeTaskInfo());
     this.pipeRuntimeCoordinator = new PipeRuntimeCoordinator(configManager);
+    PipeConfigNodeAgent.createInstance(configManager);
   }
 
   public PipePluginCoordinator getPipePluginCoordinator() {

@@ -102,6 +102,11 @@ public class PipeEnrichedConfigSchemaNode extends PlanNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.PIPE_ENRICHED_DELETE_SCHEMA;
+  }
+
+  @Override
   public PlanNode clone() {
     return new PipeEnrichedConfigSchemaNode(configSchemaNode.clone());
   }

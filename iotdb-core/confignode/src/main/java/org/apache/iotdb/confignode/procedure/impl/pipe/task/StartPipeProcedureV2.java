@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
@@ -65,7 +66,7 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     pipeTaskInfo.get().checkBeforeStartPipe(pipeName);
 
     return pipeTaskInfo.get().isPipeRunning(pipeName)
-        && !pipeTaskInfo.get().isStoppedByRuntimeException(pipeName);
+        && !pipeTaskInfo.get().shouldBeRunning(pipeName);
   }
 
   @Override
@@ -183,11 +184,14 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       return false;
     }
     StartPipeProcedureV2 that = (StartPipeProcedureV2) o;
-    return pipeName.equals(that.pipeName);
+    return getProcId() == that.getProcId()
+        && getCurrentState().equals(that.getCurrentState())
+        && getCycles() == that.getCycles()
+        && pipeName.equals(that.pipeName);
   }
 
   @Override
   public int hashCode() {
-    return pipeName.hashCode();
+    return Objects.hash(getProcId(), getCurrentState(), getCycles(), pipeName);
   }
 }

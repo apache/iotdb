@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorClient;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.LeaderCacheManager;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -138,7 +138,7 @@ public class IoTDBThriftSyncClientManager implements Closeable {
           clientAndStatus
               .getLeft()
               .pipeTransfer(
-                  PipeTransferHandshakeReq.toTPipeTransferReq(
+                  PipeTransferDataNodeHandshakeReq.toTPipeTransferReq(
                       CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(

@@ -28,12 +28,12 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapOneByteResponse;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -194,7 +194,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
 
       if (!send(
           socket,
-          PipeTransferHandshakeReq.toTransferHandshakeBytes(
+          PipeTransferDataNodeHandshakeReq.toTPipeTransferBytes(
               CommonDescriptor.getInstance().getConfig().getTimestampPrecision()))) {
         throw new PipeException("Handshake error with target server ip: " + ip + ", port: " + port);
       } else {
@@ -326,9 +326,9 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
       throws PipeException, WALPipeException, IOException {
     final byte[] bytes =
         pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible() == null
-            ? PipeTransferTabletBinaryReq.toTransferInsertNodeBytes(
+            ? PipeTransferTabletBinaryReq.toTPipeTransferBytes(
                 pipeInsertNodeTabletInsertionEvent.getByteBuffer())
-            : PipeTransferTabletInsertNodeReq.toTransferInsertNodeBytes(
+            : PipeTransferTabletInsertNodeReq.toTPipeTransferBytes(
                 pipeInsertNodeTabletInsertionEvent.getInsertNode());
 
     if (!send(socket, bytes)) {
@@ -343,7 +343,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
       throws PipeException, IOException {
     if (!send(
         socket,
-        PipeTransferTabletRawReq.toTPipeTransferTabletBytes(
+        PipeTransferTabletRawReq.toTPipeTransferBytes(
             pipeRawTabletInsertionEvent.convertToTablet(),
             pipeRawTabletInsertionEvent.isAligned()))) {
       throw new PipeException(
@@ -370,7 +370,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
 
         if (!send(
             socket,
-            PipeTransferFilePieceReq.toTPipeTransferBytes(
+            PipeTransferTsFilePieceReq.toTPipeTransferBytes(
                 tsFile.getName(),
                 position,
                 readLength == readFileBufferSize
@@ -387,7 +387,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
     // 2. Transfer file seal signal, which means the file is transferred completely
     if (!send(
         socket,
-        PipeTransferFileSealReq.toTPipeTransferFileSealBytes(tsFile.getName(), tsFile.length()))) {
+        PipeTransferTsFileSealReq.toTPipeTransferBytes(tsFile.getName(), tsFile.length()))) {
       throw new PipeException(String.format("Seal file %s error. Socket %s.", tsFile, socket));
     } else {
       LOGGER.info("Successfully transferred file {}.", tsFile);

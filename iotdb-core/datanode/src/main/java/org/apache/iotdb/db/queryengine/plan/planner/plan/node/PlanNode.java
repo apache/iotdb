@@ -74,6 +74,10 @@ public abstract class PlanNode implements IConsensusRequest {
 
   public abstract void addChild(PlanNode child);
 
+  public PlanNodeType getType() {
+    throw new UnsupportedOperationException("This planNode does not support getType().");
+  }
+
   @Override
   public abstract PlanNode clone();
 

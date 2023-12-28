@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.confignode.consensus.response.pipe;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
@@ -35,8 +34,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.DataRegion;
 
 public class PipeTableRespTest {
 
@@ -56,8 +53,8 @@ public class PipeTableRespTest {
     connectorAttributes.put("port", "6667");
 
     PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
-    Map<TConsensusGroupId, PipeTaskMeta> pipeTasks = new HashMap<>();
-    pipeTasks.put(new TConsensusGroupId(DataRegion, 1), pipeTaskMeta);
+    Map<Integer, PipeTaskMeta> pipeTasks = new HashMap<>();
+    pipeTasks.put(1, pipeTaskMeta);
     PipeStaticMeta pipeStaticMeta =
         new PipeStaticMeta(
             "testPipe", 121, extractorAttributes, processorAttributes, connectorAttributes);
@@ -76,8 +73,8 @@ public class PipeTableRespTest {
     connectorAttributes1.put("port", "6667");
 
     PipeTaskMeta pipeTaskMeta1 = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
-    Map<TConsensusGroupId, PipeTaskMeta> pipeTasks1 = new HashMap<>();
-    pipeTasks1.put(new TConsensusGroupId(DataRegion, 1), pipeTaskMeta1);
+    Map<Integer, PipeTaskMeta> pipeTasks1 = new HashMap<>();
+    pipeTasks1.put(1, pipeTaskMeta1);
     PipeStaticMeta pipeStaticMeta1 =
         new PipeStaticMeta(
             "testPipe", 121, extractorAttributes1, processorAttributes1, connectorAttributes1);
@@ -96,8 +93,8 @@ public class PipeTableRespTest {
     connectorAttributes2.put("port", "6667");
 
     PipeTaskMeta pipeTaskMeta2 = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
-    Map<TConsensusGroupId, PipeTaskMeta> pipeTasks2 = new HashMap<>();
-    pipeTasks2.put(new TConsensusGroupId(DataRegion, 1), pipeTaskMeta2);
+    Map<Integer, PipeTaskMeta> pipeTasks2 = new HashMap<>();
+    pipeTasks2.put(1, pipeTaskMeta2);
     PipeStaticMeta pipeStaticMeta2 =
         new PipeStaticMeta(
             "testPipe", 121, extractorAttributes2, processorAttributes2, connectorAttributes2);
