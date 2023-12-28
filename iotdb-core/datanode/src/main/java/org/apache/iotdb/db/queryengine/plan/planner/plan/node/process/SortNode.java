@@ -50,6 +50,11 @@ public class SortNode extends SingleChildProcessNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.SORT;
+  }
+
+  @Override
   public PlanNode clone() {
     return new SortNode(getPlanNodeId(), child, orderByParameter);
   }

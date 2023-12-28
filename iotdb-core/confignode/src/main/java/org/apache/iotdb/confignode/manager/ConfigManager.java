@@ -88,6 +88,7 @@ import org.apache.iotdb.confignode.manager.node.NodeMetrics;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
+import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaQuotaStatistics;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
@@ -617,7 +618,7 @@ public class ConfigManager implements IManager {
       return new ArrayList<>();
     }
     List<PartialPath> innerPathList = path.alterPrefixPath(database);
-    if (innerPathList.size() == 0) {
+    if (innerPathList.isEmpty()) {
       return new ArrayList<>();
     }
     PartialPath innerPath = innerPathList.get(0);
@@ -1750,8 +1751,8 @@ public class ConfigManager implements IManager {
       return new TPipeConfigTransferResp(status);
     }
     TPipeTransferResp result =
-        pipeManager
-            .getPipeReceiverCoordinator()
+        PipeConfigNodeAgent.receiver()
+            .config()
             .receive(
                 req.isAirGap
                     ? new AirGapPseudoTPipeTransferRequest()

@@ -20,10 +20,10 @@
 package org.apache.iotdb.confignode.manager.pipe;
 
 import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
-import org.apache.iotdb.confignode.manager.pipe.connector.payload.request.PipeTransferConfigHandshakeReq;
-import org.apache.iotdb.confignode.manager.pipe.connector.payload.request.PipeTransferConfigPlanReq;
-import org.apache.iotdb.confignode.manager.pipe.connector.payload.request.PipeTransferConfigSnapshotPieceReq;
-import org.apache.iotdb.confignode.manager.pipe.connector.payload.request.PipeTransferConfigSnapshotSealReq;
+import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigHandshakeReq;
+import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigPlanReq;
+import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigSnapshotPieceReq;
+import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigSnapshotSealReq;
 
 import org.junit.Assert;
 import org.junit.Test;

@@ -138,6 +138,11 @@ public class CreateMultiTimeSeriesNode extends WritePlanNode {
   public void addChild(PlanNode child) {}
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.CREATE_MULTI_TIME_SERIES;
+  }
+
+  @Override
   public PlanNode clone() {
     throw new NotImplementedException("Clone of CreateMultiTimeSeriesNode is not implemented");
   }
