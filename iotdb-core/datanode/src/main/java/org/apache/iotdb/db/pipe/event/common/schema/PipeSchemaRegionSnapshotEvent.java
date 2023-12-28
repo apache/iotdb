@@ -19,76 +19,26 @@
 
 package org.apache.iotdb.db.pipe.event.common.schema;
 
-import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.resource.snapshot.PipeDataNodeSnapshotResourceManager;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-
-public class PipeSchemaRegionSnapshotEvent extends EnrichedEvent {
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeSchemaRegionSnapshotEvent.class);
-
-  private String snapshotPath;
+public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
 
   public PipeSchemaRegionSnapshotEvent(
       String snapshotPath, String pipeName, PipeTaskMeta pipeTaskMeta, String pattern) {
-    super(pipeName, pipeTaskMeta, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
-    this.snapshotPath = snapshotPath;
-  }
-
-  @Override
-  public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
-    try {
-      snapshotPath =
-          PipeDataNodeSnapshotResourceManager.getInstance().increaseSnapshotReference(snapshotPath);
-      return true;
-    } catch (IOException e) {
-      LOGGER.warn(
-          String.format(
-              "Increase reference count for snapshot %s error. Holder Message: %s",
-              snapshotPath, holderMessage),
-          e);
-      return false;
-    }
-  }
-
-  @Override
-  public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
-    try {
-      PipeDataNodeSnapshotResourceManager.getInstance().decreaseSnapshotReference(snapshotPath);
-      return true;
-    } catch (Exception e) {
-      LOGGER.warn(
-          String.format(
-              "Decrease reference count for snapshot %s error. Holder Message: %s",
-              snapshotPath, holderMessage),
-          e);
-      return false;
-    }
-  }
-
-  @Override
-  public ProgressIndex getProgressIndex() {
-    return null;
+    super(
+        snapshotPath,
+        pipeName,
+        pipeTaskMeta,
+        pattern,
+        PipeDataNodeSnapshotResourceManager.getInstance());
   }
 
   @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime) {
     return new PipeSchemaRegionSnapshotEvent(snapshotPath, pipeName, pipeTaskMeta, pattern);
-  }
-
-  @Override
-  public boolean isGeneratedByPipe() {
-    return false;
-  }
-
-  @Override
-  public boolean isEventTimeOverlappedWithTimeRange() {
-    return true;
   }
 }
