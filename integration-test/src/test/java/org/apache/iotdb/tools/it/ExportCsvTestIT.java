@@ -45,8 +45,6 @@ public class ExportCsvTestIT extends AbstractScript {
 
   private static String port;
 
-  private static String sbinPath;
-
   private static String toolsPath;
 
   private static String libPath;
@@ -56,7 +54,6 @@ public class ExportCsvTestIT extends AbstractScript {
     EnvFactory.getEnv().initClusterEnvironment();
     ip = EnvFactory.getEnv().getIP();
     port = EnvFactory.getEnv().getPort();
-    sbinPath = EnvFactory.getEnv().getSbinPath();
     toolsPath = EnvFactory.getEnv().getToolsPath();
     libPath = EnvFactory.getEnv().getLibPath();
   }
