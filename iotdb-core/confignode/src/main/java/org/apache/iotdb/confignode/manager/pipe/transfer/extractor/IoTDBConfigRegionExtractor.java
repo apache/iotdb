@@ -93,7 +93,8 @@ public class IoTDBConfigRegionExtractor extends IoTDBCommonExtractor {
   public Event supply() {
     ConfigPhysicalPlan plan;
     do {
-      plan = itr.next(1000);
+      // Return immediately
+      plan = itr.next(0);
     } while (plan != null && !listenTypes.contains(plan.getType()));
     // TODO: convert plan to event and configure timeout
     return null;

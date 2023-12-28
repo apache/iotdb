@@ -222,7 +222,7 @@ public class IoTDBThriftSyncConnector extends IoTDBSyncSslConnector {
     }
   }
 
-  private void doTransfer() throws IOException {
+  private void doTransfer() {
     Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus = clientManager.getClient();
     final TPipeTransferResp resp;
     try {

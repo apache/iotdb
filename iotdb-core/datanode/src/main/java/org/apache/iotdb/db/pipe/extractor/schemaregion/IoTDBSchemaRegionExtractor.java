@@ -96,7 +96,8 @@ public class IoTDBSchemaRegionExtractor extends IoTDBCommonExtractor {
   public Event supply() throws Exception {
     PlanNode node;
     do {
-      node = itr.next(1000);
+      // Return immediately
+      node = itr.next(0);
     } while (node != null && !listenTypes.contains(node.getType()));
     // TODO: convert plan to event and configure timeout
     return null;
