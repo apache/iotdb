@@ -48,19 +48,15 @@ public class DeviceFilterVisitor extends SchemaFilterVisitor<IDeviceSchemaInfo> 
     String filterTemplateName = templateFilter.getTemplateName();
     if (templateId != -1) {
       equalAns =
-          filterTemplateName != null
-              && ClusterTemplateManager.getInstance()
-                  .getTemplate(templateId)
-                  .getName()
-                  .equals(filterTemplateName);
+          ClusterTemplateManager.getInstance()
+              .getTemplate(templateId)
+              .getName()
+              .equals(filterTemplateName);
+      return templateFilter.isEqual() == equalAns;
+    } else if (filterTemplateName == null) {
+      return templateFilter.isEqual();
     } else {
-      equalAns = filterTemplateName == null;
-    }
-
-    if (templateFilter.isEqual()) {
-      return equalAns;
-    } else {
-      return !equalAns;
+      return false;
     }
   }
 }
