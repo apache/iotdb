@@ -55,11 +55,17 @@ function clearPath {
     path_name=$1
     if [ -n  "$path_name" ]; then
       path_name="${path_name#"${path_name%%[![:space:]]*}"}"
-      if [[ $path_name == /* ]]; then
-        rm -rf $path_name
-      else
-        rm -rf ${IOTDB_HOME}/$path_name
-      fi
+      # 使用分号和逗号作为分隔符
+      IFS=';,' read -r -a paths <<< "$path_name"
+      # 打印数组中的元素
+      for path_name in "${paths[@]}"
+      do
+          if [[ $path_name == /* ]]; then
+            rm -rf $path_name
+          else
+            rm -rf ${IOTDB_HOME}/$path_name
+          fi
+      done
     fi
 }
 clearPath $dn_system_dir

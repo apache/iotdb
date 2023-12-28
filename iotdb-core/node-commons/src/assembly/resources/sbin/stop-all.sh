@@ -24,7 +24,7 @@ fi
 IOTDB_CLUSTER_PATH="${IOTDB_HOME}"/conf/iotdb-cluster.properties
 # iotdb-cluster.properties does not exist, the current 1C1D is stopped
 if [ ! -f ${IOTDB_CLUSTER_PATH} ]; then
-  exec rm -rf ${IOTDB_HOME}/data/
+  exec ${IOTDB_HOME}/sbin/stop-standalone.sh
 else
   confignodeStr=$(sed '/^confignode_address_list=/!d;s/.*=//' "${IOTDB_CLUSTER_PATH}")
   confignodeIps=(${confignodeStr//,/ })

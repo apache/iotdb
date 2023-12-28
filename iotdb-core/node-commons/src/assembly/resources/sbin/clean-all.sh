@@ -28,6 +28,8 @@ export IOTDB_HOME="`dirname "$0"`/.."
 IOTDB_CLUSTER_PATH="${IOTDB_HOME}"/conf/iotdb-cluster.properties
 # iotdb-cluster.properties does not exist, the current ICID is cleaned
 if [ ! -f ${IOTDB_CLUSTER_PATH} ]; then
+  exec ${IOTDB_HOME}/sbin/clean-datanode.sh -f > /dev/null 2>&1 &
+  exec ${IOTDB_HOME}/sbin/clean-confignode.sh -f> /dev/null 2>&1 &
   exec rm -rf ${IOTDB_HOME}/data/
 else
   confignodeStr=$(sed '/^confignode_address_list=/!d;s/.*=//' "${IOTDB_CLUSTER_PATH}")
