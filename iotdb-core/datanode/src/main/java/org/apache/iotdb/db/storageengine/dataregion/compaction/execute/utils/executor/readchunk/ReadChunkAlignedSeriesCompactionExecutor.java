@@ -26,13 +26,9 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.loader.ChunkLoader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.loader.InstantChunkLoader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.loader.InstantPageLoader;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.loader.LazyChunkLoader;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.loader.LazyPageLoader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.loader.PageLoader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.io.LazyAlignedChunkWriterImpl;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
@@ -55,8 +51,6 @@ import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import com.google.common.util.concurrent.RateLimiter;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -71,9 +65,6 @@ import java.util.stream.Collectors;
 
 public class ReadChunkAlignedSeriesCompactionExecutor {
 
-  private static final int columnNumToEnableLazyLoad = 1000;
-  private static final int targetFileLevelToEnableLazyLoad = 2;
-
   private final String device;
   private final LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
       readerAndChunkMetadataList;
@@ -85,9 +76,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
   private Map<String, Integer> measurementSchemaListIndexMap;
   private final FlushDataBlockPolicy flushPolicy;
   private final CompactionTaskSummary summary;
-  private final RateLimiter rewritePointRateLimiter;
 
-  private final boolean lazyLoadChunkOrPage;
   private long lastWriteTimestamp = Long.MIN_VALUE;
 
   public ReadChunkAlignedSeriesCompactionExecutor(
@@ -106,16 +95,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     int compactionFileLevel =
         Integer.parseInt(this.targetResource.getTsFile().getName().split("-")[2]);
     flushPolicy = new FlushDataBlockPolicy(compactionFileLevel);
-    this.lazyLoadChunkOrPage =
-        IoTDBDescriptor.getInstance().getConfig().isEnableLazyLoadForAlignedSeriesCompaction()
-            && this.schemaList.size() > columnNumToEnableLazyLoad
-            && compactionFileLevel >= targetFileLevelToEnableLazyLoad;
-    if (lazyLoadChunkOrPage) {
-      this.chunkWriter = new LazyAlignedChunkWriterImpl(schemaList);
-    } else {
-      this.chunkWriter = new AlignedChunkWriterImpl(schemaList);
-    }
-    this.rewritePointRateLimiter = CompactionTaskManager.getInstance().getRewritePointRateLimiter();
+    this.chunkWriter = new AlignedChunkWriterImpl(schemaList);
   }
 
   private void collectValueColumnSchemaList() throws IOException {
@@ -214,18 +194,11 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
 
   private ChunkLoader getChunkLoader(TsFileSequenceReader reader, ChunkMetadata chunkMetadata)
       throws IOException {
-    if (lazyLoadChunkOrPage) {
-      if (chunkMetadata == null || chunkMetadata.getStatistics().getCount() == 0) {
-        return new LazyChunkLoader();
-      }
-      return new LazyChunkLoader((CompactionTsFileReader) reader, chunkMetadata);
-    } else {
-      if (chunkMetadata == null || chunkMetadata.getStatistics().getCount() == 0) {
-        return new InstantChunkLoader();
-      }
-      Chunk chunk = reader.readMemChunk(chunkMetadata);
-      return new InstantChunkLoader(chunkMetadata, chunk);
+    if (chunkMetadata == null || chunkMetadata.getStatistics().getCount() == 0) {
+      return new InstantChunkLoader();
     }
+    Chunk chunk = reader.readMemChunk(chunkMetadata);
+    return new InstantChunkLoader(chunkMetadata, chunk);
   }
 
   private void flushCurrentChunkWriter() throws IOException {
@@ -294,7 +267,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
   }
 
   private PageLoader getEmptyPage() {
-    return lazyLoadChunkOrPage ? new LazyPageLoader() : new InstantPageLoader();
+    return new InstantPageLoader();
   }
 
   private void compactAlignedPageByFlush(PageLoader timePage, List<PageLoader> valuePageLoaders)
@@ -371,11 +344,6 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     }
     processedPointNum *= schemaList.size();
     summary.increaseRewritePointNum(processedPointNum);
-
-    if (rewritePointRateLimiter != null) {
-      rewritePointRateLimiter.acquire(
-          processedPointNum > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) processedPointNum);
-    }
   }
 
   private void checkAndUpdatePreviousTimestamp(long currentWritingTimestamp) {

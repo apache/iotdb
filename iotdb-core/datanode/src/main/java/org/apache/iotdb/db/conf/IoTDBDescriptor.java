@@ -515,12 +515,6 @@ public class IoTDBDescriptor {
                 "enable_compaction_mem_control",
                 Boolean.toString(conf.isEnableCompactionMemControl()))));
 
-    conf.setEnableLazyLoadForAlignedSeriesCompaction(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_lazy_load_for_aligned_series_compaction",
-                Boolean.toString(conf.isEnableLazyLoadForAlignedSeriesCompaction()))));
-
     int subtaskNum =
         Integer.parseInt(
             properties.getProperty(
@@ -686,11 +680,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "compaction_write_throughput_mb_per_sec",
                 Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
-    conf.setCompactionRewritePointNumPerSec(
-        Integer.parseInt(
-            properties.getProperty(
-                "compaction_rewrite_point_num_per_sec",
-                Integer.toString(conf.getCompactionRewritePointNumPerSec()))));
 
     conf.setEnableTsFileValidation(
         Boolean.parseBoolean(
@@ -1134,12 +1123,6 @@ public class IoTDBDescriptor {
     loadCompactionIsEnabledHotModifiedProps(properties);
 
     boolean restartCompactionTaskManager = loadCompactionThreadCountHotModifiedProps(properties);
-
-    conf.setEnableLazyLoadForAlignedSeriesCompaction(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_lazy_load_for_aligned_series_compaction",
-                Boolean.toString(conf.isEnableLazyLoadForAlignedSeriesCompaction()))));
 
     restartCompactionTaskManager |= loadCompactionSubTaskCountHotModifiedProps(properties);
 

@@ -2037,14 +2037,6 @@ public class IoTDBConfig {
     this.compactionWriteThroughputMbPerSec = compactionWriteThroughputMbPerSec;
   }
 
-  public int getCompactionRewritePointNumPerSec() {
-    return compactionRewritePointNumPerSec;
-  }
-
-  public void setCompactionRewritePointNumPerSec(int compactionRewritePointNumPerSec) {
-    this.compactionRewritePointNumPerSec = compactionRewritePointNumPerSec;
-  }
-
   public boolean isEnableMemControl() {
     return enableMemControl;
   }
@@ -2783,15 +2775,6 @@ public class IoTDBConfig {
 
   public void setEnableCompactionMemControl(boolean enableCompactionMemControl) {
     this.enableCompactionMemControl = enableCompactionMemControl;
-  }
-
-  public boolean isEnableLazyLoadForAlignedSeriesCompaction() {
-    return enableLazyLoadForAlignedSeriesCompaction;
-  }
-
-  public void setEnableLazyLoadForAlignedSeriesCompaction(
-      boolean enableLazyLoadForAlignedSeriesCompaction) {
-    this.enableLazyLoadForAlignedSeriesCompaction = enableLazyLoadForAlignedSeriesCompaction;
   }
 
   public long getTargetCompactionFileSize() {
