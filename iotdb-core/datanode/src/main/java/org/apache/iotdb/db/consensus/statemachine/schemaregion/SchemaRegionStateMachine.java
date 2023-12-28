@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.consensus.statemachine.BaseStateMachine;
+import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaNodeListeningQueue;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -64,18 +65,27 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
   @Override
   public boolean takeSnapshot(File snapshotDir) {
-    return schemaRegion.createSnapshot(snapshotDir);
+    return schemaRegion.createSnapshot(snapshotDir)
+        && SchemaNodeListeningQueue.getInstance(schemaRegion.getSchemaRegionId().getId())
+            .createSnapshot(snapshotDir);
   }
 
   @Override
   public void loadSnapshot(File latestSnapshotRootDir) {
     schemaRegion.loadSnapshot(latestSnapshotRootDir);
+    SchemaNodeListeningQueue.getInstance(schemaRegion.getSchemaRegionId().getId())
+        .loadSnapshot(latestSnapshotRootDir);
   }
 
   @Override
   public TSStatus write(IConsensusRequest request) {
     try {
-      return ((PlanNode) request).accept(new SchemaExecutionVisitor(), schemaRegion);
+      TSStatus result = ((PlanNode) request).accept(new SchemaExecutionVisitor(), schemaRegion);
+      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        SchemaNodeListeningQueue.getInstance(schemaRegion.getSchemaRegionId().getId())
+            .tryListenToNode((PlanNode) request);
+      }
+      return result;
     } catch (IllegalArgumentException e) {
       logger.error(e.getMessage(), e);
       return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());

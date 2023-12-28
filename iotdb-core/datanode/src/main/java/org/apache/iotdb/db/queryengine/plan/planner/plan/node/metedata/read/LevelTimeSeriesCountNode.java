@@ -74,6 +74,11 @@ public class LevelTimeSeriesCountNode extends SchemaQueryScanNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.LEVEL_TIME_SERIES_COUNT;
+  }
+
+  @Override
   public PlanNode clone() {
     return new LevelTimeSeriesCountNode(
         getPlanNodeId(), path, isPrefixPath, level, schemaFilter, templateMap, scope);

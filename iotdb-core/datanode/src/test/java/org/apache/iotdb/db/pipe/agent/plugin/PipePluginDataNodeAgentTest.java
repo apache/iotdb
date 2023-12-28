@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoaderManager;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
-import org.apache.iotdb.db.pipe.extractor.IoTDBDataRegionExtractor;
+import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.junit.After;
@@ -68,7 +68,7 @@ public class PipePluginDataNodeAgentTest {
       agent.register(
           new PipePluginMeta(
               "plugin-name",
-              "org.apache.iotdb.db.pipe.extractor.IoTDBDataRegionExtractor",
+              "org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor",
               false,
               "jar",
               "md5"),

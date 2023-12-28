@@ -20,7 +20,9 @@
 package org.apache.iotdb.confignode.manager.pipe.coordinator.runtime;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
 import org.apache.iotdb.confignode.manager.load.subscriber.RouteChangeEvent;
@@ -41,6 +43,17 @@ public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
   @Override
   public void onClusterStatisticsChanged(StatisticsChangeEvent event) {
     // do nothing, because pipe task is not related to statistics
+  }
+
+  public void onConfigRegionGroupLeaderChanged() {
+    Map<TConsensusGroupId, Pair<Integer, Integer>> leaderMap = new HashMap<>();
+    // The old leader id can be arbitrarily assigned because pipe task do not need this
+    leaderMap.put(
+        new TConsensusGroupId(TConsensusGroupType.ConfigRegion, Integer.MIN_VALUE),
+        new Pair<>(
+            Integer.MIN_VALUE, ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()));
+
+    onRegionGroupLeaderChanged(new RouteChangeEvent(leaderMap, null));
   }
 
   @Override

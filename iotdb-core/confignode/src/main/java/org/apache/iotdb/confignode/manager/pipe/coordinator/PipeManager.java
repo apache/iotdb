@@ -23,7 +23,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.plugin.PipePluginCoordinator;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.PipeRuntimeCoordinator;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.task.PipeTaskCoordinator;
-import org.apache.iotdb.confignode.manager.pipe.receiver.PipeReceiverCoordinator;
+import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
 
 public class PipeManager {
@@ -34,14 +34,12 @@ public class PipeManager {
 
   private final PipeRuntimeCoordinator pipeRuntimeCoordinator;
 
-  private final PipeReceiverCoordinator pipeReceiverCoordinator;
-
   public PipeManager(ConfigManager configManager, PipeInfo pipeInfo) {
     this.pipePluginCoordinator =
         new PipePluginCoordinator(configManager, pipeInfo.getPipePluginInfo());
     this.pipeTaskCoordinator = new PipeTaskCoordinator(configManager, pipeInfo.getPipeTaskInfo());
     this.pipeRuntimeCoordinator = new PipeRuntimeCoordinator(configManager);
-    this.pipeReceiverCoordinator = new PipeReceiverCoordinator(configManager);
+    PipeConfigNodeAgent.createInstance(configManager);
   }
 
   public PipePluginCoordinator getPipePluginCoordinator() {
@@ -54,9 +52,5 @@ public class PipeManager {
 
   public PipeRuntimeCoordinator getPipeRuntimeCoordinator() {
     return pipeRuntimeCoordinator;
-  }
-
-  public PipeReceiverCoordinator getPipeReceiverCoordinator() {
-    return pipeReceiverCoordinator;
   }
 }

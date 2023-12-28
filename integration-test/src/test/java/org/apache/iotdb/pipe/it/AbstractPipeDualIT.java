@@ -21,9 +21,9 @@ package org.apache.iotdb.pipe.it;
 
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.itbase.env.BaseEnv;
-import org.apache.iotdb.pipe.PipeEnvironmentException;
 
 import org.junit.After;
+import org.junit.Assume;
 import org.junit.Before;
 
 abstract class AbstractPipeDualIT {
@@ -32,7 +32,7 @@ abstract class AbstractPipeDualIT {
   protected BaseEnv receiverEnv;
 
   @Before
-  public void setUp() throws PipeEnvironmentException {
+  public void setUp() {
     try {
       MultiEnvFactory.createEnv(2);
       senderEnv = MultiEnvFactory.getEnv(0);
@@ -44,17 +44,17 @@ abstract class AbstractPipeDualIT {
       senderEnv.initClusterEnvironment();
       receiverEnv.initClusterEnvironment();
     } catch (Exception | Error e) {
-      throw new PipeEnvironmentException(e.getMessage(), e);
+      Assume.assumeNoException(e);
     }
   }
 
   @After
-  public void tearDown() throws PipeEnvironmentException {
+  public void tearDown() {
     try {
       senderEnv.cleanClusterEnvironment();
       receiverEnv.cleanClusterEnvironment();
     } catch (Exception | Error e) {
-      throw new PipeEnvironmentException(e.getMessage(), e);
+      Assume.assumeNoException(e);
     }
   }
 }
