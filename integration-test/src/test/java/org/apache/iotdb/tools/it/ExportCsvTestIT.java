@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tools;
+package org.apache.iotdb.tools.it;
 
 import org.apache.iotdb.cli.it.AbstractScript;
 import org.apache.iotdb.isession.ISession;
@@ -40,7 +40,7 @@ import java.util.List;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class ExportTsFileTestIT extends AbstractScript {
+public class ExportCsvTestIT extends AbstractScript {
   private static String ip;
 
   private static String port;
@@ -78,12 +78,12 @@ public class ExportTsFileTestIT extends AbstractScript {
 
   @Override
   protected void testOnWindows() throws IOException {
-    final String[] output = {"!!!Warning:Tablet is empty,no data can be exported."};
+    final String[] output = {"Export completely!"};
     ProcessBuilder builder =
         new ProcessBuilder(
             "cmd.exe",
             "/c",
-            toolsPath + File.separator + "export-tsfile.bat",
+            toolsPath + File.separator + "export-csv.bat",
             "-h",
             ip,
             "-p",
@@ -100,7 +100,7 @@ public class ExportTsFileTestIT extends AbstractScript {
             "exit",
             "%^errorlevel%");
     builder.environment().put("CLASSPATH", libPath);
-    testOutput(builder, output, 1);
+    testOutput(builder, output, 0);
 
     prepareData();
 
@@ -109,7 +109,7 @@ public class ExportTsFileTestIT extends AbstractScript {
         new ProcessBuilder(
             "cmd.exe",
             "/c",
-            toolsPath + File.separator + "export-tsfile.bat",
+            toolsPath + File.separator + "export-csv.bat",
             "-h",
             ip,
             "-p",
@@ -131,12 +131,12 @@ public class ExportTsFileTestIT extends AbstractScript {
 
   @Override
   protected void testOnUnix() throws IOException {
-    final String[] output = {"!!!Warning:Tablet is empty,no data can be exported."};
+    final String[] output = {"Export completely!"};
     // -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -q "select * from root.**"
     ProcessBuilder builder =
         new ProcessBuilder(
             "bash",
-            toolsPath + File.separator + "export-tsfile.sh",
+            toolsPath + File.separator + "export-csv.sh",
             "-h",
             ip,
             "-p",
@@ -150,7 +150,7 @@ public class ExportTsFileTestIT extends AbstractScript {
             "-q",
             "select * from root.**");
     builder.environment().put("CLASSPATH", libPath);
-    testOutput(builder, output, 1);
+    testOutput(builder, output, 0);
 
     prepareData();
 

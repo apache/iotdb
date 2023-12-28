@@ -16,7 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tools;
+
+package org.apache.iotdb.tools.it;
 
 import org.apache.iotdb.cli.it.AbstractScript;
 import org.apache.iotdb.isession.ISession;
@@ -40,12 +41,10 @@ import java.util.List;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class ExportCsvTestIT extends AbstractScript {
+public class ExportTsFileTestIT extends AbstractScript {
   private static String ip;
 
   private static String port;
-
-  private static String sbinPath;
 
   private static String toolsPath;
 
@@ -56,7 +55,6 @@ public class ExportCsvTestIT extends AbstractScript {
     EnvFactory.getEnv().initClusterEnvironment();
     ip = EnvFactory.getEnv().getIP();
     port = EnvFactory.getEnv().getPort();
-    sbinPath = EnvFactory.getEnv().getSbinPath();
     toolsPath = EnvFactory.getEnv().getToolsPath();
     libPath = EnvFactory.getEnv().getLibPath();
   }
@@ -78,12 +76,12 @@ public class ExportCsvTestIT extends AbstractScript {
 
   @Override
   protected void testOnWindows() throws IOException {
-    final String[] output = {"Export completely!"};
+    final String[] output = {"!!!Warning:Tablet is empty,no data can be exported."};
     ProcessBuilder builder =
         new ProcessBuilder(
             "cmd.exe",
             "/c",
-            toolsPath + File.separator + "export-csv.bat",
+            toolsPath + File.separator + "export-tsfile.bat",
             "-h",
             ip,
             "-p",
@@ -100,7 +98,7 @@ public class ExportCsvTestIT extends AbstractScript {
             "exit",
             "%^errorlevel%");
     builder.environment().put("CLASSPATH", libPath);
-    testOutput(builder, output, 0);
+    testOutput(builder, output, 1);
 
     prepareData();
 
@@ -109,7 +107,7 @@ public class ExportCsvTestIT extends AbstractScript {
         new ProcessBuilder(
             "cmd.exe",
             "/c",
-            toolsPath + File.separator + "export-csv.bat",
+            toolsPath + File.separator + "export-tsfile.bat",
             "-h",
             ip,
             "-p",
@@ -131,12 +129,12 @@ public class ExportCsvTestIT extends AbstractScript {
 
   @Override
   protected void testOnUnix() throws IOException {
-    final String[] output = {"Export completely!"};
+    final String[] output = {"!!!Warning:Tablet is empty,no data can be exported."};
     // -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -q "select * from root.**"
     ProcessBuilder builder =
         new ProcessBuilder(
             "bash",
-            toolsPath + File.separator + "export-csv.sh",
+            toolsPath + File.separator + "export-tsfile.sh",
             "-h",
             ip,
             "-p",
@@ -150,7 +148,7 @@ public class ExportCsvTestIT extends AbstractScript {
             "-q",
             "select * from root.**");
     builder.environment().put("CLASSPATH", libPath);
-    testOutput(builder, output, 0);
+    testOutput(builder, output, 1);
 
     prepareData();
 

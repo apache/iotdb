@@ -17,25 +17,50 @@
  * under the License.
  */
 
-package org.apache.iotdb.tool;
+package org.apache.iotdb.tools.it;
 
-import org.apache.iotdb.cli.AbstractScript;
+import org.apache.iotdb.cli.it.AbstractScript;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.io.File;
 import java.io.IOException;
 
-public class ImportCsvTest extends AbstractScript {
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
+public class ImportCsvTestIT extends AbstractScript {
 
-  @Before
-  public void setUp() {}
+  private static String ip;
 
-  @After
-  public void tearDown() {}
+  private static String port;
 
+  private static String toolsPath;
+
+  private static String libPath;
+
+  @BeforeClass
+  public static void setUp() {
+    EnvFactory.getEnv().initClusterEnvironment();
+    ip = EnvFactory.getEnv().getIP();
+    port = EnvFactory.getEnv().getPort();
+    toolsPath = EnvFactory.getEnv().getToolsPath();
+    libPath = EnvFactory.getEnv().getLibPath();
+  }
+
+  @AfterClass
+  public static void tearDown() {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  // TODO: add real tests
   @Test
   public void test() throws IOException {
     String os = System.getProperty("os.name").toLowerCase();
@@ -49,22 +74,17 @@ public class ImportCsvTest extends AbstractScript {
   @Override
   protected void testOnWindows() throws IOException {
     final String[] output = {
-      "````````````````````````````````````````````````",
-      "Starting IoTDB Client Import Script",
-      "````````````````````````````````````````````````",
-      "Encounter an error when connecting to server, because Fail to reconnect to server. "
-          + "Please check server status.127.0.0.1:6668"
+      "The file name must end with \"csv\" or \"txt\"!",
     };
-    String dir = getCliPath();
     ProcessBuilder builder =
         new ProcessBuilder(
             "cmd.exe",
             "/c",
-            dir + File.separator + "tools" + File.separator + "import-csv.bat",
+            toolsPath + File.separator + "import-csv.bat",
             "-h",
-            "127.0.0.1",
+            ip,
             "-p",
-            "6668",
+            port,
             "-u",
             "root",
             "-pw",
@@ -74,33 +94,30 @@ public class ImportCsvTest extends AbstractScript {
             "&",
             "exit",
             "%^errorlevel%");
-    testOutput(builder, output, 1);
+    builder.environment().put("CLASSPATH", libPath);
+    testOutput(builder, output, 0);
   }
 
   @Override
   protected void testOnUnix() throws IOException {
     final String[] output = {
-      "------------------------------------------",
-      "Starting IoTDB Client Import Script",
-      "------------------------------------------",
-      "Encounter an error when connecting to server, because Fail to reconnect to server. "
-          + "Please check server status.127.0.0.1:6668"
+      "The file name must end with \"csv\" or \"txt\"!",
     };
-    String dir = getCliPath();
     ProcessBuilder builder =
         new ProcessBuilder(
             "bash",
-            dir + File.separator + "tools" + File.separator + "import-csv.sh",
+            toolsPath + File.separator + "import-csv.sh",
             "-h",
-            "127.0.0.1",
+            ip,
             "-p",
-            "6668",
+            port,
             "-u",
             "root",
             "-pw",
             "root",
             "-f",
             "./");
-    testOutput(builder, output, 1);
+    builder.environment().put("CLASSPATH", libPath);
+    testOutput(builder, output, 0);
   }
 }
