@@ -81,8 +81,30 @@ public class IoTDBThriftAsyncClientManager extends IoTDBThriftClientManager {
     }
   }
 
-  public AsyncPipeDataTransferServiceClient borrowClient(String deviceId) {
-    return null;
+  public AsyncPipeDataTransferServiceClient borrowClient(String deviceId) throws Exception {
+    if (!useLeaderCache) {
+      return borrowClient();
+    }
+
+    final TEndPoint endPoint = leaderCacheManager.getLeaderEndPoint(deviceId);
+    if (endPoint == null) {
+      return borrowClient();
+    }
+
+    try {
+      final AsyncPipeDataTransferServiceClient client = endPoint2Client.borrowClient(endPoint);
+      if (handshakeIfNecessary(endPoint, client)) {
+        return client;
+      }
+    } catch (Exception e) {
+      LOGGER.warn(
+          "failed to borrow client {}:{} for cached leader.",
+          endPoint.getIp(),
+          endPoint.getPort(),
+          e);
+    }
+
+    return borrowClient();
   }
 
   /**
