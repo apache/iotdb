@@ -26,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ConcurrentModificationException;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -75,6 +76,9 @@ public abstract class PipeWALResourceManager {
               entry.getKey(),
               entry.getValue().getReferenceCount());
         }
+      } catch (ConcurrentModificationException e) {
+        LOGGER.info(
+            "Concurrent modification issues happened, skipping the WAL in this round of ttl check");
       } finally {
         lock.unlock();
       }

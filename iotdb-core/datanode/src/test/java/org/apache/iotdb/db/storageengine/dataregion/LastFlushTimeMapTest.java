@@ -139,6 +139,8 @@ public class LastFlushTimeMapTest {
     }
     Assert.assertEquals(
         10000, dataRegion.getLastFlushTimeMap().getFlushedTime(0, "root.vehicle.d0"));
+    Assert.assertEquals(
+        10000, dataRegion.getLastFlushTimeMap().getFlushedTime(0, "root.vehicle.d1"));
   }
 
   @Test

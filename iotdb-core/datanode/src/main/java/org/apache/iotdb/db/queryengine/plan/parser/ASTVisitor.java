@@ -3685,9 +3685,56 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else {
       getRegionIdStatement.setDevice(ctx.device.getText());
     }
-    if (ctx.time != null) {
-      long timestamp = parseTimeValue(ctx.time, CommonDateTimeUtils.currentTime());
-      getRegionIdStatement.setTimeStamp(timestamp);
+    getRegionIdStatement.setStartTimeStamp(-1L);
+    getRegionIdStatement.setEndTimeStamp(Long.MAX_VALUE);
+
+    if (ctx.timeRangeExpression != null) {
+      Expression timeRangeExpression = parseExpression(ctx.timeRangeExpression, true);
+      getRegionIdStatement = parseTimeRangeExpression(timeRangeExpression, getRegionIdStatement);
+    }
+
+    return getRegionIdStatement;
+  }
+
+  public GetRegionIdStatement parseTimeRangeExpression(
+      Expression timeRangeExpression, GetRegionIdStatement getRegionIdStatement) {
+    List<Expression> result = timeRangeExpression.getExpressions();
+    if (timeRangeExpression.getExpressionType() == ExpressionType.LOGIC_AND) {
+      getRegionIdStatement = parseTimeRangeExpression(result.get(0), getRegionIdStatement);
+      getRegionIdStatement = parseTimeRangeExpression(result.get(1), getRegionIdStatement);
+    } else if (result.get(0).getExpressionType() == ExpressionType.TIMESTAMP
+        && result.get(1) instanceof ConstantOperand
+        && ((ConstantOperand) result.get(1)).getDataType() == TSDataType.INT64) {
+      ExpressionType tmpType = timeRangeExpression.getExpressionType();
+      long timestamp = Long.parseLong(((ConstantOperand) result.get(1)).getValueString());
+      switch (tmpType) {
+        case EQUAL_TO:
+          getRegionIdStatement.setStartTimeStamp(
+              Math.max(getRegionIdStatement.getStartTimeStamp(), timestamp));
+          getRegionIdStatement.setEndTimeStamp(
+              Math.min(getRegionIdStatement.getEndTimeStamp(), timestamp));
+          break;
+        case GREATER_EQUAL:
+          getRegionIdStatement.setStartTimeStamp(
+              Math.max(getRegionIdStatement.getStartTimeStamp(), timestamp));
+          break;
+        case GREATER_THAN:
+          getRegionIdStatement.setStartTimeStamp(
+              Math.max(getRegionIdStatement.getStartTimeStamp(), timestamp + 1));
+          break;
+        case LESS_EQUAL:
+          getRegionIdStatement.setEndTimeStamp(
+              Math.min(getRegionIdStatement.getEndTimeStamp(), timestamp));
+          break;
+        case LESS_THAN:
+          getRegionIdStatement.setEndTimeStamp(
+              Math.min(getRegionIdStatement.getEndTimeStamp(), timestamp - 1));
+          break;
+        default:
+          throw new UnsupportedOperationException();
+      }
+    } else {
+      throw new SemanticException("Get region id statement‘ expression must be a time expression");
     }
     return getRegionIdStatement;
   }

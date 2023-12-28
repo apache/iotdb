@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorReq
 import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
@@ -60,7 +60,10 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
     final List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>();
 
     for (final PipeTransferTabletBinaryReq binaryReq : binaryReqs) {
-      final Statement statement = binaryReq.constructStatement();
+      final InsertBaseStatement statement = binaryReq.constructStatement();
+      if (statement.isEmpty()) {
+        continue;
+      }
       if (statement instanceof InsertRowStatement) {
         insertRowStatementList.add((InsertRowStatement) statement);
       } else if (statement instanceof InsertTabletStatement) {
@@ -74,11 +77,14 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
     }
 
     for (final PipeTransferTabletInsertNodeReq insertNodeReq : insertNodeReqs) {
-      final Statement insertStatement = insertNodeReq.constructStatement();
-      if (insertStatement instanceof InsertRowStatement) {
-        insertRowStatementList.add((InsertRowStatement) insertStatement);
-      } else if (insertStatement instanceof InsertTabletStatement) {
-        insertTabletStatementList.add((InsertTabletStatement) insertStatement);
+      final InsertBaseStatement statement = insertNodeReq.constructStatement();
+      if (statement.isEmpty()) {
+        continue;
+      }
+      if (statement instanceof InsertRowStatement) {
+        insertRowStatementList.add((InsertRowStatement) statement);
+      } else if (statement instanceof InsertTabletStatement) {
+        insertTabletStatementList.add((InsertTabletStatement) statement);
       } else {
         throw new UnsupportedOperationException(
             String.format(
@@ -88,7 +94,11 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
     }
 
     for (final PipeTransferTabletRawReq tabletReq : tabletReqs) {
-      insertTabletStatementList.add(tabletReq.constructStatement());
+      final InsertTabletStatement statement = tabletReq.constructStatement();
+      if (statement.isEmpty()) {
+        continue;
+      }
+      insertTabletStatementList.add(statement);
     }
 
     insertRowsStatement.setInsertRowStatementList(insertRowStatementList);

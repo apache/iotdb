@@ -28,6 +28,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.Lock
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.IReleaseFlushStrategy;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.IMemoryManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaFile;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -172,10 +173,13 @@ public class Scheduler {
    * @param regionIds determine the MTreeStore to select subtrees, the head of the list is the first
    *     MTreeStore to select subtrees
    */
-  public synchronized void scheduleFlush(List<Integer> regionIds) {
+  public synchronized void scheduleFlush(List<Pair<Integer, Long>> regionIds) {
     AtomicInteger remainToFlush = new AtomicInteger(BATCH_FLUSH_SUBTREE);
-    for (int regionId : regionIds) {
-      if (flushingRegionSet.contains(regionId)) {
+    boolean hasBreak = false;
+    for (Pair<Integer, Long> pair : regionIds) {
+      int regionId = pair.getLeft();
+      if (hasBreak || flushingRegionSet.contains(regionId)) {
+        regionToStore.get(regionId).getLockManager().globalStampedReadUnlock(pair.getRight());
         continue;
       }
       flushingRegionSet.add(regionId);
@@ -187,7 +191,6 @@ public class Scheduler {
             LockManager lockManager = store.getLockManager();
             long startTime = System.currentTimeMillis();
             try {
-              lockManager.globalReadLock();
               if (file == null) {
                 // store has been closed
                 return;
@@ -201,6 +204,8 @@ public class Scheduler {
                   regionId,
                   e.getMessage(),
                   e);
+            } catch (Throwable e) {
+              LOGGER.error("Error occurred during PBTree flush", e);
             } finally {
               long time = System.currentTimeMillis() - startTime;
               if (time > 10_000) {
@@ -208,12 +213,12 @@ public class Scheduler {
               } else {
                 LOGGER.debug("It takes {}ms to flush MTree in SchemaRegion {}", time, regionId);
               }
-              lockManager.globalReadUnlock();
+              lockManager.globalStampedReadUnlock(pair.getRight());
               flushingRegionSet.remove(regionId);
             }
           });
       if (remainToFlush.get() <= 0) {
-        break;
+        hasBreak = true;
       }
     }
   }

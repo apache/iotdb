@@ -61,4 +61,10 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
     properties.setProperty("enable_rest_service", String.valueOf(enableRestService));
     return this;
   }
+
+  @Override
+  public DataNodeConfig setConnectionTimeoutInMS(int connectionTimeoutInMS) {
+    properties.setProperty("dn_connection_timeout_ms", String.valueOf(connectionTimeoutInMS));
+    return this;
+  }
 }

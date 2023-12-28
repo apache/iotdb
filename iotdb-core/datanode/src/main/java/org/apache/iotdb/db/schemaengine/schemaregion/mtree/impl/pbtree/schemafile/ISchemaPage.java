@@ -126,6 +126,10 @@ public interface ISchemaPage {
 
   AtomicInteger getRefCnt();
 
+  int incrementAndGetRefCnt();
+
+  int decrementAndGetRefCnt();
+
   ReadWriteLock getLock();
 
   void syncPageBuffer();

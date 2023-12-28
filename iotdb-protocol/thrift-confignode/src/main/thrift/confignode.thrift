@@ -251,7 +251,8 @@ struct TGetRegionIdReq {
     1: required common.TConsensusGroupType type
     2: optional string database
     3: optional string device
-    4: optional i64 timeStamp
+    4: optional common.TTimePartitionSlot startTimeSlot
+    5: optional common.TTimePartitionSlot endTimeSlot
 }
 
 struct TGetRegionIdResp {
