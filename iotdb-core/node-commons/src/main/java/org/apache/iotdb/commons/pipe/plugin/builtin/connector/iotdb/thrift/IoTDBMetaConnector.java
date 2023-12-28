@@ -45,7 +45,7 @@ public abstract class IoTDBMetaConnector extends IoTDBConnector {
 
   private long currentClientIndex = 0;
 
-  public IoTDBMetaConnector() {
+  protected IoTDBMetaConnector() {
     // Do nothing
   }
 
@@ -120,13 +120,13 @@ public abstract class IoTDBMetaConnector extends IoTDBConnector {
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
     throw new UnsupportedOperationException(
-        "IoTDBSchemaConnector can't transfer TabletInsertionEvent.");
+        "IoTDBMetaConnector can't transfer TabletInsertionEvent.");
   }
 
   @Override
   public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     throw new UnsupportedOperationException(
-        "IoTDBSchemaConnector can't transfer TsFileInsertionEvent.");
+        "IoTDBMetaConnector can't transfer TsFileInsertionEvent.");
   }
 
   @Override

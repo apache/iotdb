@@ -252,6 +252,12 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         () -> configManager.getPipeManager().getPipeRuntimeCoordinator().startPipeMetaSync());
     threadPool.submit(
         () -> configManager.getPipeManager().getPipeRuntimeCoordinator().startPipeHeartbeat());
+    threadPool.submit(
+        () ->
+            configManager
+                .getPipeManager()
+                .getPipeRuntimeCoordinator()
+                .onConfigRegionGroupLeaderChanged());
 
     // To adapt old version, we check cluster ID after state machine has been fully recovered.
     // Do check async because sync will be slow and block every other things.

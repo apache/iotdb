@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.confignode.manager.pipe.transfer.extractor;
 
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.datastructure.ConcurrentIterableLinkedQueue;
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb.IoTDBCommonExtractor;
@@ -76,9 +78,14 @@ public class IoTDBConfigRegionExtractor extends IoTDBCommonExtractor {
 
   @Override
   public void start() throws Exception {
-    itr =
-        ConfigPlanListeningQueue.getInstance()
-            .newIterator(((MetaProgressIndex) pipeTaskMeta.getProgressIndex()).getIndex());
+    ProgressIndex progressIndex = pipeTaskMeta.getProgressIndex();
+    if (progressIndex instanceof MinimumProgressIndex) {
+      // TODO: Listen to snapshot
+    } else {
+      itr =
+          ConfigPlanListeningQueue.getInstance()
+              .newIterator(((MetaProgressIndex) pipeTaskMeta.getProgressIndex()).getIndex());
+    }
   }
 
   @Override

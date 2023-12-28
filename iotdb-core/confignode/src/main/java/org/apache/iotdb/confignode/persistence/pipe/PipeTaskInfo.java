@@ -50,6 +50,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -371,7 +372,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
                               pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
 
                           if (consensusGroupIdToTaskMetaMap.containsKey(consensusGroupId.getId())) {
-                            // If the data region leader is -1, it means the data region is
+                            // If the region leader is -1, it means the region is
                             // removed
                             if (newLeader != -1) {
                               consensusGroupIdToTaskMetaMap
@@ -381,7 +382,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
                               consensusGroupIdToTaskMetaMap.remove(consensusGroupId.getId());
                             }
                           } else {
-                            // If CN does not contain the data region group, it means the data
+                            // If CN does not contain the region group, it means the data
                             // region group is newly added.
                             if (newLeader != -1) {
                               consensusGroupIdToTaskMetaMap.put(
@@ -393,6 +394,11 @@ public class PipeTaskInfo implements SnapshotProcessor {
                             // the data region group has already been removed"
                           }
                         }));
+
+    // Notify configNode agent to handle config leader change
+    List<PipeMeta> pipeMetas = new ArrayList<>();
+    pipeMetaKeeper.getPipeMetaList().forEach(pipeMetas::add);
+    PipeConfigNodeAgent.task().handlePipeMetaChanges(pipeMetas);
 
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
@@ -482,23 +488,6 @@ public class PipeTaskInfo implements SnapshotProcessor {
                 pipeTaskMeta.clearExceptionMessages();
               }
             });
-  }
-
-  public void setShouldBeRunningToFalse(String pipeName) {
-    acquireWriteLock();
-    try {
-      setShouldBeRunningToFalseInternal(pipeName);
-    } finally {
-      releaseWriteLock();
-    }
-  }
-
-  private void setShouldBeRunningToFalseInternal(String pipeName) {
-    if (!pipeMetaKeeper.containsPipeMeta(pipeName)) {
-      return;
-    }
-
-    pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta().setShouldBeRunning(false);
   }
 
   /**
