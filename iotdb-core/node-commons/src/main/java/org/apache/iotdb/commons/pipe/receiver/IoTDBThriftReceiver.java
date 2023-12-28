@@ -17,8 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.connector.payload.request;
+package org.apache.iotdb.commons.pipe.receiver;
 
+import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
-public abstract class TransferConfigPlanReq extends TPipeTransferReq {}
+public interface IoTDBThriftReceiver {
+  IoTDBConnectorRequestVersion getVersion();
+
+  TPipeTransferResp receive(TPipeTransferReq req);
+
+  void handleExit();
+}

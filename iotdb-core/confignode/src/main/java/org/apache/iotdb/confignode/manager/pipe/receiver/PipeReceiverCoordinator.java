@@ -17,20 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.receiver.thrift;
+package org.apache.iotdb.confignode.manager.pipe.receiver;
 
 import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
-import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
-import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
-import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
+import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiverAgent;
+import org.apache.iotdb.confignode.manager.ConfigManager;
 
-public interface IoTDBThriftReceiver {
+public class PipeReceiverCoordinator extends IoTDBReceiverAgent {
 
-  IoTDBConnectorRequestVersion getVersion();
+  private final ConfigManager configManager;
 
-  TPipeTransferResp receive(
-      TPipeTransferReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher);
+  public PipeReceiverCoordinator(ConfigManager configManager) {
+    this.configManager = configManager;
+  }
 
-  void handleExit();
+  @Override
+  protected void initConstructors() {
+    RECEIVER_CONSTRUCTORS.put(
+        IoTDBConnectorRequestVersion.VERSION_1.getVersion(),
+        () -> new IoTDBConfigReceiverV1(configManager));
+  }
 }

@@ -290,11 +290,14 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       return false;
     }
     CreatePipeProcedureV2 that = (CreatePipeProcedureV2) o;
-    return createPipeRequest.getPipeName().equals(that.createPipeRequest.getPipeName());
+    return getProcId() == that.getProcId()
+        && getCurrentState().equals(that.getCurrentState())
+        && getCycles() == that.getCycles()
+        && createPipeRequest.equals(that.createPipeRequest);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(createPipeRequest.getPipeName());
+    return Objects.hash(getProcId(), getCurrentState(), getCycles(), createPipeRequest);
   }
 }

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse;
+package org.apache.iotdb.commons.pipe.connector.payload.response;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class PipeTransferFilePieceResp extends TPipeTransferResp {
 
@@ -34,11 +35,15 @@ public class PipeTransferFilePieceResp extends TPipeTransferResp {
 
   private long endWritingOffset;
 
-  private PipeTransferFilePieceResp() {}
+  private PipeTransferFilePieceResp() {
+    // Empty constructor
+  }
 
   public long getEndWritingOffset() {
     return endWritingOffset;
   }
+
+  /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeTransferFilePieceResp toTPipeTransferResp(
       TSStatus status, long endWritingOffset) throws IOException {
@@ -76,5 +81,25 @@ public class PipeTransferFilePieceResp extends TPipeTransferResp {
     }
 
     return filePieceResp;
+  }
+
+  /////////////////////////////// Object ///////////////////////////////
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    PipeTransferFilePieceResp that = (PipeTransferFilePieceResp) obj;
+    return endWritingOffset == that.endWritingOffset
+        && status.equals(that.status)
+        && body.equals(that.body);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(endWritingOffset, status, body);
   }
 }
