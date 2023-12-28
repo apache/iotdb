@@ -196,7 +196,7 @@ public class CommonConfig {
   private long pipeMemoryExpanderIntervalSeconds = 3 * 60; // 3Min
 
   /** Whether to use persistent schema mode. */
-  private String schemaEngineMode = "PBTree";
+  private String schemaEngineMode = "Memory";
 
   /** Whether to enable Last cache. */
   private boolean lastCacheEnable = true;

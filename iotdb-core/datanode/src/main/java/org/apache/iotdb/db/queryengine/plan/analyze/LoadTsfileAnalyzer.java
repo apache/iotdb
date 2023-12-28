@@ -351,16 +351,7 @@ public class LoadTsfileAnalyzer {
     }
 
     public void flush() throws AuthException {
-      LOGGER.info(
-          "flush {} timeseries. current timeseries memory usage {}, aligned cache usage {}, aligned cache size {}, databases usage {}, memory is enough {}",
-          schemaCache.currentBatchTimeSeriesCount,
-          schemaCache.batchDevice2TimeSeriesSchemasMemoryUsageSizeInBytes,
-          schemaCache.tsFileDevice2IsAlignedMemoryUsageSizeInBytes,
-          schemaCache.tsFileDevice2IsAligned.size(),
-          schemaCache.alreadySetDatabasesMemoryUsageSizeInBytes,
-          schemaCache.block.hasEnoughMemory());
       doAutoCreateAndVerify();
-      LOGGER.info("finish auto create");
 
       schemaCache.clearTimeSeries();
     }
@@ -373,22 +364,18 @@ public class LoadTsfileAnalyzer {
       try {
         if (loadTsFileStatement.isVerifySchema()) {
           makeSureNoDuplicatedMeasurementsInDevices();
-          LOGGER.info("finish make sure no duplicated measurements in devices");
         }
 
         if (loadTsFileStatement.isAutoCreateDatabase()) {
           autoCreateDatabase();
-          LOGGER.info("finish auto create database");
         }
 
         // schema fetcher will not auto create if config set
         // isAutoCreateSchemaEnabled is false.
         final ISchemaTree schemaTree = autoCreateSchema();
-        LOGGER.info("finish auto create schema");
 
         if (loadTsFileStatement.isVerifySchema()) {
           verifySchema(schemaTree);
-          LOGGER.info("finish verify schema");
         }
       } catch (AuthException e) {
         throw e;
@@ -538,10 +525,6 @@ public class LoadTsfileAnalyzer {
         isAlignedList.add(schemaCache.getDeviceIsAligned(entry.getKey()));
       }
 
-      LOGGER.info(
-          "start to validate schema measurement list size {}, is aligned List size {}",
-          measurementList.size(),
-          isAlignedList.size());
       return SchemaValidator.validate(
           schemaFetcher,
           deviceList,

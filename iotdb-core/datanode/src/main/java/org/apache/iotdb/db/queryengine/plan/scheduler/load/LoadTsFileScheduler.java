@@ -445,7 +445,6 @@ public class LoadTsFileScheduler implements IScheduler {
 
       if (!isMemoryEnough()) {
         routeChunkData();
-        logger.info("Try to send chunk data, data size {}, block {}", dataSize, block);
 
         // start to dispatch from the biggest TsFilePieceNode
         List<TRegionReplicaSet> sortedReplicaSets =
