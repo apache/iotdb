@@ -38,7 +38,7 @@ dn_system_dir=$(echo $(grep '^dn_system_dir=' ${IOTDB_DATANODE_CONFIG} || echo "
 echo clean $dn_system_dir
 dn_data_dirs=$(echo $(grep '^dn_data_dirs=' ${IOTDB_DATANODE_CONFIG} || echo "data/datanode/data") | sed 's/.*=//')
 echo clean $dn_data_dirs
-dn_consensus_dir=$(echo $(grep '^dn_consensus_di=' ${IOTDB_DATANODE_CONFIG} || echo "data/datanode/consensus") | sed 's/.*=//')
+dn_consensus_dir=$(echo $(grep '^dn_consensus_dir=' ${IOTDB_DATANODE_CONFIG} || echo "data/datanode/consensus") | sed 's/.*=//')
 echo clean $dn_consensus_dir
 dn_wal_dirs=$(echo $(grep '^dn_wal_dirs=' ${IOTDB_DATANODE_CONFIG} || echo "data/datanode/wal") | sed 's/.*=//')
 echo clean $dn_wal_dirs
