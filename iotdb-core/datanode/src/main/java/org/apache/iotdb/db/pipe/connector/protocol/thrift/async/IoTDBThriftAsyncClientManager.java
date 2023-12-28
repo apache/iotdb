@@ -24,49 +24,38 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorClient;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.LeaderCacheManager;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.IoTDBThriftClientManager;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.Closeable;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class IoTDBThriftAsyncClientManager implements Closeable {
+public class IoTDBThriftAsyncClientManager extends IoTDBThriftClientManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftAsyncClientManager.class);
 
-  private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
-
-  private final boolean useLeaderCache;
-
-  private final List<TEndPoint> endPoints;
-
-  private final LeaderCacheManager leaderCacheManager = new LeaderCacheManager();
+  private final Set<TEndPoint> endPointSet;
 
   private static final AtomicReference<
           IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>>
       ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER = new AtomicReference<>();
-  private final IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>
-      asyncPipeDataTransferClientManager;
-
-  private long currentClientIndex = 0;
+  private final IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> endPoint2Client;
 
   public IoTDBThriftAsyncClientManager(List<TEndPoint> endPoints, boolean useLeaderCache) {
-    this.useLeaderCache = useLeaderCache;
-    this.endPoints = endPoints;
+    super(endPoints, useLeaderCache);
+
+    endPointSet = new HashSet<>(endPoints);
 
     if (ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get() == null) {
       synchronized (IoTDBThriftAsyncConnector.class) {
@@ -78,15 +67,14 @@ public class IoTDBThriftAsyncClientManager implements Closeable {
         }
       }
     }
-    asyncPipeDataTransferClientManager = ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get();
+    endPoint2Client = ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get();
   }
 
   public AsyncPipeDataTransferServiceClient borrowClient() throws Exception {
-    final int clientSize = endPoints.size();
+    final int clientSize = endPointList.size();
     while (true) {
-      final TEndPoint targetNodeUrl = endPoints.get((int) (currentClientIndex++ % clientSize));
-      final AsyncPipeDataTransferServiceClient client =
-          asyncPipeDataTransferClientManager.borrowClient(targetNodeUrl);
+      final TEndPoint targetNodeUrl = endPointList.get((int) (currentClientIndex++ % clientSize));
+      final AsyncPipeDataTransferServiceClient client = endPoint2Client.borrowClient(targetNodeUrl);
       if (handshakeIfNecessary(targetNodeUrl, client)) {
         return client;
       }
@@ -180,47 +168,11 @@ public class IoTDBThriftAsyncClientManager implements Closeable {
       return;
     }
 
-    try {
-      if (!endPoint2ClientAndStatus.containsKey(endPoint)) {
-        endPoints.add(endPoint);
-        endPoint2ClientAndStatus.put(endPoint, new Pair<>(null, false));
-        reconstructClient(endPoint);
-      }
-
-      leaderCacheManager.updateLeaderEndPoint(deviceId, endPoint);
-    } catch (Exception e) {
-      LOGGER.warn(
-          "Failed to update leader cache for device {} with endpoint {}:{}.",
-          deviceId,
-          endPoint.getIp(),
-          endPoint.getPort(),
-          e);
+    if (!endPointSet.contains(endPoint)) {
+      endPointList.add(endPoint);
+      endPointSet.add(endPoint);
     }
-  }
 
-  @Override
-  public void close() {
-    for (final Map.Entry<TEndPoint, Pair<IoTDBThriftSyncConnectorClient, Boolean>> entry :
-        endPoint2ClientAndStatus.entrySet()) {
-      final TEndPoint endPoint = entry.getKey();
-      final Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus = entry.getValue();
-
-      if (clientAndStatus == null) {
-        continue;
-      }
-
-      try {
-        if (clientAndStatus.getLeft() != null) {
-          clientAndStatus.getLeft().close();
-          clientAndStatus.setLeft(null);
-        }
-        LOGGER.info("Client {}:{} closed.", endPoint.getIp(), endPoint.getPort());
-      } catch (Exception e) {
-        LOGGER.warn(
-            "Failed to close client {}:{}, because: {}.", endPoint.getIp(), endPoint.getPort(), e);
-      } finally {
-        clientAndStatus.setRight(false);
-      }
-    }
+    leaderCacheManager.updateLeaderEndPoint(deviceId, endPoint);
   }
 }
