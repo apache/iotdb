@@ -290,9 +290,11 @@ public class PipeTaskInfo implements SnapshotProcessor {
   public TSStatus setPipeStatus(SetPipeStatusPlanV2 plan) {
     acquireWriteLock();
     try {
-      PipeRuntimeMeta runtimeMeta = pipeMetaKeeper.getPipeMeta(plan.getPipeName()).getRuntimeMeta();
+      PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(plan.getPipeName());
+      PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
       runtimeMeta.getStatus().set(plan.getPipeStatus());
       runtimeMeta.setShouldBeRunning(plan.getPipeStatus() == PipeStatus.RUNNING);
+      PipeConfigNodeAgent.task().handleSinglePipeMetaChanges(pipeMeta);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
       releaseWriteLock();
@@ -302,7 +304,9 @@ public class PipeTaskInfo implements SnapshotProcessor {
   public TSStatus dropPipe(DropPipePlanV2 plan) {
     acquireWriteLock();
     try {
-      pipeMetaKeeper.removePipeMeta(plan.getPipeName());
+      String pipeName = plan.getPipeName();
+      pipeMetaKeeper.removePipeMeta(pipeName);
+      PipeConfigNodeAgent.task().handleDropPipe(pipeName);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
       releaseWriteLock();
@@ -430,6 +434,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
               LOGGER.info("Recording pipe meta: {}", pipeMeta);
             });
 
+    PipeConfigNodeAgent.task().handlePipeMetaChanges(plan.getPipeMetaList());
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

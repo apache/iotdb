@@ -74,6 +74,4 @@ public class PipeTaskConfigNodeAgent extends PipeTaskAgent {
         .getConsensusGroupId2TaskMetaMap()
         .put(consensusGroupId, pipeTaskMeta);
   }
-
-  // TODO: handleLeaderChanged and handleLeaderReady
 }
