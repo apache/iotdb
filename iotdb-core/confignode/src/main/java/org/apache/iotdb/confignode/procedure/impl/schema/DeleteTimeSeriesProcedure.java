@@ -33,7 +33,7 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
-import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
+import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DeleteTimeSeriesState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -72,12 +72,13 @@ public class DeleteTimeSeriesProcedure
 
   private transient String requestMessage;
 
-  public DeleteTimeSeriesProcedure() {
-    super();
+  public DeleteTimeSeriesProcedure(boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
-  public DeleteTimeSeriesProcedure(String queryId, PathPatternTree patternTree) {
-    super();
+  public DeleteTimeSeriesProcedure(
+      String queryId, PathPatternTree patternTree, boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
     this.queryId = queryId;
     setPatternTree(patternTree);
   }
@@ -231,8 +232,9 @@ public class DeleteTimeSeriesProcedure
             DataNodeRequestType.DELETE_DATA_FOR_DELETE_SCHEMA,
             ((dataNodeLocation, consensusGroupIdList) ->
                 new TDeleteDataForDeleteSchemaReq(
-                    new ArrayList<>(consensusGroupIdList),
-                    preparePatternTreeBytesData(patternTree))));
+                        new ArrayList<>(consensusGroupIdList),
+                        preparePatternTreeBytesData(patternTree))
+                    .setIsGeneratedByPipe(isGeneratedByPipe)));
     deleteDataTask.execute();
   }
 
@@ -244,7 +246,8 @@ public class DeleteTimeSeriesProcedure
             env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
             DataNodeRequestType.DELETE_TIMESERIES,
             ((dataNodeLocation, consensusGroupIdList) ->
-                new TDeleteTimeSeriesReq(consensusGroupIdList, patternTreeBytes)));
+                new TDeleteTimeSeriesReq(consensusGroupIdList, patternTreeBytes)
+                    .setIsGeneratedByPipe(isGeneratedByPipe)));
     deleteTimeSeriesTask.execute();
   }
 
@@ -312,7 +315,10 @@ public class DeleteTimeSeriesProcedure
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.DELETE_TIMESERIES_PROCEDURE.getTypeCode());
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_DELETE_TIMESERIES_PROCEDURE.getTypeCode()
+            : ProcedureType.DELETE_TIMESERIES_PROCEDURE.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(queryId, stream);
     patternTree.serialize(stream);
@@ -331,13 +337,16 @@ public class DeleteTimeSeriesProcedure
     if (o == null || getClass() != o.getClass()) return false;
     DeleteTimeSeriesProcedure that = (DeleteTimeSeriesProcedure) o;
     return this.getProcId() == that.getProcId()
-        && this.getState() == that.getState()
-        && patternTree.equals(that.patternTree);
+        && this.getCurrentState().equals(that.getCurrentState())
+        && this.getCycles() == getCycles()
+        && this.isGeneratedByPipe == that.isGeneratedByPipe
+        && this.patternTree.equals(that.patternTree);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(getProcId(), getState(), patternTree);
+    return Objects.hash(
+        getProcId(), getCurrentState(), getCycles(), isGeneratedByPipe, patternTree);
   }
 
   private class DeleteTimeSeriesRegionTaskExecutor<Q>

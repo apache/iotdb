@@ -17,10 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.payload.evolvable.request;
+package org.apache.iotdb.commons.pipe.connector.payload.request;
 
-import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
-import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -32,77 +30,73 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Objects;
 
-public class PipeTransferFilePieceReq extends TPipeTransferReq {
+public abstract class PipeTransferFilePieceReq extends TPipeTransferReq {
 
   private transient String fileName;
   private transient long startWritingOffset;
   private transient byte[] filePiece;
 
-  private PipeTransferFilePieceReq() {
-    // Empty constructor
-  }
-
-  public String getFileName() {
+  public final String getFileName() {
     return fileName;
   }
 
-  public long getStartWritingOffset() {
+  public final long getStartWritingOffset() {
     return startWritingOffset;
   }
 
-  public byte[] getFilePiece() {
+  public final byte[] getFilePiece() {
     return filePiece;
   }
 
+  protected abstract PipeRequestType getPlanType();
+
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeTransferFilePieceReq toTPipeTransferReq(
-      String fileName, long startWritingOffset, byte[] filePiece) throws IOException {
-    final PipeTransferFilePieceReq filePieceReq = new PipeTransferFilePieceReq();
+  protected final PipeTransferFilePieceReq convertToTPipeTransferReq(
+      String snapshotName, long startWritingOffset, byte[] snapshotPiece) throws IOException {
 
-    filePieceReq.fileName = fileName;
-    filePieceReq.startWritingOffset = startWritingOffset;
-    filePieceReq.filePiece = filePiece;
+    this.fileName = snapshotName;
+    this.startWritingOffset = startWritingOffset;
+    this.filePiece = snapshotPiece;
 
-    filePieceReq.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
-    filePieceReq.type = PipeRequestType.TRANSFER_FILE_PIECE.getType();
+    this.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
+    this.type = getPlanType().getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      ReadWriteIOUtils.write(fileName, outputStream);
+      ReadWriteIOUtils.write(snapshotName, outputStream);
       ReadWriteIOUtils.write(startWritingOffset, outputStream);
-      ReadWriteIOUtils.write(new Binary(filePiece), outputStream);
-      filePieceReq.body =
-          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+      ReadWriteIOUtils.write(new Binary(snapshotPiece), outputStream);
+      body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
 
-    return filePieceReq;
+    return this;
   }
 
-  public static PipeTransferFilePieceReq fromTPipeTransferReq(TPipeTransferReq transferReq) {
-    final PipeTransferFilePieceReq filePieceReq = new PipeTransferFilePieceReq();
+  protected final PipeTransferFilePieceReq translateFromTPipeTransferReq(
+      TPipeTransferReq transferReq) {
 
-    filePieceReq.fileName = ReadWriteIOUtils.readString(transferReq.body);
-    filePieceReq.startWritingOffset = ReadWriteIOUtils.readLong(transferReq.body);
-    filePieceReq.filePiece = ReadWriteIOUtils.readBinary(transferReq.body).getValues();
+    fileName = ReadWriteIOUtils.readString(transferReq.body);
+    startWritingOffset = ReadWriteIOUtils.readLong(transferReq.body);
+    filePiece = ReadWriteIOUtils.readBinary(transferReq.body).getValues();
 
-    filePieceReq.version = transferReq.version;
-    filePieceReq.type = transferReq.type;
-    filePieceReq.body = transferReq.body;
+    version = transferReq.version;
+    type = transferReq.type;
+    body = transferReq.body;
 
-    return filePieceReq;
+    return this;
   }
 
   /////////////////////////////// Air Gap ///////////////////////////////
 
-  public static byte[] toTPipeTransferBytes(
-      String fileName, long startWritingOffset, byte[] filePiece) throws IOException {
+  protected final byte[] convertToTPipeTransferBytes(
+      String snapshotName, long startWritingOffset, byte[] snapshotPiece) throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
-      ReadWriteIOUtils.write(PipeRequestType.TRANSFER_FILE_PIECE.getType(), outputStream);
-      ReadWriteIOUtils.write(fileName, outputStream);
+      ReadWriteIOUtils.write(getPlanType().getType(), outputStream);
+      ReadWriteIOUtils.write(snapshotName, outputStream);
       ReadWriteIOUtils.write(startWritingOffset, outputStream);
-      ReadWriteIOUtils.write(new Binary(filePiece), outputStream);
+      ReadWriteIOUtils.write(new Binary(snapshotPiece), outputStream);
       return byteArrayOutputStream.toByteArray();
     }
   }

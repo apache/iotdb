@@ -59,6 +59,8 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.task.CreatePipeProcedureV
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.DropPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.StartPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.StopPipeProcedureV2;
+import org.apache.iotdb.confignode.procedure.impl.region.CreateRegionGroupsProcedure;
+import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterLogicalViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
@@ -66,8 +68,6 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DeleteLogicalViewProced
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
-import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
-import org.apache.iotdb.confignode.procedure.impl.statemachine.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.AuthOperationProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.CreateTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.DropTriggerProcedure;
@@ -164,17 +164,18 @@ public class ProcedureManager {
     }
   }
 
-  public TSStatus deleteDatabases(ArrayList<TDatabaseSchema> deleteSgSchemaList) {
+  public TSStatus deleteDatabases(
+      ArrayList<TDatabaseSchema> deleteSgSchemaList, boolean isGeneratedByPipe) {
     List<Long> procedureIds = new ArrayList<>();
     for (TDatabaseSchema storageGroupSchema : deleteSgSchemaList) {
       DeleteDatabaseProcedure deleteDatabaseProcedure =
-          new DeleteDatabaseProcedure(storageGroupSchema);
+          new DeleteDatabaseProcedure(storageGroupSchema, isGeneratedByPipe);
       long procedureId = this.executor.submitProcedure(deleteDatabaseProcedure);
       procedureIds.add(procedureId);
     }
     List<TSStatus> procedureStatus = new ArrayList<>();
     boolean isSucceed = waitingProcedureFinished(procedureIds, procedureStatus);
-    // clear the previously deleted regions
+    // Clear the previously deleted regions
     final PartitionManager partitionManager = getConfigManager().getPartitionManager();
     partitionManager.getRegionMaintainer().submit(partitionManager::maintainRegionReplicas);
     if (isSucceed) {
@@ -216,7 +217,11 @@ public class ProcedureManager {
               "Some other task is deleting some target timeseries.");
         }
         procedureId =
-            this.executor.submitProcedure(new DeleteTimeSeriesProcedure(queryId, patternTree));
+            this.executor.submitProcedure(
+                new DeleteTimeSeriesProcedure(
+                    queryId,
+                    patternTree,
+                    req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()));
       }
     }
     List<TSStatus> procedureStatus = new ArrayList<>();
@@ -261,7 +266,11 @@ public class ProcedureManager {
               "Some other task is deleting some target views.");
         }
         procedureId =
-            this.executor.submitProcedure(new DeleteLogicalViewProcedure(queryId, patternTree));
+            this.executor.submitProcedure(
+                new DeleteLogicalViewProcedure(
+                    queryId,
+                    patternTree,
+                    req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()));
       }
     }
     List<TSStatus> procedureStatus = new ArrayList<>();
@@ -306,7 +315,10 @@ public class ProcedureManager {
       if (procedureId == -1) {
         procedureId =
             this.executor.submitProcedure(
-                new AlterLogicalViewProcedure(queryId, viewPathToSourceMap));
+                new AlterLogicalViewProcedure(
+                    queryId,
+                    viewPathToSourceMap,
+                    req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()));
       }
     }
     List<TSStatus> procedureStatus = new ArrayList<>();
@@ -319,7 +331,8 @@ public class ProcedureManager {
     }
   }
 
-  public TSStatus setSchemaTemplate(String queryId, String templateName, String templateSetPath) {
+  public TSStatus setSchemaTemplate(
+      String queryId, String templateName, String templateSetPath, boolean isGeneratedByPipe) {
     long procedureId = -1;
     synchronized (this) {
       boolean hasOverlappedTask = false;
@@ -349,7 +362,8 @@ public class ProcedureManager {
         }
         procedureId =
             this.executor.submitProcedure(
-                new SetTemplateProcedure(queryId, templateName, templateSetPath));
+                new SetTemplateProcedure(
+                    queryId, templateName, templateSetPath, isGeneratedByPipe));
       }
     }
     List<TSStatus> procedureStatus = new ArrayList<>();
@@ -363,7 +377,7 @@ public class ProcedureManager {
   }
 
   public TSStatus deactivateTemplate(
-      String queryId, Map<PartialPath, List<Template>> templateSetInfo) {
+      String queryId, Map<PartialPath, List<Template>> templateSetInfo, boolean isGeneratedByPipe) {
     long procedureId = -1;
     synchronized (this) {
       boolean hasOverlappedTask = false;
@@ -404,7 +418,7 @@ public class ProcedureManager {
         }
         procedureId =
             this.executor.submitProcedure(
-                new DeactivateTemplateProcedure(queryId, templateSetInfo));
+                new DeactivateTemplateProcedure(queryId, templateSetInfo, isGeneratedByPipe));
       }
     }
     List<TSStatus> procedureStatus = new ArrayList<>();
@@ -417,7 +431,8 @@ public class ProcedureManager {
     }
   }
 
-  public TSStatus unsetSchemaTemplate(String queryId, Template template, PartialPath path) {
+  public TSStatus unsetSchemaTemplate(
+      String queryId, Template template, PartialPath path, boolean isGeneratedByPipe) {
     long procedureId = -1;
     synchronized (this) {
       boolean hasOverlappedTask = false;
@@ -448,7 +463,8 @@ public class ProcedureManager {
                   + path.getFullPath());
         }
         procedureId =
-            this.executor.submitProcedure(new UnsetTemplateProcedure(queryId, template, path));
+            this.executor.submitProcedure(
+                new UnsetTemplateProcedure(queryId, template, path, isGeneratedByPipe));
       }
     }
     List<TSStatus> procedureStatus = new ArrayList<>();
@@ -625,9 +641,10 @@ public class ProcedureManager {
   }
 
   /**
-   * Generate CreateRegionGroupsProcedure and wait for it finished.
+   * Generate {@link CreateRegionGroupsProcedure} and wait until it finished.
    *
-   * @return SUCCESS_STATUS if all RegionGroups created successfully, CREATE_REGION_ERROR otherwise
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if all RegionGroups have been created successfully,
+   *     {@link TSStatusCode#CREATE_REGION_ERROR} otherwise
    */
   public TSStatus createRegionGroups(
       TConsensusGroupType consensusGroupType, CreateRegionGroupsPlan createRegionGroupsPlan) {
@@ -646,13 +663,15 @@ public class ProcedureManager {
   }
 
   /**
-   * Generate CreateTriggerProcedure and wait for it finished.
+   * Generate {@link CreateTriggerProcedure} and wait until it finished.
    *
-   * @return SUCCESS_STATUS if trigger created successfully, CREATE_TRIGGER_ERROR otherwise
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if the trigger has been created successfully,
+   *     {@link TSStatusCode#CREATE_TRIGGER_ERROR} otherwise
    */
-  public TSStatus createTrigger(TriggerInformation triggerInformation, Binary jarFile) {
+  public TSStatus createTrigger(
+      TriggerInformation triggerInformation, Binary jarFile, boolean isGeneratedByPipe) {
     final CreateTriggerProcedure createTriggerProcedure =
-        new CreateTriggerProcedure(triggerInformation, jarFile);
+        new CreateTriggerProcedure(triggerInformation, jarFile, isGeneratedByPipe);
     try {
       if (jarFile != null
           && new UpdateProcedurePlan(createTriggerProcedure).getSerializedSize() > planSizeLimit) {
@@ -680,12 +699,14 @@ public class ProcedureManager {
   }
 
   /**
-   * Generate DropTriggerProcedure and wait for it finished.
+   * Generate {@link DropTriggerProcedure} and wait until it finished.
    *
-   * @return SUCCESS_STATUS if trigger dropped successfully, DROP_TRIGGER_ERROR otherwise
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if the trigger has been dropped successfully,
+   *     {@link TSStatusCode#DROP_TRIGGER_ERROR} otherwise
    */
-  public TSStatus dropTrigger(String triggerName) {
-    long procedureId = executor.submitProcedure(new DropTriggerProcedure(triggerName));
+  public TSStatus dropTrigger(String triggerName, boolean isGeneratedByPipe) {
+    long procedureId =
+        executor.submitProcedure(new DropTriggerProcedure(triggerName, isGeneratedByPipe));
     List<TSStatus> statusList = new ArrayList<>();
     boolean isSucceed =
         waitingProcedureFinished(Collections.singletonList(procedureId), statusList);

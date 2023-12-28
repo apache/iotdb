@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.impl.statemachine;
+package org.apache.iotdb.confignode.procedure.impl;
 
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -58,19 +58,30 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
 
   private List<Procedure<Env>> subProcList = null;
 
-  protected final int getCycles() {
-    return cycles;
-  }
-
   /** Cycles on same state. Good for figuring if we are stuck. */
   private int cycles = 0;
 
   /** Ordinal of the previous state. So we can tell if we are progressing or not. */
   private int previousState;
 
+  /** Mark whether this procedure is called by a pipe forwarded request. */
+  protected boolean isGeneratedByPipe;
+
+  protected StateMachineProcedure() {
+    this(false);
+  }
+
+  protected StateMachineProcedure(boolean isGeneratedByPipe) {
+    this.isGeneratedByPipe = isGeneratedByPipe;
+  }
+
   public enum Flow {
     HAS_MORE_STATE,
     NO_MORE_STATE,
+  }
+
+  protected final int getCycles() {
+    return cycles;
   }
 
   /**

@@ -35,7 +35,7 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
-import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
+import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DeactivateTemplateState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -77,13 +77,13 @@ public class DeactivateTemplateProcedure
   private ByteBuffer timeSeriesPatternTreeBytes; // transient
   private Map<String, List<Integer>> dataNodeRequest; // transient
 
-  public DeactivateTemplateProcedure() {
-    super();
+  public DeactivateTemplateProcedure(boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
   public DeactivateTemplateProcedure(
-      String queryId, Map<PartialPath, List<Template>> templateSetInfo) {
-    super();
+      String queryId, Map<PartialPath, List<Template>> templateSetInfo, boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
     this.queryId = queryId;
     setTemplateSetInfo(templateSetInfo);
   }
@@ -241,7 +241,8 @@ public class DeactivateTemplateProcedure
             env.getConfigManager().getRelatedSchemaRegionGroup(timeSeriesPatternTree),
             DataNodeRequestType.DEACTIVATE_TEMPLATE,
             ((dataNodeLocation, consensusGroupIdList) ->
-                new TDeactivateTemplateReq(consensusGroupIdList, dataNodeRequest)));
+                new TDeactivateTemplateReq(consensusGroupIdList, dataNodeRequest)
+                    .setIsGeneratedByPipe(isGeneratedByPipe)));
     deleteTimeSeriesTask.execute();
   }
 
@@ -345,7 +346,10 @@ public class DeactivateTemplateProcedure
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.DEACTIVATE_TEMPLATE_PROCEDURE.getTypeCode());
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_DEACTIVATE_TEMPLATE_PROCEDURE.getTypeCode()
+            : ProcedureType.DEACTIVATE_TEMPLATE_PROCEDURE.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(queryId, stream);
     ReadWriteIOUtils.write(templateSetInfo.size(), stream);
@@ -383,13 +387,18 @@ public class DeactivateTemplateProcedure
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     DeactivateTemplateProcedure that = (DeactivateTemplateProcedure) o;
-    return Objects.equals(queryId, that.queryId)
+    return Objects.equals(getProcId(), that.getProcId())
+        && Objects.equals(getCurrentState(), that.getCurrentState())
+        && Objects.equals(getCycles(), that.getCycles())
+        && Objects.equals(isGeneratedByPipe, that.isGeneratedByPipe)
+        && Objects.equals(queryId, that.queryId)
         && Objects.equals(templateSetInfo, that.templateSetInfo);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(queryId, templateSetInfo);
+    return Objects.hash(
+        getProcId(), getCurrentState(), getCycles(), isGeneratedByPipe, queryId, templateSetInfo);
   }
 
   private class DeactivateTemplateRegionTaskExecutor<Q>

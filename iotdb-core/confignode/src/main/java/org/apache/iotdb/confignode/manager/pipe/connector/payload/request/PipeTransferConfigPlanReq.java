@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.manager.pipe.connector.payload.request;
 
 import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
-import org.apache.iotdb.commons.pipe.connector.payload.request.TransferConfigPlanReq;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
@@ -31,7 +30,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
-public class PipeTransferConfigPlanReq extends TransferConfigPlanReq {
+public class PipeTransferConfigPlanReq extends TPipeTransferReq {
 
   private PipeTransferConfigPlanReq() {
     // Empty constructor
@@ -61,8 +60,7 @@ public class PipeTransferConfigPlanReq extends TransferConfigPlanReq {
 
   /////////////////////////////// Air Gap ///////////////////////////////
 
-  public static byte[] toTransferInsertNodeBytes(IConsensusRequest consensusRequest)
-      throws IOException {
+  public static byte[] toTPipeTransferBytes(IConsensusRequest consensusRequest) throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);

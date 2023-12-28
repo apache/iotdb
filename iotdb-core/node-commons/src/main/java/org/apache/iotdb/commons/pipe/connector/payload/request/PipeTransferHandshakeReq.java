@@ -17,10 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.payload.evolvable.request;
+package org.apache.iotdb.commons.pipe.connector.payload.request;
 
-import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
-import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -30,68 +28,53 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class PipeTransferFileSealReq extends TPipeTransferReq {
+public abstract class PipeTransferHandshakeReq extends TPipeTransferReq {
 
-  private transient String fileName;
-  private transient long fileLength;
+  private transient String timestampPrecision;
 
-  private PipeTransferFileSealReq() {
-    // Empty constructor
+  public final String getTimestampPrecision() {
+    return timestampPrecision;
   }
 
-  public String getFileName() {
-    return fileName;
-  }
-
-  public long getFileLength() {
-    return fileLength;
-  }
+  protected abstract PipeRequestType getPlanType();
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeTransferFileSealReq toTPipeTransferReq(String fileName, long fileLength)
+  protected final PipeTransferHandshakeReq convertToTPipeTransferReq(String timestampPrecision)
       throws IOException {
-    final PipeTransferFileSealReq fileSealReq = new PipeTransferFileSealReq();
+    this.timestampPrecision = timestampPrecision;
 
-    fileSealReq.fileName = fileName;
-    fileSealReq.fileLength = fileLength;
-
-    fileSealReq.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
-    fileSealReq.type = PipeRequestType.TRANSFER_FILE_SEAL.getType();
+    this.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
+    this.type = getPlanType().getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      ReadWriteIOUtils.write(fileName, outputStream);
-      ReadWriteIOUtils.write(fileLength, outputStream);
-      fileSealReq.body =
-          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+      ReadWriteIOUtils.write(timestampPrecision, outputStream);
+      this.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
 
-    return fileSealReq;
+    return this;
   }
 
-  public static PipeTransferFileSealReq fromTPipeTransferReq(TPipeTransferReq req) {
-    final PipeTransferFileSealReq fileSealReq = new PipeTransferFileSealReq();
+  protected final PipeTransferHandshakeReq translateFromTPipeTransferReq(
+      TPipeTransferReq transferReq) {
+    timestampPrecision = ReadWriteIOUtils.readString(transferReq.body);
 
-    fileSealReq.fileName = ReadWriteIOUtils.readString(req.body);
-    fileSealReq.fileLength = ReadWriteIOUtils.readLong(req.body);
+    version = transferReq.version;
+    type = transferReq.type;
+    body = transferReq.body;
 
-    fileSealReq.version = req.version;
-    fileSealReq.type = req.type;
-    fileSealReq.body = req.body;
-
-    return fileSealReq;
+    return this;
   }
 
   /////////////////////////////// Air Gap ///////////////////////////////
 
-  public static byte[] toTPipeTransferFileSealBytes(String fileName, long fileLength)
+  protected final byte[] convertToTransferHandshakeBytes(String timestampPrecision)
       throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
-      ReadWriteIOUtils.write(PipeRequestType.TRANSFER_FILE_SEAL.getType(), outputStream);
-      ReadWriteIOUtils.write(fileName, outputStream);
-      ReadWriteIOUtils.write(fileLength, outputStream);
+      ReadWriteIOUtils.write(getPlanType().getType(), outputStream);
+      ReadWriteIOUtils.write(timestampPrecision, outputStream);
       return byteArrayOutputStream.toByteArray();
     }
   }
@@ -106,9 +89,8 @@ public class PipeTransferFileSealReq extends TPipeTransferReq {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeTransferFileSealReq that = (PipeTransferFileSealReq) obj;
-    return fileName.equals(that.fileName)
-        && fileLength == that.fileLength
+    PipeTransferHandshakeReq that = (PipeTransferHandshakeReq) obj;
+    return timestampPrecision.equals(that.timestampPrecision)
         && version == that.version
         && type == that.type
         && body.equals(that.body);
@@ -116,6 +98,6 @@ public class PipeTransferFileSealReq extends TPipeTransferReq {
 
   @Override
   public int hashCode() {
-    return Objects.hash(fileName, fileLength, version, type, body);
+    return Objects.hash(timestampPrecision, version, type, body);
   }
 }
