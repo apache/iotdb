@@ -20,7 +20,7 @@
 package org.apache.iotdb.confignode.manager.pipe;
 
 import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
-import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigHandshakeReq;
+import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigNodeHandshakeReq;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigPlanReq;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigSnapshotPieceReq;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigSnapshotSealReq;
@@ -36,10 +36,10 @@ public class PipeConfigNodeThriftRequestTest {
 
   @Test
   public void testPipeTransferConfigHandshakeReq() throws IOException {
-    PipeTransferConfigHandshakeReq req =
-        PipeTransferConfigHandshakeReq.toTPipeTransferReq(TIME_PRECISION);
-    PipeTransferConfigHandshakeReq deserializeReq =
-        PipeTransferConfigHandshakeReq.fromTPipeTransferReq(req);
+    PipeTransferConfigNodeHandshakeReq req =
+        PipeTransferConfigNodeHandshakeReq.toTPipeTransferReq(TIME_PRECISION);
+    PipeTransferConfigNodeHandshakeReq deserializeReq =
+        PipeTransferConfigNodeHandshakeReq.fromTPipeTransferReq(req);
 
     Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
     Assert.assertEquals(req.getType(), deserializeReq.getType());

@@ -17,17 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
+package org.apache.iotdb.commons.pipe.connector.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorClient;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeReq;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.LeaderCacheManager;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -42,7 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class IoTDBThriftSyncClientManager implements Closeable {
+public abstract class IoTDBThriftSyncClientManager implements Closeable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftSyncClientManager.class);
 
@@ -62,7 +59,7 @@ public class IoTDBThriftSyncClientManager implements Closeable {
 
   private long currentClientIndex = 0;
 
-  public IoTDBThriftSyncClientManager(
+  protected IoTDBThriftSyncClientManager(
       List<TEndPoint> endPoints,
       boolean useSSL,
       String trustStorePath,
@@ -134,12 +131,7 @@ public class IoTDBThriftSyncClientManager implements Closeable {
             trustStorePwd));
 
     try {
-      final TPipeTransferResp resp =
-          clientAndStatus
-              .getLeft()
-              .pipeTransfer(
-                  PipeTransferDataNodeHandshakeReq.toTPipeTransferReq(
-                      CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
+      final TPipeTransferResp resp = clientAndStatus.getLeft().pipeTransfer(buildHandShakeReq());
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
             "Handshake error with target server ip: {}, port: {}, because: {}.",
@@ -165,6 +157,8 @@ public class IoTDBThriftSyncClientManager implements Closeable {
           e);
     }
   }
+
+  protected abstract TPipeTransferReq buildHandShakeReq() throws IOException;
 
   public Pair<IoTDBThriftSyncConnectorClient, Boolean> getClient() {
     final int clientSize = endPoints.size();

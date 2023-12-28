@@ -17,14 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.pipe.transfer.connector;
+package org.apache.iotdb.commons.pipe.connector.protocol;
 
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.thrift.IoTDBMetaConnector;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+public abstract class IoTDBMetaConnector extends IoTDBSyncSslConnector {
+  @Override
+  public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
+    throw new UnsupportedOperationException(
+        "IoTDBMetaConnector can't transfer TabletInsertionEvent.");
+  }
 
-public class IoTDBConfigRegionConnector extends IoTDBMetaConnector {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConfigRegionConnector.class);
+  @Override
+  public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
+    throw new UnsupportedOperationException(
+        "IoTDBMetaConnector can't transfer TsFileInsertionEvent.");
+  }
 }

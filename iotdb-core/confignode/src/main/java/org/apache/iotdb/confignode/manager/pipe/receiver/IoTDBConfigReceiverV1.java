@@ -31,7 +31,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.PipeEnrichedPlan
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigHandshakeReq;
+import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigNodeHandshakeReq;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigPlanReq;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigSnapshotPieceReq;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigSnapshotSealReq;
@@ -74,7 +74,7 @@ public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
         switch (PipeRequestType.valueOf(rawRequestType)) {
           case CONFIGNODE_HANDSHAKE:
             return handleTransferHandshake(
-                PipeTransferConfigHandshakeReq.fromTPipeTransferReq(req));
+                PipeTransferConfigNodeHandshakeReq.fromTPipeTransferReq(req));
           case TRANSFER_CONFIG_PLAN:
             return handleTransferConfigPlan(PipeTransferConfigPlanReq.fromTPipeTransferReq(req));
           case TRANSFER_CONFIG_SNAPSHOT_PIECE:

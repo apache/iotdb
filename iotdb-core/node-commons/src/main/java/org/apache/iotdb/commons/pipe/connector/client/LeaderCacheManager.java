@@ -17,14 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.protocol.thrift;
+package org.apache.iotdb.commons.pipe.connector.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class LeaderCacheManager {
+class LeaderCacheManager {
 
   private final Map<String, TEndPoint> device2endpoint = new ConcurrentHashMap<>();
 
