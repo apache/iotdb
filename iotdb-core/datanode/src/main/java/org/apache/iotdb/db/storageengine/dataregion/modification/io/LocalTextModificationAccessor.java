@@ -163,12 +163,17 @@ public class LocalTextModificationAccessor
 
   @Override
   public void write(Modification mod) throws IOException {
+    writeWithOutSync(mod);
+    force();
+  }
+
+  @Override
+  public void writeWithOutSync(Modification mod) throws IOException {
     if (fos == null) {
       fos = new FileOutputStream(filePath, true);
     }
     fos.write(encodeModification(mod).getBytes());
     fos.write(System.lineSeparator().getBytes());
-    force();
   }
 
   @TestOnly
@@ -210,7 +215,7 @@ public class LocalTextModificationAccessor
   public void mayTruncateLastLine() {
     try (RandomAccessFile file = new RandomAccessFile(filePath, "r")) {
       long filePointer = file.length() - 1;
-      if (filePointer == 0) {
+      if (filePointer <= 0) {
         return;
       }
 

@@ -39,17 +39,22 @@ import java.util.NoSuchElementException;
 public class TsFileSequenceReaderTimeseriesMetadataIterator
     implements Iterator<Map<String, List<TimeseriesMetadata>>> {
 
-  private static final int MAX_TIMESERIES_METADATA_COUNT = 2000;
+  private static final int DEFAULT_TIMESERIES_BATCH_READ_NUMBER = 4000;
   private final TsFileSequenceReader reader;
   private final boolean needChunkMetadata;
+  private final int timeseriesBatchReadNumber;
   private ByteBuffer currentBuffer = null;
+  private long currentEndOffset = Long.MIN_VALUE;
   private final Deque<MetadataIndexEntryInfo> metadataIndexEntryStack = new ArrayDeque<>();
   private String currentDeviceId;
   private int currentTimeseriesMetadataCount = 0;
 
   public TsFileSequenceReaderTimeseriesMetadataIterator(
-      TsFileSequenceReader reader, boolean needChunkMetadata) throws IOException {
+      TsFileSequenceReader reader, boolean needChunkMetadata, int timeseriesBatchReadNumber)
+      throws IOException {
     this.reader = reader;
+    this.needChunkMetadata = needChunkMetadata;
+    this.timeseriesBatchReadNumber = timeseriesBatchReadNumber;
 
     if (this.reader.tsFileMetaData == null) {
       this.reader.readFileMetadata();
@@ -58,7 +63,6 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
     final MetadataIndexNode metadataIndexNode = reader.tsFileMetaData.getMetadataIndex();
     long curEntryEndOffset = metadataIndexNode.getEndOffset();
     List<MetadataIndexEntry> metadataIndexEntryList = metadataIndexNode.getChildren();
-    this.needChunkMetadata = needChunkMetadata;
 
     for (int i = metadataIndexEntryList.size() - 1; i >= 0; i--) {
       metadataIndexEntryStack.push(
@@ -66,6 +70,11 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
               metadataIndexEntryList.get(i), metadataIndexNode.getNodeType(), curEntryEndOffset));
       curEntryEndOffset = metadataIndexEntryList.get(i).getOffset();
     }
+  }
+
+  public TsFileSequenceReaderTimeseriesMetadataIterator(
+      TsFileSequenceReader reader, boolean needChunkMetadata) throws IOException {
+    this(reader, needChunkMetadata, DEFAULT_TIMESERIES_BATCH_READ_NUMBER);
   }
 
   @Override
@@ -82,7 +91,7 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
 
     final Map<String, List<TimeseriesMetadata>> timeseriesMetadataMap = new HashMap<>();
 
-    while (currentTimeseriesMetadataCount < MAX_TIMESERIES_METADATA_COUNT) {
+    while (currentTimeseriesMetadataCount < timeseriesBatchReadNumber) {
       // 1. Check Buffer
       // currentTimeseriesMetadataCount has reached the limit in the previous
       // loop and maybe there is still some data that remains in the buffer.
@@ -90,9 +99,22 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
         timeseriesMetadataMap
             .computeIfAbsent(currentDeviceId, k -> new ArrayList<>())
             .addAll(deserializeTimeseriesMetadata());
+      } else if (currentEndOffset > Long.MIN_VALUE) {
+        try {
+          timeseriesMetadataMap
+              .computeIfAbsent(currentDeviceId, k -> new ArrayList<>())
+              .addAll(deserializeTimeseriesMetadataUsingTsFileInput(currentEndOffset));
+        } catch (IOException e) {
+          throw new TsFileSequenceReaderTimeseriesMetadataIteratorException(
+              String.format(
+                  "TsFileSequenceReaderTimeseriesMetadataIterator: deserializeTimeseriesMetadataUsingTsFileInput failed, "
+                      + "currentEndOffset: %d, "
+                      + e.getMessage(),
+                  currentEndOffset));
+        }
       }
 
-      if (currentTimeseriesMetadataCount >= MAX_TIMESERIES_METADATA_COUNT
+      if (currentTimeseriesMetadataCount >= timeseriesBatchReadNumber
           || metadataIndexEntryStack.isEmpty()) {
         break;
       }
@@ -113,7 +135,7 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
     }
 
     // 3. Reset currentTimeseriesMetadataCount
-    if (currentTimeseriesMetadataCount >= MAX_TIMESERIES_METADATA_COUNT) {
+    if (currentTimeseriesMetadataCount >= timeseriesBatchReadNumber) {
       currentTimeseriesMetadataCount = 0;
     }
 
@@ -157,6 +179,7 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
           .computeIfAbsent(currentDeviceId, k -> new ArrayList<>())
           .addAll(deserializeTimeseriesMetadata());
     } else {
+      currentEndOffset = endOffset;
       reader.position(metadataIndexEntry.getOffset());
       timeseriesMetadataMap
           .computeIfAbsent(currentDeviceId, k -> new ArrayList<>())
@@ -167,7 +190,7 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
   private List<TimeseriesMetadata> deserializeTimeseriesMetadata() {
     final List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
     while (currentBuffer.hasRemaining()
-        && currentTimeseriesMetadataCount < MAX_TIMESERIES_METADATA_COUNT) {
+        && currentTimeseriesMetadataCount < timeseriesBatchReadNumber) {
       timeseriesMetadataList.add(
           TimeseriesMetadata.deserializeFrom(currentBuffer, needChunkMetadata));
       currentTimeseriesMetadataCount++;
@@ -179,10 +202,13 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
       throws IOException {
     final List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
     while (reader.position() < endOffset
-        && currentTimeseriesMetadataCount < MAX_TIMESERIES_METADATA_COUNT) {
+        && currentTimeseriesMetadataCount < DEFAULT_TIMESERIES_BATCH_READ_NUMBER) {
       timeseriesMetadataList.add(
           TimeseriesMetadata.deserializeFrom(reader.tsFileInput, needChunkMetadata));
       currentTimeseriesMetadataCount++;
+    }
+    if (reader.position() >= endOffset) {
+      currentEndOffset = Long.MIN_VALUE;
     }
     return timeseriesMetadataList;
   }

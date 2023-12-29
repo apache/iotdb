@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -44,6 +45,8 @@ public interface ChunkData extends TsFileData {
   void writeEntirePage(PageHeader pageHeader, ByteBuffer pageData) throws IOException;
 
   void writeDecodePage(long[] times, Object[] values, int satisfiedLength) throws IOException;
+
+  void writeToFileWriter(TsFileIOWriter writer) throws IOException;
 
   @Override
   default boolean isModification() {
