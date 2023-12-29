@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner;
 
-import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;

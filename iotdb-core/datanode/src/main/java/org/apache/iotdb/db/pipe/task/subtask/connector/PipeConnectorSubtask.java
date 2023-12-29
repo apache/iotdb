@@ -21,12 +21,13 @@ package org.apache.iotdb.db.pipe.task.subtask.connector;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.commons.pipe.task.DecoratingLock;
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.task.subtask.PipeSubtask;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
-import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.metric.PipeConnectorMetrics;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
@@ -250,8 +251,9 @@ public class PipeConnectorSubtask extends PipeDataNodeSubtask {
               taskID,
               throwable);
 
-          ((EnrichedEvent) lastEvent)
-              .reportException(
+          PipeAgent.runtime()
+              .report(
+                  ((EnrichedEvent) lastEvent),
                   new PipeRuntimeConnectorCriticalException(
                       throwable.getMessage()
                           + ", root cause: "
