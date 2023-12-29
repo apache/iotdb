@@ -163,6 +163,30 @@ public class LocalExecutionPlanner {
     return sourcePaths;
   }
 
+  public synchronized boolean forceAllocateFreeMemoryForOperators(long memoryInBytes) {
+    if (freeMemoryForOperators < memoryInBytes) {
+      return false;
+    } else {
+      freeMemoryForOperators -= memoryInBytes;
+      return true;
+    }
+  }
+
+  public synchronized long tryAllocateFreeMemoryForOperators(long memoryInBytes) {
+    if (freeMemoryForOperators < memoryInBytes) {
+      long result = freeMemoryForOperators;
+      freeMemoryForOperators = 0;
+      return result;
+    } else {
+      freeMemoryForOperators -= memoryInBytes;
+      return memoryInBytes;
+    }
+  }
+
+  public synchronized void releaseToFreeMemoryForOperators(long memoryInBytes) {
+    freeMemoryForOperators += memoryInBytes;
+  }
+
   private static class InstanceHolder {
 
     private InstanceHolder() {}

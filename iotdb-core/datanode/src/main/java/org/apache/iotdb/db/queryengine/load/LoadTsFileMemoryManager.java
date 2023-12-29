@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.load;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.LoadRuntimeOutOfMemoryException;
+import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,8 +33,8 @@ public class LoadTsFileMemoryManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileMemoryManager.class);
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-  private final long QUERY_TOTAL_MEMORY_SIZE_IN_BYTES =
-      CONFIG.getLoadMemoryTotalSizeFromQueryInBytes();
+  private static final LocalExecutionPlanner QUERY_ENGINE_MEMORY_MANAGER =
+      LocalExecutionPlanner.getInstance();
   private static final int MEMORY_ALLOCATE_MAX_RETRIES = CONFIG.getLoadMemoryAllocateMaxRetries();
   private static final long MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS =
       CONFIG.getLoadMemoryAllocateRetryIntervalMs();
@@ -45,8 +46,7 @@ public class LoadTsFileMemoryManager {
       throws LoadRuntimeOutOfMemoryException {
     for (int i = 0; i < MEMORY_ALLOCATE_MAX_RETRIES; i++) {
       // allocate memory from queryEngine
-      // TODO: queryEngine provides a method to allocate memory
-      if (usedMemorySizeInBytes.get() + sizeInBytes <= QUERY_TOTAL_MEMORY_SIZE_IN_BYTES) {
+      if (QUERY_ENGINE_MEMORY_MANAGER.forceAllocateFreeMemoryForOperators(sizeInBytes)) {
         usedMemorySizeInBytes.addAndGet(sizeInBytes);
         return;
       }
@@ -66,23 +66,21 @@ public class LoadTsFileMemoryManager {
                 + "total query memory %s, used memory size %d bytes, "
                 + "requested memory size %d bytes",
             MEMORY_ALLOCATE_MAX_RETRIES,
-            QUERY_TOTAL_MEMORY_SIZE_IN_BYTES,
+            IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForOperators(),
             usedMemorySizeInBytes.get(),
             sizeInBytes));
   }
 
   public synchronized long tryAllocateFromQuery(long sizeInBytes) {
-    // TODO: queryEngine provides a method to allocate memory
-    long allocatedSizeInBytes =
-        Math.min(sizeInBytes, QUERY_TOTAL_MEMORY_SIZE_IN_BYTES - usedMemorySizeInBytes.get());
-    long result = Math.max(0L, allocatedSizeInBytes);
-    usedMemorySizeInBytes.addAndGet(result);
-    return result;
+    long actuallyAllocateMemoryInBytes =
+        Math.max(0L, QUERY_ENGINE_MEMORY_MANAGER.tryAllocateFreeMemoryForOperators(sizeInBytes));
+    usedMemorySizeInBytes.addAndGet(actuallyAllocateMemoryInBytes);
+    return actuallyAllocateMemoryInBytes;
   }
 
   public synchronized void releaseToQuery(long sizeInBytes) {
-    // todo: queryEngine provides a method to release memory
     usedMemorySizeInBytes.addAndGet(-sizeInBytes);
+    QUERY_ENGINE_MEMORY_MANAGER.releaseToFreeMemoryForOperators(sizeInBytes);
     this.notifyAll();
   }
 
@@ -103,7 +101,7 @@ public class LoadTsFileMemoryManager {
       throws LoadRuntimeOutOfMemoryException {
     if (dataCacheMemoryBlock == null) {
       long actuallyAllocateMemoryInBytes =
-          tryAllocateFromQuery(QUERY_TOTAL_MEMORY_SIZE_IN_BYTES >> 1);
+          tryAllocateFromQuery(QUERY_ENGINE_MEMORY_MANAGER.getFreeMemoryForOperators() >> 1);
       dataCacheMemoryBlock = new LoadTsFileDataCacheMemoryBlock(actuallyAllocateMemoryInBytes);
       LOGGER.info(
           "Create Data Cache Memory Block {}, allocate memory {}",
@@ -125,13 +123,11 @@ public class LoadTsFileMemoryManager {
 
   // used for Metrics
   public long getUsedMemorySizeInMB() {
-    return usedMemorySizeInBytes.get() / 1024 / 1024;
+    return usedMemorySizeInBytes.get();
   }
 
   public long getDataCacheUsedMemorySizeInMB() {
-    return dataCacheMemoryBlock == null
-        ? 0
-        : dataCacheMemoryBlock.getMemoryUsageInBytes() / 1024 / 1024;
+    return dataCacheMemoryBlock == null ? 0 : dataCacheMemoryBlock.getMemoryUsageInBytes();
   }
 
   ///////////////////////////// SINGLETON /////////////////////////////

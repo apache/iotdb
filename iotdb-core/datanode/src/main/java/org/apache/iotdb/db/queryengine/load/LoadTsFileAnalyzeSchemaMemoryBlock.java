@@ -59,7 +59,7 @@ public class LoadTsFileAnalyzeSchemaMemoryBlock extends LoadTsFileAbstractMemory
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             LoadTsFileMemMetricSet.LOAD_TSFILE_ANALYZE_SCHEMA_MEMORY)
-        .incr(memoryInBytes / 1024 / 1024); // MB
+        .incr(memoryInBytes);
   }
 
   @Override
@@ -74,7 +74,7 @@ public class LoadTsFileAnalyzeSchemaMemoryBlock extends LoadTsFileAbstractMemory
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             LoadTsFileMemMetricSet.LOAD_TSFILE_ANALYZE_SCHEMA_MEMORY)
-        .decr(memoryInBytes / 1024 / 1024); // MB
+        .decr(memoryInBytes);
   }
 
   @Override
