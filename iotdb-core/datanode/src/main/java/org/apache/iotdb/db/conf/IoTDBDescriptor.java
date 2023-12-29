@@ -893,16 +893,11 @@ public class IoTDBDescriptor {
       conf.setIntoOperationExecutionThreadCount(2);
     }
 
-    conf.setLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber(
+    conf.setMaxLoadingTimeseriesNumber(
         Integer.parseInt(
             properties.getProperty(
-                "load_tsfile_analyze_schema_batch_flush_time_series_number",
-                String.valueOf(conf.getLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber()))));
-    conf.setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
-        Long.parseLong(
-            properties.getProperty(
-                "load_tsfile_analyze_schema_memory_size_in_bytes",
-                String.valueOf(conf.getLoadTsFileAnalyzeSchemaMemorySizeInBytes()))));
+                "max_loading_timeseries_number",
+                String.valueOf(conf.getMaxLoadingTimeseriesNumber()))));
 
     conf.setExtPipeDir(properties.getProperty("ext_pipe_dir", conf.getExtPipeDir()).trim());
 

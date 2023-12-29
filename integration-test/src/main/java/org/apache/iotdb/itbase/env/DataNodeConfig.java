@@ -28,7 +28,4 @@ public interface DataNodeConfig {
   DataNodeConfig setEnableRestService(boolean enableRestService);
 
   DataNodeConfig setConnectionTimeoutInMS(int connectionTimeoutInMS);
-
-  DataNodeConfig setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
-      long loadTsFileAnalyzeSchemaMemorySizeInBytes);
 }

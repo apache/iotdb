@@ -23,9 +23,11 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -38,13 +40,18 @@ public class DeletionData implements TsFileData {
 
   @Override
   public long getDataSize() {
-    return deletion.getSerializedSize();
+    return Long.BYTES;
   }
 
-  public void writeToModificationFile(ModificationFile modificationFile, long fileOffset)
-      throws IOException {
-    deletion.setFileOffset(fileOffset);
-    modificationFile.writeWithoutSync(deletion);
+  @Override
+  public void writeToFileWriter(TsFileIOWriter writer) throws IOException {
+    File tsFile = writer.getFile();
+    try (ModificationFile modificationFile =
+        new ModificationFile(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX)) {
+      writer.flush();
+      deletion.setFileOffset(tsFile.length());
+      modificationFile.write(deletion);
+    }
   }
 
   @Override

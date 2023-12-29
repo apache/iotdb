@@ -37,10 +37,4 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
   public DataNodeConfig setConnectionTimeoutInMS(int connectionTimeoutInMS) {
     return this;
   }
-
-  @Override
-  public DataNodeConfig setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
-      long loadTsFileAnalyzeSchemaMemorySizeInBytes) {
-    return this;
-  }
 }
