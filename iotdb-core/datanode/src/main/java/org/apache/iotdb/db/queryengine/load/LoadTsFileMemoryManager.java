@@ -35,6 +35,8 @@ public class LoadTsFileMemoryManager {
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final LocalExecutionPlanner QUERY_ENGINE_MEMORY_MANAGER =
       LocalExecutionPlanner.getInstance();
+  public static final long MEMORY_TOTAL_SIZE_FROM_QUERY_IN_BYTES =
+      QUERY_ENGINE_MEMORY_MANAGER.getAllocateMemoryForOperators();
   private static final int MEMORY_ALLOCATE_MAX_RETRIES = CONFIG.getLoadMemoryAllocateMaxRetries();
   private static final long MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS =
       CONFIG.getLoadMemoryAllocateRetryIntervalMs();
@@ -101,7 +103,7 @@ public class LoadTsFileMemoryManager {
       throws LoadRuntimeOutOfMemoryException {
     if (dataCacheMemoryBlock == null) {
       long actuallyAllocateMemoryInBytes =
-          tryAllocateFromQuery(QUERY_ENGINE_MEMORY_MANAGER.getFreeMemoryForOperators() >> 2);
+          tryAllocateFromQuery(MEMORY_TOTAL_SIZE_FROM_QUERY_IN_BYTES >> 2);
       dataCacheMemoryBlock = new LoadTsFileDataCacheMemoryBlock(actuallyAllocateMemoryInBytes);
       LOGGER.info(
           "Create Data Cache Memory Block {}, allocate memory {}",

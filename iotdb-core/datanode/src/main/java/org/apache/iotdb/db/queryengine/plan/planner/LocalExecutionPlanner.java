@@ -45,10 +45,11 @@ import java.util.List;
 public class LocalExecutionPlanner {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LocalExecutionPlanner.class);
+  private static final long ALLOCATE_MEMORY_FOR_OPERATORS =
+      IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForOperators();
 
   /** allocated memory for operator execution */
-  private long freeMemoryForOperators =
-      IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForOperators();
+  private long freeMemoryForOperators = ALLOCATE_MEMORY_FOR_OPERATORS;
 
   public long getFreeMemoryForOperators() {
     return freeMemoryForOperators;
@@ -185,6 +186,10 @@ public class LocalExecutionPlanner {
 
   public synchronized void releaseToFreeMemoryForOperators(long memoryInBytes) {
     freeMemoryForOperators += memoryInBytes;
+  }
+
+  public long getAllocateMemoryForOperators() {
+    return ALLOCATE_MEMORY_FOR_OPERATORS;
   }
 
   private static class InstanceHolder {

@@ -97,14 +97,17 @@ public class LoadTsfileAnalyzer {
 
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
-  private static final long ANALYZE_SCHEMA_MEMORY_SIZE_IN_BYTES;
   private static final int BATCH_FLUSH_TIME_SERIES_NUMBER;
+  private static final long ANALYZE_SCHEMA_MEMORY_SIZE_IN_BYTES;
   private static final long FLUSH_ALIGNED_CACHE_MEMORY_SIZE_IN_BYTES;
 
   static {
     final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-    ANALYZE_SCHEMA_MEMORY_SIZE_IN_BYTES = CONFIG.getLoadTsFileAnalyzeSchemaMemorySizeInByte();
     BATCH_FLUSH_TIME_SERIES_NUMBER = CONFIG.getLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber();
+    ANALYZE_SCHEMA_MEMORY_SIZE_IN_BYTES =
+        CONFIG.getLoadTsFileAnalyzeSchemaMemorySizeInBytes() <= 0
+            ? ((long) BATCH_FLUSH_TIME_SERIES_NUMBER) << 10
+            : CONFIG.getLoadTsFileAnalyzeSchemaMemorySizeInBytes();
     FLUSH_ALIGNED_CACHE_MEMORY_SIZE_IN_BYTES = ANALYZE_SCHEMA_MEMORY_SIZE_IN_BYTES >> 1;
   }
 

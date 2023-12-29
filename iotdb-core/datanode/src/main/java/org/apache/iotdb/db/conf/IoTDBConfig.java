@@ -1097,10 +1097,9 @@ public class IoTDBConfig {
   /** Load related */
   private int loadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber = 4096;
 
-  private long loadTsFileAnalyzeSchemaMemorySizeInByte = 16 * 1024 * 1024L; // 16 MB
+  private long loadTsFileAnalyzeSchemaMemorySizeInBytes =
+      0; // 0 means that the decision will be adaptive based on the number of sequences
 
-  // TODO: remove loadMemoryTotalSizeFromQueryInBytes after introducing queryEngine memory manager
-  private long loadMemoryTotalSizeFromQueryInBytes = 512 * 1024 * 1024L;
   private long loadMemoryAllocateRetryIntervalMs = 1000;
   private int loadMemoryAllocateMaxRetries = 5;
 
@@ -3738,14 +3737,6 @@ public class IoTDBConfig {
     return modeMapSizeThreshold;
   }
 
-  public long getLoadMemoryTotalSizeFromQueryInBytes() {
-    return loadMemoryTotalSizeFromQueryInBytes;
-  }
-
-  public void setLoadMemoryTotalSizeFromQueryInBytes(long loadMemoryTotalSizeFromQueryInBytes) {
-    this.loadMemoryTotalSizeFromQueryInBytes = loadMemoryTotalSizeFromQueryInBytes;
-  }
-
   public int getLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber() {
     return loadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber;
   }
@@ -3756,13 +3747,13 @@ public class IoTDBConfig {
         loadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber;
   }
 
-  public long getLoadTsFileAnalyzeSchemaMemorySizeInByte() {
-    return loadTsFileAnalyzeSchemaMemorySizeInByte;
+  public long getLoadTsFileAnalyzeSchemaMemorySizeInBytes() {
+    return loadTsFileAnalyzeSchemaMemorySizeInBytes;
   }
 
-  public void setLoadTsFileAnalyzeSchemaMemorySizeInByte(
-      long loadTsFileAnalyzeSchemaMemorySizeInByte) {
-    this.loadTsFileAnalyzeSchemaMemorySizeInByte = loadTsFileAnalyzeSchemaMemorySizeInByte;
+  public void setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
+      long loadTsFileAnalyzeSchemaMemorySizeInBytes) {
+    this.loadTsFileAnalyzeSchemaMemorySizeInBytes = loadTsFileAnalyzeSchemaMemorySizeInBytes;
   }
 
   public long getLoadMemoryAllocateRetryIntervalMs() {
