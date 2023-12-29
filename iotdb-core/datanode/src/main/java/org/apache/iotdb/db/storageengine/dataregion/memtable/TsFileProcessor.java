@@ -792,10 +792,12 @@ public class TsFileProcessor {
       return false;
     }
     if (workMemTable.shouldFlush()) {
-      logger.info(
-          "The memtable size {} of tsfile {} reaches the mem control threshold",
-          workMemTable.memSize(),
-          tsFileResource.getTsFile().getAbsolutePath());
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            "The memtable size {} of tsfile {} reaches the mem control threshold",
+            workMemTable.memSize(),
+            tsFileResource.getTsFile().getAbsolutePath());
+      }
       return true;
     }
     if (!enableMemControl && workMemTable.memSize() >= getMemtableSizeThresholdBasedOnSeriesNum()) {
@@ -824,14 +826,6 @@ public class TsFileProcessor {
   public boolean shouldClose() {
     long fileSize = tsFileResource.getTsFileSize();
     long fileSizeThreshold = sequence ? config.getSeqTsFileSize() : config.getUnSeqTsFileSize();
-
-    if (fileSize >= fileSizeThreshold) {
-      logger.info(
-          "{} fileSize {} >= fileSizeThreshold {}",
-          tsFileResource.getTsFilePath(),
-          fileSize,
-          fileSizeThreshold);
-    }
     return fileSize >= fileSizeThreshold;
   }
 
@@ -926,7 +920,6 @@ public class TsFileProcessor {
         // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
         // flushing memTable in System module.
         Future<?> future = addAMemtableIntoFlushingList(tmpMemTable);
-        logger.info("Memtable {} has been added to flushing list", tmpMemTable);
         shouldClose = true;
         return future;
       } catch (Exception e) {
@@ -1353,12 +1346,14 @@ public class TsFileProcessor {
   private void updateCompressionRatio() {
     try {
       double compressionRatio = ((double) totalMemTableSize) / writer.getPos();
-      logger.info(
-          "The compression ratio of tsfile {} is {}, totalMemTableSize: {}, the file size: {}",
-          writer.getFile().getAbsolutePath(),
-          compressionRatio,
-          totalMemTableSize,
-          writer.getPos());
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            "The compression ratio of tsfile {} is {}, totalMemTableSize: {}, the file size: {}",
+            writer.getFile().getAbsolutePath(),
+            compressionRatio,
+            totalMemTableSize,
+            writer.getPos());
+      }
       String dataRegionId = dataRegionInfo.getDataRegion().getDataRegionId();
       WritingMetrics.getInstance()
           .recordTsFileCompressionRatioOfFlushingMemTable(dataRegionId, compressionRatio);
@@ -1374,12 +1369,14 @@ public class TsFileProcessor {
 
   /** end file and write some meta */
   private void endFile() throws IOException, TsFileProcessorException {
-    logger.info("Start to end file {}", tsFileResource);
-    long closeStartTime = System.currentTimeMillis();
+    if (logger.isDebugEnabled()) {
+      logger.debug("Start to end file {}", tsFileResource);
+    }
     writer.endFile();
     tsFileResource.serialize();
-    logger.info("Ended file {}", tsFileResource);
-
+    if (logger.isDebugEnabled()) {
+      logger.debug("Ended file {}", tsFileResource);
+    }
     // remove this processor from Closing list in StorageGroupProcessor,
     // mark the TsFileResource closed, no need writer anymore
     for (CloseFileListener closeFileListener : closeFileListeners) {
@@ -1389,16 +1386,6 @@ public class TsFileProcessor {
     if (enableMemControl) {
       tsFileProcessorInfo.clear();
       dataRegionInfo.closeTsFileProcessorAndReportToSystem(this);
-    }
-    if (logger.isInfoEnabled()) {
-      long closeEndTime = System.currentTimeMillis();
-      logger.info(
-          "Database {} close the file {}, TsFile size is {}, "
-              + "time consumption of flushing metadata is {}ms",
-          storageGroupName,
-          tsFileResource.getTsFile().getAbsoluteFile(),
-          writer.getFile().length(),
-          closeEndTime - closeStartTime);
     }
 
     writer = null;

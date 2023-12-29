@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
@@ -41,5 +43,15 @@ public class PipeTransferTabletInsertNodeEventHandler
   protected void doTransfer(AsyncPipeDataTransferServiceClient client, TPipeTransferReq req)
       throws TException {
     client.pipeTransfer(req, this);
+  }
+
+  @Override
+  protected void updateLeaderCache(TSStatus status) {
+    final InsertNode insertNode =
+        ((PipeInsertNodeTabletInsertionEvent) event).getInsertNodeViaCacheIfPossible();
+    if (insertNode != null) {
+      connector.updateLeaderCache(
+          insertNode.getDevicePath().getFullPath(), status.getRedirectNode());
+    }
   }
 }

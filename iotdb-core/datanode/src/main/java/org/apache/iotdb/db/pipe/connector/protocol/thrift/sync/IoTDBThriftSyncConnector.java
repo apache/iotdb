@@ -291,7 +291,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
     }
   }
 
-  private void doTransfer() throws IOException {
+  private void doTransfer() {
     Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus = clientManager.getClient();
     final TPipeTransferResp resp;
     try {

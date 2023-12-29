@@ -27,6 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.IManager;
@@ -65,6 +66,10 @@ public class LoadCache {
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private static final long HEARTBEAT_INTERVAL = CONF.getHeartbeatIntervalInMs();
+  private static final long LEADER_ELECTION_WAITING_TIMEOUT =
+      Math.min(
+          2 * CONF.getSchemaRegionRatisRpcLeaderElectionTimeoutMaxMs(),
+          CommonDescriptor.getInstance().getConfig().getConnectionTimeoutInMS());
 
   // Map<NodeId, INodeCache>
   private final Map<Integer, BaseNodeCache> nodeCacheMap;
@@ -536,8 +541,9 @@ public class LoadCache {
    * @param regionGroupIds Specified RegionGroupIds
    */
   public void waitForLeaderElection(List<TConsensusGroupId> regionGroupIds) {
+    long startTime = System.currentTimeMillis();
     LOGGER.info("[RegionElection] Wait for leader election of RegionGroups: {}", regionGroupIds);
-    for (int retry = 0; retry < 10; retry++) {
+    while (System.currentTimeMillis() - startTime <= LEADER_ELECTION_WAITING_TIMEOUT) {
       AtomicBoolean allRegionLeaderElected = new AtomicBoolean(true);
       regionGroupIds.forEach(
           regionGroupId -> {
