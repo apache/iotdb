@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb;
 
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.pipe.api.PipeExtractor;
@@ -43,6 +44,7 @@ public abstract class IoTDBCommonExtractor implements PipeExtractor {
   protected long creationTime;
   protected int regionId;
   protected PipeTaskMeta pipeTaskMeta;
+  protected boolean isForwardingPipeRequests;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -71,6 +73,13 @@ public abstract class IoTDBCommonExtractor implements PipeExtractor {
     creationTime = environment.getCreationTime();
     taskID = pipeName + "_" + regionId + "_" + creationTime;
     pipeTaskMeta = environment.getPipeTaskMeta();
+
+    isForwardingPipeRequests =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(
+                PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
+                PipeExtractorConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
+            PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
   }
 
   protected IoTDBCommonExtractor() {}

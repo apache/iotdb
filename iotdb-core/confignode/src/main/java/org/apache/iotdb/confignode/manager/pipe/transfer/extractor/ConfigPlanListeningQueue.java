@@ -19,14 +19,18 @@
 
 package org.apache.iotdb.confignode.manager.pipe.transfer.extractor;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.datastructure.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.datastructure.LinkedQueueSerializerType;
 import org.apache.iotdb.commons.pipe.event.SerializableEvent;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigSerializableEventType;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeWriteConfigPlanEvent;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.apache.thrift.TException;
@@ -36,6 +40,14 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_EXCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_INCLUSION_KEY;
 
 public class ConfigPlanListeningQueue extends AbstractPipeListeningQueue
     implements SnapshotProcessor {
@@ -52,7 +64,10 @@ public class ConfigPlanListeningQueue extends AbstractPipeListeningQueue
 
   public void tryListenToPlan(ConfigPhysicalPlan plan) {
     if (PipeConfigPlanFilter.shouldBeListenedByQueue(plan)) {
-      PipeWriteConfigPlanEvent event = new PipeWriteConfigPlanEvent(plan);
+      PipeWriteConfigPlanEvent event =
+          plan.getType().equals(ConfigPhysicalPlanType.PipeEnriched)
+              ? new PipeWriteConfigPlanEvent(((PipeEnrichedPlan) plan).getInnerPlan(), true)
+              : new PipeWriteConfigPlanEvent(plan, false);
       event.increaseReferenceCount(ConfigPlanListeningQueue.class.getName());
       super.listenToElement(event);
     }
@@ -62,6 +77,35 @@ public class ConfigPlanListeningQueue extends AbstractPipeListeningQueue
     PipeConfigRegionSnapshotEvent event = new PipeConfigRegionSnapshotEvent(snapshotPath);
     event.increaseReferenceCount(ConfigPlanListeningQueue.class.getName());
     super.listenToElement(event);
+  }
+
+  /////////////////////////////// Reference count ///////////////////////////////
+
+  // ConfigNodeQueue does not need extra protection of consensus, because the
+  // reference count is handled under consensus layer.
+  public void increaseReferenceCountForListeningPipe(PipeParameters parameters)
+      throws IllegalPathException {
+    if (needToRecord(parameters)) {
+      increaseReferenceCount();
+    }
+  }
+
+  public void decreaseReferenceCountForListeningPipe(PipeParameters parameters)
+      throws IllegalPathException, IOException {
+    if (needToRecord(parameters)) {
+      decreaseReferenceCount();
+    }
+  }
+
+  private boolean needToRecord(PipeParameters parameters) throws IllegalPathException {
+    return PipeConfigPlanFilter.getPipeListenSet(
+            parameters.getStringOrDefault(
+                Arrays.asList(EXTRACTOR_INCLUSION_KEY, SOURCE_INCLUSION_KEY),
+                EXTRACTOR_INCLUSION_DEFAULT_VALUE),
+            parameters.getStringOrDefault(
+                Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
+                EXTRACTOR_EXCLUSION_DEFAULT_VALUE))
+        .isEmpty();
   }
 
   /////////////////////////////// Element Ser / De Method ////////////////////////////////

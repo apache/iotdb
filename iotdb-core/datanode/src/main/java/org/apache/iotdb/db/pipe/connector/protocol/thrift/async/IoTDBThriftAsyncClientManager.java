@@ -24,8 +24,8 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftClientManager;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeReq;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.IoTDBThriftClientManager;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -111,8 +111,8 @@ public class IoTDBThriftAsyncClientManager extends IoTDBThriftClientManager {
    * Handshake with the target if necessary.
    *
    * @param client client to handshake
-   * @return true if the handshake is already finished, false if the handshake is not finished yet
-   *     and finished in this method
+   * @return {@code true} if the handshake is already finished, {@code false} if the handshake is
+   *     not finished yet and finished in this method
    * @throws Exception if an error occurs.
    */
   private boolean handshakeIfNecessary(

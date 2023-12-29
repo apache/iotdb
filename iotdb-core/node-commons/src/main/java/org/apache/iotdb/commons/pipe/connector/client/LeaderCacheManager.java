@@ -24,7 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-class LeaderCacheManager {
+public class LeaderCacheManager {
 
   private final Map<String, TEndPoint> device2endpoint = new ConcurrentHashMap<>();
 

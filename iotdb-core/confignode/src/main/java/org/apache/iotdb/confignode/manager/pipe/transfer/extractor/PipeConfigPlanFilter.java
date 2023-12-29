@@ -95,8 +95,7 @@ class PipeConfigPlanFilter {
     return type.equals(ConfigPhysicalPlanType.PipeEnriched) || PLAN_MAP.containsValue(type);
   }
 
-  static Set<ConfigPhysicalPlanType> getPipeListenSet(
-      String inclusionStr, String exclusionStr, boolean forwardPipeRequests)
+  static Set<ConfigPhysicalPlanType> getPipeListenSet(String inclusionStr, String exclusionStr)
       throws IllegalPathException, IllegalArgumentException {
     Set<ConfigPhysicalPlanType> planTypes = new HashSet<>();
     List<PartialPath> inclusionPath = getPartialPaths(inclusionStr);
@@ -116,9 +115,6 @@ class PipeConfigPlanFilter {
                     .map(PLAN_MAP::get)
                     .collect(Collectors.toSet())));
 
-    if (forwardPipeRequests) {
-      planTypes.add(ConfigPhysicalPlanType.PipeEnriched);
-    }
     return planTypes;
   }
 

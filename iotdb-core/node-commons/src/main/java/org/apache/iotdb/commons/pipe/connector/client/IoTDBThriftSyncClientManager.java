@@ -22,9 +22,6 @@ package org.apache.iotdb.commons.pipe.connector.client;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorClient;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeReq;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.IoTDBThriftClientManager;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -42,7 +39,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public abstract class IoTDBThriftSyncClientManager extends IoTDBThriftClientManager implements Closeable {
+public abstract class IoTDBThriftSyncClientManager extends IoTDBThriftClientManager
+    implements Closeable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftSyncClientManager.class);
 
@@ -55,7 +53,6 @@ public abstract class IoTDBThriftSyncClientManager extends IoTDBThriftClientMana
   private final Map<TEndPoint, Pair<IoTDBThriftSyncConnectorClient, Boolean>>
       endPoint2ClientAndStatus = new ConcurrentHashMap<>();
 
-  public IoTDBThriftSyncClientManager(
   private final LeaderCacheManager leaderCacheManager = new LeaderCacheManager();
 
   private long currentClientIndex = 0;

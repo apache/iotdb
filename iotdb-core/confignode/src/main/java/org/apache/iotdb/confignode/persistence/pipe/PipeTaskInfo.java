@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePla
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
+import org.apache.iotdb.confignode.manager.pipe.transfer.extractor.ConfigPlanListeningQueue;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleMetaChangeProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -294,8 +295,14 @@ public class PipeTaskInfo implements SnapshotProcessor {
       PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
       runtimeMeta.getStatus().set(plan.getPipeStatus());
       runtimeMeta.setShouldBeRunning(plan.getPipeStatus() == PipeStatus.RUNNING);
+      ConfigPlanListeningQueue.getInstance()
+          .increaseReferenceCountForListeningPipe(
+              pipeMeta.getStaticMeta().getExtractorParameters());
       PipeConfigNodeAgent.task().handleSinglePipeMetaChanges(pipeMeta);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+          .setMessage("Failed to set pipe status, because " + e.getMessage());
     } finally {
       releaseWriteLock();
     }
@@ -305,9 +312,18 @@ public class PipeTaskInfo implements SnapshotProcessor {
     acquireWriteLock();
     try {
       String pipeName = plan.getPipeName();
-      pipeMetaKeeper.removePipeMeta(pipeName);
+      ConfigPlanListeningQueue.getInstance()
+          .decreaseReferenceCountForListeningPipe(
+              pipeMetaKeeper
+                  .getPipeMetaByPipeName(pipeName)
+                  .getStaticMeta()
+                  .getExtractorParameters());
       PipeConfigNodeAgent.task().handleDropPipe(pipeName);
+      pipeMetaKeeper.removePipeMeta(pipeName);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+          .setMessage("Failed to drop pipe, because " + e.getMessage());
     } finally {
       releaseWriteLock();
     }

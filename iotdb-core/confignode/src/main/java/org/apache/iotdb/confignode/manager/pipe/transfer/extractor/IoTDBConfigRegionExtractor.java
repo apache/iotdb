@@ -37,8 +37,6 @@ import java.util.Set;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_EXCLUSION_KEY;
@@ -60,10 +58,7 @@ public class IoTDBConfigRegionExtractor extends IoTDBCommonExtractor {
                 EXTRACTOR_INCLUSION_DEFAULT_VALUE),
             parameters.getStringOrDefault(
                 Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
-                EXTRACTOR_EXCLUSION_DEFAULT_VALUE),
-            parameters.getBooleanOrDefault(
-                EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
-                EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE));
+                EXTRACTOR_EXCLUSION_DEFAULT_VALUE));
   }
 
   @Override
@@ -86,7 +81,8 @@ public class IoTDBConfigRegionExtractor extends IoTDBCommonExtractor {
       // Return immediately
       event = (EnrichedEvent) itr.next(0);
     } while (event instanceof PipeWriteConfigPlanEvent
-        && !listenTypes.contains(((PipeWriteConfigPlanEvent) event).getPhysicalPlan().getType()));
+        && (!listenTypes.contains(((PipeWriteConfigPlanEvent) event).getPhysicalPlan().getType())
+            || !isForwardingPipeRequests && event.isGeneratedByPipe()));
 
     EnrichedEvent targetEvent =
         event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(

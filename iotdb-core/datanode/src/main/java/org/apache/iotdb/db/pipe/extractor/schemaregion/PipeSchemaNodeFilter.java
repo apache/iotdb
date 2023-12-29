@@ -98,8 +98,7 @@ class PipeSchemaNodeFilter {
     }
   }
 
-  static Set<PlanNodeType> getPipeListenSet(
-      String inclusionStr, String exclusionStr, boolean forwardPipeRequests)
+  static Set<PlanNodeType> getPipeListenSet(String inclusionStr, String exclusionStr)
       throws IllegalPathException, IllegalArgumentException {
     Set<PlanNodeType> planTypes = new HashSet<>();
     List<PartialPath> inclusionPath = getPartialPaths(inclusionStr);
@@ -121,10 +120,6 @@ class PipeSchemaNodeFilter {
                     .flatMap(Collection::stream)
                     .collect(Collectors.toSet())));
 
-    if (forwardPipeRequests) {
-      planTypes.add(PlanNodeType.PIPE_ENRICHED_WRITE_SCHEMA);
-      planTypes.add(PlanNodeType.PIPE_ENRICHED_CONFIG_SCHEMA);
-    }
     return planTypes;
   }
 

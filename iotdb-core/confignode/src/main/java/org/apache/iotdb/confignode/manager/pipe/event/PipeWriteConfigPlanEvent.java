@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeWritePlanEvent;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -34,16 +33,20 @@ public class PipeWriteConfigPlanEvent extends PipeWritePlanEvent {
 
   public PipeWriteConfigPlanEvent() {
     // Used for deserialization
-    this(null);
+    this(null, false);
   }
 
-  public PipeWriteConfigPlanEvent(ConfigPhysicalPlan physicalPlan) {
-    this(physicalPlan, null, null, null);
+  public PipeWriteConfigPlanEvent(ConfigPhysicalPlan physicalPlan, boolean isGeneratedByPipe) {
+    this(physicalPlan, isGeneratedByPipe, null, null, null);
   }
 
   public PipeWriteConfigPlanEvent(
-      ConfigPhysicalPlan physicalPlan, String pipeName, PipeTaskMeta pipeTaskMeta, String pattern) {
-    super(pipeName, pipeTaskMeta, pattern);
+      ConfigPhysicalPlan physicalPlan,
+      boolean isGeneratedByPipe,
+      String pipeName,
+      PipeTaskMeta pipeTaskMeta,
+      String pattern) {
+    super(isGeneratedByPipe, pipeName, pipeTaskMeta, pattern);
     this.physicalPlan = physicalPlan;
   }
 
@@ -54,20 +57,15 @@ public class PipeWriteConfigPlanEvent extends PipeWritePlanEvent {
   @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime) {
-    return new PipeWriteConfigPlanEvent(physicalPlan, pipeName, pipeTaskMeta, pattern);
-  }
-
-  // Never used
-  @Override
-  public boolean isGeneratedByPipe() {
-    return physicalPlan.getType().equals(ConfigPhysicalPlanType.PipeEnriched);
+    return new PipeWriteConfigPlanEvent(physicalPlan, false, pipeName, pipeTaskMeta, pattern);
   }
 
   @Override
   public ByteBuffer serializeToByteBuffer() {
     ByteBuffer planBuffer = physicalPlan.serializeToByteBuffer();
-    ByteBuffer result = ByteBuffer.allocate(Byte.BYTES + planBuffer.capacity());
+    ByteBuffer result = ByteBuffer.allocate(Byte.BYTES * 2 + planBuffer.capacity());
     ReadWriteIOUtils.write(PipeConfigSerializableEventType.CONFIG_PLAN.getType(), result);
+    ReadWriteIOUtils.write(isGeneratedByPipe, result);
     result.put(planBuffer);
     return result;
   }
@@ -75,5 +73,6 @@ public class PipeWriteConfigPlanEvent extends PipeWritePlanEvent {
   @Override
   public void deserializeFromByteBuffer(ByteBuffer buffer) throws IOException {
     physicalPlan = ConfigPhysicalPlan.Factory.create(buffer);
+    isGeneratedByPipe = ReadWriteIOUtils.readBool(buffer);
   }
 }
