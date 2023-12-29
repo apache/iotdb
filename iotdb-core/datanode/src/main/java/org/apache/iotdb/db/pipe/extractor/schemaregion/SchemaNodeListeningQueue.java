@@ -19,10 +19,16 @@
 
 package org.apache.iotdb.db.pipe.extractor.schemaregion;
 
-import org.apache.iotdb.commons.pipe.datastructure.AbstractSerializableListeningQueue;
+import org.apache.iotdb.commons.pipe.datastructure.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.datastructure.LinkedQueueSerializerType;
+import org.apache.iotdb.commons.pipe.event.SerializableEvent;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaSerializableEventType;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeWriteSchemaPlanEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedConfigSchemaNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWriteSchemaNode;
+import org.apache.iotdb.pipe.api.event.Event;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +39,7 @@ import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class SchemaNodeListeningQueue extends AbstractSerializableListeningQueue<PlanNode> {
+public class SchemaNodeListeningQueue extends AbstractPipeListeningQueue {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SchemaNodeListeningQueue.class);
   private static final String SNAPSHOT_FILE_NAME = "pipe_listening_queue.bin";
@@ -45,21 +51,43 @@ public class SchemaNodeListeningQueue extends AbstractSerializableListeningQueue
   /////////////////////////////// Function ///////////////////////////////
 
   public void tryListenToNode(PlanNode node) {
-    if (queue.hasAnyIterators() && PipeSchemaNodeFilter.shouldBeListenedByQueue(node)) {
-      super.listenToElement(node);
+    if (PipeSchemaNodeFilter.shouldBeListenedByQueue(node)) {
+      switch (node.getType()) {
+        case PIPE_ENRICHED_WRITE_SCHEMA:
+          super.listenToElement(
+              new PipeWriteSchemaPlanEvent(
+                  ((PipeEnrichedWriteSchemaNode) node).getWriteSchemaNode(), true));
+          return;
+        case PIPE_ENRICHED_CONFIG_SCHEMA:
+          super.listenToElement(
+              new PipeWriteSchemaPlanEvent(
+                  ((PipeEnrichedConfigSchemaNode) node).getConfigSchemaNode(), true));
+          return;
+        default:
+          super.listenToElement(new PipeWriteSchemaPlanEvent(node, false));
+      }
     }
+  }
+
+  public void tryListenToSnapshot(String snapshotPath) {
+    super.listenToElement(new PipeSchemaRegionSnapshotEvent(snapshotPath));
   }
 
   /////////////////////////////// Element Ser / De Method ////////////////////////////////
 
   @Override
-  protected ByteBuffer serializeToByteBuffer(PlanNode node) {
-    return node.serializeToByteBuffer();
+  protected ByteBuffer serializeToByteBuffer(Event event) {
+    return ((SerializableEvent) event).serializeToByteBuffer();
   }
 
   @Override
-  protected PlanNode deserializeFromByteBuffer(ByteBuffer byteBuffer) {
-    return PlanNodeType.deserialize(byteBuffer);
+  protected Event deserializeFromByteBuffer(ByteBuffer byteBuffer) {
+    try {
+      return PipeSchemaSerializableEventType.deserialize(byteBuffer);
+    } catch (IOException e) {
+      LOGGER.error("Failed to load snapshot from byteBuffer {}.", byteBuffer);
+    }
+    return null;
   }
 
   /////////////////////////////// Snapshot ///////////////////////////////

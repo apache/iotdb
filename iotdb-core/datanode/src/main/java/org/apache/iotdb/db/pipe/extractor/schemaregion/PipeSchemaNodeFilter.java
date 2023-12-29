@@ -89,7 +89,9 @@ class PipeSchemaNodeFilter {
 
   static boolean shouldBeListenedByQueue(PlanNode node) {
     try {
-      return NODE_MAP.values().stream().anyMatch(types -> types.contains(node.getType()));
+      return node.getType().getNodeType() == PlanNodeType.PIPE_ENRICHED_WRITE_SCHEMA.getNodeType()
+          || node.getType().getNodeType() == PlanNodeType.PIPE_ENRICHED_CONFIG_SCHEMA.getNodeType()
+          || NODE_MAP.values().stream().anyMatch(types -> types.contains(node.getType()));
     } catch (Exception e) {
       // Some plan nodes may not contain "getType()" implementation
       return false;
@@ -121,7 +123,7 @@ class PipeSchemaNodeFilter {
 
     if (forwardPipeRequests) {
       planTypes.add(PlanNodeType.PIPE_ENRICHED_WRITE_SCHEMA);
-      planTypes.add(PlanNodeType.PIPE_ENRICHED_DELETE_SCHEMA);
+      planTypes.add(PlanNodeType.PIPE_ENRICHED_CONFIG_SCHEMA);
     }
     return planTypes;
   }

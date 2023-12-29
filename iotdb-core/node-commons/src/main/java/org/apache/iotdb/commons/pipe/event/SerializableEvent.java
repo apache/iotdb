@@ -17,33 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.datastructure;
+package org.apache.iotdb.commons.pipe.event;
 
-import java.util.HashMap;
-import java.util.Map;
+import org.apache.iotdb.pipe.api.event.Event;
 
-public enum LinkedQueueSerializerType {
-  PLAIN((byte) 1),
-  ;
-  private static final Map<Byte, LinkedQueueSerializerType> TYPE_MAP = new HashMap<>();
+import java.io.IOException;
+import java.nio.ByteBuffer;
 
-  static {
-    for (final LinkedQueueSerializerType type : LinkedQueueSerializerType.values()) {
-      TYPE_MAP.put(type.getType(), type);
-    }
-  }
+public interface SerializableEvent extends Event {
 
-  private final byte type;
+  ByteBuffer serializeToByteBuffer();
 
-  LinkedQueueSerializerType(byte type) {
-    this.type = type;
-  }
-
-  public byte getType() {
-    return type;
-  }
-
-  public static LinkedQueueSerializerType deserialize(byte type) {
-    return TYPE_MAP.get(type);
-  }
+  void deserializeFromByteBuffer(ByteBuffer buffer) throws IOException;
 }

@@ -28,13 +28,13 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-public abstract class PipeSnapshotEvent extends EnrichedEvent {
+public abstract class PipeSnapshotEvent extends EnrichedEvent implements SerializableEvent {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSnapshotEvent.class);
 
   protected final PipeSnapshotResourceManager resourceManager;
   protected String snapshotPath;
 
-  public PipeSnapshotEvent(
+  protected PipeSnapshotEvent(
       String snapshotPath,
       String pipeName,
       PipeTaskMeta pipeTaskMeta,
@@ -73,6 +73,10 @@ public abstract class PipeSnapshotEvent extends EnrichedEvent {
           e);
       return false;
     }
+  }
+
+  public String getSnapshotPath() {
+    return snapshotPath;
   }
 
   @Override

@@ -19,10 +19,17 @@
 
 package org.apache.iotdb.confignode.manager.pipe.transfer.extractor;
 
-import org.apache.iotdb.commons.pipe.datastructure.AbstractSerializableListeningQueue;
+import org.apache.iotdb.commons.pipe.datastructure.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.datastructure.LinkedQueueSerializerType;
+import org.apache.iotdb.commons.pipe.event.SerializableEvent;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
+import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigSerializableEventType;
+import org.apache.iotdb.confignode.manager.pipe.event.PipeWriteConfigPlanEvent;
+import org.apache.iotdb.pipe.api.event.Event;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -32,7 +39,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class ConfigPlanListeningQueue extends AbstractSerializableListeningQueue<ConfigPhysicalPlan>
+public class ConfigPlanListeningQueue extends AbstractPipeListeningQueue
     implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigPlanListeningQueue.class);
@@ -46,21 +53,28 @@ public class ConfigPlanListeningQueue extends AbstractSerializableListeningQueue
   /////////////////////////////// Function ///////////////////////////////
 
   public void tryListenToPlan(ConfigPhysicalPlan plan) {
-    if (queue.hasAnyIterators() && PipeConfigPlanFilter.shouldBeListenedByQueue(plan)) {
-      super.listenToElement(plan);
+    if (PipeConfigPlanFilter.shouldBeListenedByQueue(plan)) {
+      super.listenToElement(
+          plan.getType().equals(ConfigPhysicalPlanType.PipeEnriched)
+              ? new PipeWriteConfigPlanEvent(((PipeEnrichedPlan) plan).getInnerPlan(), true)
+              : new PipeWriteConfigPlanEvent(plan, false));
     }
+  }
+
+  public void tryListenToSnapshot(String snapshotPath) {
+    super.listenToElement(new PipeConfigRegionSnapshotEvent(snapshotPath));
   }
 
   /////////////////////////////// Element Ser / De Method ////////////////////////////////
   @Override
-  protected ByteBuffer serializeToByteBuffer(ConfigPhysicalPlan plan) {
-    return plan.serializeToByteBuffer();
+  protected ByteBuffer serializeToByteBuffer(Event event) {
+    return ((SerializableEvent) event).serializeToByteBuffer();
   }
 
   @Override
-  protected ConfigPhysicalPlan deserializeFromByteBuffer(ByteBuffer byteBuffer) {
+  protected Event deserializeFromByteBuffer(ByteBuffer byteBuffer) {
     try {
-      return ConfigPhysicalPlan.Factory.create(byteBuffer);
+      return PipeConfigSerializableEventType.deserialize(byteBuffer);
     } catch (IOException e) {
       LOGGER.error("Failed to load snapshot from byteBuffer {}.", byteBuffer);
     }

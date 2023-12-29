@@ -197,7 +197,7 @@ public enum PlanNodeType {
   COLUMN_INJECT((short) 83),
   PIPE_ENRICHED_DELETE_DATA((short) 84),
   PIPE_ENRICHED_WRITE_SCHEMA((short) 85),
-  PIPE_ENRICHED_DELETE_SCHEMA((short) 86),
+  PIPE_ENRICHED_CONFIG_SCHEMA((short) 86),
 
   INNER_TIME_JOIN((short) 87),
   LEFT_OUTER_TIME_JOIN((short) 88);

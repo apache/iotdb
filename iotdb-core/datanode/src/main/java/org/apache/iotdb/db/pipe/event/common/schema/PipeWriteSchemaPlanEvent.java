@@ -23,9 +23,22 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeWritePlanEvent;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.nio.ByteBuffer;
 
 public class PipeWriteSchemaPlanEvent extends PipeWritePlanEvent {
-  private final PlanNode planNode;
+  private PlanNode planNode;
+
+  public PipeWriteSchemaPlanEvent() {
+    // Used for deserialization
+    this(null, false);
+  }
+
+  public PipeWriteSchemaPlanEvent(PlanNode planNode, boolean isGeneratedByPipe) {
+    this(planNode, isGeneratedByPipe, null, null, null);
+  }
 
   public PipeWriteSchemaPlanEvent(
       PlanNode planNode,
@@ -46,5 +59,21 @@ public class PipeWriteSchemaPlanEvent extends PipeWritePlanEvent {
       String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime) {
     return new PipeWriteSchemaPlanEvent(
         planNode, isGeneratedByPipe, pipeName, pipeTaskMeta, pattern);
+  }
+
+  @Override
+  public ByteBuffer serializeToByteBuffer() {
+    ByteBuffer planBuffer = planNode.serializeToByteBuffer();
+    ByteBuffer result = ByteBuffer.allocate(Byte.BYTES * 2 + planBuffer.capacity());
+    ReadWriteIOUtils.write(PipeSchemaSerializableEventType.SCHEMA_PLAN.getType(), result);
+    result.put(planBuffer);
+    ReadWriteIOUtils.write(isGeneratedByPipe, result);
+    return result;
+  }
+
+  @Override
+  public void deserializeFromByteBuffer(ByteBuffer buffer) {
+    planNode = PlanNodeType.deserialize(buffer);
+    isGeneratedByPipe = ReadWriteIOUtils.readBool(buffer);
   }
 }

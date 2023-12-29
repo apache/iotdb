@@ -92,7 +92,7 @@ class PipeConfigPlanFilter {
         && ((CommitSetSchemaTemplatePlan) plan).isRollback()) {
       return false;
     }
-    return PLAN_MAP.containsValue(type);
+    return type.equals(ConfigPhysicalPlanType.PipeEnriched) || PLAN_MAP.containsValue(type);
   }
 
   static Set<ConfigPhysicalPlanType> getPipeListenSet(
