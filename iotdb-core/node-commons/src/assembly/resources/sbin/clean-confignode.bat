@@ -64,7 +64,7 @@ for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^cn_consensus_dir"
 if "%cn_consensus_dir%"=="" (
 set "cn_consensus_dir=data\confignode\consensus"
 )
-setlocal enabledelayedexpansion
+
 set "cn_consensus_dir=!cn_consensus_dir:%delimiter%= !"
 for %%i in (%cn_consensus_dir%) do (
   set "var=%%i"

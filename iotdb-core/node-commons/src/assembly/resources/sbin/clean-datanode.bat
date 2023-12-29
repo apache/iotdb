@@ -64,7 +64,7 @@ for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_data_dirs"
 if "%dn_data_dirs%"=="" (
     set "dn_data_dirs=data\\datanode\\data"
 )
-setlocal enabledelayedexpansion
+
 set "dn_data_dirs=!dn_data_dirs:%delimiter%= !"
 for %%i in (%dn_data_dirs%) do (
   set "var=%%i"
@@ -84,7 +84,7 @@ for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_consensus_dir"
 if "%dn_consensus_dir%"=="" (
     set "dn_consensus_dir=data\\datanode\\consensus"
 )
-setlocal enabledelayedexpansion
+
 set "dn_consensus_dir=!dn_consensus_dir:%delimiter%= !"
 for %%i in (%dn_consensus_dir%) do (
   set "var=%%i"
@@ -104,7 +104,7 @@ for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_wal_dirs"
 if "%dn_wal_dirs%"=="" (
     set "dn_wal_dirs=data\\datanode\\wal"
 )
-setlocal enabledelayedexpansion
+
 set "dn_wal_dirs=!dn_wal_dirs:%delimiter%= !"
 for %%i in (%dn_wal_dirs%) do (
   set "var=%%i"
@@ -126,7 +126,6 @@ if "%dn_tracing_dir%"=="" (
 )
 set "dn_tracing_dir=%dn_tracing_dir:"=%"
 
-setlocal enabledelayedexpansion
 set "dn_tracing_dir=!dn_tracing_dir:%delimiter%= !"
 for %%i in (%dn_tracing_dir%) do (
   set "var=%%i"
@@ -148,7 +147,6 @@ if "%dn_sync_dir%"=="" (
 )
 set "dn_sync_dir=%dn_sync_dir:"=%"
 
-setlocal enabledelayedexpansion
 set "dn_sync_dir=!dn_sync_dir:%delimiter%= !"
 for %%i in (%dn_sync_dir%) do (
   set "var=%%i"
@@ -168,7 +166,7 @@ for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^pipe_receiver_file_dir"
 if "%pipe_receiver_file_dir%"=="" (
     set "pipe_receiver_file_dir=data\\datanode\\system\\pipe\\receiver"
 )
-setlocal enabledelayedexpansion
+
 set "pipe_receiver_file_dir=!pipe_receiver_file_dir:%delimiter%= !"
 for %%i in (%pipe_receiver_file_dir%) do (
   set "var=%%i"
@@ -188,7 +186,7 @@ for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^sort_tmp_dir"
 if "%sort_tmp_dir%"=="" (
     set "sort_tmp_dir=data\\datanode\\tmp"
 )
-setlocal enabledelayedexpansion
+
 set "sort_tmp_dir=!sort_tmp_dir:%delimiter%= !"
 for %%i in (%sort_tmp_dir%) do (
   set "var=%%i"
@@ -201,4 +199,5 @@ for %%i in (%sort_tmp_dir%) do (
     )
 )
 
+endlocal
 echo "DataNode clean done ..."

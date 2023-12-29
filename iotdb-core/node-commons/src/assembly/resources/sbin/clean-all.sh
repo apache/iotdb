@@ -28,9 +28,10 @@ export IOTDB_HOME="`dirname "$0"`/.."
 IOTDB_CLUSTER_PATH="${IOTDB_HOME}"/conf/iotdb-cluster.properties
 # iotdb-cluster.properties does not exist, the current ICID is cleaned
 if [ ! -f ${IOTDB_CLUSTER_PATH} ]; then
-  exec ${IOTDB_HOME}/sbin/clean-datanode.sh -f > /dev/null 2>&1 &
-  exec ${IOTDB_HOME}/sbin/clean-confignode.sh -f> /dev/null 2>&1 &
   exec rm -rf ${IOTDB_HOME}/data/
+  exec ${IOTDB_HOME}/sbin/clean-datanode.sh -f >/dev/null 2>&1 &
+  exec ${IOTDB_HOME}/sbin/clean-confignode.sh -f >/dev/null 2>&1 &
+  exit 0
 else
   confignodeStr=$(sed '/^confignode_address_list=/!d;s/.*=//' "${IOTDB_CLUSTER_PATH}")
   confignodeIps=(${confignodeStr//,/ })
@@ -46,8 +47,9 @@ fi
 function validateParam() {
   if [[ -z $1 || -z $2 ||  -z $3 ||  -z $4 ||  -z $5 ||  -z $6 ]]; then
     echo "The iotdb-cluster.properties file is incomplete, the current 1C1D will be cleaned ... "
-    exec ${IOTDB_HOME}/sbin/clean-datanode.sh -f > /dev/null 2>&1 &
-    exec ${IOTDB_HOME}/sbin/clean-confignode.sh -f> /dev/null 2>&1 &
+    exec rm -rf ${IOTDB_HOME}/data/
+    exec ${IOTDB_HOME}/sbin/clean-datanode.sh -f >/dev/null 2>&1 &
+    exec ${IOTDB_HOME}/sbin/clean-confignode.sh -f >/dev/null 2>&1 &
     exit
   fi
 }
