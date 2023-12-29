@@ -102,7 +102,6 @@ import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
 import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
-import org.apache.iotdb.confignode.procedure.ProcedureMetrics;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
@@ -248,8 +247,6 @@ public class ConfigManager implements IManager {
   private final RetryFailedTasksThread retryFailedTasksThread;
 
   private static final String DATABASE = "\tDatabase=";
-
-  private ProcedureMetrics procedureMetrics;
 
   public ConfigManager() throws IOException {
     // Build the persistence module
@@ -1484,23 +1481,18 @@ public class ConfigManager implements IManager {
     return retryFailedTasksThread;
   }
 
-  public ProcedureMetrics getProcedureMetrics() {
-    return procedureMetrics;
-  }
-
   @Override
   public void addMetrics() {
     MetricService.getInstance().addMetricSet(new NodeMetrics(getNodeManager()));
     MetricService.getInstance().addMetricSet(new PartitionMetrics(this));
-    this.procedureMetrics = new ProcedureMetrics(getProcedureManager());
-    MetricService.getInstance().addMetricSet(this.procedureMetrics);
+    getProcedureManager().addMetrics();
   }
 
   @Override
   public void removeMetrics() {
     MetricService.getInstance().removeMetricSet(new NodeMetrics(getNodeManager()));
     MetricService.getInstance().removeMetricSet(new PartitionMetrics(this));
-    MetricService.getInstance().removeMetricSet(this.procedureMetrics);
+    getProcedureManager().removeMetrics();
   }
 
   @Override

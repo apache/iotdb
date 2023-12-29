@@ -35,8 +35,8 @@ import org.apache.iotdb.metrics.utils.MetricType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ProcedureMetrics implements IMetricSet {
   private static final Logger LOGGER = LoggerFactory.getLogger(ProcedureMetrics.class);
@@ -47,7 +47,7 @@ public class ProcedureMetrics implements IMetricSet {
 
   private final ProcedureScheduler scheduler;
 
-  private final Map<String, ProcedureMetricItems> metricItemsMap = new HashMap<>();
+  private final Map<String, ProcedureMetricItems> metricItemsMap = new ConcurrentHashMap<>();
 
   private AbstractMetricService metricService;
 
@@ -99,29 +99,22 @@ public class ProcedureMetrics implements IMetricSet {
   }
 
   public void updateMetricsOnSubmit(String procType) {
-    if (metricService == null) {
-      return;
+    if (metricService != null) {
+      metricItemsMap
+          .computeIfAbsent(procType, k -> new ProcedureMetricItems(k, metricService))
+          .updateMetricsOnSubmit();
     }
-
-    metricItemsMap.computeIfAbsent(procType, k -> new ProcedureMetricItems(k, metricService));
-    metricItemsMap.get(procType).submittedCounter.inc();
   }
 
   public void updateMetricsOnFinish(String procType, long runtime, boolean success) {
-    if (metricService == null) {
-      return;
-    }
-
-    metricItemsMap.computeIfAbsent(procType, k -> new ProcedureMetricItems(k, metricService));
-
-    if (success) {
-      metricItemsMap.get(procType).executionTimer.updateMillis(runtime);
-    } else {
-      metricItemsMap.get(procType).failedCounter.inc();
+    if (metricService != null) {
+      metricItemsMap
+          .computeIfAbsent(procType, k -> new ProcedureMetricItems(k, metricService))
+          .updateMetricsOnFinish(runtime, success);
     }
   }
 
-  static class ProcedureMetricItems {
+  class ProcedureMetricItems {
     private final String procType;
     private Counter submittedCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
     private Counter failedCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
@@ -169,6 +162,18 @@ public class ProcedureMetrics implements IMetricSet {
           Metric.PROCEDURE_EXECUTION_TIME.toString(),
           Tag.TYPE.toString(),
           procType);
+    }
+
+    public void updateMetricsOnSubmit() {
+      submittedCounter.inc();
+    }
+
+    public void updateMetricsOnFinish(long runtime, boolean success) {
+      if (success) {
+        executionTimer.updateMillis(runtime);
+      } else {
+        failedCounter.inc();
+      }
     }
   }
 }

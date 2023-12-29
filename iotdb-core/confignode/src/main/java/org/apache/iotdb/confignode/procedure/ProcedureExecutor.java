@@ -393,7 +393,7 @@ public class ProcedureExecutor<Env> {
       if (proc.isSuccess()) {
         // update metrics on finishing the procedure
         proc.updateMetricsOnFinish(getEnvironment(), proc.elapsedTime(), true);
-        LOG.info("{} finished in {}ms successfully.", proc, proc.elapsedTime());
+        LOG.debug("{} finished in {}ms successfully.", proc, proc.elapsedTime());
         if (proc.getProcId() == rootProcId) {
           rootProcedureCleanup(proc);
         } else {
@@ -806,9 +806,9 @@ public class ProcedureExecutor<Env> {
   }
 
   private final class WorkerMonitor extends InternalProcedure<Env> {
-    private static final int DEFAULT_WORKER_MONITOR_INTERVAL = 5000; // 5sec
+    private static final int DEFAULT_WORKER_MONITOR_INTERVAL = 30000; // 30sec
 
-    private static final int DEFAULT_WORKER_STUCK_THRESHOLD = 10000; // 10sec
+    private static final int DEFAULT_WORKER_STUCK_THRESHOLD = 60000; // 60sec
 
     private static final float DEFAULT_WORKER_ADD_STUCK_PERCENTAGE = 0.5f; // 50% stuck
 
@@ -863,14 +863,8 @@ public class ProcedureExecutor<Env> {
     return workerThreads.size();
   }
 
-  public int getActiveWorkerThreadCount() {
-    int count = 0;
-    for (WorkerThread worker : workerThreads) {
-      if (worker.keepAlive(System.currentTimeMillis())) {
-        count += 1;
-      }
-    }
-    return count;
+  public long getActiveWorkerThreadCount() {
+    return workerThreads.stream().filter(worker -> worker.activeProcedure.get() != null).count();
   }
 
   public boolean isRunning() {

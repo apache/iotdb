@@ -902,14 +902,11 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
    * @param env The environment passed to the procedure executor
    */
   protected void updateMetricsOnSubmit(Env env) {
-    ProcedureMetrics metrics = null;
-    if (env instanceof ConfigNodeProcedureEnv) {
-      metrics = ((ConfigNodeProcedureEnv) env).getConfigManager().getProcedureMetrics();
-    }
-    if (metrics == null) {
-      return;
-    }
-    metrics.updateMetricsOnSubmit(getProcType());
+    ((ConfigNodeProcedureEnv) env)
+        .getConfigManager()
+        .getProcedureManager()
+        .getProcedureMetrics()
+        .updateMetricsOnSubmit(getProcType());
   }
 
   /**
@@ -923,13 +920,10 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
    * @param success true if procedure is completed successfully
    */
   protected void updateMetricsOnFinish(Env env, long runtime, boolean success) {
-    ProcedureMetrics metrics = null;
-    if (env instanceof ConfigNodeProcedureEnv) {
-      metrics = ((ConfigNodeProcedureEnv) env).getConfigManager().getProcedureMetrics();
-    }
-    if (metrics == null) {
-      return;
-    }
-    metrics.updateMetricsOnFinish(getProcType(), runtime, success);
+    ((ConfigNodeProcedureEnv) env)
+        .getConfigManager()
+        .getProcedureManager()
+        .getProcedureMetrics()
+        .updateMetricsOnFinish(getProcType(), runtime, success);
   }
 }
