@@ -37,6 +37,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE;
@@ -94,6 +95,10 @@ public class IoTDBSchemaRegionExtractor extends IoTDBCommonExtractor {
     } while (event instanceof PipeWriteSchemaPlanEvent
         && (!listenTypes.contains((((PipeWriteSchemaPlanEvent) event).getPlanNode()).getType())
             || !isForwardingPipeRequests && event.isGeneratedByPipe()));
+
+    if (Objects.isNull(event)) {
+      return null;
+    }
 
     EnrichedEvent targetEvent =
         event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
