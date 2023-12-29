@@ -263,6 +263,9 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       } else {
         compactAlignedPageByDeserialize(timePage, valuePages);
       }
+      if (flushPolicy.canFlushCurrentChunkWriter()) {
+        flushCurrentChunkWriter();
+      }
     }
   }
 
