@@ -75,8 +75,8 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
   // default false means fullPath pattern match
   protected boolean isPrefixMatch = false;
   private IDeviceMNode<N> skipTemplateDevice;
-
   private ReleaseFlushMonitor.RecordNode timeRecorder;
+  private final long startTime = System.currentTimeMillis();
 
   protected Traverser() {}
 
@@ -257,9 +257,11 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
     if (store instanceof ReentrantReadOnlyCachedMTreeStore) {
       ((ReentrantReadOnlyCachedMTreeStore) store).unlockRead();
     }
+    long endTime = System.currentTimeMillis();
     if (timeRecorder != null) {
-      timeRecorder.setEndTime(System.currentTimeMillis());
+      timeRecorder.setEndTime(endTime);
     }
+    store.recordTraverserMetric(endTime - startTime);
   }
 
   public void setTemplateMap(Map<Integer, Template> templateMap, IMNodeFactory<N> nodeFactory) {
