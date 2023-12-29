@@ -146,6 +146,14 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
     LOGGER.info("Handshake finished for client {}", this);
   }
 
+  public String getIp() {
+    return endpoint.getIp();
+  }
+
+  public int getPort() {
+    return endpoint.getPort();
+  }
+
   @Override
   public String toString() {
     return String.format("AsyncPipeDataTransferServiceClient{%s}, id = {%d}", endpoint, id);
