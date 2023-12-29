@@ -63,10 +63,30 @@ fi
 unique_array=($(awk -v RS=' ' '!a[$1]++' <<< ${datanodeIps[@]}))
   # Clean the DataNode service
 for datanodeIP in ${unique_array[@]};do
-  echo "The system starts to clear data of DataNodes of $datanodeIP"
-  ssh $IOTDB_SSH_OPTS -p $serverPort ${account}@$datanodeIP "
-    nohup bash $datanodePath/sbin/clean-datanode.sh -f >/dev/null 2>&1 &
-  "
+  hasConfigNode="false"
+  for ((i=0; i<${#confignodeIps[@]}; i++))
+      do
+          # 检查元素是否包含指定字符
+          if [[ "${confignodeIps[$i]}" == *"$datanodeIP"* ]]; then
+              # 打印包含指定字符的元素
+              hasConfigNode="true"
+              # 从数组中删除这个元素
+              unset 'confignodeIps[$i]'
+          fi
+      done
+      if [[ "$hasConfigNode" == "true" ]]; then
+        echo "The system starts to clean data of DataNodes and ConfigNode of $datanodeIP"
+        ssh $IOTDB_SSH_OPTS -p $serverPort ${account}@$datanodeIP "
+          nohup bash $datanodePath/sbin/clean-datanode.sh -f >/dev/null 2>&1 &
+          sleep 3
+          nohup bash $confignodePath/sbin/clean-confignode.sh -f >/dev/null 2>&1 &
+          "
+      else
+        echo "The system starts to clean data of DataNodes of $datanodeIP"
+        ssh $IOTDB_SSH_OPTS -p $serverPort ${account}@$datanodeIP "
+            nohup bash $datanodePath/sbin/clean-datanode.sh -f >/dev/null 2>&1 & >/dev/null 2>&1 &
+          "
+      fi
 done
 
 # duplicate removal

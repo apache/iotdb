@@ -23,7 +23,6 @@ if [ -z "${IOTDB_HOME}" ]; then
 fi
 
 reCheck=$1
-echo $reCheck
 if [[ "$reCheck" != "-f" ]]; then
   read -p "Do you want to clean all the data in the IoTDB ? y/n (default n): " CLEAN_SERVICE
   if [[ "$CLEAN_SERVICE" != "y" && "$CLEAN_SERVICE" != "Y" ]]; then
@@ -32,22 +31,20 @@ if [[ "$reCheck" != "-f" ]]; then
   fi
 fi
 
-rm -rf ${IOTDB_HOME}/data/confignode/
+rm -rf ${IOTDB_HOME}/data/confignode/ >/dev/null 2>&1 &
 
 IOTDB_CONFIGNODE_CONFIG=${IOTDB_HOME}/conf/iotdb-confignode.properties
 cn_system_dir=$(echo $(grep '^cn_system_dir=' ${IOTDB_CONFIGNODE_CONFIG} || echo "data/confignode/system") | sed 's/.*=//')
-echo clean $cn_system_dir
 cn_consensus_dir=$(echo $(grep '^cn_consensus_dir=' ${IOTDB_CONFIGNODE_CONFIG} || echo "data/confignode/consensus") | sed 's/.*=//')
-echo clean $cn_consensus_dir
 
 function clearPath {
     path_name=$1
     if [ -n  "$path_name" ]; then
       path_name="${path_name#"${path_name%%[![:space:]]*}"}"
       if [[ $path_name == /* ]]; then
-        rm -rf $path_name
+        rm -rf $path_name  >/dev/null 2>&1 &
       else
-        rm -rf ${IOTDB_HOME}/$path_name
+        rm -rf ${IOTDB_HOME}/$path_name  >/dev/null 2>&1 &
       fi
     fi
 }

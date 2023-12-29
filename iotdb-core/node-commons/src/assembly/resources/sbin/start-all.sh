@@ -53,9 +53,29 @@ fi
 
 # Start the confignode service
 for confignodeIP in ${confignodeIps[@]};do
+  hasDataNode="false"
   # confignodeStartShell=$confignodePath/sbin/start-confignode.sh
-  echo "The system starts the ConfigNode of $confignodeIP"
-  ssh $IOTDB_SSH_OPTS -p $serverPort ${account}@$confignodeIP "nohup bash $confignodePath/sbin/start-confignode.sh >/dev/null 2>&1 &"
+  for ((i=0; i<${#datanodeIps[@]}; i++))
+  do
+      # 检查元素是否包含指定字符
+      if [[ "${datanodeIps[$i]}" == *"$confignodeIP"* ]]; then
+          # 打印包含指定字符的元素
+          hasDataNode="true"
+          # 从数组中删除这个元素
+          unset 'datanodeIps[$i]'
+      fi
+  done
+  if [[ "$hasDataNode" == "true" ]]; then
+    echo "The system starts the ConfigNode And DataNode of $confignodeIP"
+    ssh $IOTDB_SSH_OPTS -p $serverPort ${account}@$confignodeIP "
+      nohup bash $confignodePath/sbin/start-confignode.sh >/dev/null 2>&1 &
+      sleep 3
+      nohup bash $datanodePath/sbin/start-datanode.sh >/dev/null 2>&1 &
+      "
+  else
+    echo "The system starts the ConfigNode of $confignodeIP"
+    ssh $IOTDB_SSH_OPTS -p $serverPort ${account}@$confignodeIP "nohup bash $confignodePath/sbin/start-confignode.sh >/dev/null 2>&1 &"
+  fi
   sleep 3
 done
 

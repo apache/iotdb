@@ -32,24 +32,16 @@ if [ -z "${IOTDB_HOME}" ]; then
   export IOTDB_HOME="$(cd "`dirname "$0"`"/..; pwd)"
 fi
 
-rm -rf ${IOTDB_HOME}/data/datanode/
+rm -rf ${IOTDB_HOME}/data/datanode/ >/dev/null 2>&1 &
 IOTDB_DATANODE_CONFIG=${IOTDB_HOME}/conf/iotdb-datanode.properties
 dn_system_dir=$(echo $(grep '^dn_system_dir=' ${IOTDB_DATANODE_CONFIG} || echo "data/datanode/system") | sed 's/.*=//')
-echo clean $dn_system_dir
 dn_data_dirs=$(echo $(grep '^dn_data_dirs=' ${IOTDB_DATANODE_CONFIG} || echo "data/datanode/data") | sed 's/.*=//')
-echo clean $dn_data_dirs
 dn_consensus_dir=$(echo $(grep '^dn_consensus_dir=' ${IOTDB_DATANODE_CONFIG} || echo "data/datanode/consensus") | sed 's/.*=//')
-echo clean $dn_consensus_dir
 dn_wal_dirs=$(echo $(grep '^dn_wal_dirs=' ${IOTDB_DATANODE_CONFIG} || echo "data/datanode/wal") | sed 's/.*=//')
-echo clean $dn_wal_dirs
 dn_tracing_dir=$(echo $(grep '^dn_tracing_dir=' ${IOTDB_DATANODE_CONFIG} || echo "datanode/tracing") | sed 's/.*=//')
-echo clean $dn_tracing_dir
 dn_sync_dir=$(echo $(grep '^dn_sync_dir=' ${IOTDB_DATANODE_CONFIG} || echo "data/datanode/sync") | sed 's/.*=//')
-echo clean $dn_sync_dir
 pipe_receiver_file_dirs=$(echo $(grep '^pipe_receiver_file_dirs=' ${IOTDB_DATANODE_CONFIG} || echo "data/datanode/system/pipe/receiver") | sed 's/.*=//')
-echo clean $pipe_receiver_file_dirs
 sort_tmp_dir=$(echo $(grep '^sort_tmp_dir=' ${IOTDB_DATANODE_CONFIG} || echo "data/datanode/tmp") | sed 's/.*=//')
-echo clean $sort_tmp_dir
 
 function clearPath {
     path_name=$1
@@ -61,9 +53,9 @@ function clearPath {
       for path_name in "${paths[@]}"
       do
           if [[ $path_name == /* ]]; then
-            rm -rf $path_name
+            rm -rf $path_name  >/dev/null 2>&1 &
           else
-            rm -rf ${IOTDB_HOME}/$path_name
+            rm -rf ${IOTDB_HOME}/$path_name  >/dev/null 2>&1 &
           fi
       done
     fi

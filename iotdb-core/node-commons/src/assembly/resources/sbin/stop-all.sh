@@ -52,9 +52,29 @@ fi
 
 # Stop the datanode service
 for datanodeIP in ${datanodeIps[@]};do
+  hasConfigNode="false"
   # datanodeStopShell=$datanodePath/sbin/stop-datanode.sh
-  echo "The system stops the DataNode of $datanodeIP"
-  ssh $IOTDB_SSH_OPTS -p $serverPort ${account}@$datanodeIP "nohup bash $datanodePath/sbin/stop-datanode.sh"
+  for ((i=0; i<${#confignodeIps[@]}; i++))
+    do
+        # 检查元素是否包含指定字符
+        if [[ "${confignodeIps[$i]}" == *"$datanodeIP"* ]]; then
+            # 打印包含指定字符的元素
+            hasConfigNode="true"
+            # 从数组中删除这个元素
+            unset 'confignodeIps[$i]'
+        fi
+    done
+    if [[ "$hasConfigNode" == "true" ]]; then
+      echo "The system stops the DataNode and ConfigNode of $datanodeIP"
+      ssh $IOTDB_SSH_OPTS -p $serverPort ${account}@$datanodeIP "
+        nohup bash $datanodePath/sbin/stop-datanode.sh
+        sleep 3
+        nohup bash $confignodePath/sbin/stop-confignode.sh
+        "
+    else
+      echo "The system stops the DataNode of $datanodeIP"
+      ssh $IOTDB_SSH_OPTS -p $serverPort ${account}@$datanodeIP "nohup bash $datanodePath/sbin/stop-datanode.sh"
+    fi
 done
 
 # Stop the confignode service
