@@ -98,7 +98,7 @@ public class ConfigPlanListeningQueue extends AbstractPipeListeningQueue
   }
 
   private boolean needToRecord(PipeParameters parameters) throws IllegalPathException {
-    return PipeConfigPlanFilter.getPipeListenSet(
+    return !PipeConfigPlanFilter.getPipeListenSet(
             parameters.getStringOrDefault(
                 Arrays.asList(EXTRACTOR_INCLUSION_KEY, SOURCE_INCLUSION_KEY),
                 EXTRACTOR_INCLUSION_DEFAULT_VALUE),

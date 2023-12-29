@@ -98,7 +98,6 @@ public class PipeConfigNodeSubtask extends PipeSubtask {
     // 3. Customize extractor
     final PipeTaskRuntimeConfiguration runtimeConfiguration =
         new PipeTaskRuntimeConfiguration(
-            // TODO: check CONFIG_REGION_ID.getId()
             new PipeTaskExtractorRuntimeEnvironment(
                 taskID, creationTime, CONFIG_REGION_ID.getId(), pipeTaskMeta));
     extractor.customize(extractorParameters, runtimeConfiguration);

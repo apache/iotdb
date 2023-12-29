@@ -117,6 +117,27 @@ public class ConcurrentIterableLinkedQueueTest {
   }
 
   @Test(timeout = 60000)
+  public void testContinuousEmptyNext() throws InterruptedException {
+    ConcurrentIterableLinkedQueue<Integer>.DynamicIterator itr = queue.iterateFrom(0);
+    AtomicInteger consumedValue = new AtomicInteger(0);
+    new Thread(
+            () -> {
+              while (true) {
+                Integer value = itr.next(0);
+                if (value != null) {
+                  consumedValue.set(value);
+                }
+              }
+            })
+        .start();
+    Thread.sleep(6000);
+    queue.add(1);
+    Awaitility.await()
+        .atMost(100, TimeUnit.SECONDS)
+        .untilAsserted(() -> Assert.assertEquals(1, consumedValue.get()));
+  }
+
+  @Test(timeout = 60000)
   public void testRemove() {
     queue.add(1);
     queue.add(2);
