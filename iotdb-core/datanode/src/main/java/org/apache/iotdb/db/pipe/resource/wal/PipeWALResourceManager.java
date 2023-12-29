@@ -70,8 +70,8 @@ public abstract class PipeWALResourceManager {
       try {
         if (entry.getValue().invalidateIfPossible()) {
           iterator.remove();
-        } else {
-          LOGGER.info(
+        } else if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
               "WAL (memtableId {}) is still referenced {} times",
               entry.getKey(),
               entry.getValue().getReferenceCount());
