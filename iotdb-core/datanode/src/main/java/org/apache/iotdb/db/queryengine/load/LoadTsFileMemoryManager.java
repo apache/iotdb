@@ -101,7 +101,7 @@ public class LoadTsFileMemoryManager {
       throws LoadRuntimeOutOfMemoryException {
     if (dataCacheMemoryBlock == null) {
       long actuallyAllocateMemoryInBytes =
-          tryAllocateFromQuery(QUERY_ENGINE_MEMORY_MANAGER.getFreeMemoryForOperators() >> 1);
+          tryAllocateFromQuery(QUERY_ENGINE_MEMORY_MANAGER.getFreeMemoryForOperators() >> 2);
       dataCacheMemoryBlock = new LoadTsFileDataCacheMemoryBlock(actuallyAllocateMemoryInBytes);
       LOGGER.info(
           "Create Data Cache Memory Block {}, allocate memory {}",
@@ -122,12 +122,16 @@ public class LoadTsFileMemoryManager {
   }
 
   // used for Metrics
-  public long getUsedMemorySizeInMB() {
+  public long getUsedMemorySizeInBytes() {
     return usedMemorySizeInBytes.get();
   }
 
-  public long getDataCacheUsedMemorySizeInMB() {
+  public long getDataCacheUsedMemorySizeInBytes() {
     return dataCacheMemoryBlock == null ? 0 : dataCacheMemoryBlock.getMemoryUsageInBytes();
+  }
+
+  public long getDataCacheLimitedMemorySizeInBytes() {
+    return dataCacheMemoryBlock == null ? 0 : dataCacheMemoryBlock.getLimitedMemorySizeInBytes();
   }
 
   ///////////////////////////// SINGLETON /////////////////////////////

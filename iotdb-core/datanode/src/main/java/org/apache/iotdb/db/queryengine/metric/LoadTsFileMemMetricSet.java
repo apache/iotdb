@@ -40,7 +40,7 @@ public class LoadTsFileMemMetricSet implements IMetricSet {
         Metric.LOAD_MEM.toString(),
         MetricLevel.IMPORTANT,
         LoadTsFileMemoryManager.getInstance(),
-        LoadTsFileMemoryManager::getUsedMemorySizeInMB,
+        LoadTsFileMemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
         LOAD_TSFILE_USED_MEMORY);
 
@@ -48,7 +48,7 @@ public class LoadTsFileMemMetricSet implements IMetricSet {
         Metric.LOAD_MEM.toString(),
         MetricLevel.IMPORTANT,
         LoadTsFileMemoryManager.getInstance(),
-        LoadTsFileMemoryManager::getDataCacheUsedMemorySizeInMB,
+        LoadTsFileMemoryManager::getDataCacheUsedMemorySizeInBytes,
         Tag.NAME.toString(),
         LOAD_TSFILE_DATA_CACHE_MEMORY);
 

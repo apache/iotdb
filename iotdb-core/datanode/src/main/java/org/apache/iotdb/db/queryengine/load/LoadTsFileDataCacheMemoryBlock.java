@@ -74,8 +74,8 @@ public class LoadTsFileDataCacheMemoryBlock extends LoadTsFileAbstractMemoryBloc
             // count is a power of 2
             long actuallyAllocateMemorySizeInBytes =
                 MEMORY_MANAGER.tryAllocateFromQuery(EACH_ASK_MEMORY_SIZE_IN_BYTES);
+            limitedMemorySizeInBytes.addAndGet(actuallyAllocateMemorySizeInBytes);
             if (actuallyAllocateMemorySizeInBytes < EACH_ASK_MEMORY_SIZE_IN_BYTES) {
-              limitedMemorySizeInBytes.addAndGet(actuallyAllocateMemorySizeInBytes);
               return (count & (MAX_ASK_FOR_MEMORY_COUNT - 1)) + 1;
             } else {
               return 1;
@@ -128,6 +128,10 @@ public class LoadTsFileDataCacheMemoryBlock extends LoadTsFileAbstractMemoryBloc
 
   long getMemoryUsageInBytes() {
     return memoryUsageInBytes.get();
+  }
+
+  long getLimitedMemorySizeInBytes() {
+    return limitedMemorySizeInBytes.get();
   }
 
   @Override
