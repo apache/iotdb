@@ -17,9 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.progress.committer;
+package org.apache.iotdb.commons.pipe.progress.committer;
 
-import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
