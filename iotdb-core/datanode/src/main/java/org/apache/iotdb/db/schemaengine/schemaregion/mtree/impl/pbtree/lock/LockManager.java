@@ -102,6 +102,10 @@ public class LockManager {
     readWriteLock.threadReadLock();
   }
 
+  public void globalReadLock(boolean prior) {
+    readWriteLock.threadReadLock(prior);
+  }
+
   public void globalReadUnlock() {
     readWriteLock.threadReadUnlock();
   }
