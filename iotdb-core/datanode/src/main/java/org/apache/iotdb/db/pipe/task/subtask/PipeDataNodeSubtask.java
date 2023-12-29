@@ -21,8 +21,9 @@ package org.apache.iotdb.db.pipe.task.subtask;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.subtask.PipeSubtask;
-import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 
 import org.slf4j.Logger;
@@ -88,8 +89,9 @@ public abstract class PipeDataNodeSubtask extends PipeSubtask {
       LOGGER.warn(errorMessage, throwable);
 
       if (lastEvent instanceof EnrichedEvent) {
-        ((EnrichedEvent) lastEvent)
-            .reportException(
+        PipeAgent.runtime()
+            .report(
+                ((EnrichedEvent) lastEvent),
                 throwable instanceof PipeRuntimeException
                     ? (PipeRuntimeException) throwable
                     : new PipeRuntimeCriticalException(errorMessage));

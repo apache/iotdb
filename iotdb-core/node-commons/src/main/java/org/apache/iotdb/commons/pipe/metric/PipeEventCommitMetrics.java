@@ -17,18 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.metric;
+package org.apache.iotdb.commons.pipe.metric;
 
+import org.apache.iotdb.commons.pipe.progress.committer.PipeEventCommitter;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.db.pipe.progress.committer.PipeEventCommitter;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
 import com.google.common.collect.ImmutableSet;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -100,7 +99,11 @@ public class PipeEventCommitMetrics implements IMetricSet {
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
-  public void register(@NonNull PipeEventCommitter eventCommitter, String committerKey) {
+  public void register(PipeEventCommitter eventCommitter, String committerKey) {
+    if (Objects.isNull(eventCommitter)) {
+      return;
+    }
+
     eventCommitterMap.putIfAbsent(committerKey, eventCommitter);
     if (Objects.nonNull(metricService)) {
       createMetrics(committerKey);

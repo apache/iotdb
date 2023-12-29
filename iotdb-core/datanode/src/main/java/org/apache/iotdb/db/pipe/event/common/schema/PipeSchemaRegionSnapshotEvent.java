@@ -17,28 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.payload.evolvable.builder;
+package org.apache.iotdb.db.pipe.event.common.schema;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
-import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.db.pipe.resource.snapshot.PipeDataNodeSnapshotResourceManager;
 
-public class IoTDBThriftSyncPipeTransferBatchReqBuilder extends PipeTransferBatchReqBuilder {
+public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
 
-  public IoTDBThriftSyncPipeTransferBatchReqBuilder(PipeParameters parameters) {
-    super(parameters);
+  public PipeSchemaRegionSnapshotEvent(
+      String snapshotPath, String pipeName, PipeTaskMeta pipeTaskMeta, String pattern) {
+    super(
+        snapshotPath,
+        pipeName,
+        pipeTaskMeta,
+        pattern,
+        PipeDataNodeSnapshotResourceManager.getInstance());
   }
 
   @Override
-  public void onSuccess() {
-    for (final Event event : events) {
-      if (event instanceof EnrichedEvent) {
-        ((EnrichedEvent) event)
-            .decreaseReferenceCount(
-                IoTDBThriftSyncPipeTransferBatchReqBuilder.class.getName(), true);
-      }
-    }
-
-    super.onSuccess();
+  public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime) {
+    return new PipeSchemaRegionSnapshotEvent(snapshotPath, pipeName, pipeTaskMeta, pattern);
   }
 }
