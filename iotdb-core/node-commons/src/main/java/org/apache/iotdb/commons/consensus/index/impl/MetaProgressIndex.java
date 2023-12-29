@@ -40,18 +40,18 @@ public class MetaProgressIndex extends ProgressIndex {
 
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
-  private int index;
+  private long index;
 
   public MetaProgressIndex() {
     // Empty constructor
   }
 
-  public MetaProgressIndex(int index) {
+  public MetaProgressIndex(long index) {
     this.index = index;
   }
 
   // Meta extractors need to set index to iterate from the listening queue
-  public int getIndex() {
+  public long getIndex() {
     return index;
   }
 

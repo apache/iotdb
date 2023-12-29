@@ -22,18 +22,14 @@ package org.apache.iotdb.db.pipe.extractor.schemaregion;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
-import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.datastructure.ConcurrentIterableLinkedQueue;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb.IoTDBCommonExtractor;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeWriteSchemaPlanEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -49,22 +45,13 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_INCLUSION_KEY;
 
 public class IoTDBSchemaRegionExtractor extends IoTDBCommonExtractor {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSchemaRegionExtractor.class);
-  private PipeTaskMeta pipeTaskMeta;
-
-  private int schemaRegionId;
-  private ConcurrentIterableLinkedQueue<PlanNode>.DynamicIterator itr;
+  private ConcurrentIterableLinkedQueue<Event>.DynamicIterator itr;
   private Set<PlanNodeType> listenTypes = new HashSet<>();
 
   @Override
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
-    final PipeTaskExtractorRuntimeEnvironment environment =
-        (PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment();
-
-    pipeTaskMeta = environment.getPipeTaskMeta();
-    schemaRegionId = environment.getRegionId();
+    super.customize(parameters, configuration);
 
     listenTypes =
         PipeSchemaNodeFilter.getPipeListenSet(
@@ -82,29 +69,35 @@ public class IoTDBSchemaRegionExtractor extends IoTDBCommonExtractor {
   @Override
   public void start() throws Exception {
     ProgressIndex progressIndex = pipeTaskMeta.getProgressIndex();
-    int index;
+    long index;
     if (progressIndex instanceof MinimumProgressIndex) {
       // TODO: Trigger snapshot if not exists and return nearest snapshots' first index
       index = 0;
     } else {
       index = ((MetaProgressIndex) progressIndex).getIndex();
     }
-    itr = SchemaNodeListeningQueue.getInstance(schemaRegionId).newIterator(index);
+    itr = SchemaNodeListeningQueue.getInstance(regionId).newIterator(index);
   }
 
   @Override
-  public Event supply() throws Exception {
-    PlanNode node;
+  public EnrichedEvent supply() throws Exception {
+    EnrichedEvent event;
     do {
       // Return immediately
-      node = itr.next(0);
-    } while (node != null && !listenTypes.contains(node.getType()));
-    // TODO: convert plan to event and configure timeout
-    return null;
+      event = (EnrichedEvent) itr.next(0);
+    } while (event instanceof PipeWriteSchemaPlanEvent
+        && (!listenTypes.contains((((PipeWriteSchemaPlanEvent) event).getPlanNode()).getType())));
+
+    EnrichedEvent targetEvent =
+        event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+            pipeName, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
+    targetEvent.bindProgressIndex(new MetaProgressIndex(itr.getNextIndex() - 1));
+    targetEvent.increaseReferenceCount(IoTDBSchemaRegionExtractor.class.getName());
+    return targetEvent;
   }
 
   @Override
   public void close() throws Exception {
-    SchemaNodeListeningQueue.getInstance(0).returnIterator(itr);
+    SchemaNodeListeningQueue.getInstance(regionId).returnIterator(itr);
   }
 }

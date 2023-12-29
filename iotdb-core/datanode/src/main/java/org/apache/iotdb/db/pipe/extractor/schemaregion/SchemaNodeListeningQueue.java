@@ -26,8 +26,6 @@ import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEven
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaSerializableEventType;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeWriteSchemaPlanEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedConfigSchemaNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWriteSchemaNode;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.slf4j.Logger;
@@ -52,25 +50,16 @@ public class SchemaNodeListeningQueue extends AbstractPipeListeningQueue {
 
   public void tryListenToNode(PlanNode node) {
     if (PipeSchemaNodeFilter.shouldBeListenedByQueue(node)) {
-      switch (node.getType()) {
-        case PIPE_ENRICHED_WRITE_SCHEMA:
-          super.listenToElement(
-              new PipeWriteSchemaPlanEvent(
-                  ((PipeEnrichedWriteSchemaNode) node).getWriteSchemaNode(), true));
-          return;
-        case PIPE_ENRICHED_CONFIG_SCHEMA:
-          super.listenToElement(
-              new PipeWriteSchemaPlanEvent(
-                  ((PipeEnrichedConfigSchemaNode) node).getConfigSchemaNode(), true));
-          return;
-        default:
-          super.listenToElement(new PipeWriteSchemaPlanEvent(node, false));
-      }
+      PipeWriteSchemaPlanEvent event = new PipeWriteSchemaPlanEvent(node);
+      event.increaseReferenceCount(SchemaNodeListeningQueue.class.getName());
+      super.listenToElement(event);
     }
   }
 
   public void tryListenToSnapshot(String snapshotPath) {
-    super.listenToElement(new PipeSchemaRegionSnapshotEvent(snapshotPath));
+    PipeSchemaRegionSnapshotEvent event = new PipeSchemaRegionSnapshotEvent(snapshotPath);
+    event.increaseReferenceCount(SchemaNodeListeningQueue.class.getName());
+    super.listenToElement(event);
   }
 
   /////////////////////////////// Element Ser / De Method ////////////////////////////////

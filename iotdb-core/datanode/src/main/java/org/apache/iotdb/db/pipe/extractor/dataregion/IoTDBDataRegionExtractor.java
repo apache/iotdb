@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.extractor.dataregion;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb.IoTDBCommonExtractor;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -85,10 +84,6 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
   private PipeRealtimeDataRegionExtractor realtimeExtractor;
 
   // Record these variables to provide corresponding value to tag key of monitoring metrics
-  private String taskID;
-  private String pipeName;
-  private long creationTime;
-  private int dataRegionId;
 
   public IoTDBDataRegionExtractor() {
     this.hasBeenStarted = new AtomicBoolean(false);
@@ -258,11 +253,7 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
   @Override
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
-    dataRegionId =
-        ((PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment()).getRegionId();
-    pipeName = configuration.getRuntimeEnvironment().getPipeName();
-    creationTime = configuration.getRuntimeEnvironment().getCreationTime();
-    taskID = pipeName + "_" + dataRegionId + "_" + creationTime;
+    super.customize(parameters, configuration);
 
     historicalExtractor.customize(parameters, configuration);
     realtimeExtractor.customize(parameters, configuration);
@@ -279,7 +270,7 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
     hasBeenStarted.set(true);
 
     final AtomicReference<Exception> exceptionHolder = new AtomicReference<>(null);
-    final DataRegionId dataRegionIdObject = new DataRegionId(this.dataRegionId);
+    final DataRegionId dataRegionIdObject = new DataRegionId(this.regionId);
     while (true) {
       // try to start extractors in the data region ...
       // first try to run if data region exists, then try to run if data region does not exist.
@@ -373,7 +364,7 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
   }
 
   public int getDataRegionId() {
-    return dataRegionId;
+    return regionId;
   }
 
   public long getCreationTime() {

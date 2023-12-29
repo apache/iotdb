@@ -24,8 +24,6 @@ import org.apache.iotdb.commons.pipe.datastructure.LinkedQueueSerializerType;
 import org.apache.iotdb.commons.pipe.event.SerializableEvent;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigSerializableEventType;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeWriteConfigPlanEvent;
@@ -54,15 +52,16 @@ public class ConfigPlanListeningQueue extends AbstractPipeListeningQueue
 
   public void tryListenToPlan(ConfigPhysicalPlan plan) {
     if (PipeConfigPlanFilter.shouldBeListenedByQueue(plan)) {
-      super.listenToElement(
-          plan.getType().equals(ConfigPhysicalPlanType.PipeEnriched)
-              ? new PipeWriteConfigPlanEvent(((PipeEnrichedPlan) plan).getInnerPlan(), true)
-              : new PipeWriteConfigPlanEvent(plan, false));
+      PipeWriteConfigPlanEvent event = new PipeWriteConfigPlanEvent(plan);
+      event.increaseReferenceCount(ConfigPlanListeningQueue.class.getName());
+      super.listenToElement(event);
     }
   }
 
   public void tryListenToSnapshot(String snapshotPath) {
-    super.listenToElement(new PipeConfigRegionSnapshotEvent(snapshotPath));
+    PipeConfigRegionSnapshotEvent event = new PipeConfigRegionSnapshotEvent(snapshotPath);
+    event.increaseReferenceCount(ConfigPlanListeningQueue.class.getName());
+    super.listenToElement(event);
   }
 
   /////////////////////////////// Element Ser / De Method ////////////////////////////////

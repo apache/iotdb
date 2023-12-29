@@ -158,6 +158,10 @@ public abstract class EnrichedEvent implements Event {
     }
   }
 
+  public void bindProgressIndex(ProgressIndex progressIndex) {
+    throw new UnsupportedOperationException("This event does not support binding progressIndex.");
+  }
+
   public abstract ProgressIndex getProgressIndex();
 
   /**

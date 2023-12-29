@@ -45,12 +45,12 @@ public abstract class PipeSnapshotResourceManager {
   // locks copiedSnapshotRoot2PinCountMap
   private final ReentrantLock lock = new ReentrantLock();
 
-  public PipeSnapshotResourceManager(Set<String> pipeCopiedSnapshotDirs) {
+  protected PipeSnapshotResourceManager(Set<String> pipeCopiedSnapshotDirs) {
     this.pipeCopiedSnapshotDirs = pipeCopiedSnapshotDirs;
   }
 
   /**
-   * given a snapshot path, copy it to pipe dir, maintain a reference count for the copied snapshot,
+   * Given a snapshot path, copy it to pipe dir, maintain a reference count for the copied snapshot,
    * and return the copied snapshot root path.
    *
    * <p>if the given file is already a copied snapshot, increase its reference count and return it.

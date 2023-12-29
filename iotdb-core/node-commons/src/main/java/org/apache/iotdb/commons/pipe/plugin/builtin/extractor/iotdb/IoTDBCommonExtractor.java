@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb;
 
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.pipe.api.PipeExtractor;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import java.util.Arrays;
 
@@ -33,6 +37,13 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.datastructure.PipeInclusionNormalizer.allLegal;
 
 public abstract class IoTDBCommonExtractor implements PipeExtractor {
+
+  protected String taskID;
+  protected String pipeName;
+  protected long creationTime;
+  protected int regionId;
+  protected PipeTaskMeta pipeTaskMeta;
+
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
     validator.validate(
@@ -48,6 +59,18 @@ public abstract class IoTDBCommonExtractor implements PipeExtractor {
             .getStringOrDefault(
                 Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
                 EXTRACTOR_EXCLUSION_DEFAULT_VALUE));
+  }
+
+  @Override
+  public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
+      throws Exception {
+    PipeTaskExtractorRuntimeEnvironment environment =
+        ((PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment());
+    regionId = environment.getRegionId();
+    pipeName = environment.getPipeName();
+    creationTime = environment.getCreationTime();
+    taskID = pipeName + "_" + regionId + "_" + creationTime;
+    pipeTaskMeta = environment.getPipeTaskMeta();
   }
 
   protected IoTDBCommonExtractor() {}

@@ -254,8 +254,8 @@ public class PipeConfigNodeSubtask extends PipeSubtask {
   }
 
   /**
-   * Submit the subTask. Be sure to add parallel check since a subtask is currently not designed to
-   * run in parallel.
+   * Submit the {@link PipeConfigNodeSubtask}. Be sure to add parallel check since a subtask is
+   * currently not designed to run in parallel.
    */
   @Override
   public void submitSelf() {
@@ -299,14 +299,6 @@ public class PipeConfigNodeSubtask extends PipeSubtask {
     } finally {
       // Should be after connector.close()
       super.close();
-    }
-  }
-
-  @Override
-  protected synchronized void releaseLastEvent(boolean shouldReport) {
-    if (lastEvent != null) {
-      // TODO: should decrease reference count here
-      lastEvent = null;
     }
   }
 }

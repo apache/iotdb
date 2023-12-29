@@ -31,12 +31,11 @@ public abstract class PipeWritePlanEvent extends EnrichedEvent implements Serial
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeWritePlanEvent.class);
 
   protected final AtomicLong referenceCount = new AtomicLong(0);
-  protected boolean isGeneratedByPipe;
 
-  protected PipeWritePlanEvent(
-      boolean isGeneratedByPipe, String pipeName, PipeTaskMeta pipeTaskMeta, String pattern) {
+  protected ProgressIndex progressIndex;
+
+  protected PipeWritePlanEvent(String pipeName, PipeTaskMeta pipeTaskMeta, String pattern) {
     super(pipeName, pipeTaskMeta, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
-    this.isGeneratedByPipe = isGeneratedByPipe;
   }
 
   /**
@@ -63,13 +62,13 @@ public abstract class PipeWritePlanEvent extends EnrichedEvent implements Serial
   }
 
   @Override
-  public ProgressIndex getProgressIndex() {
-    return null;
+  public void bindProgressIndex(ProgressIndex progressIndex) {
+    this.progressIndex = progressIndex;
   }
 
   @Override
-  public boolean isGeneratedByPipe() {
-    return isGeneratedByPipe;
+  public ProgressIndex getProgressIndex() {
+    return progressIndex;
   }
 
   @Override

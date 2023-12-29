@@ -22,18 +22,14 @@ package org.apache.iotdb.confignode.manager.pipe.transfer.extractor;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
-import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.datastructure.ConcurrentIterableLinkedQueue;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb.IoTDBCommonExtractor;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.manager.pipe.event.PipeWriteConfigPlanEvent;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -49,20 +45,14 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_INCLUSION_KEY;
 
 public class IoTDBConfigRegionExtractor extends IoTDBCommonExtractor {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConfigRegionExtractor.class);
-
-  private PipeTaskMeta pipeTaskMeta;
   private Set<ConfigPhysicalPlanType> listenTypes = new HashSet<>();
 
-  private ConcurrentIterableLinkedQueue<ConfigPhysicalPlan>.DynamicIterator itr;
+  private ConcurrentIterableLinkedQueue<Event>.DynamicIterator itr;
 
   @Override
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
-    pipeTaskMeta =
-        ((PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment())
-            .getPipeTaskMeta();
+    super.customize(parameters, configuration);
     listenTypes =
         PipeConfigPlanFilter.getPipeListenSet(
             parameters.getStringOrDefault(
@@ -79,7 +69,7 @@ public class IoTDBConfigRegionExtractor extends IoTDBCommonExtractor {
   @Override
   public void start() throws Exception {
     ProgressIndex progressIndex = pipeTaskMeta.getProgressIndex();
-    int index;
+    long index;
     if (progressIndex instanceof MinimumProgressIndex) {
       // TODO: Trigger snapshot if not exists and return nearest snapshots' first index
       index = 0;
@@ -90,14 +80,20 @@ public class IoTDBConfigRegionExtractor extends IoTDBCommonExtractor {
   }
 
   @Override
-  public Event supply() {
-    ConfigPhysicalPlan plan;
+  public EnrichedEvent supply() {
+    EnrichedEvent event;
     do {
       // Return immediately
-      plan = itr.next(0);
-    } while (plan != null && !listenTypes.contains(plan.getType()));
-    // TODO: convert plan to event and configure timeout
-    return null;
+      event = (EnrichedEvent) itr.next(0);
+    } while (event instanceof PipeWriteConfigPlanEvent
+        && !listenTypes.contains(((PipeWriteConfigPlanEvent) event).getPhysicalPlan().getType()));
+
+    EnrichedEvent targetEvent =
+        event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+            pipeName, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
+    targetEvent.bindProgressIndex(new MetaProgressIndex(itr.getNextIndex() - 1));
+    targetEvent.increaseReferenceCount(IoTDBConfigRegionExtractor.class.getName());
+    return targetEvent;
   }
 
   @Override

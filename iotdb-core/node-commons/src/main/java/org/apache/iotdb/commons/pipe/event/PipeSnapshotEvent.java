@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 
 public abstract class PipeSnapshotEvent extends EnrichedEvent implements SerializableEvent {
@@ -33,6 +34,7 @@ public abstract class PipeSnapshotEvent extends EnrichedEvent implements Seriali
 
   protected final PipeSnapshotResourceManager resourceManager;
   protected String snapshotPath;
+  protected ProgressIndex progressIndex;
 
   protected PipeSnapshotEvent(
       String snapshotPath,
@@ -43,6 +45,11 @@ public abstract class PipeSnapshotEvent extends EnrichedEvent implements Seriali
     super(pipeName, pipeTaskMeta, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
     this.snapshotPath = snapshotPath;
     this.resourceManager = resourceManager;
+  }
+
+  // TODO: pin snapshot
+  public File getSnapshot() {
+    return new File(snapshotPath);
   }
 
   @Override
@@ -75,13 +82,14 @@ public abstract class PipeSnapshotEvent extends EnrichedEvent implements Seriali
     }
   }
 
-  public String getSnapshotPath() {
-    return snapshotPath;
+  @Override
+  public void bindProgressIndex(ProgressIndex progressIndex) {
+    this.progressIndex = progressIndex;
   }
 
   @Override
   public ProgressIndex getProgressIndex() {
-    return null;
+    return progressIndex;
   }
 
   @Override

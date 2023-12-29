@@ -52,18 +52,20 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
 
   protected AbstractSerializableListeningQueue(LinkedQueueSerializerType serializerType) {
     currentType = serializerType;
+    // Always seal initially unless manually open it
+    isSealed.set(true);
     serializerMap.put(LinkedQueueSerializerType.PLAIN, PlainQueueSerializer::new);
   }
 
   /////////////////////////////// Function ///////////////////////////////
 
-  public void listenToElement(E plan) {
+  public void listenToElement(E element) {
     if (!isSealed.get()) {
-      queue.add(plan);
+      queue.add(element);
     }
   }
 
-  public ConcurrentIterableLinkedQueue<E>.DynamicIterator newIterator(int index) {
+  public ConcurrentIterableLinkedQueue<E>.DynamicIterator newIterator(long index) {
     return queue.iterateFrom(index);
   }
 
