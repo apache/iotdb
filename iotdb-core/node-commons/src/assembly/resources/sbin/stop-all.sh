@@ -22,7 +22,6 @@ if [ -z "${IOTDB_HOME}" ]; then
     export IOTDB_HOME="`dirname "$0"`/.."
 fi
 IOTDB_CLUSTER_PATH="${IOTDB_HOME}"/conf/iotdb-cluster.properties
-# iotdb-cluster.properties does not exist, the current 1C1D is stopped
 if [ ! -f ${IOTDB_CLUSTER_PATH} ]; then
   exec ${IOTDB_HOME}/sbin/stop-standalone.sh
 else
@@ -45,23 +44,18 @@ function validateParam() {
 }
 validateParam $confignodeIps $datanodeIps $confignodePath $datanodePath $account $serverPort
 
-# By default disable strict host key checking
 if [ "$IOTDB_SSH_OPTS" = "" ]; then
   IOTDB_SSH_OPTS="-o StrictHostKeyChecking=no"
 fi
 
-# Stop the datanode service
 for datanodeIP in ${datanodeIps[@]};do
   hasConfigNode="false"
-  # datanodeStopShell=$datanodePath/sbin/stop-datanode.sh
   for ((i=0; i<${#confignodeIps[@]}; i++))
     do
-        # 检查元素是否包含指定字符
         if [[ "${confignodeIps[$i]}" == *"$datanodeIP"* ]]; then
-            # 打印包含指定字符的元素
             hasConfigNode="true"
-            # 从数组中删除这个元素
             unset 'confignodeIps[$i]'
+            break
         fi
     done
     if [[ "$hasConfigNode" == "true" ]]; then
@@ -77,9 +71,7 @@ for datanodeIP in ${datanodeIps[@]};do
     fi
 done
 
-# Stop the confignode service
 for confignodeIP in ${confignodeIps[@]};do
-  # confignodeStopShell=$confignodePath/sbin/stop-confignode.sh
   echo "The system stops the ConfigNode of $confignodeIP"
   ssh $IOTDB_SSH_OPTS -p $serverPort ${account}@$confignodeIP "nohup bash $confignodePath/sbin/stop-confignode.sh"
 done

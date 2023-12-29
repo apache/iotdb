@@ -22,7 +22,7 @@
 SET /P CLEAN_SERVICE="Do you want to clean all the data in the IoTDB ? y/n (default n): "
 IF NOT "%CLEAN_SERVICE%"=="y" IF NOT "%CLEAN_SERVICE%"=="Y" (
   ECHO Exiting...
-  EXIT /b
+  EXIT 0
 )
 
 pushd %~dp0..

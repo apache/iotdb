@@ -26,7 +26,6 @@ fi
 
 export IOTDB_HOME="`dirname "$0"`/.."
 IOTDB_CLUSTER_PATH="${IOTDB_HOME}"/conf/iotdb-cluster.properties
-# iotdb-cluster.properties does not exist, the current ICID is cleaned
 if [ ! -f ${IOTDB_CLUSTER_PATH} ]; then
   exec rm -rf ${IOTDB_HOME}/data/
   exec ${IOTDB_HOME}/sbin/clean-datanode.sh -f >/dev/null 2>&1 &
@@ -41,7 +40,6 @@ else
   confignodePath=$(sed '/^confignode_deploy_path=/!d;s/.*=//' "${IOTDB_CLUSTER_PATH}")
   datanodePath=$(sed '/^datanode_deploy_path=/!d;s/.*=//' "${IOTDB_CLUSTER_PATH}")
   account=$(sed '/^ssh_account=/!d;s/.*=//' "${IOTDB_CLUSTER_PATH}")
-#  echo $confignodeIps $datanodeIps $confignodePaths $datanodePaths $account $serverPort
 fi
 
 function validateParam() {
@@ -56,24 +54,19 @@ function validateParam() {
 
 validateParam $confignodeIps $datanodeIps $confignodePath $datanodePath $account $serverPort
 
-# By default disable strict host key checking
 if [ "$IOTDB_SSH_OPTS" = "" ]; then
   IOTDB_SSH_OPTS="-o StrictHostKeyChecking=no"
 fi
 
-# duplicate removal
 unique_array=($(awk -v RS=' ' '!a[$1]++' <<< ${datanodeIps[@]}))
-  # Clean the DataNode service
 for datanodeIP in ${unique_array[@]};do
   hasConfigNode="false"
   for ((i=0; i<${#confignodeIps[@]}; i++))
       do
-          # 检查元素是否包含指定字符
           if [[ "${confignodeIps[$i]}" == *"$datanodeIP"* ]]; then
-              # 打印包含指定字符的元素
               hasConfigNode="true"
-              # 从数组中删除这个元素
               unset 'confignodeIps[$i]'
+              break
           fi
       done
       if [[ "$hasConfigNode" == "true" ]]; then
@@ -91,11 +84,8 @@ for datanodeIP in ${unique_array[@]};do
       fi
 done
 
-# duplicate removal
 unique_array=($(awk -v RS=' ' '!a[$1]++' <<< ${confignodeIps[@]}))
-  # Clean the ConfigNode service
 for confignodeIP in ${unique_array[@]};do
-  # confignodeCleanShell=$confignodePath/sbin/clean-confignode.sh
   echo "The system starts to clear data of ConfigNodes of $confignodeIP"
   ssh $IOTDB_SSH_OPTS -p $serverPort ${account}@$confignodeIP "
       nohup bash $confignodePath/sbin/clean-confignode.sh -f >/dev/null 2>&1 &

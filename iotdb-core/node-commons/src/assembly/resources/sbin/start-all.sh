@@ -22,7 +22,6 @@ if [ -z "${IOTDB_HOME}" ]; then
     export IOTDB_HOME="`dirname "$0"`/.."
 fi
 IOTDB_CLUSTER_PATH="${IOTDB_HOME}"/conf/iotdb-cluster.properties
-# iotdb-cluster.properties does not exist, the current 1C1D is started
 if [ ! -f ${IOTDB_CLUSTER_PATH} ]; then
   exec ${IOTDB_HOME}/sbin/start-standalone.sh
 else
@@ -34,7 +33,6 @@ else
   confignodePath=$(sed '/^confignode_deploy_path=/!d;s/.*=//' "${IOTDB_CLUSTER_PATH}")
   datanodePath=$(sed '/^datanode_deploy_path=/!d;s/.*=//' "${IOTDB_CLUSTER_PATH}")
   account=$(sed '/^ssh_account=/!d;s/.*=//' "${IOTDB_CLUSTER_PATH}")
-#  echo $confignodeIps $datanodeIps $confignodePath $datanodePath $account $serverPort
 fi
 
 function validateParam() {
@@ -46,23 +44,18 @@ function validateParam() {
 }
 validateParam $confignodeIps $datanodeIps $confignodePath $datanodePath $account $serverPort
 
-# By default disable strict host key checking
 if [ "$IOTDB_SSH_OPTS" = "" ]; then
   IOTDB_SSH_OPTS="-o StrictHostKeyChecking=no"
 fi
 
-# Start the confignode service
 for confignodeIP in ${confignodeIps[@]};do
   hasDataNode="false"
-  # confignodeStartShell=$confignodePath/sbin/start-confignode.sh
   for ((i=0; i<${#datanodeIps[@]}; i++))
   do
-      # 检查元素是否包含指定字符
       if [[ "${datanodeIps[$i]}" == *"$confignodeIP"* ]]; then
-          # 打印包含指定字符的元素
           hasDataNode="true"
-          # 从数组中删除这个元素
           unset 'datanodeIps[$i]'
+          break
       fi
   done
   if [[ "$hasDataNode" == "true" ]]; then
@@ -79,9 +72,7 @@ for confignodeIP in ${confignodeIps[@]};do
   sleep 3
 done
 
-# Start the datanode service
 for datanodeIP in ${datanodeIps[@]};do
-  # datanodeStartShell=$datanodePath/sbin/start-datanode.sh
   echo "The system starts the DataNode of $datanodeIP"
   ssh $IOTDB_SSH_OPTS -p $serverPort ${account}@$datanodeIP "nohup bash $datanodePath/sbin/start-datanode.sh >/dev/null 2>&1 &"
   sleep 3
