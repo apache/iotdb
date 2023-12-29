@@ -33,45 +33,48 @@ if not "%CLEAN_SERVICE%"=="y" if not "%CLEAN_SERVICE%"=="Y" (
   exit 0
 )
 
-rmdir /s /q "%IOTDB_HOME%\data\confignode\"
+rmdir /s /q "%IOTDB_HOME%\data\confignode\" 2>nul
 set IOTDB_CONFIGNODE_CONFIG=%IOTDB_HOME%\conf\iotdb-confignode.properties
+set "delimiter=,;"
 for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^cn_system_dir"
   %IOTDB_CONFIGNODE_CONFIG%') do (
   set cn_system_dir=%%i
 )
-
 if "%cn_system_dir%"=="" (
     set "cn_system_dir=data\confignode\system"
 )
-set "cn_system_dir=%cn_system_dir:"=%"
-setlocal enabledelayedexpansion
 
-if "%cn_system_dir:~0,2%"=="\\" (
-    rmdir /s /q "%cn_system_dir%"
-) else if "%cn_system_dir:~1,3%"==":\\" (
-    rmdir /s /q "%cn_system_dir%"
-) else (
-    rmdir /s /q "%IOTDB_HOME%\%cn_system_dir%"
+setlocal enabledelayedexpansion
+set "cn_system_dir=!cn_system_dir:%delimiter%= !"
+for %%i in (%cn_system_dir%) do (
+  set "var=%%i"
+  if "!var:~0,2!"=="\\" (
+      rmdir /s /q "%%i" 2>nul
+  ) else if "!var:~1,3!"==":\\" (
+      rmdir /s /q "%%i" 2>nul
+  ) else (
+      rmdir /s /q "%IOTDB_HOME%\%%i" 2>nul
+  )
 )
 
 for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^cn_consensus_dir"
   %IOTDB_CONFIGNODE_CONFIG%') do (
   set cn_consensus_dir=%%i
 )
-echo %cn_consensus_dir%
-  if "%cn_consensus_dir%"=="" (
-    set "cn_consensus_dir=data\confignode\consensus"
-  )
-  echo clean %cn_consensus_dir%
-set "cn_consensus_dir=%cn_consensus_dir:"=%"
+if "%cn_consensus_dir%"=="" (
+set "cn_consensus_dir=data\confignode\consensus"
+)
 setlocal enabledelayedexpansion
-
-if "%cn_consensus_dir:~0,2%"=="\\" (
-    rmdir /s /q "%cn_consensus_dir%"
-) else if "%cn_consensus_dir:~1,3%"==":\\" (
-    rmdir /s /q "%cn_consensus_dir%"
-) else (
-    rmdir /s /q "%IOTDB_HOME%\\%cn_consensus_dir%"
+set "cn_consensus_dir=!cn_consensus_dir:%delimiter%= !"
+for %%i in (%cn_consensus_dir%) do (
+  set "var=%%i"
+    if "!var:~0,2!"=="\\" (
+        rmdir /s /q "%%i" 2>nul
+    ) else if "!var:~1,3!"==":\\" (
+        rmdir /s /q "%%i" 2>nul
+    ) else (
+        rmdir /s /q "%IOTDB_HOME%\%%i" 2>nul
+    )
 )
 
 endlocal
