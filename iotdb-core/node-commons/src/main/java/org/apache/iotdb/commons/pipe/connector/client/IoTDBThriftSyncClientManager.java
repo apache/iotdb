@@ -22,6 +22,9 @@ package org.apache.iotdb.commons.pipe.connector.client;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorClient;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeReq;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.IoTDBThriftClientManager;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -39,7 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public abstract class IoTDBThriftSyncClientManager implements Closeable {
+public abstract class IoTDBThriftSyncClientManager extends IoTDBThriftClientManager implements Closeable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftSyncClientManager.class);
 
@@ -49,12 +52,10 @@ public abstract class IoTDBThriftSyncClientManager implements Closeable {
   private final String trustStorePath;
   private final String trustStorePwd;
 
-  private final boolean useLeaderCache;
-
-  private final List<TEndPoint> endPoints;
   private final Map<TEndPoint, Pair<IoTDBThriftSyncConnectorClient, Boolean>>
       endPoint2ClientAndStatus = new ConcurrentHashMap<>();
 
+  public IoTDBThriftSyncClientManager(
   private final LeaderCacheManager leaderCacheManager = new LeaderCacheManager();
 
   private long currentClientIndex = 0;
@@ -65,14 +66,13 @@ public abstract class IoTDBThriftSyncClientManager implements Closeable {
       String trustStorePath,
       String trustStorePwd,
       boolean useLeaderCache) {
+    super(endPoints, useLeaderCache);
+
     this.useSSL = useSSL;
     this.trustStorePath = trustStorePath;
     this.trustStorePwd = trustStorePwd;
 
-    this.useLeaderCache = useLeaderCache;
-
-    this.endPoints = endPoints;
-    for (TEndPoint endPoint : endPoints) {
+    for (final TEndPoint endPoint : endPoints) {
       endPoint2ClientAndStatus.put(endPoint, new Pair<>(null, false));
     }
   }
@@ -161,12 +161,12 @@ public abstract class IoTDBThriftSyncClientManager implements Closeable {
   protected abstract TPipeTransferReq buildHandShakeReq() throws IOException;
 
   public Pair<IoTDBThriftSyncConnectorClient, Boolean> getClient() {
-    final int clientSize = endPoints.size();
+    final int clientSize = endPointList.size();
     // Round-robin, find the next alive client
     for (int tryCount = 0; tryCount < clientSize; ++tryCount) {
       final int clientIndex = (int) (currentClientIndex++ % clientSize);
       final Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus =
-          endPoint2ClientAndStatus.get(endPoints.get(clientIndex));
+          endPoint2ClientAndStatus.get(endPointList.get(clientIndex));
       if (Boolean.TRUE.equals(clientAndStatus.getRight())) {
         return clientAndStatus;
       }
@@ -192,7 +192,7 @@ public abstract class IoTDBThriftSyncClientManager implements Closeable {
 
     try {
       if (!endPoint2ClientAndStatus.containsKey(endPoint)) {
-        endPoints.add(endPoint);
+        endPointList.add(endPoint);
         endPoint2ClientAndStatus.put(endPoint, new Pair<>(null, false));
         reconstructClient(endPoint);
       }
@@ -227,7 +227,11 @@ public abstract class IoTDBThriftSyncClientManager implements Closeable {
         LOGGER.info("Client {}:{} closed.", endPoint.getIp(), endPoint.getPort());
       } catch (Exception e) {
         LOGGER.warn(
-            "Failed to close client {}:{}, because: {}.", endPoint.getIp(), endPoint.getPort(), e);
+            "Failed to close client {}:{}, because: {}.",
+            endPoint.getIp(),
+            endPoint.getPort(),
+            e.getMessage(),
+            e);
       } finally {
         clientAndStatus.setRight(false);
       }
