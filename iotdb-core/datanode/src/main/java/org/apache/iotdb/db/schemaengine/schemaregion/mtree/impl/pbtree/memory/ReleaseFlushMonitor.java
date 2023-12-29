@@ -242,7 +242,6 @@ public class ReleaseFlushMonitor {
         }
       } finally {
         if (needReleaseLock) {
-          lockManager.globalReadUnlock();
           lockManager.globalStampedReadUnlock(lockStamp);
         }
       }
