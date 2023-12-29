@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.IoTDBThriftClientManager;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -125,7 +125,7 @@ public class IoTDBThriftAsyncClientManager extends IoTDBThriftClientManager {
     final AtomicReference<Exception> exception = new AtomicReference<>();
 
     client.pipeTransfer(
-        PipeTransferHandshakeReq.toTPipeTransferReq(
+        PipeTransferDataNodeHandshakeReq.toTPipeTransferReq(
             CommonDescriptor.getInstance().getConfig().getTimestampPrecision()),
         new AsyncMethodCallback<TPipeTransferResp>() {
           @Override
