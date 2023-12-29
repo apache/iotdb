@@ -67,6 +67,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBCommonExtractor {
 
   @Override
   public void start() throws Exception {
+    super.start();
     if (!listenTypes.isEmpty()) {
       SchemaRegionConsensusImpl.getInstance()
           .write(
@@ -104,6 +105,9 @@ public class IoTDBSchemaRegionExtractor extends IoTDBCommonExtractor {
 
   @Override
   public void close() throws Exception {
+    if (!hasBeenStarted.get()) {
+      return;
+    }
     SchemaNodeListeningQueue.getInstance(regionId).returnIterator(itr);
     if (!listenTypes.isEmpty()) {
       SchemaRegionConsensusImpl.getInstance()

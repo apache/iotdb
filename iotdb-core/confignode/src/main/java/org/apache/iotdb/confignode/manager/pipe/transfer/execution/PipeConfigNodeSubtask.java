@@ -102,6 +102,7 @@ public class PipeConfigNodeSubtask extends PipeSubtask {
             new PipeTaskExtractorRuntimeEnvironment(
                 taskID, creationTime, CONFIG_REGION_ID.getId(), pipeTaskMeta));
     extractor.customize(extractorParameters, runtimeConfiguration);
+    extractor.start();
   }
 
   private void initProcessor(Map<String, String> processorAttributes) throws Exception {

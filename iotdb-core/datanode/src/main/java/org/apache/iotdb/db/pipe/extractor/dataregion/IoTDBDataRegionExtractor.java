@@ -47,7 +47,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE;
@@ -78,16 +77,10 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDataRegionExtractor.class);
 
-  private final AtomicBoolean hasBeenStarted;
-
   private PipeHistoricalDataRegionExtractor historicalExtractor;
   private PipeRealtimeDataRegionExtractor realtimeExtractor;
 
   // Record these variables to provide corresponding value to tag key of monitoring metrics
-
-  public IoTDBDataRegionExtractor() {
-    this.hasBeenStarted = new AtomicBoolean(false);
-  }
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -264,10 +257,7 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
 
   @Override
   public void start() throws Exception {
-    if (hasBeenStarted.get()) {
-      return;
-    }
-    hasBeenStarted.set(true);
+    super.start();
 
     final AtomicReference<Exception> exceptionHolder = new AtomicReference<>(null);
     final DataRegionId dataRegionIdObject = new DataRegionId(this.regionId);

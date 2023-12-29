@@ -63,6 +63,7 @@ public class IoTDBConfigRegionExtractor extends IoTDBCommonExtractor {
 
   @Override
   public void start() throws Exception {
+    super.start();
     ProgressIndex progressIndex = pipeTaskMeta.getProgressIndex();
     long index;
     if (progressIndex instanceof MinimumProgressIndex) {
@@ -94,6 +95,9 @@ public class IoTDBConfigRegionExtractor extends IoTDBCommonExtractor {
 
   @Override
   public void close() throws Exception {
+    if (!hasBeenStarted.get()) {
+      return;
+    }
     ConfigPlanListeningQueue.getInstance().returnIterator(itr);
   }
 }

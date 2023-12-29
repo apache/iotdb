@@ -28,6 +28,7 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_KEY;
@@ -45,6 +46,7 @@ public abstract class IoTDBCommonExtractor implements PipeExtractor {
   protected int regionId;
   protected PipeTaskMeta pipeTaskMeta;
   protected boolean isForwardingPipeRequests;
+  protected final AtomicBoolean hasBeenStarted = new AtomicBoolean(false);
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -80,6 +82,14 @@ public abstract class IoTDBCommonExtractor implements PipeExtractor {
                 PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
                 PipeExtractorConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
             PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
+  }
+
+  @Override
+  public void start() throws Exception {
+    if (hasBeenStarted.get()) {
+      return;
+    }
+    hasBeenStarted.set(true);
   }
 
   protected IoTDBCommonExtractor() {}
