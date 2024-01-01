@@ -281,8 +281,8 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
 
       String[] sqls =
           new String[] {
-            "show devices root.** where template != null",
-            "show devices root.sg2.** with database where template = t2",
+            "show devices root.** where template is not null",
+            "show devices root.sg2.** with database where template = 't2'",
           };
       Set<String>[] standards =
           new Set[] {
