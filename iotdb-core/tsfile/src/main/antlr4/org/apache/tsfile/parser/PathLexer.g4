@@ -23,10 +23,6 @@ ROOT
     : R O O T
     ;
 
-DOT : '.';
-STAR: '*';
-DOUBLE_STAR: '**';
-
 /**
  * 1. Whitespace
  */
@@ -37,6 +33,67 @@ WS
     :
     [ \u000B\t\r\n]+ -> channel(HIDDEN)
     ;
+
+/**
+ * 2. Keywords, new keywords should be added into IdentifierParser.g4
+ */
+
+// Common Keywords
+
+TIME
+    : T I M E
+    ;
+
+TIMESTAMP
+    : T I M E S T A M P
+    ;
+
+/**
+ * 3. Operators
+ */
+
+// Operators. Arithmetics
+
+MINUS : '-';
+PLUS : '+';
+DIV : '/';
+MOD : '%';
+
+
+// Operators. Comparation
+
+OPERATOR_DEQ : '==';
+OPERATOR_SEQ : '=';
+OPERATOR_GT : '>';
+OPERATOR_GTE : '>=';
+OPERATOR_LT : '<';
+OPERATOR_LTE : '<=';
+OPERATOR_NEQ : '!=' | '<>';
+
+OPERATOR_BITWISE_AND : '&';
+
+OPERATOR_LOGICAL_AND : '&&';
+
+OPERATOR_BITWISE_OR : '|';
+
+OPERATOR_LOGICAL_OR : '||';
+
+OPERATOR_NOT : '!';
+
+/**
+ * 4. Constructors Symbols
+ */
+
+DOT : '.';
+COMMA : ',';
+SEMI: ';';
+STAR: '*';
+DOUBLE_STAR: '**';
+LR_BRACKET : '(';
+RR_BRACKET : ')';
+LS_BRACKET : '[';
+RS_BRACKET : ']';
+DOUBLE_COLON: '::';
 
 /**
  * 5. Literals
