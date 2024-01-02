@@ -3074,6 +3074,20 @@ public class DataRegion implements IDataRegionForQuery {
         insertMultiTabletsNode
             .getResults()
             .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+      } catch (BatchProcessException e) {
+        // for each error
+        TSStatus firstStatus = null;
+        for (TSStatus status : e.getFailingStatus()) {
+          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            firstStatus = status;
+          }
+          // return WRITE_PROCESS_REJECT directly for the consensus retry logic
+          if (status.getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
+            insertMultiTabletsNode.getResults().put(i, status);
+            throw new BatchProcessException("Rejected inserting multi tablets");
+          }
+        }
+        insertMultiTabletsNode.getResults().put(i, firstStatus);
       }
     }
 
