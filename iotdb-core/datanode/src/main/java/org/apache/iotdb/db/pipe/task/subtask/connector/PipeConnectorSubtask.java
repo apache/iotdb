@@ -150,7 +150,7 @@ public class PipeConnectorSubtask extends PipeDataNodeSubtask {
 
       releaseLastEvent(true);
     } catch (PipeTemporaryException e) {
-      LOGGER.info("PipeTemporaryException in pipe transfer, will retry forever until succeed.");
+      LOGGER.debug("PipeTemporaryException in pipe transfer, will retry forever until succeed.");
     } catch (PipeConnectionException e) {
       if (!isClosed.get()) {
         throw e;
