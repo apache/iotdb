@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.protocol.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 
@@ -32,6 +33,7 @@ import org.slf4j.LoggerFactory;
 
 public class LeaderCacheManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(LeaderCacheManager.class);
+  private static final PipeConfig CONFIG = PipeConfig.getInstance();
 
   private final AtomicDouble memoryUsageCheatFactor = new AtomicDouble(1);
 
@@ -39,8 +41,11 @@ public class LeaderCacheManager {
   private final Cache<String, TEndPoint> device2endpoint;
 
   public LeaderCacheManager() {
-    long initMemorySizeInBytes = PipeResourceManager.memory().getTotalMemorySizeInBytes() / 100;
-    long maxMemorySizeInBytes = PipeResourceManager.memory().getTotalMemorySizeInBytes() / 10;
+    long initMemorySizeInBytes = PipeResourceManager.memory().getTotalMemorySizeInBytes() / 10;
+    long maxMemorySizeInBytes =
+        (long)
+            (PipeResourceManager.memory().getTotalMemorySizeInBytes()
+                * CONFIG.getPipeLeaderCacheMemoryUsagePercentage());
 
     // properties required by pipe memory control framework
     PipeMemoryBlock allocatedMemoryBlock =
