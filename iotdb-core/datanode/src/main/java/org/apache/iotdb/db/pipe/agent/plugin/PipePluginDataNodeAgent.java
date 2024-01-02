@@ -209,6 +209,8 @@ public class PipePluginDataNodeAgent {
       throws Exception {
     dataRegionPluginAgent.validate(
         pipeName, extractorAttributes, processorAttributes, connectorAttributes);
+    // FIXME: Currently we comment out the following code to avoid instantiating
+    // `IoTDBMetaConnector` and `IoTDBMetaExtractor`.
     // schemaRegionPluginAgent.validate(pipeName, extractorAttributes, processorAttributes,
     // connectorAttributes);
   }
