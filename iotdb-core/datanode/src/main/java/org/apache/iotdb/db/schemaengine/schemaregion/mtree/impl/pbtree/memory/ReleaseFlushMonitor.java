@@ -254,11 +254,11 @@ public class ReleaseFlushMonitor {
 
   @TestOnly
   public void forceFlushAndRelease() {
-    boolean needFlush = false;
+    boolean needFlush;
     while (true) {
       needFlush = false;
       for (CachedMTreeStore store : regionToStoreMap.values()) {
-        if (store.getRegionStatistics().getBufferNodeNum() > 0) {
+        if (store.getMemoryManager().getBufferNodeNum() > 0) {
           needFlush = true;
           break;
         }

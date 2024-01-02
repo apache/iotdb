@@ -36,6 +36,7 @@ import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class PBTreeFlushExecutor {
 
@@ -72,11 +73,14 @@ public class PBTreeFlushExecutor {
     this.lockManager = lockManager;
   }
 
-  public void flushVolatileNodes() throws MetadataException {
+  public void flushVolatileNodes(AtomicLong flushNodeNum, AtomicLong flushMemSize)
+      throws MetadataException {
     List<Exception> exceptions = new ArrayList<>();
     if (databaseMNode != null && checkRemainToFlush()) {
       try {
         processFlushDatabase(databaseMNode);
+        flushNodeNum.incrementAndGet();
+        flushMemSize.addAndGet(databaseMNode.estimateSize());
       } catch (Exception e) {
         exceptions.add(e);
         logger.warn(e.getMessage(), e);
@@ -84,7 +88,7 @@ public class PBTreeFlushExecutor {
     }
     while (subtreeRoots.hasNext() && checkRemainToFlush()) {
       try {
-        processFlushNonDatabase(subtreeRoots.next());
+        processFlushNonDatabase(subtreeRoots.next(), flushNodeNum, flushMemSize);
       } catch (Exception e) {
         exceptions.add(e);
         logger.warn(e.getMessage(), e);
@@ -116,15 +120,20 @@ public class PBTreeFlushExecutor {
     }
   }
 
-  private void processFlushNonDatabase(ICachedMNode subtreeRoot)
+  private void processFlushNonDatabase(
+      ICachedMNode subtreeRoot, AtomicLong flushNodeNum, AtomicLong flushMemSize)
       throws MetadataException, IOException {
     Iterator<ICachedMNode> volatileSubtreeIterator;
     List<ICachedMNode> collectedVolatileSubtrees;
     try {
       file.writeMNode(subtreeRoot);
-      collectedVolatileSubtrees = new ArrayList<>();
+      flushNodeNum.incrementAndGet();
+      flushMemSize.addAndGet(subtreeRoot.estimateSize());
       volatileSubtreeIterator =
           memoryManager.updateCacheStatusAndRetrieveSubtreeAfterPersist(subtreeRoot);
+
+      // make sure the roots in volatileSubtreeIterator have been locked
+      collectedVolatileSubtrees = new ArrayList<>();
       while (volatileSubtreeIterator.hasNext()) {
         collectedVolatileSubtrees.add(volatileSubtreeIterator.next());
       }
@@ -152,6 +161,8 @@ public class PBTreeFlushExecutor {
 
       try {
         file.writeMNode(subtreeRoot);
+        flushNodeNum.incrementAndGet();
+        flushMemSize.addAndGet(subtreeRoot.estimateSize());
         collectedVolatileSubtrees = new ArrayList<>();
         volatileSubtreeIterator =
             memoryManager.updateCacheStatusAndRetrieveSubtreeAfterPersist(subtreeRoot);

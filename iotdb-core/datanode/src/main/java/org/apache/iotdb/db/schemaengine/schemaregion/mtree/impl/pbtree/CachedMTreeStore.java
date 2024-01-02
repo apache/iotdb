@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
+import org.apache.iotdb.db.schemaengine.metric.SchemaRegionCachedMetric;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.IMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.estimator.MNodeSizeEstimator;
@@ -51,6 +52,7 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -69,12 +71,14 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   private final IMNodeFactory<ICachedMNode> nodeFactory =
       MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
   private final CachedSchemaRegionStatistics regionStatistics;
+  private final SchemaRegionCachedMetric metric;
   private final ReleaseFlushMonitor releaseFlushMonitor = ReleaseFlushMonitor.getInstance();
   private final LockManager lockManager;
 
   public CachedMTreeStore(
       int schemaRegionId,
       CachedSchemaRegionStatistics regionStatistics,
+      SchemaRegionCachedMetric metric,
       Runnable flushCallback,
       ISchemaFile schemaFile,
       IMemoryManager memoryManager,
@@ -93,6 +97,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     this.memoryStatistics = memoryStatistics;
 
     this.memoryManager = memoryManager;
+    this.metric = metric;
     memoryManager.initRootStatus(root);
 
     ensureMemoryStatus();
@@ -245,6 +250,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
         }
       }
       node.setParent(parent);
+      metric.recordLoadFromDisk(node.estimateSize(), 1L);
       memoryManager.updateCacheStatusAfterDiskRead(node);
       ensureMemoryStatus();
       return node;
@@ -572,6 +578,19 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     return releaseFlushMonitor.recordTraverserTime(schemaRegionId);
   }
 
+  @Override
+  public void recordTraverserMetric(long costTime) {
+    metric.recordTraverser(costTime);
+  }
+
+  public void recordReleaseMetrics(long costTime, long releaseNodeNum, long releaseMemorySize) {
+    metric.recordRelease(costTime, releaseNodeNum, releaseMemorySize);
+  }
+
+  public void recordFlushMetrics(long costTime, long releaseNodeNum, long releaseMemorySize) {
+    metric.recordFlush(costTime, releaseNodeNum, releaseMemorySize);
+  }
+
   private void ensureMemoryStatus() {
     releaseFlushMonitor.ensureMemoryStatus();
   }
@@ -585,11 +604,11 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
    *
    * @return should not continue releasing
    */
-  public boolean executeMemoryRelease() {
+  public boolean executeMemoryRelease(AtomicLong releaseNodeNum, AtomicLong releaseMemorySize) {
     lockManager.globalReadLock(true);
     try {
       if (regionStatistics.getUnpinnedMemorySize() != 0) {
-        return !memoryManager.evict();
+        return !memoryManager.evict(releaseNodeNum, releaseMemorySize);
       } else {
         return true;
       }
@@ -603,20 +622,25 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     if (needLock) {
       lockManager.globalReadLock();
     }
+    long startTime = System.currentTimeMillis();
+    AtomicLong flushNodeNum = new AtomicLong(0);
+    AtomicLong flushMemSize = new AtomicLong(0);
     try {
       PBTreeFlushExecutor flushExecutor = new PBTreeFlushExecutor(memoryManager, file, lockManager);
-      long startTime = System.currentTimeMillis();
-      flushExecutor.flushVolatileNodes();
+
+      flushExecutor.flushVolatileNodes(flushNodeNum, flushMemSize);
+
+    } catch (Throwable e) {
+      LOGGER.error(
+          "Error occurred during MTree flush, current SchemaRegionId is {}", schemaRegionId, e);
+    } finally {
       long time = System.currentTimeMillis() - startTime;
       if (time > 10_000) {
         LOGGER.info("It takes {}ms to flush MTree in SchemaRegion {}", time, schemaRegionId);
       } else {
         LOGGER.debug("It takes {}ms to flush MTree in SchemaRegion {}", time, schemaRegionId);
       }
-    } catch (Throwable e) {
-      LOGGER.error(
-          "Error occurred during MTree flush, current SchemaRegionId is {}", schemaRegionId, e);
-    } finally {
+      recordFlushMetrics(time, flushNodeNum.get(), flushMemSize.get());
       if (needLock) {
         lockManager.globalReadUnlock();
       }
