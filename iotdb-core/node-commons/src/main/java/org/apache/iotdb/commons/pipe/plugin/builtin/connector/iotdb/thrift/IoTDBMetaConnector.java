@@ -41,6 +41,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_AUTHORITY_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_DATA_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_DEFAULT_VALUE;
@@ -65,6 +68,10 @@ public abstract class IoTDBMetaConnector extends IoTDBConnector {
   private boolean enableAuthoritySync = false;
   private boolean atLeastOneEnable = false;
 
+  private boolean useSSL;
+  private String trustStore;
+  private String trustStorePwd;
+
   private final List<IoTDBThriftSyncConnectorClient> clients = new ArrayList<>();
   private final List<Boolean> isClientAlive = new ArrayList<>();
 
@@ -78,53 +85,63 @@ public abstract class IoTDBMetaConnector extends IoTDBConnector {
   public void validate(PipeParameterValidator validator) throws Exception {
     super.validate(validator);
 
-    validator.validate(
-        arg -> {
-          Set<String> inclusionList =
-              new HashSet<>(Arrays.asList(((String) arg).replace(" ", "").split(",")));
-          if (inclusionList.contains(EXTRACTOR_INCLUSION_SCHEMA_VALUE)) {
-            enableSchemaSync = true;
-          }
-          if (inclusionList.contains(EXTRACTOR_INCLUSION_TTL_VALUE)) {
-            enableTtlSync = true;
-          }
-          if (inclusionList.contains(EXTRACTOR_INCLUSION_FUNCTION_VALUE)) {
-            enableFunctionSync = true;
-          }
-          if (inclusionList.contains(EXTRACTOR_INCLUSION_TRIGGER_VALUE)) {
-            enableTriggerSync = true;
-          }
-          if (inclusionList.contains(EXTRACTOR_INCLUSION_MODEL_VALUE)) {
-            enableModelSync = true;
-          }
-          if (inclusionList.contains(EXTRACTOR_INCLUSION_AUTHORITY_VALUE)) {
-            enableAuthoritySync = true;
-          }
-          atLeastOneEnable =
-              enableSchemaSync
-                  || enableTtlSync
-                  || enableFunctionSync
-                  || enableTriggerSync
-                  || enableModelSync
-                  || enableAuthoritySync;
-          // If none of above are present and data is also absent, then validation will fail.
-          return atLeastOneEnable || inclusionList.contains(EXTRACTOR_INCLUSION_DATA_VALUE);
-        },
-        String.format(
-            "At least one of %s, %s, %s, %s, %s, %s, %s should be present in %s.",
-            EXTRACTOR_INCLUSION_DATA_VALUE,
-            EXTRACTOR_INCLUSION_SCHEMA_VALUE,
-            EXTRACTOR_INCLUSION_TTL_VALUE,
-            EXTRACTOR_INCLUSION_FUNCTION_VALUE,
-            EXTRACTOR_INCLUSION_TRIGGER_VALUE,
-            EXTRACTOR_INCLUSION_MODEL_VALUE,
-            EXTRACTOR_INCLUSION_AUTHORITY_VALUE,
-            SOURCE_INCLUSION_KEY),
-        validator
-            .getParameters()
-            .getStringOrDefault(
+    final PipeParameters parameters = validator.getParameters();
+    validator
+        .validate(
+            arg -> {
+              Set<String> inclusionList =
+                  new HashSet<>(Arrays.asList(((String) arg).replace(" ", "").split(",")));
+              if (inclusionList.contains(EXTRACTOR_INCLUSION_SCHEMA_VALUE)) {
+                enableSchemaSync = true;
+              }
+              if (inclusionList.contains(EXTRACTOR_INCLUSION_TTL_VALUE)) {
+                enableTtlSync = true;
+              }
+              if (inclusionList.contains(EXTRACTOR_INCLUSION_FUNCTION_VALUE)) {
+                enableFunctionSync = true;
+              }
+              if (inclusionList.contains(EXTRACTOR_INCLUSION_TRIGGER_VALUE)) {
+                enableTriggerSync = true;
+              }
+              if (inclusionList.contains(EXTRACTOR_INCLUSION_MODEL_VALUE)) {
+                enableModelSync = true;
+              }
+              if (inclusionList.contains(EXTRACTOR_INCLUSION_AUTHORITY_VALUE)) {
+                enableAuthoritySync = true;
+              }
+              atLeastOneEnable =
+                  enableSchemaSync
+                      || enableTtlSync
+                      || enableFunctionSync
+                      || enableTriggerSync
+                      || enableModelSync
+                      || enableAuthoritySync;
+              // If none of above are present and data is also absent, then validation will fail.
+              return atLeastOneEnable || inclusionList.contains(EXTRACTOR_INCLUSION_DATA_VALUE);
+            },
+            String.format(
+                "At least one of %s, %s, %s, %s, %s, %s, %s should be present in %s.",
+                EXTRACTOR_INCLUSION_DATA_VALUE,
+                EXTRACTOR_INCLUSION_SCHEMA_VALUE,
+                EXTRACTOR_INCLUSION_TTL_VALUE,
+                EXTRACTOR_INCLUSION_FUNCTION_VALUE,
+                EXTRACTOR_INCLUSION_TRIGGER_VALUE,
+                EXTRACTOR_INCLUSION_MODEL_VALUE,
+                EXTRACTOR_INCLUSION_AUTHORITY_VALUE,
+                SOURCE_INCLUSION_KEY),
+            parameters.getStringOrDefault(
                 Arrays.asList(EXTRACTOR_INCLUSION_KEY, SOURCE_INCLUSION_KEY),
-                EXTRACTOR_INCLUSION_DEFAULT_VALUE));
+                EXTRACTOR_INCLUSION_DEFAULT_VALUE))
+        .validate(
+            args -> !((boolean) args[0]) || ((boolean) args[1] && (boolean) args[2]),
+            String.format(
+                "When %s is specified to true, %s and %s must be specified",
+                SINK_IOTDB_SSL_ENABLE_KEY,
+                SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY,
+                SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY),
+            parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false),
+            parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY),
+            parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY));
   }
 
   @Override
@@ -140,6 +157,10 @@ public abstract class IoTDBMetaConnector extends IoTDBConnector {
       isClientAlive.add(false);
       clients.add(null);
     }
+
+    useSSL = parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false);
+    trustStore = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY);
+    trustStorePwd = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY);
   }
 
   @Override
@@ -180,9 +201,9 @@ public abstract class IoTDBMetaConnector extends IoTDBConnector {
                     .build(),
                 ip,
                 port,
-                false,
-                null,
-                null));
+                useSSL,
+                trustStore,
+                trustStorePwd));
       } catch (TTransportException e) {
         throw new PipeConnectionException(
             String.format(
