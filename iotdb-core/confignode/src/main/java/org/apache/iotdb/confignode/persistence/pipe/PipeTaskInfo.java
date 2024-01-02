@@ -312,13 +312,15 @@ public class PipeTaskInfo implements SnapshotProcessor {
     acquireWriteLock();
     try {
       String pipeName = plan.getPipeName();
-      ConfigPlanListeningQueue.getInstance()
-          .decreaseReferenceCountForListeningPipe(
-              pipeMetaKeeper
-                  .getPipeMetaByPipeName(pipeName)
-                  .getStaticMeta()
-                  .getExtractorParameters());
-      PipeConfigNodeAgent.task().handleDropPipe(pipeName);
+      if (pipeMetaKeeper.containsPipeMeta(pipeName)) {
+        ConfigPlanListeningQueue.getInstance()
+            .decreaseReferenceCountForListeningPipe(
+                pipeMetaKeeper
+                    .getPipeMetaByPipeName(pipeName)
+                    .getStaticMeta()
+                    .getExtractorParameters());
+        PipeConfigNodeAgent.task().handleDropPipe(pipeName);
+      }
       pipeMetaKeeper.removePipeMeta(pipeName);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
