@@ -24,9 +24,66 @@ ROOT
     ;
 
 DOT : '.';
-
 STAR: '*';
 DOUBLE_STAR: '**';
+
+/**
+ * 1. Whitespace
+ */
+
+// Instead of discarding whitespace completely, send them to a channel invisable to the parser, so
+// that the lexer could still produce WS tokens for the CLI's highlighter.
+WS
+    :
+    [ \u000B\t\r\n]+ -> channel(HIDDEN)
+    ;
+
+/**
+ * 5. Literals
+ */
+
+// String Literal
+
+STRING_LITERAL
+    : DQUOTA_STRING
+    | SQUOTA_STRING
+    ;
+
+
+// Date & Time Literal
+
+DURATION_LITERAL
+    : (INTEGER_LITERAL+ (Y|M O|W|D|H|M|S|M S|U S|N S))+
+    ;
+
+DATETIME_LITERAL
+    : DATE_LITERAL ((T | WS) TIME_LITERAL (('+' | '-') INTEGER_LITERAL ':' INTEGER_LITERAL)?)?
+    ;
+
+fragment DATE_LITERAL
+    : INTEGER_LITERAL '-' INTEGER_LITERAL '-' INTEGER_LITERAL
+    | INTEGER_LITERAL '/' INTEGER_LITERAL '/' INTEGER_LITERAL
+    | INTEGER_LITERAL '.' INTEGER_LITERAL '.' INTEGER_LITERAL
+    ;
+
+fragment TIME_LITERAL
+    : INTEGER_LITERAL ':' INTEGER_LITERAL ':' INTEGER_LITERAL (DOT INTEGER_LITERAL)?
+    ;
+
+// Number Literal
+
+INTEGER_LITERAL
+    : DEC_DIGIT+
+    ;
+
+EXPONENT_NUM_PART
+    : DEC_DIGIT+ ('e'|'E') ('+'|'-')? DEC_DIGIT+
+    ;
+
+fragment DEC_DIGIT
+    : [0-9]
+    ;
+
 
 ID
     : NAME_CHAR+
@@ -36,11 +93,7 @@ QUOTED_ID
     : BQUOTA_STRING
     ;
 
-// Number Literal
 
-INTEGER_LITERAL
-    : DEC_DIGIT+
-    ;
 
 fragment NAME_CHAR
     : 'A'..'Z'
@@ -60,12 +113,16 @@ fragment CN_CHAR
     : '\u2E80'..'\u9FFF'
     ;
 
-fragment BQUOTA_STRING
-    : '`' ( '``' | ~('`') )* '`'
+fragment DQUOTA_STRING
+    : '"' ( '""' | ~('"') )* '"'
     ;
 
-fragment DEC_DIGIT
-    : [0-9]
+fragment SQUOTA_STRING
+    : '\'' ( '\'\'' | ~('\'') )* '\''
+    ;
+
+fragment BQUOTA_STRING
+    : '`' ( '``' | ~('`') )* '`'
     ;
 
 // Characters and write it this way for case sensitivity

@@ -47,15 +47,19 @@ nodeName
     ;
 
 nodeNameWithoutWildcard
-    : ID
-    | QUOTED_ID
+    : identifier
     ;
 
 nodeNameSlice
-    : ID
-    | QUOTED_ID
+    : identifier
     | INTEGER_LITERAL
     ;
+
+identifier
+     : DURATION_LITERAL
+     | ID
+     | QUOTED_ID
+     ;
 
 wildcard
     : STAR
