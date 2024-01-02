@@ -344,8 +344,8 @@ public class BTreePageManager extends PageManager {
           tarPage.getAsSegmentedPage().deleteSegment(getSegIndex(delSegAddr));
           if (tarPage.getAsSegmentedPage().validSegments() == 0) {
             tarPage.getAsSegmentedPage().purgeSegments();
-            cxt.indexBuckets.sortIntoBucket(tarPage, (short) -1);
           }
+          cxt.indexBuckets.sortIntoBucket(tarPage, (short) -1);
         }
 
         if (tarPage.getAsInternalPage() != null) {
