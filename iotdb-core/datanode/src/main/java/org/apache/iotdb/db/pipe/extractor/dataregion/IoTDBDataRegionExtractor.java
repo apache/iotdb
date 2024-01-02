@@ -87,7 +87,7 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
   private PipeHistoricalDataRegionExtractor historicalExtractor;
   private PipeRealtimeDataRegionExtractor realtimeExtractor;
 
-  private boolean canSkip;
+  private boolean canSkip = false;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
