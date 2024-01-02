@@ -79,7 +79,8 @@ public class IoTDBSchemaRegionExtractor extends IoTDBCommonExtractor {
     long index;
     if (progressIndex instanceof MinimumProgressIndex) {
       // TODO: Trigger snapshot if not exists and return nearest snapshots' first index
-      index = 0;
+      long snapShotIndex = SchemaNodeListeningQueue.getInstance(regionId).findAvailableSnapshot();
+      index = snapShotIndex != Long.MAX_VALUE ? snapShotIndex : 0;
     } else {
       index = ((MetaProgressIndex) progressIndex).getIndex();
     }

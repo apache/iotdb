@@ -35,14 +35,14 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.commons.pipe.datastructure.PipeInclusionNormalizer.getPartialPaths;
 
 /**
- * {@link PipeConfigPlanFilter} is to classify the {@link ConfigPhysicalPlan}s to help linkedList
- * and pipe to collect, and to help receiver execute.
+ * {@link PipeConfigPlanFilter} is to classify the {@link ConfigPhysicalPlan}s to help {@link
+ * ConfigPlanListeningQueue} and pipe to collect, and to help receiver execute.
  *
  * <p>Note that we do not transfer the rollback version of {@link CommitSetSchemaTemplatePlan}
  * because the rollback is usually useless. Consensus layer ensures that a failed plan won't be
- * written to peer, consequently won't be extracted by linkedListQueue. Under that circumstance, a
- * rollback operation, if extracted, will cause an empty inverse operation on the receiver cluster,
- * and result in failure eventually.
+ * written to peer, consequently won't be extracted by {@link ConfigPlanListeningQueue}. Under that
+ * circumstance, a rollback operation, if extracted, will cause an empty inverse operation on the
+ * receiver cluster, and may result in failure eventually.
  */
 class PipeConfigPlanFilter {
 

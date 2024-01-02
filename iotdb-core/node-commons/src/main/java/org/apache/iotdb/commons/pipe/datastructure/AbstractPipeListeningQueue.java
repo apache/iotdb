@@ -19,14 +19,18 @@
 
 package org.apache.iotdb.commons.pipe.datastructure;
 
+import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
+import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import java.io.IOException;
+import java.util.Objects;
 
 /**
  * {@link AbstractPipeListeningQueue} is the encapsulation of the {@link
  * AbstractSerializableListeningQueue} to enable using reference count to control opening and
- * closing.
+ * closing. This class also enables a {@link PipeTask} to find the snapshots close enough to send if
+ * existed.
  */
 public abstract class AbstractPipeListeningQueue extends AbstractSerializableListeningQueue<Event> {
 
@@ -47,6 +51,20 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
     referenceCount--;
     if (referenceCount == 0) {
       close();
+    }
+  }
+
+  public long findAvailableSnapshot() {
+    try (ConcurrentIterableLinkedQueue<Event>.DynamicIterator itr = queue.iterateFromEarliest()) {
+      Event event;
+      do {
+        // Return immediately
+        event = itr.next(0);
+        // TODO: configure max event num to allow transferring existing snapshot
+      } while (!(event instanceof PipeSnapshotEvent)
+          && itr.getNextIndex() < queue.getTailIndex() - 1000
+          && !Objects.isNull(event));
+      return event instanceof PipeSnapshotEvent ? itr.getNextIndex() - 1 : Long.MAX_VALUE;
     }
   }
 }
