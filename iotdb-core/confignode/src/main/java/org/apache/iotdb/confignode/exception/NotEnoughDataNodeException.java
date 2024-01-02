@@ -29,7 +29,8 @@ public class NotEnoughDataNodeException extends ConfigNodeException {
       List<TDataNodeConfiguration> dataNodeConfigurations, int replicationFactor) {
     super(
         String.format(
-            "DataNode is not enough, please register more. Current DataNodes: %s, replicationFactor: %d",
+            "DataNode is not enough, please register more. "
+                + "Current DataNodes: %s, replicationFactor: %d",
             dataNodeConfigurations, replicationFactor));
   }
 }
