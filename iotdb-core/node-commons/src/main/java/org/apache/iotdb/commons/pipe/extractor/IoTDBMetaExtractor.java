@@ -78,7 +78,8 @@ public abstract class IoTDBMetaExtractor extends IoTDBCommonExtractor {
     do {
       // Return immediately
       event = (EnrichedEvent) itr.next(0);
-    } while (!isListenType(event) || !isForwardingPipeRequests && event.isGeneratedByPipe());
+    } while (!Objects.isNull(event)
+        && (!isListenType(event) || !isForwardingPipeRequests && event.isGeneratedByPipe()));
 
     if (Objects.isNull(event)) {
       return null;

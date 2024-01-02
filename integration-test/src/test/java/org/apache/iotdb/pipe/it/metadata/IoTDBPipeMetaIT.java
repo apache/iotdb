@@ -108,6 +108,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeDualMetaIT {
       Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.inclusion", "schema");
+      extractorAttributes.put("extractor.forwarding-pipe-requests", "false");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.ip", receiverIp);
@@ -132,6 +133,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeDualMetaIT {
       Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.inclusion", "schema");
+      extractorAttributes.put("extractor.forwarding-pipe-requests", "false");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.ip", senderEnv.getDataNodeWrapper(0).getIp());
