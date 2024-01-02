@@ -134,7 +134,7 @@ public abstract class IoTDBConnector implements PipeConnector {
                 Arrays.asList(parameters.getStringByKeys(SINK_IOTDB_NODE_URLS_KEY).split(","))));
       }
     } catch (Exception e) {
-      LOGGER.warn(PARSE_URL_ERROR_FORMATTER, e.getMessage());
+      LOGGER.warn(PARSE_URL_ERROR_FORMATTER, e.toString());
       throw new PipeParameterNotValidException(PARSE_URL_ERROR_MESSAGE);
     }
 
