@@ -80,7 +80,7 @@ public class LeaderCacheManager {
                 (Weigher<String, TEndPoint>)
                     (device, endPoint) -> {
                       final long weightInLong =
-                          (long) (device.length() * memoryUsageCheatFactor.get());
+                          (long) (device.getBytes().length * memoryUsageCheatFactor.get());
                       if (weightInLong <= 0) {
                         return Integer.MAX_VALUE;
                       }
