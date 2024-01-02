@@ -20,15 +20,9 @@
 package org.apache.iotdb.db.pipe.extractor.schemaregion;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
-import org.apache.iotdb.commons.consensus.index.ProgressIndex;
-import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
-import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
-import org.apache.iotdb.commons.pipe.datastructure.ConcurrentIterableLinkedQueue;
-import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
-import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb.IoTDBCommonExtractor;
+import org.apache.iotdb.commons.pipe.datastructure.AbstractPipeListeningQueue;
+import org.apache.iotdb.commons.pipe.extractor.IoTDBMetaExtractor;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
-import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeWriteSchemaPlanEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -36,13 +30,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.OperateSchema
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.tsfile.utils.Pair;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE;
@@ -52,10 +42,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_EXCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_INCLUSION_KEY;
 
-public class IoTDBSchemaRegionExtractor extends IoTDBCommonExtractor {
-  private ConcurrentIterableLinkedQueue<Event>.DynamicIterator itr;
+public class IoTDBSchemaRegionExtractor extends IoTDBMetaExtractor {
   private Set<PlanNodeType> listenTypes = new HashSet<>();
-  private List<PipeSnapshotEvent> historicalEvents = new ArrayList<>();
 
   @Override
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
@@ -73,6 +61,11 @@ public class IoTDBSchemaRegionExtractor extends IoTDBCommonExtractor {
   }
 
   @Override
+  protected AbstractPipeListeningQueue getListeningQueue() {
+    return SchemaNodeListeningQueue.getInstance(regionId);
+  }
+
+  @Override
   public void start() throws Exception {
     super.start();
     if (!listenTypes.isEmpty()) {
@@ -81,65 +74,16 @@ public class IoTDBSchemaRegionExtractor extends IoTDBCommonExtractor {
               new SchemaRegionId(regionId),
               new OperateSchemaQueueReferenceNode(new PlanNodeId(""), true));
     }
-    ProgressIndex progressIndex = pipeTaskMeta.getProgressIndex();
-    long index;
-    if (progressIndex instanceof MinimumProgressIndex) {
-      // TODO: Trigger snapshot if not exists
-      Pair<Long, List<PipeSnapshotEvent>> eventPair =
-          SchemaNodeListeningQueue.getInstance(regionId).findAvailableSnapshots();
-      index = !Objects.isNull(eventPair.getLeft()) ? eventPair.getLeft() + 1 : 0;
-      historicalEvents = eventPair.getRight();
-    } else {
-      index = ((MetaProgressIndex) progressIndex).getIndex();
-    }
-    itr = SchemaNodeListeningQueue.getInstance(regionId).newIterator(index);
   }
 
   @Override
-  public EnrichedEvent supply() throws Exception {
-    if (!historicalEvents.isEmpty()) {
-      if (historicalEvents.size() != 1) {
-        // Do not report progress for non-final snapshot events since we re-transmit all snapshot
-        // files currently
-        return historicalEvents.remove(0);
-      } else {
-        PipeSchemaRegionSnapshotEvent event =
-            (PipeSchemaRegionSnapshotEvent)
-                historicalEvents
-                    .remove(0)
-                    .shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-                        pipeName, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
-        event.bindProgressIndex(new MetaProgressIndex(itr.getNextIndex() - 1));
-        return event;
-      }
-    }
-
-    EnrichedEvent event;
-    do {
-      // Return immediately
-      event = (EnrichedEvent) itr.next(0);
-    } while (event instanceof PipeWriteSchemaPlanEvent
-        && (!listenTypes.contains((((PipeWriteSchemaPlanEvent) event).getPlanNode()).getType())
-            || !isForwardingPipeRequests && event.isGeneratedByPipe()));
-
-    if (Objects.isNull(event)) {
-      return null;
-    }
-
-    EnrichedEvent targetEvent =
-        event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-            pipeName, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
-    targetEvent.bindProgressIndex(new MetaProgressIndex(itr.getNextIndex() - 1));
-    targetEvent.increaseReferenceCount(IoTDBSchemaRegionExtractor.class.getName());
-    return targetEvent;
+  protected boolean isListenType(Event event) {
+    return listenTypes.contains(((PipeWriteSchemaPlanEvent) event).getPlanNode().getType());
   }
 
   @Override
   public void close() throws Exception {
-    if (!hasBeenStarted.get()) {
-      return;
-    }
-    SchemaNodeListeningQueue.getInstance(regionId).returnIterator(itr);
+    super.close();
     if (!listenTypes.isEmpty()) {
       SchemaRegionConsensusImpl.getInstance()
           .write(
