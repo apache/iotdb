@@ -87,7 +87,7 @@ public class IoTDBPipeConnectorParallelIT extends AbstractPipeDualDataIT {
       expectedResSet.add("1,2.0,");
       expectedResSet.add("2,3.0,");
       expectedResSet.add("3,4.0,");
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "select * from root.**", "Time,root.sg1.d1.s1,", expectedResSet);
     }
   }

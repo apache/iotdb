@@ -213,7 +213,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualDataIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
@@ -253,7 +253,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualDataIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           senderEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
@@ -294,7 +294,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualDataIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
@@ -305,7 +305,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualDataIT {
         return;
       }
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
@@ -320,7 +320,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualDataIT {
       }
 
       Thread.sleep(5000);
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
@@ -417,7 +417,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualDataIT {
         return;
       }
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
@@ -442,7 +442,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualDataIT {
         return;
       }
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",

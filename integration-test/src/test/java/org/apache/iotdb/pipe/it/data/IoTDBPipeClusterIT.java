@@ -155,7 +155,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualDataIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
@@ -167,7 +167,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualDataIT {
         return;
       }
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
@@ -255,7 +255,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualDataIT {
         return;
       }
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.db.d1",
           "count(root.db.d1.s1),",
@@ -299,7 +299,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualDataIT {
         return;
       }
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.db.d2",
           "count(root.db.d2.s1),",
@@ -356,7 +356,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualDataIT {
           Arrays.asList("insert into root.db.d1(time, s1) values (2, 2)", "flush"))) {
         return;
       }
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.db.d1",
           "count(root.db.d1.s1),",
@@ -400,7 +400,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualDataIT {
         return;
       }
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.db.d2",
           "count(root.db.d2.s1),",
@@ -517,7 +517,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualDataIT {
       }
       t.join();
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.db.d1",
           "count(root.db.d1.s1),",
@@ -575,7 +575,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualDataIT {
         return;
       }
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.db.d1",
           "count(root.db.d1.s1),",
@@ -643,7 +643,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualDataIT {
         return;
       }
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.db.d1",
           "count(root.db.d1.s1),",
@@ -702,7 +702,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualDataIT {
       return;
     }
 
-    TestUtils.assertDataOnEnv(
+    TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
         "select count(*) from root.**",
         "count(root.db.d1.s1),",

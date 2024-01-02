@@ -79,7 +79,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualDataIT {
         return;
       }
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select * from root.**",
           "Time,root.vehicle.d0.s1,",
@@ -128,7 +128,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualDataIT {
         return;
       }
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select * from root.**",
           "Time,root.vehicle.d0.s1,",
@@ -173,7 +173,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualDataIT {
         return;
       }
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select * from root.**",
           "Time,root.sg.d1.s0,root.sg.d1.s1,",

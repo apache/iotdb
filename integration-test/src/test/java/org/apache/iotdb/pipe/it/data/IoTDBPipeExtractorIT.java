@@ -424,7 +424,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualDataIT {
         assertTimeseriesCountOnReceiver(receiverEnv, expectedTimeseriesCount.get(i));
       }
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "show devices",
           "Device,IsAligned,Template,",
@@ -517,7 +517,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualDataIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p3").getCode());
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db1.d1.at1),count(root.db2.d1.at1),",
@@ -600,12 +600,12 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualDataIT {
         return;
       }
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.** where time <= 1",
           "count(root.db.d4.at1),count(root.db.d2.at1),count(root.db.d3.at1),",
           Collections.singleton("1,0,1,"));
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.** where time >= 2",
           "count(root.db.d4.at1),count(root.db.d2.at1),count(root.db.d3.at1),",
@@ -656,7 +656,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualDataIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.at1),",
@@ -672,7 +672,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualDataIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p2").getCode());
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.at1),count(root.db.d2.at1),",
@@ -720,7 +720,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualDataIT {
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.at1),",
@@ -735,7 +735,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualDataIT {
         return;
       }
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.at1),count(root.db.d3.at1),",
@@ -750,7 +750,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualDataIT {
         return;
       }
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.at1),count(root.db.d3.at1),",
@@ -800,7 +800,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualDataIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.at1),",
@@ -816,7 +816,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualDataIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p2").getCode());
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.at1),count(root.db.d2.at1),",
@@ -825,7 +825,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualDataIT {
   }
 
   private void assertTimeseriesCountOnReceiver(BaseEnv receiverEnv, int count) {
-    TestUtils.assertDataOnEnv(
+    TestUtils.assertDataEventuallyOnEnv(
         receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton(count + ","));
   }
 
