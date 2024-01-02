@@ -23,8 +23,12 @@ import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.metrics.AbstractMetricService;
+import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
+import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
+
+import java.util.concurrent.TimeUnit;
 
 public class SchemaRegionMemMetric implements ISchemaRegionMetric {
 
@@ -32,6 +36,9 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
   private static final String SERIES_CNT = "schema_region_series_cnt";
   private static final String TEMPLATE_CNT = "activated_template_cnt";
   private static final String TEMPLATE_SERIES_CNT = "template_series_cnt";
+  private static final String TRAVERSER_TIMER = "schema_region_traverser_timer";
+
+  private Timer traverserTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
   private final MemSchemaRegionStatistics regionStatistics;
   private final String regionTagValue;
@@ -89,10 +96,21 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
         regionTagValue,
         Tag.DATABASE.toString(),
         database);
+    traverserTimer =
+        metricService.getOrCreateTimer(
+            Metric.SCHEMA_REGION.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            TRAVERSER_TIMER,
+            Tag.REGION.toString(),
+            regionTagValue,
+            Tag.DATABASE.toString(),
+            database);
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
+    traverserTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.SCHEMA_REGION.toString(),
@@ -129,5 +147,18 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
         regionTagValue,
         Tag.DATABASE.toString(),
         database);
+    metricService.remove(
+        MetricType.TIMER,
+        Metric.SCHEMA_REGION.toString(),
+        Tag.NAME.toString(),
+        TRAVERSER_TIMER,
+        Tag.REGION.toString(),
+        regionTagValue,
+        Tag.DATABASE.toString(),
+        database);
+  }
+
+  public void recordTraverser(long time) {
+    traverserTimer.update(time, TimeUnit.MILLISECONDS);
   }
 }

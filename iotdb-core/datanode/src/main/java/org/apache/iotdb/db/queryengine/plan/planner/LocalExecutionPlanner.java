@@ -45,10 +45,11 @@ import java.util.List;
 public class LocalExecutionPlanner {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LocalExecutionPlanner.class);
+  private static final long ALLOCATE_MEMORY_FOR_OPERATORS =
+      IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForOperators();
 
   /** allocated memory for operator execution */
-  private long freeMemoryForOperators =
-      IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForOperators();
+  private long freeMemoryForOperators = ALLOCATE_MEMORY_FOR_OPERATORS;
 
   public long getFreeMemoryForOperators() {
     return freeMemoryForOperators;
@@ -161,6 +162,34 @@ public class LocalExecutionPlanner {
             pipeline ->
                 sourcePaths.addAll(((DataDriverContext) pipeline.getDriverContext()).getPaths()));
     return sourcePaths;
+  }
+
+  public synchronized boolean forceAllocateFreeMemoryForOperators(long memoryInBytes) {
+    if (freeMemoryForOperators < memoryInBytes) {
+      return false;
+    } else {
+      freeMemoryForOperators -= memoryInBytes;
+      return true;
+    }
+  }
+
+  public synchronized long tryAllocateFreeMemoryForOperators(long memoryInBytes) {
+    if (freeMemoryForOperators < memoryInBytes) {
+      long result = freeMemoryForOperators;
+      freeMemoryForOperators = 0;
+      return result;
+    } else {
+      freeMemoryForOperators -= memoryInBytes;
+      return memoryInBytes;
+    }
+  }
+
+  public synchronized void releaseToFreeMemoryForOperators(long memoryInBytes) {
+    freeMemoryForOperators += memoryInBytes;
+  }
+
+  public long getAllocateMemoryForOperators() {
+    return ALLOCATE_MEMORY_FOR_OPERATORS;
   }
 
   private static class InstanceHolder {

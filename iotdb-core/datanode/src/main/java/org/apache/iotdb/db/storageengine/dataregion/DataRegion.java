@@ -1415,7 +1415,6 @@ public class DataRegion implements IDataRegionForQuery {
       if (!workUnsequenceTsFileProcessors.containsKey(tsFileProcessor.getTimeRangeId())) {
         timePartitionIdVersionControllerMap.remove(tsFileProcessor.getTimeRangeId());
       }
-      logger.info("close a sequence tsfile processor {}", databaseName + "-" + dataRegionId);
     } else {
       closingUnSequenceTsFileProcessor.add(tsFileProcessor);
       future = tsFileProcessor.asyncClose();
@@ -2330,7 +2329,6 @@ public class DataRegion implements IDataRegionForQuery {
               tsFileProcessor.isSequence(),
               tsFileResource.getTsFile().getName());
     }
-    logger.info("signal closing database condition in {}", databaseName + "-" + dataRegionId);
   }
 
   protected int executeCompaction() {

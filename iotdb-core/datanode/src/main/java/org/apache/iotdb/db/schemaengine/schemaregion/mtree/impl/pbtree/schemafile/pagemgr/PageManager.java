@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaPageOverflowException;
+import org.apache.iotdb.db.schemaengine.metric.SchemaRegionCachedMetric;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaPage;
@@ -94,12 +95,18 @@ public abstract class PageManager implements IPageManager {
 
   private final AtomicInteger logCounter;
   private SchemaFileLogWriter logWriter;
+  private final SchemaRegionCachedMetric metric;
 
   // flush strategy is dependent on consensus protocol, only check protocol on init
   protected FlushPageStrategy flushDirtyPagesStrategy;
   protected SinglePageFlushStrategy singlePageFlushStrategy;
 
-  PageManager(FileChannel channel, File pmtFile, int lastPageIndex, String logPath)
+  PageManager(
+      FileChannel channel,
+      File pmtFile,
+      int lastPageIndex,
+      String logPath,
+      SchemaRegionCachedMetric metric)
       throws IOException, MetadataException {
     this.pageInstCache =
         Collections.synchronizedMap(new LinkedHashMap<>(SchemaFileConfig.PAGE_CACHE_SIZE, 1, true));
@@ -114,6 +121,7 @@ public abstract class PageManager implements IPageManager {
     this.channel = channel;
     this.pmtFile = pmtFile;
     this.readChannel = FileChannel.open(pmtFile.toPath(), StandardOpenOption.READ);
+    this.metric = metric;
 
     if (IoTDBDescriptor.getInstance()
         .getConfig()
@@ -631,6 +639,9 @@ public abstract class PageManager implements IPageManager {
             .filter(ISchemaPage::isDirtyPage)
             .collect(Collectors.toList()));
     cxt.appendBucketIndex(pageIndexBuckets);
+    if (metric != null) {
+      metric.recordFlushPageNum(cxt.referredPages.size());
+    }
   }
 
   /**
@@ -643,6 +654,9 @@ public abstract class PageManager implements IPageManager {
       return;
     }
     cxt.interleavedFlushCnt++;
+    if (metric != null) {
+      metric.recordFlushPageNum(1);
+    }
     singlePageFlushStrategy.apply(cxt.lastLeafPage);
     // this lastLeaf shall only be lock once
     cxt.dirtyCnt--;
@@ -722,6 +736,9 @@ public abstract class PageManager implements IPageManager {
       }
 
       ByteBuffer newBuf = ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH);
+      if (metric != null) {
+        metric.recordFlushPageNum(1);
+      }
       loadFromFile(newBuf, pageIdx);
       page = ISchemaPage.loadSchemaPage(newBuf);
       cxt.refer(page);

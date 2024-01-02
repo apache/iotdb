@@ -150,4 +150,9 @@ public class ConfigMTreeStore implements IMTreeStore<IConfigMNode> {
     // do nothing
     return null;
   }
+
+  @Override
+  public void recordTraverserMetric(long costTime) {
+    // do nothing
+  }
 }
