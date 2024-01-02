@@ -74,8 +74,7 @@ public abstract class IoTDBThriftSyncClientManager extends IoTDBThriftClientMana
     }
   }
 
-  public void checkClientStatusAndTryReconstructIfNecessary()
-      throws IOException, TTransportException {
+  public void checkClientStatusAndTryReconstructIfNecessary() throws IOException {
     // reconstruct all dead clients
     for (final Map.Entry<TEndPoint, Pair<IoTDBThriftSyncConnectorClient, Boolean>> entry :
         endPoint2ClientAndStatus.entrySet()) {
@@ -98,7 +97,7 @@ public abstract class IoTDBThriftSyncClientManager extends IoTDBThriftClientMana
             "All target servers %s are not available.", endPoint2ClientAndStatus.keySet()));
   }
 
-  private void reconstructClient(TEndPoint endPoint) throws TTransportException, IOException {
+  private void reconstructClient(TEndPoint endPoint) throws IOException {
     final Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus =
         endPoint2ClientAndStatus.get(endPoint);
 
@@ -114,18 +113,28 @@ public abstract class IoTDBThriftSyncClientManager extends IoTDBThriftClientMana
       }
     }
 
-    clientAndStatus.setLeft(
-        new IoTDBThriftSyncConnectorClient(
-            new ThriftClientProperty.Builder()
-                .setConnectionTimeoutMs((int) PIPE_CONFIG.getPipeConnectorHandshakeTimeoutMs())
-                .setRpcThriftCompressionEnabled(
-                    PIPE_CONFIG.isPipeConnectorRPCThriftCompressionEnabled())
-                .build(),
-            endPoint.getIp(),
-            endPoint.getPort(),
-            useSSL,
-            trustStorePath,
-            trustStorePwd));
+    try {
+      clientAndStatus.setLeft(
+          new IoTDBThriftSyncConnectorClient(
+              new ThriftClientProperty.Builder()
+                  .setConnectionTimeoutMs((int) PIPE_CONFIG.getPipeConnectorHandshakeTimeoutMs())
+                  .setRpcThriftCompressionEnabled(
+                      PIPE_CONFIG.isPipeConnectorRPCThriftCompressionEnabled())
+                  .build(),
+              endPoint.getIp(),
+              endPoint.getPort(),
+              useSSL,
+              trustStorePath,
+              trustStorePwd));
+    } catch (TTransportException e) {
+      throw new PipeConnectionException(
+          String.format(
+              PipeConnectionException.CONNECTION_ERROR_FORMATTER,
+              endPoint.getIp(),
+              endPoint.getPort(),
+              e.getMessage()),
+          e);
+    }
 
     try {
       final TPipeTransferResp resp = clientAndStatus.getLeft().pipeTransfer(buildHandShakeReq());

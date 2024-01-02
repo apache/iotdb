@@ -200,11 +200,11 @@ public class PipeStaticMeta {
         + "', creationTime="
         + creationTime
         + ", extractorParameters="
-        + extractorParameters.getAttribute()
+        + extractorParameters
         + ", processorParameters="
-        + processorParameters.getAttribute()
+        + processorParameters
         + ", connectorParameters="
-        + connectorParameters.getAttribute()
+        + connectorParameters
         + "}";
   }
 }

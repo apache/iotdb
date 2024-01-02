@@ -147,7 +147,8 @@ public enum Metric {
   PIPE_EVENT_COMMIT_QUEUE_SIZE("pipe_event_commit_queue_size"),
   PIPE_PROCEDURE("pipe_procedure"),
   PIPE_TASK_STATUS("pipe_task_status"),
-  ;
+  // load related
+  LOAD_MEM("load_mem");
 
   final String value;
 

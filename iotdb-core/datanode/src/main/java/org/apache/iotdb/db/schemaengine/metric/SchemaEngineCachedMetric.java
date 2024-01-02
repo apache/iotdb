@@ -31,15 +31,12 @@ import org.apache.iotdb.metrics.utils.MetricType;
 
 public class SchemaEngineCachedMetric implements ISchemaEngineMetric {
 
-  // TODO: rename schema_file to pbtree
-  private static final String RELEASE_THRESHOLD = "schema_file_release_threshold";
-  private static final String PINNED_NODE_NUM = "schema_file_pinned_num";
-  private static final String UNPINNED_NODE_NUM = "schema_file_unpinned_num";
-  private static final String PINNED_MEM_SIZE = "schema_file_pinned_mem";
-  private static final String UNPINNED_MEM_SIZE = "schema_file_unpinned_mem";
-  private static final String RELEASE_TIMER = "schema_file_release"; // TODO: implement it
-  private static final String FLUSH_TIMER = "schema_file_flush"; // TODO: implement it
-  private static final String RELEASE_FLUSH_THREAD_NUM = "schema_file_release_flush_thread_num";
+  private static final String RELEASE_THRESHOLD = "pbtree_release_threshold";
+  private static final String PINNED_NODE_NUM = "pbtree_pinned_num";
+  private static final String UNPINNED_NODE_NUM = "pbtree_unpinned_num";
+  private static final String PINNED_MEM_SIZE = "pbtree_pinned_mem";
+  private static final String UNPINNED_MEM_SIZE = "pbtree_unpinned_mem";
+  private static final String RELEASE_FLUSH_THREAD_NUM = "pbtree_release_flush_thread_num";
 
   private final CachedSchemaEngineStatistics engineStatistics;
 
@@ -89,10 +86,6 @@ public class SchemaEngineCachedMetric implements ISchemaEngineMetric {
         CachedSchemaEngineStatistics::getUnpinnedMemorySize,
         Tag.NAME.toString(),
         UNPINNED_MEM_SIZE);
-    metricService.getOrCreateTimer(
-        Metric.SCHEMA_ENGINE.toString(), MetricLevel.IMPORTANT, Tag.NAME.toString(), RELEASE_TIMER);
-    metricService.getOrCreateTimer(
-        Metric.SCHEMA_ENGINE.toString(), MetricLevel.IMPORTANT, Tag.NAME.toString(), FLUSH_TIMER);
     metricService.createAutoGauge(
         Metric.SCHEMA_ENGINE.toString(),
         MetricLevel.IMPORTANT,
@@ -127,10 +120,6 @@ public class SchemaEngineCachedMetric implements ISchemaEngineMetric {
         Metric.SCHEMA_ENGINE.toString(),
         Tag.NAME.toString(),
         UNPINNED_MEM_SIZE);
-    metricService.remove(
-        MetricType.TIMER, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), RELEASE_TIMER);
-    metricService.remove(
-        MetricType.TIMER, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), FLUSH_TIMER);
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.SCHEMA_ENGINE.toString(),

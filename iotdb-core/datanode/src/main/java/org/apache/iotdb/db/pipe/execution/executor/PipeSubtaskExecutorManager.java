@@ -23,7 +23,6 @@ package org.apache.iotdb.db.pipe.execution.executor;
  * PipeTaskExecutor is responsible for executing the pipe tasks, and it is scheduled by the
  * PipeTaskScheduler. It is a singleton class.
  */
-@SuppressWarnings("unused") // assignerSubtaskExecutor is for future use
 public class PipeSubtaskExecutorManager {
   private final PipeProcessorSubtaskExecutor processorExecutor;
   private final PipeConnectorSubtaskExecutor connectorExecutor;

@@ -58,6 +58,7 @@ import java.util.concurrent.ExecutorService;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaOperatorTestUtil.EXCEPTION_MESSAGE;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -128,7 +129,7 @@ public class SchemaQueryScanOperatorTest {
                 assertEquals("false", tsBlock.getColumn(j).getBinary(i).toString());
                 break;
               case 3:
-                assertEquals("null", tsBlock.getColumn(j).getBinary(i).toString());
+                assertNull(tsBlock.getColumn(j).getBinary(i));
                 break;
               default:
                 break;

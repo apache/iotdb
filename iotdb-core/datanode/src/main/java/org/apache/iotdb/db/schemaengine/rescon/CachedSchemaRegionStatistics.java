@@ -33,6 +33,7 @@ public class CachedSchemaRegionStatistics extends MemSchemaRegionStatistics {
   private final AtomicLong pinnedMemorySize = new AtomicLong(0);
   private final AtomicLong unpinnedMNodeNum = new AtomicLong(0);
   private final AtomicLong pinnedMNodeNum = new AtomicLong(0);
+  private final AtomicLong volatileMNodeNum = new AtomicLong(0);
 
   private long mlogCheckPoint = 0;
 
@@ -66,6 +67,10 @@ public class CachedSchemaRegionStatistics extends MemSchemaRegionStatistics {
     cachedEngineStatistics.updateUnpinnedMemorySize(delta);
   }
 
+  public void updateVolatileMNodeNum(int delta) {
+    this.volatileMNodeNum.addAndGet(delta);
+  }
+
   public void setMlogCheckPoint(long mlogCheckPoint) {
     this.mlogCheckPoint = mlogCheckPoint;
   }
@@ -94,8 +99,8 @@ public class CachedSchemaRegionStatistics extends MemSchemaRegionStatistics {
     return mlogCheckPoint;
   }
 
-  public long getBufferNodeNum() {
-    return memoryManager == null ? 0 : memoryManager.getBufferNodeNum();
+  public long getVolatileMNodeNum() {
+    return volatileMNodeNum.get();
   }
 
   public long getCacheNodeNum() {

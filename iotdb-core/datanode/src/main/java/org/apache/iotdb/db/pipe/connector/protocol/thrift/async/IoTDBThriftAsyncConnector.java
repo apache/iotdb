@@ -60,6 +60,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LEADER_CACHE_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_BATCH_MODE_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_LEADER_CACHE_ENABLE_KEY;
 
 public class IoTDBThriftAsyncConnector extends IoTDBConnector {
@@ -94,9 +96,11 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
 
     final PipeParameters parameters = validator.getParameters();
     validator.validate(
-        useSSL -> !((boolean) useSSL),
-        "IoTDBThriftAsyncConnector does not support SSL transmission currently",
-        parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false));
+        args -> !((boolean) args[0] || (boolean) args[1] || (boolean) args[2]),
+        "Only 'iotdb-thrift-ssl-sink' supports SSL transmission currently.",
+        parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false),
+        parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY),
+        parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY));
   }
 
   @Override

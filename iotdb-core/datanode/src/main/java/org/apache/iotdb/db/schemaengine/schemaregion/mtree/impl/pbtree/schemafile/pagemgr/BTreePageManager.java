@@ -21,6 +21,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafi
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.metadata.schemafile.ColossalRecordException;
+import org.apache.iotdb.db.schemaengine.metric.SchemaRegionCachedMetric;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaPage;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISegmentedPage;
@@ -42,9 +43,14 @@ import static org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.sc
 
 public class BTreePageManager extends PageManager {
 
-  public BTreePageManager(FileChannel channel, File pmtFile, int lastPageIndex, String logPath)
+  public BTreePageManager(
+      FileChannel channel,
+      File pmtFile,
+      int lastPageIndex,
+      String logPath,
+      SchemaRegionCachedMetric metric)
       throws IOException, MetadataException {
-    super(channel, pmtFile, lastPageIndex, logPath);
+    super(channel, pmtFile, lastPageIndex, logPath, metric);
   }
 
   @Override

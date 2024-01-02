@@ -95,8 +95,8 @@ public class CompressionRatio {
             String.format(
                 Locale.ENGLISH, RATIO_FILE_PATH_FORMAT, totalMemorySize.get(), totalDiskSize));
     persist(oldFile, newFile);
-    if (LOGGER.isInfoEnabled()) {
-      LOGGER.info("Compression ratio is {}", (double) totalMemorySize.get() / totalDiskSize);
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("Compression ratio is {}", (double) totalMemorySize.get() / totalDiskSize);
     }
   }
 

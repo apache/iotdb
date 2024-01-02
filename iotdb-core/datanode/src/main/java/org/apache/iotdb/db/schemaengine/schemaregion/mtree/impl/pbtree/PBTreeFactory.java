@@ -21,6 +21,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.schemaengine.metric.SchemaRegionCachedMetric;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.MemoryStatistics;
@@ -51,13 +52,13 @@ public class PBTreeFactory {
       PartialPath storageGroup,
       int schemaRegionId,
       CachedSchemaRegionStatistics regionStatistics,
+      SchemaRegionCachedMetric metric,
       Runnable flushCallback)
       throws MetadataException, IOException {
+    SchemaFile schemaFile = SchemaFile.initSchemaFile(storageGroup.getFullPath(), schemaRegionId);
+    schemaFile.setMetric(metric);
     return createCachedMTreeStore(
-        schemaRegionId,
-        regionStatistics,
-        flushCallback,
-        SchemaFile.initSchemaFile(storageGroup.getFullPath(), schemaRegionId));
+        schemaRegionId, regionStatistics, metric, flushCallback, schemaFile);
   }
 
   public CachedMTreeStore createCachedMTreeStoreFromSnapshot(
@@ -65,18 +66,19 @@ public class PBTreeFactory {
       String storageGroup,
       int schemaRegionId,
       CachedSchemaRegionStatistics regionStatistics,
+      SchemaRegionCachedMetric metric,
       Runnable flushCallback)
       throws MetadataException, IOException {
+    SchemaFile schemaFile = SchemaFile.loadSnapshot(snapshotDir, storageGroup, schemaRegionId);
+    schemaFile.setMetric(metric);
     return createCachedMTreeStore(
-        schemaRegionId,
-        regionStatistics,
-        flushCallback,
-        SchemaFile.loadSnapshot(snapshotDir, storageGroup, schemaRegionId));
+        schemaRegionId, regionStatistics, metric, flushCallback, schemaFile);
   }
 
   private CachedMTreeStore createCachedMTreeStore(
       int schemaRegionId,
       CachedSchemaRegionStatistics regionStatistics,
+      SchemaRegionCachedMetric metric,
       Runnable flushCallback,
       ISchemaFile schemaFile)
       throws MetadataException {
@@ -93,6 +95,7 @@ public class PBTreeFactory {
         new CachedMTreeStore(
             schemaRegionId,
             regionStatistics,
+            metric,
             flushCallback,
             schemaFile,
             memoryManager,

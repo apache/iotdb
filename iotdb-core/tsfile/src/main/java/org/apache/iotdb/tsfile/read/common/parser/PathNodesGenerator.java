@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.tsfile.read.common.parser;
 
-import org.apache.iotdb.db.qp.sql.PathParser;
-import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.tsfile.exception.PathParseException;
 
 import org.antlr.v4.runtime.CharStream;
@@ -29,6 +27,8 @@ import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.atn.PredictionMode;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.antlr.v4.runtime.tree.ParseTree;
+import org.apache.tsfile.parser.PathLexer;
+import org.apache.tsfile.parser.PathParser;
 
 /** convert String path to String[] nodes * */
 public class PathNodesGenerator {
@@ -60,7 +60,7 @@ public class PathNodesGenerator {
 
     CharStream charStream1 = CharStreams.fromString(path);
 
-    SqlLexer lexer1 = new SqlLexer(charStream1);
+    PathLexer lexer1 = new PathLexer(charStream1);
     lexer1.removeErrorListeners();
     lexer1.addErrorListener(PathParseError.INSTANCE);
 
@@ -80,7 +80,7 @@ public class PathNodesGenerator {
     } catch (Exception ex) {
       CharStream charStream2 = CharStreams.fromString(path);
 
-      SqlLexer lexer2 = new SqlLexer(charStream2);
+      PathLexer lexer2 = new PathLexer(charStream2);
       lexer2.removeErrorListeners();
       lexer2.addErrorListener(PathParseError.INSTANCE);
 

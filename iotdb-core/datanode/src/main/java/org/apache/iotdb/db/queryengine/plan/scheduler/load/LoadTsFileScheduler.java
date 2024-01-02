@@ -46,6 +46,8 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInfo;
 import org.apache.iotdb.db.queryengine.execution.load.ChunkData;
 import org.apache.iotdb.db.queryengine.execution.load.TsFileData;
 import org.apache.iotdb.db.queryengine.execution.load.TsFileSplitter;
+import org.apache.iotdb.db.queryengine.load.LoadTsFileDataCacheMemoryBlock;
+import org.apache.iotdb.db.queryengine.load.LoadTsFileMemoryManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
@@ -93,15 +95,17 @@ import java.util.stream.IntStream;
 public class LoadTsFileScheduler implements IScheduler {
   private static final Logger logger = LoggerFactory.getLogger(LoadTsFileScheduler.class);
   public static final long LOAD_TASK_MAX_TIME_IN_SECOND = 900L; // 15min
-  private static final long MAX_MEMORY_SIZE;
+  private static final long SINGLE_SCHEDULER_MAX_MEMORY_SIZE;
   private static final int TRANSMIT_LIMIT;
 
   static {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    MAX_MEMORY_SIZE =
+    SINGLE_SCHEDULER_MAX_MEMORY_SIZE =
         Math.min(
             config.getThriftMaxFrameSize() >> 2,
-            (long) (config.getAllocateMemoryForStorageEngine() * config.getLoadTsFileProportion()));
+            (long)
+                (config.getAllocateMemoryForStorageEngine()
+                    * config.getLoadTsFileProportion())); // TODO: change it to query engine
     TRANSMIT_LIMIT =
         CommonDescriptor.getInstance().getConfig().getTTimePartitionSlotTransmitLimit();
   }
@@ -114,6 +118,7 @@ public class LoadTsFileScheduler implements IScheduler {
   private final PlanFragmentId fragmentId;
   private final Set<TRegionReplicaSet> allReplicaSets;
   private final boolean isGeneratedByPipe;
+  private final LoadTsFileDataCacheMemoryBlock block;
 
   public LoadTsFileScheduler(
       DistributedQueryPlan distributedQueryPlan,
@@ -130,6 +135,7 @@ public class LoadTsFileScheduler implements IScheduler {
     this.partitionFetcher = new DataPartitionBatchFetcher(partitionFetcher);
     this.allReplicaSets = new HashSet<>();
     this.isGeneratedByPipe = isGeneratedByPipe;
+    this.block = LoadTsFileMemoryManager.getInstance().allocateDataCacheMemoryBlock();
 
     for (FragmentInstance fragmentInstance : distributedQueryPlan.getInstances()) {
       tsFileNodeList.add((LoadSingleTsFileNode) fragmentInstance.getFragment().getPlanNodeTree());
@@ -200,10 +206,11 @@ public class LoadTsFileScheduler implements IScheduler {
     if (isLoadSuccess) {
       stateMachine.transitionToFinished();
     }
+    LoadTsFileMemoryManager.getInstance().releaseDataCacheMemoryBlock();
   }
 
   private boolean firstPhase(LoadSingleTsFileNode node) {
-    final TsFileDataManager tsFileDataManager = new TsFileDataManager(this, node);
+    final TsFileDataManager tsFileDataManager = new TsFileDataManager(this, node, block);
     try {
       new TsFileSplitter(
               node.getTsFileResource().getTsFile(), tsFileDataManager::addOrSendTsFileData)
@@ -407,13 +414,18 @@ public class LoadTsFileScheduler implements IScheduler {
     private long dataSize;
     private final Map<TRegionReplicaSet, LoadTsFilePieceNode> replicaSet2Piece;
     private final List<ChunkData> nonDirectionalChunkData;
+    private final LoadTsFileDataCacheMemoryBlock block;
 
-    public TsFileDataManager(LoadTsFileScheduler scheduler, LoadSingleTsFileNode singleTsFileNode) {
+    public TsFileDataManager(
+        LoadTsFileScheduler scheduler,
+        LoadSingleTsFileNode singleTsFileNode,
+        LoadTsFileDataCacheMemoryBlock block) {
       this.scheduler = scheduler;
       this.singleTsFileNode = singleTsFileNode;
       this.dataSize = 0;
       this.replicaSet2Piece = new HashMap<>();
       this.nonDirectionalChunkData = new ArrayList<>();
+      this.block = block;
     }
 
     private boolean addOrSendTsFileData(TsFileData tsFileData) {
@@ -422,11 +434,16 @@ public class LoadTsFileScheduler implements IScheduler {
           : addOrSendChunkData((ChunkData) tsFileData);
     }
 
+    private boolean isMemoryEnough() {
+      return dataSize <= SINGLE_SCHEDULER_MAX_MEMORY_SIZE && block.hasEnoughMemory();
+    }
+
     private boolean addOrSendChunkData(ChunkData chunkData) {
       nonDirectionalChunkData.add(chunkData);
       dataSize += chunkData.getDataSize();
+      block.addMemoryUsage(chunkData.getDataSize());
 
-      if (dataSize > MAX_MEMORY_SIZE) {
+      if (!isMemoryEnough()) {
         routeChunkData();
 
         // start to dispatch from the biggest TsFilePieceNode
@@ -446,6 +463,7 @@ public class LoadTsFileScheduler implements IScheduler {
           }
 
           dataSize -= pieceNode.getDataSize();
+          block.reduceMemoryUsage(pieceNode.getDataSize());
           replicaSet2Piece.put(
               sortedReplicaSet,
               new LoadTsFilePieceNode(
@@ -453,7 +471,7 @@ public class LoadTsFileScheduler implements IScheduler {
                   singleTsFileNode
                       .getTsFileResource()
                       .getTsFile())); // can not just remove, because of deletion
-          if (dataSize <= MAX_MEMORY_SIZE) {
+          if (isMemoryEnough()) {
             break;
           }
         }
@@ -492,6 +510,7 @@ public class LoadTsFileScheduler implements IScheduler {
 
       for (Map.Entry<TRegionReplicaSet, LoadTsFilePieceNode> entry : replicaSet2Piece.entrySet()) {
         dataSize += deletionData.getDataSize();
+        block.addMemoryUsage(deletionData.getDataSize());
         entry.getValue().addTsFileData(deletionData);
       }
       return true;
@@ -501,6 +520,7 @@ public class LoadTsFileScheduler implements IScheduler {
       routeChunkData();
 
       for (Map.Entry<TRegionReplicaSet, LoadTsFilePieceNode> entry : replicaSet2Piece.entrySet()) {
+        block.reduceMemoryUsage(entry.getValue().getDataSize());
         if (!scheduler.dispatchOnePieceNode(entry.getValue(), entry.getKey())) {
           logger.warn(
               "Dispatch piece node {} of TsFile {} error.",

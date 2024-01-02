@@ -35,6 +35,10 @@ public class NodeRef<T> {
     return new NodeRef<>(node);
   }
 
+  public T getNode() {
+    return this.node;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {
