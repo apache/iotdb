@@ -973,6 +973,7 @@ public class SessionCacheLeaderTest {
           SessionConfig.DEFAULT_MAX_FRAME_SIZE,
           enableRedirection,
           SessionConfig.DEFAULT_VERSION);
+      this.enableAutoFetch = false;
     }
 
     @Override

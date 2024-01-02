@@ -160,7 +160,7 @@ public class Session implements ISession {
   protected Version version;
 
   // default enable
-  private boolean enableAutoFetch = true;
+  protected boolean enableAutoFetch = true;
 
   private static final String REDIRECT_TWICE = "redirect twice";
 
