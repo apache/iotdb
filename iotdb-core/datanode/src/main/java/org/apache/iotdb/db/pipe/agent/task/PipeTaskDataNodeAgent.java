@@ -114,21 +114,20 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
               pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
           for (SchemaRegionId regionId : SchemaEngine.getInstance().getAllSchemaRegionIds()) {
             int id = regionId.getId();
-
-            if (!earliestIndexMap.containsKey(id)) {
-              earliestIndexMap.put(id, Long.MAX_VALUE);
-            }
             PipeTaskMeta schemaMeta = metaMap.get(id);
             if (schemaMeta != null) {
               ProgressIndex schemaIndex = schemaMeta.getProgressIndex();
               if (schemaIndex instanceof MetaProgressIndex
-                  && ((MetaProgressIndex) schemaIndex).getIndex() < earliestIndexMap.get(id)) {
+                  && ((MetaProgressIndex) schemaIndex).getIndex()
+                      < earliestIndexMap.getOrDefault(id, Long.MAX_VALUE)) {
                 earliestIndexMap.put(id, ((MetaProgressIndex) schemaIndex).getIndex());
               }
             }
           }
         });
 
+    // Do not clear if there are only "minimumProgressIndex"s to avoid clearing
+    // the queue when there are schema tasks that haven't been started yet
     earliestIndexMap.forEach(
         (schemaId, index) -> SchemaNodeListeningQueue.getInstance(schemaId).removeBefore(index));
 

@@ -467,6 +467,11 @@ public class PipeTaskInfo implements SnapshotProcessor {
               }
             });
 
+    if (earliestIndex.get() == Long.MAX_VALUE) {
+      // Do not clear if there are only "minimumProgressIndex"s to avoid clearing
+      // the queue when there are config tasks that haven't been started yet
+      earliestIndex.set(0);
+    }
     PipeConfigNodeAgent.task().handlePipeMetaChanges(plan.getPipeMetaList());
     ConfigPlanListeningQueue.getInstance().removeBefore(earliestIndex.get());
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
