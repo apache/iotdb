@@ -771,7 +771,7 @@ public abstract class PageManager implements IPageManager {
    */
   protected ISegmentedPage getMinApplSegmentedPageInMem(short size, SchemaPageContext cxt) {
     // pages retrieved from context is unnecessary and inefficient to lock
-    ISchemaPage targetPage = cxt.indexBuckets.getNearestFitPage(size, false);
+    ISchemaPage targetPage = cxt.indexBuckets.getNearestFitPage(size, false, cxt);
     if (targetPage != null) {
       cxt.indexBuckets.sortIntoBucket(targetPage, size);
       return targetPage.getAsSegmentedPage();
@@ -780,7 +780,7 @@ public abstract class PageManager implements IPageManager {
     cacheLock.lock();
     try {
       // pageIndexBuckets sorts pages within pageInstCache into buckets to expedite access
-      targetPage = pageIndexBuckets.getNearestFitPage(size, true);
+      targetPage = pageIndexBuckets.getNearestFitPage(size, true, cxt);
       if (targetPage != null) {
         cxt.markDirty(targetPage);
         cxt.traceLock(targetPage);
@@ -1131,7 +1131,7 @@ public abstract class PageManager implements IPageManager {
      * @param withLock set if page container is a global/shared object
      * @return the page index will be removed from the bucket.
      */
-    public synchronized ISchemaPage getNearestFitPage(short size, boolean withLock) {
+    public synchronized ISchemaPage getNearestFitPage(short size, boolean withLock, SchemaPageContext cxt) {
       ISchemaPage targetPage;
       int elemToCheck;
       for (int i = 0; i < buckets.length && pageContainer.size() > 0; i++) {
@@ -1152,6 +1152,10 @@ public abstract class PageManager implements IPageManager {
               && targetPage.getAsSegmentedPage().isCapableForSegSize(size)
               && targetPage.getLock().writeLock().tryLock()) {
             if (targetPage.getAsSegmentedPage().isCapableForSegSize(size)) {
+              // todo find root cause of this double-lock
+              if (cxt.referredPages.containsKey(targetPage.getPageIndex())) {
+                targetPage.getLock().writeLock().unlock();
+              }
               return targetPage.getAsSegmentedPage();
             }
             targetPage.getLock().writeLock().unlock();
