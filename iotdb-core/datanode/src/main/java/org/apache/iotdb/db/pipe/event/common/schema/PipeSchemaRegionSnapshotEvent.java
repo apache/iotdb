@@ -61,9 +61,4 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
     ReadWriteIOUtils.write(snapshotPath, result);
     return result;
   }
-
-  @Override
-  public void deserializeFromByteBuffer(ByteBuffer buffer) {
-    snapshotPath = ReadWriteIOUtils.readString(buffer);
-  }
 }

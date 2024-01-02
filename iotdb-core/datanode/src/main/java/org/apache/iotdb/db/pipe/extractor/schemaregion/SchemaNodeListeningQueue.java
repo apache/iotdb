@@ -21,6 +21,8 @@ package org.apache.iotdb.db.pipe.extractor.schemaregion;
 
 import org.apache.iotdb.commons.pipe.datastructure.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.datastructure.LinkedQueueSerializerType;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.event.SerializableEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaSerializableEventType;
@@ -36,6 +38,8 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -72,10 +76,14 @@ public class SchemaNodeListeningQueue extends AbstractPipeListeningQueue {
     }
   }
 
-  public void tryListenToSnapshot(String snapshotPath) {
-    PipeSchemaRegionSnapshotEvent event = new PipeSchemaRegionSnapshotEvent(snapshotPath);
-    event.increaseReferenceCount(SchemaNodeListeningQueue.class.getName());
-    super.listenToElement(event);
+  public void tryListenToSnapshot(List<String> snapshotPaths) {
+    List<PipeSnapshotEvent> events = new ArrayList<>();
+    for (String snapshotPath : snapshotPaths) {
+      PipeSchemaRegionSnapshotEvent event = new PipeSchemaRegionSnapshotEvent(snapshotPath);
+      event.increaseReferenceCount(SchemaNodeListeningQueue.class.getName());
+      events.add(event);
+    }
+    super.listenToSnapshots(events);
   }
 
   /////////////////////////////// Element Ser / De Method ////////////////////////////////
@@ -88,7 +96,9 @@ public class SchemaNodeListeningQueue extends AbstractPipeListeningQueue {
   @Override
   protected Event deserializeFromByteBuffer(ByteBuffer byteBuffer) {
     try {
-      return PipeSchemaSerializableEventType.deserialize(byteBuffer);
+      SerializableEvent result = PipeSchemaSerializableEventType.deserialize(byteBuffer);
+      ((EnrichedEvent) result).increaseReferenceCount(SchemaNodeListeningQueue.class.getName());
+      return result;
     } catch (IOException e) {
       LOGGER.error("Failed to load snapshot from byteBuffer {}.", byteBuffer);
     }

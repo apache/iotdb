@@ -85,7 +85,7 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
 
   /////////////////////////////// Snapshot ///////////////////////////////
 
-  public final boolean serializeToFile(File snapshotName) throws IOException {
+  public boolean serializeToFile(File snapshotName) throws IOException {
     final File snapshotFile = new File(String.valueOf(snapshotName));
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
@@ -103,7 +103,7 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
     }
   }
 
-  public final void deserializeFromFile(File snapshotName) throws IOException {
+  public void deserializeFromFile(File snapshotName) throws IOException {
     final File snapshotFile = new File(String.valueOf(snapshotName));
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(

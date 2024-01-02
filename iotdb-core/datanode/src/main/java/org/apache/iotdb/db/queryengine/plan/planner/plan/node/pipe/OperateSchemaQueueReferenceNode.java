@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegion;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -39,7 +40,7 @@ import java.util.Objects;
  */
 public class OperateSchemaQueueReferenceNode extends PlanNode {
 
-  boolean isOpen;
+  private final boolean isOpen;
 
   public OperateSchemaQueueReferenceNode(PlanNodeId id, boolean isOpen) {
     super(id);
@@ -73,6 +74,11 @@ public class OperateSchemaQueueReferenceNode extends PlanNode {
   @Override
   public List<String> getOutputColumnNames() {
     return Collections.emptyList();
+  }
+
+  @Override
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitOperateSchemaQueueReferenceNode(this, context);
   }
 
   @Override

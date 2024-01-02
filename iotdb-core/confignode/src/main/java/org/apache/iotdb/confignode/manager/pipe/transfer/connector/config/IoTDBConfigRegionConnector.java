@@ -32,6 +32,7 @@ import org.apache.iotdb.confignode.manager.pipe.transfer.connector.client.IoTDBT
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigPlanReq;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigSnapshotPieceReq;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigSnapshotSealReq;
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -70,8 +71,10 @@ public class IoTDBConfigRegionConnector extends IoTDBMetaConnector {
     } else if (event instanceof PipeConfigRegionSnapshotEvent) {
       doTransfer((PipeConfigRegionSnapshotEvent) event);
     }
-    LOGGER.warn(
-        "IoTDBConfigRegionConnector does not support transferring generic event: {}.", event);
+    if (!(event instanceof PipeHeartbeatEvent)) {
+      LOGGER.warn(
+          "IoTDBConfigRegionConnector does not support transferring generic event: {}.", event);
+    }
   }
 
   private void doTransfer(PipeWriteConfigPlanEvent pipeWriteConfigPlanEvent) throws PipeException {

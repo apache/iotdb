@@ -25,8 +25,10 @@ import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.datastructure.ConcurrentIterableLinkedQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb.IoTDBCommonExtractor;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeWriteSchemaPlanEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -34,9 +36,12 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.OperateSchema
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -50,6 +55,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 public class IoTDBSchemaRegionExtractor extends IoTDBCommonExtractor {
   private ConcurrentIterableLinkedQueue<Event>.DynamicIterator itr;
   private Set<PlanNodeType> listenTypes = new HashSet<>();
+  private List<PipeSnapshotEvent> historicalEvents = new ArrayList<>();
 
   @Override
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
@@ -78,9 +84,11 @@ public class IoTDBSchemaRegionExtractor extends IoTDBCommonExtractor {
     ProgressIndex progressIndex = pipeTaskMeta.getProgressIndex();
     long index;
     if (progressIndex instanceof MinimumProgressIndex) {
-      // TODO: Trigger snapshot if not exists and return nearest snapshots' first index
-      long snapShotIndex = SchemaNodeListeningQueue.getInstance(regionId).findAvailableSnapshot();
-      index = snapShotIndex != Long.MAX_VALUE ? snapShotIndex : 0;
+      // TODO: Trigger snapshot if not exists
+      Pair<Long, List<PipeSnapshotEvent>> eventPair =
+          SchemaNodeListeningQueue.getInstance(regionId).findAvailableSnapshots();
+      index = !Objects.isNull(eventPair.getLeft()) ? eventPair.getLeft() + 1 : 0;
+      historicalEvents = eventPair.getRight();
     } else {
       index = ((MetaProgressIndex) progressIndex).getIndex();
     }
@@ -89,6 +97,23 @@ public class IoTDBSchemaRegionExtractor extends IoTDBCommonExtractor {
 
   @Override
   public EnrichedEvent supply() throws Exception {
+    if (!historicalEvents.isEmpty()) {
+      if (historicalEvents.size() != 1) {
+        // Do not report progress for non-final snapshot events since we re-transmit all snapshot
+        // files currently
+        return historicalEvents.remove(0);
+      } else {
+        PipeSchemaRegionSnapshotEvent event =
+            (PipeSchemaRegionSnapshotEvent)
+                historicalEvents
+                    .remove(0)
+                    .shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+                        pipeName, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
+        event.bindProgressIndex(new MetaProgressIndex(itr.getNextIndex() - 1));
+        return event;
+      }
+    }
+
     EnrichedEvent event;
     do {
       // Return immediately

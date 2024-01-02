@@ -22,12 +22,14 @@ package org.apache.iotdb.commons.pipe.event;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.resource.PipeSnapshotResourceManager;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 public abstract class PipeSnapshotEvent extends EnrichedEvent implements SerializableEvent {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSnapshotEvent.class);
@@ -100,5 +102,9 @@ public abstract class PipeSnapshotEvent extends EnrichedEvent implements Seriali
   @Override
   public boolean isEventTimeOverlappedWithTimeRange() {
     return true;
+  }
+
+  public void deserializeFromByteBuffer(ByteBuffer buffer) {
+    snapshotPath = ReadWriteIOUtils.readString(buffer);
   }
 }

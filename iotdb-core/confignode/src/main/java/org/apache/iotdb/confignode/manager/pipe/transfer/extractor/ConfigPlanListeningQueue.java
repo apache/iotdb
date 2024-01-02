@@ -22,6 +22,8 @@ package org.apache.iotdb.confignode.manager.pipe.transfer.extractor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.datastructure.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.datastructure.LinkedQueueSerializerType;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.event.SerializableEvent;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -40,7 +42,9 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_KEY;
@@ -73,10 +77,14 @@ public class ConfigPlanListeningQueue extends AbstractPipeListeningQueue
     }
   }
 
-  public void tryListenToSnapshot(String snapshotPath) {
-    PipeConfigRegionSnapshotEvent event = new PipeConfigRegionSnapshotEvent(snapshotPath);
-    event.increaseReferenceCount(ConfigPlanListeningQueue.class.getName());
-    super.listenToElement(event);
+  public void tryListenToSnapshots(List<String> snapshotPaths) {
+    List<PipeSnapshotEvent> events = new ArrayList<>();
+    for (String snapshotPath : snapshotPaths) {
+      PipeConfigRegionSnapshotEvent event = new PipeConfigRegionSnapshotEvent(snapshotPath);
+      event.increaseReferenceCount(ConfigPlanListeningQueue.class.getName());
+      events.add(event);
+    }
+    super.listenToSnapshots(events);
   }
 
   /////////////////////////////// Reference count ///////////////////////////////
@@ -117,7 +125,9 @@ public class ConfigPlanListeningQueue extends AbstractPipeListeningQueue
   @Override
   protected Event deserializeFromByteBuffer(ByteBuffer byteBuffer) {
     try {
-      return PipeConfigSerializableEventType.deserialize(byteBuffer);
+      SerializableEvent result = PipeConfigSerializableEventType.deserialize(byteBuffer);
+      ((EnrichedEvent) result).increaseReferenceCount(ConfigPlanListeningQueue.class.getName());
+      return result;
     } catch (IOException e) {
       LOGGER.error("Failed to load snapshot from byteBuffer {}.", byteBuffer);
     }
