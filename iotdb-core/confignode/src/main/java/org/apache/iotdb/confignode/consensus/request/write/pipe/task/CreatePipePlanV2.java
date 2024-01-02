@@ -74,7 +74,8 @@ public class CreatePipePlanV2 extends ConfigPhysicalPlan {
       return false;
     }
     CreatePipePlanV2 that = (CreatePipePlanV2) obj;
-    return pipeStaticMeta.equals(that.pipeStaticMeta) && pipeRuntimeMeta == that.pipeRuntimeMeta;
+    return pipeStaticMeta.equals(that.pipeStaticMeta)
+        && pipeRuntimeMeta.equals(that.pipeRuntimeMeta);
   }
 
   @Override
