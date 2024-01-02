@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.LoadFileException;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileCommandNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
@@ -49,13 +50,14 @@ import java.io.IOException;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * {@link LoadTsFileManager} is used for dealing with {@link LoadTsFilePieceNode} and {@link
@@ -143,7 +145,9 @@ public class LoadTsFileManager {
     if (!uuid2WriterManager.containsKey(uuid)) {
       return false;
     }
-    uuid2WriterManager.get(uuid).loadAll(isGeneratedByPipe);
+    uuid2WriterManager
+        .get(uuid)
+        .executeOnDataRegion(null, LoadCommand.EXECUTE, isGeneratedByPipe, true);
     clean(uuid);
     return true;
   }
@@ -153,6 +157,21 @@ public class LoadTsFileManager {
       return false;
     }
     clean(uuid);
+    return true;
+  }
+
+  public boolean executeOnDataRegion(DataRegion dataRegion, LoadTsFileCommandNode node)
+      throws IOException, LoadFileException {
+    final String uuid = node.getUuid();
+    if (!uuid2WriterManager.containsKey(uuid)) {
+      return false;
+    }
+    final TsFileWriterManager writerManager = uuid2WriterManager.get(uuid);
+    writerManager.executeOnDataRegion(
+        dataRegion, node.getCommand(), node.isGeneratedByPipe(), false);
+    if (writerManager.isEmpty()) {
+      clean(uuid);
+    }
     return true;
   }
 
@@ -200,14 +219,14 @@ public class LoadTsFileManager {
     private Map<DataPartitionInfo, TsFileIOWriter> dataPartition2Writer;
     private Map<DataPartitionInfo, String> dataPartition2LastDevice;
     private Map<DataPartitionInfo, ModificationFile> dataPartition2ModificationFile;
-    private boolean isClosed;
+    private final AtomicBoolean isClosed;
 
     private TsFileWriterManager(File taskDir) {
       this.taskDir = taskDir;
-      this.dataPartition2Writer = new HashMap<>();
-      this.dataPartition2LastDevice = new HashMap<>();
-      this.dataPartition2ModificationFile = new HashMap<>();
-      this.isClosed = false;
+      this.dataPartition2Writer = new ConcurrentHashMap<>();
+      this.dataPartition2LastDevice = new ConcurrentHashMap<>();
+      this.dataPartition2ModificationFile = new ConcurrentHashMap<>();
+      this.isClosed = new AtomicBoolean(false);
 
       clearDir(taskDir);
     }
@@ -223,7 +242,7 @@ public class LoadTsFileManager {
 
     @SuppressWarnings("squid:S3824")
     private void write(DataPartitionInfo partitionInfo, ChunkData chunkData) throws IOException {
-      if (isClosed) {
+      if (isClosed.get()) {
         throw new IOException(String.format(MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED, taskDir));
       }
       if (!dataPartition2Writer.containsKey(partitionInfo)) {
@@ -231,7 +250,7 @@ public class LoadTsFileManager {
             SystemFileFactory.INSTANCE.getFile(
                 taskDir, partitionInfo.toString() + TsFileConstant.TSFILE_SUFFIX);
         if (!newTsFile.createNewFile()) {
-          LOGGER.error("Can not create TsFile {} for writing.", newTsFile.getPath());
+          LOGGER.warn("Can not create TsFile {} for writing.", newTsFile.getPath());
           return;
         }
 
@@ -250,7 +269,7 @@ public class LoadTsFileManager {
 
     private void writeDeletion(DataRegion dataRegion, DeletionData deletionData)
         throws IOException {
-      if (isClosed) {
+      if (isClosed.get()) {
         throw new IOException(String.format(MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED, taskDir));
       }
       for (Map.Entry<DataPartitionInfo, TsFileIOWriter> entry : dataPartition2Writer.entrySet()) {
@@ -262,7 +281,7 @@ public class LoadTsFileManager {
                 SystemFileFactory.INSTANCE.getFile(
                     writer.getFile().getAbsolutePath() + ModificationFile.FILE_SUFFIX);
             if (!newModificationFile.createNewFile()) {
-              LOGGER.error(
+              LOGGER.warn(
                   "Can not create ModificationFile {} for writing.", newModificationFile.getPath());
               return;
             }
@@ -277,35 +296,72 @@ public class LoadTsFileManager {
       }
     }
 
-    private void loadAll(boolean isGeneratedByPipe) throws IOException, LoadFileException {
-      if (isClosed) {
+    private void executeOnDataRegion(
+        DataRegion dataRegion,
+        LoadCommand loadCommand,
+        boolean isGeneratedByPipe,
+        boolean ignoreDataRegion)
+        throws IOException, LoadFileException {
+      if (isClosed.get()) {
         throw new IOException(String.format(MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED, taskDir));
       }
-      for (Map.Entry<DataPartitionInfo, ModificationFile> entry :
-          dataPartition2ModificationFile.entrySet()) {
-        entry.getValue().close();
-      }
-      for (Map.Entry<DataPartitionInfo, TsFileIOWriter> entry : dataPartition2Writer.entrySet()) {
-        TsFileIOWriter writer = entry.getValue();
-        if (writer.isWritingChunkGroup()) {
-          writer.endChunkGroup();
+
+      final Iterator<Map.Entry<DataPartitionInfo, ModificationFile>> modificationFileIterator =
+          dataPartition2ModificationFile.entrySet().iterator();
+      while (modificationFileIterator.hasNext()) {
+        Map.Entry<DataPartitionInfo, ModificationFile> entry = modificationFileIterator.next();
+        if (ignoreDataRegion || entry.getKey().getDataRegion().equals(dataRegion)) {
+          entry.getValue().close();
+          if (LoadCommand.ROLLBACK.equals(loadCommand)) {
+            final Path modificationFilePath = new File(entry.getValue().getFilePath()).toPath();
+            if (Files.exists(modificationFilePath)) {
+              Files.delete(modificationFilePath);
+            }
+          }
+
+          modificationFileIterator.remove();
         }
-        writer.endFile();
+      }
 
-        DataRegion dataRegion = entry.getKey().getDataRegion();
-        dataRegion.loadNewTsFile(generateResource(writer), true, isGeneratedByPipe);
+      dataPartition2LastDevice
+          .entrySet()
+          .removeIf(entry -> ignoreDataRegion || entry.getKey().getDataRegion().equals(dataRegion));
 
-        MetricService.getInstance()
-            .count(
-                getTsFileWritePointCount(writer),
-                Metric.QUANTITY.toString(),
-                MetricLevel.CORE,
-                Tag.NAME.toString(),
-                Metric.POINTS_IN.toString(),
-                Tag.DATABASE.toString(),
-                dataRegion.getDatabaseName(),
-                Tag.REGION.toString(),
-                dataRegion.getDataRegionId());
+      final Iterator<Map.Entry<DataPartitionInfo, TsFileIOWriter>> writerIterator =
+          dataPartition2Writer.entrySet().iterator();
+      while (writerIterator.hasNext()) {
+        Map.Entry<DataPartitionInfo, TsFileIOWriter> entry = writerIterator.next();
+        if (ignoreDataRegion || entry.getKey().getDataRegion().equals(dataRegion)) {
+          TsFileIOWriter writer = entry.getValue();
+          if (writer.isWritingChunkGroup()) {
+            writer.endChunkGroup();
+          }
+          writer.endFile();
+
+          final DataRegion localDataRegion = entry.getKey().getDataRegion();
+          if (LoadCommand.EXECUTE.equals(loadCommand)) {
+            localDataRegion.loadNewTsFile(generateResource(writer), true, isGeneratedByPipe);
+          } else if (LoadCommand.ROLLBACK.equals(loadCommand)) {
+            final Path writerPath = writer.getFile().toPath();
+            if (Files.exists(writerPath)) {
+              Files.delete(writerPath);
+            }
+          }
+
+          MetricService.getInstance()
+              .count(
+                  getTsFileWritePointCount(writer),
+                  Metric.QUANTITY.toString(),
+                  MetricLevel.CORE,
+                  Tag.NAME.toString(),
+                  Metric.POINTS_IN.toString(),
+                  Tag.DATABASE.toString(),
+                  localDataRegion.getDatabaseName(),
+                  Tag.REGION.toString(),
+                  localDataRegion.getDataRegionId());
+
+          writerIterator.remove();
+        }
       }
     }
 
@@ -322,10 +378,17 @@ public class LoadTsFileManager {
           .sum();
     }
 
+    private boolean isEmpty() {
+      return dataPartition2Writer.isEmpty();
+    }
+
     private void close() {
-      if (isClosed) {
-        return;
+      if (isClosed.compareAndSet(false, true)) {
+        clean();
       }
+    }
+
+    private void clean() {
       if (dataPartition2Writer != null) {
         for (Map.Entry<DataPartitionInfo, TsFileIOWriter> entry : dataPartition2Writer.entrySet()) {
           try {
@@ -341,6 +404,7 @@ public class LoadTsFileManager {
             LOGGER.warn("Close TsFileIOWriter {} error.", entry.getValue().getFile().getPath(), e);
           }
         }
+        dataPartition2Writer.clear();
       }
       if (dataPartition2ModificationFile != null) {
         for (Map.Entry<DataPartitionInfo, ModificationFile> entry :
@@ -356,6 +420,10 @@ public class LoadTsFileManager {
             LOGGER.warn("Close ModificationFile {} error.", entry.getValue().getFilePath(), e);
           }
         }
+        dataPartition2ModificationFile.clear();
+      }
+      if (dataPartition2LastDevice != null) {
+        dataPartition2LastDevice.clear();
       }
       try {
         Files.delete(taskDir.toPath());
@@ -367,7 +435,6 @@ public class LoadTsFileManager {
       dataPartition2Writer = null;
       dataPartition2LastDevice = null;
       dataPartition2ModificationFile = null;
-      isClosed = true;
     }
   }
 

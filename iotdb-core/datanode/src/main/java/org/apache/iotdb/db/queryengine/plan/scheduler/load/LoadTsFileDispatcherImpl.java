@@ -42,6 +42,11 @@ import org.apache.iotdb.db.queryengine.plan.scheduler.IFragInstanceDispatcher;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
+import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
+import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeResp;
+import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -51,8 +56,10 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -63,6 +70,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileDispatcherImpl.class);
 
   private String uuid;
+  private String tsFileName;
   private final String localhostIpAddr;
   private final int localhostInternalPort;
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
@@ -83,27 +91,28 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     this.isGeneratedByPipe = isGeneratedByPipe;
   }
 
-  public void setUuid(String uuid) {
+  public void setUuidAndTsFileName(String uuid, String tsFileName) {
     this.uuid = uuid;
+    this.tsFileName = tsFileName;
   }
 
   @Override
   public Future<FragInstanceDispatchResult> dispatch(List<FragmentInstance> instances) {
     return executor.submit(
         () -> {
-          for (FragmentInstance instance : instances) {
-            try (SetThreadName threadName =
-                new SetThreadName(
-                    LoadTsFileScheduler.class.getName() + instance.getId().getFullId())) {
+          try (SetThreadName threadName =
+              new SetThreadName(
+                  LoadTsFileScheduler.class.getSimpleName() + "-TsFilePiece-" + tsFileName)) {
+            for (FragmentInstance instance : instances) {
               dispatchOneInstance(instance);
-            } catch (FragmentInstanceDispatchException e) {
-              return new FragInstanceDispatchResult(e.getFailureStatus());
-            } catch (Exception t) {
-              LOGGER.warn("cannot dispatch FI for load operation", t);
-              return new FragInstanceDispatchResult(
-                  RpcUtils.getStatus(
-                      TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage()));
             }
+          } catch (FragmentInstanceDispatchException e) {
+            return new FragInstanceDispatchResult(e.getFailureStatus());
+          } catch (Exception t) {
+            LOGGER.warn("cannot dispatch FI for load operation", t);
+            return new FragInstanceDispatchResult(
+                RpcUtils.getStatus(
+                    TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage()));
           }
           return new FragInstanceDispatchResult(true);
         });
@@ -247,8 +256,8 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
         }
       } catch (FragmentInstanceDispatchException e) {
         return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
-      } catch (Exception t) {
-        LOGGER.warn("cannot dispatch LoadCommand for load operation", t);
+      } catch (Throwable t) {
+        LOGGER.error("cannot dispatch LoadCommand for load operation", t);
         return immediateFuture(
             new FragInstanceDispatchResult(
                 RpcUtils.getStatus(
@@ -256,6 +265,83 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       }
     }
     return immediateFuture(new FragInstanceDispatchResult(true));
+  }
+
+  public Future<FragInstanceDispatchResult> dispatchCommand(List<FragmentInstance> instances) {
+    final Map<TEndPoint, TSendBatchPlanNodeReq> endPoint2BatchReq = new HashMap<>();
+    instances.forEach(
+        instance ->
+            endPoint2BatchReq
+                .computeIfAbsent(
+                    instance.getHostDataNode().getInternalEndPoint(),
+                    o -> new TSendBatchPlanNodeReq())
+                .addToRequests(
+                    new TSendSinglePlanNodeReq(
+                        new TPlanNode(
+                            instance.getFragment().getPlanNodeTree().serializeToByteBuffer()),
+                        instance.getRegionReplicaSet().getRegionId())));
+
+    return executor.submit(
+        () -> {
+          try (SetThreadName threadName =
+              new SetThreadName(
+                  LoadTsFileScheduler.class.getSimpleName() + "-Command-" + tsFileName)) {
+            for (Map.Entry<TEndPoint, TSendBatchPlanNodeReq> entry : endPoint2BatchReq.entrySet()) {
+              FragInstanceDispatchResult result =
+                  dispatchCommandRemote(entry.getKey(), entry.getValue());
+              if (!result.isSuccessful()) {
+                return result;
+              }
+            }
+          } catch (Exception t) {
+            LOGGER.warn("cannot dispatch FI for load operation", t);
+            return new FragInstanceDispatchResult(
+                RpcUtils.getStatus(
+                    TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage()));
+          }
+          return new FragInstanceDispatchResult(true);
+        });
+  }
+
+  private FragInstanceDispatchResult dispatchCommandRemote(
+      TEndPoint endPoint, TSendBatchPlanNodeReq batchPlanNodeReq) {
+    try (SyncDataNodeInternalServiceClient client =
+        internalServiceClientManager.borrowClient(endPoint)) {
+      TSendBatchPlanNodeResp sendBatchPlanNodeResp = client.sendBatchPlanNode(batchPlanNodeReq);
+      FragInstanceDispatchResult result = new FragInstanceDispatchResult(true);
+      for (TSendSinglePlanNodeResp sendSinglePlanNodeResp : sendBatchPlanNodeResp.getResponses()) {
+        if (!sendSinglePlanNodeResp.isAccepted()) {
+          if (result.isSuccessful()) {
+            result =
+                new FragInstanceDispatchResult(
+                    RpcUtils.getStatus(
+                        TSStatusCode.LOAD_FILE_ERROR,
+                        String.format("Dispatch command to %s failed.", endPoint)));
+          }
+          LOGGER.warn(
+              "Dispatch command to {} failed, result status {}, result message {}",
+              endPoint,
+              sendSinglePlanNodeResp.getStatus(),
+              sendSinglePlanNodeResp.getMessage());
+          result.getFailureStatus().addToSubStatus(sendSinglePlanNodeResp.getStatus());
+        }
+      }
+      return result;
+    } catch (ClientManagerException | TException e) {
+      LOGGER.warn(NODE_CONNECTION_ERROR, endPoint, e);
+      TSStatus status = new TSStatus();
+      status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
+      status.setMessage(
+          "can't connect to node {}, please reset longer dn_connection_timeout_ms "
+              + "in iotdb-common.properties and restart iotdb."
+              + endPoint);
+      return new FragInstanceDispatchResult(status);
+    } catch (Exception t) {
+      LOGGER.warn("cannot dispatch FI for load operation", t);
+      return new FragInstanceDispatchResult(
+          RpcUtils.getStatus(
+              TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage()));
+    }
   }
 
   @Override

@@ -48,6 +48,7 @@ import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.queryengine.execution.load.LoadTsFileManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileCommandNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
@@ -133,8 +134,10 @@ public class StorageEngine implements IService {
   private ScheduledExecutorService unseqMemtableTimedFlushCheckThread;
 
   private TsFileFlushPolicy fileFlushPolicy = new DirectFlushPolicy();
+
   /** used to do short-lived asynchronous tasks */
   private ExecutorService cachedThreadPool;
+
   // add customized listeners here for flush and close events
   private List<CloseFileListener> customCloseFileListeners = new ArrayList<>();
   private List<FlushListener> customFlushListeners = new ArrayList<>();
@@ -786,7 +789,7 @@ public class StorageEngine implements IService {
           pieceNode.getTsFile(),
           dataRegionId,
           e);
-      status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+      status.setCode(TSStatusCode.LOAD_PIECE_OF_TSFILE_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
       return status;
     }
@@ -828,6 +831,27 @@ public class StorageEngine implements IService {
       }
     } catch (IOException | LoadFileException e) {
       LOGGER.error("Execute load command {} error.", loadCommand, e);
+      status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+      status.setMessage(e.getMessage());
+    }
+
+    return status;
+  }
+
+  public TSStatus executeLoadCommand(DataRegion dataRegion, LoadTsFileCommandNode commandNode) {
+    TSStatus status = new TSStatus();
+    try {
+      if (getLoadTsFileManager().executeOnDataRegion(dataRegion, commandNode)) {
+        status = RpcUtils.SUCCESS_STATUS;
+      } else {
+        status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+        status.setMessage(
+            String.format(
+                "No load TsFile uuid %s recorded for executing load command %s.",
+                commandNode.getUuid(), commandNode));
+      }
+    } catch (IOException | LoadFileException e) {
+      LOGGER.error("Execute load command {} error.", commandNode, e);
       status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
     }

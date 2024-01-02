@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileCommandNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
@@ -486,6 +487,14 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitPipeEnrichedConfigSchema(PipeEnrichedConfigSchemaNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // Load Node
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public R visitLoadTsFileCommand(LoadTsFileCommandNode node, C context) {
     return visitPlan(node, context);
   }
 }

@@ -20,15 +20,14 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.load;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.db.queryengine.execution.load.TsFileData;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
-import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -37,54 +36,52 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public class LoadTsFilePieceNode extends WritePlanNode {
-  private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFilePieceNode.class);
+public class LoadTsFileCommandNode extends WritePlanNode {
+  private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileCommandNode.class);
+  private final LoadTsFileScheduler.LoadCommand command;
+  private final String uuid;
 
-  private File tsFile;
-
-  private long dataSize;
-  private List<TsFileData> tsFileDataList;
-
-  public LoadTsFilePieceNode(PlanNodeId id) {
+  public LoadTsFileCommandNode(
+      PlanNodeId id,
+      LoadTsFileScheduler.LoadCommand command,
+      String uuid,
+      boolean isGeneratedByPipe) {
     super(id);
+    this.command = command;
+    this.uuid = uuid;
+    this.isGeneratedByPipe = isGeneratedByPipe;
   }
 
-  public LoadTsFilePieceNode(PlanNodeId id, File tsFile) {
-    super(id);
-    this.tsFile = tsFile;
-    this.dataSize = 0;
-    this.tsFileDataList = new ArrayList<>();
+  public LoadTsFileScheduler.LoadCommand getCommand() {
+    return command;
   }
 
-  public long getDataSize() {
-    return dataSize;
+  public String getUuid() {
+    return uuid;
   }
 
-  public void addTsFileData(TsFileData tsFileData) {
-    tsFileDataList.add(tsFileData);
-    dataSize += tsFileData.getDataSize();
+  public boolean getIsGeneratedByPipe() {
+    return isGeneratedByPipe;
   }
 
-  public List<TsFileData> getAllTsFileData() {
-    return tsFileDataList;
-  }
-
-  public File getTsFile() {
-    return tsFile;
+  @Override
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitLoadTsFileCommand(this, context);
   }
 
   @Override
   public TRegionReplicaSet getRegionReplicaSet() {
-    return null;
+    throw new NotImplementedException(
+        String.format(
+            "getRegionReplicaSet of %s is not implemented",
+            LoadTsFileCommandNode.class.getSimpleName()));
   }
 
   @Override
@@ -94,13 +91,14 @@ public class LoadTsFilePieceNode extends WritePlanNode {
 
   @Override
   public void addChild(PlanNode child) {
-    // Do nothing
+    // do nothing
   }
 
   @Override
   public PlanNode clone() {
     throw new NotImplementedException(
-        String.format("clone of %s is not implemented", LoadTsFilePieceNode.class.getSimpleName()));
+        String.format(
+            "clone of %s is not implemented", LoadTsFileCommandNode.class.getSimpleName()));
   }
 
   @Override
@@ -127,67 +125,62 @@ public class LoadTsFilePieceNode extends WritePlanNode {
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.LOAD_TSFILE.serialize(stream);
-    ReadWriteIOUtils.write(tsFile.getPath(), stream); // TODO: can save this space
-    ReadWriteIOUtils.write(tsFileDataList.size(), stream);
-    for (TsFileData tsFileData : tsFileDataList) {
-      try {
-        tsFileData.serialize(stream);
-      } catch (IOException e) {
-        LOGGER.error(
-            String.format(
-                "Serialize data of TsFile %s error, skip TsFileData %s",
-                tsFile.getPath(), tsFileData));
-      }
-    }
-  }
-
-  @Override
-  public List<WritePlanNode> splitByPartition(Analysis analysis) {
-    throw new NotImplementedException(
-        String.format("split %s is not implemented", LoadTsFilePieceNode.class.getSimpleName()));
+    PlanNodeType.LOAD_TSFILE_COMMAND.serialize(stream);
+    ReadWriteIOUtils.write(command.ordinal(), stream);
+    ReadWriteIOUtils.write(uuid, stream);
+    ReadWriteIOUtils.write(isGeneratedByPipe, stream);
   }
 
   public static PlanNode deserialize(ByteBuffer buffer) {
     InputStream stream = new ByteArrayInputStream(buffer.array());
     try {
       ReadWriteIOUtils.readShort(stream); // read PlanNodeType
-      File tsFile = new File(ReadWriteIOUtils.readString(stream));
-      LoadTsFilePieceNode pieceNode = new LoadTsFilePieceNode(new PlanNodeId(""), tsFile);
-      int tsFileDataSize = ReadWriteIOUtils.readInt(stream);
-      for (int i = 0; i < tsFileDataSize; i++) {
-        TsFileData tsFileData = TsFileData.deserialize(stream);
-        pieceNode.addTsFileData(tsFileData);
-      }
-      pieceNode.setPlanNodeId(PlanNodeId.deserialize(stream));
-      return pieceNode;
-    } catch (IOException | PageException | IllegalPathException e) {
-      LOGGER.error("Deserialize {} error.", LoadTsFilePieceNode.class.getName(), e);
+      final int commandIndex = ReadWriteIOUtils.read(buffer);
+      final String uuid = ReadWriteIOUtils.readString(stream);
+      final boolean isGeneratedByPipe = ReadWriteIOUtils.readBool(stream);
+      return new LoadTsFileCommandNode(
+          PlanNodeId.deserialize(stream),
+          LoadTsFileScheduler.LoadCommand.values()[commandIndex],
+          uuid,
+          isGeneratedByPipe);
+    } catch (IOException e) {
+      LOGGER.error("Deserialize {} error.", LoadTsFilePieceNode.class.getSimpleName(), e);
       return null;
     }
   }
 
   @Override
+  public List<WritePlanNode> splitByPartition(Analysis analysis) {
+    throw new NotImplementedException(
+        String.format("split %s is not implemented", LoadTsFileCommandNode.class.getSimpleName()));
+  }
+
+  @Override
   public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    LoadTsFilePieceNode loadTsFilePieceNode = (LoadTsFilePieceNode) o;
-    return Objects.equals(tsFile, loadTsFilePieceNode.tsFile)
-        && Objects.equals(dataSize, loadTsFilePieceNode.dataSize)
-        && Objects.equals(tsFileDataList, loadTsFilePieceNode.tsFileDataList);
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    LoadTsFileCommandNode that = (LoadTsFileCommandNode) o;
+    return command == that.command
+        && Objects.equals(uuid, that.uuid)
+        && isGeneratedByPipe == that.isGeneratedByPipe;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(tsFile, dataSize, tsFileDataList);
+    return Objects.hash(super.hashCode(), command, uuid, isGeneratedByPipe);
   }
 
   @Override
   public String toString() {
-    return "LoadTsFilePieceNode{" + "tsFile=" + tsFile + ", dataSize=" + dataSize + '}';
+    return "LoadTsFileCommandNode{"
+        + "command="
+        + command
+        + ", uuid='"
+        + uuid
+        + '\''
+        + ", isGeneratedByPipe="
+        + isGeneratedByPipe
+        + '}';
   }
 }
