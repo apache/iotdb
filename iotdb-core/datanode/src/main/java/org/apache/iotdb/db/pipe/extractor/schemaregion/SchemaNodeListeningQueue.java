@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.extractor.schemaregion;
 
 import org.apache.iotdb.commons.pipe.datastructure.AbstractPipeListeningQueue;
-import org.apache.iotdb.commons.pipe.datastructure.LinkedQueueSerializerType;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.event.SerializableEvent;
@@ -49,7 +48,7 @@ public class SchemaNodeListeningQueue extends AbstractPipeListeningQueue {
   private static final String SNAPSHOT_FILE_NAME = "pipe_listening_queue.bin";
 
   private SchemaNodeListeningQueue() {
-    super(LinkedQueueSerializerType.PLAIN);
+    super();
   }
 
   /////////////////////////////// Function ///////////////////////////////

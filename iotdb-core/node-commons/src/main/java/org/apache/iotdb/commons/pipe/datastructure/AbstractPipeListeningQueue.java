@@ -52,8 +52,8 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
   private final Pair<Long, List<PipeSnapshotEvent>> snapshotCache =
       new Pair<>(null, new ArrayList<>());
 
-  protected AbstractPipeListeningQueue(LinkedQueueSerializerType serializerType) {
-    super(serializerType);
+  protected AbstractPipeListeningQueue() {
+    super(LinkedQueueSerializerType.PLAIN);
   }
 
   public synchronized void increaseReferenceCount() {
