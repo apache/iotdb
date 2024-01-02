@@ -59,7 +59,7 @@ public abstract class IoTDBConnector implements PipeConnector {
       "Exception occurred while parsing node urls from target servers: {}";
 
   private static final String PARSE_URL_ERROR_MESSAGE =
-      "Error parsing node urls from target servers, please check the specified 'ip':'port' or 'node-urls'";
+      "Error occurred while parsing node urls from target servers, please check the specified 'ip':'port' or 'node-urls'";
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
