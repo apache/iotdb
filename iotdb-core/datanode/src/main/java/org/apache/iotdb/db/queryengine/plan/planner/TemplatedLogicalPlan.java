@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner;
 
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
@@ -28,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
@@ -40,6 +40,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.searchSourceExpressions;
+import static org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo.makeLayout;
 import static org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanVisitor.pushDownLimitToScanNode;
 
 /**
@@ -55,14 +56,93 @@ public class TemplatedLogicalPlan {
   private final List<String> measurementList;
   private final List<IMeasurementSchema> schemaList;
 
+  private final long limitValue;
+
+  private static final long OFFSET_VALUE = 0;
+
+  private final Expression whereExpression;
+
+  // to fix this query: `select s1 from root.** where s2>1 align by device`,
+  // while project measurements are [s1], but newMeasurements should be [s1,s2]
+  private List<String> newMeasurementList;
+
+  private List<IMeasurementSchema> newSchemaList;
+
+  private Map<String, List<InputLocation>> filterLayoutMap;
+
   public TemplatedLogicalPlan(
       Analysis analysis, QueryStatement queryStatement, MPPQueryContext context) {
     this.analysis = analysis;
     this.queryStatement = queryStatement;
     this.context = context;
 
-    measurementList = analysis.getMeasurementList();
-    schemaList = analysis.getMeasurementSchemaList();
+    this.measurementList = analysis.getMeasurementList();
+    this.schemaList = analysis.getMeasurementSchemaList();
+    this.newMeasurementList = measurementList;
+    this.newSchemaList = schemaList;
+
+    this.limitValue = pushDownLimitToScanNode(queryStatement, analysis);
+
+    this.whereExpression = analysis.getWhereExpression();
+
+    // for align by device query with template, most used variables are same
+    initCommonVariables();
+  }
+
+  private void initCommonVariables() {
+    if (whereExpression != null) {
+
+      if (!analysis.isTemplateWildCardQuery()) {
+        newMeasurementList = new ArrayList<>(measurementList);
+        newSchemaList = new ArrayList<>(schemaList);
+        Set<String> selectExpressions = new HashSet<>(measurementList);
+        List<Expression> whereSourceExpressions = searchSourceExpressions(whereExpression);
+        for (Expression expression : whereSourceExpressions) {
+          if (expression instanceof TimeSeriesOperand) {
+            String measurement = ((TimeSeriesOperand) expression).getPath().getMeasurement();
+            if (!analysis.getDeviceTemplate().getSchemaMap().containsKey(measurement)) {
+              continue;
+            }
+            if (!selectExpressions.contains(measurement)) {
+              selectExpressions.add(measurement);
+              newMeasurementList.add(measurement);
+              newSchemaList.add(analysis.getDeviceTemplate().getSchema(measurement));
+            }
+          }
+        }
+      }
+
+      filterLayoutMap = makeLayout(newMeasurementList);
+
+      analysis
+          .getExpressionTypes()
+          .forEach(
+              (key, value) ->
+                  context.getTypeProvider().setType(key.getNode().getOutputSymbol(), value));
+    }
+
+    context
+        .getTypeProvider()
+        .setTemplatedInfo(
+            new TemplatedInfo(
+                newMeasurementList,
+                newSchemaList,
+                newSchemaList.stream()
+                    .map(IMeasurementSchema::getType)
+                    .collect(Collectors.toList()),
+                new HashSet<>(newMeasurementList),
+                queryStatement.getResultTimeOrder(),
+                analysis.isLastLevelUseWildcard(),
+                analysis.getDeviceViewOutputExpressions().stream()
+                    .map(Expression::getExpressionString)
+                    .collect(Collectors.toList()),
+                analysis.getDeviceViewInputIndexesMap().values().iterator().next(),
+                OFFSET_VALUE,
+                limitValue,
+                whereExpression,
+                queryStatement.getSelectComponent().getZoneId(),
+                analysis.getDeviceTemplate().getSchemaMap(),
+                filterLayoutMap));
   }
 
   public PlanNode visitQuery() {
@@ -70,10 +150,9 @@ public class TemplatedLogicalPlan {
         new TemplatedLogicalPlanBuilder(analysis, context, measurementList, schemaList);
 
     Map<String, PlanNode> deviceToSubPlanMap = new LinkedHashMap<>();
-    long limitValue = pushDownLimitToScanNode(queryStatement, analysis);
     for (PartialPath devicePath : analysis.getDeviceList()) {
       String deviceName = devicePath.getFullPath();
-      PlanNode rootNode = visitQueryBody(devicePath, analysis, queryStatement, context, limitValue);
+      PlanNode rootNode = visitQueryBody(devicePath);
 
       LogicalPlanBuilder subPlanBuilder =
           new TemplatedLogicalPlanBuilder(analysis, context, measurementList, schemaList)
@@ -118,88 +197,24 @@ public class TemplatedLogicalPlan {
     return planBuilder.getRoot();
   }
 
-  public PlanNode visitQueryBody(
-      PartialPath devicePath,
-      Analysis analysis,
-      QueryStatement queryStatement,
-      MPPQueryContext context,
-      long limitValue) {
-
-    List<String> mergedMeasurementList = measurementList;
-    List<IMeasurementSchema> mergedSchemaList = schemaList;
-
-    // to fix this query: `select s1 from root.** where s2>1 align by device`
-    // or `select s1 from root.** order by s2 align by device`.
-    Expression whereExpression =
-        analysis.getDeviceToWhereExpression() != null
-            ? analysis.getDeviceToWhereExpression().get(devicePath.getFullPath())
-            : null;
-    if (whereExpression != null && !analysis.isTemplateWildCardQuery()) {
-      mergedMeasurementList = new ArrayList<>(measurementList);
-      mergedSchemaList = new ArrayList<>(schemaList);
-      Set<String> selectExpressions = new HashSet<>(measurementList);
-      List<Expression> whereSourceExpressions = searchSourceExpressions(whereExpression);
-      for (Expression expression : whereSourceExpressions) {
-        if (expression instanceof TimeSeriesOperand) {
-          String measurement = ((TimeSeriesOperand) expression).getPath().getMeasurement();
-          if (!selectExpressions.contains(measurement)) {
-            selectExpressions.add(measurement);
-            mergedMeasurementList.add(measurement);
-            mergedSchemaList.add(analysis.getDeviceTemplate().getSchema(measurement));
-          }
-        }
-      }
-    }
+  public PlanNode visitQueryBody(PartialPath devicePath) {
 
     TemplatedLogicalPlanBuilder planBuilder =
-        new TemplatedLogicalPlanBuilder(analysis, context, mergedMeasurementList, mergedSchemaList);
+        new TemplatedLogicalPlanBuilder(analysis, context, newMeasurementList, newSchemaList);
 
     planBuilder =
-        planBuilder.planRawDataSource(
-            devicePath,
-            queryStatement.getResultTimeOrder(),
-            0,
-            limitValue,
-            analysis.isLastLevelUseWildcard());
-
-    if (whereExpression != null) {
-      Expression[] outputExpressions = new Expression[measurementList.size()];
-      for (int i = 0; i < analysis.getMeasurementList().size(); i++) {
-        outputExpressions[i] =
-            new TimeSeriesOperand(
-                new MeasurementPath(
-                    devicePath.concatNode(measurementList.get(i)).getNodes(), schemaList.get(i)));
-      }
-
-      planBuilder =
-          planBuilder.planFilter(
-              whereExpression,
-              outputExpressions,
-              queryStatement.isGroupByTime(),
-              queryStatement.getSelectComponent().getZoneId(),
-              queryStatement.getResultTimeOrder());
-    }
-
-    if (context.getTypeProvider().getTemplatedInfo() == null) {
-      context
-          .getTypeProvider()
-          .setTemplatedInfo(
-              new TemplatedInfo(
-                  mergedMeasurementList,
-                  mergedSchemaList,
-                  mergedSchemaList.stream()
-                      .map(IMeasurementSchema::getType)
-                      .collect(Collectors.toList()),
-                  new HashSet<>(mergedMeasurementList),
-                  queryStatement.getResultTimeOrder(),
-                  analysis.isLastLevelUseWildcard(),
-                  analysis.getDeviceViewOutputExpressions().stream()
-                      .map(Expression::getExpressionString)
-                      .collect(Collectors.toList()),
-                  analysis.getDeviceViewInputIndexesMap().values().iterator().next(),
-                  0,
-                  limitValue));
-    }
+        planBuilder
+            .planRawDataSource(
+                devicePath,
+                queryStatement.getResultTimeOrder(),
+                OFFSET_VALUE,
+                limitValue,
+                analysis.isLastLevelUseWildcard())
+            .planFilter(
+                whereExpression,
+                queryStatement.isGroupByTime(),
+                queryStatement.getSelectComponent().getZoneId(),
+                queryStatement.getResultTimeOrder());
 
     return planBuilder.getRoot();
   }

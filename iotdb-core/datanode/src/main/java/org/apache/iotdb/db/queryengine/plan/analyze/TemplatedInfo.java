@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
+import org.apache.iotdb.db.queryengine.plan.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -28,10 +30,17 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+
+import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
 
 /**
  * If in align by device query ,all queried devices are set in one template, we can store the common
@@ -46,8 +55,16 @@ public class TemplatedInfo {
   private boolean queryAllSensors;
   private List<String> selectMeasurements;
   private List<Integer> deviceToMeasurementIndexes;
-  private long offsetValue;
+  private final long offsetValue;
   private long limitValue;
+  // these variables below are use in value filter condition
+  private final Expression predicate;
+  private ZoneId zoneId;
+  private boolean keepNull;
+  // not serialize
+  private Map<String, IMeasurementSchema> schemaMap;
+  // not serialize
+  private Map<String, List<InputLocation>> layoutMap;
 
   public TemplatedInfo(
       List<String> measurementList,
@@ -59,7 +76,11 @@ public class TemplatedInfo {
       List<String> selectMeasurements,
       List<Integer> deviceToMeasurementIndexes,
       long offsetValue,
-      long limitValue) {
+      long limitValue,
+      Expression predicate,
+      ZoneId zoneId,
+      Map<String, IMeasurementSchema> schemaMap,
+      Map<String, List<InputLocation>> layoutMap) {
     this.measurementList = measurementList;
     this.schemaList = schemaList;
     this.dataTypes = dataTypes;
@@ -70,6 +91,12 @@ public class TemplatedInfo {
     this.deviceToMeasurementIndexes = deviceToMeasurementIndexes;
     this.offsetValue = offsetValue;
     this.limitValue = limitValue;
+    this.predicate = predicate;
+    if (predicate != null) {
+      this.zoneId = zoneId;
+      this.schemaMap = schemaMap;
+      this.layoutMap = layoutMap;
+    }
   }
 
   public void setMeasurementList(List<String> measurementList) {
@@ -148,6 +175,42 @@ public class TemplatedInfo {
     return this.deviceToMeasurementIndexes;
   }
 
+  public Expression getPredicate() {
+    return this.predicate;
+  }
+
+  public ZoneId getZoneId() {
+    return this.zoneId;
+  }
+
+  public boolean isKeepNull() {
+    return this.keepNull;
+  }
+
+  public Map<String, IMeasurementSchema> getSchemaMap() {
+    return this.schemaMap;
+  }
+
+  public Map<String, List<InputLocation>> getLayoutMap() {
+    return this.layoutMap;
+  }
+
+  public static Map<String, List<InputLocation>> makeLayout(List<String> measurementList) {
+    Map<String, List<InputLocation>> outputMappings = new LinkedHashMap<>();
+    int tsBlockIndex = 0;
+    outputMappings
+        .computeIfAbsent(TIMESTAMP_EXPRESSION_STRING, key -> new ArrayList<>())
+        .add(new InputLocation(tsBlockIndex, -1));
+    int valueColumnIndex = 0;
+    for (String columnName : measurementList) {
+      outputMappings
+          .computeIfAbsent(columnName, key -> new ArrayList<>())
+          .add(new InputLocation(tsBlockIndex, valueColumnIndex));
+      valueColumnIndex++;
+    }
+    return outputMappings;
+  }
+
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(measurementList.size(), byteBuffer);
     for (String measurement : measurementList) {
@@ -178,6 +241,14 @@ public class TemplatedInfo {
 
     ReadWriteIOUtils.write(offsetValue, byteBuffer);
     ReadWriteIOUtils.write(limitValue, byteBuffer);
+
+    if (predicate != null) {
+      ReadWriteIOUtils.write((byte) 1, byteBuffer);
+      Expression.serialize(predicate, byteBuffer);
+      ReadWriteIOUtils.write(zoneId.getId(), byteBuffer);
+    } else {
+      ReadWriteIOUtils.write((byte) 0, byteBuffer);
+    }
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
@@ -210,6 +281,14 @@ public class TemplatedInfo {
 
     ReadWriteIOUtils.write(offsetValue, stream);
     ReadWriteIOUtils.write(limitValue, stream);
+
+    if (predicate != null) {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      Expression.serialize(predicate, stream);
+      ReadWriteIOUtils.write(zoneId.getId(), stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    }
   }
 
   public static TemplatedInfo deserialize(ByteBuffer byteBuffer) {
@@ -260,6 +339,21 @@ public class TemplatedInfo {
 
     long limitValue = ReadWriteIOUtils.readLong(byteBuffer);
 
+    Expression predicate = null;
+    ZoneId zone = null;
+    byte hasFilter = ReadWriteIOUtils.readByte(byteBuffer);
+    Map<String, IMeasurementSchema> currentSchemaMap = null;
+    Map<String, List<InputLocation>> layoutMap = null;
+    if (hasFilter == 1) {
+      predicate = Expression.deserialize(byteBuffer);
+      zone = ZoneId.of(Objects.requireNonNull(ReadWriteIOUtils.readString(byteBuffer)));
+      currentSchemaMap = new HashMap<>();
+      for (IMeasurementSchema measurementSchema : measurementSchemaList) {
+        currentSchemaMap.put(measurementSchema.getMeasurementId(), measurementSchema);
+      }
+      layoutMap = makeLayout(measurementList);
+    }
+
     return new TemplatedInfo(
         measurementList,
         measurementSchemaList,
@@ -270,6 +364,10 @@ public class TemplatedInfo {
         selectMeasurements,
         deviceToMeasurementIndexes,
         offsetValue,
-        limitValue);
+        limitValue,
+        predicate,
+        zone,
+        currentSchemaMap,
+        layoutMap);
   }
 }

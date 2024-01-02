@@ -27,10 +27,10 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.IManager;
+import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.confignode.manager.load.cache.node.BaseNodeCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.ConfigNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.DataNodeHeartbeatCache;
@@ -67,9 +67,9 @@ public class LoadCache {
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private static final long HEARTBEAT_INTERVAL = CONF.getHeartbeatIntervalInMs();
   private static final long LEADER_ELECTION_WAITING_TIMEOUT =
-      Math.min(
-          2 * CONF.getSchemaRegionRatisRpcLeaderElectionTimeoutMaxMs(),
-          CommonDescriptor.getInstance().getConfig().getConnectionTimeoutInMS());
+      Math.max(
+          ProcedureManager.PROCEDURE_WAIT_TIME_OUT - TimeUnit.SECONDS.toMillis(2),
+          TimeUnit.SECONDS.toMillis(10));
 
   // Map<NodeId, INodeCache>
   private final Map<Integer, BaseNodeCache> nodeCacheMap;
