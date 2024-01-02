@@ -31,6 +31,8 @@ import com.google.common.util.concurrent.AtomicDouble;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.ConcurrentHashMap;
+
 public class LeaderCacheManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(LeaderCacheManager.class);
   private static final PipeConfig CONFIG = PipeConfig.getInstance();
@@ -39,6 +41,8 @@ public class LeaderCacheManager {
 
   // leader cache built by LRU
   private final Cache<String, TEndPoint> device2endpoint;
+  // a hashmap to reuse the created endpoint
+  private final ConcurrentHashMap<TEndPoint, TEndPoint> endPoints = new ConcurrentHashMap<>();
 
   public LeaderCacheManager() {
     long initMemorySizeInBytes = PipeResourceManager.memory().getTotalMemorySizeInBytes() / 10;
@@ -96,6 +100,11 @@ public class LeaderCacheManager {
   }
 
   public void updateLeaderEndPoint(String deviceId, TEndPoint endPoint) {
-    device2endpoint.put(deviceId, endPoint);
+    TEndPoint endPointFromMap = endPoints.putIfAbsent(endPoint, endPoint);
+    if (endPointFromMap != null) {
+      device2endpoint.put(deviceId, endPointFromMap);
+    } else {
+      device2endpoint.put(deviceId, endPoint);
+    }
   }
 }
