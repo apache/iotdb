@@ -22,7 +22,7 @@ package org.apache.iotdb.pipe.api.exception;
 public class PipeConnectionException extends PipeException {
 
   public static final String CONNECTION_ERROR_FORMATTER =
-      "Error occurred while connecting to receiver [TEndPoint(ip:%s, port:%s)], please check network connectivity or SSL configurations when enable SSL transmission";
+      "Error occurred while connecting to receiver %s:%s, please check network connectivity or SSL configurations when enable SSL transmission";
 
   public PipeConnectionException(String message) {
     super(message);
