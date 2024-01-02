@@ -116,6 +116,7 @@ files_to_zip="${COLLECTION_FILE} ../conf"
             $jdk_path/bin/java -version 2>&1
         else
             echo "Invalid JDK path: $jdk_path_param"
+            exit 1
         fi
     else
           java -version 2>&1
