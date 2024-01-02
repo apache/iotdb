@@ -74,8 +74,10 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
   // This method is thread-unsafe but snapshot must not be parallel with other
   // snapshots or write-plan.
   public void listenToSnapshots(List<PipeSnapshotEvent> events) {
-    snapshotCache.setLeft(queue.getTailIndex());
-    snapshotCache.setRight(events);
+    if (!isSealed.get()) {
+      snapshotCache.setLeft(queue.getTailIndex());
+      snapshotCache.setRight(events);
+    }
   }
 
   public Pair<Long, List<PipeSnapshotEvent>> findAvailableSnapshots() {

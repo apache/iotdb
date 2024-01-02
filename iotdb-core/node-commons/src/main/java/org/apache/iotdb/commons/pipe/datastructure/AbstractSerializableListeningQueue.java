@@ -54,7 +54,7 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
 
   protected final ConcurrentIterableLinkedQueue<E> queue = new ConcurrentIterableLinkedQueue<>();
 
-  private final AtomicBoolean isSealed = new AtomicBoolean();
+  protected final AtomicBoolean isSealed = new AtomicBoolean();
 
   protected AbstractSerializableListeningQueue(LinkedQueueSerializerType serializerType) {
     currentType = serializerType;
