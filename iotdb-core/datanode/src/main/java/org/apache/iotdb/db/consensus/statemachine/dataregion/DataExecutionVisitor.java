@@ -133,7 +133,6 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
           return failedEntry.getValue();
         }
       }
-      node.clearResults();
       return firstStatus;
     }
   }
@@ -164,7 +163,6 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
           return failedEntry.getValue();
         }
       }
-      node.clearResults();
       return firstStatus;
     }
   }
@@ -201,7 +199,6 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
           return failedEntry.getValue();
         }
       }
-      node.clearResults();
       return firstStatus;
     }
   }
