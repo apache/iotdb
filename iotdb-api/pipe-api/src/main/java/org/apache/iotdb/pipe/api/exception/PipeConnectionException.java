@@ -21,6 +21,8 @@ package org.apache.iotdb.pipe.api.exception;
 
 public class PipeConnectionException extends PipeException {
 
+  public static String CONNECTION_ERROR_FORMATTER = "Connect to receiver %s:%s error, because: %s";
+
   public PipeConnectionException(String message) {
     super(message);
   }

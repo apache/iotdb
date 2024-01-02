@@ -29,7 +29,10 @@ import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeCo
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Used in {@link PipeExtractor#customize(PipeParameters, PipeExtractorRuntimeConfiguration)} ,
@@ -263,9 +266,17 @@ public class PipeParameters {
     return attributes.hashCode();
   }
 
+  /**
+   * When exposing the content of this `PipeParameters` to external sources (such as `show pipes` or
+   * logging), please use this `toString` method to prevent the leakage of private information.
+   */
   @Override
   public String toString() {
-    return attributes.toString();
+    return attributes.entrySet().stream()
+        .collect(
+            Collectors.toMap(
+                Entry::getKey, entry -> ValueHider.hide(entry.getKey(), entry.getValue())))
+        .toString();
   }
 
   private static class KeyReducer {
@@ -291,6 +302,26 @@ public class PipeParameters {
         }
       }
       return key;
+    }
+  }
+
+  public static class ValueHider {
+    private static final Set<String> KEYS = new HashSet<>();
+
+    private static final String PLACEHOLDER = "******";
+
+    static {
+      KEYS.add("ssl.trust-store-pwd");
+    }
+
+    static String hide(String key, String value) {
+      if (Objects.isNull(key)) {
+        return value;
+      }
+      if (KEYS.contains(KeyReducer.reduce(key))) {
+        return PLACEHOLDER;
+      }
+      return value;
     }
   }
 }
