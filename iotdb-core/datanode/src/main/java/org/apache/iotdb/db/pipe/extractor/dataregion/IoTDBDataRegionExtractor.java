@@ -108,6 +108,7 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
 
     if (dataRegionListenPair.getLeft().equals(false)
         && dataRegionListenPair.getRight().equals(false)) {
+      // TODO: judge deletion listening logic
       canSkip = true;
       return;
     }
