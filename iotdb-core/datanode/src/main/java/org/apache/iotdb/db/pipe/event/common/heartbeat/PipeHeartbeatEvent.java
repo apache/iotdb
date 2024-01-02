@@ -131,22 +131,6 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
 
   /////////////////////////////// Delay Reporting ///////////////////////////////
 
-  private boolean hasPublishedAndAssigned() {
-    return timePublished != 0 && timeAssigned != 0;
-  }
-
-  private boolean hasAssignedAndProcessed() {
-    return timeAssigned != 0 && timeProcessed != 0;
-  }
-
-  private boolean hasProcessedAndTransferred() {
-    return timeProcessed != 0 && timeTransferred != 0;
-  }
-
-  private boolean hasPublishedAndTransferred() {
-    return timePublished != 0 && timeTransferred != 0;
-  }
-
   public void bindPipeName(String pipeName) {
     if (shouldPrintMessage) {
       this.pipeName = pipeName;
@@ -162,7 +146,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   public void onAssigned() {
     if (shouldPrintMessage) {
       timeAssigned = System.currentTimeMillis();
-      if (hasPublishedAndAssigned()) {
+      if (timePublished != 0) {
         PipeHeartbeatEventMetrics.getInstance()
             .recordPublishedToAssignedTime(timeAssigned - timePublished);
       }
@@ -172,7 +156,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   public void onProcessed() {
     if (shouldPrintMessage) {
       timeProcessed = System.currentTimeMillis();
-      if (hasAssignedAndProcessed()) {
+      if (timeAssigned != 0) {
         PipeHeartbeatEventMetrics.getInstance()
             .recordAssignedToProcessedTime(timeProcessed - timeAssigned);
       }
@@ -182,7 +166,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   public void onTransferred() {
     if (shouldPrintMessage) {
       timeTransferred = System.currentTimeMillis();
-      if (hasProcessedAndTransferred()) {
+      if (timeProcessed != 0) {
         PipeHeartbeatEventMetrics.getInstance()
             .recordProcessedToTransferredTime(timeTransferred - timeProcessed);
       }
@@ -243,14 +227,26 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   public String toString() {
     final String unknownMessage = "Unknown";
 
+    final String startTimeMessage =
+        (timePublished != 0)
+            ? DateTimeUtils.convertLongToDate(timePublished, "ms")
+            : unknownMessage;
     final String publishedToAssignedMessage =
-        hasPublishedAndAssigned() ? (timeAssigned - timePublished) + "ms" : unknownMessage;
+        (timeAssigned != 0 && timePublished != 0)
+            ? (timeAssigned - timePublished) + "ms"
+            : unknownMessage;
     final String assignedToProcessedMessage =
-        hasAssignedAndProcessed() ? (timeProcessed - timeAssigned) + "ms" : unknownMessage;
+        (timeProcessed != 0 && timeAssigned != 0)
+            ? (timeProcessed - timeAssigned) + "ms"
+            : unknownMessage;
     final String processedToTransferredMessage =
-        hasProcessedAndTransferred() ? (timeTransferred - timeProcessed) + "ms" : unknownMessage;
+        (timeTransferred != 0 && timeProcessed != 0)
+            ? (timeTransferred - timeProcessed) + "ms"
+            : unknownMessage;
     final String totalTimeMessage =
-        hasPublishedAndTransferred() ? (timeTransferred - timePublished) + "ms" : unknownMessage;
+        (timeTransferred != 0 && timePublished != 0)
+            ? (timeTransferred - timePublished) + "ms"
+            : unknownMessage;
 
     final String disruptorSizeMessage = Integer.toString(disruptorSize);
 
@@ -281,7 +277,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
         + "', dataRegionId="
         + dataRegionId
         + ", startTime="
-        + DateTimeUtils.convertLongToDate(timePublished, "ms")
+        + startTimeMessage
         + ", publishedToAssigned="
         + publishedToAssignedMessage
         + ", assignedToProcessed="
