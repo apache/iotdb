@@ -23,6 +23,11 @@ import org.apache.iotdb.pipe.api.event.Event;
 
 import java.io.IOException;
 
+/**
+ * {@link AbstractPipeListeningQueue} is the encapsulation of the {@link
+ * AbstractSerializableListeningQueue} to enable using reference count to control opening and
+ * closing.
+ */
 public abstract class AbstractPipeListeningQueue extends AbstractSerializableListeningQueue<Event> {
 
   int referenceCount = 0;
