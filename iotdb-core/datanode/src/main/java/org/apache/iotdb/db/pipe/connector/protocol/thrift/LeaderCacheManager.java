@@ -20,8 +20,6 @@
 package org.apache.iotdb.db.pipe.connector.protocol.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 
@@ -32,16 +30,10 @@ import com.google.common.util.concurrent.AtomicDouble;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.atomic.AtomicBoolean;
-
 public class LeaderCacheManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(LeaderCacheManager.class);
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  // properties required by pipe memory control framework
-  private final PipeMemoryBlock allocatedMemoryBlock;
   private final AtomicDouble memoryUsageCheatFactor = new AtomicDouble(1);
-  private final AtomicBoolean isBatchLoadEnabled = new AtomicBoolean(true);
 
   // leader cache built by LRU
   private final Cache<String, TEndPoint> device2endpoint;
@@ -50,7 +42,8 @@ public class LeaderCacheManager {
     long initMemorySizeInBytes = PipeResourceManager.memory().getTotalMemorySizeInBytes() / 100;
     long maxMemorySizeInBytes = PipeResourceManager.memory().getTotalMemorySizeInBytes() / 10;
 
-    this.allocatedMemoryBlock =
+    // properties required by pipe memory control framework
+    PipeMemoryBlock allocatedMemoryBlock =
         PipeResourceManager.memory()
             .tryAllocate(initMemorySizeInBytes)
             .setShrinkMethod(oldMemory -> Math.max(oldMemory / 2, 1))
@@ -58,7 +51,6 @@ public class LeaderCacheManager {
                 (oldMemory, newMemory) -> {
                   memoryUsageCheatFactor.set(
                       memoryUsageCheatFactor.get() * ((double) oldMemory / newMemory));
-                  isBatchLoadEnabled.set(newMemory >= CONFIG.getWalFileSizeThresholdInByte());
                   LOGGER.info(
                       "LeaderCacheManager.allocatedMemoryBlock has shrunk from {} to {}.",
                       oldMemory,
@@ -70,7 +62,6 @@ public class LeaderCacheManager {
                 (oldMemory, newMemory) -> {
                   memoryUsageCheatFactor.set(
                       memoryUsageCheatFactor.get() / ((double) newMemory / oldMemory));
-                  isBatchLoadEnabled.set(newMemory >= CONFIG.getWalFileSizeThresholdInByte());
                   LOGGER.info(
                       "LeaderCacheManager.allocatedMemoryBlock has expanded from {} to {}.",
                       oldMemory,
