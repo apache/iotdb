@@ -40,6 +40,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -49,10 +50,14 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE;
@@ -65,9 +70,11 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_LOG_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_STREAM_MODE_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_END_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_EXCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_INCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_REALTIME_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_REALTIME_MODE_KEY;
@@ -80,11 +87,31 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
   private PipeHistoricalDataRegionExtractor historicalExtractor;
   private PipeRealtimeDataRegionExtractor realtimeExtractor;
 
-  // Record these variables to provide corresponding value to tag key of monitoring metrics
+  private boolean canSkip;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
     super.validate(validator);
+
+    Pair<Boolean, Boolean> dataRegionListenPair =
+        PipeDataRegionFilter.getDataRegionListenPair(
+            validator
+                .getParameters()
+                .getStringOrDefault(
+                    Arrays.asList(EXTRACTOR_INCLUSION_KEY, SOURCE_INCLUSION_KEY),
+                    EXTRACTOR_INCLUSION_DEFAULT_VALUE),
+            validator
+                .getParameters()
+                .getStringOrDefault(
+                    Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
+                    EXTRACTOR_EXCLUSION_DEFAULT_VALUE));
+
+    if (dataRegionListenPair.getLeft().equals(false)
+        && dataRegionListenPair.getRight().equals(false)) {
+      canSkip = true;
+      return;
+    }
+
     // Check whether the pattern is legal
     validatePattern(
         validator
@@ -246,6 +273,9 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
   @Override
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
+    if (canSkip) {
+      return;
+    }
     super.customize(parameters, configuration);
 
     historicalExtractor.customize(parameters, configuration);
@@ -257,6 +287,9 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
 
   @Override
   public void start() throws Exception {
+    if (canSkip) {
+      return;
+    }
     super.start();
 
     final AtomicReference<Exception> exceptionHolder = new AtomicReference<>(null);
@@ -318,6 +351,9 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
 
   @Override
   public Event supply() throws Exception {
+    if (canSkip) {
+      return null;
+    }
     Event event =
         historicalExtractor.hasConsumedAll()
             ? realtimeExtractor.supply()
@@ -336,6 +372,9 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
 
   @Override
   public void close() throws Exception {
+    if (canSkip) {
+      return;
+    }
     historicalExtractor.close();
     realtimeExtractor.close();
     if (Objects.nonNull(taskID)) {

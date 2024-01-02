@@ -40,6 +40,7 @@ import static org.apache.iotdb.commons.pipe.datastructure.PipeInclusionNormalize
 
 public abstract class IoTDBCommonExtractor implements PipeExtractor {
 
+  // Record these variables to provide corresponding value to tag key of monitoring metrics
   protected String taskID;
   protected String pipeName;
   protected long creationTime;
