@@ -142,4 +142,13 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
     }
     super.deserializeFromFile(snapshotName);
   }
+
+  /////////////////////////////// Close ///////////////////////////////
+
+  @Override
+  public synchronized void close() throws IOException {
+    super.close();
+    snapshotCache.setLeft(null);
+    snapshotCache.setRight(new ArrayList<>());
+  }
 }
