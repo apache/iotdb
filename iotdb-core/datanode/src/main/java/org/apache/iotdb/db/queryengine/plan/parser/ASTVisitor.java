@@ -713,13 +713,19 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       return SchemaFilterFactory.createPathContainsFilter(
           parseStringLiteral(ctx.deviceContainsExpression().value.getText()));
     } else {
-      if (ctx.templateEqualExpression().OPERATOR_SEQ() != null) {
-        return SchemaFilterFactory.createTemplateNameFilter(
-            parseIdentifier(ctx.templateEqualExpression().templateName.getText()), true);
+      String templateName = null;
+      boolean isEqual = true;
+      if (ctx.templateEqualExpression().operator_is() != null) {
+        if (ctx.templateEqualExpression().operator_not() != null) {
+          isEqual = false;
+        }
       } else {
-        return SchemaFilterFactory.createTemplateNameFilter(
-            parseIdentifier(ctx.templateEqualExpression().templateName.getText()), false);
+        templateName = parseStringLiteral(ctx.templateEqualExpression().templateName.getText());
+        if (ctx.templateEqualExpression().OPERATOR_NEQ() != null) {
+          isEqual = false;
+        }
       }
+      return SchemaFilterFactory.createTemplateNameFilter(templateName, isEqual);
     }
   }
 

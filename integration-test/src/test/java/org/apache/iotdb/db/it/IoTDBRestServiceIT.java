@@ -1366,7 +1366,7 @@ public class IoTDBRestServiceIT {
     List<Object> values4 =
         new ArrayList<Object>() {
           {
-            add("null");
+            add(null);
           }
         };
     Assert.assertEquals(columnNames, columnNamesResult);
@@ -2017,7 +2017,7 @@ public class IoTDBRestServiceIT {
     List<Object> values4 =
         new ArrayList<Object>() {
           {
-            add("null");
+            add(null);
           }
         };
     Assert.assertEquals(columnNames, columnNamesResult);
