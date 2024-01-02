@@ -36,6 +36,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * {@link AbstractPipeListeningQueue} is the encapsulation of the {@link
@@ -82,7 +83,8 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
 
   public Pair<Long, List<PipeSnapshotEvent>> findAvailableSnapshots() {
     // TODO: configure maximum number of events from snapshot to queue tail
-    if (snapshotCache.getLeft() < queue.getTailIndex() - 1000) {
+    if (!Objects.isNull(snapshotCache.getLeft())
+        && snapshotCache.getLeft() < queue.getTailIndex() - 1000) {
       snapshotCache.setLeft(null);
       snapshotCache.setRight(new ArrayList<>());
     }
