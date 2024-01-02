@@ -59,7 +59,7 @@ public class MetaProgressIndex extends ProgressIndex {
   public void serialize(ByteBuffer byteBuffer) {
     lock.readLock().lock();
     try {
-      ProgressIndexType.SCHEMA_PROGRESS_INDEX.serialize(byteBuffer);
+      ProgressIndexType.META_PROGRESS_INDEX.serialize(byteBuffer);
 
       ReadWriteIOUtils.write(index, byteBuffer);
     } finally {
@@ -71,7 +71,7 @@ public class MetaProgressIndex extends ProgressIndex {
   public void serialize(OutputStream stream) throws IOException {
     lock.readLock().lock();
     try {
-      ProgressIndexType.SCHEMA_PROGRESS_INDEX.serialize(stream);
+      ProgressIndexType.META_PROGRESS_INDEX.serialize(stream);
 
       ReadWriteIOUtils.write(index, stream);
     } finally {
@@ -150,7 +150,7 @@ public class MetaProgressIndex extends ProgressIndex {
   }
 
   public ProgressIndexType getType() {
-    return ProgressIndexType.SCHEMA_PROGRESS_INDEX;
+    return ProgressIndexType.META_PROGRESS_INDEX;
   }
 
   @Override
@@ -160,13 +160,13 @@ public class MetaProgressIndex extends ProgressIndex {
 
   public static MetaProgressIndex deserializeFrom(ByteBuffer byteBuffer) {
     final MetaProgressIndex metaProgressIndex = new MetaProgressIndex();
-    metaProgressIndex.index = ReadWriteIOUtils.readInt(byteBuffer);
+    metaProgressIndex.index = ReadWriteIOUtils.readLong(byteBuffer);
     return metaProgressIndex;
   }
 
   public static MetaProgressIndex deserializeFrom(InputStream stream) throws IOException {
     final MetaProgressIndex metaProgressIndex = new MetaProgressIndex();
-    metaProgressIndex.index = ReadWriteIOUtils.readInt(stream);
+    metaProgressIndex.index = ReadWriteIOUtils.readLong(stream);
     return metaProgressIndex;
   }
 
