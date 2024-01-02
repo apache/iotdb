@@ -21,6 +21,8 @@ package org.apache.iotdb.db.pipe.agent.task;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
@@ -30,6 +32,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
+import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaNodeListeningQueue;
 import org.apache.iotdb.db.pipe.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeBuilder;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeTaskBuilder;
@@ -38,6 +41,7 @@ import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -48,6 +52,8 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public class PipeTaskDataNodeAgent extends PipeTaskAgent {
 
@@ -95,6 +101,38 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
         .getRuntimeMeta()
         .getConsensusGroupId2TaskMetaMap()
         .put(consensusGroupId, pipeTaskMeta);
+  }
+
+  @Override
+  public List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChangesInternal(
+      List<PipeMeta> pipeMetaListFromCoordinator) {
+    final ConcurrentMap<Integer, Long> earliestIndexMap = new ConcurrentHashMap<>();
+
+    pipeMetaListFromCoordinator.forEach(
+        pipeMeta -> {
+          Map<Integer, PipeTaskMeta> metaMap =
+              pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
+          for (SchemaRegionId regionId : SchemaEngine.getInstance().getAllSchemaRegionIds()) {
+            int id = regionId.getId();
+
+            if (!earliestIndexMap.containsKey(id)) {
+              earliestIndexMap.put(id, Long.MAX_VALUE);
+            }
+            PipeTaskMeta schemaMeta = metaMap.get(id);
+            if (schemaMeta != null) {
+              ProgressIndex schemaIndex = schemaMeta.getProgressIndex();
+              if (schemaIndex instanceof MetaProgressIndex
+                  && ((MetaProgressIndex) schemaIndex).getIndex() < earliestIndexMap.get(id)) {
+                earliestIndexMap.put(id, ((MetaProgressIndex) schemaIndex).getIndex());
+              }
+            }
+          }
+        });
+
+    earliestIndexMap.forEach(
+        (schemaId, index) -> SchemaNodeListeningQueue.getInstance(schemaId).removeBefore(index));
+
+    return super.handlePipeMetaChangesInternal(pipeMetaListFromCoordinator);
   }
 
   public synchronized void stopAllPipesWithCriticalException() {

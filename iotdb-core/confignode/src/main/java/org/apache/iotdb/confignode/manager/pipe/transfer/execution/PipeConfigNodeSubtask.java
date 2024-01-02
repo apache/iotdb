@@ -83,7 +83,6 @@ public class PipeConfigNodeSubtask extends PipeSubtask {
     initExtractor(extractorAttributes);
     initProcessor(processorAttributes);
     initConnector(connectorAttributes);
-    // TODO: connect extractor, processor and connector
   }
 
   private void initExtractor(Map<String, String> extractorAttributes) throws Exception {

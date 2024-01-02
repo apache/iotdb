@@ -313,7 +313,7 @@ public abstract class PipeTaskAgent {
     }
   }
 
-  private List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChangesInternal(
+  protected List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChangesInternal(
       List<PipeMeta> pipeMetaListFromCoordinator) {
     // Do nothing if node is removing or removed
     if (isShutdown()) {

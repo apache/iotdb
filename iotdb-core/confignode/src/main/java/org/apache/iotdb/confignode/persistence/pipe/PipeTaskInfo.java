@@ -20,6 +20,8 @@
 package org.apache.iotdb.confignode.persistence.pipe;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
@@ -445,14 +447,28 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
     pipeMetaKeeper.clear();
 
+    AtomicLong earliestIndex = new AtomicLong(Long.MAX_VALUE);
+
     plan.getPipeMetaList()
         .forEach(
             pipeMeta -> {
               pipeMetaKeeper.addPipeMeta(pipeMeta.getStaticMeta().getPipeName(), pipeMeta);
               LOGGER.info("Recording pipe meta: {}", pipeMeta);
+
+              ProgressIndex configIndex =
+                  pipeMeta
+                      .getRuntimeMeta()
+                      .getConsensusGroupId2TaskMetaMap()
+                      .get(Integer.MIN_VALUE)
+                      .getProgressIndex();
+              if (configIndex instanceof MetaProgressIndex
+                  && ((MetaProgressIndex) configIndex).getIndex() < earliestIndex.get()) {
+                earliestIndex.set(((MetaProgressIndex) configIndex).getIndex());
+              }
             });
 
     PipeConfigNodeAgent.task().handlePipeMetaChanges(plan.getPipeMetaList());
+    ConfigPlanListeningQueue.getInstance().removeBefore(earliestIndex.get());
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
