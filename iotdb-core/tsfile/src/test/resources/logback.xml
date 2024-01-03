@@ -65,7 +65,7 @@
             <onMismatch>DENY</onMismatch>
         </filter>
     </appender>
-     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEINFO">
+    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEINFO">
         <file>${LOG_PATH}/log_info.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
             <fileNamePattern>${LOG_PATH}/log-info.%i.log</fileNamePattern>
