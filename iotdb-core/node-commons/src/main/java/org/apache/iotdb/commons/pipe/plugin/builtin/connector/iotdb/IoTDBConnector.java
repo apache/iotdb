@@ -55,6 +55,12 @@ public abstract class IoTDBConnector implements PipeConnector {
 
   protected boolean isTabletBatchModeEnabled = true;
 
+  private static final String PARSE_URL_ERROR_FORMATTER =
+      "Exception occurred while parsing node urls from target servers: {}";
+
+  private static final String PARSE_URL_ERROR_MESSAGE =
+      "Error occurred while parsing node urls from target servers, please check the specified 'ip':'port' or 'node-urls'";
+
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
     final PipeParameters parameters = validator.getParameters();
@@ -128,9 +134,8 @@ public abstract class IoTDBConnector implements PipeConnector {
                 Arrays.asList(parameters.getStringByKeys(SINK_IOTDB_NODE_URLS_KEY).split(","))));
       }
     } catch (Exception e) {
-      throw new PipeParameterNotValidException(
-          String.format(
-              PipeParameterNotValidException.PARSE_URL_ERROR_FORMATTER, givenNodeUrls, e));
+      LOGGER.warn(PARSE_URL_ERROR_FORMATTER, e.toString());
+      throw new PipeParameterNotValidException(PARSE_URL_ERROR_MESSAGE);
     }
 
     checkNodeUrls(givenNodeUrls);
@@ -140,18 +145,12 @@ public abstract class IoTDBConnector implements PipeConnector {
   private void checkNodeUrls(Set<TEndPoint> nodeUrls) throws PipeParameterNotValidException {
     for (TEndPoint nodeUrl : nodeUrls) {
       if (Objects.isNull(nodeUrl.ip) || nodeUrl.ip.isEmpty()) {
-        throw new PipeParameterNotValidException(
-            String.format(
-                PipeParameterNotValidException.PARSE_URL_ERROR_FORMATTER,
-                nodeUrls,
-                "ip cannot be empty"));
+        LOGGER.warn(PARSE_URL_ERROR_FORMATTER, "ip cannot be empty");
+        throw new PipeParameterNotValidException(PARSE_URL_ERROR_MESSAGE);
       }
       if (nodeUrl.port == 0) {
-        throw new PipeParameterNotValidException(
-            String.format(
-                PipeParameterNotValidException.PARSE_URL_ERROR_FORMATTER,
-                nodeUrls,
-                "port cannot be empty"));
+        LOGGER.warn(PARSE_URL_ERROR_FORMATTER, "port cannot be empty");
+        throw new PipeParameterNotValidException(PARSE_URL_ERROR_MESSAGE);
       }
     }
   }

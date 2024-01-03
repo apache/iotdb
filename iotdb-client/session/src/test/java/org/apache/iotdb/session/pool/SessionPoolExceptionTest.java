@@ -69,7 +69,14 @@ public class SessionPoolExceptionTest {
   public void setUp() {
     MockitoAnnotations.initMocks(this);
 
-    sessionPool = new SessionPool(Arrays.asList("host:11"), "user", "password", 10);
+    sessionPool =
+        new SessionPool.Builder()
+            .nodeUrls(Collections.singletonList("host:11"))
+            .user("user")
+            .password("password")
+            .maxSize(10)
+            .enableAutoFetch(false)
+            .build();
     ConcurrentLinkedDeque<ISession> queue = new ConcurrentLinkedDeque<>();
     queue.add(session);
     Whitebox.setInternalState(sessionPool, "queue", queue);
