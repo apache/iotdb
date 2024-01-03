@@ -506,15 +506,13 @@ public class PartitionManager {
         }
       }
     } catch (NotEnoughDataNodeException e) {
-      String prompt = "ConfigNode failed to extend Region because there are not enough DataNodes";
-      LOGGER.error(prompt);
+      LOGGER.error(e.getMessage());
       result.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
-      result.setMessage(prompt);
+      result.setMessage(e.getMessage());
     } catch (DatabaseNotExistsException e) {
-      String prompt = "ConfigNode failed to extend Region because some StorageGroup doesn't exist.";
-      LOGGER.error(prompt);
+      LOGGER.error(e.getMessage());
       result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
-      result.setMessage(prompt);
+      result.setMessage(e.getMessage());
     }
 
     return result;
