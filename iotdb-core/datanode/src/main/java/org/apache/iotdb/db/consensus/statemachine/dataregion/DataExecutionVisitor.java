@@ -244,7 +244,11 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
 
   @Override
   public TSStatus visitLoadTsFileCommand(LoadTsFileCommandNode node, DataRegion context) {
-    LOGGER.info("Receive load command node {}, data region {}", node, context);
+    LOGGER.info(
+        "Receive load command node {}, data region {}-{}",
+        node,
+        context.getDatabaseName(),
+        context.getDataRegionId());
     return StorageEngine.getInstance().executeLoadCommand(context, node);
   }
 }

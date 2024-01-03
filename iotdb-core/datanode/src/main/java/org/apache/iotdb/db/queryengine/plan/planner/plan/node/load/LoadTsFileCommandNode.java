@@ -135,12 +135,12 @@ public class LoadTsFileCommandNode extends WritePlanNode {
     InputStream stream = new ByteArrayInputStream(buffer.array());
     try {
       ReadWriteIOUtils.readShort(stream); // read PlanNodeType
-      final int commandIndex = ReadWriteIOUtils.read(buffer);
+      final int commandIndex = ReadWriteIOUtils.readInt(stream);
       final String uuid = ReadWriteIOUtils.readString(stream);
       final boolean isGeneratedByPipe = ReadWriteIOUtils.readBool(stream);
       return new LoadTsFileCommandNode(
           PlanNodeId.deserialize(stream),
-          LoadTsFileScheduler.LoadCommand.values()[commandIndex],
+          LoadCommand.values()[commandIndex],
           uuid,
           isGeneratedByPipe);
     } catch (IOException e) {
