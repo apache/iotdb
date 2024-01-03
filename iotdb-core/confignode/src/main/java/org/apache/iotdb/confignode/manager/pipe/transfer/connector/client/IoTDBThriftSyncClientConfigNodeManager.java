@@ -31,10 +31,7 @@ import java.util.List;
 public class IoTDBThriftSyncClientConfigNodeManager extends IoTDBThriftSyncClientManager {
 
   public IoTDBThriftSyncClientConfigNodeManager(
-      List<TEndPoint> endPoints,
-      boolean useSSL,
-      String trustStorePath,
-      String trustStorePwd) {
+      List<TEndPoint> endPoints, boolean useSSL, String trustStorePath, String trustStorePwd) {
     super(endPoints, useSSL, trustStorePath, trustStorePwd);
   }
 
