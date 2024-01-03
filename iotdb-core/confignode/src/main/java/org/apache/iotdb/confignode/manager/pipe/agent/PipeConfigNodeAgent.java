@@ -31,7 +31,7 @@ public class PipeConfigNodeAgent {
   /** Private constructor to prevent users from creating a new instance. */
   private PipeConfigNodeAgent() {
     pipeConfigNodeTaskAgent = new PipeTaskConfigNodeAgent();
-    pipePluginConfigNodeAgent = new PipePluginConfigNodeAgent();
+    pipePluginConfigNodeAgent = new PipePluginConfigNodeAgent(null);
   }
 
   /** The singleton holder of PipeAgent. */
