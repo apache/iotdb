@@ -396,9 +396,9 @@ public class BTreePageManager extends PageManager {
    * Since transplant and replacement may invalidate page instance held by a blocked read-thread,
    * the read-thread need to validate its page object once it obtained the lock.
    *
-   * @param initPage page instance held before lock
-   * @param parent flush node which contains latest segment address
-   * @param cxt update context if necessary
+   * @param initPage page instance with read lock held
+   * @param parent MTree node to read children, containing latest segment address
+   * @param cxt update context if page/segment modified
    * @return validated page
    */
   private ISchemaPage validatePage(ISchemaPage initPage, ICachedMNode parent, SchemaPageContext cxt)
