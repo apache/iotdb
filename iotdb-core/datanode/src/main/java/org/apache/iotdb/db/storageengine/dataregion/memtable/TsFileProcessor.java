@@ -1343,7 +1343,7 @@ public class TsFileProcessor {
       logger.info(
           "The compression ratio of tsfile {} is {}, totalMemTableSize: {}, the file size: {}",
           writer.getFile().getAbsolutePath(),
-          compressionRatio,
+          String.format("%.2f", compressionRatio),
           totalMemTableSize,
           writer.getPos());
       String dataRegionId = dataRegionInfo.getDataRegion().getDataRegionId();
@@ -1361,8 +1361,14 @@ public class TsFileProcessor {
 
   /** end file and write some meta */
   private void endFile() throws IOException, TsFileProcessorException {
+    if (logger.isDebugEnabled()) {
+      logger.debug("Start to end file {}", tsFileResource);
+    }
     writer.endFile();
     tsFileResource.serialize();
+    if (logger.isDebugEnabled()) {
+      logger.debug("Ended file {}", tsFileResource);
+    }
     // remove this processor from Closing list in StorageGroupProcessor,
     // mark the TsFileResource closed, no need writer anymore
     for (CloseFileListener closeFileListener : closeFileListeners) {

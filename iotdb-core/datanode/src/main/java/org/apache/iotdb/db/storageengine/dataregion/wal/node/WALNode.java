@@ -506,7 +506,7 @@ public class WALNode implements IWALNode {
             identifier,
             memTable.getMemTableId(),
             tsFile,
-            effectiveInfoRatio,
+            String.format("%.4f", effectiveInfoRatio),
             config.getWalMinEffectiveInfoRatio(),
             memTable.getTVListsRamCost());
       }
@@ -573,7 +573,7 @@ public class WALNode implements IWALNode {
               "WAL node-{} snapshots memTable-{} to wal files because Effective information ratio {} is below wal min effective info ratio {}, memTable size is {}.",
               identifier,
               memTable.getMemTableId(),
-              effectiveInfoRatio,
+              String.format("%.4f", effectiveInfoRatio),
               config.getWalMinEffectiveInfoRatio(),
               memTable.getTVListsRamCost());
           WRITING_METRICS.recordMemTableRamWhenCauseSnapshot(
