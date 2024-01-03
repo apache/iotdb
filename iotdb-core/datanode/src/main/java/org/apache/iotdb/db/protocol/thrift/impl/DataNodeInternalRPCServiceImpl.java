@@ -1259,7 +1259,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 Tag.NAME.toString(),
                 SYSTEM)
             .getValue();
-    LOGGER.info("[Heartbeat] disk space: {}, {}", availableDisk, totalDisk);
 
     if (availableDisk != 0 && totalDisk != 0) {
       double freeDiskRatio = availableDisk / totalDisk;
