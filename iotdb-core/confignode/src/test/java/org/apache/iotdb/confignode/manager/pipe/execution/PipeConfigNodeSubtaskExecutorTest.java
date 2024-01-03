@@ -51,7 +51,7 @@ public class PipeConfigNodeSubtaskExecutorTest {
     subtask =
         Mockito.spy(
             new PipeConfigNodeSubtask(
-                "PipeProcessorSubtaskExecutorTest",
+                "PipeConfigNodeSubtaskExecutorTest",
                 System.currentTimeMillis(),
                 new HashMap<>(),
                 new HashMap<>(),

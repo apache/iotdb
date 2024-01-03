@@ -17,12 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb;
+package org.apache.iotdb.commons.pipe.extractor;
 
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.pipe.api.PipeExtractor;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_KEY;
@@ -33,6 +39,16 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.datastructure.PipeInclusionNormalizer.allLegal;
 
 public abstract class IoTDBCommonExtractor implements PipeExtractor {
+
+  // Record these variables to provide corresponding value to tag key of monitoring metrics
+  protected String taskID;
+  protected String pipeName;
+  protected long creationTime;
+  protected int regionId;
+  protected PipeTaskMeta pipeTaskMeta;
+  protected boolean isForwardingPipeRequests;
+  protected final AtomicBoolean hasBeenStarted = new AtomicBoolean(false);
+
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
     validator.validate(
@@ -48,6 +64,33 @@ public abstract class IoTDBCommonExtractor implements PipeExtractor {
             .getStringOrDefault(
                 Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
                 EXTRACTOR_EXCLUSION_DEFAULT_VALUE));
+  }
+
+  @Override
+  public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
+      throws Exception {
+    PipeTaskExtractorRuntimeEnvironment environment =
+        ((PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment());
+    regionId = environment.getRegionId();
+    pipeName = environment.getPipeName();
+    creationTime = environment.getCreationTime();
+    taskID = pipeName + "_" + regionId + "_" + creationTime;
+    pipeTaskMeta = environment.getPipeTaskMeta();
+
+    isForwardingPipeRequests =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(
+                PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
+                PipeExtractorConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
+            PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
+  }
+
+  @Override
+  public void start() throws Exception {
+    if (hasBeenStarted.get()) {
+      return;
+    }
+    hasBeenStarted.set(true);
   }
 
   protected IoTDBCommonExtractor() {}

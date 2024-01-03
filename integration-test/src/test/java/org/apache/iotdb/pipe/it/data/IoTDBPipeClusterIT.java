@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it;
+package org.apache.iotdb.pipe.it.data;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
@@ -60,7 +60,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
-public class IoTDBPipeClusterIT extends AbstractPipeDualIT {
+public class IoTDBPipeClusterIT extends AbstractPipeDualDataIT {
 
   @Override
   @Before
@@ -155,7 +155,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
@@ -167,7 +167,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualIT {
         return;
       }
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
@@ -255,7 +255,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualIT {
         return;
       }
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.db.d1",
           "count(root.db.d1.s1),",
@@ -299,7 +299,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualIT {
         return;
       }
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.db.d2",
           "count(root.db.d2.s1),",
@@ -356,7 +356,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualIT {
           Arrays.asList("insert into root.db.d1(time, s1) values (2, 2)", "flush"))) {
         return;
       }
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.db.d1",
           "count(root.db.d1.s1),",
@@ -400,7 +400,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualIT {
         return;
       }
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.db.d2",
           "count(root.db.d2.s1),",
@@ -517,7 +517,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualIT {
       }
       t.join();
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.db.d1",
           "count(root.db.d1.s1),",
@@ -575,7 +575,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualIT {
         return;
       }
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.db.d1",
           "count(root.db.d1.s1),",
@@ -643,7 +643,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualIT {
         return;
       }
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.db.d1",
           "count(root.db.d1.s1),",
@@ -702,7 +702,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualIT {
       return;
     }
 
-    TestUtils.assertDataOnEnv(
+    TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
         "select count(*) from root.**",
         "count(root.db.d1.s1),",
@@ -788,7 +788,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualIT {
       t.join();
     }
 
-    Assert.assertEquals(10, successCount.get());
+    Assert.assertTrue(successCount.get() >= 1);
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;

@@ -253,8 +253,8 @@ public class ConcurrentIterableLinkedQueue<E> {
      * added.
      *
      * @param waitTimeMillis the maximum time to wait in milliseconds
-     * @return the next element in the queue. null if the queue is closed, or if the waiting time
-     *     elapsed, or the thread is interrupted
+     * @return the next element in the queue. {@code null} if the queue is closed, or if the waiting
+     *     time elapsed, or the thread is interrupted
      */
     public E next(long waitTimeMillis) {
       lock.writeLock().lock();

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it;
+package org.apache.iotdb.pipe.it.data;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
@@ -46,7 +46,7 @@ import java.util.Map;
 /** Test pipe's basic functionalities under multiple cluster and consensus protocol settings. */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
-public class IoTDBPipeProtocolIT extends AbstractPipeDualIT {
+public class IoTDBPipeProtocolIT extends AbstractPipeDualDataIT {
 
   @Override
   @Before
@@ -213,7 +213,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
@@ -253,7 +253,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           senderEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
@@ -294,7 +294,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
@@ -305,7 +305,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualIT {
         return;
       }
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
@@ -320,7 +320,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualIT {
       }
 
       Thread.sleep(5000);
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
@@ -417,7 +417,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualIT {
         return;
       }
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
@@ -442,7 +442,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualIT {
         return;
       }
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",

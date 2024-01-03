@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it;
+package org.apache.iotdb.pipe.it.data;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
@@ -52,7 +52,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.tryExecuteNonQueryWithRetry
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
-public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
+public class IoTDBPipeLifeCycleIT extends AbstractPipeDualDataIT {
   @Test
   public void testLifeCycleWithHistoryEnabled() throws Exception {
     DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -90,7 +90,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
 
       Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add("1,1.0,");
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
 
       if (!TestUtils.tryExecuteNonQueryWithRetry(
@@ -99,7 +99,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
       }
 
       expectedResSet.add("2,2.0,");
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
 
       Assert.assertEquals(
@@ -110,14 +110,14 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
         return;
       }
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
       expectedResSet.add("3,3.0,");
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
     }
   }
@@ -169,7 +169,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
 
       Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add("2,2.0,");
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
 
       Assert.assertEquals(
@@ -180,7 +180,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
         return;
       }
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
     }
   }
@@ -224,7 +224,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
 
       Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add("1,1.0,");
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
 
       if (!TestUtils.tryExecuteNonQueryWithRetry(
@@ -233,7 +233,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
       }
 
       expectedResSet.add("2,2.0,");
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
 
       Assert.assertEquals(
@@ -244,7 +244,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
         return;
       }
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
     }
   }
@@ -288,7 +288,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
 
       Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add("1,1.0,");
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
 
       if (!TestUtils.tryExecuteNonQueryWithRetry(
@@ -297,7 +297,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
       }
 
       expectedResSet.add("2,2.0,");
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
 
       Assert.assertEquals(
@@ -308,7 +308,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
         return;
       }
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
     }
   }
@@ -352,7 +352,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
 
       Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add("1,1.0,");
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
 
       if (!TestUtils.tryExecuteNonQueryWithRetry(
@@ -361,7 +361,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
       }
 
       expectedResSet.add("2,2.0,");
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
 
       Assert.assertEquals(
@@ -372,7 +372,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
         return;
       }
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
     }
   }
@@ -414,7 +414,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
       expectedResSet.add("1,1.0,");
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
 
       if (!TestUtils.tryExecuteNonQueryWithRetry(
@@ -423,7 +423,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
       }
 
       expectedResSet.add("2,2.0,");
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
     }
 
@@ -444,7 +444,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
       }
 
       expectedResSet.add("3,3.0,");
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
     }
   }
@@ -504,7 +504,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
       }
       t.join();
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
@@ -550,7 +550,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
         return;
       }
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
@@ -565,7 +565,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
       }
 
       Thread.sleep(5000);
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
@@ -669,9 +669,9 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
       expectedResSet.add(i + ",1.0,");
     }
 
-    TestUtils.assertDataOnEnv(
+    TestUtils.assertDataEventuallyOnEnv(
         senderEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
-    TestUtils.assertDataOnEnv(
+    TestUtils.assertDataEventuallyOnEnv(
         receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
 
     try {
@@ -704,9 +704,9 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
     for (int i = 400; i < 600; ++i) {
       expectedResSet.add(i + ",1.0,");
     }
-    TestUtils.assertDataOnEnv(
+    TestUtils.assertDataEventuallyOnEnv(
         senderEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
-    TestUtils.assertDataOnEnv(
+    TestUtils.assertDataEventuallyOnEnv(
         receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
   }
 

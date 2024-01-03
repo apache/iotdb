@@ -59,8 +59,6 @@ public class PlainQueueSerializer<E> implements QueueSerializer<E> {
       ConcurrentIterableLinkedQueue<E> queue,
       Function<ByteBuffer, E> elementDeserializationFunction)
       throws IOException {
-    queue.clear();
-
     try (FileChannel channel = inputStream.getChannel()) {
       queue.setFirstIndex(ReadWriteIOUtils.readInt(inputStream));
       while (true) {

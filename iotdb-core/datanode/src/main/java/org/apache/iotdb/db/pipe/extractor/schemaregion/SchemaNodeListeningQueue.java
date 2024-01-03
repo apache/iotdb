@@ -19,10 +19,17 @@
 
 package org.apache.iotdb.db.pipe.extractor.schemaregion;
 
-import org.apache.iotdb.commons.pipe.datastructure.AbstractSerializableListeningQueue;
-import org.apache.iotdb.commons.pipe.datastructure.LinkedQueueSerializerType;
+import org.apache.iotdb.commons.pipe.datastructure.AbstractPipeListeningQueue;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
+import org.apache.iotdb.commons.pipe.event.SerializableEvent;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaSerializableEventType;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeWriteSchemaPlanEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedConfigSchemaNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWriteSchemaNode;
+import org.apache.iotdb.pipe.api.event.Event;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,36 +37,71 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class SchemaNodeListeningQueue extends AbstractSerializableListeningQueue<PlanNode> {
+public class SchemaNodeListeningQueue extends AbstractPipeListeningQueue {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SchemaNodeListeningQueue.class);
   private static final String SNAPSHOT_FILE_NAME = "pipe_listening_queue.bin";
 
   private SchemaNodeListeningQueue() {
-    super(LinkedQueueSerializerType.PLAIN);
+    super();
   }
 
   /////////////////////////////// Function ///////////////////////////////
 
   public void tryListenToNode(PlanNode node) {
-    if (queue.hasAnyIterators() && PipeSchemaNodeFilter.shouldBeListenedByQueue(node)) {
-      super.listenToElement(node);
+    if (PipeSchemaNodeFilter.shouldBeListenedByQueue(node)) {
+      PipeWriteSchemaPlanEvent event;
+      switch (node.getType()) {
+        case PIPE_ENRICHED_WRITE_SCHEMA:
+          event =
+              new PipeWriteSchemaPlanEvent(
+                  ((PipeEnrichedWriteSchemaNode) node).getWriteSchemaNode(), true);
+          break;
+        case PIPE_ENRICHED_CONFIG_SCHEMA:
+          event =
+              new PipeWriteSchemaPlanEvent(
+                  ((PipeEnrichedConfigSchemaNode) node).getConfigSchemaNode(), true);
+          break;
+        default:
+          event = new PipeWriteSchemaPlanEvent(node, false);
+      }
+      event.increaseReferenceCount(SchemaNodeListeningQueue.class.getName());
+      super.listenToElement(event);
     }
+  }
+
+  public void tryListenToSnapshot(List<String> snapshotPaths) {
+    List<PipeSnapshotEvent> events = new ArrayList<>();
+    for (String snapshotPath : snapshotPaths) {
+      PipeSchemaRegionSnapshotEvent event = new PipeSchemaRegionSnapshotEvent(snapshotPath);
+      event.increaseReferenceCount(SchemaNodeListeningQueue.class.getName());
+      events.add(event);
+    }
+    super.listenToSnapshots(events);
   }
 
   /////////////////////////////// Element Ser / De Method ////////////////////////////////
 
   @Override
-  protected ByteBuffer serializeToByteBuffer(PlanNode node) {
-    return node.serializeToByteBuffer();
+  protected ByteBuffer serializeToByteBuffer(Event event) {
+    return ((SerializableEvent) event).serializeToByteBuffer();
   }
 
   @Override
-  protected PlanNode deserializeFromByteBuffer(ByteBuffer byteBuffer) {
-    return PlanNodeType.deserialize(byteBuffer);
+  protected Event deserializeFromByteBuffer(ByteBuffer byteBuffer) {
+    try {
+      SerializableEvent result = PipeSchemaSerializableEventType.deserialize(byteBuffer);
+      ((EnrichedEvent) result).increaseReferenceCount(SchemaNodeListeningQueue.class.getName());
+      return result;
+    } catch (IOException e) {
+      LOGGER.error("Failed to load snapshot from byteBuffer {}.", byteBuffer);
+    }
+    return null;
   }
 
   /////////////////////////////// Snapshot ///////////////////////////////

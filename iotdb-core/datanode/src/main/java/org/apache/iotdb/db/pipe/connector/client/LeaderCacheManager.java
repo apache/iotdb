@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.protocol.thrift;
+package org.apache.iotdb.db.pipe.connector.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ConcurrentHashMap;
 
-public class LeaderCacheManager {
+class LeaderCacheManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(LeaderCacheManager.class);
   private static final PipeConfig CONFIG = PipeConfig.getInstance();
 

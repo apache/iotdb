@@ -28,8 +28,8 @@ public enum LinkedQueueSerializerType {
   private static final Map<Byte, LinkedQueueSerializerType> TYPE_MAP = new HashMap<>();
 
   static {
-    for (final LinkedQueueSerializerType version : LinkedQueueSerializerType.values()) {
-      TYPE_MAP.put(version.getType(), version);
+    for (final LinkedQueueSerializerType type : LinkedQueueSerializerType.values()) {
+      TYPE_MAP.put(type.getType(), type);
     }
   }
 

@@ -22,19 +22,23 @@ package org.apache.iotdb.commons.pipe.event;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.resource.PipeSnapshotResourceManager;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
-public abstract class PipeSnapshotEvent extends EnrichedEvent {
+public abstract class PipeSnapshotEvent extends EnrichedEvent implements SerializableEvent {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSnapshotEvent.class);
 
   protected final PipeSnapshotResourceManager resourceManager;
   protected String snapshotPath;
+  protected ProgressIndex progressIndex;
 
-  public PipeSnapshotEvent(
+  protected PipeSnapshotEvent(
       String snapshotPath,
       String pipeName,
       PipeTaskMeta pipeTaskMeta,
@@ -43,6 +47,11 @@ public abstract class PipeSnapshotEvent extends EnrichedEvent {
     super(pipeName, pipeTaskMeta, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
     this.snapshotPath = snapshotPath;
     this.resourceManager = resourceManager;
+  }
+
+  // TODO: pin snapshot
+  public File getSnapshot() {
+    return new File(snapshotPath);
   }
 
   @Override
@@ -76,8 +85,13 @@ public abstract class PipeSnapshotEvent extends EnrichedEvent {
   }
 
   @Override
+  public void bindProgressIndex(ProgressIndex progressIndex) {
+    this.progressIndex = progressIndex;
+  }
+
+  @Override
   public ProgressIndex getProgressIndex() {
-    return null;
+    return progressIndex;
   }
 
   @Override
@@ -88,5 +102,9 @@ public abstract class PipeSnapshotEvent extends EnrichedEvent {
   @Override
   public boolean isEventTimeOverlappedWithTimeRange() {
     return true;
+  }
+
+  public void deserializeFromByteBuffer(ByteBuffer buffer) {
+    snapshotPath = ReadWriteIOUtils.readString(buffer);
   }
 }

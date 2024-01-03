@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.commons.pipe.agent.task;
 
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.commons.pipe.task.PipeTaskManager;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
@@ -28,12 +31,14 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -308,7 +313,7 @@ public abstract class PipeTaskAgent {
     }
   }
 
-  private List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChangesInternal(
+  protected List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChangesInternal(
       List<PipeMeta> pipeMetaListFromCoordinator) {
     // Do nothing if node is removing or removed
     if (isShutdown()) {
@@ -792,5 +797,109 @@ public abstract class PipeTaskAgent {
     if (pipeTask != null) {
       pipeTask.start();
     }
+  }
+
+  protected void stopAllPipesWithCriticalException(int currentNodeId) {
+    acquireWriteLock();
+    try {
+      stopAllPipesWithCriticalExceptionInternal(currentNodeId);
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  private void stopAllPipesWithCriticalExceptionInternal(int currentNodeId) {
+    // 1. track exception in all pipe tasks that share the same connector that have critical
+    // exceptions.
+    final Map<PipeParameters, PipeRuntimeConnectorCriticalException>
+        reusedConnectorParameters2ExceptionMap = new HashMap<>();
+
+    pipeMetaKeeper
+        .getPipeMetaList()
+        .forEach(
+            pipeMeta -> {
+              final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
+              final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
+
+              runtimeMeta
+                  .getConsensusGroupId2TaskMetaMap()
+                  .values()
+                  .forEach(
+                      pipeTaskMeta -> {
+                        if (pipeTaskMeta.getLeaderNodeId() != currentNodeId) {
+                          return;
+                        }
+
+                        for (final PipeRuntimeException e : pipeTaskMeta.getExceptionMessages()) {
+                          if (e instanceof PipeRuntimeConnectorCriticalException) {
+                            reusedConnectorParameters2ExceptionMap.putIfAbsent(
+                                staticMeta.getConnectorParameters(),
+                                (PipeRuntimeConnectorCriticalException) e);
+                          }
+                        }
+                      });
+            });
+    pipeMetaKeeper
+        .getPipeMetaList()
+        .forEach(
+            pipeMeta -> {
+              final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
+              final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
+
+              runtimeMeta
+                  .getConsensusGroupId2TaskMetaMap()
+                  .values()
+                  .forEach(
+                      pipeTaskMeta -> {
+                        if (pipeTaskMeta.getLeaderNodeId() == currentNodeId
+                            && reusedConnectorParameters2ExceptionMap.containsKey(
+                                staticMeta.getConnectorParameters())
+                            && !pipeTaskMeta.containsExceptionMessage(
+                                reusedConnectorParameters2ExceptionMap.get(
+                                    staticMeta.getConnectorParameters()))) {
+                          final PipeRuntimeConnectorCriticalException exception =
+                              reusedConnectorParameters2ExceptionMap.get(
+                                  staticMeta.getConnectorParameters());
+                          pipeTaskMeta.trackExceptionMessage(exception);
+                          LOGGER.warn(
+                              "Pipe {} (creation time = {}) will be stopped because of critical exception "
+                                  + "(occurred time {}) in connector {}.",
+                              staticMeta.getPipeName(),
+                              staticMeta.getCreationTime(),
+                              exception.getTimeStamp(),
+                              staticMeta.getConnectorParameters());
+                        }
+                      });
+            });
+
+    // 2. stop all pipes that have critical exceptions.
+    pipeMetaKeeper
+        .getPipeMetaList()
+        .forEach(
+            pipeMeta -> {
+              final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
+              final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
+
+              if (runtimeMeta.getStatus().get() == PipeStatus.RUNNING) {
+                runtimeMeta
+                    .getConsensusGroupId2TaskMetaMap()
+                    .values()
+                    .forEach(
+                        pipeTaskMeta -> {
+                          for (final PipeRuntimeException e : pipeTaskMeta.getExceptionMessages()) {
+                            if (e instanceof PipeRuntimeCriticalException) {
+                              stopPipe(staticMeta.getPipeName(), staticMeta.getCreationTime());
+                              LOGGER.warn(
+                                  "Pipe {} (creation time = {}) was stopped because of critical exception "
+                                      + "(occurred time {}).",
+                                  staticMeta.getPipeName(),
+                                  staticMeta.getCreationTime(),
+                                  e.getTimeStamp());
+                              return;
+                            }
+                          }
+                        });
+              }
+            });
   }
 }

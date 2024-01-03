@@ -22,13 +22,15 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncClientManager;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorClient;
 import org.apache.iotdb.commons.pipe.connector.payload.response.PipeTransferFilePieceResp;
+import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBSyncSslConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.IoTDBConnector;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.connector.client.IoTDBThriftSyncLeaderCacheClientManager;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftSyncPipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
@@ -53,7 +55,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,28 +64,15 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.UnknownHostException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LEADER_CACHE_ENABLE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_ENABLE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_LEADER_CACHE_ENABLE_KEY;
-import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR;
-import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_SSL_CONNECTOR;
-import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_SSL_SINK;
-
-public class IoTDBThriftSyncConnector extends IoTDBConnector {
+public class IoTDBThriftSyncConnector extends IoTDBSyncSslConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftSyncConnector.class);
 
   private IoTDBThriftSyncPipeTransferBatchReqBuilder tabletBatchBuilder;
-
-  private IoTDBThriftSyncClientManager clientManager;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -93,43 +81,25 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
     final IoTDBConfig ioTDBConfig = IoTDBDescriptor.getInstance().getConfig();
     final PipeParameters parameters = validator.getParameters();
 
-    final String userSpecifiedConnectorName =
-        parameters
-            .getStringOrDefault(
-                ImmutableList.of(CONNECTOR_KEY, SINK_KEY),
-                IOTDB_THRIFT_CONNECTOR.getPipePluginName())
-            .toLowerCase();
     final Set<TEndPoint> givenNodeUrls = parseNodeUrls(parameters);
 
-    validator
-        .validate(
-            empty -> {
-              try {
-                // Ensure the sink doesn't point to the thrift receiver on DataNode itself
-                return !NodeUrlUtils.containsLocalAddress(
-                    givenNodeUrls.stream()
-                        .filter(tEndPoint -> tEndPoint.getPort() == ioTDBConfig.getRpcPort())
-                        .map(TEndPoint::getIp)
-                        .collect(Collectors.toList()));
-              } catch (UnknownHostException e) {
-                LOGGER.warn("Unknown host when checking pipe sink IP.", e);
-                return false;
-              }
-            },
-            String.format(
-                "One of the endpoints %s of the receivers is pointing back to the thrift receiver %s on sender itself, or unknown host when checking pipe sink IP.",
-                givenNodeUrls,
-                new TEndPoint(ioTDBConfig.getRpcAddress(), ioTDBConfig.getRpcPort())))
-        .validate(
-            args -> !((boolean) args[0]) || ((boolean) args[1] && (boolean) args[2]),
-            String.format(
-                "When ssl transport is enabled, %s and %s must be specified",
-                SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY, SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY),
-            IOTDB_THRIFT_SSL_CONNECTOR.getPipePluginName().equals(userSpecifiedConnectorName)
-                || IOTDB_THRIFT_SSL_SINK.getPipePluginName().equals(userSpecifiedConnectorName)
-                || parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false),
-            parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY),
-            parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY));
+    validator.validate(
+        empty -> {
+          try {
+            // Ensure the sink doesn't point to the thrift receiver on DataNode itself
+            return !NodeUrlUtils.containsLocalAddress(
+                givenNodeUrls.stream()
+                    .filter(tEndPoint -> tEndPoint.getPort() == ioTDBConfig.getRpcPort())
+                    .map(TEndPoint::getIp)
+                    .collect(Collectors.toList()));
+          } catch (UnknownHostException e) {
+            LOGGER.warn("Unknown host when checking pipe sink IP.", e);
+            return false;
+          }
+        },
+        String.format(
+            "One of the endpoints %s of the receivers is pointing back to the thrift receiver %s on sender itself, or unknown host when checking pipe sink IP.",
+            givenNodeUrls, new TEndPoint(ioTDBConfig.getRpcAddress(), ioTDBConfig.getRpcPort())));
   }
 
   @Override
@@ -141,47 +111,17 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
     if (isTabletBatchModeEnabled) {
       tabletBatchBuilder = new IoTDBThriftSyncPipeTransferBatchReqBuilder(parameters);
     }
-
-    // ssl transport configuration
-    final String userSpecifiedConnectorName =
-        parameters
-            .getStringOrDefault(
-                ImmutableList.of(CONNECTOR_KEY, SINK_KEY),
-                IOTDB_THRIFT_CONNECTOR.getPipePluginName())
-            .toLowerCase();
-    final boolean useSSL =
-        IOTDB_THRIFT_SSL_CONNECTOR.getPipePluginName().equals(userSpecifiedConnectorName)
-            || IOTDB_THRIFT_SSL_SINK.getPipePluginName().equals(userSpecifiedConnectorName)
-            || parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false);
-    final String trustStorePath = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY);
-    final String trustStorePwd = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY);
-
-    // leader cache configuration
-    final boolean useLeaderCache =
-        parameters.getBooleanOrDefault(
-            Arrays.asList(SINK_LEADER_CACHE_ENABLE_KEY, CONNECTOR_LEADER_CACHE_ENABLE_KEY),
-            CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE);
-
-    clientManager =
-        new IoTDBThriftSyncClientManager(
-            nodeUrls, useSSL, trustStorePath, trustStorePwd, useLeaderCache);
   }
 
   @Override
-  public void handshake() throws Exception {
-    clientManager.checkClientStatusAndTryReconstructIfNecessary();
-  }
-
-  @Override
-  public void heartbeat() {
-    try {
-      handshake();
-    } catch (Exception e) {
-      LOGGER.warn(
-          "Failed to reconnect to target server, because: {}. Try to reconnect later.",
-          e.getMessage(),
-          e);
-    }
+  protected IoTDBThriftSyncClientManager constructClient(
+      List<TEndPoint> nodeUrls,
+      boolean useSSL,
+      String trustStorePath,
+      String trustStorePwd,
+      boolean useLeaderCache) {
+    return new IoTDBThriftSyncClientDataNodeManager(
+        nodeUrls, useSSL, trustStorePath, trustStorePwd, useLeaderCache);
   }
 
   @Override
@@ -319,7 +259,9 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
 
       if (insertNode != null) {
-        clientAndStatus = clientManager.getClient(insertNode.getDevicePath().getFullPath());
+        clientAndStatus =
+            ((IoTDBThriftSyncLeaderCacheClientManager) clientManager)
+                .getClient(insertNode.getDevicePath().getFullPath());
         resp =
             clientAndStatus
                 .getLeft()
@@ -352,15 +294,16 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
               pipeInsertNodeTabletInsertionEvent, status));
     }
     if (insertNode != null && status.isSetRedirectNode()) {
-      clientManager.updateLeaderCache(
-          insertNode.getDevicePath().getFullPath(), status.getRedirectNode());
+      ((IoTDBThriftSyncLeaderCacheClientManager) clientManager)
+          .updateLeaderCache(insertNode.getDevicePath().getFullPath(), status.getRedirectNode());
     }
   }
 
   private void doTransfer(PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException {
     final Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus =
-        clientManager.getClient(pipeRawTabletInsertionEvent.getDeviceId());
+        ((IoTDBThriftSyncLeaderCacheClientManager) clientManager)
+            .getClient(pipeRawTabletInsertionEvent.getDeviceId());
     final TPipeTransferResp resp;
 
     try {
@@ -388,8 +331,8 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
               pipeRawTabletInsertionEvent, status));
     }
     if (status.isSetRedirectNode()) {
-      clientManager.updateLeaderCache(
-          pipeRawTabletInsertionEvent.getDeviceId(), status.getRedirectNode());
+      ((IoTDBThriftSyncLeaderCacheClientManager) clientManager)
+          .updateLeaderCache(pipeRawTabletInsertionEvent.getDeviceId(), status.getRedirectNode());
     }
   }
 
@@ -473,9 +416,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
 
   @Override
   public void close() {
-    if (clientManager != null) {
-      clientManager.close();
-    }
+    super.close();
 
     if (tabletBatchBuilder != null) {
       tabletBatchBuilder.close();

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.task.subtask;
 
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -140,7 +141,14 @@ public abstract class PipeSubtask
     releaseLastEvent(false);
   }
 
-  protected abstract void releaseLastEvent(boolean shouldReport);
+  protected synchronized void releaseLastEvent(boolean shouldReport) {
+    if (lastEvent != null) {
+      if (lastEvent instanceof EnrichedEvent) {
+        ((EnrichedEvent) lastEvent).decreaseReferenceCount(this.getClass().getName(), shouldReport);
+      }
+      lastEvent = null;
+    }
+  }
 
   public String getTaskID() {
     return taskID;

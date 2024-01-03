@@ -89,15 +89,16 @@ class PipeSchemaNodeFilter {
 
   static boolean shouldBeListenedByQueue(PlanNode node) {
     try {
-      return NODE_MAP.values().stream().anyMatch(types -> types.contains(node.getType()));
+      return node.getType().getNodeType() == PlanNodeType.PIPE_ENRICHED_WRITE_SCHEMA.getNodeType()
+          || node.getType().getNodeType() == PlanNodeType.PIPE_ENRICHED_CONFIG_SCHEMA.getNodeType()
+          || NODE_MAP.values().stream().anyMatch(types -> types.contains(node.getType()));
     } catch (Exception e) {
       // Some plan nodes may not contain "getType()" implementation
       return false;
     }
   }
 
-  static Set<PlanNodeType> getPipeListenSet(
-      String inclusionStr, String exclusionStr, boolean forwardPipeRequests)
+  static Set<PlanNodeType> getPipeListenSet(String inclusionStr, String exclusionStr)
       throws IllegalPathException, IllegalArgumentException {
     Set<PlanNodeType> planTypes = new HashSet<>();
     List<PartialPath> inclusionPath = getPartialPaths(inclusionStr);
@@ -119,10 +120,6 @@ class PipeSchemaNodeFilter {
                     .flatMap(Collection::stream)
                     .collect(Collectors.toSet())));
 
-    if (forwardPipeRequests) {
-      planTypes.add(PlanNodeType.PIPE_ENRICHED_WRITE_SCHEMA);
-      planTypes.add(PlanNodeType.PIPE_ENRICHED_DELETE_SCHEMA);
-    }
     return planTypes;
   }
 

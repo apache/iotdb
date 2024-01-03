@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it;
+package org.apache.iotdb.pipe.it.metadata;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
@@ -34,16 +34,15 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
-public class IoTDBPipeProcessorIT extends AbstractPipeDualIT {
+public class IoTDBPipeInclusionIT extends AbstractPipeDualMetaIT {
   @Test
-  public void testDownSamplingProcessor() throws Exception {
+  public void testPureSchemaInclusion() throws Exception {
     DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     String receiverIp = receiverDataNode.getIp();
@@ -55,16 +54,11 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualIT {
       Map<String, String> processorAttributes = new HashMap<>();
       Map<String, String> connectorAttributes = new HashMap<>();
 
-      extractorAttributes.put("source.realtime.mode", "log");
+      extractorAttributes.put("extractor.inclusion", "schema");
 
-      processorAttributes.put("processor", "down-sampling-processor");
-      processorAttributes.put("processor.down-sampling.interval-seconds", "20");
-      processorAttributes.put("processor.down-sampling.split-file", "true");
-
-      connectorAttributes.put("sink", "iotdb-thrift-sink");
-      connectorAttributes.put("sink.batch.enable", "false");
-      connectorAttributes.put("sink.ip", receiverIp);
-      connectorAttributes.put("sink.port", Integer.toString(receiverPort));
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.ip", receiverIp);
+      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
       TSStatus status =
           client.createPipe(
@@ -82,23 +76,28 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualIT {
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
           Arrays.asList(
-              "insert into root.vehicle.d0(time, s1) values (0, 1)",
-              "insert into root.vehicle.d0(time, s1) values (10000, 2)",
-              "insert into root.vehicle.d0(time, s1) values (19999, 3)",
-              "insert into root.vehicle.d0(time, s1) values (20000, 4)",
-              "insert into root.vehicle.d0(time, s1) values (20001, 5)",
-              "insert into root.vehicle.d0(time, s1) values (45000, 6)"))) {
+              // TODO: add database creation after the database auto creating on receiver can be
+              // banned
+              "create timeseries root.ln.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
+              "ALTER timeseries root.ln.wf01.wt01.status ADD TAGS tag3=v3",
+              "ALTER timeseries root.ln.wf01.wt01.status ADD ATTRIBUTES attr4=v4"))) {
         return;
       }
 
-      Set<String> expectedResSet = new HashSet<>();
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "show timeseries",
+          "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
+          Collections.singleton(
+              "root.ln.wf01.wt01.status,null,root.ln,BOOLEAN,PLAIN,LZ4,{\"tag3\":\"v3\"},{\"attr4\":\"v4\"},null,null,BASE,"));
 
-      expectedResSet.add("0,1.0,");
-      expectedResSet.add("20000,4.0,");
-      expectedResSet.add("45000,6.0,");
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv, "insert into root.ln.wf01.wt01(time, status) values(now(), false)")) {
+        return;
+      }
 
-      TestUtils.assertDataOnEnv(
-          receiverEnv, "select * from root.**", "Time,root.vehicle.d0.s1,", expectedResSet);
+      TestUtils.assertDataAlwaysOnEnv(
+          receiverEnv, "select * from root.**", "Time,", Collections.emptySet());
     }
   }
 }

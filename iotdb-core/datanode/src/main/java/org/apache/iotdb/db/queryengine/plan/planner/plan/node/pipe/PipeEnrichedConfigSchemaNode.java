@@ -103,7 +103,7 @@ public class PipeEnrichedConfigSchemaNode extends PlanNode {
 
   @Override
   public PlanNodeType getType() {
-    return PlanNodeType.PIPE_ENRICHED_DELETE_SCHEMA;
+    return PlanNodeType.PIPE_ENRICHED_CONFIG_SCHEMA;
   }
 
   @Override
@@ -139,13 +139,13 @@ public class PipeEnrichedConfigSchemaNode extends PlanNode {
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.PIPE_ENRICHED_DELETE_SCHEMA.serialize(byteBuffer);
+    PlanNodeType.PIPE_ENRICHED_CONFIG_SCHEMA.serialize(byteBuffer);
     configSchemaNode.serialize(byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.PIPE_ENRICHED_DELETE_SCHEMA.serialize(stream);
+    PlanNodeType.PIPE_ENRICHED_CONFIG_SCHEMA.serialize(stream);
     configSchemaNode.serialize(stream);
   }
 

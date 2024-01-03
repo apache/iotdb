@@ -17,17 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
+package org.apache.iotdb.commons.pipe.connector.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorClient;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeReq;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.IoTDBThriftClientManager;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -42,7 +39,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class IoTDBThriftSyncClientManager extends IoTDBThriftClientManager implements Closeable {
+public abstract class IoTDBThriftSyncClientManager extends IoTDBThriftClientManager
+    implements Closeable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftSyncClientManager.class);
 
@@ -52,16 +50,12 @@ public class IoTDBThriftSyncClientManager extends IoTDBThriftClientManager imple
   private final String trustStorePath;
   private final String trustStorePwd;
 
-  private final Map<TEndPoint, Pair<IoTDBThriftSyncConnectorClient, Boolean>>
+  protected final Map<TEndPoint, Pair<IoTDBThriftSyncConnectorClient, Boolean>>
       endPoint2ClientAndStatus = new ConcurrentHashMap<>();
 
-  public IoTDBThriftSyncClientManager(
-      List<TEndPoint> endPoints,
-      boolean useSSL,
-      String trustStorePath,
-      String trustStorePwd,
-      boolean useLeaderCache) {
-    super(endPoints, useLeaderCache);
+  protected IoTDBThriftSyncClientManager(
+      List<TEndPoint> endPoints, boolean useSSL, String trustStorePath, String trustStorePwd) {
+    super(endPoints);
 
     this.useSSL = useSSL;
     this.trustStorePath = trustStorePath;
@@ -95,7 +89,7 @@ public class IoTDBThriftSyncClientManager extends IoTDBThriftClientManager imple
             "All target servers %s are not available.", endPoint2ClientAndStatus.keySet()));
   }
 
-  private void reconstructClient(TEndPoint endPoint) throws IOException {
+  protected void reconstructClient(TEndPoint endPoint) throws IOException {
     final Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus =
         endPoint2ClientAndStatus.get(endPoint);
 
@@ -134,12 +128,7 @@ public class IoTDBThriftSyncClientManager extends IoTDBThriftClientManager imple
     }
 
     try {
-      final TPipeTransferResp resp =
-          clientAndStatus
-              .getLeft()
-              .pipeTransfer(
-                  PipeTransferDataNodeHandshakeReq.toTPipeTransferReq(
-                      CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
+      final TPipeTransferResp resp = clientAndStatus.getLeft().pipeTransfer(buildHandShakeReq());
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
             "Handshake error with target server ip: {}, port: {}, because: {}.",
@@ -166,6 +155,8 @@ public class IoTDBThriftSyncClientManager extends IoTDBThriftClientManager imple
     }
   }
 
+  protected abstract TPipeTransferReq buildHandShakeReq() throws IOException;
+
   public Pair<IoTDBThriftSyncConnectorClient, Boolean> getClient() {
     final int clientSize = endPointList.size();
     // Round-robin, find the next alive client
@@ -179,39 +170,6 @@ public class IoTDBThriftSyncClientManager extends IoTDBThriftClientManager imple
     }
     throw new PipeConnectionException(
         "All clients are dead, please check the connection to the receiver.");
-  }
-
-  public Pair<IoTDBThriftSyncConnectorClient, Boolean> getClient(String deviceId) {
-    final TEndPoint endPoint = leaderCacheManager.getLeaderEndPoint(deviceId);
-    return useLeaderCache
-            && endPoint != null
-            && endPoint2ClientAndStatus.containsKey(endPoint)
-            && Boolean.TRUE.equals(endPoint2ClientAndStatus.get(endPoint).getRight())
-        ? endPoint2ClientAndStatus.get(endPoint)
-        : getClient();
-  }
-
-  public void updateLeaderCache(String deviceId, TEndPoint endPoint) {
-    if (!useLeaderCache) {
-      return;
-    }
-
-    try {
-      if (!endPoint2ClientAndStatus.containsKey(endPoint)) {
-        endPointList.add(endPoint);
-        endPoint2ClientAndStatus.put(endPoint, new Pair<>(null, false));
-        reconstructClient(endPoint);
-      }
-
-      leaderCacheManager.updateLeaderEndPoint(deviceId, endPoint);
-    } catch (Exception e) {
-      LOGGER.warn(
-          "Failed to update leader cache for device {} with endpoint {}:{}.",
-          deviceId,
-          endPoint.getIp(),
-          endPoint.getPort(),
-          e);
-    }
   }
 
   @Override

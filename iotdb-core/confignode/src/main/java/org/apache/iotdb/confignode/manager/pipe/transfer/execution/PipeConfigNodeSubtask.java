@@ -35,6 +35,7 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.pipe.api.exception.PipeTemporaryException;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -83,7 +84,6 @@ public class PipeConfigNodeSubtask extends PipeSubtask {
     initExtractor(extractorAttributes);
     initProcessor(processorAttributes);
     initConnector(connectorAttributes);
-    // TODO: connect extractor, processor and connector
   }
 
   private void initExtractor(Map<String, String> extractorAttributes) throws Exception {
@@ -98,10 +98,10 @@ public class PipeConfigNodeSubtask extends PipeSubtask {
     // 3. Customize extractor
     final PipeTaskRuntimeConfiguration runtimeConfiguration =
         new PipeTaskRuntimeConfiguration(
-            // TODO: check CONFIG_REGION_ID.getId()
             new PipeTaskExtractorRuntimeEnvironment(
                 taskID, creationTime, CONFIG_REGION_ID.getId(), pipeTaskMeta));
     extractor.customize(extractorParameters, runtimeConfiguration);
+    extractor.start();
   }
 
   private void initProcessor(Map<String, String> processorAttributes) throws Exception {
@@ -152,10 +152,11 @@ public class PipeConfigNodeSubtask extends PipeSubtask {
   }
 
   /**
-   * Try to consume an event by the pipe plugin.
+   * Try to consume an {@link Event} by the pipe plugin.
    *
-   * @return true if the event is consumed successfully, false if no more event can be consumed
-   * @throws Exception if any error occurs when consuming the event
+   * @return true if the {@link Event} is consumed successfully, false if no more {@link Event} can
+   *     be consumed
+   * @throws Exception if any error occurs when consuming the {@link Event}
    */
   @SuppressWarnings("squid:S112") // Allow to throw Exception
   @Override
@@ -176,6 +177,8 @@ public class PipeConfigNodeSubtask extends PipeSubtask {
       connector.transfer(event);
 
       releaseLastEvent(true);
+    } catch (PipeTemporaryException e) {
+      LOGGER.debug("PipeTemporaryException in pipe transfer, will retry forever until succeed.");
     } catch (PipeConnectionException e) {
       if (!isClosed.get()) {
         throw e;
@@ -253,8 +256,8 @@ public class PipeConfigNodeSubtask extends PipeSubtask {
   }
 
   /**
-   * Submit the subTask. Be sure to add parallel check since a subtask is currently not designed to
-   * run in parallel.
+   * Submit the {@link PipeConfigNodeSubtask}. Be sure to add parallel check since a subtask is
+   * currently not designed to run in parallel.
    */
   @Override
   public void submitSelf() {
@@ -298,14 +301,6 @@ public class PipeConfigNodeSubtask extends PipeSubtask {
     } finally {
       // Should be after connector.close()
       super.close();
-    }
-  }
-
-  @Override
-  protected synchronized void releaseLastEvent(boolean shouldReport) {
-    if (lastEvent != null) {
-      // TODO: should decrease reference count here
-      lastEvent = null;
     }
   }
 }

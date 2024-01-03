@@ -19,19 +19,17 @@
 
 package org.apache.iotdb.db.pipe.extractor.schemaregion;
 
-import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
-import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
-import org.apache.iotdb.commons.pipe.datastructure.ConcurrentIterableLinkedQueue;
-import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb.IoTDBCommonExtractor;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.pipe.datastructure.AbstractPipeListeningQueue;
+import org.apache.iotdb.commons.pipe.extractor.IoTDBMetaExtractor;
+import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeWriteSchemaPlanEvent;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.OperateSchemaQueueReferenceNode;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -39,30 +37,18 @@ import java.util.Set;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_EXCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_INCLUSION_KEY;
 
-public class IoTDBSchemaRegionExtractor extends IoTDBCommonExtractor {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSchemaRegionExtractor.class);
-  private PipeTaskMeta pipeTaskMeta;
-
-  private int schemaRegionId;
-  private ConcurrentIterableLinkedQueue<PlanNode>.DynamicIterator itr;
+public class IoTDBSchemaRegionExtractor extends IoTDBMetaExtractor {
   private Set<PlanNodeType> listenTypes = new HashSet<>();
 
   @Override
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
-    final PipeTaskExtractorRuntimeEnvironment environment =
-        (PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment();
-
-    pipeTaskMeta = environment.getPipeTaskMeta();
-    schemaRegionId = environment.getRegionId();
+    super.customize(parameters, configuration);
 
     listenTypes =
         PipeSchemaNodeFilter.getPipeListenSet(
@@ -71,31 +57,38 @@ public class IoTDBSchemaRegionExtractor extends IoTDBCommonExtractor {
                 EXTRACTOR_INCLUSION_DEFAULT_VALUE),
             parameters.getStringOrDefault(
                 Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
-                EXTRACTOR_EXCLUSION_DEFAULT_VALUE),
-            parameters.getBooleanOrDefault(
-                EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
-                EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE));
+                EXTRACTOR_EXCLUSION_DEFAULT_VALUE));
+  }
+
+  @Override
+  protected AbstractPipeListeningQueue getListeningQueue() {
+    return SchemaNodeListeningQueue.getInstance(regionId);
   }
 
   @Override
   public void start() throws Exception {
-    itr =
-        SchemaNodeListeningQueue.getInstance(schemaRegionId)
-            .newIterator(((MetaProgressIndex) pipeTaskMeta.getProgressIndex()).getIndex());
+    super.start();
+    if (!listenTypes.isEmpty()) {
+      SchemaRegionConsensusImpl.getInstance()
+          .write(
+              new SchemaRegionId(regionId),
+              new OperateSchemaQueueReferenceNode(new PlanNodeId(""), true));
+    }
   }
 
   @Override
-  public Event supply() throws Exception {
-    PlanNode node;
-    do {
-      node = itr.next(1000);
-    } while (node != null && !listenTypes.contains(node.getType()));
-    // TODO: convert plan to event and configure timeout
-    return null;
+  protected boolean isListenType(Event event) {
+    return listenTypes.contains(((PipeWriteSchemaPlanEvent) event).getPlanNode().getType());
   }
 
   @Override
   public void close() throws Exception {
-    SchemaNodeListeningQueue.getInstance(0).returnIterator(itr);
+    super.close();
+    if (!listenTypes.isEmpty()) {
+      SchemaRegionConsensusImpl.getInstance()
+          .write(
+              new SchemaRegionId(regionId),
+              new OperateSchemaQueueReferenceNode(new PlanNodeId(""), false));
+    }
   }
 }

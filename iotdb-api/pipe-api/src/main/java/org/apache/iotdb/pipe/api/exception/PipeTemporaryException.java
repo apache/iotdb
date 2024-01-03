@@ -17,14 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.pipe.transfer.connector;
+package org.apache.iotdb.pipe.api.exception;
 
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.thrift.IoTDBMetaConnector;
+public class PipeTemporaryException extends PipeException {
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+  public PipeTemporaryException(String message) {
+    super(message);
+  }
 
-public class IoTDBConfigRegionConnector extends IoTDBMetaConnector {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConfigRegionConnector.class);
+  public PipeTemporaryException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }

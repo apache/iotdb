@@ -32,7 +32,7 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * EnrichedEvent is an event that can be enriched with additional runtime information. The
+ * {@link EnrichedEvent} is an event that can be enriched with additional runtime information. The
  * additional information mainly includes the reference count of the event.
  */
 public abstract class EnrichedEvent implements Event {
@@ -156,6 +156,10 @@ public abstract class EnrichedEvent implements Event {
       pipeTaskMeta.updateProgressIndex(
           progressIndex == null ? MinimumProgressIndex.INSTANCE : progressIndex);
     }
+  }
+
+  public void bindProgressIndex(ProgressIndex progressIndex) {
+    throw new UnsupportedOperationException("This event does not support binding progressIndex.");
   }
 
   public abstract ProgressIndex getProgressIndex();

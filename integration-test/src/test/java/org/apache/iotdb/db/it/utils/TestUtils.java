@@ -674,12 +674,12 @@ public class TestUtils {
     ((AbstractEnv) env).testWorkingNoUnknown();
   }
 
-  public static void assertDataOnEnv(
+  public static void assertDataEventuallyOnEnv(
       BaseEnv env, String sql, String expectedHeader, Set<String> expectedResSet) {
-    assertDataOnEnv(env, sql, expectedHeader, expectedResSet, 600);
+    assertDataEventuallyOnEnv(env, sql, expectedHeader, expectedResSet, 600);
   }
 
-  public static void assertDataOnEnv(
+  public static void assertDataEventuallyOnEnv(
       BaseEnv env,
       String sql,
       String expectedHeader,
@@ -690,18 +690,39 @@ public class TestUtils {
       // Keep retrying if there are execution failure
       await()
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
+          .ignoreExceptions()
           .untilAsserted(
-              () -> {
-                try {
+              () ->
                   TestUtils.assertResultSetEqual(
-                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
-                } catch (Exception e) {
-                  Assert.fail();
-                }
-              });
+                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet));
     } catch (Exception e) {
       e.printStackTrace();
-      fail(e.getMessage());
+    }
+  }
+
+  public static void assertDataAlwaysOnEnv(
+      BaseEnv env, String sql, String expectedHeader, Set<String> expectedResSet) {
+    assertDataAlwaysOnEnv(env, sql, expectedHeader, expectedResSet, 10);
+  }
+
+  public static void assertDataAlwaysOnEnv(
+      BaseEnv env,
+      String sql,
+      String expectedHeader,
+      Set<String> expectedResSet,
+      long consistentSeconds) {
+    try (Connection connection = env.getConnection();
+        Statement statement = connection.createStatement()) {
+      // Keep retrying if there are execution failure
+      await()
+          .atMost(consistentSeconds, TimeUnit.SECONDS)
+          .ignoreExceptions()
+          .failFast(
+              () ->
+                  TestUtils.assertResultSetEqual(
+                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet));
+    } catch (Exception e) {
+      e.printStackTrace();
     }
   }
 }

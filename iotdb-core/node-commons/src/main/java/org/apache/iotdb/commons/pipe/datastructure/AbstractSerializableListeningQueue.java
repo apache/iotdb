@@ -36,6 +36,12 @@ import java.util.EnumMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
+/**
+ * {@link AbstractSerializableListeningQueue} is the encapsulation of the {@link
+ * ConcurrentIterableLinkedQueue} to enable flushing all the element to disk and reading from it. To
+ * implement this, each element much be configured with its own ser/de method. Besides, this class
+ * also provides a means of opening and closing the queue, and a queue will stay empty when closed.
+ */
 public abstract class AbstractSerializableListeningQueue<E> implements Closeable {
 
   private static final Logger LOGGER =
@@ -48,22 +54,24 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
 
   protected final ConcurrentIterableLinkedQueue<E> queue = new ConcurrentIterableLinkedQueue<>();
 
-  private final AtomicBoolean isSealed = new AtomicBoolean();
+  protected final AtomicBoolean isSealed = new AtomicBoolean();
 
   protected AbstractSerializableListeningQueue(LinkedQueueSerializerType serializerType) {
     currentType = serializerType;
+    // Always seal initially unless manually open it
+    isSealed.set(true);
     serializerMap.put(LinkedQueueSerializerType.PLAIN, PlainQueueSerializer::new);
   }
 
   /////////////////////////////// Function ///////////////////////////////
 
-  public void listenToElement(E plan) {
+  public void listenToElement(E element) {
     if (!isSealed.get()) {
-      queue.add(plan);
+      queue.add(element);
     }
   }
 
-  public ConcurrentIterableLinkedQueue<E>.DynamicIterator newIterator(int index) {
+  public ConcurrentIterableLinkedQueue<E>.DynamicIterator newIterator(long index) {
     return queue.iterateFrom(index);
   }
 
@@ -71,9 +79,13 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
     itr.close();
   }
 
+  public long removeBefore(long newFirstIndex) {
+    return queue.tryRemoveBefore(newFirstIndex);
+  }
+
   /////////////////////////////// Snapshot ///////////////////////////////
 
-  public final boolean serializeToFile(File snapshotName) throws IOException {
+  public boolean serializeToFile(File snapshotName) throws IOException {
     final File snapshotFile = new File(String.valueOf(snapshotName));
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
@@ -91,7 +103,7 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
     }
   }
 
-  public final void deserializeFromFile(File snapshotName) throws IOException {
+  public void deserializeFromFile(File snapshotName) throws IOException {
     final File snapshotFile = new File(String.valueOf(snapshotName));
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(
@@ -100,6 +112,7 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
       return;
     }
 
+    queue.clear();
     try (final FileInputStream inputStream = new FileInputStream(snapshotFile)) {
       final LinkedQueueSerializerType type =
           LinkedQueueSerializerType.deserialize(ReadWriteIOUtils.readByte(inputStream));
@@ -122,7 +135,7 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
    * Deserialize a single element from byteBuffer.
    *
    * @param byteBuffer the byteBuffer corresponding to an element
-   * @return The deserialized element or null if a failure is encountered.
+   * @return The deserialized element or {@code null} if a failure is encountered.
    */
   protected abstract E deserializeFromByteBuffer(ByteBuffer byteBuffer);
 

@@ -122,14 +122,4 @@ public abstract class PipeDataNodeSubtask extends PipeSubtask {
       // is dropped or the process is running normally.
     }
   }
-
-  @Override
-  protected synchronized void releaseLastEvent(boolean shouldReport) {
-    if (lastEvent != null) {
-      if (lastEvent instanceof EnrichedEvent) {
-        ((EnrichedEvent) lastEvent).decreaseReferenceCount(this.getClass().getName(), shouldReport);
-      }
-      lastEvent = null;
-    }
-  }
 }

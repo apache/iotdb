@@ -26,7 +26,9 @@ public class PipeExtractorConstant {
 
   public static final String EXTRACTOR_INCLUSION_KEY = "extractor.inclusion";
   public static final String SOURCE_INCLUSION_KEY = "source.inclusion";
-  public static final String EXTRACTOR_INCLUSION_DEFAULT_VALUE = "all";
+
+  // Currently disable meta transmission cause the "return code" logic has not been completed
+  public static final String EXTRACTOR_INCLUSION_DEFAULT_VALUE = "data";
 
   public static final String EXTRACTOR_EXCLUSION_KEY = "extractor.inclusion.exclusion";
   public static final String SOURCE_EXCLUSION_KEY = "source.inclusion.exclusion";

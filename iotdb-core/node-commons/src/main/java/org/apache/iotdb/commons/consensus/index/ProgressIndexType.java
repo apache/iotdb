@@ -38,7 +38,7 @@ public enum ProgressIndexType {
   SIMPLE_PROGRESS_INDEX((short) 3),
   RECOVER_PROGRESS_INDEX((short) 4),
   HYBRID_PROGRESS_INDEX((short) 5),
-  SCHEMA_PROGRESS_INDEX((short) 6),
+  META_PROGRESS_INDEX((short) 6),
   ;
 
   private final short type;

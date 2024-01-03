@@ -23,8 +23,19 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.resource.snapshot.PipeDataNodeSnapshotResourceManager;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.nio.ByteBuffer;
 
 public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
+  public PipeSchemaRegionSnapshotEvent() {
+    // Used for deserialization
+    this(null);
+  }
+
+  public PipeSchemaRegionSnapshotEvent(String snapshotPath) {
+    this(snapshotPath, null, null, null);
+  }
 
   public PipeSchemaRegionSnapshotEvent(
       String snapshotPath, String pipeName, PipeTaskMeta pipeTaskMeta, String pattern) {
@@ -40,5 +51,14 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime) {
     return new PipeSchemaRegionSnapshotEvent(snapshotPath, pipeName, pipeTaskMeta, pattern);
+  }
+
+  @Override
+  public ByteBuffer serializeToByteBuffer() {
+    ByteBuffer result =
+        ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + snapshotPath.getBytes().length);
+    ReadWriteIOUtils.write(PipeSchemaSerializableEventType.SCHEMA_SNAPSHOT.getType(), result);
+    ReadWriteIOUtils.write(snapshotPath, result);
+    return result;
   }
 }

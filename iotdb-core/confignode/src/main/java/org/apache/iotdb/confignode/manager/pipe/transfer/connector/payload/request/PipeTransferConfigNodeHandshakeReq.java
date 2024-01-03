@@ -25,7 +25,7 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import java.io.IOException;
 
-public class PipeTransferConfigHandshakeReq extends PipeTransferHandshakeReq {
+public class PipeTransferConfigNodeHandshakeReq extends PipeTransferHandshakeReq {
   @Override
   protected PipeRequestType getPlanType() {
     return PipeRequestType.CONFIGNODE_HANDSHAKE;
@@ -33,28 +33,30 @@ public class PipeTransferConfigHandshakeReq extends PipeTransferHandshakeReq {
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeTransferConfigHandshakeReq toTPipeTransferReq(String timestampPrecision)
+  public static PipeTransferConfigNodeHandshakeReq toTPipeTransferReq(String timestampPrecision)
       throws IOException {
-    return (PipeTransferConfigHandshakeReq)
-        new PipeTransferConfigHandshakeReq().convertToTPipeTransferReq(timestampPrecision);
+    return (PipeTransferConfigNodeHandshakeReq)
+        new PipeTransferConfigNodeHandshakeReq().convertToTPipeTransferReq(timestampPrecision);
   }
 
-  public static PipeTransferConfigHandshakeReq fromTPipeTransferReq(TPipeTransferReq transferReq) {
-    return (PipeTransferConfigHandshakeReq)
-        new PipeTransferConfigHandshakeReq().translateFromTPipeTransferReq(transferReq);
+  public static PipeTransferConfigNodeHandshakeReq fromTPipeTransferReq(
+      TPipeTransferReq transferReq) {
+    return (PipeTransferConfigNodeHandshakeReq)
+        new PipeTransferConfigNodeHandshakeReq().translateFromTPipeTransferReq(transferReq);
   }
 
   /////////////////////////////// Air Gap ///////////////////////////////
 
   public static byte[] toTPipeTransferBytes(String timestampPrecision) throws IOException {
-    return new PipeTransferConfigHandshakeReq().convertToTransferHandshakeBytes(timestampPrecision);
+    return new PipeTransferConfigNodeHandshakeReq()
+        .convertToTransferHandshakeBytes(timestampPrecision);
   }
 
   /////////////////////////////// Object ///////////////////////////////
 
   @Override
   public boolean equals(Object obj) {
-    return obj instanceof PipeTransferConfigHandshakeReq && super.equals(obj);
+    return obj instanceof PipeTransferConfigNodeHandshakeReq && super.equals(obj);
   }
 
   @Override

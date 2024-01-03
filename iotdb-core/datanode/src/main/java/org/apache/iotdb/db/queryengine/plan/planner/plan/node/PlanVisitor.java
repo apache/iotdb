@@ -53,6 +53,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.vie
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.DeleteLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.RollbackLogicalViewBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.OperateSchemaQueueReferenceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedConfigSchemaNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
@@ -470,7 +471,7 @@ public abstract class PlanVisitor<R, C> {
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
-  // Pipe Enriched Node
+  // Pipe Related Node
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
   public R visitPipeEnrichedInsert(PipeEnrichedInsertNode node, C context) {
@@ -486,6 +487,10 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitPipeEnrichedConfigSchema(PipeEnrichedConfigSchemaNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitOperateSchemaQueueReferenceNode(OperateSchemaQueueReferenceNode node, C context) {
     return visitPlan(node, context);
   }
 }

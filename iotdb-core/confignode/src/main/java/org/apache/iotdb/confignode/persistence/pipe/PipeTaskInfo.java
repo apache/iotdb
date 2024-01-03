@@ -20,6 +20,8 @@
 package org.apache.iotdb.confignode.persistence.pipe;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
@@ -36,6 +38,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePla
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
+import org.apache.iotdb.confignode.manager.pipe.transfer.extractor.ConfigPlanListeningQueue;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleMetaChangeProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -290,10 +293,18 @@ public class PipeTaskInfo implements SnapshotProcessor {
   public TSStatus setPipeStatus(SetPipeStatusPlanV2 plan) {
     acquireWriteLock();
     try {
-      PipeRuntimeMeta runtimeMeta = pipeMetaKeeper.getPipeMeta(plan.getPipeName()).getRuntimeMeta();
+      PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(plan.getPipeName());
+      PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
       runtimeMeta.getStatus().set(plan.getPipeStatus());
       runtimeMeta.setShouldBeRunning(plan.getPipeStatus() == PipeStatus.RUNNING);
+      ConfigPlanListeningQueue.getInstance()
+          .increaseReferenceCountForListeningPipe(
+              pipeMeta.getStaticMeta().getExtractorParameters());
+      PipeConfigNodeAgent.task().handleSinglePipeMetaChanges(pipeMeta);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+          .setMessage("Failed to set pipe status, because " + e.getMessage());
     } finally {
       releaseWriteLock();
     }
@@ -302,8 +313,21 @@ public class PipeTaskInfo implements SnapshotProcessor {
   public TSStatus dropPipe(DropPipePlanV2 plan) {
     acquireWriteLock();
     try {
-      pipeMetaKeeper.removePipeMeta(plan.getPipeName());
+      String pipeName = plan.getPipeName();
+      if (pipeMetaKeeper.containsPipeMeta(pipeName)) {
+        ConfigPlanListeningQueue.getInstance()
+            .decreaseReferenceCountForListeningPipe(
+                pipeMetaKeeper
+                    .getPipeMetaByPipeName(pipeName)
+                    .getStaticMeta()
+                    .getExtractorParameters());
+        PipeConfigNodeAgent.task().handleDropPipe(pipeName);
+      }
+      pipeMetaKeeper.removePipeMeta(pipeName);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+          .setMessage("Failed to drop pipe, because " + e.getMessage());
     } finally {
       releaseWriteLock();
     }
@@ -423,13 +447,33 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
     pipeMetaKeeper.clear();
 
+    AtomicLong earliestIndex = new AtomicLong(Long.MAX_VALUE);
+
     plan.getPipeMetaList()
         .forEach(
             pipeMeta -> {
               pipeMetaKeeper.addPipeMeta(pipeMeta.getStaticMeta().getPipeName(), pipeMeta);
               LOGGER.info("Recording pipe meta: {}", pipeMeta);
+
+              ProgressIndex configIndex =
+                  pipeMeta
+                      .getRuntimeMeta()
+                      .getConsensusGroupId2TaskMetaMap()
+                      .get(Integer.MIN_VALUE)
+                      .getProgressIndex();
+              if (configIndex instanceof MetaProgressIndex
+                  && ((MetaProgressIndex) configIndex).getIndex() < earliestIndex.get()) {
+                earliestIndex.set(((MetaProgressIndex) configIndex).getIndex());
+              }
             });
 
+    if (earliestIndex.get() == Long.MAX_VALUE) {
+      // Do not clear if there are only "minimumProgressIndex"s to avoid clearing
+      // the queue when there are config tasks that haven't been started yet
+      earliestIndex.set(0);
+    }
+    PipeConfigNodeAgent.task().handlePipeMetaChanges(plan.getPipeMetaList());
+    ConfigPlanListeningQueue.getInstance().removeBefore(earliestIndex.get());
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

@@ -56,6 +56,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.vie
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.DeleteLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.RollbackLogicalViewBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.OperateSchemaQueueReferenceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedConfigSchemaNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
@@ -197,10 +198,12 @@ public enum PlanNodeType {
   COLUMN_INJECT((short) 83),
   PIPE_ENRICHED_DELETE_DATA((short) 84),
   PIPE_ENRICHED_WRITE_SCHEMA((short) 85),
-  PIPE_ENRICHED_DELETE_SCHEMA((short) 86),
+  PIPE_ENRICHED_CONFIG_SCHEMA((short) 86),
 
   INNER_TIME_JOIN((short) 87),
-  LEFT_OUTER_TIME_JOIN((short) 88);
+  LEFT_OUTER_TIME_JOIN((short) 88),
+  OPERATE_SCHEMA_QUEUE_REFERENCE((short) 89),
+  ;
 
   public static final int BYTES = Short.BYTES;
 
@@ -425,6 +428,8 @@ public enum PlanNodeType {
         return InnerTimeJoinNode.deserialize(buffer);
       case 88:
         return LeftOuterTimeJoinNode.deserialize(buffer);
+      case 89:
+        return OperateSchemaQueueReferenceNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
