@@ -59,6 +59,9 @@ public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
 
   private final ConfigManager configManager = ConfigNode.getInstance().getConfigManager();
 
+  private static final PipePlanTSStatusVisitor statusVisitor = new PipePlanTSStatusVisitor();
+  private static final PipePlanExceptionVisitor exceptionVisitor = new PipePlanExceptionVisitor();
+
   IoTDBConfigReceiverV1() {}
 
   @Override
@@ -107,35 +110,44 @@ public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
   private TPipeTransferResp handleTransferConfigPlan(PipeTransferConfigPlanReq req)
       throws IOException, ConsensusException {
     ConfigPhysicalPlan plan = ConfigPhysicalPlan.Factory.create(req.body);
+    TSStatus result;
+    try {
+      result = executePlan(plan);
+      if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        result = statusVisitor.process(plan, result);
+      }
+    } catch (Exception e) {
+      result = exceptionVisitor.process(plan, e);
+    }
+    return new TPipeTransferResp(result);
+  }
+
+  private TSStatus executePlan(ConfigPhysicalPlan plan) throws ConsensusException {
     switch (plan.getType()) {
       case DeleteDatabase:
-        return new TPipeTransferResp(
-            configManager.deleteDatabases(
-                new TDeleteDatabasesReq(
-                        Collections.singletonList(((DeleteDatabasePlan) plan).getName()))
-                    .setIsGeneratedByPipe(true)));
+        return configManager.deleteDatabases(
+            new TDeleteDatabasesReq(
+                    Collections.singletonList(((DeleteDatabasePlan) plan).getName()))
+                .setIsGeneratedByPipe(true));
       case CommitSetSchemaTemplate:
-        return new TPipeTransferResp(
-            configManager.setSchemaTemplate(
-                new TSetSchemaTemplateReq(
-                        getPseudoQueryId(),
-                        ((CommitSetSchemaTemplatePlan) plan).getName(),
-                        ((CommitSetSchemaTemplatePlan) plan).getPath())
-                    .setIsGeneratedByPipe(true)));
+        return configManager.setSchemaTemplate(
+            new TSetSchemaTemplateReq(
+                    getPseudoQueryId(),
+                    ((CommitSetSchemaTemplatePlan) plan).getName(),
+                    ((CommitSetSchemaTemplatePlan) plan).getPath())
+                .setIsGeneratedByPipe(true));
       case UnsetTemplate:
         // TODO: Sender send name to receiver and execute directly
-        return new TPipeTransferResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+        return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       case UpdateTriggerStateInTable:
         // TODO: Record complete message in trigger
-        return new TPipeTransferResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+        return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       case DeleteTriggerInTable:
-        return new TPipeTransferResp(
-            configManager.dropTrigger(
-                new TDropTriggerReq(((DeleteTriggerInTablePlan) plan).getTriggerName())
-                    .setIsGeneratedByPipe(true)));
+        return configManager.dropTrigger(
+            new TDropTriggerReq(((DeleteTriggerInTablePlan) plan).getTriggerName())
+                .setIsGeneratedByPipe(true));
       default:
-        return new TPipeTransferResp(
-            configManager.getConsensusManager().write(new PipeEnrichedPlan(plan)));
+        return configManager.getConsensusManager().write(new PipeEnrichedPlan(plan));
     }
   }
 

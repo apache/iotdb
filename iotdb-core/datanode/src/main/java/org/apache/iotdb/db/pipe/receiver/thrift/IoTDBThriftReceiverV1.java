@@ -40,6 +40,8 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
 import org.apache.iotdb.db.pipe.receiver.PipePlanToStatementVisitor;
+import org.apache.iotdb.db.pipe.receiver.PipeStatementExceptionVisitor;
+import org.apache.iotdb.db.pipe.receiver.PipeStatementTSStatusVisitor;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -81,6 +83,10 @@ public class IoTDBThriftReceiverV1 extends IoTDBFileReceiverV1 {
   private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final String[] RECEIVER_FILE_BASE_DIRS = IOTDB_CONFIG.getPipeReceiverFileDirs();
   private static FolderManager folderManager = null;
+  private static final PipeStatementTSStatusVisitor statusVisitor =
+      new PipeStatementTSStatusVisitor();
+  private static final PipeStatementExceptionVisitor exceptionVisitor =
+      new PipeStatementExceptionVisitor();
 
   static {
     try {
@@ -158,19 +164,25 @@ public class IoTDBThriftReceiverV1 extends IoTDBFileReceiverV1 {
   private TPipeTransferResp handleTransferTabletInsertNode(PipeTransferTabletInsertNodeReq req) {
     InsertBaseStatement statement = req.constructStatement();
     return new TPipeTransferResp(
-        statement.isEmpty() ? RpcUtils.SUCCESS_STATUS : executeStatement(statement));
+        statement.isEmpty()
+            ? RpcUtils.SUCCESS_STATUS
+            : executeStatementAndClassifyExceptions(statement));
   }
 
   private TPipeTransferResp handleTransferTabletBinary(PipeTransferTabletBinaryReq req) {
     InsertBaseStatement statement = req.constructStatement();
     return new TPipeTransferResp(
-        statement.isEmpty() ? RpcUtils.SUCCESS_STATUS : executeStatement(statement));
+        statement.isEmpty()
+            ? RpcUtils.SUCCESS_STATUS
+            : executeStatementAndClassifyExceptions(statement));
   }
 
   private TPipeTransferResp handleTransferTabletRaw(PipeTransferTabletRawReq req) {
     InsertTabletStatement statement = req.constructStatement();
     return new TPipeTransferResp(
-        statement.isEmpty() ? RpcUtils.SUCCESS_STATUS : executeStatement(statement));
+        statement.isEmpty()
+            ? RpcUtils.SUCCESS_STATUS
+            : executeStatementAndClassifyExceptions(statement));
   }
 
   private TPipeTransferResp handleTransferTabletBatch(PipeTransferTabletBatchReq req) {
@@ -181,10 +193,10 @@ public class IoTDBThriftReceiverV1 extends IoTDBFileReceiverV1 {
             Stream.of(
                     statementPair.getLeft().isEmpty()
                         ? RpcUtils.SUCCESS_STATUS
-                        : executeStatement(statementPair.getLeft()),
+                        : executeStatementAndClassifyExceptions(statementPair.getLeft()),
                     statementPair.getRight().isEmpty()
                         ? RpcUtils.SUCCESS_STATUS
-                        : executeStatement(statementPair.getRight()))
+                        : executeStatementAndClassifyExceptions(statementPair.getRight()))
                 .collect(Collectors.toList())));
   }
 
@@ -212,7 +224,7 @@ public class IoTDBThriftReceiverV1 extends IoTDBFileReceiverV1 {
     statement.setVerifySchema(true);
     statement.setAutoCreateDatabase(false);
 
-    return executeStatement(statement);
+    return executeStatementAndClassifyExceptions(statement);
   }
 
   private TSStatus loadSchemaSnapShot(String fileAbsolutePath) {
@@ -226,11 +238,23 @@ public class IoTDBThriftReceiverV1 extends IoTDBFileReceiverV1 {
             ClusterConfigTaskExecutor.getInstance()
                 .alterLogicalViewByPipe((AlterLogicalViewNode) req.getPlanNode()))
         : new TPipeTransferResp(
-            executeStatement(new PipePlanToStatementVisitor().process(req.getPlanNode(), null)));
+            executeStatementAndClassifyExceptions(
+                new PipePlanToStatementVisitor().process(req.getPlanNode(), null)));
   }
 
   private TPipeTransferResp handleTransferConfigPlan(TPipeTransferReq req) {
     return ClusterConfigTaskExecutor.getInstance().handleTransferConfigPlan(req);
+  }
+
+  private TSStatus executeStatementAndClassifyExceptions(Statement statement) {
+    try {
+      TSStatus result = executeStatement(statement);
+      return result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          ? result
+          : statement.accept(statusVisitor, result);
+    } catch (Exception e) {
+      return statement.accept(exceptionVisitor, e);
+    }
   }
 
   private TSStatus executeStatement(Statement statement) {
