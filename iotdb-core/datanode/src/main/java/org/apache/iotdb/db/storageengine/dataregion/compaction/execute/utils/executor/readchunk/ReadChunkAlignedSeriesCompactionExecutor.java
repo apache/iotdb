@@ -72,6 +72,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
   private final CompactionTsFileWriter writer;
 
   private final AlignedChunkWriterImpl chunkWriter;
+  private IMeasurementSchema timeSchema;
   private List<IMeasurementSchema> schemaList;
   private Map<String, Integer> measurementSchemaListIndexMap;
   private final FlushDataBlockPolicy flushPolicy;
@@ -95,7 +96,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     int compactionFileLevel =
         Integer.parseInt(this.targetResource.getTsFile().getName().split("-")[2]);
     flushPolicy = new FlushDataBlockPolicy(compactionFileLevel);
-    this.chunkWriter = new AlignedChunkWriterImpl(schemaList);
+    this.chunkWriter = new AlignedChunkWriterImpl(timeSchema, schemaList);
   }
 
   private void collectValueColumnSchemaList() throws IOException {
@@ -108,6 +109,19 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
         if (alignedChunkMetadata == null) {
           continue;
         }
+        if (timeSchema == null) {
+          ChunkMetadata timeChunkMetadata =
+              (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata();
+          ChunkHeader timeChunkHeader =
+              reader.readChunkHeader(timeChunkMetadata.getOffsetOfChunkHeader());
+          timeSchema =
+              new MeasurementSchema(
+                  timeChunkHeader.getMeasurementID(),
+                  timeChunkHeader.getDataType(),
+                  timeChunkHeader.getEncodingType(),
+                  timeChunkHeader.getCompressionType());
+        }
+
         for (IChunkMetadata chunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
           if (chunkMetadata == null
               || measurementSchemaMap.containsKey(chunkMetadata.getMeasurementUid())) {
@@ -389,6 +403,10 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       boolean largeEnough =
           timeChunk.getHeader().getDataSize() > targetChunkSize
               || timeChunk.getChunkMetadata().getNumOfPoints() > targetChunkPointNum;
+      if (timeSchema.getEncodingType() != timeChunk.getHeader().getEncodingType()
+          || timeSchema.getCompressor() != timeChunk.getHeader().getCompressionType()) {
+        return false;
+      }
       for (int i = 0; i < valueChunks.size(); i++) {
         ChunkLoader valueChunk = valueChunks.get(i);
         if (valueChunk.isEmpty()) {
@@ -427,7 +445,10 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       boolean largeEnough =
           timePage.getHeader().getUncompressedSize() >= targetPageSize
               || timePage.getHeader().getStatistics().getCount() >= targetPagePointNum;
-
+      if (timeSchema.getEncodingType() != timePage.getEncoding()
+          || timeSchema.getCompressor() != timePage.getCompressionType()) {
+        return false;
+      }
       for (int i = 0; i < valuePages.size(); i++) {
         PageLoader valuePage = valuePages.get(i);
         if (valuePage.isEmpty()) {
