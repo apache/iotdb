@@ -441,6 +441,8 @@ public class BTreePageManager extends PageManager {
         cxt.referredPages.put(initPage.getPageIndex(), crabPage);
         initPage = crabPage;
       }
+      // same page shall only be referred once
+      crabPage.decrementAndGetRefCnt();
       safeFlag = true;
     }
     return initPage;
