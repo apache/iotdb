@@ -142,6 +142,7 @@ public class ProcedureManager {
                 .getConf()
                 .getConfigNodeRatisConsensusLogAppenderBufferSize()
             - IoTDBConstant.RAFT_LOG_BASIC_SIZE;
+    this.procedureMetrics = new ProcedureMetrics(this);
   }
 
   public void shiftExecutor(boolean running) {
@@ -1032,7 +1033,6 @@ public class ProcedureManager {
   }
 
   public void addMetrics() {
-    this.procedureMetrics = new ProcedureMetrics(this);
     MetricService.getInstance().addMetricSet(this.procedureMetrics);
   }
 

@@ -36,6 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ProcedureMetrics implements IMetricSet {
@@ -99,19 +100,23 @@ public class ProcedureMetrics implements IMetricSet {
   }
 
   public void updateMetricsOnSubmit(String procType) {
-    if (metricService != null) {
-      metricItemsMap
-          .computeIfAbsent(procType, k -> new ProcedureMetricItems(k, metricService))
-          .updateMetricsOnSubmit();
-    }
+    Optional.ofNullable(metricService)
+        .ifPresent(
+            service -> {
+              metricItemsMap
+                  .computeIfAbsent(procType, k -> new ProcedureMetricItems(k, metricService))
+                  .updateMetricsOnSubmit();
+            });
   }
 
   public void updateMetricsOnFinish(String procType, long runtime, boolean success) {
-    if (metricService != null) {
-      metricItemsMap
-          .computeIfAbsent(procType, k -> new ProcedureMetricItems(k, metricService))
-          .updateMetricsOnFinish(runtime, success);
-    }
+    Optional.ofNullable(metricService)
+        .ifPresent(
+            service -> {
+              metricItemsMap
+                  .computeIfAbsent(procType, k -> new ProcedureMetricItems(k, service))
+                  .updateMetricsOnFinish(runtime, success);
+            });
   }
 
   class ProcedureMetricItems {
