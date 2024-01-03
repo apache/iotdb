@@ -1346,14 +1346,12 @@ public class TsFileProcessor {
   private void updateCompressionRatio() {
     try {
       double compressionRatio = ((double) totalMemTableSize) / writer.getPos();
-      if (logger.isDebugEnabled()) {
-        logger.debug(
-            "The compression ratio of tsfile {} is {}, totalMemTableSize: {}, the file size: {}",
-            writer.getFile().getAbsolutePath(),
-            compressionRatio,
-            totalMemTableSize,
-            writer.getPos());
-      }
+      logger.info(
+          "The compression ratio of tsfile {} is {}, totalMemTableSize: {}, the file size: {}",
+          writer.getFile().getAbsolutePath(),
+          String.format("%.2f", compressionRatio),
+          totalMemTableSize,
+          writer.getPos());
       String dataRegionId = dataRegionInfo.getDataRegion().getDataRegionId();
       WritingMetrics.getInstance()
           .recordTsFileCompressionRatioOfFlushingMemTable(dataRegionId, compressionRatio);
