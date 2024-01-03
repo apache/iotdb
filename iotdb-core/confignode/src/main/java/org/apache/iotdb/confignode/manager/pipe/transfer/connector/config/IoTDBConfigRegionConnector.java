@@ -61,7 +61,7 @@ public class IoTDBConfigRegionConnector extends IoTDBMetaConnector {
       String trustStorePwd,
       boolean useLeaderCache) {
     return new IoTDBThriftSyncClientConfigNodeManager(
-        nodeUrls, useSSL, trustStorePath, trustStorePwd, useLeaderCache);
+        nodeUrls, useSSL, trustStorePath, trustStorePwd);
   }
 
   @Override

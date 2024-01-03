@@ -34,9 +34,8 @@ public class IoTDBThriftSyncClientConfigNodeManager extends IoTDBThriftSyncClien
       List<TEndPoint> endPoints,
       boolean useSSL,
       String trustStorePath,
-      String trustStorePwd,
-      boolean useLeaderCache) {
-    super(endPoints, useSSL, trustStorePath, trustStorePwd, useLeaderCache);
+      String trustStorePwd) {
+    super(endPoints, useSSL, trustStorePath, trustStorePwd);
   }
 
   @Override
