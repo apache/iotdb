@@ -31,8 +31,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceView
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
@@ -262,6 +264,68 @@ public class AlignByDeviceOrderByLimitOffsetTest {
         plan6.getInstances().get(2).getFragment().getPlanNodeTree(), LIMIT_VALUE * 2);
     assertScanNodeLimitValue(
         plan6.getInstances().get(3).getFragment().getPlanNodeTree(), LIMIT_VALUE * 2);
+  }
+
+  @Test
+  public void alignByTimeOrderByExpressionLimitTest() {
+    QueryId queryId = new QueryId("test");
+    MPPQueryContext context =
+        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
+
+    // 1. select * order by expression + limit N
+    String sql =
+        String.format("select * from root.sg.** ORDER BY root.sg.d1.s1 DESC LIMIT %s", LIMIT_VALUE);
+    Analysis analysis = Util.analyze(sql, context);
+    PlanNode logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    DistributionPlanner planner =
+        new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    DistributedQueryPlan plan = planner.planFragments();
+    assertEquals(4, plan.getInstances().size());
+    PlanNode firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
+    PlanNode firstFiTopNode = firstFiRoot.getChildren().get(0);
+    assertTrue(firstFiTopNode instanceof TopKNode);
+
+    // 2. select * order by expression + offset M + limit N
+    sql =
+        String.format(
+            "select * from root.sg.** ORDER BY root.sg.d1.s1 DESC OFFSET 5 LIMIT %s", LIMIT_VALUE);
+    analysis = Util.analyze(sql, context);
+    logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    plan = planner.planFragments();
+    assertEquals(4, plan.getInstances().size());
+    firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
+    firstFiTopNode = firstFiRoot.getChildren().get(0);
+    assertTrue(firstFiTopNode instanceof LimitNode);
+    assertTrue(firstFiTopNode.getChildren().get(0) instanceof OffsetNode);
+
+    // 3. select s1 order by s2 + limit N
+    sql =
+        String.format(
+            "select s1 from root.sg.d1 ORDER BY root.sg.d22.s2 DESC LIMIT %s", LIMIT_VALUE);
+    analysis = Util.analyze(sql, context);
+    logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    plan = planner.planFragments();
+    assertEquals(3, plan.getInstances().size());
+    firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
+    firstFiTopNode = firstFiRoot.getChildren().get(0);
+    assertTrue(firstFiTopNode instanceof TransformNode);
+
+    // 4. select s1 order by s2 + offset M + limit N
+    sql =
+        String.format(
+            "select s1 from root.sg.d1 ORDER BY root.sg.d22.s2 DESC OFFSET 5 LIMIT %s",
+            LIMIT_VALUE);
+    analysis = Util.analyze(sql, context);
+    logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    plan = planner.planFragments();
+    assertEquals(3, plan.getInstances().size());
+    firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
+    firstFiTopNode = firstFiRoot.getChildren().get(0);
+    assertTrue(firstFiTopNode instanceof LimitNode);
+    assertTrue(firstFiTopNode.getChildren().get(0) instanceof OffsetNode);
   }
 
   private void assertScanNodeLimitValue(PlanNode root, long limitValue) {
