@@ -481,6 +481,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_memory_expander_interval_seconds",
                 String.valueOf(config.getPipeMemoryExpanderIntervalSeconds()))));
+    config.setPipeLeaderCacheMemoryUsagePercentage(
+        Float.parseFloat(
+            properties.getProperty(
+                "pipe_leader_cache_memory_usage_percentage",
+                String.valueOf(config.getPipeLeaderCacheMemoryUsagePercentage()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {

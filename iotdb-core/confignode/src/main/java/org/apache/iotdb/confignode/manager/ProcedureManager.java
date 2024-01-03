@@ -25,6 +25,8 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -108,7 +110,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class ProcedureManager {
@@ -116,8 +117,15 @@ public class ProcedureManager {
 
   private static final ConfigNodeConfig CONFIG_NODE_CONFIG =
       ConfigNodeDescriptor.getInstance().getConf();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
-  private static final int PROCEDURE_WAIT_TIME_OUT = 30;
+  public static final long PROCEDURE_WAIT_TIME_OUT =
+      Math.min(
+          2
+              * Math.max(
+                  CONFIG_NODE_CONFIG.getSchemaRegionRatisRpcLeaderElectionTimeoutMaxMs(),
+                  CONFIG_NODE_CONFIG.getDataRegionRatisRpcLeaderElectionTimeoutMaxMs()),
+          COMMON_CONFIG.getConnectionTimeoutInMS());
   private static final int PROCEDURE_WAIT_RETRY_TIMEOUT = 250;
 
   private final ConfigManager configManager;
@@ -909,9 +917,7 @@ public class ProcedureManager {
       long startTimeForCurrentProcedure = System.currentTimeMillis();
       while (executor.isRunning()
           && !executor.isFinished(procedureId)
-          && TimeUnit.MILLISECONDS.toSeconds(
-                  System.currentTimeMillis() - startTimeForCurrentProcedure)
-              < PROCEDURE_WAIT_TIME_OUT) {
+          && System.currentTimeMillis() - startTimeForCurrentProcedure < PROCEDURE_WAIT_TIME_OUT) {
         sleepWithoutInterrupt(PROCEDURE_WAIT_RETRY_TIMEOUT);
       }
       Procedure<ConfigNodeProcedureEnv> finishedProcedure =

@@ -574,7 +574,11 @@ public class RegionWriteExecutor {
                           ((MeasurementAlreadyExistException) metadataException)
                               .getMeasurementPath())));
             } else {
-              LOGGER.warn(METADATA_ERROR_MSG, metadataException);
+              int errorCode = metadataException.getErrorCode();
+              if (errorCode != TSStatusCode.PATH_ALREADY_EXIST.getStatusCode()
+                  || errorCode != TSStatusCode.ALIAS_ALREADY_EXIST.getStatusCode()) {
+                LOGGER.warn(METADATA_ERROR_MSG, metadataException);
+              }
               failingStatus.add(
                   RpcUtils.getStatus(
                       metadataException.getErrorCode(), metadataException.getMessage()));

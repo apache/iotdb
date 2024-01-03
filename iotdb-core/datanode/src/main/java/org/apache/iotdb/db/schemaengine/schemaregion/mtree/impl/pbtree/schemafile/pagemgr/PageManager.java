@@ -298,14 +298,14 @@ public abstract class PageManager implements IPageManager {
         return;
       }
 
-      if (minPageIndex > 0) {
+      if (minPageIndex >= 0) {
         page = getPageInstance(minPageIndex, cxt);
         page.getLock().writeLock().lock();
         cxt.traceLock(page);
         cxt.indexBuckets.sortIntoBucket(page, (short) -1);
       }
 
-      if (minPageIndex != maxPageIndex && maxPageIndex > 0) {
+      if (minPageIndex != maxPageIndex && maxPageIndex >= 0) {
         page = getPageInstance(maxPageIndex, cxt);
         page.getLock().writeLock().lock();
         cxt.traceLock(page);
@@ -398,6 +398,7 @@ public abstract class PageManager implements IPageManager {
               newPage.transplantSegment(curPage.getAsSegmentedPage(), actSegId, newSegSize);
           newPage.write(SchemaFile.getSegIndex(curSegAddr), entry.getKey(), childBuffer);
           curPage.getAsSegmentedPage().deleteSegment(actSegId);
+          cxt.indexBuckets.sortIntoBucket(curPage, (short) -1);
 
           // entrant lock guarantees thread-safe
           SchemaFile.setNodeAddress(node, curSegAddr);
@@ -511,6 +512,7 @@ public abstract class PageManager implements IPageManager {
           // assign new segment address
           curSegAddr = newPage.transplantSegment(curPage.getAsSegmentedPage(), actSegId, newSegSiz);
           curPage.getAsSegmentedPage().deleteSegment(actSegId);
+          cxt.indexBuckets.sortIntoBucket(curPage, (short) -1);
 
           newPage.update(SchemaFile.getSegIndex(curSegAddr), entry.getKey(), childBuffer);
           SchemaFile.setNodeAddress(node, curSegAddr);

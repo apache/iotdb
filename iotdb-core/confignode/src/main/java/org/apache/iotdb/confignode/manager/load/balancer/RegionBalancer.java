@@ -84,7 +84,7 @@ public class RegionBalancer {
       int replicationFactor =
           getClusterSchemaManager().getReplicationFactor(database, consensusGroupType);
       if (availableDataNodes.size() < replicationFactor) {
-        throw new NotEnoughDataNodeException();
+        throw new NotEnoughDataNodeException(availableDataNodes, replicationFactor);
       }
     }
 

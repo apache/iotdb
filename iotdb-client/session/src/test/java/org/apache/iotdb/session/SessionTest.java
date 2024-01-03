@@ -67,7 +67,14 @@ public class SessionTest {
   @Before
   public void setUp() throws IoTDBConnectionException, StatementExecutionException {
     MockitoAnnotations.initMocks(this);
-    session = new Session("host", 11, "user", "pwd");
+    session =
+        new Session.Builder()
+            .host("host")
+            .port(11)
+            .username("user")
+            .password("pwd")
+            .enableAutoFetch(false)
+            .build();
     Whitebox.setInternalState(session, "defaultSessionConnection", sessionConnection);
     TSQueryTemplateResp resp = new TSQueryTemplateResp();
     resp.setMeasurements(Arrays.asList("root.sg1.d1.s1"));

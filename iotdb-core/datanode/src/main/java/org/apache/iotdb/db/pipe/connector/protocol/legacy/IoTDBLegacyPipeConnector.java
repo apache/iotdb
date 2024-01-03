@@ -242,9 +242,7 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
       }
     } catch (TException e) {
       throw new PipeConnectionException(
-          String.format(
-              PipeConnectionException.CONNECTION_ERROR_FORMATTER, ipAddress, port, e.getMessage()),
-          e);
+          String.format(PipeConnectionException.CONNECTION_ERROR_FORMATTER, ipAddress, port), e);
     }
 
     sessionPool =

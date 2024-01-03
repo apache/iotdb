@@ -25,11 +25,9 @@
     <statusListener class="ch.qos.logback.core.status.NopStatusListener"/>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEERROR">
         <file>${IOTDB_HOME}/logs/log_error.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-error-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
-            <maxFileSize>10MB</maxFileSize>
-            <maxHistory>168</maxHistory>
-            <totalSizeCap>512MB</totalSizeCap>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${IOTDB_HOME}/logs/log-error-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <maxHistory>30</maxHistory>
         </rollingPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
@@ -44,11 +42,9 @@
     </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEWARN">
         <file>${IOTDB_HOME}/logs/log_warn.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-warn-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
-            <maxFileSize>10MB</maxFileSize>
-            <maxHistory>168</maxHistory>
-            <totalSizeCap>512MB</totalSizeCap>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${IOTDB_HOME}/logs/log-warn-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <maxHistory>30</maxHistory>
         </rollingPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
@@ -61,32 +57,11 @@
             <onMismatch>DENY</onMismatch>
         </filter>
     </appender>
-    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEINFO">
-        <file>${IOTDB_HOME}/logs/log_info.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-info-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
-            <maxFileSize>50MB</maxFileSize>
-            <maxHistory>168</maxHistory>
-            <totalSizeCap>5GB</totalSizeCap>
-        </rollingPolicy>
-        <append>true</append>
-        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <pattern>%d [%t] %-5p %C{25}:%L - %m %n</pattern>
-            <charset>utf-8</charset>
-        </encoder>
-        <filter class="ch.qos.logback.classic.filter.LevelFilter">
-            <level>INFO</level>
-            <onMatch>ACCEPT</onMatch>
-            <onMismatch>DENY</onMismatch>
-        </filter>
-    </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEDEBUG">
         <file>${IOTDB_HOME}/logs/log_debug.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-debug-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
-            <maxFileSize>50MB</maxFileSize>
-            <maxHistory>168</maxHistory>
-            <totalSizeCap>5GB</totalSizeCap>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${IOTDB_HOME}/logs/log-debug-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <maxHistory>30</maxHistory>
         </rollingPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
@@ -101,11 +76,9 @@
     </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILETRACE">
         <file>${IOTDB_HOME}/logs/log_trace.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-trace-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
-            <maxFileSize>50MB</maxFileSize>
-            <maxHistory>168</maxHistory>
-            <totalSizeCap>5GB</totalSizeCap>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${IOTDB_HOME}/logs/log-trace-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <maxHistory>30</maxHistory>
         </rollingPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
@@ -131,11 +104,9 @@
     <!-- a log appender that collect all log records whose level is greater than debug-->
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEALL">
         <file>${IOTDB_HOME}/logs/log_all.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-all-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
-            <maxFileSize>50MB</maxFileSize>
-            <maxHistory>168</maxHistory>
-            <totalSizeCap>5GB</totalSizeCap>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${IOTDB_HOME}/logs/log-all-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <maxHistory>30</maxHistory>
         </rollingPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
@@ -148,11 +119,9 @@
     </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILE_COST_MEASURE">
         <file>${IOTDB_HOME}/logs/log_measure.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-measure-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
-            <maxFileSize>10MB</maxFileSize>
-            <maxHistory>168</maxHistory>
-            <totalSizeCap>512MB</totalSizeCap>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${IOTDB_HOME}/logs/log-measure-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <maxHistory>30</maxHistory>
         </rollingPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
@@ -165,11 +134,9 @@
     </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="AUDIT">
         <file>${IOTDB_HOME}/logs/log_audit.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-audit-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
-            <maxFileSize>10MB</maxFileSize>
-            <maxHistory>168</maxHistory>
-            <totalSizeCap>512MB</totalSizeCap>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${IOTDB_HOME}/logs/log-audit-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <maxHistory>30</maxHistory>
         </rollingPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
@@ -182,11 +149,9 @@
     </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="QUERY_DEBUG">
         <file>${IOTDB_HOME}/logs/log_query_debug.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-query-debug-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
-            <maxFileSize>10MB</maxFileSize>
-            <maxHistory>168</maxHistory>
-            <totalSizeCap>512MB</totalSizeCap>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${IOTDB_HOME}/logs/log-query-debug-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <maxHistory>30</maxHistory>
         </rollingPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
@@ -199,11 +164,9 @@
     </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="SLOW_SQL">
         <file>${IOTDB_HOME}/logs/log_slow_sql.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-slow-sql-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
-            <maxFileSize>10MB</maxFileSize>
-            <maxHistory>168</maxHistory>
-            <totalSizeCap>512MB</totalSizeCap>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${IOTDB_HOME}/logs/log-slow-sql-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <maxHistory>30</maxHistory>
         </rollingPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
@@ -216,11 +179,9 @@
     </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="QUERY_FREQUENCY">
         <file>${IOTDB_HOME}/logs/log_query_frequency.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-query-frequency-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
-            <maxFileSize>10MB</maxFileSize>
-            <maxHistory>168</maxHistory>
-            <totalSizeCap>512MB</totalSizeCap>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${IOTDB_HOME}/logs/log-query-frequency-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <maxHistory>30</maxHistory>
         </rollingPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
@@ -233,11 +194,9 @@
     </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="COMPACTION">
         <file>${IOTDB_HOME}/logs/log_compaction.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-compaction-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
-            <maxFileSize>10MB</maxFileSize>
-            <maxHistory>168</maxHistory>
-            <totalSizeCap>512MB</totalSizeCap>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${IOTDB_HOME}/logs/log-compaction-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <maxHistory>30</maxHistory>
         </rollingPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
@@ -250,11 +209,9 @@
     </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="PIPE">
         <file>${IOTDB_HOME}/logs/log_datanode_pipe.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-pipe-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
-            <maxFileSize>10MB</maxFileSize>
-            <maxHistory>168</maxHistory>
-            <totalSizeCap>512MB</totalSizeCap>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-pipe-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <maxHistory>30</maxHistory>
         </rollingPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
@@ -270,7 +227,6 @@
         <appender-ref ref="FILEDEBUG"/>
         <appender-ref ref="FILEWARN"/>
         <appender-ref ref="FILEERROR"/>
-        <appender-ref ref="FILEINFO"/>
         <appender-ref ref="FILEALL"/>
         <appender-ref ref="stdout"/>
     </root>
