@@ -1242,6 +1242,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   private void sampleDiskLoad(TLoadSample loadSample) {
+    final double byteToGb = 1024 * 1024 * 1024;
     double availableDisk =
         MetricService.getInstance()
             .getAutoGauge(
@@ -1258,6 +1259,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 Tag.NAME.toString(),
                 SYSTEM)
             .getValue();
+    LOGGER.info("[Heartbeat] disk space: {}, {}", availableDisk, totalDisk);
 
     if (availableDisk != 0 && totalDisk != 0) {
       double freeDiskRatio = availableDisk / totalDisk;
@@ -1266,7 +1268,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       // Reset NodeStatus if necessary
       if (freeDiskRatio < commonConfig.getDiskSpaceWarningThreshold()) {
         LOGGER.warn(
-            "The remaining disk usage ratio:{} is less than disk_spec_warning_threshold:{}, set system to readonly!",
+            "The available disk space is : {}GB, "
+                + "the total disk space is : {}GB, "
+                + "and the remaining disk usage ratio: {} is "
+                + "less than disk_spec_warning_threshold: {}, set system to readonly!",
+            availableDisk / byteToGb,
+            totalDisk / byteToGb,
             freeDiskRatio,
             commonConfig.getDiskSpaceWarningThreshold());
         commonConfig.setNodeStatus(NodeStatus.ReadOnly);
