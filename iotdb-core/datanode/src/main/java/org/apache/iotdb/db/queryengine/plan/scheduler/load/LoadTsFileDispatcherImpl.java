@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.scheduler.load;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
@@ -53,14 +52,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-
-import static com.google.common.util.concurrent.Futures.immediateFuture;
 
 public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileDispatcherImpl.class);
@@ -159,40 +154,6 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     }
   }
 
-  private void dispatchRemote(TLoadCommandReq loadCommandReq, TEndPoint endPoint)
-      throws FragmentInstanceDispatchException {
-    try (SyncDataNodeInternalServiceClient client =
-        internalServiceClientManager.borrowClient(endPoint)) {
-      TLoadResp loadResp = client.sendLoadCommand(loadCommandReq);
-      if (!loadResp.isAccepted()) {
-        LOGGER.warn(loadResp.message);
-        throw new FragmentInstanceDispatchException(loadResp.status);
-      }
-    } catch (ClientManagerException | TException e) {
-      LOGGER.warn(NODE_CONNECTION_ERROR, endPoint, e);
-      TSStatus status = new TSStatus();
-      status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
-      status.setMessage(
-          "can't connect to node {}, please reset longer dn_connection_timeout_ms "
-              + "in iotdb-common.properties and restart iotdb."
-              + endPoint);
-      throw new FragmentInstanceDispatchException(status);
-    }
-  }
-
-  private void dispatchLocally(TLoadCommandReq loadCommandReq)
-      throws FragmentInstanceDispatchException {
-    TSStatus resultStatus =
-        StorageEngine.getInstance()
-            .executeLoadCommand(
-                LoadTsFileScheduler.LoadCommand.values()[loadCommandReq.commandType],
-                loadCommandReq.uuid,
-                loadCommandReq.isSetIsGeneratedByPipe() && loadCommandReq.isGeneratedByPipe);
-    if (!RpcUtils.SUCCESS_STATUS.equals(resultStatus)) {
-      throw new FragmentInstanceDispatchException(resultStatus);
-    }
-  }
-
   public void dispatchLocally(FragmentInstance instance) throws FragmentInstanceDispatchException {
     LOGGER.info("Receive load node from uuid {}.", uuid);
 
@@ -230,37 +191,6 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
         throw new FragmentInstanceDispatchException(resultStatus);
       }
     }
-  }
-
-  public Future<FragInstanceDispatchResult> dispatchCommand(
-      TLoadCommandReq loadCommandReq, Set<TRegionReplicaSet> replicaSets) {
-    Set<TEndPoint> allEndPoint = new HashSet<>();
-    for (TRegionReplicaSet replicaSet : replicaSets) {
-      for (TDataNodeLocation dataNodeLocation : replicaSet.getDataNodeLocations()) {
-        allEndPoint.add(dataNodeLocation.getInternalEndPoint());
-      }
-    }
-
-    for (TEndPoint endPoint : allEndPoint) {
-      try (SetThreadName threadName =
-          new SetThreadName(
-              LoadTsFileScheduler.class.getName() + "-" + loadCommandReq.commandType)) {
-        if (isDispatchedToLocal(endPoint)) {
-          dispatchLocally(loadCommandReq);
-        } else {
-          dispatchRemote(loadCommandReq, endPoint);
-        }
-      } catch (FragmentInstanceDispatchException e) {
-        return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
-      } catch (Throwable t) {
-        LOGGER.error("cannot dispatch LoadCommand for load operation", t);
-        return immediateFuture(
-            new FragInstanceDispatchResult(
-                RpcUtils.getStatus(
-                    TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage())));
-      }
-    }
-    return immediateFuture(new FragInstanceDispatchResult(true));
   }
 
   public Future<FragInstanceDispatchResult> dispatchCommand(List<FragmentInstance> instances) {
