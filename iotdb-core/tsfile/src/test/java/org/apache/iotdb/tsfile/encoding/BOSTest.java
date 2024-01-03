@@ -11,12 +11,25 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.TreeMap;
 
 
 import static java.lang.Math.pow;
 
 public class BOSTest {
 
+    public static long combine2Int(int int1, int int2) {
+        return ((long) int1 << 32) | (int2 & 0xFFFFFFFFL);
+    }
+
+    public static int getTime(long long1) {
+        return ((int) (long1 >> 32));
+    }
+
+    public static int getValue(long long1) {
+        return ((int) (long1));
+    }
     public static int getBitWith(int num) {
         if (num == 0) return 1;
         else return 32 - Integer.numberOfLeadingZeros(num);
@@ -197,6 +210,65 @@ public class BOSTest {
         return ts_block_delta;
     }
 
+//    public static int[] getAbsDeltaTsBlock(
+//            int[] ts_block,
+//            int i,
+//            int block_size,
+//            ArrayList<Integer> min_delta) {
+//        int[] ts_block_delta = new int[block_size-1];
+//
+//        int value_delta_min = Integer.MAX_VALUE;
+//        int base = i*block_size+1;
+//        int end = (i+1)*block_size;
+//
+//        int tmp_j_1 = ts_block[base-1];
+//        min_delta.add(tmp_j_1);
+//        int j = base;
+//        int tmp_j;
+//
+/////-------------------------------
+//
+//        while(j<end){
+//            tmp_j = ts_block[j];
+//            int epsilon_v = tmp_j - tmp_j_1;
+//            ts_block_delta[j-base] = epsilon_v;
+//            if (epsilon_v < value_delta_min) {
+//                value_delta_min = epsilon_v;
+//            }
+//            tmp_j_1 = tmp_j;
+//            j++;
+//        }
+//        j = 0;
+//        end = block_size -1;
+//        while(j<end){
+//            ts_block_delta[j] = ts_block_delta[j] - value_delta_min;
+//            j++;
+//        }
+/////-------------------------------
+//
+//
+////        min_delta.add(ts_block[i*block_size]);
+//        min_delta.add(value_delta_min);
+////        for (int j = i*block_size+1; j < (i+1)*block_size; j++) {
+////
+////            int epsilon_v = ts_block[j] - ts_block[j - 1];
+////
+////            if (epsilon_v < value_delta_min) {
+////                value_delta_min = epsilon_v;
+////            }
+////
+////        }
+//
+//
+////        int base = i*block_size+1;
+////        int end = (i+1)*block_size;
+////        for (int j = base; j < end; j++) {
+////            int epsilon_v = ts_block[j] - value_delta_min - ts_block[j - 1];
+////            ts_block_delta[j-base] =epsilon_v;
+////        }
+//        return ts_block_delta;
+//    }
+
     public static int[] getAbsDeltaTsBlock(
             int[] ts_block,
             int i,
@@ -204,7 +276,9 @@ public class BOSTest {
             ArrayList<Integer> min_delta) {
         int[] ts_block_delta = new int[block_size-1];
 
+
         int value_delta_min = Integer.MAX_VALUE;
+        int value_delta_max = Integer.MIN_VALUE;
         for (int j = i*block_size+1; j < (i+1)*block_size; j++) {
 
             int epsilon_v = ts_block[j] - ts_block[j - 1];
@@ -212,10 +286,14 @@ public class BOSTest {
             if (epsilon_v < value_delta_min) {
                 value_delta_min = epsilon_v;
             }
+            if (epsilon_v > value_delta_max) {
+                value_delta_max = epsilon_v;
+            }
 
         }
         min_delta.add(ts_block[i*block_size]);
         min_delta.add(value_delta_min);
+//        min_delta.add(getBitWith(value_delta_max-value_delta_min));
 
         int base = i*block_size+1;
         int end = (i+1)*block_size;
@@ -225,7 +303,6 @@ public class BOSTest {
         }
         return ts_block_delta;
     }
-
 
 
     public static int encodeOutlier2Bytes(
@@ -424,7 +501,7 @@ public class BOSTest {
             encode_pos = encodeOutlier2Bytes(final_left_outlier_index, getBitWith(block_size),encode_pos,cur_byte);
             encode_pos = encodeOutlier2Bytes(final_right_outlier_index, getBitWith(block_size),encode_pos,cur_byte);
         }
-        encode_pos =encodeOutlier2Bytes(final_normal, bit_width_final,encode_pos,cur_byte);
+        encode_pos = encodeOutlier2Bytes(final_normal, bit_width_final,encode_pos,cur_byte);
         if (k1 != 0)
             encode_pos = encodeOutlier2Bytes(final_left_outlier, left_bit_width,encode_pos,cur_byte);
         if (k2 != 0)
@@ -440,7 +517,13 @@ public class BOSTest {
         ArrayList<Integer> min_delta = new ArrayList<>();
         int[] ts_block_delta = getAbsDeltaTsBlock(ts_block, min_delta,supple_length);
         ArrayList<Integer> min_delta_r = new ArrayList<>();
-        int[] ts_block_order_value = getAbsDeltaTsBlock(ts_block, min_delta_r,supple_length);
+        int[] ts_block_order_value = ts_block_delta.clone();//getAbsDeltaTsBlock(ts_block, min_delta_r,supple_length);
+
+//        long[] frequent_ts_block = new long[block_size+1];
+//
+//        for(int i=0;i<=block_size;i++){
+//
+//        }
 
         Arrays.sort(ts_block_order_value);
 
@@ -543,51 +626,103 @@ public class BOSTest {
         return encode_pos;
     }
 
+    public static int[] cumulativeCountDistribution(int[] ts_block_value) {
+
+        int maxValue = Integer.MIN_VALUE;
+        for (int value : ts_block_value) {
+            if(value > maxValue) maxValue = value;
+        }
+        // 或者使用 ts_block_value 中的最大值
+        int[] count = new int[maxValue + 1]; // 用来计数每个值出现的次数
+        int[] cumulative = new int[maxValue + 1]; // 用来存储累积分布
+
+        // 计数每个值出现的次数
+        for (int value : ts_block_value) {
+            count[value]++;
+        }
+
+        // 计算累积分布
+        cumulative[0] = count[0];
+        for (int i = 1; i <= maxValue; i++) {
+            cumulative[i] = cumulative[i - 1] + count[i];
+        }
+
+        return cumulative;
+    }
+
     private static int BOSBlockEncoder(int[] ts_block, int block_i, int block_size, int encode_pos , byte[] cur_byte) {
 
         ArrayList<Integer> min_delta = new ArrayList<>();
         int[] ts_block_delta = getAbsDeltaTsBlock(ts_block,block_i, block_size, min_delta);
-        ArrayList<Integer> min_delta_r = new ArrayList<>();
-        int[] ts_block_order_value = getAbsDeltaTsBlock(ts_block, block_i, block_size,min_delta_r);
-
-        Arrays.sort(ts_block_order_value);
+//        ArrayList<Integer> min_delta_r = new ArrayList<>();
+        int[] ts_block_order_value = ts_block_delta.clone();//getAbsDeltaTsBlock(ts_block, block_i, block_size,min_delta_r);
 
         block_size --;
 
-        int max_delta_value = ts_block_order_value[block_size - 1];
+
+//        long[] freq_ts_block_order_value = new long[block_size];
+//        int unique_value = 0;
+        HashMap<Integer,Integer> cdf  = new HashMap<>();
+        for(int tmp_value:ts_block_order_value){
+            if(cdf.containsKey(tmp_value)){
+                cdf.put(tmp_value, cdf.get(tmp_value)+1);
+            }else{
+                cdf.put(tmp_value,1);
+            }
+//            long tmp_value = combine2Int( ts_block_order_value[i] , 1);
+        }
+        TreeMap<Integer, Integer> sortedMap = new TreeMap<>(cdf);
+        int max_delta_value = sortedMap.lastKey();
+        int tmp_count = 0;
+        int tmp_i = 0;
+        TreeMap<Integer, Integer> valueMap = new TreeMap<>();
+        TreeMap<Integer, Integer> countMap = new TreeMap<>();
+        for (Integer key : sortedMap.keySet()) {
+            valueMap.put(tmp_i,key);
+            tmp_count += sortedMap.get(key);
+            countMap.put(tmp_i,tmp_count);
+            tmp_i ++;
+//            sortedMap.put(key, tmp_count);
+        }
+
+//        Arrays.sort(ts_block_order_value);
+
+
+
+//        int max_delta_value = ts_block_order_value[block_size - 1];
         int max_delta_value_bit_width = getBitWith(max_delta_value);
         ArrayList<Integer> spread_value = new ArrayList<>();
         for (int i = 1; i < max_delta_value_bit_width; i++) {
             int spread_v = (int) pow(2, i) - 1;
             spread_value.add(spread_v);
         }
-        ArrayList<ArrayList<Integer>> PDF = new ArrayList<>();
+//        ArrayList<ArrayList<Integer>> PDF = new ArrayList<>();
 
 
-        ArrayList<Integer> start_value = new ArrayList<>();
-        int min_delta_value = ts_block_order_value[0];
-        start_value.add(min_delta_value);
+//        ArrayList<Integer> start_value = new ArrayList<>();
+//        int min_delta_value = ts_block_order_value[0];
+//        start_value.add(min_delta_value);
 
-        ArrayList<Integer> tmp_value = new ArrayList<>();
-        tmp_value.add(min_delta_value);
-        int count = 1;
-        int tmp = min_delta_value;
-        for (int i = 1; i < block_size; i++) {
-            if (ts_block_order_value[i] != tmp) {
-                int start_v = ts_block_order_value[i];
-                tmp_value.add(count);
-                PDF.add(tmp_value);
-                tmp_value = new ArrayList<>();
-                start_value.add(start_v);
-                tmp_value.add(start_v);
-                tmp = start_v;
-//                count = 1;
-            }
-            count++;
-
-        }
-        tmp_value.add(count);
-        PDF.add(tmp_value);
+//        ArrayList<Integer> tmp_value = new ArrayList<>();
+//        tmp_value.add(min_delta_value);
+//        int count = 1;
+//        int tmp = min_delta_value;
+//        for (int i = 1; i < block_size; i++) {
+//            if (ts_block_order_value[i] != tmp) {
+//                int start_v = ts_block_order_value[i];
+//                tmp_value.add(count);
+//                PDF.add(tmp_value);
+//                tmp_value = new ArrayList<>();
+//                start_value.add(start_v);
+//                tmp_value.add(start_v);
+//                tmp = start_v;
+////                count = 1;
+//            }
+//            count++;
+//
+//        }
+//        tmp_value.add(count);
+//        PDF.add(tmp_value);
 //        System.out.println(PDF);
 
         int final_k_start_value = ts_block_order_value[0];
@@ -597,29 +732,29 @@ public class BOSTest {
         min_bits += (getBitWith(final_k_end_value - final_k_start_value) * (block_size - 1));
 
 
-        int start_value_size = start_value.size();
+        int start_value_size = valueMap.size();// start_value.size();
 
         for (int start_value_i = 0; start_value_i < start_value_size - 1; start_value_i++) {
-            int k_start_value = start_value.get(start_value_i);
+            int k_start_value = valueMap.get(start_value_i); // start_value.get(start_value_i);
             for (int k_spread_value : spread_value) {
                 int k_end_value = Math.min(k_spread_value + k_start_value, max_delta_value);
 
                 int cur_bits = 0;
                 int cur_k1 = 0;
                 if (start_value_i != 0) {
-                    cur_k1 = PDF.get(start_value_i - 1).get(1);
+                    cur_k1 = countMap.get(start_value_i - 1);// PDF.get(start_value_i - 1).get(1);
                 }
 
                 int cur_k2 = 0;
                 int max_normal;
-                int PDF_size = PDF.size();
+                int PDF_size = valueMap.size();// PDF.size();
                 for (int tmp_j = start_value_i; tmp_j < PDF_size; tmp_j++) {
-                    max_normal = PDF.get(tmp_j).get(0);
+                    max_normal = valueMap.get(tmp_j)  ;//PDF.get(tmp_j).get(0);
                     if (max_normal >= k_end_value) {
                         if (max_normal > k_end_value)
-                            cur_k2 = block_size - PDF.get(tmp_j - 1).get(1);
+                            cur_k2 = block_size - countMap.get(tmp_j-1);//PDF.get(tmp_j - 1).get(1);
                         else if (max_normal == k_end_value) {
-                            cur_k2 = block_size - PDF.get(tmp_j).get(1);
+                            cur_k2 = block_size -countMap.get(tmp_j);// PDF.get(tmp_j).get(1);
                         }
 
                         break;
@@ -645,7 +780,8 @@ public class BOSTest {
             }
         }
 
-
+        System.out.println(final_k_start_value);
+        System.out.println(final_k_end_value);
 
         encode_pos = BOSEncodeBits(ts_block_delta, final_k_start_value, final_k_start_value, final_k_end_value, max_delta_value,
                 min_delta, encode_pos , cur_byte);
@@ -668,9 +804,7 @@ public class BOSTest {
         encode_pos+= 4;
 
         for (int i = 0; i < block_num; i++) {
-
             encode_pos =  BOSBlockEncoder(data, i, block_size, encode_pos,encoded_result);
-
         }
 
         int remaining_length = length_all - block_num * block_size;
@@ -901,8 +1035,8 @@ public class BOSTest {
 
     @Test
     public void BOSOptimalTest() throws IOException {
-        String parent_dir = "iotdb/iotdb-core/tsfile/src/test/resources/"; // your data path
-        String output_parent_dir = parent_dir + "bos";
+        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; // your data path
+        String output_parent_dir = parent_dir + "vldb/compression_ratio/bos";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -950,8 +1084,9 @@ public class BOSTest {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
         dataset_block_size.add(1024);
 
+        for (int file_i = 11; file_i < 12; file_i++) {
 
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
@@ -1001,7 +1136,7 @@ public class BOSTest {
                 long decodeTime = 0;
                 double ratio = 0;
                 double compressed_size = 0;
-                int repeatTime2 = 500;
+                int repeatTime2 = 100;
 
                     int length = 0;
 
@@ -1032,7 +1167,7 @@ public class BOSTest {
                         String.valueOf(ratio)
                 };
                 writer.writeRecord(record);
-                System.out.println(ratio);
+                System.out.println(1/ratio);
 
             }
             writer.close();
