@@ -185,9 +185,7 @@ public abstract class IoTDBMetaConnector extends IoTDBConnector {
                 null));
       } catch (TTransportException e) {
         throw new PipeConnectionException(
-            String.format(
-                PipeConnectionException.CONNECTION_ERROR_FORMATTER, ip, port, e.getMessage()),
-            e);
+            String.format(PipeConnectionException.CONNECTION_ERROR_FORMATTER, ip, port), e);
       }
 
       // TODO: validate client connectivity here, just like in ThriftSync.

@@ -21,7 +21,8 @@ package org.apache.iotdb.pipe.api.exception;
 
 public class PipeConnectionException extends PipeException {
 
-  public static String CONNECTION_ERROR_FORMATTER = "Connect to receiver %s:%s error, because: %s";
+  public static final String CONNECTION_ERROR_FORMATTER =
+      "Error occurred while connecting to receiver %s:%s, please check network connectivity or SSL configurations when enable SSL transmission";
 
   public PipeConnectionException(String message) {
     super(message);
