@@ -2359,16 +2359,6 @@ public class DataRegion implements IDataRegionForQuery {
       }
     }
     if (summary.hasSubmitTask()) {
-      logger.info(
-          "[CompactionScheduler][{}] selected sequence InnerSpaceCompactionTask num is {},"
-              + " selected unsequence InnerSpaceCompactionTask num is {},"
-              + " selected CrossSpaceCompactionTask num is {},"
-              + " selected InsertionCrossSpaceCompactionTask num is {}",
-          dataRegionId,
-          summary.getSubmitSeqInnerSpaceCompactionTaskNum(),
-          summary.getSubmitUnseqInnerSpaceCompactionTaskNum(),
-          summary.getSubmitCrossSpaceCompactionTaskNum(),
-          summary.getSubmitInsertionCrossSpaceCompactionTaskNum());
       CompactionMetrics.getInstance().updateCompactionTaskSelectionNum(summary);
     }
     return trySubmitCount;
