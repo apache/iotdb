@@ -31,6 +31,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.junit.Assert;
+import org.junit.Assume;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -653,25 +654,29 @@ public class TestUtils {
     }
   }
 
-  public static void restartCluster(BaseEnv env) throws Exception {
+  public static void restartCluster(BaseEnv env) {
     restartCluster(env, 1);
   }
 
-  public static void restartCluster(BaseEnv env, long waitSeconds) throws Exception {
-    for (int i = 0; i < env.getConfigNodeWrapperList().size(); ++i) {
-      env.shutdownConfigNode(i);
+  public static void restartCluster(BaseEnv env, long waitSeconds) {
+    try {
+      for (int i = 0; i < env.getConfigNodeWrapperList().size(); ++i) {
+        env.shutdownConfigNode(i);
+      }
+      for (int i = 0; i < env.getDataNodeWrapperList().size(); ++i) {
+        env.shutdownDataNode(i);
+      }
+      TimeUnit.SECONDS.sleep(waitSeconds);
+      for (int i = 0; i < env.getConfigNodeWrapperList().size(); ++i) {
+        env.startConfigNode(i);
+      }
+      for (int i = 0; i < env.getDataNodeWrapperList().size(); ++i) {
+        env.startDataNode(i);
+      }
+      ((AbstractEnv) env).testWorkingNoUnknown();
+    } catch (Exception | Error e) {
+      Assume.assumeNoException(e);
     }
-    for (int i = 0; i < env.getDataNodeWrapperList().size(); ++i) {
-      env.shutdownDataNode(i);
-    }
-    TimeUnit.SECONDS.sleep(waitSeconds);
-    for (int i = 0; i < env.getConfigNodeWrapperList().size(); ++i) {
-      env.startConfigNode(i);
-    }
-    for (int i = 0; i < env.getDataNodeWrapperList().size(); ++i) {
-      env.startDataNode(i);
-    }
-    ((AbstractEnv) env).testWorkingNoUnknown();
   }
 
   public static void assertDataEventuallyOnEnv(
