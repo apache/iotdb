@@ -119,13 +119,7 @@ public class ProcedureManager {
       ConfigNodeDescriptor.getInstance().getConf();
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
-  public static final long PROCEDURE_WAIT_TIME_OUT =
-      Math.min(
-          2
-              * Math.max(
-                  CONFIG_NODE_CONFIG.getSchemaRegionRatisRpcLeaderElectionTimeoutMaxMs(),
-                  CONFIG_NODE_CONFIG.getDataRegionRatisRpcLeaderElectionTimeoutMaxMs()),
-          COMMON_CONFIG.getConnectionTimeoutInMS());
+  public static final long PROCEDURE_WAIT_TIME_OUT = COMMON_CONFIG.getConnectionTimeoutInMS();
   private static final int PROCEDURE_WAIT_RETRY_TIMEOUT = 250;
 
   private final ConfigManager configManager;

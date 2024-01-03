@@ -236,7 +236,7 @@ public abstract class PageManager implements IPageManager {
   /** Context only tracks write locks, and so it shall be released. */
   protected void releaseLocks(SchemaPageContext cxt) {
     for (int i : cxt.lockTraces) {
-      pageInstCache.get(i).getLock().writeLock().unlock();
+      cxt.referredPages.get(i).getLock().writeLock().unlock();
     }
   }
 
@@ -298,14 +298,14 @@ public abstract class PageManager implements IPageManager {
         return;
       }
 
-      if (minPageIndex > 0) {
+      if (minPageIndex >= 0) {
         page = getPageInstance(minPageIndex, cxt);
         page.getLock().writeLock().lock();
         cxt.traceLock(page);
         cxt.indexBuckets.sortIntoBucket(page, (short) -1);
       }
 
-      if (minPageIndex != maxPageIndex && maxPageIndex > 0) {
+      if (minPageIndex != maxPageIndex && maxPageIndex >= 0) {
         page = getPageInstance(maxPageIndex, cxt);
         page.getLock().writeLock().lock();
         cxt.traceLock(page);
@@ -398,6 +398,7 @@ public abstract class PageManager implements IPageManager {
               newPage.transplantSegment(curPage.getAsSegmentedPage(), actSegId, newSegSize);
           newPage.write(SchemaFile.getSegIndex(curSegAddr), entry.getKey(), childBuffer);
           curPage.getAsSegmentedPage().deleteSegment(actSegId);
+          cxt.indexBuckets.sortIntoBucket(curPage, (short) -1);
 
           // entrant lock guarantees thread-safe
           SchemaFile.setNodeAddress(node, curSegAddr);
@@ -511,6 +512,7 @@ public abstract class PageManager implements IPageManager {
           // assign new segment address
           curSegAddr = newPage.transplantSegment(curPage.getAsSegmentedPage(), actSegId, newSegSiz);
           curPage.getAsSegmentedPage().deleteSegment(actSegId);
+          cxt.indexBuckets.sortIntoBucket(curPage, (short) -1);
 
           newPage.update(SchemaFile.getSegIndex(curSegAddr), entry.getKey(), childBuffer);
           SchemaFile.setNodeAddress(node, curSegAddr);
@@ -786,8 +788,7 @@ public abstract class PageManager implements IPageManager {
         cxt.traceLock(targetPage);
 
         // transfer the page from pageIndexBuckets to cxt.buckets thus not be accessed by other
-        // WRITE
-        // thread
+        //  WRITE thread
         cxt.indexBuckets.sortIntoBucket(targetPage, size);
         return targetPage.getAsSegmentedPage();
       }
@@ -1018,11 +1019,11 @@ public abstract class PageManager implements IPageManager {
       interleavedFlushCnt = 0;
     }
 
-    public void markDirty(ISchemaPage page) {
+    protected void markDirty(ISchemaPage page) {
       markDirty(page, false);
     }
 
-    private void markDirty(ISchemaPage page, boolean forceReplace) {
+    protected void markDirty(ISchemaPage page, boolean forceReplace) {
       if (!page.isDirtyPage()) {
         dirtyCnt++;
       }
@@ -1039,7 +1040,7 @@ public abstract class PageManager implements IPageManager {
       }
     }
 
-    private void traceLock(ISchemaPage page) {
+    protected void traceLock(ISchemaPage page) {
       refer(page);
       lockTraces.add(page.getPageIndex());
     }
