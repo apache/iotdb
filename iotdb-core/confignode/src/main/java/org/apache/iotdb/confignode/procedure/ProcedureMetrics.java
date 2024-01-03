@@ -104,7 +104,7 @@ public class ProcedureMetrics implements IMetricSet {
         .ifPresent(
             service -> {
               metricItemsMap
-                  .computeIfAbsent(procType, k -> new ProcedureMetricItems(k, metricService))
+                  .computeIfAbsent(procType, k -> new ProcedureMetricItems(k, service))
                   .updateMetricsOnSubmit();
             });
   }
