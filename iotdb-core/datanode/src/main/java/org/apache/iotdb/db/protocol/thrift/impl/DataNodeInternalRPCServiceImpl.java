@@ -203,6 +203,7 @@ import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
@@ -1266,7 +1267,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       // Reset NodeStatus if necessary
       if (freeDiskRatio < commonConfig.getDiskSpaceWarningThreshold()) {
         LOGGER.warn(
-            "The remaining disk usage ratio:{} is less than disk_spec_warning_threshold:{}, set system to readonly!",
+            "The available disk space is : {}, "
+                + "the total disk space is : {}, "
+                + "and the remaining disk usage ratio: {} is "
+                + "less than disk_spec_warning_threshold: {}, set system to readonly!",
+            RamUsageEstimator.humanReadableUnits((long) availableDisk),
+            RamUsageEstimator.humanReadableUnits((long) totalDisk),
             freeDiskRatio,
             commonConfig.getDiskSpaceWarningThreshold());
         commonConfig.setNodeStatus(NodeStatus.ReadOnly);
