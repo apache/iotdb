@@ -165,6 +165,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       MPPQueryContext context) {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeseries will be effective.
+    schemaCache.takeInsertLock();
+    context.setAcquiredLock(true);
     schemaCache.takeReadLock();
     try {
       Pair<Template, PartialPath> templateSetInfo =
@@ -191,7 +193,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         schemaComputationWithAutoCreation.computeMeasurement(index, null);
       }
     } finally {
-      context.setAcquiredLock(true);
+      schemaCache.releaseReadLock();
     }
   }
 
@@ -201,6 +203,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       MPPQueryContext context) {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeseries will be effective.
+    schemaCache.takeInsertLock();
+    context.setAcquiredLock(true);
     schemaCache.takeReadLock();
     try {
 
@@ -228,7 +232,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
             templateSetInfoList, templateTimeSeriesRequestList, context);
       }
     } finally {
-      context.setAcquiredLock(true);
+      schemaCache.releaseReadLock();
     }
   }
 
@@ -243,6 +247,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       MPPQueryContext context) {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeseries will be effective.
+    schemaCache.takeInsertLock();
+    context.setAcquiredLock(true);
     schemaCache.takeReadLock();
     try {
       ClusterSchemaTree schemaTree = new ClusterSchemaTree();
@@ -315,7 +321,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
       return schemaTree;
     } finally {
-      context.setAcquiredLock(true);
+      schemaCache.releaseReadLock();
     }
   }
 
