@@ -20,13 +20,13 @@
 package org.apache.iotdb.db.pipe.task.stage;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.task.EventSupplier;
+import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.task.stage.PipeTaskStage;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
-import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.execution.executor.PipeProcessorSubtaskExecutor;
-import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutorManager;
-import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
-import org.apache.iotdb.db.pipe.task.connection.EventSupplier;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.task.subtask.processor.PipeProcessorSubtask;
 import org.apache.iotdb.pipe.api.PipeProcessor;
@@ -38,8 +38,7 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 public class PipeTaskProcessorStage extends PipeTaskStage {
 
-  private final PipeProcessorSubtaskExecutor executor =
-      PipeSubtaskExecutorManager.getInstance().getProcessorSubtaskExecutor();
+  private final PipeProcessorSubtaskExecutor executor;
 
   private final PipeProcessorSubtask pipeProcessorSubtask;
 
@@ -58,9 +57,10 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
       PipeParameters pipeProcessorParameters,
       TConsensusGroupId dataRegionId,
       EventSupplier pipeExtractorInputEventSupplier,
-      BoundedBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue) {
+      BoundedBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue,
+      PipeProcessorSubtaskExecutor executor) {
     final PipeProcessor pipeProcessor =
-        PipeAgent.plugin().reflectProcessor(pipeProcessorParameters);
+        PipeAgent.plugin().dataRegion().reflectProcessor(pipeProcessorParameters);
 
     // Validate and customize should be called before createSubtask. this allows extractor exposing
     // exceptions in advance.
@@ -95,6 +95,8 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
             pipeExtractorInputEventSupplier,
             pipeProcessor,
             pipeConnectorOutputEventCollector);
+
+    this.executor = executor;
   }
 
   @Override

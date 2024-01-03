@@ -974,12 +974,15 @@ public class PartitionInfo implements SnapshotProcessor {
       return new GetRegionIdResp(
           new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), new ArrayList<>());
     }
-
     DatabasePartitionTable databasePartitionTable = databasePartitionTables.get(plan.getDatabase());
     return new GetRegionIdResp(
         new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
         databasePartitionTable
-            .getRegionId(plan.getPartitionType(), plan.getSeriesSlotId(), plan.getTimeSlotId())
+            .getRegionId(
+                plan.getPartitionType(),
+                plan.getSeriesSlotId(),
+                plan.getStartTimeSlotId(),
+                plan.getEndTimeSlotId())
             .stream()
             .distinct()
             .sorted(Comparator.comparing(TConsensusGroupId::getId))
@@ -1092,6 +1095,14 @@ public class PartitionInfo implements SnapshotProcessor {
         dataRegionIds.put(database, databasePartitionTables.get(database).getDataRegionIds());
       }
     }
+  }
+
+  public Optional<TConsensusGroupType> getRegionType(int regionId) {
+    return databasePartitionTables.values().stream()
+        .map(databasePartitionTable -> databasePartitionTable.getRegionType(regionId))
+        .filter(Optional::isPresent)
+        .map(Optional::get)
+        .findFirst();
   }
 
   public void clear() {

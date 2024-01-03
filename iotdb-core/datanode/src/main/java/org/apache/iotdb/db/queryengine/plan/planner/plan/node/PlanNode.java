@@ -42,9 +42,12 @@ public abstract class PlanNode implements IConsensusRequest {
 
   protected static final int NO_CHILD_ALLOWED = 0;
   protected static final int ONE_CHILD = 1;
+  protected static final int TWO_CHILDREN = 2;
   protected static final int CHILD_COUNT_NO_LIMIT = -1;
 
   protected PlanNodeId id;
+
+  protected boolean isGeneratedByPipe = false;
 
   protected PlanNode(PlanNodeId id) {
     requireNonNull(id, "id is null");
@@ -57,6 +60,14 @@ public abstract class PlanNode implements IConsensusRequest {
 
   public void setPlanNodeId(PlanNodeId id) {
     this.id = id;
+  }
+
+  public boolean isGeneratedByPipe() {
+    return isGeneratedByPipe;
+  }
+
+  public void markAsGeneratedByPipe() {
+    isGeneratedByPipe = true;
   }
 
   public abstract List<PlanNode> getChildren();

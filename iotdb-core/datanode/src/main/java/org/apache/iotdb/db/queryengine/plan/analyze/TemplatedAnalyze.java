@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
@@ -32,6 +31,7 @@ import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.TemplatedConcatRemoveUnExistentMeasurementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
@@ -50,7 +50,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -70,7 +69,7 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyz
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.getTimePartitionSlotList;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.concatDeviceAndBindSchemaForExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.getMeasurementExpression;
-import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.normalizeExpression;
+import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer.analyzeExpressionForTemplatedQuery;
 
 /**
  * This class provides accelerated implementation for multiple devices align by device query. This
@@ -113,29 +112,47 @@ public class TemplatedAnalyze {
     Template template = templates.get(0);
 
     List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
+    ColumnPaginationController paginationController =
+        new ColumnPaginationController(
+            queryStatement.getSeriesLimit(), queryStatement.getSeriesOffset());
     if (template != null) {
       for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
         Expression expression = resultColumn.getExpression();
         if ("*".equals(expression.getOutputSymbol())) {
           for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
-            String measurementName = entry.getKey();
-            IMeasurementSchema measurementSchema = entry.getValue();
-            TimeSeriesOperand measurementPath =
-                new TimeSeriesOperand(
-                    new MeasurementPath(new String[] {measurementName}, measurementSchema));
-            outputExpressions.add(new Pair<>(measurementPath, null));
+            if (paginationController.hasCurOffset()) {
+              paginationController.consumeOffset();
+            } else if (paginationController.hasCurLimit()) {
+              String measurementName = entry.getKey();
+              IMeasurementSchema measurementSchema = entry.getValue();
+              TimeSeriesOperand measurementPath =
+                  new TimeSeriesOperand(
+                      new MeasurementPath(new String[] {measurementName}, measurementSchema));
+              outputExpressions.add(new Pair<>(measurementPath, null));
+              paginationController.consumeLimit();
+            } else {
+              break;
+            }
           }
-          if (queryStatement.getSelectComponent().getResultColumns().size() == 1) {
+          if (queryStatement.getSelectComponent().getResultColumns().size() == 1
+              && queryStatement.getSeriesOffset() == 0
+              && queryStatement.getSeriesLimit() == 0) {
             analysis.setTemplateWildCardQuery();
           }
         } else if (expression instanceof TimeSeriesOperand) {
           String measurementName = ((TimeSeriesOperand) expression).getPath().getMeasurement();
           if (template.getSchemaMap().containsKey(measurementName)) {
-            IMeasurementSchema measurementSchema = template.getSchemaMap().get(measurementName);
-            TimeSeriesOperand measurementPath =
-                new TimeSeriesOperand(
-                    new MeasurementPath(new String[] {measurementName}, measurementSchema));
-            outputExpressions.add(new Pair<>(measurementPath, resultColumn.getAlias()));
+            if (paginationController.hasCurOffset()) {
+              paginationController.consumeOffset();
+            } else if (paginationController.hasCurLimit()) {
+              IMeasurementSchema measurementSchema = template.getSchemaMap().get(measurementName);
+              TimeSeriesOperand measurementPath =
+                  new TimeSeriesOperand(
+                      new MeasurementPath(new String[] {measurementName}, measurementSchema));
+              outputExpressions.add(new Pair<>(measurementPath, resultColumn.getAlias()));
+            } else {
+              break;
+            }
           }
         } else {
           return false;
@@ -151,7 +168,7 @@ public class TemplatedAnalyze {
 
     List<PartialPath> deviceList = analyzeFrom(queryStatement, schemaTree);
 
-    analyzeDeviceToWhere(analysis, queryStatement, schemaTree, deviceList);
+    analyzeDeviceToWhere(analysis, queryStatement);
 
     if (deviceList.isEmpty()) {
       analysis.setFinishQueryAfterAnalyze(true);
@@ -222,51 +239,23 @@ public class TemplatedAnalyze {
         : deviceSet.stream().sorted(Comparator.reverseOrder()).collect(Collectors.toList());
   }
 
-  private static void analyzeDeviceToWhere(
-      Analysis analysis,
-      QueryStatement queryStatement,
-      ISchemaTree schemaTree,
-      List<PartialPath> deviceList) {
+  private static void analyzeDeviceToWhere(Analysis analysis, QueryStatement queryStatement) {
     if (!queryStatement.hasWhere()) {
       return;
     }
 
     analysis.setOnlyQueryTemplateMeasurements(false);
-    Map<String, Expression> deviceToWhereExpression = new HashMap<>();
-    Iterator<PartialPath> deviceIterator = deviceList.iterator();
-    while (deviceIterator.hasNext()) {
-      PartialPath devicePath = deviceIterator.next();
-      Expression whereExpression;
-      try {
-        // can move this judgement to TemplatedLogicalPlan?
-        whereExpression =
-            normalizeExpression(analyzeWhereSplitByDevice(queryStatement, devicePath, schemaTree));
-      } catch (MeasurementNotExistException e) {
-        LOGGER.warn(
-            "Meets MeasurementNotExistException in analyzeDeviceToWhere "
-                + "when executing align by device, error msg: {}",
-            e.getMessage());
-        deviceIterator.remove();
-        continue;
-      }
+    Expression wherePredicate =
+        new TemplatedConcatRemoveUnExistentMeasurementVisitor()
+            .process(
+                queryStatement.getWhereCondition().getPredicate(),
+                analysis.getDeviceTemplate().getSchemaMap());
+    analysis.setWhereExpression(wherePredicate);
 
-      TSDataType outputType = analyzeExpressionType(analysis, whereExpression);
-      if (outputType != TSDataType.BOOLEAN) {
-        throw new SemanticException(String.format(WHERE_WRONG_TYPE_ERROR_MSG, outputType));
-      }
-
-      deviceToWhereExpression.put(devicePath.getFullPath(), whereExpression);
+    TSDataType outputType = analyzeExpressionForTemplatedQuery(analysis, wherePredicate);
+    if (outputType != TSDataType.BOOLEAN) {
+      throw new SemanticException(String.format(WHERE_WRONG_TYPE_ERROR_MSG, outputType));
     }
-    analysis.setDeviceToWhereExpression(deviceToWhereExpression);
-  }
-
-  private static Expression analyzeWhereSplitByDevice(
-      QueryStatement queryStatement, PartialPath devicePath, ISchemaTree schemaTree) {
-    List<Expression> conJunctions =
-        ExpressionAnalyzer.concatDeviceAndBindSchemaForPredicate(
-            queryStatement.getWhereCondition().getPredicate(), devicePath, schemaTree, true);
-    return PredicateUtils.combineConjuncts(
-        conJunctions.stream().distinct().collect(Collectors.toList()));
   }
 
   private static void analyzeDeviceToOrderBy(

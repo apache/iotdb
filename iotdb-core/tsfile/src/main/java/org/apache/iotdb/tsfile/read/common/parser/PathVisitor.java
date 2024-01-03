@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.tsfile.read.common.parser;
 
-import org.apache.iotdb.db.qp.sql.PathParser;
-import org.apache.iotdb.db.qp.sql.PathParser.NodeNameContext;
-import org.apache.iotdb.db.qp.sql.PathParserBaseVisitor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import org.apache.commons.lang3.math.NumberUtils;
+import org.apache.tsfile.parser.PathParser;
+import org.apache.tsfile.parser.PathParser.NodeNameContext;
+import org.apache.tsfile.parser.PathParserBaseVisitor;
 
 import java.util.List;
 
@@ -92,6 +92,14 @@ public class PathVisitor extends PathParserBaseVisitor<String[]> {
         break;
       }
     }
-    return NumberUtils.isCreatable(str.substring(index));
+    if (index > 0 && (str.charAt(index) == 'e' || str.charAt(index) == 'E')) {
+      // first char encountered is e/E means the number is like: "000e38".(all leading zeros before
+      // e/E)
+      return NumberUtils.isCreatable(str.substring(index - 1));
+    } else {
+      // parse the str after removing the leading zeros
+      // Numbers like 0000 and 00.12 can also be handled by this branch
+      return NumberUtils.isCreatable(str.substring(index));
+    }
   }
 }

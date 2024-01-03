@@ -83,6 +83,7 @@ public interface BaseEnv {
         String str;
         while ((str = bufr.readLine()) != null) {
           sb.append(str);
+          sb.append('\n');
         }
         bufr.close();
       } else {

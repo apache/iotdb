@@ -21,14 +21,14 @@ package org.apache.iotdb.db.pipe.event.common.heartbeat;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionHybridExtractor;
 import org.apache.iotdb.db.pipe.metric.PipeHeartbeatEventMetrics;
-import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.connection.EnrichedDeque;
-import org.apache.iotdb.db.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -68,7 +68,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   private final boolean shouldPrintMessage;
 
   public PipeHeartbeatEvent(String dataRegionId, boolean shouldPrintMessage) {
-    super(null, null, null);
+    super(null, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
     this.dataRegionId = dataRegionId;
     this.shouldPrintMessage = shouldPrintMessage;
   }
@@ -79,7 +79,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
       String dataRegionId,
       long timePublished,
       boolean shouldPrintMessage) {
-    super(pipeName, pipeTaskMeta, null);
+    super(pipeName, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
     this.dataRegionId = dataRegionId;
     this.timePublished = timePublished;
     this.shouldPrintMessage = shouldPrintMessage;
@@ -94,8 +94,8 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
     // PipeName == null indicates that the event is the raw event at disruptor,
     // not the event copied and passed to the extractor
-    if (shouldPrintMessage && pipeName != null && LOGGER.isInfoEnabled()) {
-      LOGGER.info(this.toString());
+    if (shouldPrintMessage && pipeName != null && LOGGER.isDebugEnabled()) {
+      LOGGER.debug(this.toString());
     }
     return true;
   }
@@ -107,7 +107,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
 
   @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern) {
+      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime) {
     // Should record PipeTaskMeta, for sometimes HeartbeatEvents should report exceptions.
     return new PipeHeartbeatEvent(
         pipeName, pipeTaskMeta, dataRegionId, timePublished, shouldPrintMessage);
@@ -116,6 +116,11 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   @Override
   public boolean isGeneratedByPipe() {
     return false;
+  }
+
+  @Override
+  public boolean isEventTimeOverlappedWithTimeRange() {
+    return true;
   }
 
   /////////////////////////////// Whether to print ///////////////////////////////
@@ -141,24 +146,30 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   public void onAssigned() {
     if (shouldPrintMessage) {
       timeAssigned = System.currentTimeMillis();
-      PipeHeartbeatEventMetrics.getInstance()
-          .recordPublishedToAssignedTime(timeAssigned - timePublished);
+      if (timePublished != 0) {
+        PipeHeartbeatEventMetrics.getInstance()
+            .recordPublishedToAssignedTime(timeAssigned - timePublished);
+      }
     }
   }
 
   public void onProcessed() {
     if (shouldPrintMessage) {
       timeProcessed = System.currentTimeMillis();
-      PipeHeartbeatEventMetrics.getInstance()
-          .recordAssignedToProcessedTime(timeProcessed - timeAssigned);
+      if (timeAssigned != 0) {
+        PipeHeartbeatEventMetrics.getInstance()
+            .recordAssignedToProcessedTime(timeProcessed - timeAssigned);
+      }
     }
   }
 
   public void onTransferred() {
     if (shouldPrintMessage) {
       timeTransferred = System.currentTimeMillis();
-      PipeHeartbeatEventMetrics.getInstance()
-          .recordProcessedToTransferredTime(timeTransferred - timeProcessed);
+      if (timeProcessed != 0) {
+        PipeHeartbeatEventMetrics.getInstance()
+            .recordProcessedToTransferredTime(timeTransferred - timeProcessed);
+      }
     }
   }
 
@@ -216,14 +227,26 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   public String toString() {
     final String unknownMessage = "Unknown";
 
+    final String startTimeMessage =
+        (timePublished != 0)
+            ? DateTimeUtils.convertLongToDate(timePublished, "ms")
+            : unknownMessage;
     final String publishedToAssignedMessage =
-        timeAssigned != 0 ? (timeAssigned - timePublished) + "ms" : unknownMessage;
+        (timeAssigned != 0 && timePublished != 0)
+            ? (timeAssigned - timePublished) + "ms"
+            : unknownMessage;
     final String assignedToProcessedMessage =
-        timeProcessed != 0 ? (timeProcessed - timeAssigned) + "ms" : unknownMessage;
+        (timeProcessed != 0 && timeAssigned != 0)
+            ? (timeProcessed - timeAssigned) + "ms"
+            : unknownMessage;
     final String processedToTransferredMessage =
-        timeTransferred != 0 ? (timeTransferred - timeProcessed) + "ms" : unknownMessage;
+        (timeTransferred != 0 && timeProcessed != 0)
+            ? (timeTransferred - timeProcessed) + "ms"
+            : unknownMessage;
     final String totalTimeMessage =
-        timeTransferred != 0 ? (timeTransferred - timePublished) + "ms" : unknownMessage;
+        (timeTransferred != 0 && timePublished != 0)
+            ? (timeTransferred - timePublished) + "ms"
+            : unknownMessage;
 
     final String disruptorSizeMessage = Integer.toString(disruptorSize);
 
@@ -254,7 +277,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
         + "', dataRegionId="
         + dataRegionId
         + ", startTime="
-        + DateTimeUtils.convertLongToDate(timePublished, "ms")
+        + startTimeMessage
         + ", publishedToAssigned="
         + publishedToAssignedMessage
         + ", assignedToProcessed="

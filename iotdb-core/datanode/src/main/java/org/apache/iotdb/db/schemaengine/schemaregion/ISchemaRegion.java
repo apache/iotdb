@@ -84,7 +84,7 @@ public interface ISchemaRegion {
   @TestOnly
   ISchemaRegionStatistics getSchemaRegionStatistics();
 
-  ISchemaRegionMetric createSchemaRegionMetric(String database);
+  ISchemaRegionMetric getSchemaRegionMetric();
   // endregion
 
   // region Interfaces for schema region Info query and operation

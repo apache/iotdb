@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
@@ -188,15 +187,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
    */
   protected void checkTimeAndMayFlushChunkToCurrentFile(long timestamp, int subTaskId)
       throws IOException {
-    if (timestamp <= lastTime[subTaskId]) {
-      throw new RuntimeException(
-          "Timestamp of the current point of "
-              + (deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId[subTaskId])
-              + " is "
-              + timestamp
-              + ", which should be later than the last time "
-              + lastTime[subTaskId]);
-    }
+    checkPreviousTimestamp(timestamp, subTaskId);
 
     int fileIndex = seqFileIndexArray[subTaskId];
     boolean hasFlushedCurrentChunk = false;

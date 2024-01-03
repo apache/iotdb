@@ -165,6 +165,11 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
+                public void close() throws Exception {
+                  // do nothing
+                }
+
+                @Override
                 public long calculateMaxPeekMemory() {
                   return 0;
                 }
@@ -375,6 +380,11 @@ public class LinearFillOperatorTest {
                 @Override
                 public boolean isFinished() throws Exception {
                   return index >= 3;
+                }
+
+                @Override
+                public void close() throws Exception {
+                  // do nothing
                 }
 
                 @Override
@@ -591,6 +601,11 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
+                public void close() throws Exception {
+                  // do nothing
+                }
+
+                @Override
                 public long calculateMaxPeekMemory() {
                   return 0;
                 }
@@ -804,6 +819,11 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
+                public void close() throws Exception {
+                  // do nothing
+                }
+
+                @Override
                 public long calculateMaxPeekMemory() {
                   return 0;
                 }
@@ -965,6 +985,11 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
+                public void close() throws Exception {
+                  // do nothing
+                }
+
+                @Override
                 public long calculateMaxPeekMemory() {
                   return 0;
                 }
@@ -1085,6 +1110,11 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
+                public void close() throws Exception {
+                  // do nothing
+                }
+
+                @Override
                 public long calculateMaxPeekMemory() {
                   return 0;
                 }
@@ -1202,6 +1232,11 @@ public class LinearFillOperatorTest {
                 @Override
                 public boolean isFinished() throws Exception {
                   return index >= 7;
+                }
+
+                @Override
+                public void close() throws Exception {
+                  // do nothing
                 }
 
                 @Override

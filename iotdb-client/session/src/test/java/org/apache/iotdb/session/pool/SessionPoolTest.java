@@ -183,11 +183,20 @@ public class SessionPoolTest {
     TSStatus closeResp = successStatus;
     Mockito.when(client.closeOperation(any(TSCloseOperationReq.class))).thenReturn(closeResp);
 
-    sessionPool = new SessionPool("host", 11, "user", "password", 5);
+    sessionPool =
+        new SessionPool.Builder()
+            .host("host")
+            .port(11)
+            .user("user")
+            .password("password")
+            .maxSize(5)
+            .enableAutoFetch(false)
+            .build();
+
     ConcurrentLinkedDeque<ISession> queue = new ConcurrentLinkedDeque<>();
     queue.add(session);
 
-    // 设置 SessionPool 对象的内部状态
+    // set SessionPool's internal field state
     Whitebox.setInternalState(sessionPool, "queue", queue);
   }
 

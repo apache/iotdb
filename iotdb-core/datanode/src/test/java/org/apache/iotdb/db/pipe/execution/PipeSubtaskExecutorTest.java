@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.pipe.execution;
 
-import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutor;
-import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
+import org.apache.iotdb.commons.pipe.execution.executor.PipeSubtaskExecutor;
+import org.apache.iotdb.commons.pipe.task.subtask.PipeSubtask;
 
 import org.junit.After;
 import org.junit.Assert;

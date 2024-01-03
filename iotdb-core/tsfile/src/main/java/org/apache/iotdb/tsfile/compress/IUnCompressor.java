@@ -24,7 +24,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 
 import com.github.luben.zstd.Zstd;
 import net.jpountz.lz4.LZ4Compressor;
-import net.jpountz.lz4.LZ4Factory;
 import net.jpountz.lz4.LZ4SafeDecompressor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -201,12 +200,10 @@ public interface IUnCompressor {
         "tsfile-compression LZ4UnCompressor: errors occurs when uncompress input byte";
 
     private static final int MAX_COMPRESS_RATIO = 255;
-    private LZ4SafeDecompressor decompressor;
+    private static final LZ4SafeDecompressor decompressor =
+        ICompressor.IOTDBLZ4Compressor.getFactory().safeDecompressor();
 
-    public LZ4UnCompressor() {
-      LZ4Factory factory = LZ4Factory.fastestInstance();
-      decompressor = factory.safeDecompressor();
-    }
+    public LZ4UnCompressor() {}
 
     @Override
     public int getUncompressedLength(byte[] array, int offset, int length) {

@@ -114,26 +114,13 @@ public class IoTDBDescriptor {
     return conf;
   }
 
-  public String getConfDir() {
-    // Check if a config-directory was specified first.
-    String confString = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
-    // If it wasn't, check if a home directory was provided (This usually contains a config)
-    if (confString == null) {
-      confString = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
-      if (confString != null) {
-        confString = confString + File.separatorChar + "conf";
-      }
-    }
-    return confString;
-  }
-
   /**
    * get props url location
    *
    * @return url object if location exit, otherwise null.
    */
   public URL getPropsUrl(String configFileName) {
-    String urlString = getConfDir();
+    String urlString = commonDescriptor.getConfDir();
     if (urlString == null) {
       // If urlString wasn't provided, try to find a default config in the root of the classpath.
       URL uri = IoTDBConfig.class.getResource("/" + configFileName);
@@ -691,6 +678,18 @@ public class IoTDBDescriptor {
                 "candidate_compaction_task_queue_size",
                 Integer.toString(conf.getCandidateCompactionTaskQueueSize()))));
 
+    conf.setInnerCompactionTaskSelectionDiskRedundancy(
+        Double.parseDouble(
+            properties.getProperty(
+                "inner_compaction_task_selection_disk_redundancy",
+                Double.toString(conf.getInnerCompactionTaskSelectionDiskRedundancy()))));
+
+    conf.setInnerCompactionTaskSelectionModsFileThreshold(
+        Long.parseLong(
+            properties.getProperty(
+                "inner_compaction_task_selection_mods_file_threshold",
+                Long.toString(conf.getInnerCompactionTaskSelectionModsFileThreshold()))));
+
     conf.setEnablePartialInsert(
         Boolean.parseBoolean(
             properties.getProperty(
@@ -822,11 +821,10 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "recovery_log_interval_in_ms", String.valueOf(conf.getRecoveryLogIntervalInMs()))));
 
-    conf.setEnableDiscardOutOfOrderData(
+    conf.setEnableSeparateData(
         Boolean.parseBoolean(
             properties.getProperty(
-                "enable_discard_out_of_order_data",
-                Boolean.toString(conf.isEnableDiscardOutOfOrderData()))));
+                "enable_separate_data", Boolean.toString(conf.isEnableSeparateData()))));
 
     conf.setWindowEvaluationThreadCount(
         Integer.parseInt(
@@ -895,11 +893,16 @@ public class IoTDBDescriptor {
       conf.setIntoOperationExecutionThreadCount(2);
     }
 
-    conf.setMaxLoadingTimeseriesNumber(
+    conf.setLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber(
         Integer.parseInt(
             properties.getProperty(
-                "max_loading_timeseries_number",
-                String.valueOf(conf.getMaxLoadingTimeseriesNumber()))));
+                "load_tsfile_analyze_schema_batch_flush_time_series_number",
+                String.valueOf(conf.getLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber()))));
+    conf.setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "load_tsfile_analyze_schema_memory_size_in_bytes",
+                String.valueOf(conf.getLoadTsFileAnalyzeSchemaMemorySizeInBytes()))));
 
     conf.setExtPipeDir(properties.getProperty("ext_pipe_dir", conf.getExtPipeDir()).trim());
 
@@ -1197,6 +1200,18 @@ public class IoTDBDescriptor {
     conf.setEnableCrossSpaceCompaction(newConfigEnableCrossSpaceCompaction);
     conf.setEnableSeqSpaceCompaction(newConfigEnableSeqSpaceCompaction);
     conf.setEnableUnseqSpaceCompaction(newConfigEnableUnseqSpaceCompaction);
+
+    conf.setInnerCompactionTaskSelectionDiskRedundancy(
+        Double.parseDouble(
+            properties.getProperty(
+                "inner_compaction_task_selection_disk_redundancy",
+                Double.toString(conf.getInnerCompactionTaskSelectionDiskRedundancy()))));
+
+    conf.setInnerCompactionTaskSelectionModsFileThreshold(
+        Long.parseLong(
+            properties.getProperty(
+                "inner_compaction_task_selection_mods_file_threshold",
+                Long.toString(conf.getInnerCompactionTaskSelectionModsFileThreshold()))));
   }
 
   private void loadWALHotModifiedProps(Properties properties) {

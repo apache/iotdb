@@ -30,13 +30,10 @@ import org.apache.iotdb.commons.cluster.RegionRoleType;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
@@ -124,8 +121,6 @@ public class PartitionManager {
       CONF.getSchemaRegionGroupExtensionPolicy();
   private static final RegionGroupExtensionPolicy DATA_REGION_GROUP_EXTENSION_POLICY =
       CONF.getDataRegionGroupExtensionPolicy();
-
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   private final IManager configManager;
   private final PartitionInfo partitionInfo;
@@ -1036,10 +1031,17 @@ public class PartitionManager {
       // Return empty result if Database not specified
       return new GetRegionIdResp(RpcUtils.SUCCESS_STATUS, new ArrayList<>());
     }
-
-    if (req.isSetTimeStamp()) {
-      plan.setTimeSlotId(TimePartitionUtils.getTimePartitionSlot(req.getTimeStamp()));
+    if (req.isSetStartTimeSlot()) {
+      plan.setStartTimeSlotId(req.getStartTimeSlot());
+    } else {
+      plan.setStartTimeSlotId(new TTimePartitionSlot(0));
     }
+    if (req.isSetEndTimeSlot()) {
+      plan.setEndTimeSlotId(req.getEndTimeSlot());
+    } else {
+      plan.setEndTimeSlotId(new TTimePartitionSlot(Long.MAX_VALUE));
+    }
+
     try {
       return (GetRegionIdResp) getConsensusManager().read(plan);
     } catch (ConsensusException e) {
@@ -1390,6 +1392,17 @@ public class PartitionManager {
 
   public void getDataRegionIds(List<String> databases, Map<String, List<Integer>> dataRegionIds) {
     partitionInfo.getDataRegionIds(databases, dataRegionIds);
+  }
+
+  /**
+   * Get the {@link TConsensusGroupType} of the given integer regionId.
+   *
+   * @param regionId The specified integer regionId
+   * @return {@link Optional#of(Object tConsensusGroupType)} of the given integer regionId, or
+   *     {@link Optional#empty()} if the integer regionId does not match any of the regionGroups.
+   */
+  public Optional<TConsensusGroupType> getRegionType(int regionId) {
+    return partitionInfo.getRegionType(regionId);
   }
 
   /**

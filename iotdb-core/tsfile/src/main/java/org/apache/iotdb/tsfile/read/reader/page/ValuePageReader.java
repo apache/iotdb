@@ -33,6 +33,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
@@ -510,7 +511,7 @@ public class ValuePageReader {
     }
   }
 
-  public Statistics getStatistics() {
+  public Statistics<? extends Serializable> getStatistics() {
     return pageHeader.getStatistics();
   }
 

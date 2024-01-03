@@ -55,4 +55,25 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
     properties.setProperty("dn_metric_reporter_list", String.join(",", metricReporterTypes));
     return this;
   }
+
+  @Override
+  public DataNodeConfig setEnableRestService(boolean enableRestService) {
+    properties.setProperty("enable_rest_service", String.valueOf(enableRestService));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setConnectionTimeoutInMS(int connectionTimeoutInMS) {
+    properties.setProperty("dn_connection_timeout_ms", String.valueOf(connectionTimeoutInMS));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
+      long loadTsFileAnalyzeSchemaMemorySizeInBytes) {
+    properties.setProperty(
+        "load_tsfile_analyze_schema_memory_size_in_bytes",
+        String.valueOf(loadTsFileAnalyzeSchemaMemorySizeInBytes));
+    return this;
+  }
 }

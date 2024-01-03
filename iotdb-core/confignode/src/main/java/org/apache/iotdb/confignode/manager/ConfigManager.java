@@ -87,10 +87,11 @@ import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.node.NodeMetrics;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
-import org.apache.iotdb.confignode.manager.pipe.PipeManager;
+import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaQuotaStatistics;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
+import org.apache.iotdb.confignode.persistence.ClusterInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
@@ -206,10 +207,13 @@ public class ConfigManager implements IManager {
   /** Manage PartitionTable read/write requests through the ConsensusLayer. */
   private final AtomicReference<ConsensusManager> consensusManager = new AtomicReference<>();
 
+  /** Manage cluster-level info */
+  private final ClusterManager clusterManager;
+
   /** Manage cluster node. */
   private final NodeManager nodeManager;
 
-  /** Manage cluster schemaengine. */
+  /** Manage cluster schema engine. */
   private final ClusterSchemaManager clusterSchemaManager;
 
   /** Manage cluster regions and partitions. */
@@ -246,6 +250,7 @@ public class ConfigManager implements IManager {
 
   public ConfigManager() throws IOException {
     // Build the persistence module
+    ClusterInfo clusterInfo = new ClusterInfo();
     NodeInfo nodeInfo = new NodeInfo();
     ClusterSchemaInfo clusterSchemaInfo = new ClusterSchemaInfo();
     PartitionInfo partitionInfo = new PartitionInfo();
@@ -260,6 +265,7 @@ public class ConfigManager implements IManager {
     // Build state machine and executor
     ConfigPlanExecutor executor =
         new ConfigPlanExecutor(
+            clusterInfo,
             nodeInfo,
             clusterSchemaInfo,
             partitionInfo,
@@ -273,6 +279,7 @@ public class ConfigManager implements IManager {
     this.stateMachine = new ConfigRegionStateMachine(this, executor);
 
     // Build the manager module
+    this.clusterManager = new ClusterManager(this, clusterInfo);
     this.nodeManager = new NodeManager(this, nodeInfo);
     this.clusterSchemaManager =
         new ClusterSchemaManager(
@@ -898,6 +905,11 @@ public class ConfigManager implements IManager {
                   + "please make sure the target-ConfigNode has been started successfully.");
     }
     return getConsensusManager().confirmLeader();
+  }
+
+  @Override
+  public ClusterManager getClusterManager() {
+    return clusterManager;
   }
 
   @Override
@@ -1710,6 +1722,13 @@ public class ConfigManager implements IManager {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? pipeManager.getPipeTaskCoordinator().getAllPipeInfo()
         : new TGetAllPipeInfoResp(status, Collections.emptyList());
+  }
+
+  @Override
+  public TSStatus executeSyncCommand(ByteBuffer configPhysicalPlanBinary) {
+    TSStatus status = confirmLeader();
+    // TODO: determine whether to use procedure based on plan type
+    return status;
   }
 
   @Override

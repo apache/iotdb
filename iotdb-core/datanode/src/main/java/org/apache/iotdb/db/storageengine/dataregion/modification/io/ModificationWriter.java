@@ -37,6 +37,15 @@ public interface ModificationWriter {
    */
   void write(Modification mod) throws IOException;
 
+  /**
+   * Write a new modification to the persistent medium. Notice that after calling write(), a
+   * fileWriter is opened. Notice that this method does not synchronize to physical disk after
+   * writing.
+   *
+   * @param mod the modification to be written.
+   */
+  void writeWithOutSync(Modification mod) throws IOException;
+
   void truncate(long size);
 
   void mayTruncateLastLine();

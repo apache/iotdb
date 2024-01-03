@@ -56,7 +56,12 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.vie
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.DeleteLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.RollbackLogicalViewBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedConfigSchemaNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWriteSchemaNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewIntoNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
@@ -74,9 +79,11 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ProjectNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.InnerTimeJoinNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.LeftOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
@@ -96,7 +103,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.PipeEnrichedInsertNode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
@@ -114,7 +120,7 @@ public enum PlanNodeType {
   LIMIT((short) 6),
   OFFSET((short) 7),
   SORT((short) 8),
-  TIME_JOIN((short) 9),
+  FULL_OUTER_TIME_JOIN((short) 9),
   FRAGMENT_SINK((short) 10),
   SERIES_SCAN((short) 11),
   SERIES_AGGREGATE_SCAN((short) 12),
@@ -187,7 +193,14 @@ public enum PlanNodeType {
   // NodeId 80 is used by IoTDB-ML which shouldn't be used.
 
   LAST_QUERY_TRANSFORM((short) 81),
-  TOP_K((short) 82);
+  TOP_K((short) 82),
+  COLUMN_INJECT((short) 83),
+  PIPE_ENRICHED_DELETE_DATA((short) 84),
+  PIPE_ENRICHED_WRITE_SCHEMA((short) 85),
+  PIPE_ENRICHED_DELETE_SCHEMA((short) 86),
+
+  INNER_TIME_JOIN((short) 87),
+  LEFT_OUTER_TIME_JOIN((short) 88);
 
   public static final int BYTES = Short.BYTES;
 
@@ -261,7 +274,7 @@ public enum PlanNodeType {
       case 8:
         return SortNode.deserialize(buffer);
       case 9:
-        return TimeJoinNode.deserialize(buffer);
+        return FullOuterTimeJoinNode.deserialize(buffer);
       case 11:
         return SeriesScanNode.deserialize(buffer);
       case 12:
@@ -400,6 +413,18 @@ public enum PlanNodeType {
         return LastQueryTransformNode.deserialize(buffer);
       case 82:
         return TopKNode.deserialize(buffer);
+      case 83:
+        return ColumnInjectNode.deserialize(buffer);
+      case 84:
+        return PipeEnrichedDeleteDataNode.deserialize(buffer);
+      case 85:
+        return PipeEnrichedWriteSchemaNode.deserialize(buffer);
+      case 86:
+        return PipeEnrichedConfigSchemaNode.deserialize(buffer);
+      case 87:
+        return InnerTimeJoinNode.deserialize(buffer);
+      case 88:
+        return LeftOuterTimeJoinNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
@@ -408,6 +433,8 @@ public enum PlanNodeType {
   public static PlanNode deserializeWithTemplate(ByteBuffer buffer, TypeProvider typeProvider) {
     short nodeType = buffer.getShort();
     switch (nodeType) {
+      case 3:
+        return FilterNode.deserializeUseTemplate(buffer, typeProvider);
       case 33:
         return AlignedSeriesScanNode.deserializeUseTemplate(buffer, typeProvider);
       case 65:

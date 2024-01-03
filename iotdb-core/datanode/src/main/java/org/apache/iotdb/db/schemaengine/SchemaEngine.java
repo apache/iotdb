@@ -33,6 +33,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
+import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.schemaengine.metric.SchemaMetricManager;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaEngineStatistics;
 import org.apache.iotdb.db.schemaengine.rescon.DataNodeSchemaQuotaManager;
@@ -56,6 +57,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -301,7 +303,8 @@ public class SchemaEngine {
     ISchemaRegionParams schemaRegionParams =
         new SchemaRegionParams(database, schemaRegionId, schemaEngineStatistics);
     ISchemaRegion schemaRegion = schemaRegionLoader.createSchemaRegion(schemaRegionParams);
-    schemaMetricManager.createSchemaRegionMetric(schemaRegion);
+    schemaMetricManager.addSchemaRegionMetric(
+        schemaRegionId.getId(), schemaRegion.getSchemaRegionMetric());
     return schemaRegion;
   }
 
@@ -313,7 +316,7 @@ public class SchemaEngine {
       return;
     }
     schemaRegion.deleteSchemaRegion();
-    schemaMetricManager.deleteSchemaRegionMetric(schemaRegionId.getId());
+    schemaMetricManager.removeSchemaRegionMetric(schemaRegionId.getId());
     schemaRegionMap.remove(schemaRegionId);
 
     // check whether the sg dir is empty
@@ -389,31 +392,47 @@ public class SchemaEngine {
         resp.setRegionDeviceUsageMap(new HashMap<>());
       }
       Map<Integer, Long> tmp = resp.getRegionDeviceUsageMap();
-      schemaRegionMap.values().stream()
-          .filter(i -> SchemaRegionConsensusImpl.getInstance().isLeader(i.getSchemaRegionId()))
+      SchemaRegionConsensusImpl.getInstance().getAllConsensusGroupIds().stream()
+          .filter(
+              consensusGroupId ->
+                  SchemaRegionConsensusImpl.getInstance().isLeader(consensusGroupId))
           .forEach(
-              i ->
+              consensusGroupId ->
                   tmp.put(
-                      i.getSchemaRegionId().getId(),
-                      i.getSchemaRegionStatistics().getDevicesNumber()));
+                      consensusGroupId.getId(),
+                      Optional.ofNullable(schemaRegionMap.get(consensusGroupId))
+                          .map(
+                              schemaRegion ->
+                                  schemaRegion.getSchemaRegionStatistics().getDevicesNumber())
+                          .orElse(0L)));
     }
     if (schemaQuotaManager.isSeriesLimit()) {
       if (resp.getRegionSeriesUsageMap() == null) {
         resp.setRegionSeriesUsageMap(new HashMap<>());
       }
       Map<Integer, Long> tmp = resp.getRegionSeriesUsageMap();
-      schemaRegionMap.values().stream()
-          .filter(i -> SchemaRegionConsensusImpl.getInstance().isLeader(i.getSchemaRegionId()))
+      SchemaRegionConsensusImpl.getInstance().getAllConsensusGroupIds().stream()
+          .filter(
+              consensusGroupId ->
+                  SchemaRegionConsensusImpl.getInstance().isLeader(consensusGroupId))
           .forEach(
-              i ->
+              consensusGroupId ->
                   tmp.put(
-                      i.getSchemaRegionId().getId(),
-                      i.getSchemaRegionStatistics().getSeriesNumber()));
+                      consensusGroupId.getId(),
+                      Optional.ofNullable(schemaRegionMap.get(consensusGroupId))
+                          .map(
+                              schemaRegion ->
+                                  schemaRegion.getSchemaRegionStatistics().getSeriesNumber())
+                          .orElse(0L)));
     }
   }
 
   @TestOnly
   public ISchemaEngineStatistics getSchemaEngineStatistics() {
     return schemaEngineStatistics;
+  }
+
+  public ISchemaRegionMetric getSchemaRegionMetric(int schemaRegionId) {
+    return schemaMetricManager.getSchemaRegionMetric(schemaRegionId);
   }
 }

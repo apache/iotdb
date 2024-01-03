@@ -53,7 +53,12 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.vie
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.DeleteLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.RollbackLogicalViewBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedConfigSchemaNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWriteSchemaNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewIntoNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
@@ -73,9 +78,12 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChil
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TwoChildProcessNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.InnerTimeJoinNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.LeftOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
@@ -87,6 +95,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeri
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
@@ -96,8 +105,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.PipeEnrichedInsertNode;
 
+@SuppressWarnings("java:S6539") // suppress "Monster class" warning
 public abstract class PlanVisitor<R, C> {
 
   public R process(PlanNode node, C context) {
@@ -120,16 +129,20 @@ public abstract class PlanVisitor<R, C> {
     return visitSourceNode(node, context);
   }
 
-  public R visitSeriesAggregationScan(SeriesAggregationScanNode node, C context) {
-    return visitSourceNode(node, context);
-  }
-
   public R visitAlignedSeriesScan(AlignedSeriesScanNode node, C context) {
     return visitSourceNode(node, context);
   }
 
-  public R visitAlignedSeriesAggregationScan(AlignedSeriesAggregationScanNode node, C context) {
+  public R visitSeriesAggregationSourceNode(SeriesAggregationSourceNode node, C context) {
     return visitSourceNode(node, context);
+  }
+
+  public R visitSeriesAggregationScan(SeriesAggregationScanNode node, C context) {
+    return visitSeriesAggregationSourceNode(node, context);
+  }
+
+  public R visitAlignedSeriesAggregationScan(AlignedSeriesAggregationScanNode node, C context) {
+    return visitSeriesAggregationSourceNode(node, context);
   }
 
   public R visitLastQueryScan(LastQueryScanNode node, C context) {
@@ -190,8 +203,22 @@ public abstract class PlanVisitor<R, C> {
     return visitSingleChildProcess(node, context);
   }
 
+  public R visitColumnInject(ColumnInjectNode node, C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
   public R visitSingleDeviceView(SingleDeviceViewNode node, C context) {
     return visitSingleChildProcess(node, context);
+  }
+
+  // two child -----------------------------------------------------------------------------------
+
+  public R visitTwoChildProcess(TwoChildProcessNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitLeftOuterTimeJoin(LeftOuterTimeJoinNode node, C context) {
+    return visitTwoChildProcess(node, context);
   }
 
   // multi child --------------------------------------------------------------------------------
@@ -220,7 +247,11 @@ public abstract class PlanVisitor<R, C> {
     return visitMultiChildProcess(node, context);
   }
 
-  public R visitTimeJoin(TimeJoinNode node, C context) {
+  public R visitFullOuterTimeJoin(FullOuterTimeJoinNode node, C context) {
+    return visitMultiChildProcess(node, context);
+  }
+
+  public R visitInnerTimeJoin(InnerTimeJoinNode node, C context) {
     return visitMultiChildProcess(node, context);
   }
 
@@ -434,11 +465,27 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
+  public R visitDeleteData(DeleteDataNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // Pipe Enriched Node
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
   public R visitPipeEnrichedInsert(PipeEnrichedInsertNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitDeleteData(DeleteDataNode node, C context) {
+  public R visitPipeEnrichedDeleteData(PipeEnrichedDeleteDataNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitPipeEnrichedWriteSchema(PipeEnrichedWriteSchemaNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitPipeEnrichedConfigSchema(PipeEnrichedConfigSchemaNode node, C context) {
     return visitPlan(node, context);
   }
 }

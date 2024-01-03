@@ -20,7 +20,6 @@
 package org.apache.iotdb.tsfile.read.filter.operator;
 
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.basic.IStatefulFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.OperatorType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TimeDuration;
@@ -41,7 +40,7 @@ import static org.apache.iotdb.tsfile.utils.TimeDuration.getConsecutiveTimesInte
  * GroupByMonthFilter is used to handle natural month slidingStep and interval by generating
  * dynamically. Attention: it's only supported to access in ascending order now.
  */
-public class GroupByMonthFilter extends GroupByFilter implements IStatefulFilter {
+public class GroupByMonthFilter extends GroupByFilter {
   private final Calendar calendar = Calendar.getInstance();
 
   private final TimeDuration originalSlidingStep;
@@ -89,7 +88,7 @@ public class GroupByMonthFilter extends GroupByFilter implements IStatefulFilter
   }
 
   @Override
-  public boolean satisfy(long time, Object value) {
+  public boolean timeSatisfy(long time) {
     if (time < originalStartTime || time >= endTime) {
       return false;
     } else if (time >= startTime && time < startTime + slidingStep) {
@@ -187,14 +186,19 @@ public class GroupByMonthFilter extends GroupByFilter implements IStatefulFilter
       }
       this.startTime = startTimes[n];
       this.slidingStep =
-          calcPositiveIntervalByMonth(startTime, originalSlidingStep, 1, timeZone, currPrecision)
+          calcPositiveIntervalByMonth(
+                  originalStartTime, originalSlidingStep.multiple(n + 1), timeZone, currPrecision)
               - startTime;
     } else {
-      startTime = originalStartTime + n * slidingStep;
+      this.startTime = originalStartTime + n * slidingStep;
     }
     if (originalInterval.containsMonth()) {
       this.interval =
-          calcPositiveIntervalByMonth(startTime, originalInterval, 1, timeZone, currPrecision)
+          calcPositiveIntervalByMonth(
+                  originalStartTime,
+                  originalSlidingStep.multiple(n).merge(originalInterval),
+                  timeZone,
+                  currPrecision)
               - startTime;
     }
   }
@@ -253,6 +257,8 @@ public class GroupByMonthFilter extends GroupByFilter implements IStatefulFilter
 
   @Override
   public Filter copy() {
+    // A stateful filter must implement copy() method
+    // to make sure that each filter has its own state.
     return new GroupByMonthFilter(
         originalStartTime,
         originalEndTime,

@@ -107,7 +107,7 @@ public class Analysis {
 
   // An ordered map from cross-timeseries aggregation to list of inner-timeseries aggregations. The
   // keys' order is the output one.
-  private LinkedHashMap<Expression, Set<Expression>> crossGroupByExpressions;
+  private Map<Expression, Set<Expression>> crossGroupByExpressions;
 
   // tag keys specified in `GROUP BY TAG` clause
   private List<String> tagKeys;
@@ -282,7 +282,7 @@ public class Analysis {
   // when deviceTemplate is not empty and all expressions in this query are templated measurements,
   // i.e. no aggregation and arithmetic expression
   private boolean onlyQueryTemplateMeasurements = true;
-  // if it is wildcard query
+  // if it is wildcard query in templated align by device query
   private boolean templateWildCardQuery;
   // all queried measurementList and schemaList in deviceTemplate.
   private List<String> measurementList;
@@ -388,12 +388,11 @@ public class Analysis {
             && ((QueryStatement) statement).isAggregationQuery());
   }
 
-  public LinkedHashMap<Expression, Set<Expression>> getCrossGroupByExpressions() {
+  public Map<Expression, Set<Expression>> getCrossGroupByExpressions() {
     return crossGroupByExpressions;
   }
 
-  public void setCrossGroupByExpressions(
-      LinkedHashMap<Expression, Set<Expression>> crossGroupByExpressions) {
+  public void setCrossGroupByExpressions(Map<Expression, Set<Expression>> crossGroupByExpressions) {
     this.crossGroupByExpressions = crossGroupByExpressions;
   }
 

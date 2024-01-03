@@ -222,7 +222,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
   @Override
   public void notifyLeaderReady() {
     LOGGER.info(
-        "Current node [nodeId: {}, ip:port: {}] becomes Leader",
+        "Current node [nodeId: {}, ip:port: {}] becomes Leader and is ready to work",
         ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
         currentNodeTEndPoint);
 
@@ -248,6 +248,10 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         () -> configManager.getPipeManager().getPipeRuntimeCoordinator().startPipeMetaSync());
     threadPool.submit(
         () -> configManager.getPipeManager().getPipeRuntimeCoordinator().startPipeHeartbeat());
+
+    // To adapt old version, we check cluster ID after state machine has been fully recovered.
+    // Do check async because sync will be slow and block every other things.
+    threadPool.submit(() -> configManager.getClusterManager().checkClusterId());
   }
 
   @Override

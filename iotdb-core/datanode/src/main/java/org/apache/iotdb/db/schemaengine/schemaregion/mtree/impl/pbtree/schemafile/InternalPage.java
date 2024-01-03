@@ -26,6 +26,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.Queue;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReadWriteLock;
 
 /**
  * A page which acts like a segment, manages index entry of the b+ tree constructed by MNode with
@@ -39,7 +41,7 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
   private long firstLeaf;
   private int subIndexPage;
 
-  private transient String penultKey, lastKey;
+  private String penultKey, lastKey;
 
   /**
    * <b>Compound pointers will not be deserialized as any Java Objects since it may contains massive
@@ -63,6 +65,13 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
    */
   public InternalPage(ByteBuffer pageBuffer) {
     super(pageBuffer);
+    firstLeaf = ReadWriteIOUtils.readLong(pageBuffer);
+    subIndexPage = ReadWriteIOUtils.readInt(pageBuffer);
+  }
+
+  /** compatible constructor for replacement */
+  public InternalPage(ByteBuffer pageBuffer, AtomicInteger ai, ReadWriteLock rwl) {
+    super(pageBuffer, ai, rwl);
     firstLeaf = ReadWriteIOUtils.readLong(pageBuffer);
     subIndexPage = ReadWriteIOUtils.readInt(pageBuffer);
   }
@@ -584,19 +593,17 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
     }
   }
 
-  private String getKeyByOffset(short offset) {
-    synchronized (this.pageBuffer) {
-      this.pageBuffer.limit(this.pageBuffer.capacity());
-      this.pageBuffer.position(offset);
-      return ReadWriteIOUtils.readString(this.pageBuffer);
-    }
-  }
-
   private String getKeyByIndex(int index) {
     if (index <= 0 || index >= memberNum) {
       throw new IndexOutOfBoundsException();
     }
-    return getKeyByOffset(keyOffset(getPointerByIndex(index)));
+    synchronized (pageBuffer) {
+      this.pageBuffer.limit(this.pageBuffer.capacity());
+      this.pageBuffer.position(SchemaFileConfig.PAGE_HEADER_SIZE + index * COMPOUND_POINT_LENGTH);
+      short ofs = (short) (this.pageBuffer.getLong() & SchemaFileConfig.COMP_PTR_OFFSET_MASK);
+      this.pageBuffer.position(ofs);
+      return ReadWriteIOUtils.readString(this.pageBuffer);
+    }
   }
   // endregion
 

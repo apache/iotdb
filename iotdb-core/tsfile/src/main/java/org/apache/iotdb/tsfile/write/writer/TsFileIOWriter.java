@@ -349,7 +349,7 @@ public class TsFileIOWriter implements AutoCloseable {
     }
     canWrite = false;
     long cost = System.currentTimeMillis() - startTime;
-    logger.info("Time for flushing metadata is {} ms", cost);
+    logger.debug("Time for flushing metadata is {} ms", cost);
   }
 
   private void checkInMemoryPathCount() {

@@ -86,10 +86,11 @@ public class NodeUrlUtils {
    *
    * @param endPointUrls List<TEndPointUrl>
    * @return List<TEndPoint>
-   * @throws BadNodeUrlException Throw when unable to parse
    */
-  public static List<TEndPoint> parseTEndPointUrls(List<String> endPointUrls)
-      throws BadNodeUrlException {
+  public static List<TEndPoint> parseTEndPointUrls(List<String> endPointUrls) {
+    if (endPointUrls == null) {
+      throw new NumberFormatException("endPointUrls is null");
+    }
     List<TEndPoint> result = new ArrayList<>();
     for (String url : endPointUrls) {
       result.add(UrlUtils.parseTEndPointIpv4AndIpv6Url(url));

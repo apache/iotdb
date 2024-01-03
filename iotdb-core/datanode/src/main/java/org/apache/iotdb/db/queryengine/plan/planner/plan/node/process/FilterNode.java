@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.process;
 
+import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -48,6 +49,7 @@ public class FilterNode extends TransformNode {
     this.predicate = predicate;
   }
 
+  /** This construction method is only used in inner of class `FilterNode`. */
   public FilterNode(
       PlanNodeId id,
       Expression[] outputExpressions,
@@ -110,8 +112,36 @@ public class FilterNode extends TransformNode {
     return new FilterNode(planNodeId, outputExpressions, predicate, keepNull, zoneId, scanOrder);
   }
 
+  @Override
+  public void serializeUseTemplate(DataOutputStream stream, TypeProvider typeProvider)
+      throws IOException {
+    PlanNodeType.FILTER.serialize(stream);
+    id.serialize(stream);
+    ReadWriteIOUtils.write(getChildren().size(), stream);
+    for (PlanNode planNode : getChildren()) {
+      planNode.serializeUseTemplate(stream, typeProvider);
+    }
+  }
+
+  public static FilterNode deserializeUseTemplate(
+      ByteBuffer byteBuffer, TypeProvider typeProvider) {
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+
+    return new FilterNode(
+        planNodeId,
+        null,
+        typeProvider.getTemplatedInfo().getPredicate(),
+        typeProvider.getTemplatedInfo().isKeepNull(),
+        typeProvider.getTemplatedInfo().getZoneId(),
+        typeProvider.getTemplatedInfo().getScanOrder());
+  }
+
   public Expression getPredicate() {
     return predicate;
+  }
+
+  public void setOutputExpressions(Expression[] outputExpressions) {
+    this.outputExpressions = outputExpressions;
   }
 
   @Override

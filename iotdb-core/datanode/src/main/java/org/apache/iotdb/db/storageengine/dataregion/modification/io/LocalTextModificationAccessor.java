@@ -63,8 +63,6 @@ public class LocalTextModificationAccessor
    *
    * @param filePath the path of the file that is used for storing modifications.
    */
-
-  // 针对每个路径都有一个 accessor
   public LocalTextModificationAccessor(String filePath) {
     this.filePath = filePath;
   }
@@ -165,12 +163,17 @@ public class LocalTextModificationAccessor
 
   @Override
   public void write(Modification mod) throws IOException {
+    writeWithOutSync(mod);
+    force();
+  }
+
+  @Override
+  public void writeWithOutSync(Modification mod) throws IOException {
     if (fos == null) {
       fos = new FileOutputStream(filePath, true);
     }
     fos.write(encodeModification(mod).getBytes());
     fos.write(System.lineSeparator().getBytes());
-    force();
   }
 
   @TestOnly
@@ -212,7 +215,7 @@ public class LocalTextModificationAccessor
   public void mayTruncateLastLine() {
     try (RandomAccessFile file = new RandomAccessFile(filePath, "r")) {
       long filePointer = file.length() - 1;
-      if (filePointer == 0) {
+      if (filePointer <= 0) {
         return;
       }
 
@@ -248,7 +251,6 @@ public class LocalTextModificationAccessor
   }
 
   private static String encodeDeletion(Deletion del) {
-    // deletion, path , fileoffest,
     return del.getType()
         + SEPARATOR
         + del.getPathString()
