@@ -216,17 +216,18 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     }
 
     if (!queryStatement.needPushDownSort()) {
-      planBuilder =
-          planBuilder.planOrderBy(
-              queryStatement, analysis.getOrderByExpressions(), analysis.getSelectExpressions());
+      planBuilder = planBuilder.planOrderBy(queryStatement, analysis);
     }
 
     // other upstream node
     planBuilder =
         planBuilder
             .planFill(analysis.getFillDescriptor(), queryStatement.getResultTimeOrder())
-            .planOffset(queryStatement.getRowOffset())
-            .planLimit(queryStatement.getRowLimit());
+            .planOffset(queryStatement.getRowOffset());
+
+    if (!analysis.isUseTopKNode()) {
+      planBuilder = planBuilder.planLimit(queryStatement.getRowLimit());
+    }
 
     // plan select into
     if (queryStatement.isAlignByDevice()) {

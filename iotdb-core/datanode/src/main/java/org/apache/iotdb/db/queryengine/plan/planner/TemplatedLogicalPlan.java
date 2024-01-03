@@ -182,9 +182,7 @@ public class TemplatedLogicalPlan {
     }
 
     if (!queryStatement.needPushDownSort()) {
-      planBuilder =
-          planBuilder.planOrderBy(
-              queryStatement, analysis.getOrderByExpressions(), analysis.getSelectExpressions());
+      planBuilder = planBuilder.planOrderBy(queryStatement, analysis);
     }
 
     // other upstream node

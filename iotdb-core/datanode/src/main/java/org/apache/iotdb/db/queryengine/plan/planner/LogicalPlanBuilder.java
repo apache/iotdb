@@ -129,7 +129,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDC
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.DEVICE;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.ENDTIME;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer.analyzeExpression;
-import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode.LIMIT_USE_TOP_K_FOR_ALIGN_BY_DEVICE;
+import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode.LIMIT_VALUE_USE_TOP_K;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_VALUE;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.MAX_TIME;
@@ -772,7 +772,7 @@ public class LogicalPlanBuilder {
         && queryStatement.hasLimit()
         && queryStatement.getOrderByComponent() != null
         && !queryStatement.isOrderByBasedOnDevice()
-        && limitValue <= LIMIT_USE_TOP_K_FOR_ALIGN_BY_DEVICE) {
+        && limitValue <= LIMIT_VALUE_USE_TOP_K) {
 
       TopKNode topKNode =
           new TopKNode(
@@ -1189,10 +1189,6 @@ public class LogicalPlanBuilder {
       return this;
     }
 
-    if (this.getRoot() instanceof TopKNode) {
-      return this;
-    }
-
     this.root = new LimitNode(context.getQueryId().genPlanNodeId(), this.getRoot(), rowLimit);
     return this;
   }
@@ -1557,10 +1553,7 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public LogicalPlanBuilder planOrderBy(
-      QueryStatement queryStatement,
-      Set<Expression> orderByExpressions,
-      Set<Expression> selectExpression) {
+  public LogicalPlanBuilder planOrderBy(QueryStatement queryStatement, Analysis analysis) {
     // only the order by clause having expression needs a sortNode
     if (!queryStatement.hasOrderByExpression()) {
       return this;
@@ -1571,13 +1564,32 @@ public class LogicalPlanBuilder {
       return this;
     }
 
+    Set<Expression> orderByExpressions = analysis.getOrderByExpressions();
     updateTypeProvider(orderByExpressions);
     OrderByParameter orderByParameter = new OrderByParameter(queryStatement.getSortItemList());
     if (orderByParameter.isEmpty()) {
       return this;
     }
-    this.root = new SortNode(context.getQueryId().genPlanNodeId(), root, orderByParameter);
 
+    if (queryStatement.hasLimit() && queryStatement.getRowLimit() <= LIMIT_VALUE_USE_TOP_K) {
+      long limitValue =
+          queryStatement.hasOffset()
+              ? queryStatement.getRowOffset() + queryStatement.getRowLimit()
+              : queryStatement.getRowLimit();
+      TopKNode topKNode =
+          new TopKNode(
+              context.getQueryId().genPlanNodeId(),
+              (int) limitValue,
+              orderByParameter,
+              root.getOutputColumnNames());
+      topKNode.addChild(this.root);
+      this.root = topKNode;
+      analysis.setUseTopKNode();
+    } else {
+      this.root = new SortNode(context.getQueryId().genPlanNodeId(), root, orderByParameter);
+    }
+
+    Set<Expression> selectExpression = analysis.getSelectExpressions();
     if (root.getOutputColumnNames().size() != selectExpression.size()) {
       this.root =
           new TransformNode(

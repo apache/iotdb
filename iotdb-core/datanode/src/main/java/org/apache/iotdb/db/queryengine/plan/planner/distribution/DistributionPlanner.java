@@ -53,7 +53,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode.LIMIT_USE_TOP_K_FOR_ALIGN_BY_DEVICE;
+import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode.LIMIT_VALUE_USE_TOP_K;
 
 public class DistributionPlanner {
   private final Analysis analysis;
@@ -166,7 +166,7 @@ public class DistributionPlanner {
       // TopKNode will use IdentityNode but not ShuffleSinkNode
       if (queryStatement.hasLimit()
           && !queryStatement.isOrderByBasedOnDevice()
-          && queryStatement.getRowLimit() <= LIMIT_USE_TOP_K_FOR_ALIGN_BY_DEVICE) {
+          && queryStatement.getRowLimit() <= LIMIT_VALUE_USE_TOP_K) {
         return false;
       }
 
