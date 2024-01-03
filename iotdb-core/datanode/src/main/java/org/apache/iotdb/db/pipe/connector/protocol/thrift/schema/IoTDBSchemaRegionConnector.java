@@ -88,9 +88,7 @@ public class IoTDBSchemaRegionConnector extends IoTDBMetaConnector {
                   PipeTransferSchemaPlanReq.toTPipeTransferReq(
                       pipeWriteSchemaPlanEvent.getPlanNode()));
     } catch (Exception e) {
-      if (clientAndStatus != null) {
-        clientAndStatus.setRight(false);
-      }
+      clientAndStatus.setRight(false);
       throw new PipeConnectionException(
           String.format(
               "Network error when transfer pipe write schema plan event, because %s.",

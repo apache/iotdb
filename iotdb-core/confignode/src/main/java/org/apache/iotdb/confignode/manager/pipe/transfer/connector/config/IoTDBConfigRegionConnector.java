@@ -89,9 +89,7 @@ public class IoTDBConfigRegionConnector extends IoTDBMetaConnector {
                   PipeTransferConfigPlanReq.toTPipeTransferReq(
                       pipeWriteConfigPlanEvent.getPhysicalPlan()));
     } catch (Exception e) {
-      if (clientAndStatus != null) {
-        clientAndStatus.setRight(false);
-      }
+      clientAndStatus.setRight(false);
       throw new PipeConnectionException(
           String.format(
               "Network error when transfer pipe write schema plan event, because %s.",
