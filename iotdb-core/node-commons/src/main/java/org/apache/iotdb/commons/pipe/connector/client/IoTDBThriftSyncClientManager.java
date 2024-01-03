@@ -53,15 +53,9 @@ public abstract class IoTDBThriftSyncClientManager extends IoTDBThriftClientMana
   protected final Map<TEndPoint, Pair<IoTDBThriftSyncConnectorClient, Boolean>>
       endPoint2ClientAndStatus = new ConcurrentHashMap<>();
 
-  private long currentClientIndex = 0;
-
   protected IoTDBThriftSyncClientManager(
-      List<TEndPoint> endPoints,
-      boolean useSSL,
-      String trustStorePath,
-      String trustStorePwd,
-      boolean useLeaderCache) {
-    super(endPoints, useLeaderCache);
+      List<TEndPoint> endPoints, boolean useSSL, String trustStorePath, String trustStorePwd) {
+    super(endPoints);
 
     this.useSSL = useSSL;
     this.trustStorePath = trustStorePath;

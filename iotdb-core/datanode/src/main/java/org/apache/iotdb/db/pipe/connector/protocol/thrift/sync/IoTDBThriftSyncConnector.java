@@ -30,7 +30,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.connector.client.IoTDBThriftSyncDeviceClientManager;
+import org.apache.iotdb.db.pipe.connector.client.IoTDBThriftSyncLeaderCacheClientManager;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftSyncPipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
@@ -260,7 +260,7 @@ public class IoTDBThriftSyncConnector extends IoTDBSyncSslConnector {
 
       if (insertNode != null) {
         clientAndStatus =
-            ((IoTDBThriftSyncDeviceClientManager) clientManager)
+            ((IoTDBThriftSyncLeaderCacheClientManager) clientManager)
                 .getClient(insertNode.getDevicePath().getFullPath());
         resp =
             clientAndStatus
@@ -294,7 +294,7 @@ public class IoTDBThriftSyncConnector extends IoTDBSyncSslConnector {
               pipeInsertNodeTabletInsertionEvent, status));
     }
     if (insertNode != null && status.isSetRedirectNode()) {
-      ((IoTDBThriftSyncDeviceClientManager) clientManager)
+      ((IoTDBThriftSyncLeaderCacheClientManager) clientManager)
           .updateLeaderCache(insertNode.getDevicePath().getFullPath(), status.getRedirectNode());
     }
   }
@@ -302,7 +302,7 @@ public class IoTDBThriftSyncConnector extends IoTDBSyncSslConnector {
   private void doTransfer(PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException {
     final Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus =
-        ((IoTDBThriftSyncDeviceClientManager) clientManager)
+        ((IoTDBThriftSyncLeaderCacheClientManager) clientManager)
             .getClient(pipeRawTabletInsertionEvent.getDeviceId());
     final TPipeTransferResp resp;
 
@@ -331,7 +331,7 @@ public class IoTDBThriftSyncConnector extends IoTDBSyncSslConnector {
               pipeRawTabletInsertionEvent, status));
     }
     if (status.isSetRedirectNode()) {
-      ((IoTDBThriftSyncDeviceClientManager) clientManager)
+      ((IoTDBThriftSyncLeaderCacheClientManager) clientManager)
           .updateLeaderCache(pipeRawTabletInsertionEvent.getDeviceId(), status.getRedirectNode());
     }
   }

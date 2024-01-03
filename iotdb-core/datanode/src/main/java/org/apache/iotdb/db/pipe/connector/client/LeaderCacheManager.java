@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ConcurrentHashMap;
 
-public class LeaderCacheManager {
+class LeaderCacheManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(LeaderCacheManager.class);
   private static final PipeConfig CONFIG = PipeConfig.getInstance();
 

@@ -17,15 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.protocol.thrift.async;
+package org.apache.iotdb.db.pipe.connector.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftClientManager;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeReq;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -41,7 +41,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class IoTDBThriftAsyncClientManager extends IoTDBThriftClientManager {
+public class IoTDBThriftAsyncClientManager extends IoTDBThriftLeaderCacheClientManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftAsyncClientManager.class);
 

@@ -21,14 +21,14 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.db.pipe.connector.client.IoTDBThriftSyncDeviceClientManager;
+import org.apache.iotdb.db.pipe.connector.client.IoTDBThriftSyncLeaderCacheClientManager;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import java.io.IOException;
 import java.util.List;
 
-public class IoTDBThriftSyncClientDataNodeManager extends IoTDBThriftSyncDeviceClientManager {
+public class IoTDBThriftSyncClientDataNodeManager extends IoTDBThriftSyncLeaderCacheClientManager {
 
   public IoTDBThriftSyncClientDataNodeManager(
       List<TEndPoint> endPoints,
