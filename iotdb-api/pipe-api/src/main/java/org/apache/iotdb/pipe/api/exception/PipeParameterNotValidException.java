@@ -21,9 +21,6 @@ package org.apache.iotdb.pipe.api.exception;
 
 public class PipeParameterNotValidException extends PipeException {
 
-  public static String PARSE_URL_ERROR_FORMATTER =
-      "Error parsing node urls from target servers %s, because %s";
-
   public PipeParameterNotValidException(String message) {
     super(message);
   }

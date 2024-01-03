@@ -194,6 +194,7 @@ public class CommonConfig {
   private long pipeMemoryAllocateMinSizeInBytes = 32;
   private long pipeMemoryAllocateForTsFileSequenceReaderInBytes = 2 * 1024 * 1024; // 2MB
   private long pipeMemoryExpanderIntervalSeconds = 3 * 60; // 3Min
+  private float PipeLeaderCacheMemoryUsagePercentage = 0.1F;
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -819,6 +820,14 @@ public class CommonConfig {
 
   public void setPipeMemoryAllocateMinSizeInBytes(long pipeMemoryAllocateMinSizeInBytes) {
     this.pipeMemoryAllocateMinSizeInBytes = pipeMemoryAllocateMinSizeInBytes;
+  }
+
+  public float getPipeLeaderCacheMemoryUsagePercentage() {
+    return PipeLeaderCacheMemoryUsagePercentage;
+  }
+
+  public void setPipeLeaderCacheMemoryUsagePercentage(float pipeLeaderCacheMemoryUsagePercentage) {
+    this.PipeLeaderCacheMemoryUsagePercentage = pipeLeaderCacheMemoryUsagePercentage;
   }
 
   public String getSchemaEngineMode() {

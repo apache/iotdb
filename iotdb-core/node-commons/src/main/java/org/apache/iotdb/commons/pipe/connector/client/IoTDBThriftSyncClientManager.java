@@ -131,8 +131,7 @@ public abstract class IoTDBThriftSyncClientManager extends IoTDBThriftClientMana
           String.format(
               PipeConnectionException.CONNECTION_ERROR_FORMATTER,
               endPoint.getIp(),
-              endPoint.getPort(),
-              e.getMessage()),
+              endPoint.getPort()),
           e);
     }
 
