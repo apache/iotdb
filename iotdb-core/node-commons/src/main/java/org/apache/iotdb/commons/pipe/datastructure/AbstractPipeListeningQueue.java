@@ -36,7 +36,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 /**
  * {@link AbstractPipeListeningQueue} is the encapsulation of the {@link
@@ -50,7 +49,7 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
   private int referenceCount = 0;
 
   private final Pair<Long, List<PipeSnapshotEvent>> snapshotCache =
-      new Pair<>(null, new ArrayList<>());
+      new Pair<>(Long.MIN_VALUE, new ArrayList<>());
 
   protected AbstractPipeListeningQueue() {
     super(LinkedQueueSerializerType.PLAIN);
@@ -83,9 +82,8 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
 
   public Pair<Long, List<PipeSnapshotEvent>> findAvailableSnapshots() {
     // TODO: configure maximum number of events from snapshot to queue tail
-    if (!Objects.isNull(snapshotCache.getLeft())
-        && snapshotCache.getLeft() < queue.getTailIndex() - 1000) {
-      snapshotCache.setLeft(null);
+    if (snapshotCache.getLeft() < queue.getTailIndex() - 1000) {
+      snapshotCache.setLeft(Long.MIN_VALUE);
       snapshotCache.setRight(new ArrayList<>());
     }
     return snapshotCache;
@@ -127,6 +125,7 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
     try (final FileInputStream inputStream = new FileInputStream(snapshotFile)) {
       try (FileChannel channel = inputStream.getChannel()) {
         snapshotCache.setLeft(ReadWriteIOUtils.readLong(inputStream));
+        snapshotCache.setRight(new ArrayList<>());
         int size = ReadWriteIOUtils.readInt(inputStream);
         for (int i = 0; i < size; ++i) {
           int capacity = ReadWriteIOUtils.readInt(inputStream);
@@ -148,7 +147,7 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
   @Override
   public synchronized void close() throws IOException {
     super.close();
-    snapshotCache.setLeft(null);
+    snapshotCache.setLeft(Long.MIN_VALUE);
     snapshotCache.setRight(new ArrayList<>());
   }
 }
