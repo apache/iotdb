@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
+import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -43,16 +44,15 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+import static org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
+
 public class LoadTsFileCommandNode extends WritePlanNode {
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileCommandNode.class);
-  private final LoadTsFileScheduler.LoadCommand command;
+  private final LoadCommand command;
   private final String uuid;
 
   public LoadTsFileCommandNode(
-      PlanNodeId id,
-      LoadTsFileScheduler.LoadCommand command,
-      String uuid,
-      boolean isGeneratedByPipe) {
+      PlanNodeId id, LoadCommand command, String uuid, boolean isGeneratedByPipe) {
     super(id);
     this.command = command;
     this.uuid = uuid;
@@ -147,6 +147,20 @@ public class LoadTsFileCommandNode extends WritePlanNode {
       LOGGER.error("Deserialize {} error.", LoadTsFilePieceNode.class.getSimpleName(), e);
       return null;
     }
+  }
+
+  public TLoadCommandReq toTLoadCommandReq() {
+    return new TLoadCommandReq(command.ordinal(), uuid)
+        .setIsGeneratedByPipe(isGeneratedByPipe)
+        .setNodeId(getPlanNodeId().toString());
+  }
+
+  public static LoadTsFileCommandNode fromTLoadCommandReq(TLoadCommandReq req) {
+    return new LoadTsFileCommandNode(
+        new PlanNodeId(req.isSetNodeId() ? req.nodeId : ""),
+        LoadCommand.values()[req.commandType],
+        req.uuid,
+        req.isSetIsGeneratedByPipe() && req.isGeneratedByPipe);
   }
 
   @Override

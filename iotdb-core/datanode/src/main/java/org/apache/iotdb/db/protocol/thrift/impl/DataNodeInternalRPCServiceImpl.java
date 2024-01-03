@@ -95,6 +95,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileCommandNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.ConstructSchemaBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.DeactivateTemplateNode;
@@ -176,6 +177,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TLoadSample;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
+import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
@@ -191,6 +193,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
+import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
@@ -384,11 +387,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TLoadResp sendTsFilePieceNode(TTsFilePieceReq req) {
-    LOGGER.info("Receive load node from uuid {}.", req.uuid);
+    LOGGER.info("Receive load node from uuid {} to {}.", req.uuid, req.consensusGroupId);
 
-    ConsensusGroupId groupId =
+    final ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
-    LoadTsFilePieceNode pieceNode = (LoadTsFilePieceNode) PlanNodeType.deserialize(req.body);
+    final LoadTsFilePieceNode pieceNode = (LoadTsFilePieceNode) PlanNodeType.deserialize(req.body);
     if (pieceNode == null) {
       return createTLoadResp(
           new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode()));
@@ -403,12 +406,55 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TLoadResp sendLoadCommand(TLoadCommandReq req) {
-    return createTLoadResp(
-        StorageEngine.getInstance()
-            .executeLoadCommand(
-                LoadTsFileScheduler.LoadCommand.values()[req.commandType],
-                req.uuid,
-                req.isSetIsGeneratedByPipe() && req.isGeneratedByPipe));
+    if (!req.isSetConsensusGroupIds()) { // for compatibility
+      return createTLoadResp(
+          StorageEngine.getInstance()
+              .executeLoadCommand(
+                  LoadTsFileScheduler.LoadCommand.values()[req.commandType],
+                  req.uuid,
+                  req.isSetIsGeneratedByPipe() && req.isGeneratedByPipe));
+    }
+
+    final LoadTsFileCommandNode commandNode = LoadTsFileCommandNode.fromTLoadCommandReq(req);
+    final ByteBuffer buffer = commandNode.serializeToByteBuffer();
+    final TSendBatchPlanNodeReq batchPlanNodeReq =
+        new TSendBatchPlanNodeReq(
+            req.consensusGroupIds.stream()
+                .map(
+                    consensusGroupId ->
+                        new TSendSinglePlanNodeReq(new TPlanNode(buffer), consensusGroupId))
+                .collect(Collectors.toList()));
+    final TSendBatchPlanNodeResp batchPlanNodeResp = sendBatchPlanNode(batchPlanNodeReq);
+
+    int index = 0;
+    TLoadResp result = new TLoadResp(true);
+    for (TSendSinglePlanNodeResp sendSinglePlanNodeResp : batchPlanNodeResp.getResponses()) {
+      if (!sendSinglePlanNodeResp.isAccepted()) {
+        if (result.isAccepted()) {
+          result =
+              new TLoadResp(false)
+                  .setStatus(
+                      RpcUtils.getStatus(
+                          TSStatusCode.LOAD_FILE_ERROR,
+                          String.format("Dispatch command %s failed. ", commandNode)))
+                  .setMessage("");
+        }
+        LOGGER.warn(
+            "Dispatch command {} to DataRegion {} failed, result status {}, result message {}",
+            commandNode,
+            req.consensusGroupIds.get(index),
+            sendSinglePlanNodeResp.getStatus(),
+            sendSinglePlanNodeResp.getMessage());
+        result.getStatus().addToSubStatus(sendSinglePlanNodeResp.getStatus());
+        result.setMessage(
+            result.message
+                + String.format(
+                    "DataRegion %s failed with message [%s]. ",
+                    req.consensusGroupIds.get(index), sendSinglePlanNodeResp.getMessage()));
+      }
+      index += 1;
+    }
+    return result;
   }
 
   private TLoadResp createTLoadResp(TSStatus resultStatus) {

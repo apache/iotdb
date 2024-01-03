@@ -323,6 +323,8 @@ struct TLoadCommandReq{
     1: required i32 commandType
     2: required string uuid
     3: optional bool isGeneratedByPipe
+    4: optional string nodeId
+    5: optional list<common.TConsensusGroupId> consensusGroupIds
 }
 
 struct TLoadResp{

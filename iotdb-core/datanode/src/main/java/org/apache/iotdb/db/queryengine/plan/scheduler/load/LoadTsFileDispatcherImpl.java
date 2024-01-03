@@ -36,17 +36,13 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsFileNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileCommandNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.FragInstanceDispatchResult;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IFragInstanceDispatcher;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
-import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
-import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeReq;
-import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeResp;
-import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeReq;
-import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -268,25 +264,23 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
   }
 
   public Future<FragInstanceDispatchResult> dispatchCommand(List<FragmentInstance> instances) {
-    final Map<TEndPoint, TSendBatchPlanNodeReq> endPoint2BatchReq = new HashMap<>();
+    final Map<TEndPoint, TLoadCommandReq> endPoint2LoadCommandReq = new HashMap<>();
     instances.forEach(
         instance ->
-            endPoint2BatchReq
+            endPoint2LoadCommandReq
                 .computeIfAbsent(
                     instance.getHostDataNode().getInternalEndPoint(),
-                    o -> new TSendBatchPlanNodeReq())
-                .addToRequests(
-                    new TSendSinglePlanNodeReq(
-                        new TPlanNode(
-                            instance.getFragment().getPlanNodeTree().serializeToByteBuffer()),
-                        instance.getRegionReplicaSet().getRegionId())));
+                    o ->
+                        ((LoadTsFileCommandNode) instance.getFragment().getPlanNodeTree())
+                            .toTLoadCommandReq())
+                .addToConsensusGroupIds(instance.getRegionReplicaSet().getRegionId()));
 
     return executor.submit(
         () -> {
           try (SetThreadName threadName =
               new SetThreadName(
                   LoadTsFileScheduler.class.getSimpleName() + "-Command-" + tsFileName)) {
-            for (Map.Entry<TEndPoint, TSendBatchPlanNodeReq> entry : endPoint2BatchReq.entrySet()) {
+            for (Map.Entry<TEndPoint, TLoadCommandReq> entry : endPoint2LoadCommandReq.entrySet()) {
               FragInstanceDispatchResult result =
                   dispatchCommandRemote(entry.getKey(), entry.getValue());
               if (!result.isSuccessful()) {
@@ -304,29 +298,22 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
   }
 
   private FragInstanceDispatchResult dispatchCommandRemote(
-      TEndPoint endPoint, TSendBatchPlanNodeReq batchPlanNodeReq) {
+      TEndPoint endPoint, TLoadCommandReq commandReq) {
     try (SyncDataNodeInternalServiceClient client =
         internalServiceClientManager.borrowClient(endPoint)) {
-      TSendBatchPlanNodeResp sendBatchPlanNodeResp = client.sendBatchPlanNode(batchPlanNodeReq);
-      FragInstanceDispatchResult result = new FragInstanceDispatchResult(true);
-      for (TSendSinglePlanNodeResp sendSinglePlanNodeResp : sendBatchPlanNodeResp.getResponses()) {
-        if (!sendSinglePlanNodeResp.isAccepted()) {
-          if (result.isSuccessful()) {
-            result =
-                new FragInstanceDispatchResult(
-                    RpcUtils.getStatus(
-                        TSStatusCode.LOAD_FILE_ERROR,
-                        String.format("Dispatch command to %s failed.", endPoint)));
-          }
-          LOGGER.warn(
-              "Dispatch command to {} failed, result status {}, result message {}",
-              endPoint,
-              sendSinglePlanNodeResp.getStatus(),
-              sendSinglePlanNodeResp.getMessage());
-          result.getFailureStatus().addToSubStatus(sendSinglePlanNodeResp.getStatus());
-        }
+      TLoadResp loadResp = client.sendLoadCommand(commandReq);
+      if (loadResp.accepted) {
+        return new FragInstanceDispatchResult(true);
       }
-      return result;
+
+      LOGGER.warn(
+          "Dispatch command {} to {} failed, dispatch result status {}, dispatch result message {}",
+          commandReq,
+          endPoint,
+          loadResp.status,
+          loadResp.message);
+      return new FragInstanceDispatchResult(
+          loadResp.status.setMessage(loadResp.status.message + loadResp.message));
     } catch (ClientManagerException | TException e) {
       LOGGER.warn(NODE_CONNECTION_ERROR, endPoint, e);
       TSStatus status = new TSStatus();
