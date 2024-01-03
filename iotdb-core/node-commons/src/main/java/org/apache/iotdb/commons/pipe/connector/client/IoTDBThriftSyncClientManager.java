@@ -50,10 +50,8 @@ public abstract class IoTDBThriftSyncClientManager extends IoTDBThriftClientMana
   private final String trustStorePath;
   private final String trustStorePwd;
 
-  private final Map<TEndPoint, Pair<IoTDBThriftSyncConnectorClient, Boolean>>
+  protected final Map<TEndPoint, Pair<IoTDBThriftSyncConnectorClient, Boolean>>
       endPoint2ClientAndStatus = new ConcurrentHashMap<>();
-
-  private final LeaderCacheManager leaderCacheManager = new LeaderCacheManager();
 
   private long currentClientIndex = 0;
 
@@ -97,7 +95,7 @@ public abstract class IoTDBThriftSyncClientManager extends IoTDBThriftClientMana
             "All target servers %s are not available.", endPoint2ClientAndStatus.keySet()));
   }
 
-  private void reconstructClient(TEndPoint endPoint) throws IOException {
+  protected void reconstructClient(TEndPoint endPoint) throws IOException {
     final Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus =
         endPoint2ClientAndStatus.get(endPoint);
 
@@ -178,39 +176,6 @@ public abstract class IoTDBThriftSyncClientManager extends IoTDBThriftClientMana
     }
     throw new PipeConnectionException(
         "All clients are dead, please check the connection to the receiver.");
-  }
-
-  public Pair<IoTDBThriftSyncConnectorClient, Boolean> getClient(String deviceId) {
-    final TEndPoint endPoint = leaderCacheManager.getLeaderEndPoint(deviceId);
-    return useLeaderCache
-            && endPoint != null
-            && endPoint2ClientAndStatus.containsKey(endPoint)
-            && Boolean.TRUE.equals(endPoint2ClientAndStatus.get(endPoint).getRight())
-        ? endPoint2ClientAndStatus.get(endPoint)
-        : getClient();
-  }
-
-  public void updateLeaderCache(String deviceId, TEndPoint endPoint) {
-    if (!useLeaderCache) {
-      return;
-    }
-
-    try {
-      if (!endPoint2ClientAndStatus.containsKey(endPoint)) {
-        endPointList.add(endPoint);
-        endPoint2ClientAndStatus.put(endPoint, new Pair<>(null, false));
-        reconstructClient(endPoint);
-      }
-
-      leaderCacheManager.updateLeaderEndPoint(deviceId, endPoint);
-    } catch (Exception e) {
-      LOGGER.warn(
-          "Failed to update leader cache for device {} with endpoint {}:{}.",
-          deviceId,
-          endPoint.getIp(),
-          endPoint.getPort(),
-          e);
-    }
   }
 
   @Override
