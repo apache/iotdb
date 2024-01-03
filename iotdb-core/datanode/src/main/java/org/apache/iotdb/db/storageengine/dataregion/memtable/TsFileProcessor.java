@@ -792,12 +792,6 @@ public class TsFileProcessor {
       return false;
     }
     if (workMemTable.shouldFlush()) {
-      if (logger.isDebugEnabled()) {
-        logger.debug(
-            "The memtable size {} of tsfile {} reaches the mem control threshold",
-            workMemTable.memSize(),
-            tsFileResource.getTsFile().getAbsolutePath());
-      }
       return true;
     }
     if (!enableMemControl && workMemTable.memSize() >= getMemtableSizeThresholdBasedOnSeriesNum()) {
@@ -873,9 +867,9 @@ public class TsFileProcessor {
           FLUSH_QUERY_WRITE_LOCKED, storageGroupName, tsFileResource.getTsFile().getName());
     }
     try {
-      if (logger.isInfoEnabled()) {
+      if (logger.isDebugEnabled()) {
         if (workMemTable != null) {
-          logger.info(
+          logger.debug(
               "{}: flush a working memtable in async close tsfile {}, memtable size: {}, tsfile "
                   + "size: {}, plan index: [{}, {}], progress index: {}",
               storageGroupName,
@@ -886,7 +880,7 @@ public class TsFileProcessor {
               workMemTable.getMaxPlanIndex(),
               tsFileResource.getMaxProgressIndex());
         } else {
-          logger.info(
+          logger.debug(
               "{}: flush a NotifyFlushMemTable in async close tsfile {}, tsfile size: {}",
               storageGroupName,
               tsFileResource.getTsFile().getAbsolutePath(),
@@ -1346,14 +1340,12 @@ public class TsFileProcessor {
   private void updateCompressionRatio() {
     try {
       double compressionRatio = ((double) totalMemTableSize) / writer.getPos();
-      if (logger.isDebugEnabled()) {
-        logger.debug(
-            "The compression ratio of tsfile {} is {}, totalMemTableSize: {}, the file size: {}",
-            writer.getFile().getAbsolutePath(),
-            compressionRatio,
-            totalMemTableSize,
-            writer.getPos());
-      }
+      logger.info(
+          "The compression ratio of tsfile {} is {}, totalMemTableSize: {}, the file size: {}",
+          writer.getFile().getAbsolutePath(),
+          compressionRatio,
+          totalMemTableSize,
+          writer.getPos());
       String dataRegionId = dataRegionInfo.getDataRegion().getDataRegionId();
       WritingMetrics.getInstance()
           .recordTsFileCompressionRatioOfFlushingMemTable(dataRegionId, compressionRatio);
@@ -1369,14 +1361,8 @@ public class TsFileProcessor {
 
   /** end file and write some meta */
   private void endFile() throws IOException, TsFileProcessorException {
-    if (logger.isDebugEnabled()) {
-      logger.debug("Start to end file {}", tsFileResource);
-    }
     writer.endFile();
     tsFileResource.serialize();
-    if (logger.isDebugEnabled()) {
-      logger.debug("Ended file {}", tsFileResource);
-    }
     // remove this processor from Closing list in StorageGroupProcessor,
     // mark the TsFileResource closed, no need writer anymore
     for (CloseFileListener closeFileListener : closeFileListeners) {
