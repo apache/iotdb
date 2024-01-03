@@ -210,7 +210,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
   }
 
   private boolean checkIsPageLargeEnough(PageHeader pageHeader) {
-    return pageHeader.getStatistics().getCount() >= targetPagePointNum
-        || pageHeader.getSerializedPageSize() >= targetPageSize;
+    return pageHeader.getStatistics().getCount() >= pagePointNumLowerBoundInCompaction
+        || pageHeader.getSerializedPageSize() >= pageSizeLowerBoundInCompaction;
   }
 }
