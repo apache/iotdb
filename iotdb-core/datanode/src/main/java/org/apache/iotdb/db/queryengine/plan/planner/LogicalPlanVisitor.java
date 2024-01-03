@@ -225,7 +225,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             .planFill(analysis.getFillDescriptor(), queryStatement.getResultTimeOrder())
             .planOffset(queryStatement.getRowOffset());
 
-    if (!analysis.isUseTopKNode()) {
+    if (!analysis.isUseTopKNode() || queryStatement.hasOffset()) {
       planBuilder = planBuilder.planLimit(queryStatement.getRowLimit());
     }
 

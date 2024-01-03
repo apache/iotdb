@@ -185,12 +185,14 @@ public class TemplatedLogicalPlan {
       planBuilder = planBuilder.planOrderBy(queryStatement, analysis);
     }
 
-    // other upstream node
     planBuilder =
         planBuilder
             .planFill(analysis.getFillDescriptor(), queryStatement.getResultTimeOrder())
-            .planOffset(queryStatement.getRowOffset())
-            .planLimit(queryStatement.getRowLimit());
+            .planOffset(queryStatement.getRowOffset());
+
+    if (!analysis.isUseTopKNode() || queryStatement.hasOffset()) {
+      planBuilder = planBuilder.planLimit(queryStatement.getRowLimit());
+    }
 
     return planBuilder.getRoot();
   }
