@@ -216,7 +216,7 @@ execute_command_and_append_to_file() {
     local command=$1
     {
         echo "=================== $command ===================="
-        ./start-cli.sh -h "$host_param" -p "$port_param" -u "$user_param" -pw "$passwd_param" -e "$command" | sed '$d' | sed '$d'
+        ../sbin/start-cli.sh -h "$host_param" -p "$port_param" -u "$user_param" -pw "$passwd_param" -e "$command" | sed '$d' | sed '$d'
     } >> "$COLLECTION_FILE"
 }
 
