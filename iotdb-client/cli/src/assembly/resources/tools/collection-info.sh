@@ -169,44 +169,45 @@ choose_unit() {
     echo "$unit"
 }
 
-calculate_total_directory_size() {
-    local directories="$1"
+calculate_directory_size() {
+    local file_type="$1"
     local total_size=0
-    IFS=',' read -ra dirs <<< "$directories"
+    IFS=' ' read -ra dirs <<< "$data_dir_param"
     for dir in "${dirs[@]}"; do
-        if [ -d "$dir" ]; then
-            local size=$(du -s "$dir" | awk '{print $1}')
+        iotdb_data_dir="$dir/datanode/data/$file_type"
+        if [ -d "$iotdb_data_dir" ]; then
+            local size=$(du -s "$iotdb_data_dir" | awk '{print $1}')
             total_size=$((total_size + size))
         fi
     done
     echo "$total_size"
 }
 
-calculate_total_tsfile_num() {
-    local directories="$1"
+calculate_file_num() {
+    local file_type="$1"
     local total_num=0
-    IFS=',' read -ra dirs <<< "$directories"
+    IFS=' ' read -ra dirs <<< "$data_dir_param"
     for dir in "${dirs[@]}"; do
-        if [ -d "$dir" ]; then
-          local num=$(find "$dir" -type f | wc -l)
-          total_num=$((total_num + num))
+        iotdb_data_dir="$dir/datanode/data/$file_type"
+        if [ -d "$iotdb_data_dir" ]; then
+            local num=$(find "$iotdb_data_dir" -type f | wc -l)
+            total_num=$((total_num + num))
         fi
     done
     echo "$total_num"
 }
 
-
 {
     echo '===================== TsFile Info====================='
-    sequence="$data_dir_param/datanode/data/sequence"
-    unsequence="$data_dir_param/datanode/data/unsequence"
-    echo "sequence(tsfile number): $(calculate_total_tsfile_num "$sequence")"
-    echo "unsequence(tsfile number): $(calculate_total_tsfile_num "$unsequence")"
-    total_size=$(calculate_total_directory_size "$sequence")
+    sequence="sequence"
+    unsequence="unsequence"
+    echo "sequence(tsfile number): $(calculate_file_num "$sequence")"
+    echo "unsequence(tsfile number): $(calculate_file_num "$unsequence")"
+    total_size=$(calculate_directory_size "$sequence")
     unit=$(choose_unit "$total_size")
     total_size_in_unit=$(convert_unit "$total_size" "$unit")
     echo "sequence(tsfile size): $total_size_in_unit $unit"
-    total_size=$(calculate_total_directory_size "$unsequence")
+    total_size=$(calculate_directory_size "$unsequence")
     unit=$(choose_unit "$total_size")
     total_size_in_unit=$(convert_unit "$total_size" "$unit")
     echo "unsequence(tsfile size): $total_size_in_unit $unit"

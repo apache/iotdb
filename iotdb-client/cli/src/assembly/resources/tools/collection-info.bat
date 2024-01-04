@@ -18,15 +18,14 @@
 @REM
 
 @echo off
-setlocal
-set "timestamp=%date:~0,4%%date:~5,2%%date:~8,2%"
-set "COLLECTION_FILE=collection-%timestamp%.txt"
-set "START_CLI_PATH=../sbin/start-cli.bat"
-
 setlocal enabledelayedexpansion
 
-set "HELP=Usage: %0 [-h <ip>] [-p <port>] [-u <username>] [-pw <password>] [-jp <jdk_path>] [-dd <data_dir>]"
+set "timestamp=%date:~0,4%%date:~5,2%%date:~8,2%"
+set "COLLECTION_DIR=..\colletioninfo"
+set "COLLECTION_FILE=%COLLECTION_DIR%\collection-%timestamp%.txt"
+set "START_CLI_PATH=../sbin/start-cli.bat"
 
+set "HELP=Usage: %0 [-h <ip>] [-p <port>] [-u <username>] [-pw <password>] [-jp <jdk_path>] [-dd <data_dir>]"
 set "user_param=root"
 set "passwd_param=root"
 set "host_param=127.0.0.1"
@@ -84,10 +83,8 @@ echo port_param: %port_param%
 echo jdk_path_param: %jdk_path_param%
 echo data_dir_param: %data_dir_param%
 
-
 set "command=show version"
 
-del "%COLLECTION_FILE%"
 call :collect_info
 call :execute_command "show version" >> "%COLLECTION_FILE%"
 call :execute_command "show cluster details" >> "%COLLECTION_FILE%"
@@ -95,6 +92,7 @@ call :execute_command "show regions" >> "%COLLECTION_FILE%"
 call :execute_command "show databases" >> "%COLLECTION_FILE%"
 call :execute_command "count devices" >> "%COLLECTION_FILE%"
 call :execute_command "count timeseries" >> "%COLLECTION_FILE%"
+echo "Program execution completed, directory name is %COLLECTION_DIR%"
 exit /b
 
 :collect_info
@@ -102,8 +100,11 @@ echo ---------------------
 echo Start Collection info
 echo ---------------------
 
-set "zip_name=collection-%timestamp%.zip"
-set "zip_directory=../"
+if exist "%COLLECTION_DIR%" rmdir /s /q "%COLLECTION_DIR%"
+
+mkdir "%COLLECTION_DIR%"
+
+xcopy /E /I "..\conf" "%COLLECTION_DIR%\conf"
 
 set "files_to_zip=%COLLECTION_FILE% ../conf"
 
@@ -126,14 +127,9 @@ if %system_cpu_cores% LSS 1 set system_cpu_cores=1
 echo %system_cpu_cores% core
 exit /b
 
-setlocal
-set "timestamp=%date:~0,4%%date:~5,2%%date:~8,2%"
-set "COLLECTION_FILE=collection-%timestamp%.txt"
-set "START_CLI_PATH=../sbin/start-cli.bat"
 
 :collect_memory_info
 echo ===================== Memory Info =====================
-setlocal enabledelayedexpansion
 
 REM Get total memory size
 for /f  %%b in ('wmic ComputerSystem get TotalPhysicalMemory ^| findstr "[0-9]"') do (
@@ -188,7 +184,6 @@ exit /b
 
 :total_file_num
 echo '===================== TsFile Info====================='
-setlocal enabledelayedexpansion
 set "directories=%data_dir_param%"
 set "seqFileCount=0"
 set "unseqFileCount=0"
