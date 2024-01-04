@@ -116,7 +116,8 @@ public class DataPartition extends Partition {
     return res;
   }
 
-  public List<TRegionReplicaSet> getDataRegionReplicaSet(String deviceName, Filter timeFilter) {
+  public List<TRegionReplicaSet> getDataRegionReplicaSetWithTimeFilter(
+      String deviceName, Filter timeFilter) {
     String storageGroup = getStorageGroupByDevice(deviceName);
     TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
     if (!dataPartitionMap.containsKey(storageGroup)

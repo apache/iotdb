@@ -83,6 +83,7 @@ import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
 
 public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanContext> {
 
@@ -739,7 +740,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       return Collections.emptyList();
     }
     List<List<TTimePartitionSlot>> res = new ArrayList<>(childTimePartitionList.get(0));
-    for (int i = 1, size = childTimePartitionList.size(); i < size; i++) {
+    for (int i = 1, size = childTimePartitionList.size(); i < size && !res.isEmpty(); i++) {
       res = combineTwoTimePartitionList(res, childTimePartitionList.get(i));
     }
     return res;
@@ -753,38 +754,6 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     int rightSize = right.size();
 
     List<List<TTimePartitionSlot>> res = new ArrayList<>(Math.max(leftSize, rightSize));
-    // common case, one SeriesSlot only belongs to one data region
-    if (leftSize == 1 && rightSize == 1) {
-      List<TTimePartitionSlot> list = new ArrayList<>();
-      List<TTimePartitionSlot> left0 = left.get(0);
-      List<TTimePartitionSlot> right0 = left.get(0);
-
-      int left0Index = 0;
-      int left0Size = left0.size();
-      int right0Index = 0;
-      int right0Size = right0.size();
-      while (left0Index < left0Size && right0Index < right0Size) {
-        if (left0.get(left0Index).startTime == right0.get(right0Index).startTime) {
-          list.add(left0.get(left0Index));
-          left0Index++;
-          right0Index++;
-        } else if (left0.get(left0Index).startTime < right0.get(right0Index).startTime) {
-          list.add(left0.get(left0Index));
-          left0Index++;
-        } else {
-          list.add(right0.get(left0Index));
-          right0Index++;
-        }
-      }
-      if (left0Index < left0Size) {
-        list.addAll(left0Index, left0);
-      }
-      if (right0Index < right0Size) {
-        list.addAll(right0Index, right0);
-      }
-      res.add(list);
-      return res;
-    }
 
     int previousResIndex = 0;
     res.add(new ArrayList<>());
@@ -797,6 +766,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       int rightCurrentListSize = rightCurrentList.size();
       while (leftCurrentListIndex < leftCurrentListSize
           && rightCurrentListIndex < rightCurrentListSize) {
+        // only keep time partition in All SeriesSlot
         if (leftCurrentList.get(leftCurrentListIndex).startTime
             == rightCurrentList.get(rightCurrentListIndex).startTime) {
           // new continuous time range
@@ -810,20 +780,8 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           rightCurrentListIndex++;
         } else if (leftCurrentList.get(leftCurrentListIndex).startTime
             < rightCurrentList.get(rightCurrentListIndex).startTime) {
-          // new continuous time range
-          if (leftCurrentListIndex == 0 && leftIndex != 0) {
-            previousResIndex++;
-            res.add(new ArrayList<>());
-          }
-          res.get(previousResIndex).add(leftCurrentList.get(leftCurrentListIndex));
           leftCurrentListIndex++;
         } else {
-          // new continuous time range
-          if (rightCurrentListIndex == 0 && rightIndex != 0) {
-            previousResIndex++;
-            res.add(new ArrayList<>());
-          }
-          res.get(previousResIndex).add(rightCurrentList.get(rightCurrentListIndex));
           rightCurrentListIndex++;
         }
       }
@@ -834,30 +792,6 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       if (rightCurrentListIndex == rightCurrentListSize) {
         rightIndex++;
         rightCurrentListIndex = 0;
-      }
-    }
-
-    if (leftIndex == leftSize) {
-      while (rightIndex < rightSize) {
-        if (rightCurrentListIndex == 0 && rightIndex != 0) {
-          previousResIndex++;
-          res.add(new ArrayList<>());
-        }
-        res.get(previousResIndex).addAll(rightCurrentListIndex, right.get(rightIndex));
-        rightIndex++;
-        rightCurrentListIndex = 0;
-      }
-    }
-
-    if (rightIndex == rightSize) {
-      while (leftIndex < leftSize) {
-        if (leftCurrentListIndex == 0 && leftIndex != 0) {
-          previousResIndex++;
-          res.add(new ArrayList<>());
-        }
-        res.get(previousResIndex).addAll(leftCurrentListIndex, left.get(leftIndex));
-        leftIndex++;
-        leftCurrentListIndex = 0;
       }
     }
     return res;
@@ -904,6 +838,13 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           subInnerJoinNode.add(map.values().iterator().next());
         }
       }
+    }
+
+    if (subInnerJoinNode.isEmpty()) {
+      for (SeriesSourceNode sourceNode : seriesScanNodes) {
+        sourceNode.setRegionReplicaSet(NOT_ASSIGNED);
+      }
+      return Collections.singletonList(node);
     }
     return subInnerJoinNode;
   }

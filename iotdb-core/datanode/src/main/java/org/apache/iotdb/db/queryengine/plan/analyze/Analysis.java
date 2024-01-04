@@ -294,7 +294,7 @@ public class Analysis {
   }
 
   public List<TRegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
-    return dataPartition.getDataRegionReplicaSet(seriesPath.getDevice(), timefilter);
+    return dataPartition.getDataRegionReplicaSetWithTimeFilter(seriesPath.getDevice(), timefilter);
   }
 
   public TRegionReplicaSet getPartitionInfo(
@@ -312,7 +312,7 @@ public class Analysis {
   }
 
   public List<TRegionReplicaSet> getPartitionInfo(String deviceName, Filter globalTimeFilter) {
-    return dataPartition.getDataRegionReplicaSet(deviceName, globalTimeFilter);
+    return dataPartition.getDataRegionReplicaSetWithTimeFilter(deviceName, globalTimeFilter);
   }
 
   public Statement getStatement() {
