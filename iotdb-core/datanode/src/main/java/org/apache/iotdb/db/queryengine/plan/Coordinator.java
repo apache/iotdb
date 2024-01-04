@@ -35,6 +35,7 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.QueryIdGenerator;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
@@ -132,11 +133,12 @@ public class Coordinator {
       long timeOut) {
     long startTime = System.currentTimeMillis();
     QueryId globalQueryId = queryIdGenerator.createNextQueryId();
+    MPPQueryContext queryContext = null;
     try (SetThreadName queryName = new SetThreadName(globalQueryId.getId())) {
       if (sql != null && sql.length() > 0) {
         LOGGER.debug("[QueryStart] sql: {}", sql);
       }
-      MPPQueryContext queryContext =
+      queryContext =
           new MPPQueryContext(
               sql,
               globalQueryId,
@@ -159,6 +161,10 @@ public class Coordinator {
       }
       execution.start();
       return execution.getStatus();
+    } finally {
+      if (queryContext != null && queryContext.getAcquiredLock()) {
+        DataNodeSchemaCache.getInstance().releaseInsertLock();
+      }
     }
   }
 

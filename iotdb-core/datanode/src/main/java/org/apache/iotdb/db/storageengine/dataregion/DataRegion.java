@@ -2359,16 +2359,6 @@ public class DataRegion implements IDataRegionForQuery {
       }
     }
     if (summary.hasSubmitTask()) {
-      logger.info(
-          "[CompactionScheduler][{}] selected sequence InnerSpaceCompactionTask num is {},"
-              + " selected unsequence InnerSpaceCompactionTask num is {},"
-              + " selected CrossSpaceCompactionTask num is {},"
-              + " selected InsertionCrossSpaceCompactionTask num is {}",
-          dataRegionId,
-          summary.getSubmitSeqInnerSpaceCompactionTaskNum(),
-          summary.getSubmitUnseqInnerSpaceCompactionTaskNum(),
-          summary.getSubmitCrossSpaceCompactionTaskNum(),
-          summary.getSubmitInsertionCrossSpaceCompactionTaskNum());
       CompactionMetrics.getInstance().updateCompactionTaskSelectionNum(summary);
     }
     return trySubmitCount;
@@ -3074,6 +3064,20 @@ public class DataRegion implements IDataRegionForQuery {
         insertMultiTabletsNode
             .getResults()
             .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+      } catch (BatchProcessException e) {
+        // for each error
+        TSStatus firstStatus = null;
+        for (TSStatus status : e.getFailingStatus()) {
+          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            firstStatus = status;
+          }
+          // return WRITE_PROCESS_REJECT directly for the consensus retry logic
+          if (status.getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
+            insertMultiTabletsNode.getResults().put(i, status);
+            throw new BatchProcessException("Rejected inserting multi tablets");
+          }
+        }
+        insertMultiTabletsNode.getResults().put(i, firstStatus);
       }
     }
 

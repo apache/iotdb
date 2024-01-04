@@ -915,11 +915,13 @@ public abstract class AlignedTVList extends TVList {
     // time column
     for (int sortedRowIndex = 0; sortedRowIndex < rowCount; sortedRowIndex++) {
       // skip empty row
-      if (rowBitMap != null && rowBitMap.isMarked(sortedRowIndex)) {
+      if (rowBitMap != null && rowBitMap.isMarked(getValueIndex(sortedRowIndex))) {
         continue;
       }
       int nextRowIndex = sortedRowIndex + 1;
-      while (nextRowIndex < rowCount && rowBitMap != null && rowBitMap.isMarked(nextRowIndex)) {
+      while (nextRowIndex < rowCount
+          && rowBitMap != null
+          && rowBitMap.isMarked(getValueIndex(nextRowIndex))) {
         nextRowIndex++;
       }
       if (nextRowIndex == rowCount || getTime(sortedRowIndex) != getTime(nextRowIndex)) {

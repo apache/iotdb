@@ -106,7 +106,7 @@ public class CompactionWorker implements Runnable {
     } catch (FileCannotTransitToCompactingException
         | CompactionMemoryNotEnoughException
         | CompactionFileCountExceededException e) {
-      LOGGER.info("CompactionTask {} cannot be executed. Reason: {}", task, e);
+      LOGGER.info("CompactionTask {} cannot be executed. Reason: {}", task, e.getMessage());
     } catch (InterruptedException e) {
       LOGGER.warn("InterruptedException occurred when preparing compaction task. {}", task, e);
       Thread.currentThread().interrupt();

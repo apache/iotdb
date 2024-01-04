@@ -25,6 +25,8 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -32,6 +34,7 @@ import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
@@ -45,6 +48,7 @@ import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
+import org.apache.iotdb.confignode.procedure.ProcedureMetrics;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
@@ -108,7 +112,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class ProcedureManager {
@@ -116,8 +119,9 @@ public class ProcedureManager {
 
   private static final ConfigNodeConfig CONFIG_NODE_CONFIG =
       ConfigNodeDescriptor.getInstance().getConf();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
-  private static final int PROCEDURE_WAIT_TIME_OUT = 30;
+  public static final long PROCEDURE_WAIT_TIME_OUT = COMMON_CONFIG.getConnectionTimeoutInMS();
   private static final int PROCEDURE_WAIT_RETRY_TIMEOUT = 250;
 
   private final ConfigManager configManager;
@@ -127,6 +131,7 @@ public class ProcedureManager {
   private ConfigNodeProcedureEnv env;
 
   private final long planSizeLimit;
+  private ProcedureMetrics procedureMetrics;
 
   public ProcedureManager(ConfigManager configManager, ProcedureInfo procedureInfo) {
     this.configManager = configManager;
@@ -139,6 +144,7 @@ public class ProcedureManager {
                 .getConf()
                 .getConfigNodeRatisConsensusLogAppenderBufferSize()
             - IoTDBConstant.RAFT_LOG_BASIC_SIZE;
+    this.procedureMetrics = new ProcedureMetrics(this);
   }
 
   public void shiftExecutor(boolean running) {
@@ -909,9 +915,7 @@ public class ProcedureManager {
       long startTimeForCurrentProcedure = System.currentTimeMillis();
       while (executor.isRunning()
           && !executor.isFinished(procedureId)
-          && TimeUnit.MILLISECONDS.toSeconds(
-                  System.currentTimeMillis() - startTimeForCurrentProcedure)
-              < PROCEDURE_WAIT_TIME_OUT) {
+          && System.currentTimeMillis() - startTimeForCurrentProcedure < PROCEDURE_WAIT_TIME_OUT) {
         sleepWithoutInterrupt(PROCEDURE_WAIT_RETRY_TIMEOUT);
       }
       Procedure<ConfigNodeProcedureEnv> finishedProcedure =
@@ -1026,5 +1030,17 @@ public class ProcedureManager {
                 }
               }
             });
+  }
+
+  public void addMetrics() {
+    MetricService.getInstance().addMetricSet(this.procedureMetrics);
+  }
+
+  public void removeMetrics() {
+    MetricService.getInstance().removeMetricSet(this.procedureMetrics);
+  }
+
+  public ProcedureMetrics getProcedureMetrics() {
+    return procedureMetrics;
   }
 }

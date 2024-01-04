@@ -152,6 +152,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private SchemaLogWriter<ISchemaRegionPlan> logWriter;
 
   private final MemSchemaRegionStatistics regionStatistics;
+  private final SchemaRegionMemMetric metric;
   private final DataNodeSchemaQuotaManager schemaQuotaManager =
       DataNodeSchemaQuotaManager.getInstance();
 
@@ -181,6 +182,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     this.regionStatistics =
         new MemSchemaRegionStatistics(
             schemaRegionId.getId(), schemaRegionParams.getSchemaEngineStatistics());
+    this.metric = new SchemaRegionMemMetric(regionStatistics, storageGroupFullPath);
     init();
   }
 
@@ -200,7 +202,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       tagManager = new TagManager(schemaRegionDirPath);
       mtree =
           new MTreeBelowSGMemoryImpl(
-              new PartialPath(storageGroupFullPath), tagManager::readTags, regionStatistics);
+              new PartialPath(storageGroupFullPath),
+              tagManager::readTags,
+              regionStatistics,
+              metric);
 
       if (!(config.isClusterMode()
           && config
@@ -288,8 +293,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public ISchemaRegionMetric createSchemaRegionMetric(String database) {
-    return new SchemaRegionMemMetric(regionStatistics, database);
+  public ISchemaRegionMetric getSchemaRegionMetric() {
+    return metric;
   }
 
   /**
@@ -466,6 +471,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               latestSnapshotRootDir,
               storageGroupFullPath,
               regionStatistics,
+              metric,
               measurementMNode -> {
                 regionStatistics.addTimeseries(1L);
                 if (measurementMNode.getOffset() == -1) {

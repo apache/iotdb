@@ -129,6 +129,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
             failedEntry.getValue());
         // return WRITE_PROCESS_REJECT directly for the consensus retry logic
         if (failedEntry.getValue().getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
+          node.clearResults();
           return failedEntry.getValue();
         }
       }
@@ -158,6 +159,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
             failedEntry.getValue());
         // return WRITE_PROCESS_REJECT directly for the consensus retry logic
         if (failedEntry.getValue().getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
+          node.clearResults();
           return failedEntry.getValue();
         }
       }
@@ -193,6 +195,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
             failedEntry.getValue());
         // return WRITE_PROCESS_REJECT directly for the consensus retry logic
         if (failedEntry.getValue().getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
+          node.clearResults();
           return failedEntry.getValue();
         }
       }

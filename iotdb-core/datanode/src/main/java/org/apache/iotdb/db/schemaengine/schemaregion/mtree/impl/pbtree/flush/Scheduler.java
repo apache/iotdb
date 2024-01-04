@@ -37,10 +37,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class Scheduler {
   private static final Logger LOGGER = LoggerFactory.getLogger(Scheduler.class);
@@ -101,6 +101,8 @@ public class Scheduler {
                               ISchemaFile file = store.getSchemaFile();
                               LockManager lockManager = store.getLockManager();
                               long startTime = System.currentTimeMillis();
+                              AtomicLong flushNodeNum = new AtomicLong(0);
+                              AtomicLong flushMemSize = new AtomicLong(0);
                               try {
                                 lockManager.globalReadLock();
                                 if (file == null) {
@@ -109,7 +111,7 @@ public class Scheduler {
                                 }
                                 PBTreeFlushExecutor flushExecutor =
                                     new PBTreeFlushExecutor(memoryManager, file, lockManager);
-                                flushExecutor.flushVolatileNodes();
+                                flushExecutor.flushVolatileNodes(flushNodeNum, flushMemSize);
                               } catch (MetadataException e) {
                                 LOGGER.warn(
                                     "Error occurred during MTree flush, current SchemaRegionId is {} because {}",
@@ -129,6 +131,8 @@ public class Scheduler {
                                       time,
                                       regionId);
                                 }
+                                store.recordFlushMetrics(
+                                    time, flushNodeNum.get(), flushMemSize.get());
                                 lockManager.globalReadUnlock();
                                 flushingRegionSet.remove(regionId);
                               }
@@ -151,13 +155,20 @@ public class Scheduler {
                     store ->
                         CompletableFuture.runAsync(
                             () -> {
+                              AtomicLong releaseNodeNum = new AtomicLong(0);
+                              AtomicLong releaseMemorySize = new AtomicLong(0);
+                              long startTime = System.currentTimeMillis();
                               while (force || releaseFlushStrategy.isExceedReleaseThreshold()) {
                                 // store try to release memory if not exceed release threshold
-                                if (store.executeMemoryRelease()) {
+                                if (store.executeMemoryRelease(releaseNodeNum, releaseMemorySize)) {
                                   // if store can not release memory, break
                                   break;
                                 }
                               }
+                              store.recordReleaseMetrics(
+                                  System.currentTimeMillis() - startTime,
+                                  releaseNodeNum.get(),
+                                  releaseMemorySize.get());
                             },
                             workerPool))
                 .toArray(CompletableFuture[]::new))
@@ -191,6 +202,8 @@ public class Scheduler {
             ISchemaFile file = store.getSchemaFile();
             LockManager lockManager = store.getLockManager();
             long startTime = System.currentTimeMillis();
+            AtomicLong flushNodeNum = new AtomicLong(0);
+            AtomicLong flushMemSize = new AtomicLong(0);
             try {
               lockManager.globalReadLock();
               if (!regionToStore.containsKey(regionId)) {
@@ -199,7 +212,7 @@ public class Scheduler {
               }
               PBTreeFlushExecutor flushExecutor =
                   new PBTreeFlushExecutor(remainToFlush, memoryManager, file, lockManager);
-              flushExecutor.flushVolatileNodes();
+              flushExecutor.flushVolatileNodes(flushNodeNum, flushMemSize);
             } catch (MetadataException e) {
               LOGGER.warn(
                   "Error occurred during MTree flush, current SchemaRegionId is {} because {}",
@@ -215,6 +228,7 @@ public class Scheduler {
               } else {
                 LOGGER.debug("It takes {}ms to flush MTree in SchemaRegion {}", time, regionId);
               }
+              store.recordFlushMetrics(time, flushNodeNum.get(), flushMemSize.get());
               lockManager.globalReadLock();
               flushingRegionSet.remove(regionId);
             }
@@ -235,22 +249,5 @@ public class Scheduler {
 
   public boolean isTerminated() {
     return workerPool.isTerminated();
-  }
-
-  public static void main(String[] args) {
-    Map<Integer, String> map = new ConcurrentHashMap<>();
-    for (int i = 0; i < 100000; i++) {
-      map.put(i, "test" + i);
-    }
-    Runnable runnable =
-        () -> {
-          for (int i = 0; i < 100000; i += 100) {
-            map.remove(i);
-          }
-        };
-    runnable.run();
-    for (Map.Entry<Integer, String> entry : map.entrySet()) {
-      System.out.println(entry.getKey() + " " + entry.getValue());
-    }
   }
 }

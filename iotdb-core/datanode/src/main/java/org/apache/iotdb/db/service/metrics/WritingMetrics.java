@@ -361,19 +361,14 @@ public class WritingMetrics implements IMetricSet {
 
     flushThreholdHistogram =
         MetricService.getInstance()
-            .getOrCreateHistogram(
-                Metric.FLUSH_THRESHOLD.toString(), MetricLevel.IMPORTANT, "flush_threshold");
+            .getOrCreateHistogram(Metric.FLUSH_THRESHOLD.toString(), MetricLevel.IMPORTANT);
     rejectThreholdHistogram =
         MetricService.getInstance()
-            .getOrCreateHistogram(
-                Metric.REJECT_THRESHOLD.toString(), MetricLevel.IMPORTANT, "reject_threshold");
+            .getOrCreateHistogram(Metric.REJECT_THRESHOLD.toString(), MetricLevel.IMPORTANT);
 
     memtableLiveTimer =
         MetricService.getInstance()
-            .getOrCreateTimer(
-                Metric.MEMTABLE_LIVE_DURATION.toString(),
-                MetricLevel.IMPORTANT,
-                Tag.STAGE.toString());
+            .getOrCreateTimer(Metric.MEMTABLE_LIVE_DURATION.toString(), MetricLevel.IMPORTANT);
   }
 
   public void unbindDataRegionMetrics() {
@@ -390,8 +385,7 @@ public class WritingMetrics implements IMetricSet {
     removeActiveTimePartitionCounterMetrics();
     MetricService.getInstance().remove(MetricType.HISTOGRAM, Metric.FLUSH_THRESHOLD.toString());
     MetricService.getInstance().remove(MetricType.HISTOGRAM, Metric.REJECT_THRESHOLD.toString());
-    MetricService.getInstance()
-        .remove(MetricType.TIMER, Metric.MEMTABLE_LIVE_DURATION.toString(), Tag.STAGE.toString());
+    MetricService.getInstance().remove(MetricType.TIMER, Metric.MEMTABLE_LIVE_DURATION.toString());
   }
 
   public void createDataRegionMemoryCostMetrics(DataRegion dataRegion) {
@@ -788,8 +782,6 @@ public class WritingMetrics implements IMetricSet {
             number,
             Metric.TIMED_FLUSH_MEMTABLE_COUNT.toString(),
             MetricLevel.CORE,
-            Tag.NAME.toString(),
-            Tag.NAME.toString(),
             Tag.REGION.toString(),
             dataRegionId);
   }
@@ -800,8 +792,6 @@ public class WritingMetrics implements IMetricSet {
             number,
             Metric.WAL_FLUSH_MEMTABLE_COUNT.toString(),
             MetricLevel.CORE,
-            Tag.NAME.toString(),
-            Tag.NAME.toString(),
             Tag.REGION.toString(),
             dataRegionId);
   }
@@ -812,8 +802,6 @@ public class WritingMetrics implements IMetricSet {
             number,
             Metric.SERIES_FULL_FLUSH_MEMTABLE.toString(),
             MetricLevel.CORE,
-            Tag.NAME.toString(),
-            Tag.NAME.toString(),
             Tag.REGION.toString(),
             dataRegionId);
   }
@@ -824,7 +812,6 @@ public class WritingMetrics implements IMetricSet {
             number,
             Metric.ACTIVE_MEMTABLE_COUNT.toString(),
             MetricLevel.CORE,
-            Tag.NAME.toString(),
             Tag.REGION.toString(),
             dataRegionId);
   }

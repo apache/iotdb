@@ -34,7 +34,6 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -109,11 +108,7 @@ public class TemplatedLogicalPlanBuilder extends LogicalPlanBuilder {
   }
 
   public TemplatedLogicalPlanBuilder planFilter(
-      Expression filterExpression,
-      Expression[] outputExpressions,
-      boolean isGroupByTime,
-      ZoneId zoneId,
-      Ordering scanOrder) {
+      Expression filterExpression, boolean isGroupByTime, ZoneId zoneId, Ordering scanOrder) {
 
     if (filterExpression == null) {
       return this;
@@ -123,13 +118,11 @@ public class TemplatedLogicalPlanBuilder extends LogicalPlanBuilder {
         new FilterNode(
             context.getQueryId().genPlanNodeId(),
             this.getRoot(),
-            outputExpressions,
+            null,
             filterExpression,
             isGroupByTime,
             zoneId,
             scanOrder);
-
-    updateTypeProvider(Collections.singletonList(filterExpression));
 
     return this;
   }
