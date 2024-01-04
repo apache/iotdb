@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
@@ -47,6 +48,7 @@ import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
+import org.apache.iotdb.confignode.procedure.ProcedureMetrics;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
@@ -129,6 +131,7 @@ public class ProcedureManager {
   private ConfigNodeProcedureEnv env;
 
   private final long planSizeLimit;
+  private ProcedureMetrics procedureMetrics;
 
   public ProcedureManager(ConfigManager configManager, ProcedureInfo procedureInfo) {
     this.configManager = configManager;
@@ -141,6 +144,7 @@ public class ProcedureManager {
                 .getConf()
                 .getConfigNodeRatisConsensusLogAppenderBufferSize()
             - IoTDBConstant.RAFT_LOG_BASIC_SIZE;
+    this.procedureMetrics = new ProcedureMetrics(this);
   }
 
   public void shiftExecutor(boolean running) {
@@ -1026,5 +1030,17 @@ public class ProcedureManager {
                 }
               }
             });
+  }
+
+  public void addMetrics() {
+    MetricService.getInstance().addMetricSet(this.procedureMetrics);
+  }
+
+  public void removeMetrics() {
+    MetricService.getInstance().removeMetricSet(this.procedureMetrics);
+  }
+
+  public ProcedureMetrics getProcedureMetrics() {
+    return procedureMetrics;
   }
 }
