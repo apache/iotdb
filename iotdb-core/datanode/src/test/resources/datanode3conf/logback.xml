@@ -252,7 +252,13 @@
     <logger level="info" name="COMPACTION">
         <appender-ref ref="COMPACTION"/>
     </logger>
+    <logger level="info" name="org.apache.iotdb.pipe.api">
+        <appender-ref ref="PIPE"/>
+    </logger>
     <logger level="info" name="org.apache.iotdb.db.pipe">
+        <appender-ref ref="PIPE"/>
+    </logger>
+    <logger level="info" name="org.apache.iotdb.commons.pipe">
         <appender-ref ref="PIPE"/>
     </logger>
 </configuration>
