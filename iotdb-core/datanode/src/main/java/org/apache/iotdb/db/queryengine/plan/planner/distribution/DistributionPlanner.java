@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.optimization.ColumnInjectionPushDown;
 import org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown;
+import org.apache.iotdb.db.queryengine.plan.optimization.OrderByExpressionWithLimitChangeToTopK;
 import org.apache.iotdb.db.queryengine.plan.optimization.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.planner.IFragmentParallelPlaner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
@@ -67,7 +68,11 @@ public class DistributionPlanner {
     this.logicalPlan = logicalPlan;
     this.context = logicalPlan.getContext();
 
-    this.optimizers = Arrays.asList(new LimitOffsetPushDown(), new ColumnInjectionPushDown());
+    this.optimizers =
+        Arrays.asList(
+            new LimitOffsetPushDown(),
+            new ColumnInjectionPushDown(),
+            new OrderByExpressionWithLimitChangeToTopK());
   }
 
   public PlanNode rewriteSource() {

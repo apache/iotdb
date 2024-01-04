@@ -1571,23 +1571,7 @@ public class LogicalPlanBuilder {
       return this;
     }
 
-    if (queryStatement.hasLimit() && queryStatement.getRowLimit() <= LIMIT_VALUE_USE_TOP_K) {
-      long limitValue =
-          queryStatement.hasOffset()
-              ? queryStatement.getRowOffset() + queryStatement.getRowLimit()
-              : queryStatement.getRowLimit();
-      TopKNode topKNode =
-          new TopKNode(
-              context.getQueryId().genPlanNodeId(),
-              (int) limitValue,
-              orderByParameter,
-              root.getOutputColumnNames());
-      topKNode.addChild(this.root);
-      this.root = topKNode;
-      analysis.setUseTopKNode();
-    } else {
-      this.root = new SortNode(context.getQueryId().genPlanNodeId(), root, orderByParameter);
-    }
+    this.root = new SortNode(context.getQueryId().genPlanNodeId(), root, orderByParameter);
 
     Set<Expression> selectExpression = analysis.getSelectExpressions();
     if (root.getOutputColumnNames().size() != selectExpression.size()) {
@@ -1600,6 +1584,7 @@ public class LogicalPlanBuilder {
               queryStatement.getSelectComponent().getZoneId(),
               queryStatement.getResultTimeOrder());
     }
+
     return this;
   }
 
