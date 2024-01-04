@@ -34,6 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -81,23 +82,47 @@ public class Scheduler {
    * MNodes will be placed into node cache. This method will return synchronously after all stores
    * are successfully flushed.
    */
-  public synchronized void forceFlushAll() {
-    List<Map.Entry<Integer, CachedMTreeStore>> flushEngineList = new ArrayList<>();
+  public void forceFlushAll() {
+    executeForceFlushAll(lockAllRegion());
+  }
+
+  private Map<Integer, Long> lockAllRegion() {
+    Map<Integer, Long> regionLockMap = new HashMap<>();
     for (Map.Entry<Integer, CachedMTreeStore> entry : regionToStore.entrySet()) {
+      entry.getValue().getLockManager().globalStampedReadLock();
+      CachedMTreeStore store = entry.getValue();
+      long lockStamp = store.getLockManager().globalStampedReadLock();
+      if (!regionToStore.containsKey(entry.getKey())) {
+        // already been removed
+        store.getLockManager().globalStampedReadUnlock(lockStamp);
+        continue;
+      }
+      regionLockMap.put(entry.getKey(), lockStamp);
+    }
+    return regionLockMap;
+  }
+
+  private synchronized void executeForceFlushAll(Map<Integer, Long> regionLockMap) {
+    List<Pair<Integer, CachedMTreeStore>> flushRegionList = new ArrayList<>();
+    for (Map.Entry<Integer, Long> entry : regionLockMap.entrySet()) {
       if (flushingRegionSet.contains(entry.getKey())) {
+        regionToStore
+            .get(entry.getKey())
+            .getLockManager()
+            .globalStampedReadUnlock(entry.getValue());
         continue;
       }
       flushingRegionSet.add(entry.getKey());
-      flushEngineList.add(entry);
+      flushRegionList.add(new Pair<>(entry.getKey(), regionToStore.get(entry.getKey())));
     }
     CompletableFuture.allOf(
-            flushEngineList.stream()
+            flushRegionList.stream()
                 .map(
                     entry ->
                         CompletableFuture.runAsync(
                             () -> {
-                              CachedMTreeStore store = entry.getValue();
-                              int regionId = entry.getKey();
+                              CachedMTreeStore store = entry.right;
+                              int regionId = entry.left;
                               IMemoryManager memoryManager = store.getMemoryManager();
                               ISchemaFile file = store.getSchemaFile();
                               LockManager lockManager = store.getLockManager();
@@ -105,7 +130,6 @@ public class Scheduler {
                               AtomicLong flushNodeNum = new AtomicLong(0);
                               AtomicLong flushMemSize = new AtomicLong(0);
                               try {
-                                lockManager.globalReadLock();
                                 if (file == null) {
                                   // store has been closed
                                   return;
@@ -134,7 +158,7 @@ public class Scheduler {
                                 }
                                 store.recordFlushMetrics(
                                     time, flushNodeNum.get(), flushMemSize.get());
-                                lockManager.globalReadUnlock();
+                                lockManager.globalStampedReadUnlock(regionLockMap.get(regionId));
                                 flushingRegionSet.remove(regionId);
                               }
                             },
