@@ -86,6 +86,10 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
     return results;
   }
 
+  public void clearResults() {
+    results.clear();
+  }
+
   @Override
   public void setSearchIndex(long index) {
     searchIndex = index;

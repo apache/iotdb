@@ -25,6 +25,7 @@ import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_DEFAULT_VALUE;
@@ -52,6 +54,12 @@ public abstract class IoTDBConnector implements PipeConnector {
   protected final List<TEndPoint> nodeUrls = new ArrayList<>();
 
   protected boolean isTabletBatchModeEnabled = true;
+
+  private static final String PARSE_URL_ERROR_FORMATTER =
+      "Exception occurred while parsing node urls from target servers: {}";
+
+  private static final String PARSE_URL_ERROR_MESSAGE =
+      "Error occurred while parsing node urls from target servers, please check the specified 'ip':'port' or 'node-urls'";
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -92,37 +100,58 @@ public abstract class IoTDBConnector implements PipeConnector {
     LOGGER.info("IoTDBConnector isTabletBatchModeEnabled: {}", isTabletBatchModeEnabled);
   }
 
-  protected Set<TEndPoint> parseNodeUrls(PipeParameters parameters) {
+  protected Set<TEndPoint> parseNodeUrls(PipeParameters parameters)
+      throws PipeParameterNotValidException {
     final Set<TEndPoint> givenNodeUrls = new HashSet<>(nodeUrls);
 
-    if (parameters.hasAttribute(CONNECTOR_IOTDB_IP_KEY)
-        && parameters.hasAttribute(CONNECTOR_IOTDB_PORT_KEY)) {
-      givenNodeUrls.add(
-          new TEndPoint(
-              parameters.getStringByKeys(CONNECTOR_IOTDB_IP_KEY),
-              parameters.getIntByKeys(CONNECTOR_IOTDB_PORT_KEY)));
+    try {
+      if (parameters.hasAttribute(CONNECTOR_IOTDB_IP_KEY)
+          && parameters.hasAttribute(CONNECTOR_IOTDB_PORT_KEY)) {
+        givenNodeUrls.add(
+            new TEndPoint(
+                parameters.getStringByKeys(CONNECTOR_IOTDB_IP_KEY),
+                parameters.getIntByKeys(CONNECTOR_IOTDB_PORT_KEY)));
+      }
+
+      if (parameters.hasAttribute(SINK_IOTDB_IP_KEY)
+          && parameters.hasAttribute(SINK_IOTDB_PORT_KEY)) {
+        givenNodeUrls.add(
+            new TEndPoint(
+                parameters.getStringByKeys(SINK_IOTDB_IP_KEY),
+                parameters.getIntByKeys(SINK_IOTDB_PORT_KEY)));
+      }
+
+      if (parameters.hasAttribute(CONNECTOR_IOTDB_NODE_URLS_KEY)) {
+        givenNodeUrls.addAll(
+            NodeUrlUtils.parseTEndPointUrls(
+                Arrays.asList(
+                    parameters.getStringByKeys(CONNECTOR_IOTDB_NODE_URLS_KEY).split(","))));
+      }
+
+      if (parameters.hasAttribute(SINK_IOTDB_NODE_URLS_KEY)) {
+        givenNodeUrls.addAll(
+            NodeUrlUtils.parseTEndPointUrls(
+                Arrays.asList(parameters.getStringByKeys(SINK_IOTDB_NODE_URLS_KEY).split(","))));
+      }
+    } catch (Exception e) {
+      LOGGER.warn(PARSE_URL_ERROR_FORMATTER, e.toString());
+      throw new PipeParameterNotValidException(PARSE_URL_ERROR_MESSAGE);
     }
 
-    if (parameters.hasAttribute(SINK_IOTDB_IP_KEY)
-        && parameters.hasAttribute(SINK_IOTDB_PORT_KEY)) {
-      givenNodeUrls.add(
-          new TEndPoint(
-              parameters.getStringByKeys(SINK_IOTDB_IP_KEY),
-              parameters.getIntByKeys(SINK_IOTDB_PORT_KEY)));
-    }
-
-    if (parameters.hasAttribute(CONNECTOR_IOTDB_NODE_URLS_KEY)) {
-      givenNodeUrls.addAll(
-          NodeUrlUtils.parseTEndPointUrls(
-              Arrays.asList(parameters.getStringByKeys(CONNECTOR_IOTDB_NODE_URLS_KEY).split(","))));
-    }
-
-    if (parameters.hasAttribute(SINK_IOTDB_NODE_URLS_KEY)) {
-      givenNodeUrls.addAll(
-          NodeUrlUtils.parseTEndPointUrls(
-              Arrays.asList(parameters.getStringByKeys(SINK_IOTDB_NODE_URLS_KEY).split(","))));
-    }
-
+    checkNodeUrls(givenNodeUrls);
     return givenNodeUrls;
+  }
+
+  private void checkNodeUrls(Set<TEndPoint> nodeUrls) throws PipeParameterNotValidException {
+    for (TEndPoint nodeUrl : nodeUrls) {
+      if (Objects.isNull(nodeUrl.ip) || nodeUrl.ip.isEmpty()) {
+        LOGGER.warn(PARSE_URL_ERROR_FORMATTER, "ip cannot be empty");
+        throw new PipeParameterNotValidException(PARSE_URL_ERROR_MESSAGE);
+      }
+      if (nodeUrl.port == 0) {
+        LOGGER.warn(PARSE_URL_ERROR_FORMATTER, "port cannot be empty");
+        throw new PipeParameterNotValidException(PARSE_URL_ERROR_MESSAGE);
+      }
+    }
   }
 }

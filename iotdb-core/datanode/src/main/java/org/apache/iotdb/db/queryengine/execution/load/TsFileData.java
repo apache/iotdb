@@ -22,7 +22,6 @@ package org.apache.iotdb.db.queryengine.execution.load;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -30,8 +29,6 @@ import java.io.InputStream;
 
 public interface TsFileData {
   long getDataSize();
-
-  void writeToFileWriter(TsFileIOWriter writer) throws IOException;
 
   boolean isModification();
 

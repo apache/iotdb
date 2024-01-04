@@ -17,46 +17,10 @@
  * under the License.
  */
 
-parser grammar PathParser;
+package org.apache.iotdb.db.exception;
 
-options { tokenVocab=SqlLexer; }
-
-import IdentifierParser;
-
-/**
- * PartialPath and Path used by Session API and TsFile API should be parsed by Antlr4.
- */
-
-path
-    : prefixPath EOF
-    | suffixPath EOF
-    ;
-
-prefixPath
-    : ROOT (DOT nodeName)*
-    ;
-
-suffixPath
-    : nodeName (DOT nodeName)*
-    ;
-
-nodeName
-    : wildcard
-    | wildcard nodeNameSlice wildcard?
-    | nodeNameSlice wildcard
-    | nodeNameWithoutWildcard
-    ;
-
-nodeNameWithoutWildcard
-    : identifier
-    ;
-
-nodeNameSlice
-    : identifier
-    | INTEGER_LITERAL
-    ;
-
-wildcard
-    : STAR
-    | DOUBLE_STAR
-    ;
+public class LoadRuntimeOutOfMemoryException extends RuntimeException {
+  public LoadRuntimeOutOfMemoryException(String message) {
+    super(message);
+  }
+}

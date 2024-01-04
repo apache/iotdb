@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorClient;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.LeaderCacheManager;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.IoTDBThriftClientManager;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
@@ -42,7 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class IoTDBThriftSyncClientManager implements Closeable {
+public class IoTDBThriftSyncClientManager extends IoTDBThriftClientManager implements Closeable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftSyncClientManager.class);
 
@@ -52,15 +52,8 @@ public class IoTDBThriftSyncClientManager implements Closeable {
   private final String trustStorePath;
   private final String trustStorePwd;
 
-  private final boolean useLeaderCache;
-
-  private final List<TEndPoint> endPoints;
   private final Map<TEndPoint, Pair<IoTDBThriftSyncConnectorClient, Boolean>>
       endPoint2ClientAndStatus = new ConcurrentHashMap<>();
-
-  private final LeaderCacheManager leaderCacheManager = new LeaderCacheManager();
-
-  private long currentClientIndex = 0;
 
   public IoTDBThriftSyncClientManager(
       List<TEndPoint> endPoints,
@@ -68,20 +61,18 @@ public class IoTDBThriftSyncClientManager implements Closeable {
       String trustStorePath,
       String trustStorePwd,
       boolean useLeaderCache) {
+    super(endPoints, useLeaderCache);
+
     this.useSSL = useSSL;
     this.trustStorePath = trustStorePath;
     this.trustStorePwd = trustStorePwd;
 
-    this.useLeaderCache = useLeaderCache;
-
-    this.endPoints = endPoints;
-    for (TEndPoint endPoint : endPoints) {
+    for (final TEndPoint endPoint : endPoints) {
       endPoint2ClientAndStatus.put(endPoint, new Pair<>(null, false));
     }
   }
 
-  public void checkClientStatusAndTryReconstructIfNecessary()
-      throws IOException, TTransportException {
+  public void checkClientStatusAndTryReconstructIfNecessary() throws IOException {
     // reconstruct all dead clients
     for (final Map.Entry<TEndPoint, Pair<IoTDBThriftSyncConnectorClient, Boolean>> entry :
         endPoint2ClientAndStatus.entrySet()) {
@@ -104,7 +95,7 @@ public class IoTDBThriftSyncClientManager implements Closeable {
             "All target servers %s are not available.", endPoint2ClientAndStatus.keySet()));
   }
 
-  private void reconstructClient(TEndPoint endPoint) throws TTransportException, IOException {
+  private void reconstructClient(TEndPoint endPoint) throws IOException {
     final Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus =
         endPoint2ClientAndStatus.get(endPoint);
 
@@ -120,18 +111,27 @@ public class IoTDBThriftSyncClientManager implements Closeable {
       }
     }
 
-    clientAndStatus.setLeft(
-        new IoTDBThriftSyncConnectorClient(
-            new ThriftClientProperty.Builder()
-                .setConnectionTimeoutMs((int) PIPE_CONFIG.getPipeConnectorHandshakeTimeoutMs())
-                .setRpcThriftCompressionEnabled(
-                    PIPE_CONFIG.isPipeConnectorRPCThriftCompressionEnabled())
-                .build(),
-            endPoint.getIp(),
-            endPoint.getPort(),
-            useSSL,
-            trustStorePath,
-            trustStorePwd));
+    try {
+      clientAndStatus.setLeft(
+          new IoTDBThriftSyncConnectorClient(
+              new ThriftClientProperty.Builder()
+                  .setConnectionTimeoutMs((int) PIPE_CONFIG.getPipeConnectorHandshakeTimeoutMs())
+                  .setRpcThriftCompressionEnabled(
+                      PIPE_CONFIG.isPipeConnectorRPCThriftCompressionEnabled())
+                  .build(),
+              endPoint.getIp(),
+              endPoint.getPort(),
+              useSSL,
+              trustStorePath,
+              trustStorePwd));
+    } catch (TTransportException e) {
+      throw new PipeConnectionException(
+          String.format(
+              PipeConnectionException.CONNECTION_ERROR_FORMATTER,
+              endPoint.getIp(),
+              endPoint.getPort()),
+          e);
+    }
 
     try {
       final TPipeTransferResp resp =
@@ -167,12 +167,12 @@ public class IoTDBThriftSyncClientManager implements Closeable {
   }
 
   public Pair<IoTDBThriftSyncConnectorClient, Boolean> getClient() {
-    final int clientSize = endPoints.size();
+    final int clientSize = endPointList.size();
     // Round-robin, find the next alive client
     for (int tryCount = 0; tryCount < clientSize; ++tryCount) {
       final int clientIndex = (int) (currentClientIndex++ % clientSize);
       final Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus =
-          endPoint2ClientAndStatus.get(endPoints.get(clientIndex));
+          endPoint2ClientAndStatus.get(endPointList.get(clientIndex));
       if (Boolean.TRUE.equals(clientAndStatus.getRight())) {
         return clientAndStatus;
       }
@@ -198,7 +198,7 @@ public class IoTDBThriftSyncClientManager implements Closeable {
 
     try {
       if (!endPoint2ClientAndStatus.containsKey(endPoint)) {
-        endPoints.add(endPoint);
+        endPointList.add(endPoint);
         endPoint2ClientAndStatus.put(endPoint, new Pair<>(null, false));
         reconstructClient(endPoint);
       }
@@ -233,7 +233,11 @@ public class IoTDBThriftSyncClientManager implements Closeable {
         LOGGER.info("Client {}:{} closed.", endPoint.getIp(), endPoint.getPort());
       } catch (Exception e) {
         LOGGER.warn(
-            "Failed to close client {}:{}, because: {}.", endPoint.getIp(), endPoint.getPort(), e);
+            "Failed to close client {}:{}, because: {}.",
+            endPoint.getIp(),
+            endPoint.getPort(),
+            e.getMessage(),
+            e);
       } finally {
         clientAndStatus.setRight(false);
       }

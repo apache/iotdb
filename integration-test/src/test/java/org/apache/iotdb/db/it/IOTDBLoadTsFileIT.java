@@ -65,6 +65,7 @@ public class IOTDBLoadTsFileIT {
   private static final Logger LOGGER = LoggerFactory.getLogger(IOTDBLoadTsFileIT.class);
   private static final long PARTITION_INTERVAL = 10 * 1000L;
   private static final int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(300);
+  private static final long loadTsFileAnalyzeSchemaMemorySizeInBytes = 10 * 1024L;
 
   private File tmpDir;
 
@@ -75,7 +76,8 @@ public class IOTDBLoadTsFileIT {
     EnvFactory.getEnv()
         .getConfig()
         .getDataNodeConfig()
-        .setConnectionTimeoutInMS(connectionTimeoutInMS);
+        .setConnectionTimeoutInMS(connectionTimeoutInMS)
+        .setLoadTsFileAnalyzeSchemaMemorySizeInBytes(loadTsFileAnalyzeSchemaMemorySizeInBytes);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 

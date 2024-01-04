@@ -22,27 +22,32 @@ package org.apache.iotdb.db.pipe.agent.plugin.dataregion;
 import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginAgent;
 import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginConstructor;
 import org.apache.iotdb.commons.pipe.plugin.meta.DataNodePipePluginMetaKeeper;
+import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMetaKeeper;
 
 public class PipeDataRegionPluginAgent extends PipePluginAgent {
 
-  protected final DataNodePipePluginMetaKeeper pipePluginMetaKeeper;
-
   public PipeDataRegionPluginAgent(DataNodePipePluginMetaKeeper pipePluginMetaKeeper) {
-    this.pipePluginMetaKeeper = pipePluginMetaKeeper;
+    super(pipePluginMetaKeeper);
   }
 
   @Override
-  protected PipePluginConstructor createPipeExtractorConstructor() {
-    return new PipeDataRegionExtractorConstructor(pipePluginMetaKeeper);
+  protected PipePluginConstructor createPipeExtractorConstructor(
+      PipePluginMetaKeeper pipePluginMetaKeeper) {
+    return new PipeDataRegionExtractorConstructor(
+        (DataNodePipePluginMetaKeeper) pipePluginMetaKeeper);
   }
 
   @Override
-  protected PipePluginConstructor createPipeProcessorConstructor() {
-    return new PipeDataRegionProcessorConstructor(pipePluginMetaKeeper);
+  protected PipePluginConstructor createPipeProcessorConstructor(
+      PipePluginMetaKeeper pipePluginMetaKeeper) {
+    return new PipeDataRegionProcessorConstructor(
+        (DataNodePipePluginMetaKeeper) pipePluginMetaKeeper);
   }
 
   @Override
-  protected PipePluginConstructor createPipeConnectorConstructor() {
-    return new PipeDataRegionConnectorConstructor(pipePluginMetaKeeper);
+  protected PipePluginConstructor createPipeConnectorConstructor(
+      PipePluginMetaKeeper pipePluginMetaKeeper) {
+    return new PipeDataRegionConnectorConstructor(
+        (DataNodePipePluginMetaKeeper) pipePluginMetaKeeper);
   }
 }

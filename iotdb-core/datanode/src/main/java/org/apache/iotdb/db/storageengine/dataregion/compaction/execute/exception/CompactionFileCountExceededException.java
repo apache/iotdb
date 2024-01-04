@@ -23,4 +23,9 @@ public class CompactionFileCountExceededException extends Exception {
   public CompactionFileCountExceededException(String message) {
     super(message);
   }
+
+  @Override
+  public Throwable fillInStackTrace() {
+    return this;
+  }
 }

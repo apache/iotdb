@@ -246,7 +246,8 @@ public class TsFileProcessor {
       createNewWorkingMemTable();
       // recordCreateMemtableBlockCost
       costsForMetrics[0] += System.nanoTime() - startTime;
-      // PERFORMANCE_OVERVIEW_METRICS.recordCreateMemtableBlockCost(System.nanoTime() - startTime);
+      WritingMetrics.getInstance()
+          .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), 1);
     }
 
     long[] memIncrements = null;
@@ -799,10 +800,6 @@ public class TsFileProcessor {
       return false;
     }
     if (workMemTable.shouldFlush()) {
-      logger.info(
-          "The memtable size {} of tsfile {} reaches the mem control threshold",
-          workMemTable.memSize(),
-          tsFileResource.getTsFile().getAbsolutePath());
       return true;
     }
     if (!enableMemControl && workMemTable.memSize() >= getMemtableSizeThresholdBasedOnSeriesNum()) {
@@ -817,6 +814,8 @@ public class TsFileProcessor {
           "The avg series points num {} of tsfile {} reaches the threshold",
           workMemTable.getTotalPointsNum() / workMemTable.getSeriesNumber(),
           tsFileResource.getTsFile().getAbsolutePath());
+      WritingMetrics.getInstance()
+          .recordSeriesFullFlushMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), 1);
       return true;
     }
     return false;
@@ -829,14 +828,6 @@ public class TsFileProcessor {
   public boolean shouldClose() {
     long fileSize = tsFileResource.getTsFileSize();
     long fileSizeThreshold = sequence ? config.getSeqTsFileSize() : config.getUnSeqTsFileSize();
-
-    if (fileSize >= fileSizeThreshold) {
-      logger.info(
-          "{} fileSize {} >= fileSizeThreshold {}",
-          tsFileResource.getTsFilePath(),
-          fileSize,
-          fileSizeThreshold);
-    }
     return fileSize >= fileSizeThreshold;
   }
 
@@ -884,9 +875,9 @@ public class TsFileProcessor {
           FLUSH_QUERY_WRITE_LOCKED, storageGroupName, tsFileResource.getTsFile().getName());
     }
     try {
-      if (logger.isInfoEnabled()) {
+      if (logger.isDebugEnabled()) {
         if (workMemTable != null) {
-          logger.info(
+          logger.debug(
               "{}: flush a working memtable in async close tsfile {}, memtable size: {}, tsfile "
                   + "size: {}, plan index: [{}, {}], progress index: {}",
               storageGroupName,
@@ -897,7 +888,7 @@ public class TsFileProcessor {
               workMemTable.getMaxPlanIndex(),
               tsFileResource.getMaxProgressIndex());
         } else {
-          logger.info(
+          logger.debug(
               "{}: flush a NotifyFlushMemTable in async close tsfile {}, tsfile size: {}",
               storageGroupName,
               tsFileResource.getTsFile().getAbsolutePath(),
@@ -931,7 +922,6 @@ public class TsFileProcessor {
         // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
         // flushing memTable in System module.
         Future<?> future = addAMemtableIntoFlushingList(tmpMemTable);
-        logger.info("Memtable {} has been added to flushing list", tmpMemTable);
         shouldClose = true;
         return future;
       } catch (Exception e) {
@@ -1075,6 +1065,10 @@ public class TsFileProcessor {
     if (!(tobeFlushed.isSignalMemTable() || tobeFlushed.isEmpty())) {
       totalMemTableSize += tobeFlushed.memSize();
     }
+    WritingMetrics.getInstance()
+        .recordMemTableLiveDuration(System.currentTimeMillis() - getWorkMemTableCreatedTime());
+    WritingMetrics.getInstance()
+        .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), -1);
     workMemTable = null;
     return FlushManager.getInstance().registerTsFileProcessor(this);
   }
@@ -1357,7 +1351,7 @@ public class TsFileProcessor {
       logger.info(
           "The compression ratio of tsfile {} is {}, totalMemTableSize: {}, the file size: {}",
           writer.getFile().getAbsolutePath(),
-          compressionRatio,
+          String.format("%.2f", compressionRatio),
           totalMemTableSize,
           writer.getPos());
       String dataRegionId = dataRegionInfo.getDataRegion().getDataRegionId();
@@ -1375,12 +1369,14 @@ public class TsFileProcessor {
 
   /** end file and write some meta */
   private void endFile() throws IOException, TsFileProcessorException {
-    logger.info("Start to end file {}", tsFileResource);
-    long closeStartTime = System.currentTimeMillis();
+    if (logger.isDebugEnabled()) {
+      logger.debug("Start to end file {}", tsFileResource);
+    }
     writer.endFile();
     tsFileResource.serialize();
-    logger.info("Ended file {}", tsFileResource);
-
+    if (logger.isDebugEnabled()) {
+      logger.debug("Ended file {}", tsFileResource);
+    }
     // remove this processor from Closing list in StorageGroupProcessor,
     // mark the TsFileResource closed, no need writer anymore
     for (CloseFileListener closeFileListener : closeFileListeners) {
@@ -1390,16 +1386,6 @@ public class TsFileProcessor {
     if (enableMemControl) {
       tsFileProcessorInfo.clear();
       dataRegionInfo.closeTsFileProcessorAndReportToSystem(this);
-    }
-    if (logger.isInfoEnabled()) {
-      long closeEndTime = System.currentTimeMillis();
-      logger.info(
-          "Database {} close the file {}, TsFile size is {}, "
-              + "time consumption of flushing metadata is {}ms",
-          storageGroupName,
-          tsFileResource.getTsFile().getAbsoluteFile(),
-          writer.getFile().length(),
-          closeEndTime - closeStartTime);
     }
 
     writer = null;
