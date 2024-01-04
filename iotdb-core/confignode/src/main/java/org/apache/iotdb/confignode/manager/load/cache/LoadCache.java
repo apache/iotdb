@@ -559,8 +559,8 @@ public class LoadCache {
       try {
         TimeUnit.MILLISECONDS.sleep(HEARTBEAT_INTERVAL);
       } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
         LOGGER.warn("Interrupt when wait for leader election", e);
+        return;
       }
     }
 
