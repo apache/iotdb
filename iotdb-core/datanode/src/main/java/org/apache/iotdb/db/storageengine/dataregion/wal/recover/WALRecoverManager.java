@@ -48,6 +48,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
+import static org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils.getTsFileRelativePath;
+
 /** First set allVsgScannedLatch, then call recover method. */
 public class WALRecoverManager {
   private static final Logger logger = LoggerFactory.getLogger(WALRecoverManager.class);
@@ -187,8 +189,10 @@ public class WALRecoverManager {
       return null;
     } else {
       try {
-        String canonicalPath = recoverPerformer.getTsFileResource().getTsFile().getCanonicalPath();
-        absolutePath2RecoverPerformer.put(canonicalPath, recoverPerformer);
+        String tsFileRelativePath =
+            getTsFileRelativePath(
+                recoverPerformer.getTsFileResource().getTsFile().getCanonicalPath());
+        absolutePath2RecoverPerformer.put(tsFileRelativePath, recoverPerformer);
       } catch (IOException e) {
         logger.error(
             "Fail to add recover performer for file {}",
@@ -201,8 +205,7 @@ public class WALRecoverManager {
 
   UnsealedTsFileRecoverPerformer removeRecoverPerformer(File file) {
     try {
-      String canonicalPath = file.getCanonicalPath();
-      return absolutePath2RecoverPerformer.remove(canonicalPath);
+      return absolutePath2RecoverPerformer.remove(getTsFileRelativePath(file.getCanonicalPath()));
     } catch (IOException e) {
       logger.error("Fail to remove recover performer for file {}", file, e);
     }

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.regex.Matcher;
@@ -167,5 +168,18 @@ public class WALFileUtils {
   /** Get .wal filename. */
   public static String getLogFileName(long versionId, long startSearchIndex, WALFileStatus status) {
     return String.format(WAL_FILE_NAME_FORMAT, versionId, startSearchIndex, status.getCode());
+  }
+
+  /**
+   * get tsFile relative path from sequence or unsequence dir. <br>
+   * eg: <br>
+   * input: <br>
+   * /iotdb/absolute/path/data/datanode/data/sequence/root.db/1/2818/1704354353829-1-0-0.tsfile
+   * output: <br>
+   * sequence/root.db/1/2818/1704354353829-1-0-0.tsfile
+   */
+  public static String getTsFileRelativePath(String absolutePath) {
+    Path path = new File(absolutePath).toPath();
+    return path.subpath(path.getNameCount() - 5, path.getNameCount()).toString();
   }
 }
