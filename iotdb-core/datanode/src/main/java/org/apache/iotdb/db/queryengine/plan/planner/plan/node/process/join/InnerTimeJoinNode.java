@@ -33,6 +33,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -56,14 +57,23 @@ public class InnerTimeJoinNode extends MultiChildProcessNode {
   // This parameter indicates the order when executing multiway merge sort.
   private final Ordering mergeOrder;
 
+  // null for all time partitions
+  // empty for zero time partitions
+  private List<Long> timePartitions;
+
   public InnerTimeJoinNode(PlanNodeId id, Ordering mergeOrder) {
-    super(id, new ArrayList<>());
-    this.mergeOrder = mergeOrder;
+    this(id, new ArrayList<>(), mergeOrder, null);
   }
 
   public InnerTimeJoinNode(PlanNodeId id, Ordering mergeOrder, List<PlanNode> children) {
+    this(id, children, mergeOrder, null);
+  }
+
+  public InnerTimeJoinNode(
+      PlanNodeId id, List<PlanNode> children, Ordering mergeOrder, List<Long> timePartitions) {
     super(id, children);
     this.mergeOrder = mergeOrder;
+    this.timePartitions = timePartitions;
   }
 
   public Ordering getMergeOrder() {
@@ -79,8 +89,9 @@ public class InnerTimeJoinNode extends MultiChildProcessNode {
   public PlanNode createSubNode(int subNodeId, int startIndex, int endIndex) {
     return new InnerTimeJoinNode(
         new PlanNodeId(String.format("%s-%s", getPlanNodeId(), subNodeId)),
+        new ArrayList<>(children.subList(startIndex, endIndex)),
         getMergeOrder(),
-        new ArrayList<>(children.subList(startIndex, endIndex)));
+        timePartitions);
   }
 
   @Override
@@ -100,18 +111,45 @@ public class InnerTimeJoinNode extends MultiChildProcessNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.INNER_TIME_JOIN.serialize(byteBuffer);
     ReadWriteIOUtils.write(mergeOrder.ordinal(), byteBuffer);
+    if (timePartitions == null) {
+      ReadWriteIOUtils.write(false, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(true, byteBuffer);
+      ReadWriteIOUtils.write(timePartitions.size(), byteBuffer);
+      for (Long timePartitionId : timePartitions) {
+        ReadWriteIOUtils.write(timePartitionId, byteBuffer);
+      }
+    }
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.INNER_TIME_JOIN.serialize(stream);
     ReadWriteIOUtils.write(mergeOrder.ordinal(), stream);
+    if (timePartitions == null) {
+      ReadWriteIOUtils.write(false, stream);
+    } else {
+      ReadWriteIOUtils.write(true, stream);
+      ReadWriteIOUtils.write(timePartitions.size(), stream);
+      for (Long timePartitionId : timePartitions) {
+        ReadWriteIOUtils.write(timePartitionId, stream);
+      }
+    }
   }
 
   public static InnerTimeJoinNode deserialize(ByteBuffer byteBuffer) {
     Ordering mergeOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    List<Long> timePartitionIds = null;
+    boolean hasTimePartitionIds = ReadWriteIOUtils.readBool(byteBuffer);
+    if (hasTimePartitionIds) {
+      int size = ReadWriteIOUtils.read(byteBuffer);
+      timePartitionIds = new ArrayList<>(size);
+      for (int i = 0; i < size; i++) {
+        timePartitionIds.add(ReadWriteIOUtils.readLong(byteBuffer));
+      }
+    }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new InnerTimeJoinNode(planNodeId, mergeOrder);
+    return new InnerTimeJoinNode(planNodeId, new ArrayList<>(), mergeOrder, timePartitionIds);
   }
 
   @Override
@@ -137,5 +175,15 @@ public class InnerTimeJoinNode extends MultiChildProcessNode {
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), mergeOrder);
+  }
+
+  public void setTimePartitions(List<Long> timePartitions) {
+    this.timePartitions = timePartitions;
+  }
+
+  // null for all time partitions
+  // empty for zero time partitions
+  public Optional<List<Long>> getTimePartitions() {
+    return Optional.ofNullable(timePartitions);
   }
 }
