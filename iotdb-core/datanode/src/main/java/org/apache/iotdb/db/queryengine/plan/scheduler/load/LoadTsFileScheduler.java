@@ -35,7 +35,6 @@ import org.apache.iotdb.commons.partition.StorageExecutor;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
@@ -96,20 +95,10 @@ import java.util.stream.IntStream;
 public class LoadTsFileScheduler implements IScheduler {
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileScheduler.class);
   public static final long LOAD_TASK_MAX_TIME_IN_SECOND = 900L; // 15min
-  private static final long SINGLE_SCHEDULER_MAX_MEMORY_SIZE;
-  private static final int TRANSMIT_LIMIT;
-
-  static {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    SINGLE_SCHEDULER_MAX_MEMORY_SIZE =
-        Math.min(
-            config.getThriftMaxFrameSize() >> 2,
-            (long)
-                (config.getAllocateMemoryForStorageEngine()
-                    * config.getLoadTsFileProportion())); // TODO: change it to query engine
-    TRANSMIT_LIMIT =
-        CommonDescriptor.getInstance().getConfig().getTTimePartitionSlotTransmitLimit();
-  }
+  private static final long SINGLE_SCHEDULER_MAX_MEMORY_SIZE =
+      IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize() >> 2;
+  private static final int TRANSMIT_LIMIT =
+      CommonDescriptor.getInstance().getConfig().getTTimePartitionSlotTransmitLimit();
 
   private final MPPQueryContext queryContext;
   private final QueryStateMachine stateMachine;
