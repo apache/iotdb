@@ -19,9 +19,8 @@
 
 parser grammar PathParser;
 
-options { tokenVocab=SqlLexer; }
+options { tokenVocab=PathLexer; }
 
-import IdentifierParser;
 
 /**
  * PartialPath and Path used by Session API and TsFile API should be parsed by Antlr4.
@@ -55,6 +54,12 @@ nodeNameSlice
     : identifier
     | INTEGER_LITERAL
     ;
+
+identifier
+     : DURATION_LITERAL
+     | ID
+     | QUOTED_ID
+     ;
 
 wildcard
     : STAR

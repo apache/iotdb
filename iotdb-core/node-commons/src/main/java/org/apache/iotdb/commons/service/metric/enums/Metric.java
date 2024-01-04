@@ -38,6 +38,12 @@ public enum Metric {
   TIME_SLOT_NUM_IN_DATABASE("time_slot_num_in_database"),
   REGION_GROUP_NUM_IN_DATABASE("region_group_num_in_database"),
   REPLICATION_FACTOR("replication_factor"),
+  PROCEDURE_WORKER_THREAD_COUNT("procedure_worker_thread_count"),
+  PROCEDURE_ACTIVE_WORKER_THREAD_COUNT("procedure_active_worker_thread_count"),
+  PROCEDURE_QUEUE_LENGTH("procedure_queue_length"),
+  PROCEDURE_SUBMITTED_COUNT("procedure_submitted_count"),
+  PROCEDURE_FAILED_COUNT("procedure_failed_count"),
+  PROCEDURE_EXECUTION_TIME("procedure_execution_time"),
   // protocol related
   ENTRY("entry"),
   SESSION_IDLE_TIME("session_idle_time"),

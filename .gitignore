@@ -124,6 +124,8 @@ iotdb-client/client-py/LICENSE
 iotdb-core/antlr/gen/
 iotdb-core/antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/gen/
 iotdb-core/antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/IoTDBSqlLexer.tokens
+iotdb-core/tsfile/gen/
+iotdb-core/tsfile/src/main/antlr4/org/apache/tsfile/parser/gen/
 
 # Develocity
 .mvn/.gradle-enterprise/

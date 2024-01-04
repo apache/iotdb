@@ -1485,12 +1485,14 @@ public class ConfigManager implements IManager {
   public void addMetrics() {
     MetricService.getInstance().addMetricSet(new NodeMetrics(getNodeManager()));
     MetricService.getInstance().addMetricSet(new PartitionMetrics(this));
+    getProcedureManager().addMetrics();
   }
 
   @Override
   public void removeMetrics() {
     MetricService.getInstance().removeMetricSet(new NodeMetrics(getNodeManager()));
     MetricService.getInstance().removeMetricSet(new PartitionMetrics(this));
+    getProcedureManager().removeMetrics();
   }
 
   @Override

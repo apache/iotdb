@@ -22,7 +22,6 @@ package org.apache.iotdb.db.schemaengine.metric;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.db.schemaengine.rescon.ISchemaEngineStatistics;
-import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.ReleaseFlushMonitor;
 
 import java.util.Map;
@@ -45,18 +44,20 @@ public class SchemaMetricManager {
     MetricService.getInstance().addMetricSet(engineMetric);
   }
 
-  public void createSchemaRegionMetric(ISchemaRegion schemaRegion) {
-    ISchemaRegionMetric schemaRegionMetric =
-        schemaRegion.createSchemaRegionMetric(schemaRegion.getDatabaseFullPath());
-    schemaRegionMetricMap.put(schemaRegion.getSchemaRegionId().getId(), schemaRegionMetric);
+  public void addSchemaRegionMetric(int schemaRegionId, ISchemaRegionMetric schemaRegionMetric) {
+    schemaRegionMetricMap.put(schemaRegionId, schemaRegionMetric);
     MetricService.getInstance().addMetricSet(schemaRegionMetric);
   }
 
-  public void deleteSchemaRegionMetric(int schemaRegionId) {
+  public void removeSchemaRegionMetric(int schemaRegionId) {
     ISchemaRegionMetric schemaRegionMetric = schemaRegionMetricMap.remove(schemaRegionId);
     if (schemaRegionMetric != null) {
       MetricService.getInstance().removeMetricSet(schemaRegionMetric);
     }
+  }
+
+  public ISchemaRegionMetric getSchemaRegionMetric(int schemaRegionId) {
+    return schemaRegionMetricMap.get(schemaRegionId);
   }
 
   public void clear() {

@@ -156,6 +156,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   private MLogDescriptionWriter logDescriptionWriter;
 
   private final CachedSchemaRegionStatistics regionStatistics;
+  private final SchemaRegionCachedMetric metric;
   private final DataNodeSchemaQuotaManager schemaQuotaManager =
       DataNodeSchemaQuotaManager.getInstance();
 
@@ -173,6 +174,9 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     this.regionStatistics =
         new CachedSchemaRegionStatistics(
             schemaRegionId.getId(), schemaRegionParams.getSchemaEngineStatistics());
+    this.metric =
+        new SchemaRegionCachedMetric(
+            regionStatistics, schemaRegionParams.getDatabase().getFullPath());
     init();
   }
 
@@ -198,7 +202,8 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
               measurementInitProcess(),
               deviceInitProcess(),
               schemaRegionId.getId(),
-              regionStatistics);
+              regionStatistics,
+              metric);
 
       if (!(config.isClusterMode()
           && config
@@ -330,8 +335,8 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   }
 
   @Override
-  public ISchemaRegionMetric createSchemaRegionMetric(String database) {
-    return new SchemaRegionCachedMetric(regionStatistics, database);
+  public ISchemaRegionMetric getSchemaRegionMetric() {
+    return metric;
   }
 
   /** Init from metadata log file. */
@@ -518,6 +523,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
               storageGroupFullPath,
               schemaRegionId.getId(),
               regionStatistics,
+              metric,
               measurementInitProcess(),
               deviceInitProcess(),
               tagManager::readTags,

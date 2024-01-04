@@ -238,12 +238,14 @@ public class TsFileProcessor {
    *
    * @param insertRowNode physical plan of insertion
    */
-  public void insert(InsertRowNode insertRowNode) throws WriteProcessException {
+  public void insert(InsertRowNode insertRowNode, long[] costsForMetrics)
+      throws WriteProcessException {
 
     if (workMemTable == null) {
       long startTime = System.nanoTime();
       createNewWorkingMemTable();
-      PERFORMANCE_OVERVIEW_METRICS.recordCreateMemtableBlockCost(System.nanoTime() - startTime);
+      // recordCreateMemtableBlockCost
+      costsForMetrics[0] += System.nanoTime() - startTime;
       WritingMetrics.getInstance()
           .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), 1);
     }
@@ -262,7 +264,8 @@ public class TsFileProcessor {
                 insertRowNode.getDevicePath().getFullPath(), insertRowNode.getMeasurements(),
                 insertRowNode.getDataTypes(), insertRowNode.getValues());
       }
-      PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemoryBlockCost(System.nanoTime() - startTime);
+      // recordScheduleMemoryBlockCost
+      costsForMetrics[1] += System.nanoTime() - startTime;
     }
 
     long startTime = System.nanoTime();
@@ -282,7 +285,8 @@ public class TsFileProcessor {
               storageGroupName, tsFileResource.getTsFile().getAbsolutePath()),
           e);
     } finally {
-      PERFORMANCE_OVERVIEW_METRICS.recordScheduleWalCost(System.nanoTime() - startTime);
+      // recordScheduleWalCost
+      costsForMetrics[2] += System.nanoTime() - startTime;
     }
 
     startTime = System.nanoTime();
@@ -315,8 +319,8 @@ public class TsFileProcessor {
     }
 
     tsFileResource.updateProgressIndex(insertRowNode.getProgressIndex());
-
-    PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(System.nanoTime() - startTime);
+    // recordScheduleMemTableCost
+    costsForMetrics[3] += System.nanoTime() - startTime;
   }
 
   private void createNewWorkingMemTable() throws WriteProcessException {
@@ -792,12 +796,6 @@ public class TsFileProcessor {
       return false;
     }
     if (workMemTable.shouldFlush()) {
-      if (logger.isDebugEnabled()) {
-        logger.debug(
-            "The memtable size {} of tsfile {} reaches the mem control threshold",
-            workMemTable.memSize(),
-            tsFileResource.getTsFile().getAbsolutePath());
-      }
       return true;
     }
     if (!enableMemControl && workMemTable.memSize() >= getMemtableSizeThresholdBasedOnSeriesNum()) {
@@ -873,9 +871,9 @@ public class TsFileProcessor {
           FLUSH_QUERY_WRITE_LOCKED, storageGroupName, tsFileResource.getTsFile().getName());
     }
     try {
-      if (logger.isInfoEnabled()) {
+      if (logger.isDebugEnabled()) {
         if (workMemTable != null) {
-          logger.info(
+          logger.debug(
               "{}: flush a working memtable in async close tsfile {}, memtable size: {}, tsfile "
                   + "size: {}, plan index: [{}, {}], progress index: {}",
               storageGroupName,
@@ -886,7 +884,7 @@ public class TsFileProcessor {
               workMemTable.getMaxPlanIndex(),
               tsFileResource.getMaxProgressIndex());
         } else {
-          logger.info(
+          logger.debug(
               "{}: flush a NotifyFlushMemTable in async close tsfile {}, tsfile size: {}",
               storageGroupName,
               tsFileResource.getTsFile().getAbsolutePath(),
@@ -1346,14 +1344,12 @@ public class TsFileProcessor {
   private void updateCompressionRatio() {
     try {
       double compressionRatio = ((double) totalMemTableSize) / writer.getPos();
-      if (logger.isDebugEnabled()) {
-        logger.debug(
-            "The compression ratio of tsfile {} is {}, totalMemTableSize: {}, the file size: {}",
-            writer.getFile().getAbsolutePath(),
-            compressionRatio,
-            totalMemTableSize,
-            writer.getPos());
-      }
+      logger.info(
+          "The compression ratio of tsfile {} is {}, totalMemTableSize: {}, the file size: {}",
+          writer.getFile().getAbsolutePath(),
+          String.format("%.2f", compressionRatio),
+          totalMemTableSize,
+          writer.getPos());
       String dataRegionId = dataRegionInfo.getDataRegion().getDataRegionId();
       WritingMetrics.getInstance()
           .recordTsFileCompressionRatioOfFlushingMemTable(dataRegionId, compressionRatio);

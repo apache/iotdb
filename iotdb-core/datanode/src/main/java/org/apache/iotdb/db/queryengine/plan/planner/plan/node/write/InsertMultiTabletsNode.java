@@ -159,6 +159,10 @@ public class InsertMultiTabletsNode extends InsertNode {
     return results;
   }
 
+  public void clearResults() {
+    results.clear();
+  }
+
   public TSStatus[] getFailingStatus() {
     return StatusUtils.getFailingStatus(results, insertTabletNodeList.size());
   }

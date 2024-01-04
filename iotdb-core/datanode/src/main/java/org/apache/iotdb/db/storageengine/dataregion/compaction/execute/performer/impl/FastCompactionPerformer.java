@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.IllegalCompactionTaskSummaryException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ISeqCompactionPerformer;
@@ -242,6 +243,9 @@ public class FastCompactionPerformer
         futures.get(i).get();
         subTaskSummary.increase(taskSummaryList.get(i));
       } catch (ExecutionException e) {
+        if (e.getCause() instanceof CompactionLastTimeCheckFailedException) {
+          throw (CompactionLastTimeCheckFailedException) e.getCause();
+        }
         throw new IOException("[Compaction] SubCompactionTask meet errors ", e);
       }
     }

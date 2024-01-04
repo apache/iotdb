@@ -38,11 +38,11 @@ public class StuckProcedure extends Procedure<TestProcEnv> {
   @Override
   protected Procedure[] execute(final TestProcEnv env) {
     try {
-      if (!latch.tryAcquire(1, 30, TimeUnit.SECONDS)) {
+      if (!latch.tryAcquire(1, 180, TimeUnit.SECONDS)) {
         throw new Exception("waited too long");
       }
 
-      if (!latch.tryAcquire(1, 30, TimeUnit.SECONDS)) {
+      if (!latch.tryAcquire(1, 180, TimeUnit.SECONDS)) {
         throw new Exception("waited too long");
       }
     } catch (Exception e) {

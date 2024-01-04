@@ -36,6 +36,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer.getBelongedContainer;
 import static org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer.getCachedMNodeContainer;
@@ -131,6 +132,7 @@ public class MemoryManager implements IMemoryManager {
     pinMNodeWithMemStatusUpdate(node);
     CacheEntry cacheEntry = getCacheEntry(node);
     cacheEntry.setVolatile(true);
+    memoryStatistics.addVolatileNode();
     // the ancestors must be processed first since the volatileDescendant judgement is of higher
     // priority than
     // children container judgement
@@ -159,6 +161,7 @@ public class MemoryManager implements IMemoryManager {
       }
       // the status change affects the subTre collect in nodeBuffer
       cacheEntry.setVolatile(true);
+      memoryStatistics.addVolatileNode();
       if (!cacheEntry.hasVolatileDescendant()) {
         nodeCache.removeFromNodeCache(cacheEntry);
         removeAncestorsFromCache(node);
@@ -336,6 +339,7 @@ public class MemoryManager implements IMemoryManager {
 
           synchronized (cacheEntry) {
             cacheEntry.setVolatile(false);
+            memoryStatistics.removeVolatileNode();
             container.moveMNodeToCache(node.getName());
 
             if (cacheEntry.hasVolatileDescendant()
@@ -384,6 +388,7 @@ public class MemoryManager implements IMemoryManager {
       }
       if (cacheEntry.isVolatile()) {
         addAncestorsToCache(node);
+        memoryStatistics.removeVolatileNode();
         if (!getCacheEntry(node.getParent()).hasVolatileDescendant()) {
           nodeBuffer.remove(getCacheEntry(node.getParent()));
         }
@@ -407,7 +412,7 @@ public class MemoryManager implements IMemoryManager {
    * @return whether evicted any MNode successfully
    */
   @Override
-  public synchronized boolean evict() {
+  public synchronized boolean evict(AtomicLong releaseNodeNum, AtomicLong releaseMemorySize) {
     lockManager.globalReadLock();
     try {
       ICachedMNode node = null;
@@ -453,7 +458,9 @@ public class MemoryManager implements IMemoryManager {
         collectEvictedMNodes(node, evictedMNodes);
       }
 
-      memoryStatistics.releaseMemResource(evictedMNodes);
+      int sz = memoryStatistics.releaseMemResource(evictedMNodes);
+      releaseMemorySize.addAndGet(sz);
+      releaseNodeNum.addAndGet(evictedMNodes.size());
       return !evictedMNodes.isEmpty();
     } finally {
       lockManager.globalReadUnlock();
