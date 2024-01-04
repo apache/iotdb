@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.load;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
@@ -30,6 +31,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.LoadFileException;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileCommandNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
@@ -147,7 +149,7 @@ public class LoadTsFileManager {
     }
     uuid2WriterManager
         .get(uuid)
-        .executeOnDataRegion(null, LoadCommand.EXECUTE, isGeneratedByPipe, true);
+        .executeOnDataRegion(null, LoadCommand.EXECUTE, isGeneratedByPipe, null, true);
     clean(uuid);
     return true;
   }
@@ -168,7 +170,7 @@ public class LoadTsFileManager {
     }
     final TsFileWriterManager writerManager = uuid2WriterManager.get(uuid);
     writerManager.executeOnDataRegion(
-        dataRegion, node.getCommand(), node.isGeneratedByPipe(), false);
+        dataRegion, node.getCommand(), node.isGeneratedByPipe(), node.getProgressIndex(), false);
     if (writerManager.isEmpty()) {
       clean(uuid);
     }
@@ -300,6 +302,7 @@ public class LoadTsFileManager {
         DataRegion dataRegion,
         LoadCommand loadCommand,
         boolean isGeneratedByPipe,
+        ProgressIndex progressIndex,
         boolean ignoreDataRegion)
         throws IOException, LoadFileException {
       if (isClosed.get()) {
@@ -340,7 +343,8 @@ public class LoadTsFileManager {
 
           final DataRegion localDataRegion = entry.getKey().getDataRegion();
           if (LoadCommand.EXECUTE.equals(loadCommand)) {
-            localDataRegion.loadNewTsFile(generateResource(writer), true, isGeneratedByPipe);
+            localDataRegion.loadNewTsFile(
+                generateResource(writer, progressIndex), true, isGeneratedByPipe);
           } else if (LoadCommand.ROLLBACK.equals(loadCommand)) {
             final Path writerPath = writer.getFile().toPath();
             if (Files.exists(writerPath)) {
@@ -365,8 +369,12 @@ public class LoadTsFileManager {
       }
     }
 
-    private TsFileResource generateResource(TsFileIOWriter writer) throws IOException {
+    private TsFileResource generateResource(TsFileIOWriter writer, ProgressIndex progressIndex)
+        throws IOException {
       TsFileResource tsFileResource = TsFileResourceUtils.generateTsFileResource(writer);
+      PipeAgent.runtime()
+          .assignProgressIndexForTsFileLoadIfNeeded(tsFileResource); // for simple consensus
+      tsFileResource.updateProgressIndex(progressIndex); // for other consensus
       tsFileResource.serialize();
       return tsFileResource;
     }

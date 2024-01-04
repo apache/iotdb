@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -104,6 +105,15 @@ public class SimpleConsensusProgressIndexAssigner {
     }
 
     insertNode.setProgressIndex(
+        new SimpleProgressIndex(rebootTimes, insertionRequestId.getAndIncrement()));
+  }
+
+  public void assignIfNeeded(TsFileResource resource) {
+    if (!isSimpleConsensusEnable) {
+      return;
+    }
+
+    resource.updateProgressIndex(
         new SimpleProgressIndex(rebootTimes, insertionRequestId.getAndIncrement()));
   }
 

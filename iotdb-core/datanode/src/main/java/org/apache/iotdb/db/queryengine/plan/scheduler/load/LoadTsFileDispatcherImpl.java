@@ -29,8 +29,9 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
+import org.apache.iotdb.db.queryengine.execution.executor.RegionExecutionResult;
+import org.apache.iotdb.db.queryengine.execution.executor.RegionWriteExecutor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -40,6 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePie
 import org.apache.iotdb.db.queryengine.plan.scheduler.FragInstanceDispatchResult;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IFragInstanceDispatcher;
 import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
 import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
@@ -177,18 +179,32 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       }
     } else if (planNode instanceof LoadSingleTsFileNode) { // do not need to split
       try {
-        StorageEngine.getInstance()
-            .getDataRegion((DataRegionId) groupId)
-            .loadNewTsFile(
-                ((LoadSingleTsFileNode) planNode).getTsFileResource(),
-                ((LoadSingleTsFileNode) planNode).isDeleteAfterLoad(),
-                isGeneratedByPipe);
-      } catch (LoadFileException e) {
-        LOGGER.warn("Load TsFile Node {} error.", planNode, e);
-        TSStatus resultStatus = new TSStatus();
-        resultStatus.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
-        resultStatus.setMessage(e.getMessage());
-        throw new FragmentInstanceDispatchException(resultStatus);
+        final TsFileResource tsFileResource = ((LoadSingleTsFileNode) planNode).getTsFileResource();
+        final LoadTsFileCommandNode commandNode =
+            new LoadTsFileCommandNode(
+                planNode.getPlanNodeId(),
+                LoadTsFileScheduler.LoadCommand.EXECUTE,
+                uuid,
+                planNode.isGeneratedByPipe(),
+                true,
+                tsFileResource.getTsFile().getAbsolutePath(),
+                tsFileResource,
+                ((LoadSingleTsFileNode) planNode).isDeleteAfterLoad());
+        RegionWriteExecutor executor = new RegionWriteExecutor();
+        RegionExecutionResult executionResult = executor.execute(groupId, commandNode);
+        if (!executionResult.isAccepted()) {
+          LOGGER.warn(
+              "Load TsFile {} locally error, execution result message {}, execution result status {}.",
+              tsFileResource.getTsFile().getAbsolutePath(),
+              executionResult.getMessage(),
+              executionResult.getStatus());
+          throw new FragmentInstanceDispatchException(executionResult.getStatus());
+        }
+      } catch (Exception e) {
+        LOGGER.warn("cannot dispatch FI for load locally operation", e);
+        throw new FragmentInstanceDispatchException(
+            RpcUtils.getStatus(
+                TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + e.getMessage()));
       }
     }
   }

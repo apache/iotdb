@@ -841,15 +841,13 @@ public class StorageEngine implements IService {
   public TSStatus executeLoadCommand(DataRegion dataRegion, LoadTsFileCommandNode commandNode) {
     TSStatus status = new TSStatus();
     try {
-      if (getLoadTsFileManager().executeOnDataRegion(dataRegion, commandNode)) {
-        status = RpcUtils.SUCCESS_STATUS;
-      } else {
-        status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
-        status.setMessage(
-            String.format(
-                "No load TsFile uuid %s recorded for executing load command %s.",
-                commandNode.getUuid(), commandNode));
+      if (!getLoadTsFileManager().executeOnDataRegion(dataRegion, commandNode)) {
+        LOGGER.info(
+            "No load TsFile uuid {} recorded for executing load command {}.",
+            commandNode.getUuid(),
+            commandNode);
       }
+      status = RpcUtils.SUCCESS_STATUS;
     } catch (IOException | LoadFileException e) {
       LOGGER.error("Execute load command {} error.", commandNode, e);
       status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());

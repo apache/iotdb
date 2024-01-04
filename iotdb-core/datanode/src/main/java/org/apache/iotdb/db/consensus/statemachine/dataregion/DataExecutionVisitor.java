@@ -23,9 +23,11 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.exception.BatchProcessException;
+import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileCommandNode;
@@ -39,6 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOf
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -249,6 +252,34 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
         node,
         context.getDatabaseName(),
         context.getDataRegionId());
-    return StorageEngine.getInstance().executeLoadCommand(context, node);
+    if (!node.isLoadedLocally()) {
+      return StorageEngine.getInstance().executeLoadCommand(context, node);
+    } else {
+      try {
+        final TsFileResource tsFileResource = node.getTsFileResource();
+        PipeAgent.runtime()
+            .assignProgressIndexForTsFileLoadIfNeeded(tsFileResource); // for simple consensus
+        tsFileResource.updateProgressIndex(node.getProgressIndex()); // for other consensus
+        tsFileResource.serialize();
+        context.loadNewTsFile(tsFileResource, node.isDeleteAfterLoad(), node.isGeneratedByPipe());
+        return RpcUtils.SUCCESS_STATUS;
+      } catch (IOException e) {
+        final String errorMessage =
+            String.format(
+                "IOException in executing load command node %s to data region %s-%s.",
+                node, context.getDatabaseName(), context.getDataRegionId());
+        LOGGER.warn(errorMessage, e);
+        return RpcUtils.getStatus(
+            TSStatusCode.LOAD_FILE_ERROR, errorMessage + " Because: " + e.getMessage());
+      } catch (LoadFileException e) {
+        final String errorMessage =
+            String.format(
+                "LoadFileException in executing load command node %s to data region %s-%s.",
+                node, context.getDatabaseName(), context.getDataRegionId());
+        LOGGER.warn(errorMessage, e);
+        return RpcUtils.getStatus(
+            TSStatusCode.LOAD_FILE_ERROR, errorMessage + " Because: " + e.getMessage());
+      }
+    }
   }
 }

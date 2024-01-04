@@ -20,13 +20,15 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.load;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.consensus.index.ComparableConsensusRequest;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
-import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -37,6 +39,7 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -46,20 +49,43 @@ import java.util.Objects;
 
 import static org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
 
-public class LoadTsFileCommandNode extends WritePlanNode {
+public class LoadTsFileCommandNode extends WritePlanNode implements ComparableConsensusRequest {
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileCommandNode.class);
   private final LoadCommand command;
   private final String uuid;
+  private ProgressIndex progressIndex;
+
+  // for load locally
+  private final boolean isLoadedLocally;
+  private String tsFilePath;
+  private TsFileResource tsFileResource;
+  private boolean isDeleteAfterLoad;
 
   public LoadTsFileCommandNode(
       PlanNodeId id, LoadCommand command, String uuid, boolean isGeneratedByPipe) {
+    this(id, command, uuid, isGeneratedByPipe, false, null, null, false);
+  }
+
+  public LoadTsFileCommandNode(
+      PlanNodeId id,
+      LoadCommand command,
+      String uuid,
+      boolean isGeneratedByPipe,
+      boolean isLoadedLocally,
+      String tsFilePath,
+      TsFileResource tsFileResource,
+      boolean isDeleteAfterLoad) {
     super(id);
     this.command = command;
     this.uuid = uuid;
     this.isGeneratedByPipe = isGeneratedByPipe;
+    this.isLoadedLocally = isLoadedLocally;
+    this.tsFilePath = tsFilePath;
+    this.tsFileResource = tsFileResource;
+    this.isDeleteAfterLoad = isDeleteAfterLoad;
   }
 
-  public LoadTsFileScheduler.LoadCommand getCommand() {
+  public LoadCommand getCommand() {
     return command;
   }
 
@@ -69,6 +95,22 @@ public class LoadTsFileCommandNode extends WritePlanNode {
 
   public boolean getIsGeneratedByPipe() {
     return isGeneratedByPipe;
+  }
+
+  public boolean isLoadedLocally() {
+    return isLoadedLocally;
+  }
+
+  public TsFileResource getTsFileResource() throws IOException {
+    if (tsFileResource == null) {
+      tsFileResource = new TsFileResource(new File(tsFilePath));
+      tsFileResource.deserialize();
+    }
+    return tsFileResource;
+  }
+
+  public boolean isDeleteAfterLoad() {
+    return isDeleteAfterLoad;
   }
 
   @Override
@@ -129,6 +171,11 @@ public class LoadTsFileCommandNode extends WritePlanNode {
     ReadWriteIOUtils.write(command.ordinal(), stream);
     ReadWriteIOUtils.write(uuid, stream);
     ReadWriteIOUtils.write(isGeneratedByPipe, stream);
+    ReadWriteIOUtils.write(isLoadedLocally, stream);
+    if (isLoadedLocally) {
+      ReadWriteIOUtils.write(tsFilePath, stream);
+      ReadWriteIOUtils.write(isDeleteAfterLoad, stream);
+    }
   }
 
   public static PlanNode deserialize(ByteBuffer buffer) {
@@ -138,6 +185,21 @@ public class LoadTsFileCommandNode extends WritePlanNode {
       final int commandIndex = ReadWriteIOUtils.readInt(stream);
       final String uuid = ReadWriteIOUtils.readString(stream);
       final boolean isGeneratedByPipe = ReadWriteIOUtils.readBool(stream);
+      final boolean isLoadedLocally = ReadWriteIOUtils.readBool(stream);
+      if (isLoadedLocally) {
+        final String tsFilePath = ReadWriteIOUtils.readString(stream);
+        final boolean isDeleteAfterLoad = ReadWriteIOUtils.readBool(stream);
+        return new LoadTsFileCommandNode(
+            PlanNodeId.deserialize(stream),
+            LoadCommand.values()[commandIndex],
+            uuid,
+            isGeneratedByPipe,
+            true,
+            tsFilePath,
+            null,
+            isDeleteAfterLoad);
+      }
+
       return new LoadTsFileCommandNode(
           PlanNodeId.deserialize(stream),
           LoadCommand.values()[commandIndex],
@@ -170,6 +232,16 @@ public class LoadTsFileCommandNode extends WritePlanNode {
   }
 
   @Override
+  public ProgressIndex getProgressIndex() {
+    return progressIndex;
+  }
+
+  @Override
+  public void setProgressIndex(ProgressIndex progressIndex) {
+    this.progressIndex = progressIndex;
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
@@ -193,6 +265,15 @@ public class LoadTsFileCommandNode extends WritePlanNode {
         + ", uuid='"
         + uuid
         + '\''
+        + ", progressIndex="
+        + progressIndex
+        + ", isLoadedLocally="
+        + isLoadedLocally
+        + ", tsFilePath='"
+        + tsFilePath
+        + '\''
+        + ", isDeleteAfterLoad="
+        + isDeleteAfterLoad
         + ", isGeneratedByPipe="
         + isGeneratedByPipe
         + '}';

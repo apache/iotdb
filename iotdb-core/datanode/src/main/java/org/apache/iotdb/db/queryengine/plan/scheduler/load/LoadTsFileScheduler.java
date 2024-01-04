@@ -365,16 +365,7 @@ public class LoadTsFileScheduler implements IScheduler {
     }
 
     try {
-      FragmentInstance instance =
-          new FragmentInstance(
-              new PlanFragment(fragmentId, node),
-              fragmentId.genFragmentInstanceId(),
-              null,
-              queryContext.getQueryType(),
-              queryContext.getTimeOut(),
-              queryContext.getSession());
-      instance.setExecutorAndHost(new StorageExecutor(node.getLocalRegionReplicaSet()));
-      dispatcher.dispatchLocally(instance);
+      dispatcher.dispatchLocally(createFragmentInstance(node, node.getLocalRegionReplicaSet()));
     } catch (FragmentInstanceDispatchException e) {
       LOGGER.warn(
           String.format(
