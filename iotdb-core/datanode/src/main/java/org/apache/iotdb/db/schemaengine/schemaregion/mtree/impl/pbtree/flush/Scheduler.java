@@ -28,7 +28,6 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.Lock
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.IReleaseFlushStrategy;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.IMemoryManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaFile;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -173,26 +173,28 @@ public class Scheduler {
    * @param regionIds determine the MTreeStore to select subtrees, the head of the list is the first
    *     MTreeStore to select subtrees
    */
-  public synchronized void scheduleFlush(List<Pair<Integer, Long>> regionIds) {
+  public synchronized void scheduleFlush(List<Integer> regionIds) {
     AtomicInteger remainToFlush = new AtomicInteger(BATCH_FLUSH_SUBTREE);
-    boolean hasBreak = false;
-    for (Pair<Integer, Long> pair : regionIds) {
-      int regionId = pair.getLeft();
-      if (hasBreak || flushingRegionSet.contains(regionId)) {
-        regionToStore.get(regionId).getLockManager().globalStampedReadUnlock(pair.getRight());
+    for (int regionId : regionIds) {
+      if (flushingRegionSet.contains(regionId)) {
         continue;
       }
       flushingRegionSet.add(regionId);
       workerPool.submit(
           () -> {
             CachedMTreeStore store = regionToStore.get(regionId);
+            if (store == null) {
+              // store has been closed
+              return;
+            }
             IMemoryManager memoryManager = store.getMemoryManager();
             ISchemaFile file = store.getSchemaFile();
             LockManager lockManager = store.getLockManager();
             long startTime = System.currentTimeMillis();
             try {
-              if (file == null) {
-                // store has been closed
+              lockManager.globalReadLock();
+              if (!regionToStore.containsKey(regionId)) {
+                // double check store have not been closed
                 return;
               }
               PBTreeFlushExecutor flushExecutor =
@@ -213,12 +215,12 @@ public class Scheduler {
               } else {
                 LOGGER.debug("It takes {}ms to flush MTree in SchemaRegion {}", time, regionId);
               }
-              lockManager.globalStampedReadUnlock(pair.getRight());
+              lockManager.globalReadLock();
               flushingRegionSet.remove(regionId);
             }
           });
       if (remainToFlush.get() <= 0) {
-        hasBreak = true;
+        break;
       }
     }
   }
@@ -233,5 +235,22 @@ public class Scheduler {
 
   public boolean isTerminated() {
     return workerPool.isTerminated();
+  }
+
+  public static void main(String[] args) {
+    Map<Integer, String> map = new ConcurrentHashMap<>();
+    for (int i = 0; i < 100000; i++) {
+      map.put(i, "test" + i);
+    }
+    Runnable runnable =
+        () -> {
+          for (int i = 0; i < 100000; i += 100) {
+            map.remove(i);
+          }
+        };
+    runnable.run();
+    for (Map.Entry<Integer, String> entry : map.entrySet()) {
+      System.out.println(entry.getKey() + " " + entry.getValue());
+    }
   }
 }
