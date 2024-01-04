@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.BatchActivateTemplateNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalBatchActivateTemplateNode;
@@ -38,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
@@ -56,7 +58,9 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
   @Override
   public Statement visitPlan(PlanNode node, Void context) {
     throw new UnsupportedOperationException(
-        "PipePlanToStatementVisitor does not support visiting general plan.");
+        String.format(
+            "PipePlanToStatementVisitor does not support visiting general plan, PlanNode: %s",
+            node));
   }
 
   @Override
@@ -70,6 +74,21 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
     statement.setAttributes(node.getAttributes());
     statement.setAlias(node.getAlias());
     statement.setTags(node.getTags());
+    return statement;
+  }
+
+  @Override
+  public CreateAlignedTimeSeriesStatement visitCreateAlignedTimeSeries(
+      CreateAlignedTimeSeriesNode node, Void context) {
+    CreateAlignedTimeSeriesStatement statement = new CreateAlignedTimeSeriesStatement();
+    statement.setDataTypes(node.getDataTypes());
+    statement.setCompressors(node.getCompressors());
+    statement.setEncodings(node.getEncodings());
+    statement.setAttributesList(node.getAttributesList());
+    statement.setAliasList(node.getAliasList());
+    statement.setDevicePath(node.getDevicePath());
+    statement.setMeasurements(node.getMeasurements());
+    statement.setTagsList(node.getTagsList());
     return statement;
   }
 
