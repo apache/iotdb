@@ -93,7 +93,7 @@ public class PipeConnectorConstant {
 
   public static final String CONNECTOR_EXCEPTION_OTHERS_RECORD_IGNORED_DATA_KEY =
       "connector.exception.others.record-ignored-data";
-  public static final String SINK_EXCEPTION_CONFLICT_OTHERS_IGNORED_DATA_KEY =
+  public static final String SINK_EXCEPTION_OTHERS_RECORD_IGNORED_DATA_KEY =
       "sink.exception.others.record-ignored-data";
   public static final boolean CONNECTOR_EXCEPTION_OTHERS_RECORD_IGNORED_DATA_DEFAULT_VALUE = true;
 

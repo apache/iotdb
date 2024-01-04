@@ -19,13 +19,30 @@
 
 package org.apache.iotdb.pipe.api.exception;
 
-public class PipeTemporaryException extends PipeException {
+public class PipeTimedRetryException extends PipeException {
 
-  public PipeTemporaryException(String message) {
+  private final long maxRetrySeconds;
+  private final boolean shouldPrintOnIgnore;
+
+  public PipeTimedRetryException(
+      String message, long maxRetrySeconds, boolean shouldPrintOnIgnore) {
     super(message);
+    this.maxRetrySeconds = maxRetrySeconds;
+    this.shouldPrintOnIgnore = shouldPrintOnIgnore;
   }
 
-  public PipeTemporaryException(String message, Throwable cause) {
+  public PipeTimedRetryException(
+      String message, Throwable cause, long maxRetrySeconds, boolean shouldPrintOnIgnore) {
     super(message, cause);
+    this.maxRetrySeconds = maxRetrySeconds;
+    this.shouldPrintOnIgnore = shouldPrintOnIgnore;
+  }
+
+  public long getMaxRetrySeconds() {
+    return maxRetrySeconds;
+  }
+
+  public boolean isShouldPrintOnIgnore() {
+    return shouldPrintOnIgnore;
   }
 }

@@ -26,7 +26,6 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
@@ -107,12 +106,15 @@ public class PipeTransferTsFileInsertionEventHandler
   @Override
   public void onComplete(TPipeTransferResp response) {
     if (isSealSignalSent.get()) {
-      if (response.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        onError(
-            new PipeException(
+      try {
+        connector
+            .getExceptionHandler()
+            .handleExceptionStatusWithLaterRetry(
+                response.getStatus(),
                 String.format(
-                    "Seal file %s error, result status %s.", tsFile, response.getStatus())));
-        return;
+                    "Seal file %s error, result status %s.", tsFile, response.getStatus()));
+      } catch (Exception e) {
+        onError(e);
       }
 
       try {
@@ -151,9 +153,11 @@ public class PipeTransferTsFileInsertionEventHandler
         position = resp.getEndWritingOffset();
         reader.seek(position);
         LOGGER.info("Redirect file position to {}.", position);
-      } else if (code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new PipeException(
-            String.format("Transfer file %s error, result status %s.", tsFile, resp.getStatus()));
+      } else {
+        connector
+            .getExceptionHandler()
+            .handleExceptionStatusWithLaterRetry(
+                response.getStatus(), response.getStatus().getMessage());
       }
 
       transfer(client);

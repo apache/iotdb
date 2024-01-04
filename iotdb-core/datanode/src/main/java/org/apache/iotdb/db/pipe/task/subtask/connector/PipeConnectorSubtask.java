@@ -39,7 +39,6 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-import org.apache.iotdb.pipe.api.exception.PipeTemporaryException;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -149,8 +148,6 @@ public class PipeConnectorSubtask extends PipeDataNodeSubtask {
       }
 
       releaseLastEvent(true);
-    } catch (PipeTemporaryException e) {
-      LOGGER.debug("PipeTemporaryException in pipe transfer, will retry forever until succeed.");
     } catch (PipeConnectionException e) {
       if (!isClosed.get()) {
         throw e;

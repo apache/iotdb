@@ -26,7 +26,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.pipe.api.exception.PipeTimedRetryException;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
@@ -72,25 +72,32 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
       return;
     }
 
-    if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    try {
+      connector
+          .getExceptionHandler()
+          .handleExceptionStatusWithLaterRetry(
+              response.getStatus(), response.getStatus().getMessage());
       for (final Event event : events) {
         if (event instanceof EnrichedEvent) {
           ((EnrichedEvent) event)
               .decreaseReferenceCount(PipeTransferTabletBatchEventHandler.class.getName(), true);
         }
       }
-    } else {
-      onError(new PipeException(response.getStatus().getMessage()));
+    } catch (Exception e) {
+      onError(e);
     }
   }
 
   @Override
   public void onError(Exception exception) {
-    LOGGER.warn(
-        "Failed to transfer TabletInsertionEvent batch {} (request commit ids={}).",
-        events,
-        requestCommitIds,
-        exception);
+    if (exception instanceof PipeTimedRetryException
+        && ((PipeTimedRetryException) exception).getMaxRetrySeconds() == Long.MIN_VALUE) {
+      LOGGER.warn("Failed to transfer TabletInsertionEvent batch, ", exception);
+      if (((PipeTimedRetryException) exception).isShouldPrintOnIgnore()) {
+        LOGGER.warn("Ignored events: {}", events);
+      }
+      return;
+    }
 
     for (final Event event : events) {
       connector.addFailureEventToRetryQueue(event);

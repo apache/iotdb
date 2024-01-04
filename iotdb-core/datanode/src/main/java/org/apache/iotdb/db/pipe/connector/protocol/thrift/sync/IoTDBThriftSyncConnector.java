@@ -240,11 +240,10 @@ public class IoTDBThriftSyncConnector extends IoTDBSyncSslConnector {
           e);
     }
 
-    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeException(
-          String.format(
-              "Transfer PipeTransferTabletBatchReq error, result status %s", resp.status));
-    }
+    exceptionHandler.handleExceptionStatus(
+        resp.getStatus(),
+        String.format("Transfer PipeTransferTabletBatchReq error, result status %s", resp.status),
+        tabletBatchBuilder.getTPipeTransferReqs().toString());
 
     tabletBatchBuilder.onSuccess();
   }
@@ -287,12 +286,12 @@ public class IoTDBThriftSyncConnector extends IoTDBSyncSslConnector {
     }
 
     final TSStatus status = resp.getStatus();
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeException(
-          String.format(
-              "Transfer PipeInsertNodeTabletInsertionEvent %s error, result status %s",
-              pipeInsertNodeTabletInsertionEvent, status));
-    }
+    exceptionHandler.handleExceptionStatus(
+        status,
+        String.format(
+            "Transfer PipeInsertNodeTabletInsertionEvent %s error, result status %s",
+            pipeInsertNodeTabletInsertionEvent, status),
+        pipeInsertNodeTabletInsertionEvent.toString());
     if (insertNode != null && status.isSetRedirectNode()) {
       ((IoTDBThriftSyncLeaderCacheClientManager) clientManager)
           .updateLeaderCache(insertNode.getDevicePath().getFullPath(), status.getRedirectNode());
@@ -324,12 +323,12 @@ public class IoTDBThriftSyncConnector extends IoTDBSyncSslConnector {
     }
 
     final TSStatus status = resp.getStatus();
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeException(
-          String.format(
-              "Transfer PipeRawTabletInsertionEvent %s error, result status %s",
-              pipeRawTabletInsertionEvent, status));
-    }
+    exceptionHandler.handleExceptionStatus(
+        status,
+        String.format(
+            "Transfer PipeRawTabletInsertionEvent %s error, result status %s",
+            pipeRawTabletInsertionEvent, status),
+        pipeRawTabletInsertionEvent.toString());
     if (status.isSetRedirectNode()) {
       ((IoTDBThriftSyncLeaderCacheClientManager) clientManager)
           .updateLeaderCache(pipeRawTabletInsertionEvent.getDeviceId(), status.getRedirectNode());
@@ -385,10 +384,10 @@ public class IoTDBThriftSyncConnector extends IoTDBSyncSslConnector {
           continue;
         }
 
-        if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          throw new PipeException(
-              String.format("Transfer file %s error, result status %s.", tsFile, resp.getStatus()));
-        }
+        exceptionHandler.handleExceptionStatus(
+            resp.getStatus(),
+            String.format("Transfer file %s error, result status %s.", tsFile, resp.getStatus()),
+            tsFile.getName());
       }
     }
 
@@ -406,12 +405,12 @@ public class IoTDBThriftSyncConnector extends IoTDBSyncSslConnector {
           String.format("Network error when seal file %s, because %s.", tsFile, e.getMessage()), e);
     }
 
-    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeException(
-          String.format("Seal file %s error, result status %s.", tsFile, resp.getStatus()));
-    } else {
-      LOGGER.info("Successfully transferred file {}.", tsFile);
-    }
+    exceptionHandler.handleExceptionStatus(
+        resp.getStatus(),
+        String.format("Seal file %s error, result status %s.", tsFile, resp.getStatus()),
+        tsFile.getName());
+
+    LOGGER.info("Successfully transferred file {}.", tsFile);
   }
 
   @Override
