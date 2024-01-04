@@ -108,44 +108,31 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeTransferTabletBatchReq toTPipeTransferReq(List<TPipeTransferReq> reqs)
+  public static PipeTransferTabletBatchReq toTPipeTransferReq(
+      List<ByteBuffer> binaryBuffers,
+      List<ByteBuffer> insertNodeBuffers,
+      List<ByteBuffer> tabletBuffers)
       throws IOException {
     final PipeTransferTabletBatchReq batchReq = new PipeTransferTabletBatchReq();
-
-    for (final TPipeTransferReq req : reqs) {
-      if (req instanceof PipeTransferTabletBinaryReq) {
-        batchReq.binaryReqs.add((PipeTransferTabletBinaryReq) req);
-      } else if (req instanceof PipeTransferTabletInsertNodeReq) {
-        batchReq.insertNodeReqs.add((PipeTransferTabletInsertNodeReq) req);
-      } else if (req instanceof PipeTransferTabletRawReq) {
-        batchReq.tabletReqs.add((PipeTransferTabletRawReq) req);
-      } else {
-        throw new UnsupportedOperationException(
-            String.format(
-                "unknown TPipeTransferReq type %s when constructing PipeTransferTabletBatchReq",
-                req.getType()));
-      }
-    }
 
     batchReq.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
     batchReq.type = PipeRequestType.TRANSFER_TABLET_BATCH.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      ReadWriteIOUtils.write(batchReq.binaryReqs.size(), outputStream);
-      for (final PipeTransferTabletBinaryReq binaryReq : batchReq.binaryReqs) {
-        ReadWriteIOUtils.write(binaryReq.getBody().length, outputStream);
-        outputStream.write(binaryReq.getBody());
+      ReadWriteIOUtils.write(binaryBuffers.size(), outputStream);
+      for (final ByteBuffer binaryBuffer : binaryBuffers) {
+        ReadWriteIOUtils.write(binaryBuffer.array().length, outputStream);
+        outputStream.write(binaryBuffer.array());
       }
 
       ReadWriteIOUtils.write(batchReq.insertNodeReqs.size(), outputStream);
-      for (final PipeTransferTabletInsertNodeReq insertNodeReq : batchReq.insertNodeReqs) {
-        insertNodeReq.getInsertNode().serialize(outputStream);
+      for (final ByteBuffer insertNodeBuffer : insertNodeBuffers) {
+        outputStream.write(insertNodeBuffer.array());
       }
 
       ReadWriteIOUtils.write(batchReq.tabletReqs.size(), outputStream);
-      for (final PipeTransferTabletRawReq tabletReq : batchReq.tabletReqs) {
-        tabletReq.getTablet().serialize(outputStream);
-        ReadWriteIOUtils.write(tabletReq.getIsAligned(), outputStream);
+      for (final ByteBuffer tabletBuffer : tabletBuffers) {
+        outputStream.write(tabletBuffer.array());
       }
 
       batchReq.body =
