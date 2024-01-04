@@ -22,10 +22,44 @@ package org.apache.iotdb.db.pipe.receiver;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSStatus> {
   @Override
   public TSStatus visitNode(StatementNode node, TSStatus context) {
     return context;
+  }
+
+  @Override
+  public TSStatus visitInsertTablet(InsertTabletStatement insertTabletStatement, TSStatus context) {
+    return visitInsertBase(insertTabletStatement, context);
+  }
+
+  @Override
+  public TSStatus visitInsertRow(InsertRowStatement insertRowStatement, TSStatus context) {
+    return visitInsertBase(insertRowStatement, context);
+  }
+
+  @Override
+  public TSStatus visitInsertRows(InsertRowsStatement insertRowsStatement, TSStatus context) {
+    return visitInsertBase(insertRowsStatement, context);
+  }
+
+  @Override
+  public TSStatus visitInsertMultiTablets(
+      InsertMultiTabletsStatement insertMultiTabletsStatement, TSStatus context) {
+    return visitInsertBase(insertMultiTabletsStatement, context);
+  }
+
+  private TSStatus visitInsertBase(InsertBaseStatement insertBaseStatement, TSStatus context) {
+    if (context.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode());
+    }
+    return visitStatement(insertBaseStatement, context);
   }
 }

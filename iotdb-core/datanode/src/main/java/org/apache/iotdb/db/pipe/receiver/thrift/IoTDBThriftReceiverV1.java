@@ -250,10 +250,15 @@ public class IoTDBThriftReceiverV1 extends IoTDBFileReceiverV1 {
   private TSStatus executeStatementAndClassifyExceptions(Statement statement) {
     try {
       TSStatus result = executeStatement(statement);
-      return result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          ? result
-          : statement.accept(statusVisitor, result);
+      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return result;
+      } else {
+        LOGGER.warn(
+            "Failure status encountered while executing statement {}: {}", statement, result);
+        return statement.accept(statusVisitor, result);
+      }
     } catch (Exception e) {
+      LOGGER.warn("Exception encountered while executing statement {}: ", statement, e);
       return statement.accept(exceptionVisitor, e);
     }
   }
@@ -276,12 +281,6 @@ public class IoTDBThriftReceiverV1 extends IoTDBFileReceiverV1 {
                 ClusterPartitionFetcher.getInstance(),
                 ClusterSchemaFetcher.getInstance(),
                 IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
-    if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn(
-          "failed to execute statement, statement: {}, result status is: {}",
-          statement,
-          result.status);
-    }
     return result.status;
   }
 
