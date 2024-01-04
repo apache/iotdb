@@ -233,6 +233,7 @@ public class IoTDBThriftReceiverV1 extends IoTDBFileReceiverV1 {
   }
 
   private TPipeTransferResp handleTransferSchemaPlan(PipeTransferSchemaPlanReq req) {
+    // TODO: parse exception and status for alter logical view node
     return req.getPlanNode() instanceof AlterLogicalViewNode
         ? new TPipeTransferResp(
             ClusterConfigTaskExecutor.getInstance()
