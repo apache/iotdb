@@ -805,6 +805,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     List<PlanNode> subInnerJoinNode = new ArrayList<>(continuousTimeRange.size());
     for (List<TTimePartitionSlot> oneRegion : continuousTimeRange) {
       if (!oneRegion.isEmpty()) {
+        // TODO InnerTimeJoinNode's header
         InnerTimeJoinNode innerTimeJoinNode = (InnerTimeJoinNode) node.clone();
         innerTimeJoinNode.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
 
