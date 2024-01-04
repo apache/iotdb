@@ -1171,8 +1171,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void insertToTsFileProcessors(
-      InsertRowsNode insertRowsNode, boolean[] areSequence, long[] timePartitionIds)
-      throws WriteProcessException {
+      InsertRowsNode insertRowsNode, boolean[] areSequence, long[] timePartitionIds) {
     List<InsertRowNode> executedInsertRowNodeList = new ArrayList<>();
     long[] costsForMetrics = new long[4];
     for (int i = 0; i < areSequence.length; i++) {
@@ -1185,7 +1184,11 @@ public class DataRegion implements IDataRegionForQuery {
       if (tsFileProcessor == null) {
         continue;
       }
-      tsFileProcessor.insert(insertRowNode, costsForMetrics);
+      try {
+        tsFileProcessor.insert(insertRowNode, costsForMetrics);
+      } catch (WriteProcessException e) {
+        insertRowsNode.getResults().put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+      }
       executedInsertRowNodeList.add(insertRowNode);
 
       // check memtable size and may asyncTryToFlush the work memtable
@@ -3110,7 +3113,8 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  public void insert(InsertRowsNode insertRowsNode) throws WriteProcessException {
+  public void insert(InsertRowsNode insertRowsNode)
+      throws BatchProcessException, WriteProcessRejectException {
     if (enableMemControl) {
       StorageEngine.blockInsertionIfReject(null);
     }
@@ -3160,6 +3164,9 @@ public class DataRegion implements IDataRegionForQuery {
                         timePartitionIds[i], insertRowNode.getDevicePath().getFullPath());
       }
       insertToTsFileProcessors(insertRowsNode, areSequence, timePartitionIds);
+      if (!insertRowsNode.getResults().isEmpty()) {
+        throw new BatchProcessException("Partial failed inserting rows");
+      }
     } finally {
       writeUnlock();
     }
