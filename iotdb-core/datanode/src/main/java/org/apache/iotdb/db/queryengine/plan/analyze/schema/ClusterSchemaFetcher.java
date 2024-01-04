@@ -52,6 +52,9 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final Coordinator coordinator = Coordinator.getInstance();
+
+  // DataNodeSchemaCache's rwlock is used to block deletion when we insert the same timeseries
+  // and will be released after coordinator's execute().
   private final DataNodeSchemaCache schemaCache = DataNodeSchemaCache.getInstance();
   private final ITemplateManager templateManager = ClusterTemplateManager.getInstance();
 
@@ -162,6 +165,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       MPPQueryContext context) {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeseries will be effective.
+    schemaCache.takeInsertLock();
+    context.setAcquiredLock(true);
     schemaCache.takeReadLock();
     try {
       Pair<Template, PartialPath> templateSetInfo =
@@ -198,6 +203,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       MPPQueryContext context) {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeseries will be effective.
+    schemaCache.takeInsertLock();
+    context.setAcquiredLock(true);
     schemaCache.takeReadLock();
     try {
 
@@ -240,6 +247,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       MPPQueryContext context) {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeseries will be effective.
+    schemaCache.takeInsertLock();
+    context.setAcquiredLock(true);
     schemaCache.takeReadLock();
     try {
       ClusterSchemaTree schemaTree = new ClusterSchemaTree();

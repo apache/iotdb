@@ -513,11 +513,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus invalidateMatchedSchemaCache(TInvalidateMatchedSchemaCacheReq req) {
     DataNodeSchemaCache cache = DataNodeSchemaCache.getInstance();
+    cache.takeDeleteLock();
     cache.takeWriteLock();
     try {
       cache.invalidate(PathPatternTree.deserialize(req.pathPatternTree).getAllPathPatterns());
     } finally {
       cache.releaseWriteLock();
+      cache.releaseDeleteLock();
     }
     return RpcUtils.SUCCESS_STATUS;
   }

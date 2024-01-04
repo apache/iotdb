@@ -305,7 +305,8 @@ public class RegionWriteExecutor {
     @Override
     public RegionExecutionResult visitDeleteData(
         DeleteDataNode node, WritePlanNodeExecutionContext context) {
-      // data deletion should block data insertion, especially when executed for deleting timeseries
+      // data deletion don't need to block data insertion, but there are some creation operation
+      // require write lock on data region.
       context.getRegionWriteValidationRWLock().writeLock().lock();
       try {
         return super.visitDeleteData(node, context);
