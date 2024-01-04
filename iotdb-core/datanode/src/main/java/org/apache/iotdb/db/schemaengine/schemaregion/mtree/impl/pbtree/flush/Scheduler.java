@@ -246,7 +246,7 @@ public class Scheduler {
                 LOGGER.debug("It takes {}ms to flush MTree in SchemaRegion {}", time, regionId);
               }
               store.recordFlushMetrics(time, flushNodeNum.get(), flushMemSize.get());
-              lockManager.globalReadLock();
+              lockManager.globalReadUnlock();
               flushingRegionSet.remove(regionId);
             }
           });
