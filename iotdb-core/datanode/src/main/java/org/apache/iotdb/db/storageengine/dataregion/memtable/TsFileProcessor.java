@@ -266,7 +266,6 @@ public class TsFileProcessor {
       }
       // recordScheduleMemoryBlockCost
       costsForMetrics[1] += System.nanoTime() - startTime;
-      // PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemoryBlockCost(System.nanoTime() - startTime);
     }
 
     long startTime = System.nanoTime();
@@ -288,7 +287,6 @@ public class TsFileProcessor {
     } finally {
       // recordScheduleWalCost
       costsForMetrics[2] += System.nanoTime() - startTime;
-      // PERFORMANCE_OVERVIEW_METRICS.recordScheduleWalCost(System.nanoTime() - startTime);
     }
 
     startTime = System.nanoTime();
@@ -323,8 +321,6 @@ public class TsFileProcessor {
     tsFileResource.updateProgressIndex(insertRowNode.getProgressIndex());
     // recordScheduleMemTableCost
     costsForMetrics[3] += System.nanoTime() - startTime;
-
-    // PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(System.nanoTime() - startTime);
   }
 
   private void createNewWorkingMemTable() throws WriteProcessException {
