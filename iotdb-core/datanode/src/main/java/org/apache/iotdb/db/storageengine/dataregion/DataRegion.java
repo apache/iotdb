@@ -1003,7 +1003,7 @@ public class DataRegion implements IDataRegionForQuery {
                 && noFailure;
       }
       startTime = System.nanoTime();
-      tryToUpdateBatchInsertLastCache(insertTabletNode);
+      tryToUpdateInsertTabletLastCache(insertTabletNode);
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(System.nanoTime() - startTime);
 
       if (!noFailure) {
@@ -1076,7 +1076,7 @@ public class DataRegion implements IDataRegionForQuery {
     return true;
   }
 
-  private void tryToUpdateBatchInsertLastCache(InsertTabletNode node) {
+  private void tryToUpdateInsertTabletLastCache(InsertTabletNode node) {
     if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable()
         || (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
             && node.isSyncFromLeaderWhenUsingIoTConsensus())) {
@@ -1119,25 +1119,31 @@ public class DataRegion implements IDataRegionForQuery {
     if (tsFileProcessor == null) {
       return;
     }
-
-    tsFileProcessor.insert(insertRowNode);
-    long startTime = System.nanoTime();
-    tryToUpdateInsertLastCache(insertRowNode);
-    PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(System.nanoTime() - startTime);
+    long[] costsForMetrics = new long[4];
+    tsFileProcessor.insert(insertRowNode, costsForMetrics);
+    PERFORMANCE_OVERVIEW_METRICS.recordCreateMemtableBlockCost(costsForMetrics[0]);
+    PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemoryBlockCost(costsForMetrics[1]);
+    PERFORMANCE_OVERVIEW_METRICS.recordScheduleWalCost(costsForMetrics[2]);
+    PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(costsForMetrics[3]);
 
     // check memtable size and may asyncTryToFlush the work memtable
     if (tsFileProcessor.shouldFlush()) {
       fileFlushPolicy.apply(this, tsFileProcessor, sequence);
     }
+
+    if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
+      if ((config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+          && insertRowNode.isSyncFromLeaderWhenUsingIoTConsensus())) {
+        return;
+      }
+      // disable updating last cache on follower
+      long startTime = System.nanoTime();
+      tryToUpdateInsertRowLastCache(insertRowNode);
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(System.nanoTime() - startTime);
+    }
   }
 
-  private void tryToUpdateInsertLastCache(InsertRowNode node) {
-    if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable()
-        || (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
-            && node.isSyncFromLeaderWhenUsingIoTConsensus())) {
-      // disable updating last cache on follower
-      return;
-    }
+  private void tryToUpdateInsertRowLastCache(InsertRowNode node) {
     long latestFlushedTime =
         lastFlushTimeMap.getGlobalFlushedTime(node.getDevicePath().getFullPath());
     String[] measurements = node.getMeasurements();
@@ -1162,6 +1168,84 @@ public class DataRegion implements IDataRegionForQuery {
             index -> node.getValues()[index] != null,
             true,
             latestFlushedTime);
+  }
+
+  private void insertToTsFileProcessors(
+      InsertRowsNode insertRowsNode, boolean[] areSequence, long[] timePartitionIds) {
+    List<InsertRowNode> executedInsertRowNodeList = new ArrayList<>();
+    long[] costsForMetrics = new long[4];
+    for (int i = 0; i < areSequence.length; i++) {
+      InsertRowNode insertRowNode = insertRowsNode.getInsertRowNodeList().get(i);
+      if (insertRowNode.allMeasurementFailed()) {
+        continue;
+      }
+      TsFileProcessor tsFileProcessor =
+          getOrCreateTsFileProcessor(timePartitionIds[i], areSequence[i]);
+      if (tsFileProcessor == null) {
+        continue;
+      }
+      try {
+        tsFileProcessor.insert(insertRowNode, costsForMetrics);
+      } catch (WriteProcessException e) {
+        insertRowsNode.getResults().put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+      }
+      executedInsertRowNodeList.add(insertRowNode);
+
+      // check memtable size and may asyncTryToFlush the work memtable
+      if (tsFileProcessor.shouldFlush()) {
+        fileFlushPolicy.apply(this, tsFileProcessor, areSequence[i]);
+      }
+    }
+
+    PERFORMANCE_OVERVIEW_METRICS.recordCreateMemtableBlockCost(costsForMetrics[0]);
+    PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemoryBlockCost(costsForMetrics[1]);
+    PERFORMANCE_OVERVIEW_METRICS.recordScheduleWalCost(costsForMetrics[2]);
+    PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(costsForMetrics[3]);
+
+    if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
+      if ((config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+          && insertRowsNode.isSyncFromLeaderWhenUsingIoTConsensus())) {
+        return;
+      }
+      // disable updating last cache on follower
+      long startTime = System.nanoTime();
+      tryToUpdateInsertRowsLastCache(executedInsertRowNodeList);
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(System.nanoTime() - startTime);
+    }
+  }
+
+  private void tryToUpdateInsertRowsLastCache(List<InsertRowNode> nodeList) {
+    DataNodeSchemaCache.getInstance().takeReadLock();
+    try {
+      for (InsertRowNode node : nodeList) {
+        long latestFlushedTime =
+            lastFlushTimeMap.getGlobalFlushedTime(node.getDevicePath().getFullPath());
+        String[] measurements = node.getMeasurements();
+        MeasurementSchema[] measurementSchemas = node.getMeasurementSchemas();
+        String[] rawMeasurements = new String[measurements.length];
+        for (int i = 0; i < measurements.length; i++) {
+          if (measurementSchemas[i] != null) {
+            // get raw measurement rather than alias
+            rawMeasurements[i] = measurementSchemas[i].getMeasurementId();
+          } else {
+            rawMeasurements[i] = measurements[i];
+          }
+        }
+        DataNodeSchemaCache.getInstance()
+            .updateLastCacheWithoutLock(
+                getDatabaseName(),
+                node.getDevicePath(),
+                rawMeasurements,
+                node.getMeasurementSchemas(),
+                node.isAligned(),
+                node::composeTimeValuePair,
+                index -> node.getValues()[index] != null,
+                true,
+                latestFlushedTime);
+      }
+    } finally {
+      DataNodeSchemaCache.getInstance().releaseReadLock();
+    }
   }
 
   /**
@@ -3029,23 +3113,62 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  /**
-   * insert batch of rows belongs to multiple devices
-   *
-   * @param insertRowsNode batch of rows belongs to multiple devices
-   */
-  public void insert(InsertRowsNode insertRowsNode) throws BatchProcessException {
-    for (int i = 0; i < insertRowsNode.getInsertRowNodeList().size(); i++) {
-      InsertRowNode insertRowNode = insertRowsNode.getInsertRowNodeList().get(i);
-      try {
-        insert(insertRowNode);
-      } catch (WriteProcessException e) {
-        insertRowsNode.getResults().put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
-      }
+  public void insert(InsertRowsNode insertRowsNode)
+      throws BatchProcessException, WriteProcessRejectException {
+    if (enableMemControl) {
+      StorageEngine.blockInsertionIfReject(null);
     }
+    long startTime = System.nanoTime();
+    writeLock("InsertRows");
+    PERFORMANCE_OVERVIEW_METRICS.recordScheduleLockCost(System.nanoTime() - startTime);
+    try {
+      if (deleted) {
+        return;
+      }
+      boolean[] areSequence = new boolean[insertRowsNode.getInsertRowNodeList().size()];
+      long[] timePartitionIds = new long[insertRowsNode.getInsertRowNodeList().size()];
+      for (int i = 0; i < insertRowsNode.getInsertRowNodeList().size(); i++) {
+        InsertRowNode insertRowNode = insertRowsNode.getInsertRowNodeList().get(i);
+        if (!isAlive(insertRowNode.getTime())) {
+          insertRowsNode
+              .getResults()
+              .put(
+                  i,
+                  RpcUtils.getStatus(
+                      TSStatusCode.OUT_OF_TTL.getStatusCode(),
+                      String.format(
+                          "Insertion time [%s] is less than ttl time bound [%s]",
+                          DateTimeUtils.convertLongToDate(insertRowNode.getTime()),
+                          DateTimeUtils.convertLongToDate(
+                              CommonDateTimeUtils.currentTime() - dataTTL))));
+          continue;
+        }
+        // init map
+        timePartitionIds[i] = TimePartitionUtils.getTimePartitionId(insertRowNode.getTime());
 
-    if (!insertRowsNode.getResults().isEmpty()) {
-      throw new BatchProcessException("Partial failed inserting rows");
+        if (!lastFlushTimeMap.checkAndCreateFlushedTimePartition(timePartitionIds[i])) {
+          TimePartitionManager.getInstance()
+              .registerTimePartitionInfo(
+                  new TimePartitionInfo(
+                      new DataRegionId(Integer.parseInt(dataRegionId)),
+                      timePartitionIds[i],
+                      true,
+                      Long.MAX_VALUE,
+                      0,
+                      tsFileManager.isLatestTimePartition(timePartitionIds[i])));
+        }
+        areSequence[i] =
+            config.isEnableSeparateData()
+                && insertRowNode.getTime()
+                    > lastFlushTimeMap.getFlushedTime(
+                        timePartitionIds[i], insertRowNode.getDevicePath().getFullPath());
+      }
+      insertToTsFileProcessors(insertRowsNode, areSequence, timePartitionIds);
+      if (!insertRowsNode.getResults().isEmpty()) {
+        throw new BatchProcessException("Partial failed inserting rows");
+      }
+    } finally {
+      writeUnlock();
     }
   }
 

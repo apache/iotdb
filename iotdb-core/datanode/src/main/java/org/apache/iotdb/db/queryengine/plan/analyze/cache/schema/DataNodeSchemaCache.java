@@ -257,6 +257,28 @@ public class DataNodeSchemaCache {
     }
   }
 
+  public void updateLastCacheWithoutLock(
+      String database,
+      PartialPath devicePath,
+      String[] measurements,
+      MeasurementSchema[] measurementSchemas,
+      boolean isAligned,
+      IntFunction<TimeValuePair> timeValuePairProvider,
+      IntPredicate shouldUpdateProvider,
+      boolean highPriorityUpdate,
+      Long latestFlushedTime) {
+    timeSeriesSchemaCache.updateLastCache(
+        database,
+        devicePath,
+        measurements,
+        measurementSchemas,
+        isAligned,
+        timeValuePairProvider,
+        shouldUpdateProvider,
+        highPriorityUpdate,
+        latestFlushedTime);
+  }
+
   /**
    * get or create SchemaCacheEntry and update last cache, only support non-aligned sensor or
    * aligned sensor without only one sub sensor
