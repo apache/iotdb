@@ -95,8 +95,12 @@ public class Scheduler {
                     entry ->
                         CompletableFuture.runAsync(
                             () -> {
-                              CachedMTreeStore store = entry.getValue();
                               int regionId = entry.getKey();
+                              CachedMTreeStore store = entry.getValue();
+                              if (store == null) {
+                                // store has been closed
+                                return;
+                              }
                               IMemoryManager memoryManager = store.getMemoryManager();
                               ISchemaFile file = store.getSchemaFile();
                               LockManager lockManager = store.getLockManager();
@@ -105,8 +109,8 @@ public class Scheduler {
                               AtomicLong flushMemSize = new AtomicLong(0);
                               try {
                                 lockManager.globalReadLock();
-                                if (file == null) {
-                                  // store has been closed
+                                if (!regionToStore.containsKey(regionId)) {
+                                  // double check store have not been closed
                                   return;
                                 }
                                 PBTreeFlushExecutor flushExecutor =
@@ -150,25 +154,38 @@ public class Scheduler {
    */
   public synchronized void scheduleRelease(boolean force) {
     CompletableFuture.allOf(
-            regionToStore.values().stream()
+            regionToStore.entrySet().stream()
                 .map(
-                    store ->
+                    entry ->
                         CompletableFuture.runAsync(
                             () -> {
-                              AtomicLong releaseNodeNum = new AtomicLong(0);
-                              AtomicLong releaseMemorySize = new AtomicLong(0);
-                              long startTime = System.currentTimeMillis();
-                              while (force || releaseFlushStrategy.isExceedReleaseThreshold()) {
-                                // store try to release memory if not exceed release threshold
-                                if (store.executeMemoryRelease(releaseNodeNum, releaseMemorySize)) {
-                                  // if store can not release memory, break
-                                  break;
-                                }
+                              int regionId = entry.getKey();
+                              CachedMTreeStore store = entry.getValue();
+                              if (!regionToStore.containsKey(regionId)) {
+                                // double check store have not been closed
+                                return;
                               }
-                              store.recordReleaseMetrics(
-                                  System.currentTimeMillis() - startTime,
-                                  releaseNodeNum.get(),
-                                  releaseMemorySize.get());
+                              LockManager lockManager = store.getLockManager();
+                              try {
+                                lockManager.globalReadLock(true);
+                                AtomicLong releaseNodeNum = new AtomicLong(0);
+                                AtomicLong releaseMemorySize = new AtomicLong(0);
+                                long startTime = System.currentTimeMillis();
+                                while (force || releaseFlushStrategy.isExceedReleaseThreshold()) {
+                                  // store try to release memory if not exceed release threshold
+                                  if (store.executeMemoryRelease(
+                                      releaseNodeNum, releaseMemorySize)) {
+                                    // if store can not release memory, break
+                                    break;
+                                  }
+                                }
+                                store.recordReleaseMetrics(
+                                    System.currentTimeMillis() - startTime,
+                                    releaseNodeNum.get(),
+                                    releaseMemorySize.get());
+                              } finally {
+                                lockManager.globalReadUnlock();
+                              }
                             },
                             workerPool))
                 .toArray(CompletableFuture[]::new))
