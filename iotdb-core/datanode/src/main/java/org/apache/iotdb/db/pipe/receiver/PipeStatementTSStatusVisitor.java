@@ -32,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTim
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSStatus> {
@@ -71,16 +72,16 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
 
   @Override
   public TSStatus visitCreateTimeseries(CreateTimeSeriesStatement statement, TSStatus context) {
-    return visitCreateGeneralTimeseries(statement, context);
+    return visitGeneralCreateTimeseries(statement, context);
   }
 
   @Override
   public TSStatus visitCreateAlignedTimeseries(
       CreateAlignedTimeSeriesStatement statement, TSStatus context) {
-    return visitCreateGeneralTimeseries(statement, context);
+    return visitGeneralCreateTimeseries(statement, context);
   }
 
-  private TSStatus visitCreateGeneralTimeseries(Statement statement, TSStatus context) {
+  private TSStatus visitGeneralCreateTimeseries(Statement statement, TSStatus context) {
     if (context.getCode() == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
@@ -107,10 +108,21 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
   @Override
   public TSStatus visitActivateTemplate(
       ActivateTemplateStatement activateTemplateStatement, TSStatus context) {
+    return visitGeneralActivateTemplate(activateTemplateStatement, context);
+  }
+
+  @Override
+  public TSStatus visitBatchActivateTemplate(
+      BatchActivateTemplateStatement batchActivateTemplateStatement, TSStatus context) {
+    return visitGeneralActivateTemplate(batchActivateTemplateStatement, context);
+  }
+
+  private TSStatus visitGeneralActivateTemplate(
+      Statement activateTemplateStatement, TSStatus context) {
     if (context.getCode() == TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }
-    return super.visitActivateTemplate(activateTemplateStatement, context);
+    return visitStatement(activateTemplateStatement, context);
   }
 }
