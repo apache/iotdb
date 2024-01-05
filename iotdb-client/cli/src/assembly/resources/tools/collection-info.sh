@@ -194,6 +194,11 @@ calculate_directory_size() {
     IFS=' ' read -ra dirs <<< "$data_dir_param"
     for dir in "${dirs[@]}"; do
         iotdb_data_dir="$dir/datanode/data/$file_type"
+        if [ -n "$data_dir_param" ]; then
+              iotdb_data_dir="$dir/$file_type"
+        else
+              iotdb_data_dir="$dir/datanode/data/$file_type"
+        fi
         if [ -d "$iotdb_data_dir" ]; then
             local size=$(du -s "$iotdb_data_dir" | awk '{print $1}')
             total_size=$((total_size + size))
@@ -207,7 +212,11 @@ calculate_file_num() {
     local total_num=0
     IFS=' ' read -ra dirs <<< "$data_dir_param"
     for dir in "${dirs[@]}"; do
-        iotdb_data_dir="$dir/datanode/data/$file_type"
+        if [ -n "$data_dir_param" ]; then
+           iotdb_data_dir="$dir/$file_type"
+        else
+           iotdb_data_dir="$dir/datanode/data/$file_type"
+        fi
         if [ -d "$iotdb_data_dir" ]; then
             local num=$(find "$iotdb_data_dir" -type f | wc -l)
             total_num=$((total_num + num))
