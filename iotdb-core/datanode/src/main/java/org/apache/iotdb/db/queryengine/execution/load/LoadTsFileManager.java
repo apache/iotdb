@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.load;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
@@ -138,12 +139,12 @@ public class LoadTsFileManager {
     }
   }
 
-  public boolean loadAll(String uuid, boolean isGeneratedByPipe)
+  public boolean loadAll(String uuid, boolean isGeneratedByPipe, ProgressIndex progressIndex)
       throws IOException, LoadFileException {
     if (!uuid2WriterManager.containsKey(uuid)) {
       return false;
     }
-    uuid2WriterManager.get(uuid).loadAll(isGeneratedByPipe);
+    uuid2WriterManager.get(uuid).loadAll(isGeneratedByPipe, progressIndex);
     clean(uuid);
     return true;
   }
@@ -277,7 +278,8 @@ public class LoadTsFileManager {
       }
     }
 
-    private void loadAll(boolean isGeneratedByPipe) throws IOException, LoadFileException {
+    private void loadAll(boolean isGeneratedByPipe, ProgressIndex progressIndex)
+        throws IOException, LoadFileException {
       if (isClosed) {
         throw new IOException(String.format(MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED, taskDir));
       }
@@ -293,7 +295,7 @@ public class LoadTsFileManager {
         writer.endFile();
 
         DataRegion dataRegion = entry.getKey().getDataRegion();
-        dataRegion.loadNewTsFile(generateResource(writer), true, isGeneratedByPipe);
+        dataRegion.loadNewTsFile(generateResource(writer, progressIndex), true, isGeneratedByPipe);
 
         MetricService.getInstance()
             .count(
@@ -309,8 +311,10 @@ public class LoadTsFileManager {
       }
     }
 
-    private TsFileResource generateResource(TsFileIOWriter writer) throws IOException {
+    private TsFileResource generateResource(TsFileIOWriter writer, ProgressIndex progressIndex)
+        throws IOException {
       TsFileResource tsFileResource = TsFileResourceUtils.generateTsFileResource(writer);
+      tsFileResource.setProgressIndex(progressIndex);
       tsFileResource.serialize();
       return tsFileResource;
     }
