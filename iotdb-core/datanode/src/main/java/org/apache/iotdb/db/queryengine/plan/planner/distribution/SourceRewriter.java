@@ -729,6 +729,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
               context.queryContext.getQueryId().genPlanNodeId(),
               node.getMergeOrder() == Ordering.ASC ? TIME_ASC : TIME_DESC,
               node.getOutputColumnNames());
+
       mergeSortNode.setChildren(children);
       return Collections.singletonList(mergeSortNode);
     }
