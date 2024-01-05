@@ -58,22 +58,18 @@ public class IoTDBSchemaRegionExtractor extends IoTDBMetaExtractor {
             parameters.getStringOrDefault(
                 Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
                 EXTRACTOR_EXCLUSION_DEFAULT_VALUE));
-  }
 
-  @Override
-  protected AbstractPipeListeningQueue getListeningQueue() {
-    return SchemaNodeListeningQueue.getInstance(regionId);
-  }
-
-  @Override
-  public void start() throws Exception {
-    super.start();
     if (!listenTypes.isEmpty()) {
       SchemaRegionConsensusImpl.getInstance()
           .write(
               new SchemaRegionId(regionId),
               new OperateSchemaQueueReferenceNode(new PlanNodeId(""), true));
     }
+  }
+
+  @Override
+  protected AbstractPipeListeningQueue getListeningQueue() {
+    return SchemaNodeListeningQueue.getInstance(regionId);
   }
 
   @Override

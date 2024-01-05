@@ -87,7 +87,7 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
   private PipeHistoricalDataRegionExtractor historicalExtractor;
   private PipeRealtimeDataRegionExtractor realtimeExtractor;
 
-  private boolean canSkip = false;
+  private boolean noExtractData = false;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -109,7 +109,7 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
     if (dataRegionListenPair.getLeft().equals(false)
         && dataRegionListenPair.getRight().equals(false)) {
       // TODO: judge deletion listening logic
-      canSkip = true;
+      noExtractData = true;
       return;
     }
 
@@ -274,7 +274,7 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
   @Override
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
-    if (canSkip) {
+    if (noExtractData) {
       return;
     }
     super.customize(parameters, configuration);
@@ -288,7 +288,7 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
 
   @Override
   public void start() throws Exception {
-    if (canSkip) {
+    if (noExtractData) {
       return;
     }
     super.start();
@@ -352,7 +352,7 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
 
   @Override
   public Event supply() throws Exception {
-    if (canSkip) {
+    if (noExtractData) {
       return null;
     }
     Event event =
@@ -373,7 +373,7 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
 
   @Override
   public void close() throws Exception {
-    if (canSkip) {
+    if (noExtractData) {
       return;
     }
     historicalExtractor.close();

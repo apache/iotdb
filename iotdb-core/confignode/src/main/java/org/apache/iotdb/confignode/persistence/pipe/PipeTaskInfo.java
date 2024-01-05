@@ -284,7 +284,13 @@ public class PipeTaskInfo implements SnapshotProcessor {
       PipeConfigNodeAgent.task()
           .handleSinglePipeMetaChanges(
               new PipeMeta(plan.getPipeStaticMeta(), plan.getPipeRuntimeMeta()));
+      ConfigPlanListeningQueue.getInstance()
+          .increaseReferenceCountForListeningPipe(
+              plan.getPipeStaticMeta().getExtractorParameters());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+          .setMessage("Failed to create pipe, because " + e.getMessage());
     } finally {
       releaseWriteLock();
     }
@@ -297,9 +303,6 @@ public class PipeTaskInfo implements SnapshotProcessor {
       PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
       runtimeMeta.getStatus().set(plan.getPipeStatus());
       runtimeMeta.setShouldBeRunning(plan.getPipeStatus() == PipeStatus.RUNNING);
-      ConfigPlanListeningQueue.getInstance()
-          .increaseReferenceCountForListeningPipe(
-              pipeMeta.getStaticMeta().getExtractorParameters());
       PipeConfigNodeAgent.task().handleSinglePipeMetaChanges(pipeMeta);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
