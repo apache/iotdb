@@ -605,15 +605,10 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
    * @return should not continue releasing
    */
   public boolean executeMemoryRelease(AtomicLong releaseNodeNum, AtomicLong releaseMemorySize) {
-    lockManager.globalReadLock(true);
-    try {
-      if (regionStatistics.getUnpinnedMemorySize() != 0) {
-        return !memoryManager.evict(releaseNodeNum, releaseMemorySize);
-      } else {
-        return true;
-      }
-    } finally {
-      lockManager.globalReadUnlock();
+    if (regionStatistics.getUnpinnedMemorySize() != 0) {
+      return !memoryManager.evict(releaseNodeNum, releaseMemorySize);
+    } else {
+      return true;
     }
   }
 
