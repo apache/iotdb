@@ -127,9 +127,21 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
         regionId -> {
           TDataNodeLocation destDataNode =
               env.getDataNodeRemoveHandler().findDestDataNode(regionId);
+          // TODO: need to improve the coordinator selection method here, maybe through load
+          // balancing and other means.
+          final TDataNodeLocation coordinatorForAddPeer =
+              env.getDataNodeRemoveHandler()
+                  .filterDataNodeWithOtherRegionReplica(regionId, destDataNode)
+                  .orElse(removedDataNode);
+          final TDataNodeLocation coordinatorForRemovePeer = destDataNode;
           if (destDataNode != null) {
             RegionMigrateProcedure regionMigrateProcedure =
-                new RegionMigrateProcedure(regionId, removedDataNode, destDataNode);
+                new RegionMigrateProcedure(
+                    regionId,
+                    removedDataNode,
+                    destDataNode,
+                    coordinatorForAddPeer,
+                    coordinatorForRemovePeer);
             addChildProcedure(regionMigrateProcedure);
             LOG.info("Submit child procedure {} for regionId {}", regionMigrateProcedure, regionId);
           } else {

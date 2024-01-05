@@ -41,6 +41,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
+import static org.apache.iotdb.commons.utils.FileUtils.logBreakpoint;
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REGION_MIGRATE_PROCESS;
 import static org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler.getIdWithRpcEndpoint;
 import static org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS;
@@ -63,6 +64,9 @@ public class RegionMigrateProcedure
 
   private TDataNodeLocation destDataNode;
 
+  private TDataNodeLocation coordinatorForAddPeer;
+  private TDataNodeLocation coordinatorForRemovePeer;
+
   private boolean migrateSuccess = true;
 
   private String migrateResult = "";
@@ -74,11 +78,15 @@ public class RegionMigrateProcedure
   public RegionMigrateProcedure(
       TConsensusGroupId consensusGroupId,
       TDataNodeLocation originalDataNode,
-      TDataNodeLocation destDataNode) {
+      TDataNodeLocation destDataNode,
+      TDataNodeLocation coordinatorForAddPeer,
+      TDataNodeLocation coordinatorForRemovePeer) {
     super();
     this.consensusGroupId = consensusGroupId;
     this.originalDataNode = originalDataNode;
     this.destDataNode = destDataNode;
+    this.coordinatorForAddPeer = coordinatorForAddPeer;
+    this.coordinatorForRemovePeer = coordinatorForRemovePeer;
   }
 
   @Override
@@ -91,32 +99,39 @@ public class RegionMigrateProcedure
     try {
       switch (state) {
         case REGION_MIGRATE_PREPARE:
+          logBreakpoint(state.name());
           setNextState(RegionTransitionState.CREATE_NEW_REGION_PEER);
           break;
         case CREATE_NEW_REGION_PEER:
           handler.createNewRegionPeer(consensusGroupId, destDataNode);
+          logBreakpoint(state.name());
           setNextState(RegionTransitionState.ADD_REGION_PEER);
           break;
         case ADD_REGION_PEER:
-          tsStatus = handler.addRegionPeer(destDataNode, consensusGroupId);
+          tsStatus = handler.addRegionPeer(destDataNode, consensusGroupId, coordinatorForAddPeer);
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
             waitForOneMigrationStepFinished(consensusGroupId, state);
           } else {
             throw new ProcedureException("ADD_REGION_PEER executed failed in DataNode");
           }
+          logBreakpoint(state.name());
           setNextState(RegionTransitionState.CHANGE_REGION_LEADER);
           break;
         case CHANGE_REGION_LEADER:
           handler.changeRegionLeader(consensusGroupId, originalDataNode, destDataNode);
+          logBreakpoint(state.name());
           setNextState(RegionTransitionState.REMOVE_REGION_PEER);
           break;
         case REMOVE_REGION_PEER:
-          tsStatus = handler.removeRegionPeer(originalDataNode, destDataNode, consensusGroupId);
+          tsStatus =
+              handler.removeRegionPeer(
+                  originalDataNode, consensusGroupId, coordinatorForRemovePeer);
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
             waitForOneMigrationStepFinished(consensusGroupId, state);
           } else {
             throw new ProcedureException("REMOVE_REGION_PEER executed failed in DataNode");
           }
+          logBreakpoint(state.name());
           setNextState(RegionTransitionState.DELETE_OLD_REGION_PEER);
           break;
         case DELETE_OLD_REGION_PEER:
@@ -124,12 +139,14 @@ public class RegionMigrateProcedure
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
             waitForOneMigrationStepFinished(consensusGroupId, state);
           }
+          logBreakpoint(state.name());
           // Remove consensus group after a node stop, which will be failed, but we will
           // continuously execute.
           setNextState(RegionTransitionState.UPDATE_REGION_LOCATION_CACHE);
           break;
         case UPDATE_REGION_LOCATION_CACHE:
           handler.updateRegionLocationCache(consensusGroupId, originalDataNode, destDataNode);
+          logBreakpoint(state.name());
           return Flow.NO_MORE_STATE;
       }
     } catch (Exception e) {
