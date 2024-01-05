@@ -96,7 +96,6 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
    * @throws IOException If failing to close or open the log writer
    */
   protected File rollLogWriter(long searchIndex, WALFileStatus fileStatus) throws IOException {
-
     // close file
     currentWALFileWriter.close();
     addDiskUsage(currentWALFileWriter.size());
