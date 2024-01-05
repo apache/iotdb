@@ -218,7 +218,7 @@ calculate_file_num() {
            iotdb_data_dir="$dir/datanode/data/$file_type"
         fi
         if [ -d "$iotdb_data_dir" ]; then
-            local num=$(find "$iotdb_data_dir" -type f | wc -l)
+            local num=$(find "$iotdb_data_dir" -type f ! -name "*.tsfile.resource" | wc -l)
             total_num=$((total_num + num))
         fi
     done
