@@ -828,7 +828,11 @@ public class ProcedureExecutor<Env> {
 
         // WARN the worker is stuck
         stuckCount++;
-        LOG.warn("Worker stuck {}, run time {} ms", worker, worker.getCurrentRunTime());
+        LOG.warn(
+            "Worker stuck {}({}), run time {} ms",
+            worker,
+            worker.activeProcedure.get().getProcType(),
+            worker.getCurrentRunTime());
       }
       return stuckCount;
     }
