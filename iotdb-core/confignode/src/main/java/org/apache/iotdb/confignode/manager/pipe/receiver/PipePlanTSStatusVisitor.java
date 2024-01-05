@@ -37,13 +37,17 @@ public class PipePlanTSStatusVisitor extends PhysicalPlanVisitor<TSStatus, TSSta
   @Override
   public TSStatus visitCreateDatabase(DatabaseSchemaPlan plan, TSStatus context) {
     if (context.getCode() == TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
-      if (context.getMessage().contains("has already been created as database")) {
-        // The same database or lower level database has been created
+      if (context
+          .getMessage()
+          .contains(
+              String.format(
+                  "%s has already been created as database", plan.getSchema().getName()))) {
+        // The same database has been created
         return new TSStatus(
                 TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
             .setMessage(context.getMessage());
       }
-      // Lower level database has been created
+      // Lower or higher level database has been created
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }
