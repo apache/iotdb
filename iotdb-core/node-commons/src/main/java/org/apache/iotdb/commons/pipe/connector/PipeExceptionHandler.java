@@ -131,7 +131,7 @@ public class PipeExceptionHandler {
               conflictRetryMaxSeconds,
               status);
           throw new PipeException(exceptionMessage);
-        } else if (System.currentTimeMillis() > firstEncounterTime + conflictRetryMaxSeconds) {
+        } else if (System.currentTimeMillis() - firstEncounterTime > conflictRetryMaxSeconds) {
           LOGGER.info("User conflict exception timeout, release the event.");
           if (conflictRecordIgnoredData) {
             LOGGER.warn("Ignored event: {}", recordMessage);
@@ -148,7 +148,7 @@ public class PipeExceptionHandler {
               othersRetryMaxSeconds,
               status);
           throw new PipeException(exceptionMessage);
-        } else if (System.currentTimeMillis() > firstEncounterTime + othersRetryMaxSeconds) {
+        } else if (System.currentTimeMillis() - firstEncounterTime > othersRetryMaxSeconds) {
           LOGGER.info("Unclassified exception timeout, release the event.");
           if (othersRecordIgnoredData) {
             LOGGER.warn("Ignored event: {}", recordMessage);
