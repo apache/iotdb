@@ -61,19 +61,31 @@ public class InnerTimeJoinNode extends MultiChildProcessNode {
   // empty for zero time partitions
   private List<Long> timePartitions;
 
+  // in most cases, it will be null, if we've got more than one root InnerTimeJoinNode, and these
+  // InnerTimeJoinNodes' result will be merged by MergeSortNode
+  // we will make sure that all these InnerTimeJoinNodes output same column names;
+  // for logical planner, it will also be null
+  private List<String> outputColumnNames;
+
   public InnerTimeJoinNode(PlanNodeId id, Ordering mergeOrder) {
     this(id, new ArrayList<>(), mergeOrder, null);
   }
 
-  public InnerTimeJoinNode(PlanNodeId id, Ordering mergeOrder, List<PlanNode> children) {
-    this(id, children, mergeOrder, null);
+  public InnerTimeJoinNode(
+      PlanNodeId id, List<PlanNode> children, Ordering mergeOrder, List<Long> timePartitions) {
+    this(id, children, mergeOrder, timePartitions, null);
   }
 
   public InnerTimeJoinNode(
-      PlanNodeId id, List<PlanNode> children, Ordering mergeOrder, List<Long> timePartitions) {
+      PlanNodeId id,
+      List<PlanNode> children,
+      Ordering mergeOrder,
+      List<Long> timePartitions,
+      List<String> outputColumnNames) {
     super(id, children);
     this.mergeOrder = mergeOrder;
     this.timePartitions = timePartitions;
+    this.outputColumnNames = outputColumnNames;
   }
 
   public Ordering getMergeOrder() {
@@ -96,10 +108,12 @@ public class InnerTimeJoinNode extends MultiChildProcessNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    return children.stream()
-        .map(PlanNode::getOutputColumnNames)
-        .flatMap(List::stream)
-        .collect(Collectors.toList());
+    return outputColumnNames != null
+        ? outputColumnNames
+        : children.stream()
+            .map(PlanNode::getOutputColumnNames)
+            .flatMap(List::stream)
+            .collect(Collectors.toList());
   }
 
   @Override
@@ -120,6 +134,15 @@ public class InnerTimeJoinNode extends MultiChildProcessNode {
         ReadWriteIOUtils.write(timePartitionId, byteBuffer);
       }
     }
+    if (outputColumnNames == null) {
+      ReadWriteIOUtils.write(false, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(true, byteBuffer);
+      ReadWriteIOUtils.write(outputColumnNames.size(), byteBuffer);
+      for (String outputColumnName : outputColumnNames) {
+        ReadWriteIOUtils.write(outputColumnName, byteBuffer);
+      }
+    }
   }
 
   @Override
@@ -135,6 +158,15 @@ public class InnerTimeJoinNode extends MultiChildProcessNode {
         ReadWriteIOUtils.write(timePartitionId, stream);
       }
     }
+    if (outputColumnNames == null) {
+      ReadWriteIOUtils.write(false, stream);
+    } else {
+      ReadWriteIOUtils.write(true, stream);
+      ReadWriteIOUtils.write(outputColumnNames.size(), stream);
+      for (String outputColumnName : outputColumnNames) {
+        ReadWriteIOUtils.write(outputColumnName, stream);
+      }
+    }
   }
 
   public static InnerTimeJoinNode deserialize(ByteBuffer byteBuffer) {
@@ -148,8 +180,18 @@ public class InnerTimeJoinNode extends MultiChildProcessNode {
         timePartitionIds.add(ReadWriteIOUtils.readLong(byteBuffer));
       }
     }
+    List<String> outputColumnNames = null;
+    boolean hasOutputColumnNames = ReadWriteIOUtils.readBool(byteBuffer);
+    if (hasOutputColumnNames) {
+      int size = ReadWriteIOUtils.read(byteBuffer);
+      outputColumnNames = new ArrayList<>(size);
+      for (int i = 0; i < size; i++) {
+        outputColumnNames.add(ReadWriteIOUtils.readString(byteBuffer));
+      }
+    }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new InnerTimeJoinNode(planNodeId, new ArrayList<>(), mergeOrder, timePartitionIds);
+    return new InnerTimeJoinNode(
+        planNodeId, new ArrayList<>(), mergeOrder, timePartitionIds, outputColumnNames);
   }
 
   @Override
@@ -185,5 +227,13 @@ public class InnerTimeJoinNode extends MultiChildProcessNode {
   // empty for zero time partitions
   public Optional<List<Long>> getTimePartitions() {
     return Optional.ofNullable(timePartitions);
+  }
+
+  public void setOutputColumnNames(List<String> outputColumnNames) {
+    this.outputColumnNames = outputColumnNames;
+  }
+
+  public boolean outputColumnNamesIsNull() {
+    return outputColumnNames == null;
   }
 }

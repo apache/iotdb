@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.DescTimeComparator;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -37,6 +38,8 @@ import org.mockito.Mockito;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
@@ -245,12 +248,17 @@ public class InnerTimeJoinOperatorTest {
           }
         };
 
+    Map<InputLocation, Integer> outputColumnMap = new HashMap<>();
+    outputColumnMap.put(new InputLocation(0, 0), 0);
+    outputColumnMap.put(new InputLocation(1, 0), 1);
+
     InnerTimeJoinOperator innerTimeJoinOperator =
         new InnerTimeJoinOperator(
             operatorContext,
             Arrays.asList(leftChild, rightChild),
             Arrays.asList(TSDataType.INT32, TSDataType.INT64),
-            new AscTimeComparator());
+            new AscTimeComparator(),
+            outputColumnMap);
 
     assertEquals(
         TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes() + 64 * 1024 * 2,
@@ -559,12 +567,19 @@ public class InnerTimeJoinOperatorTest {
           }
         };
 
+    Map<InputLocation, Integer> outputColumnMap = new HashMap<>();
+    outputColumnMap.put(new InputLocation(0, 0), 0);
+    outputColumnMap.put(new InputLocation(0, 1), 1);
+    outputColumnMap.put(new InputLocation(1, 0), 2);
+    outputColumnMap.put(new InputLocation(1, 1), 3);
+
     InnerTimeJoinOperator innerTimeJoinOperator =
         new InnerTimeJoinOperator(
             operatorContext,
             Arrays.asList(leftChild, rightChild),
             Arrays.asList(TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.BOOLEAN),
-            new DescTimeComparator());
+            new DescTimeComparator(),
+            outputColumnMap);
 
     long[] timeArray = new long[] {19L, 18L, 15L, 7L, 3L};
     int[] column1Array = new int[] {19, 18, 0, 7, 3};
@@ -833,12 +848,19 @@ public class InnerTimeJoinOperatorTest {
           }
         };
 
+    Map<InputLocation, Integer> outputColumnMap = new HashMap<>();
+    outputColumnMap.put(new InputLocation(0, 0), 0);
+    outputColumnMap.put(new InputLocation(0, 1), 1);
+    outputColumnMap.put(new InputLocation(1, 0), 2);
+    outputColumnMap.put(new InputLocation(1, 1), 3);
+
     InnerTimeJoinOperator innerTimeJoinOperator =
         new InnerTimeJoinOperator(
             operatorContext,
             Arrays.asList(child1, child2),
             Arrays.asList(TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.BOOLEAN),
-            new DescTimeComparator());
+            new DescTimeComparator(),
+            outputColumnMap);
 
     long[] timeArray = new long[] {100L, 90L, 50L, 20L, 10L};
     int[] column1Array = new int[] {100, 90, 50, 20, 10};
@@ -1212,6 +1234,13 @@ public class InnerTimeJoinOperatorTest {
           }
         };
 
+    Map<InputLocation, Integer> outputColumnMap = new HashMap<>();
+    outputColumnMap.put(new InputLocation(0, 0), 0);
+    outputColumnMap.put(new InputLocation(0, 1), 1);
+    outputColumnMap.put(new InputLocation(1, 0), 2);
+    outputColumnMap.put(new InputLocation(1, 1), 3);
+    outputColumnMap.put(new InputLocation(2, 0), 4);
+
     InnerTimeJoinOperator innerTimeJoinOperator =
         new InnerTimeJoinOperator(
             operatorContext,
@@ -1222,7 +1251,8 @@ public class InnerTimeJoinOperatorTest {
                 TSDataType.FLOAT,
                 TSDataType.BOOLEAN,
                 TSDataType.TEXT),
-            new DescTimeComparator());
+            new DescTimeComparator(),
+            outputColumnMap);
 
     try {
       int count = 0;

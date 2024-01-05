@@ -724,18 +724,25 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     } else {
       // add merge sort node for InnerTimeJoinNodes
       // TODO add new type of Node, just traverse all child nodes sequentially in the future
+      List<String> outputColumnNames = node.getOutputColumnNames();
       MergeSortNode mergeSortNode =
           new MergeSortNode(
               context.queryContext.getQueryId().genPlanNodeId(),
               node.getMergeOrder() == Ordering.ASC ? TIME_ASC : TIME_DESC,
-              node.getOutputColumnNames());
+              outputColumnNames);
+      // set unified outputColumnNames for each child InnerTimeJoinNode
+      children.forEach(
+          child -> {
+            ((InnerTimeJoinNode) child).setOutputColumnNames(outputColumnNames);
+          });
 
       mergeSortNode.setChildren(children);
       return Collections.singletonList(mergeSortNode);
     }
   }
 
-  private List<List<TTimePartitionSlot>> splitTimePartition(
+  // make it as protected just for UT usage
+  protected static List<List<TTimePartitionSlot>> splitTimePartition(
       List<List<List<TTimePartitionSlot>>> childTimePartitionList) {
     if (childTimePartitionList.isEmpty()) {
       return Collections.emptyList();
@@ -747,7 +754,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     return res;
   }
 
-  private List<List<TTimePartitionSlot>> combineTwoTimePartitionList(
+  private static List<List<TTimePartitionSlot>> combineTwoTimePartitionList(
       List<List<TTimePartitionSlot>> left, List<List<TTimePartitionSlot>> right) {
     int leftIndex = 0;
     int leftSize = left.size();
@@ -762,7 +769,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     int rightCurrentListIndex = 0;
     while (leftIndex < leftSize && rightIndex < rightSize) {
       List<TTimePartitionSlot> leftCurrentList = left.get(leftIndex);
-      List<TTimePartitionSlot> rightCurrentList = left.get(rightIndex);
+      List<TTimePartitionSlot> rightCurrentList = right.get(rightIndex);
       int leftCurrentListSize = leftCurrentList.size();
       int rightCurrentListSize = rightCurrentList.size();
       while (leftCurrentListIndex < leftCurrentListSize
