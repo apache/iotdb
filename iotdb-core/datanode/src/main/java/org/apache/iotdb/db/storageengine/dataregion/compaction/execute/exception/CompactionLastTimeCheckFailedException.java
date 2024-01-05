@@ -31,4 +31,9 @@ public class CompactionLastTimeCheckFailedException extends RuntimeException {
             + ", which should be later than the last time "
             + lastTimestamp);
   }
+
+  @Override
+  public Throwable fillInStackTrace() {
+    return this;
+  }
 }

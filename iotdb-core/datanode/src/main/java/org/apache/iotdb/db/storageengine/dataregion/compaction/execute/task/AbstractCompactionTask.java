@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionValidationFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.FileCannotTransitToCompactingException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
@@ -134,7 +135,15 @@ public abstract class AbstractCompactionTask {
   public void handleTaskCleanup() {}
 
   protected void printLogWhenException(Logger logger, Exception e) {
-    if (e instanceof InterruptedException) {
+    if (e instanceof CompactionLastTimeCheckFailedException
+        || e instanceof CompactionValidationFailedException) {
+      logger.error(
+          "{}-{} [Compaction] Meet errors {}: {}.",
+          getCompactionTaskType(),
+          storageGroupName,
+          dataRegionId,
+          e.getMessage());
+    } else if (e instanceof InterruptedException) {
       logger.warn("{}-{} [Compaction] Compaction interrupted", storageGroupName, dataRegionId);
       Thread.currentThread().interrupt();
     } else {

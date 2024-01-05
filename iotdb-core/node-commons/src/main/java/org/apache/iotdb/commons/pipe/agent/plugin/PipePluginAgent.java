@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.agent.plugin;
 
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskTemporaryRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMetaKeeper;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.PipeProcessor;
@@ -40,17 +41,20 @@ public abstract class PipePluginAgent {
   private final PipePluginConstructor pipeProcessorConstructor;
   private final PipePluginConstructor pipeConnectorConstructor;
 
-  protected PipePluginAgent() {
-    pipeExtractorConstructor = createPipeExtractorConstructor();
-    pipeProcessorConstructor = createPipeProcessorConstructor();
-    pipeConnectorConstructor = createPipeConnectorConstructor();
+  protected PipePluginAgent(PipePluginMetaKeeper pipePluginMetaKeeper) {
+    pipeExtractorConstructor = createPipeExtractorConstructor(pipePluginMetaKeeper);
+    pipeProcessorConstructor = createPipeProcessorConstructor(pipePluginMetaKeeper);
+    pipeConnectorConstructor = createPipeConnectorConstructor(pipePluginMetaKeeper);
   }
 
-  protected abstract PipePluginConstructor createPipeExtractorConstructor();
+  protected abstract PipePluginConstructor createPipeExtractorConstructor(
+      PipePluginMetaKeeper pipePluginMetaKeeper);
 
-  protected abstract PipePluginConstructor createPipeProcessorConstructor();
+  protected abstract PipePluginConstructor createPipeProcessorConstructor(
+      PipePluginMetaKeeper pipePluginMetaKeeper);
 
-  protected abstract PipePluginConstructor createPipeConnectorConstructor();
+  protected abstract PipePluginConstructor createPipeConnectorConstructor(
+      PipePluginMetaKeeper pipePluginMetaKeeper);
 
   public final PipeExtractor reflectExtractor(PipeParameters extractorParameters) {
     return (PipeExtractor) pipeExtractorConstructor.reflectPlugin(extractorParameters);
