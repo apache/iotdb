@@ -194,7 +194,7 @@ public class Analysis {
   // one.
   private Set<Expression> orderByExpressions;
 
-  private boolean hasSort = false;
+  private boolean hasSortNode = false;
 
   // parameter of `FILL` clause
   private FillDescriptor fillDescriptor;
@@ -713,12 +713,12 @@ public class Analysis {
     this.deviceToOrderByExpressions = deviceToOrderByExpressions;
   }
 
-  public void setHasSort(boolean hasSort) {
-    this.hasSort = hasSort;
+  public void setHasSortNode(boolean hasSortNode) {
+    this.hasSortNode = hasSortNode;
   }
 
-  public boolean isHasSort() {
-    return hasSort;
+  public boolean isHasSortNode() {
+    return hasSortNode;
   }
 
   public Map<String, List<SortItem>> getDeviceToSortItems() {

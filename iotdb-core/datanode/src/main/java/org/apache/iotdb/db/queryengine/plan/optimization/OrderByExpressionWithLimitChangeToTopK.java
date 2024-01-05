@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
@@ -52,10 +53,23 @@ public class OrderByExpressionWithLimitChangeToTopK implements PlanOptimizer {
     }
 
     QueryStatement queryStatement = (QueryStatement) analysis.getStatement();
-    if (queryStatement.isLastQuery()
-        || queryStatement.isAggregationQuery()
-        || queryStatement.isAlignByDevice()
-        || (!queryStatement.hasLimit() && !queryStatement.hasOrderByExpression())) {
+    if (queryStatement.isLastQuery() || !queryStatement.hasLimit()) {
+      return plan;
+    }
+
+    // when align by time, only order by expression can use this optimize rule
+    if (!queryStatement.isAlignByDevice() && !queryStatement.hasOrderByExpression()) {
+      return plan;
+    }
+
+    // align by device,
+    // when use TopKNode (because MergeSortNode with LimitNode has been replaced to TopKNode),
+    // or order_based_on_device (because it does not need TopKNode),
+    // will not use this optimize rule
+    if (queryStatement.isAlignByDevice()
+        && (analysis.isUseTopKNode()
+            || !queryStatement.hasOrderBy()
+            || queryStatement.isOrderByBasedOnDevice())) {
       return plan;
     }
 
@@ -102,6 +116,22 @@ public class OrderByExpressionWithLimitChangeToTopK implements PlanOptimizer {
         } else {
           return topKNode;
         }
+      } else if (limitNode.getChild() instanceof MergeSortNode) {
+        MergeSortNode mergeSortNode = (MergeSortNode) limitNode.getChild();
+        TopKNode topKNode =
+            new TopKNode(
+                rewriterContext.getMppQueryContext().getQueryId().genPlanNodeId(),
+                (int) limitNode.getLimit(),
+                mergeSortNode.getMergeOrderParameter(),
+                mergeSortNode.getOutputColumnNames());
+        topKNode.setChildren(mergeSortNode.getChildren());
+
+        if (parent != null) {
+          ((SingleChildProcessNode) parent).setChild(topKNode);
+          return parent;
+        } else {
+          return topKNode;
+        }
       } else if (limitNode.getChild() instanceof TransformNode) {
         TransformNode transformNode = (TransformNode) limitNode.getChild();
         if (transformNode.getChild() instanceof SortNode) {
@@ -136,8 +166,7 @@ public class OrderByExpressionWithLimitChangeToTopK implements PlanOptimizer {
       }
 
       LimitNode limitNode = (LimitNode) parent;
-      if (limitNode.getLimit() > LIMIT_VALUE_USE_TOP_K
-          || limitNode.getLimit() + offsetNode.getOffset() > Integer.MAX_VALUE) {
+      if (limitNode.getLimit() + offsetNode.getOffset() > LIMIT_VALUE_USE_TOP_K) {
         return offsetNode;
       }
 
@@ -148,6 +177,16 @@ public class OrderByExpressionWithLimitChangeToTopK implements PlanOptimizer {
                 rewriterContext.getMppQueryContext().getQueryId().genPlanNodeId(),
                 (int) ((int) ((LimitNode) parent).getLimit() + offsetNode.getOffset()),
                 sortNode.getOrderByParameter(),
+                sortNode.getOutputColumnNames());
+        topKNode.setChildren(sortNode.getChildren());
+        offsetNode.setChild(topKNode);
+      } else if (offsetNode.getChild() instanceof MergeSortNode) {
+        MergeSortNode sortNode = (MergeSortNode) offsetNode.getChild();
+        TopKNode topKNode =
+            new TopKNode(
+                rewriterContext.getMppQueryContext().getQueryId().genPlanNodeId(),
+                (int) ((int) ((LimitNode) parent).getLimit() + offsetNode.getOffset()),
+                sortNode.getMergeOrderParameter(),
                 sortNode.getOutputColumnNames());
         topKNode.setChildren(sortNode.getChildren());
         offsetNode.setChild(topKNode);

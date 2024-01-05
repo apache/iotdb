@@ -47,7 +47,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.vie
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWriteSchemaNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -168,7 +167,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                         : null,
                     analysis.getDeviceViewInputIndexesMap().get(deviceName),
                     context));
-        // sortOperator push down
+        // order by device, expression, push down sortOperator
         if (queryStatement.needPushDownSort()) {
           subPlanBuilder =
               subPlanBuilder.planOrderBy(
@@ -185,11 +184,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
               analysis.getDeviceViewOutputExpressions(),
               analysis.getDeviceViewInputIndexesMap(),
               analysis.getSelectExpressions(),
-              queryStatement);
-
-      if (planBuilder.getRoot() instanceof TopKNode) {
-        analysis.setUseTopKNode();
-      }
+              queryStatement,
+              analysis);
     } else {
       planBuilder =
           planBuilder.withNewRoot(
