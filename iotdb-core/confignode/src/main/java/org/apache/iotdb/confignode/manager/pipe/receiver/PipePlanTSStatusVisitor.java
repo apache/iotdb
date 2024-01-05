@@ -86,6 +86,24 @@ public class PipePlanTSStatusVisitor extends PhysicalPlanVisitor<TSStatus, TSSta
   }
 
   @Override
+  public TSStatus visitDropUser(AuthorPlan plan, TSStatus context) {
+    if (context.getCode() == TSStatusCode.USER_NOT_EXIST.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return super.visitDropUser(plan, context);
+  }
+
+  @Override
+  public TSStatus visitRevokeUser(AuthorPlan plan, TSStatus context) {
+    if (context.getCode() == TSStatusCode.NOT_HAS_PRIVILEGE.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return super.visitRevokeUser(plan, context);
+  }
+
+  @Override
   public TSStatus visitCreateRole(AuthorPlan plan, TSStatus context) {
     if (context.getCode() == TSStatusCode.ROLE_ALREADY_EXIST.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
@@ -95,11 +113,38 @@ public class PipePlanTSStatusVisitor extends PhysicalPlanVisitor<TSStatus, TSSta
   }
 
   @Override
+  public TSStatus visitDropRole(AuthorPlan plan, TSStatus context) {
+    if (context.getCode() == TSStatusCode.ROLE_NOT_EXIST.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return super.visitDropRole(plan, context);
+  }
+
+  @Override
+  public TSStatus visitRevokeRole(AuthorPlan plan, TSStatus context) {
+    if (context.getCode() == TSStatusCode.NOT_HAS_PRIVILEGE.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return super.visitRevokeRole(plan, context);
+  }
+
+  @Override
   public TSStatus visitGrantRoleToUser(AuthorPlan plan, TSStatus context) {
     if (context.getCode() == TSStatusCode.USER_ALREADY_HAS_ROLE.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }
-    return super.visitCreateRole(plan, context);
+    return super.visitGrantRoleToUser(plan, context);
+  }
+
+  @Override
+  public TSStatus visitRevokeRoleFromUser(AuthorPlan plan, TSStatus context) {
+    if (context.getCode() == TSStatusCode.USER_NOT_HAS_ROLE.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return super.visitRevokeRoleFromUser(plan, context);
   }
 }
