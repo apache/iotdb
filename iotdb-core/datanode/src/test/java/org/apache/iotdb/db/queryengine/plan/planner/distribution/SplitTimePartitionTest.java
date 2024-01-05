@@ -202,4 +202,75 @@ public class SplitTimePartitionTest {
     assertEquals(1, res.get(3).size());
     assertEquals(31, res.get(3).get(0).startTime);
   }
+
+  @Test
+  public void testSplitTimePartition4() {
+    //                timepartition-1   timepartition-2   timepartition-3   timepartition-4
+    // SeriesSlot-1                     region-2          region-2
+    // SeriesSlot-2   region-1          region-1          region-1          region-1
+    // SeriesSlot-3                                       region-3          region-3
+    // SeriesSlot-4   region-4          region-4          region-4          region-4
+    List<List<List<TTimePartitionSlot>>> sourceTimeRangeList = new ArrayList<>();
+    sourceTimeRangeList.add(new ArrayList<>());
+    sourceTimeRangeList
+        .get(0)
+        .add(Arrays.asList(new TTimePartitionSlot(11), new TTimePartitionSlot(21)));
+
+    sourceTimeRangeList.add(new ArrayList<>());
+    sourceTimeRangeList
+        .get(1)
+        .add(
+            Arrays.asList(
+                new TTimePartitionSlot(1),
+                new TTimePartitionSlot(11),
+                new TTimePartitionSlot(21),
+                new TTimePartitionSlot(31)));
+
+    sourceTimeRangeList.add(new ArrayList<>());
+    sourceTimeRangeList
+        .get(2)
+        .add(Arrays.asList(new TTimePartitionSlot(21), new TTimePartitionSlot(31)));
+
+    sourceTimeRangeList.add(new ArrayList<>());
+    sourceTimeRangeList
+        .get(3)
+        .add(
+            Arrays.asList(
+                new TTimePartitionSlot(1),
+                new TTimePartitionSlot(11),
+                new TTimePartitionSlot(21),
+                new TTimePartitionSlot(31)));
+
+    List<List<TTimePartitionSlot>> res = splitTimePartition(sourceTimeRangeList);
+    assertEquals(1, res.size());
+    assertEquals(1, res.get(0).size());
+    assertEquals(21, res.get(0).get(0).startTime);
+  }
+
+  @Test
+  public void testSplitTimePartition5() {
+    //                timepartition-1   timepartition-2   timepartition-3   timepartition-4
+    // SeriesSlot-1                     region-2          region-2
+    // SeriesSlot-2   region-1          region-1          region-2          region-2
+    List<List<List<TTimePartitionSlot>>> sourceTimeRangeList = new ArrayList<>();
+    sourceTimeRangeList.add(new ArrayList<>());
+    sourceTimeRangeList
+        .get(0)
+        .add(Arrays.asList(new TTimePartitionSlot(11), new TTimePartitionSlot(21)));
+
+    sourceTimeRangeList.add(new ArrayList<>());
+    sourceTimeRangeList
+        .get(1)
+        .add(Arrays.asList(new TTimePartitionSlot(1), new TTimePartitionSlot(11)));
+    sourceTimeRangeList
+        .get(1)
+        .add(Arrays.asList(new TTimePartitionSlot(21), new TTimePartitionSlot(31)));
+
+    List<List<TTimePartitionSlot>> res = splitTimePartition(sourceTimeRangeList);
+    assertEquals(2, res.size());
+    assertEquals(1, res.get(0).size());
+    assertEquals(11, res.get(0).get(0).startTime);
+    assertEquals(1, res.get(1).size());
+    assertEquals(21, res.get(1).get(0).startTime);
+  }
 }
