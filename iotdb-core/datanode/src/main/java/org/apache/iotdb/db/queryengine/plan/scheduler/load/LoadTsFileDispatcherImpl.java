@@ -182,10 +182,18 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
 
   private void dispatchLocally(TLoadCommandReq loadCommandReq)
       throws FragmentInstanceDispatchException {
-    final ProgressIndex progressIndex =
-        loadCommandReq.isSetProgressIndex()
-            ? ProgressIndexType.deserializeFrom(loadCommandReq.progressIndex)
-            : null;
+    final ProgressIndex progressIndex;
+    if (loadCommandReq.isSetProgressIndex()) {
+      progressIndex = ProgressIndexType.deserializeFrom(loadCommandReq.progressIndex);
+    } else {
+      // fallback to use local generated progress index for compatibility
+      progressIndex = PipeAgent.runtime().getNextProgressIndexForTsFileLoad();
+      LOGGER.info(
+          "Use local generated load progress index {} for uuid {}.",
+          progressIndex,
+          loadCommandReq.uuid);
+    }
+
     final TSStatus resultStatus =
         StorageEngine.getInstance()
             .executeLoadCommand(
