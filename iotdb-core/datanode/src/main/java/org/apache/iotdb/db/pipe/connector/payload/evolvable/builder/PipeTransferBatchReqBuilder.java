@@ -157,7 +157,7 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
   }
 
   protected TPipeTransferReq buildTabletInsertionReq(TabletInsertionEvent event)
-          throws WALPipeException, IOException {
+      throws WALPipeException, IOException {
     final TPipeTransferReq req;
     if (event instanceof PipeInsertNodeTabletInsertionEvent) {
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
