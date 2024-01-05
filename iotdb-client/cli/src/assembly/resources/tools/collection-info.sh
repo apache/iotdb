@@ -23,6 +23,10 @@ echo ---------------------
 echo Start Collection info
 echo ---------------------
 
+if [ -z "${IOTDB_HOME}" ]; then
+    export IOTDB_HOME="`dirname "$0"`/.."
+  fi
+
 COLLECTION_FILE="collection.txt"
 
 HELP="Usage: $0 [-h <ip>] [-p <port>] [-u <username>] [-pw <password>] [-jp <jdk_path>] [-dd <data_dir>]"
@@ -32,7 +36,7 @@ passwd_param="root"
 host_param="127.0.0.1"
 port_param="6667"
 jdk_path_param=""
-data_dir_param="../data"
+data_dir_param="$IOTDB_HOME/data"
 
 while true; do
     case "$1" in
@@ -75,9 +79,9 @@ timestamp=$(date +"%Y%m%d%H%M%S")
 
 zip_name="collection-$timestamp.zip"
 
-zip_directory="../"
+zip_directory="$IOTDB_HOME/"
 
-files_to_zip="${COLLECTION_FILE} ../conf"
+files_to_zip="${COLLECTION_FILE} $IOTDB_HOME/conf"
 
 {
     echo '====================== CPU Info ======================'
@@ -113,20 +117,20 @@ files_to_zip="${COLLECTION_FILE} ../conf"
     echo '===================== JDK Version====================='
     if [ -n "$jdk_path_param" ]; then
         if [ -d "$jdk_path_param" ]; then
-            $jdk_path/bin/java -version 2>&1
+            $jdk_path_param/bin/java -version 2>&1
         else
             echo "Invalid JDK path: $jdk_path_param"
             exit 1
         fi
     else
-          java -version 2>&1
+      java -version 2>&1
     fi
 } >> "$COLLECTION_FILE"
 
 {
     echo '=================== Activation Info===================='
-    if [ -d "$(dirname "$0")/../activation" ]; then
-        if [ -f "$(dirname "$0")/../activation/license" ]; then
+    if [ -d "$(dirname "$0")/$IOTDB_HOME/activation" ]; then
+        if [ -f "$(dirname "$0")/$IOTDB_HOME/activation/license" ]; then
             echo "Active"
         else
             echo "Not active"
@@ -217,7 +221,11 @@ execute_command_and_append_to_file() {
     local command=$1
     {
         echo "=================== $command ===================="
-        ../sbin/start-cli.sh -h "$host_param" -p "$port_param" -u "$user_param" -pw "$passwd_param" -e "$command" | sed '$d' | sed '$d'
+        if [ -n "$jdk_path_param" ]; then
+          export JAVA_HOME="$jdk_path_param";"$IOTDB_HOME"/sbin/start-cli.sh -h "$host_param" -p "$port_param" -u "$user_param" -pw "$passwd_param" -e "$command" | sed '$d' | sed '$d'
+        else
+          "$IOTDB_HOME"/sbin/start-cli.sh -h "$host_param" -p "$port_param" -u "$user_param" -pw "$passwd_param" -e "$command" | sed '$d' | sed '$d'
+        fi
     } >> "$COLLECTION_FILE"
 }
 
@@ -228,9 +236,9 @@ execute_command_and_append_to_file 'show databases'
 execute_command_and_append_to_file 'count devices'
 execute_command_and_append_to_file 'count timeseries'
 
-rm -rf ../colletioninfo
-mkdir -p ../colletioninfo
-mv $COLLECTION_FILE ../colletioninfo
-cp -r ../conf ../colletioninfo
-zip -r "../$zip_name" ../colletioninfo
+rm -rf $IOTDB_HOME/collectioninfo
+mkdir -p $IOTDB_HOME/collectioninfo
+mv $COLLECTION_FILE $IOTDB_HOME/collectioninfo
+cp -r $IOTDB_HOME/conf $IOTDB_HOME/collectioninfo
+zip -r "$IOTDB_HOME/$zip_name" $IOTDB_HOME/collectioninfo
 echo "Program execution completed, file name is $zip_name"
