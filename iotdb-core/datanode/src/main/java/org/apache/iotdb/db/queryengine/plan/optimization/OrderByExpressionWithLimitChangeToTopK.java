@@ -76,8 +76,11 @@ public class OrderByExpressionWithLimitChangeToTopK implements PlanOptimizer {
     @Override
     public PlanNode visitLimit(LimitNode limitNode, RewriterContext rewriterContext) {
       PlanNode parent = rewriterContext.getParent();
-      rewriterContext.setParent(limitNode);
-      limitNode.getChild().accept(this, rewriterContext);
+
+      if (limitNode.getChild() instanceof OffsetNode) {
+        rewriterContext.setParent(limitNode);
+        limitNode.getChild().accept(this, rewriterContext);
+      }
 
       if (limitNode.getLimit() > LIMIT_VALUE_USE_TOP_K) {
         return limitNode;
@@ -127,8 +130,6 @@ public class OrderByExpressionWithLimitChangeToTopK implements PlanOptimizer {
     @Override
     public PlanNode visitOffset(OffsetNode offsetNode, RewriterContext rewriterContext) {
       PlanNode parent = rewriterContext.getParent();
-      rewriterContext.setParent(offsetNode);
-      offsetNode.getChild().accept(this, rewriterContext);
 
       if (!(parent instanceof LimitNode)) {
         return offsetNode;
