@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.receiver;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.db.exception.VerifyMetadataException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
@@ -35,7 +35,7 @@ public class PipeStatementExceptionVisitor extends StatementVisitor<TSStatus, Ex
 
   @Override
   public TSStatus visitLoadFile(LoadTsFileStatement loadTsFileStatement, Exception context) {
-    if (context instanceof VerifyMetadataException) {
+    if (context instanceof SemanticException) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }
