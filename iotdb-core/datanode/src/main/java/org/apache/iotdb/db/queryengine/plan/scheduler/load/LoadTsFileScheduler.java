@@ -63,12 +63,12 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import io.airlift.units.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -346,10 +346,10 @@ public class LoadTsFileScheduler implements IScheduler {
   private ByteBuffer assignProgressIndex(TsFileResource tsFileResource) throws IOException {
     PipeAgent.runtime().assignProgressIndexForTsFileLoad(tsFileResource);
 
-    try (final ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
-        final DataOutputStream stream = new DataOutputStream(byteOutputStream)) {
-      tsFileResource.getMaxProgressIndex().serialize(stream);
-      return ByteBuffer.wrap(byteOutputStream.toByteArray());
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
+      tsFileResource.getMaxProgressIndex().serialize(dataOutputStream);
+      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
   }
 
