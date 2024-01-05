@@ -185,7 +185,7 @@ exit /b
 set "command=%~1"
 echo =================== "%command%" ====================
 if not "%jdk_path_param%"=="" (
-call export JAVA_HOME="%jdk_path_param%";"%START_CLI_PATH%" -h "%host_param%" -p "%port_param%" -u "%user_param%" -pw "%passwd_param%" -e "%command%"
+set JAVA_HOME="%jdk_path_param%";call "%START_CLI_PATH%" -h "%host_param%" -p "%port_param%" -u "%user_param%" -pw "%passwd_param%" -e "%command%"
 )else (
 call "%START_CLI_PATH%" -h "%host_param%" -p "%port_param%" -u "%user_param%" -pw "%passwd_param%" -e "%command%"
 )
