@@ -279,6 +279,7 @@ public class IoTConsensus implements IConsensus {
     IoTConsensusServerImpl impl =
         Optional.ofNullable(stateMachineMap.get(groupId))
             .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
+    // TODO：阻写？
     if (impl.getConfiguration().contains(peer)) {
       throw new PeerAlreadyInConsensusGroupException(groupId, peer);
     }
