@@ -172,7 +172,7 @@ public class IoTDBClusterNodeGetterIT {
       Assert.assertEquals(
           expectedParameters.getDiskSpaceWarningThreshold(),
           clusterParameters.getDiskSpaceWarningThreshold(),
-          0.01);
+          0.001);
       Assert.assertEquals(
           expectedParameters.getReadConsistencyLevel(),
           clusterParameters.getReadConsistencyLevel());
