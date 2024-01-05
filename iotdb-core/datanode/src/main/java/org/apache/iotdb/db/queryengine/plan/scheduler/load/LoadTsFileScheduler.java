@@ -344,11 +344,13 @@ public class LoadTsFileScheduler implements IScheduler {
   }
 
   private ByteBuffer assignProgressIndex(TsFileResource tsFileResource) throws IOException {
-    PipeAgent.runtime().assignProgressIndexForTsFileLoadIfNeeded(tsFileResource);
-    ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
-    DataOutputStream stream = new DataOutputStream(byteOutputStream);
-    tsFileResource.getMaxProgressIndex().serialize(stream);
-    return ByteBuffer.wrap(byteOutputStream.toByteArray());
+    PipeAgent.runtime().assignProgressIndexForTsFileLoad(tsFileResource);
+
+    try (final ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
+        final DataOutputStream stream = new DataOutputStream(byteOutputStream)) {
+      tsFileResource.getMaxProgressIndex().serialize(stream);
+      return ByteBuffer.wrap(byteOutputStream.toByteArray());
+    }
   }
 
   private boolean loadLocally(LoadSingleTsFileNode node) throws IoTDBException {

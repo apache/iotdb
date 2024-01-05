@@ -186,7 +186,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
         loadCommandReq.isSetProgressIndex()
             ? ProgressIndexType.deserializeFrom(loadCommandReq.progressIndex)
             : null;
-    TSStatus resultStatus =
+    final TSStatus resultStatus =
         StorageEngine.getInstance()
             .executeLoadCommand(
                 LoadTsFileScheduler.LoadCommand.values()[loadCommandReq.commandType],
@@ -222,7 +222,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     } else if (planNode instanceof LoadSingleTsFileNode) { // do not need to split
       final TsFileResource tsFileResource = ((LoadSingleTsFileNode) planNode).getTsFileResource();
       try {
-        PipeAgent.runtime().assignProgressIndexForTsFileLoadIfNeeded(tsFileResource);
+        PipeAgent.runtime().assignProgressIndexForTsFileLoad(tsFileResource);
         tsFileResource.serialize();
 
         StorageEngine.getInstance()

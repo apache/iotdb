@@ -105,8 +105,15 @@ public class PipeRuntimeAgent implements IService {
 
   ////////////////////// Load ProgressIndex Assigner //////////////////////
 
-  public void assignProgressIndexForTsFileLoadIfNeeded(TsFileResource tsFileResource) {
-    simpleConsensusProgressIndexAssigner.assignIfNeeded(tsFileResource);
+  public void assignProgressIndexForTsFileLoad(TsFileResource tsFileResource) {
+    // override the progress index of the tsfile resource, not to update the progress index
+    tsFileResource.setProgressIndex(getNextProgressIndexForTsFileLoad());
+  }
+
+  public RecoverProgressIndex getNextProgressIndexForTsFileLoad() {
+    return new RecoverProgressIndex(
+        DATA_NODE_ID,
+        simpleConsensusProgressIndexAssigner.getSimpleProgressIndexForTsFileRecovery());
   }
 
   ////////////////////// Recover ProgressIndex Assigner //////////////////////

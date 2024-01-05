@@ -406,8 +406,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TLoadResp sendLoadCommand(TLoadCommandReq req) {
-    final ProgressIndex progressIndex =
-        req.isSetProgressIndex() ? ProgressIndexType.deserializeFrom(req.progressIndex) : null;
+    final ProgressIndex progressIndex;
+    if (req.isSetProgressIndex()) {
+      progressIndex = ProgressIndexType.deserializeFrom(req.progressIndex);
+    } else {
+      // fallback to use local generated progress index for compatibility
+      progressIndex = PipeAgent.runtime().getNextProgressIndexForTsFileLoad();
+      LOGGER.info(
+          "Use local generated load progress index {} for uuid {}.", progressIndex, req.uuid);
+    }
+
     return createTLoadResp(
         StorageEngine.getInstance()
             .executeLoadCommand(
