@@ -157,7 +157,7 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
   }
 
   protected TPipeTransferReq buildTabletInsertionReq(TabletInsertionEvent event)
-      throws WALPipeException {
+          throws WALPipeException, IOException {
     final TPipeTransferReq req;
     if (event instanceof PipeInsertNodeTabletInsertionEvent) {
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
@@ -168,13 +168,13 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
           pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible() == null
               ? PipeTransferTabletBinaryReq.toTPipeTransferReq(
                   pipeInsertNodeTabletInsertionEvent.getByteBuffer())
-              : PipeTransferTabletInsertNodeReq.toTPipeTransferRawReq(
+              : PipeTransferTabletInsertNodeReq.toTPipeTransferReq(
                   pipeInsertNodeTabletInsertionEvent.getInsertNode());
     } else {
       final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
           (PipeRawTabletInsertionEvent) event;
       req =
-          PipeTransferTabletRawReq.toTPipeTransferRawReq(
+          PipeTransferTabletRawReq.toTPipeTransferReq(
               pipeRawTabletInsertionEvent.convertToTablet(),
               pipeRawTabletInsertionEvent.isAligned());
     }
