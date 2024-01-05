@@ -26,7 +26,7 @@ popd
 
 setlocal enabledelayedexpansion
 set "timestamp=%date:~0,4%%date:~5,2%%date:~8,2%"
-set "COLLECTION_DIR=%IOTDB_HOME%\colletioninfo"
+set "COLLECTION_DIR=%IOTDB_HOME%\collectioninfo"
 set "COLLECTION_FILE=%COLLECTION_DIR%\collection-%timestamp%.txt"
 set "START_CLI_PATH=%IOTDB_HOME%\sbin\start-cli.bat"
 
