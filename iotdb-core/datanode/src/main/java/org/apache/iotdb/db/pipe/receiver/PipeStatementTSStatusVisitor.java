@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.receiver;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
@@ -28,6 +29,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSStatus> {
@@ -63,6 +66,25 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
           .setMessage(context.getMessage());
     }
     return visitStatement(insertBaseStatement, context);
+  }
+
+  @Override
+  public TSStatus visitCreateTimeseries(CreateTimeSeriesStatement statement, TSStatus context) {
+    return visitCreateGeneralTimeseries(statement, context);
+  }
+
+  @Override
+  public TSStatus visitCreateAlignedTimeseries(
+      CreateAlignedTimeSeriesStatement statement, TSStatus context) {
+    return visitCreateGeneralTimeseries(statement, context);
+  }
+
+  private TSStatus visitCreateGeneralTimeseries(Statement statement, TSStatus context) {
+    if (context.getCode() == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return visitStatement(statement, context);
   }
 
   @Override

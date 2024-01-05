@@ -76,7 +76,7 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
       connector
           .getExceptionHandler()
           .handleExceptionStatusWithLaterRetry(
-              response.getStatus(), response.getStatus().getMessage());
+              response.getStatus(), response.getStatus().getMessage(), event.toString());
       if (event instanceof EnrichedEvent) {
         ((EnrichedEvent) event)
             .decreaseReferenceCount(PipeTransferTabletInsertionEventHandler.class.getName(), true);

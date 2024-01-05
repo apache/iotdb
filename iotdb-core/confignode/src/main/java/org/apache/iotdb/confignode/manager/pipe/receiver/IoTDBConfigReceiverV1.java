@@ -114,9 +114,11 @@ public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
     try {
       result = executePlan(plan);
       if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.warn("Failure status encountered while executing plan {}: {}", plan, result);
         result = statusVisitor.process(plan, result);
       }
     } catch (Exception e) {
+      LOGGER.warn("Exception encountered while executing plan {}: ", plan, e);
       result = exceptionVisitor.process(plan, e);
     }
     return new TPipeTransferResp(result);

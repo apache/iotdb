@@ -58,12 +58,16 @@ public class PipeExceptionHandler {
    * @param status the {@link TSStatus} to judge
    * @param exceptionMessage The exception message to throw
    */
-  public void handleExceptionStatusWithLaterRetry(TSStatus status, String exceptionMessage) {
+  public void handleExceptionStatusWithLaterRetry(
+      TSStatus status, String exceptionMessage, String recordMessage) {
     switch (status.getCode()) {
         // SUCCESS_STATUS
       case 200:
+        return;
         // PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION
       case 1809:
+        LOGGER.info(
+            "Idempotent conflict exception in pipe transfer, will ignore. status: {}", status);
         return;
         // PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION
       case 1808:
@@ -71,11 +75,18 @@ public class PipeExceptionHandler {
         // PIPE_RECEIVER_USER_CONFLICT_EXCEPTION
       case 1810:
         if (isAllowConflictRetry) {
+          LOGGER.info(
+              "User conflict exception status in pipe transfer, will retry. status: {}", status);
           throw new PipeException(exceptionMessage);
+        }
+        if (conflictRecordIgnoredData) {
+          LOGGER.warn(
+              "User conflict exception status in pipe transfer, Ignored event: {}", recordMessage);
         }
         return;
         // Other exceptions
       default:
+        LOGGER.info("Unclassified exception in pipe transfer, will retry. status: {}", status);
         throw new PipeException(exceptionMessage);
     }
   }
@@ -96,12 +107,18 @@ public class PipeExceptionHandler {
     switch (status.getCode()) {
         // SUCCESS_STATUS
       case 200:
+        firstEncounterTime = 0;
+        return;
         // PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION
       case 1809:
-        firstEncounterTime = 0;
+        LOGGER.info(
+            "Idempotent conflict exception in pipe transfer, will ignore. status: {}", status);
         return;
         // PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION
       case 1808:
+        LOGGER.info(
+            "Temporary unavailable exception in pipe transfer, will retry forever. status: {}",
+            status);
         throw new PipeException(exceptionMessage);
         // PIPE_RECEIVER_USER_CONFLICT_EXCEPTION
       case 1810:

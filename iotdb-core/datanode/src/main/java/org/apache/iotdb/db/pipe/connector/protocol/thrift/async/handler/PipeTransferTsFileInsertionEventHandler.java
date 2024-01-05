@@ -112,7 +112,8 @@ public class PipeTransferTsFileInsertionEventHandler
             .handleExceptionStatusWithLaterRetry(
                 response.getStatus(),
                 String.format(
-                    "Seal file %s error, result status %s.", tsFile, response.getStatus()));
+                    "Seal file %s error, result status %s.", tsFile, response.getStatus()),
+                tsFile.getName());
       } catch (Exception e) {
         onError(e);
       }
@@ -157,7 +158,7 @@ public class PipeTransferTsFileInsertionEventHandler
         connector
             .getExceptionHandler()
             .handleExceptionStatusWithLaterRetry(
-                response.getStatus(), response.getStatus().getMessage());
+                response.getStatus(), response.getStatus().getMessage(), tsFile.getName());
       }
 
       transfer(client);

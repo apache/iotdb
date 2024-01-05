@@ -75,7 +75,7 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
       connector
           .getExceptionHandler()
           .handleExceptionStatusWithLaterRetry(
-              response.getStatus(), response.getStatus().getMessage());
+              response.getStatus(), response.getStatus().getMessage(), events.toString());
       for (final Event event : events) {
         if (event instanceof EnrichedEvent) {
           ((EnrichedEvent) event)

@@ -21,13 +21,9 @@ package org.apache.iotdb.db.pipe.receiver;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.exception.VerifyMetadataException;
-import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
-import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class PipeStatementExceptionVisitor extends StatementVisitor<TSStatus, Exception> {
@@ -44,24 +40,5 @@ public class PipeStatementExceptionVisitor extends StatementVisitor<TSStatus, Ex
           .setMessage(context.getMessage());
     }
     return super.visitLoadFile(loadTsFileStatement, context);
-  }
-
-  @Override
-  public TSStatus visitCreateTimeseries(CreateTimeSeriesStatement statement, Exception context) {
-    return visitCreateGeneralTimeseries(statement, context);
-  }
-
-  @Override
-  public TSStatus visitCreateAlignedTimeseries(
-      CreateAlignedTimeSeriesStatement statement, Exception context) {
-    return visitCreateGeneralTimeseries(statement, context);
-  }
-
-  private TSStatus visitCreateGeneralTimeseries(Statement statement, Exception context) {
-    if (context instanceof MeasurementAlreadyExistException) {
-      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
-          .setMessage(context.getMessage());
-    }
-    return visitStatement(statement, context);
   }
 }
