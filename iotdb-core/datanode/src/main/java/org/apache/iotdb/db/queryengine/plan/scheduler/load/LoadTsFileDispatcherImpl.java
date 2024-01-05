@@ -56,6 +56,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -184,7 +185,8 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       throws FragmentInstanceDispatchException {
     final ProgressIndex progressIndex;
     if (loadCommandReq.isSetProgressIndex()) {
-      progressIndex = ProgressIndexType.deserializeFrom(loadCommandReq.progressIndex);
+      progressIndex =
+          ProgressIndexType.deserializeFrom(ByteBuffer.wrap(loadCommandReq.getProgressIndex()));
     } else {
       // fallback to use local generated progress index for compatibility
       progressIndex = PipeAgent.runtime().getNextProgressIndexForTsFileLoad();

@@ -408,7 +408,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TLoadResp sendLoadCommand(TLoadCommandReq req) {
     final ProgressIndex progressIndex;
     if (req.isSetProgressIndex()) {
-      progressIndex = ProgressIndexType.deserializeFrom(req.progressIndex);
+      progressIndex = ProgressIndexType.deserializeFrom(ByteBuffer.wrap(req.getProgressIndex()));
     } else {
       // fallback to use local generated progress index for compatibility
       progressIndex = PipeAgent.runtime().getNextProgressIndexForTsFileLoad();
