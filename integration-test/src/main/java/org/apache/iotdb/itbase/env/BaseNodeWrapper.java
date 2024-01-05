@@ -31,6 +31,8 @@ public interface BaseNodeWrapper {
 
   void stop();
 
+  void stopForcibly();
+
   String getIp();
 
   int getPort();
