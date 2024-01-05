@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode.LIMIT_VALUE_USE_TOP_K;
 
@@ -47,6 +48,14 @@ public class OrderByExpressionWithLimitChangeToTopK implements PlanOptimizer {
   @Override
   public PlanNode optimize(PlanNode plan, Analysis analysis, MPPQueryContext context) {
     if (analysis.getStatement().getType() != StatementType.QUERY) {
+      return plan;
+    }
+
+    QueryStatement queryStatement = (QueryStatement) analysis.getStatement();
+    if (queryStatement.isLastQuery()
+        || queryStatement.isAggregationQuery()
+        || queryStatement.isAlignByDevice()
+        || (!queryStatement.hasLimit() && !queryStatement.hasOrderByExpression())) {
       return plan;
     }
 
