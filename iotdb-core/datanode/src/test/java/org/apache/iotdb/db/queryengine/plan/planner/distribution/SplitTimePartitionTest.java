@@ -89,16 +89,13 @@ public class SplitTimePartitionTest {
 
   @Test
   public void testSplitTimePartition2() {
-    //                timepartition-1   timepartition-2   timepartition-3   timepartition-4
-    // timepartition-5
-    // SeriesSlot-1   region-1          region-1          region-1          region-1
-    // region-1
-    // SeriesSlot-2   region-2          region-2          region-2          region-2
-    // region-2
-    // SeriesSlot-3   region-1          region-1          region-1          region-1
-    // region-3
-    // SeriesSlot-4   region-2          region-2          region-2          region-2
-    // region-4
+    /*
+     *                timepartition-1   timepartition-2   timepartition-3   timepartition-4   timepartition-5
+     * SeriesSlot-1   region-1          region-1          region-1          region-1          region-1
+     * SeriesSlot-2   region-2          region-2          region-2          region-2          region-2
+     * SeriesSlot-3   region-1          region-1          region-1          region-1          region-3
+     * SeriesSlot-4   region-2          region-2          region-2          region-2          region-4
+     */
 
     List<List<List<TTimePartitionSlot>>> sourceTimeRangeList = new ArrayList<>();
     sourceTimeRangeList.add(new ArrayList<>());
