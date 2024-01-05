@@ -42,9 +42,11 @@ public class PipeExceptionHandler {
       long othersRetryMaxSeconds,
       boolean othersRecordIgnoredData) {
     this.isAllowConflictRetry = isAllowConflictRetry;
-    this.conflictRetryMaxSeconds = conflictRetryMaxSeconds;
+    this.conflictRetryMaxSeconds =
+        conflictRetryMaxSeconds == -1 ? Long.MAX_VALUE : conflictRetryMaxSeconds;
     this.conflictRecordIgnoredData = conflictRecordIgnoredData;
-    this.othersRetryMaxSeconds = othersRetryMaxSeconds;
+    this.othersRetryMaxSeconds =
+        othersRetryMaxSeconds == -1 ? Long.MAX_VALUE : othersRetryMaxSeconds;
     this.othersRecordIgnoredData = othersRecordIgnoredData;
   }
 

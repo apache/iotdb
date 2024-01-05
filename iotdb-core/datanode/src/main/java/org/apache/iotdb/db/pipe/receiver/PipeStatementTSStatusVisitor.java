@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSStatus> {
@@ -101,5 +102,15 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
           .setMessage(context.getMessage());
     }
     return super.visitInternalCreateTimeseries(internalCreateTimeSeriesStatement, context);
+  }
+
+  @Override
+  public TSStatus visitActivateTemplate(
+      ActivateTemplateStatement activateTemplateStatement, TSStatus context) {
+    if (context.getCode() == TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return super.visitActivateTemplate(activateTemplateStatement, context);
   }
 }

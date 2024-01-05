@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.PhysicalPlanVisitor;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class PipePlanTSStatusVisitor extends PhysicalPlanVisitor<TSStatus, TSStatus> {
@@ -46,5 +48,26 @@ public class PipePlanTSStatusVisitor extends PhysicalPlanVisitor<TSStatus, TSSta
           .setMessage(context.getMessage());
     }
     return super.visitCreateDatabase(plan, context);
+  }
+
+  @Override
+  public TSStatus visitCreateSchemaTemplate(CreateSchemaTemplatePlan plan, TSStatus context) {
+    if (context.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return super.visitCreateSchemaTemplate(plan, context);
+  }
+
+  @Override
+  public TSStatus visitCommitSetSchemaTemplate(CommitSetSchemaTemplatePlan plan, TSStatus context) {
+    if (context.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    } else if (context.getCode() == TSStatusCode.DATANODE_NOT_EXIST.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return super.visitCommitSetSchemaTemplate(plan, context);
   }
 }
