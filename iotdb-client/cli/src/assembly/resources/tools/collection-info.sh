@@ -123,6 +123,21 @@ files_to_zip="${COLLECTION_FILE} $IOTDB_HOME/conf"
             exit 1
         fi
     else
+      if [ -n "$JAVA_HOME" ]; then
+          for java in "$JAVA_HOME"/bin/amd64/java "$JAVA_HOME"/bin/java; do
+              if [ -x "$java" ]; then
+                  JAVA="$java"
+                  break
+              fi
+          done
+      else
+          JAVA=java
+      fi
+
+      if [ -z $JAVA ] ; then
+          echo Unable to find java executable. Check JAVA_HOME and PATH environment variables.  > /dev/stderr
+          exit 1;
+      fi
       java -version 2>&1
     fi
 } >> "$COLLECTION_FILE"
