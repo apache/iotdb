@@ -87,7 +87,7 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
   private PipeHistoricalDataRegionExtractor historicalExtractor;
   private PipeRealtimeDataRegionExtractor realtimeExtractor;
 
-  private boolean noExtractData = false;
+  private boolean noExtractData = true;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -109,9 +109,9 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
     if (dataRegionListenPair.getLeft().equals(false)
         && dataRegionListenPair.getRight().equals(false)) {
       // TODO: judge deletion listening logic
-      noExtractData = true;
       return;
     }
+    noExtractData = false;
 
     // Check whether the pattern is legal
     validatePattern(

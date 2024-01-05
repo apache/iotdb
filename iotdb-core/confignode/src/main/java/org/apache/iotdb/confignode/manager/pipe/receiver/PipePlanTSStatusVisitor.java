@@ -93,4 +93,13 @@ public class PipePlanTSStatusVisitor extends PhysicalPlanVisitor<TSStatus, TSSta
     }
     return super.visitCreateRole(plan, context);
   }
+
+  @Override
+  public TSStatus visitGrantRoleToUser(AuthorPlan plan, TSStatus context) {
+    if (context.getCode() == TSStatusCode.USER_ALREADY_HAS_ROLE.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return super.visitCreateRole(plan, context);
+  }
 }

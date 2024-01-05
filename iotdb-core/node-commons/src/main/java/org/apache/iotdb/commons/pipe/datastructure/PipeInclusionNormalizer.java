@@ -116,6 +116,10 @@ public class PipeInclusionNormalizer {
 
   public static List<PartialPath> getPartialPaths(String prefixesRawStr)
       throws IllegalPathException {
+    if (prefixesRawStr.isEmpty()) {
+      return Collections.emptyList();
+    }
+
     List<PartialPath> result;
     AtomicReference<IllegalPathException> exception = new AtomicReference<>();
     result =
