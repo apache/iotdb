@@ -386,7 +386,7 @@ public class ConfigNode implements ConfigNodeMBean {
   }
 
   private void waitForLeaderElected() {
-    while (configManager.getConsensusManager().getLeader() == null) {
+    while (!configManager.getConsensusManager().isLeaderExist()) {
       LOGGER.info("Leader has not been elected yet, wait for 1 second");
       try {
         TimeUnit.SECONDS.sleep(1);

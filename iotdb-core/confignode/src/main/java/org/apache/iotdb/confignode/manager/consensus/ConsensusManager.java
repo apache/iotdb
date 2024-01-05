@@ -360,6 +360,24 @@ public class ConsensusManager {
     return null;
   }
 
+  /** @return true if ConfigNode-leader is elected, false otherwise. */
+  public boolean isLeaderExist() {
+    for (int retry = 0; retry < 50; retry++) {
+      Peer leaderPeer = consensusImpl.getLeader(DEFAULT_CONSENSUS_GROUP_ID);
+      if (leaderPeer != null) {
+        return true;
+      }
+
+      try {
+        TimeUnit.MILLISECONDS.sleep(100);
+      } catch (InterruptedException e) {
+        LOGGER.warn("ConsensusManager getLeader been interrupted, ", e);
+        Thread.currentThread().interrupt();
+      }
+    }
+    return false;
+  }
+
   /**
    * Confirm the current ConfigNode's leadership.
    *
