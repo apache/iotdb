@@ -732,9 +732,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
               outputColumnNames);
       // set unified outputColumnNames for each child InnerTimeJoinNode
       children.forEach(
-          child -> {
-            ((InnerTimeJoinNode) child).setOutputColumnNames(outputColumnNames);
-          });
+          child -> ((InnerTimeJoinNode) child).setOutputColumnNames(outputColumnNames));
 
       mergeSortNode.setChildren(children);
       return Collections.singletonList(mergeSortNode);
