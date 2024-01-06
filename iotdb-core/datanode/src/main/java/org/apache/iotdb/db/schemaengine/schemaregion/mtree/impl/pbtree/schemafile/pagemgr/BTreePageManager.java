@@ -406,45 +406,44 @@ public class BTreePageManager extends PageManager {
     boolean safeFlag = false;
     // check like crabbing
     ISchemaPage crabPage;
-    while (!safeFlag) {
-      SchemaPageContext doubleCheckContext = new SchemaPageContext();
-      if (getPageIndex(getNodeAddress(parent)) != initPage.getPageIndex()) {
-        // transplanted, release the stale and check the new
-        long addrB4Lock = getNodeAddress(parent);
-        int piB4Lock = getPageIndex(addrB4Lock);
+    SchemaPageContext doubleCheckContext;
+    while (getPageIndex(getNodeAddress(parent)) != initPage.getPageIndex()) {
+      // transplanted, release the stale and obtain/lock the new
+      doubleCheckContext = new SchemaPageContext();
+      long addrB4Lock = getNodeAddress(parent);
+      int piB4Lock = getPageIndex(addrB4Lock);
 
-        crabPage = getPageInstance(piB4Lock, doubleCheckContext);
-        crabPage.getLock().readLock().lock();
+      initPage.decrementAndGetRefCnt();
+      initPage.getLock().readLock().unlock();
 
+      crabPage = getPageInstance(piB4Lock, doubleCheckContext);
+      crabPage.getLock().readLock().lock();
+
+      // UNNECESSARY to TRACE lock since the very page will be unlocked at end of read
+      cxt.referredPages.remove(initPage.getPageIndex());
+      cxt.referredPages.put(crabPage.getPageIndex(), crabPage);
+      initPage = crabPage;
+    }
+
+    // a fresh context to read-through from global cache
+    doubleCheckContext = new SchemaPageContext();
+    crabPage = getPageInstance(initPage.getPageIndex(), doubleCheckContext);
+    if (crabPage != initPage) {
+      // replaced, the lock and ref count should be the same
+      if (crabPage.getLock() != initPage.getLock()
+          || crabPage.getRefCnt() != initPage.getRefCnt()) {
+        crabPage.decrementAndGetRefCnt();
         initPage.decrementAndGetRefCnt();
         initPage.getLock().readLock().unlock();
-
-        // UNNECESSARY to TRACE lock since the very page will be unlocked at end of read
-        cxt.referredPages.remove(initPage.getPageIndex());
-        cxt.referredPages.put(crabPage.getPageIndex(), crabPage);
-        initPage = crabPage;
-        continue;
+        throw new MetadataException(
+            "Page[%d] replacement error: Different ref count or lock object.");
       }
-
-      crabPage = getPageInstance(initPage.getPageIndex(), doubleCheckContext);
-      if (crabPage != initPage) {
-        // replaced, the lock and ref count should be the same
-        if (crabPage.getLock() != initPage.getLock()
-            || crabPage.getRefCnt() != initPage.getRefCnt()) {
-          crabPage.decrementAndGetRefCnt();
-          initPage.decrementAndGetRefCnt();
-          initPage.getLock().readLock().unlock();
-          throw new MetadataException(
-              "Page[%d] replacement error: Different ref count or lock object.");
-        }
-        // update context is enough, ref and lock is left for main read process
-        cxt.referredPages.put(initPage.getPageIndex(), crabPage);
-        initPage = crabPage;
-      }
-      // same page shall only be referred once
-      crabPage.decrementAndGetRefCnt();
-      safeFlag = true;
+      // update context is enough, ref and lock is left for main read process
+      cxt.referredPages.put(initPage.getPageIndex(), crabPage);
+      initPage = crabPage;
     }
+    // same page shall only be referred once
+    crabPage.decrementAndGetRefCnt();
     return initPage;
   }
 
