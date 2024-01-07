@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.UDFTable;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.udf.api.UDAF;
 import org.apache.iotdb.udf.api.UDF;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.exception.UDFManagementException;
@@ -205,7 +206,7 @@ public class UDFManagementService {
       Class<?> functionClass = Class.forName(className, true, currentActiveClassLoader);
 
       // ensure that it is a UDF class
-      UDTF udtf = (UDTF) functionClass.getDeclaredConstructor().newInstance();
+      UDF udf = (UDF) functionClass.getDeclaredConstructor().newInstance();
       udfTable.addUDFInformation(functionName, udfInformation);
       udfTable.addFunctionAndClass(functionName, functionClass);
     } catch (IOException
@@ -302,9 +303,11 @@ public class UDFManagementService {
         instanceof UDTF;
   }
 
-  /** always returns false for now */
-  public boolean isUDAF(String functionName) {
-    return false;
+  public boolean isUDAF(String functionName)
+      throws NoSuchMethodException, InvocationTargetException, InstantiationException,
+          IllegalAccessException {
+    return udfTable.getFunctionClass(functionName).getDeclaredConstructor().newInstance()
+        instanceof UDAF;
   }
 
   @TestOnly

@@ -19,13 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.executor;
 
-import org.apache.iotdb.common.rpc.thrift.TFlushReq;
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
-import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
-import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
-import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
-import org.apache.iotdb.common.rpc.thrift.TThrottleQuota;
+import com.google.common.util.concurrent.SettableFuture;
+import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.iotdb.common.rpc.thrift.*;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
@@ -114,24 +110,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CountDatabaseTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CountTimeSlotListTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.DatabaseSchemaTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.GetRegionIdTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.GetSeriesSlotListTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.GetTimeSlotListTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterDetailsTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterIdTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowConfigNodesTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowContinuousQueriesTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowDataNodesTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowFunctionsTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowRegionTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTTLTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTriggersTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowVariablesTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.*;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowNodesInSchemaTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowPathSetTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowSchemaTemplateTask;
@@ -141,39 +120,9 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowThrot
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.TransformToViewExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.AlterLogicalViewNode;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateContinuousQueryStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateFunctionStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTriggerStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteDatabaseStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteTimeSeriesStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotListStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.MigrateRegionStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDataNodesStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipeStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.AlterSchemaTemplateStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSchemaTemplateStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DeactivateTemplateStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DropSchemaTemplateStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.SetSchemaTemplateStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowPathSetTemplateStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowSchemaTemplateStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.*;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.*;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.*;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.AlterLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.DeleteLogicalViewStatement;
@@ -199,10 +148,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.trigger.api.Trigger;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.udf.api.UDTF;
-
-import com.google.common.util.concurrent.SettableFuture;
-import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.iotdb.udf.api.UDF;
 import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
@@ -219,12 +165,7 @@ import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.protocol.client.ConfigNodeClient.MSG_RECONNECTION_FAIL;
@@ -469,7 +410,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       try (UDFClassLoader classLoader = new UDFClassLoader(libRoot)) {
         // ensure that jar file contains the class and the class is a UDF
         Class<?> clazz = Class.forName(createFunctionStatement.getClassName(), true, classLoader);
-        UDTF udtf = (UDTF) clazz.getDeclaredConstructor().newInstance();
+        UDF udf = (UDF) clazz.getDeclaredConstructor().newInstance();
       } catch (ClassNotFoundException
           | NoSuchMethodException
           | InstantiationException
