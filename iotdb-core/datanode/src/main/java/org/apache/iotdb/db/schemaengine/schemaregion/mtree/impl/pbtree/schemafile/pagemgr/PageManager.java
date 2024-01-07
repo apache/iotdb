@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaPageOverflowException;
+import org.apache.iotdb.db.schemaengine.metric.SchemaRegionCachedMetric;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaPage;
@@ -94,12 +95,18 @@ public abstract class PageManager implements IPageManager {
 
   private final AtomicInteger logCounter;
   private SchemaFileLogWriter logWriter;
+  private final SchemaRegionCachedMetric metric;
 
   // flush strategy is dependent on consensus protocol, only check protocol on init
   protected FlushPageStrategy flushDirtyPagesStrategy;
   protected SinglePageFlushStrategy singlePageFlushStrategy;
 
-  PageManager(FileChannel channel, File pmtFile, int lastPageIndex, String logPath)
+  PageManager(
+      FileChannel channel,
+      File pmtFile,
+      int lastPageIndex,
+      String logPath,
+      SchemaRegionCachedMetric metric)
       throws IOException, MetadataException {
     this.pageInstCache =
         Collections.synchronizedMap(new LinkedHashMap<>(SchemaFileConfig.PAGE_CACHE_SIZE, 1, true));
@@ -114,6 +121,7 @@ public abstract class PageManager implements IPageManager {
     this.channel = channel;
     this.pmtFile = pmtFile;
     this.readChannel = FileChannel.open(pmtFile.toPath(), StandardOpenOption.READ);
+    this.metric = metric;
 
     if (IoTDBDescriptor.getInstance()
         .getConfig()
@@ -228,7 +236,7 @@ public abstract class PageManager implements IPageManager {
   /** Context only tracks write locks, and so it shall be released. */
   protected void releaseLocks(SchemaPageContext cxt) {
     for (int i : cxt.lockTraces) {
-      pageInstCache.get(i).getLock().writeLock().unlock();
+      cxt.referredPages.get(i).getLock().writeLock().unlock();
     }
   }
 
@@ -290,14 +298,14 @@ public abstract class PageManager implements IPageManager {
         return;
       }
 
-      if (minPageIndex > 0) {
+      if (minPageIndex >= 0) {
         page = getPageInstance(minPageIndex, cxt);
         page.getLock().writeLock().lock();
         cxt.traceLock(page);
         cxt.indexBuckets.sortIntoBucket(page, (short) -1);
       }
 
-      if (minPageIndex != maxPageIndex && maxPageIndex > 0) {
+      if (minPageIndex != maxPageIndex && maxPageIndex >= 0) {
         page = getPageInstance(maxPageIndex, cxt);
         page.getLock().writeLock().lock();
         cxt.traceLock(page);
@@ -390,6 +398,7 @@ public abstract class PageManager implements IPageManager {
               newPage.transplantSegment(curPage.getAsSegmentedPage(), actSegId, newSegSize);
           newPage.write(SchemaFile.getSegIndex(curSegAddr), entry.getKey(), childBuffer);
           curPage.getAsSegmentedPage().deleteSegment(actSegId);
+          cxt.indexBuckets.sortIntoBucket(curPage, (short) -1);
 
           // entrant lock guarantees thread-safe
           SchemaFile.setNodeAddress(node, curSegAddr);
@@ -503,6 +512,7 @@ public abstract class PageManager implements IPageManager {
           // assign new segment address
           curSegAddr = newPage.transplantSegment(curPage.getAsSegmentedPage(), actSegId, newSegSiz);
           curPage.getAsSegmentedPage().deleteSegment(actSegId);
+          cxt.indexBuckets.sortIntoBucket(curPage, (short) -1);
 
           newPage.update(SchemaFile.getSegIndex(curSegAddr), entry.getKey(), childBuffer);
           SchemaFile.setNodeAddress(node, curSegAddr);
@@ -631,6 +641,9 @@ public abstract class PageManager implements IPageManager {
             .filter(ISchemaPage::isDirtyPage)
             .collect(Collectors.toList()));
     cxt.appendBucketIndex(pageIndexBuckets);
+    if (metric != null) {
+      metric.recordFlushPageNum(cxt.referredPages.size());
+    }
   }
 
   /**
@@ -643,6 +656,9 @@ public abstract class PageManager implements IPageManager {
       return;
     }
     cxt.interleavedFlushCnt++;
+    if (metric != null) {
+      metric.recordFlushPageNum(1);
+    }
     singlePageFlushStrategy.apply(cxt.lastLeafPage);
     // this lastLeaf shall only be lock once
     cxt.dirtyCnt--;
@@ -722,6 +738,9 @@ public abstract class PageManager implements IPageManager {
       }
 
       ByteBuffer newBuf = ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH);
+      if (metric != null) {
+        metric.recordFlushPageNum(1);
+      }
       loadFromFile(newBuf, pageIdx);
       page = ISchemaPage.loadSchemaPage(newBuf);
       cxt.refer(page);
@@ -769,8 +788,7 @@ public abstract class PageManager implements IPageManager {
         cxt.traceLock(targetPage);
 
         // transfer the page from pageIndexBuckets to cxt.buckets thus not be accessed by other
-        // WRITE
-        // thread
+        //  WRITE thread
         cxt.indexBuckets.sortIntoBucket(targetPage, size);
         return targetPage.getAsSegmentedPage();
       }
@@ -1001,11 +1019,11 @@ public abstract class PageManager implements IPageManager {
       interleavedFlushCnt = 0;
     }
 
-    public void markDirty(ISchemaPage page) {
+    protected void markDirty(ISchemaPage page) {
       markDirty(page, false);
     }
 
-    private void markDirty(ISchemaPage page, boolean forceReplace) {
+    protected void markDirty(ISchemaPage page, boolean forceReplace) {
       if (!page.isDirtyPage()) {
         dirtyCnt++;
       }
@@ -1022,7 +1040,7 @@ public abstract class PageManager implements IPageManager {
       }
     }
 
-    private void traceLock(ISchemaPage page) {
+    protected void traceLock(ISchemaPage page) {
       refer(page);
       lockTraces.add(page.getPageIndex());
     }

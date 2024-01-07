@@ -299,8 +299,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             String.format("%.2f", costTime),
             String.format("%.2f", selectedFileSize / 1024.0d / 1024.0d / costTime),
             summary);
+      } finally {
+        Files.deleteIfExists(logFile.toPath());
       }
-      Files.deleteIfExists(logFile.toPath());
     } catch (Exception e) {
       isSuccess = false;
       printLogWhenException(LOGGER, e);

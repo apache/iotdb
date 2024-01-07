@@ -112,6 +112,9 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
     try {
       dataRegion.insert(node);
       return StatusUtils.OK;
+    } catch (WriteProcessRejectException e) {
+      LOGGER.warn("Reject in executing plan node: {}, caused by {}", node, e.getMessage());
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } catch (BatchProcessException e) {
       LOGGER.warn("Batch failure in executing a InsertRowsNode.");
       TSStatus firstStatus = null;
@@ -129,6 +132,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
             failedEntry.getValue());
         // return WRITE_PROCESS_REJECT directly for the consensus retry logic
         if (failedEntry.getValue().getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
+          node.clearResults();
           return failedEntry.getValue();
         }
       }
@@ -158,6 +162,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
             failedEntry.getValue());
         // return WRITE_PROCESS_REJECT directly for the consensus retry logic
         if (failedEntry.getValue().getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
+          node.clearResults();
           return failedEntry.getValue();
         }
       }
@@ -193,6 +198,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
             failedEntry.getValue());
         // return WRITE_PROCESS_REJECT directly for the consensus retry logic
         if (failedEntry.getValue().getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
+          node.clearResults();
           return failedEntry.getValue();
         }
       }

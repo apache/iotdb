@@ -223,6 +223,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
@@ -258,6 +259,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private static final String LIMIT_CONFIGURATION_ENABLED_ERROR_MSG =
       "Limit configuration is not enabled, please enable it first.";
+
+  private static final String NODE_NAME_IN_INTO_PATH_MATCHER = "([a-zA-Z0-9_${}\\u2E80-\\u9FFF]+)";
+  private static final Pattern NODE_NAME_IN_INTO_PATH_PATTERN =
+      Pattern.compile(NODE_NAME_IN_INTO_PATH_MATCHER);
 
   private static final String IGNORENULL = "IgnoreNull";
   private ZoneId zoneId;
@@ -713,13 +718,19 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       return SchemaFilterFactory.createPathContainsFilter(
           parseStringLiteral(ctx.deviceContainsExpression().value.getText()));
     } else {
-      if (ctx.templateEqualExpression().OPERATOR_SEQ() != null) {
-        return SchemaFilterFactory.createTemplateNameFilter(
-            parseIdentifier(ctx.templateEqualExpression().templateName.getText()), true);
+      String templateName = null;
+      boolean isEqual = true;
+      if (ctx.templateEqualExpression().operator_is() != null) {
+        if (ctx.templateEqualExpression().operator_not() != null) {
+          isEqual = false;
+        }
       } else {
-        return SchemaFilterFactory.createTemplateNameFilter(
-            parseIdentifier(ctx.templateEqualExpression().templateName.getText()), false);
+        templateName = parseStringLiteral(ctx.templateEqualExpression().templateName.getText());
+        if (ctx.templateEqualExpression().OPERATOR_NEQ() != null) {
+          isEqual = false;
+        }
       }
+      return SchemaFilterFactory.createTemplateNameFilter(templateName, isEqual);
     }
   }
 
@@ -2026,7 +2037,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private static void checkNodeNameInIntoPath(String src) {
     // ${} are allowed
-    if (!TsFileConstant.NODE_NAME_IN_INTO_PATH_PATTERN.matcher(src).matches()) {
+    if (!NODE_NAME_IN_INTO_PATH_PATTERN.matcher(src).matches()) {
       throw new SemanticException(
           String.format(
               "%s is illegal, unquoted node name in select into clause can only consist of digits, characters, $, { and }",

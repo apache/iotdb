@@ -433,6 +433,8 @@ public enum PlanNodeType {
   public static PlanNode deserializeWithTemplate(ByteBuffer buffer, TypeProvider typeProvider) {
     short nodeType = buffer.getShort();
     switch (nodeType) {
+      case 3:
+        return FilterNode.deserializeUseTemplate(buffer, typeProvider);
       case 33:
         return AlignedSeriesScanNode.deserializeUseTemplate(buffer, typeProvider);
       case 65:

@@ -38,6 +38,12 @@ public enum Metric {
   TIME_SLOT_NUM_IN_DATABASE("time_slot_num_in_database"),
   REGION_GROUP_NUM_IN_DATABASE("region_group_num_in_database"),
   REPLICATION_FACTOR("replication_factor"),
+  PROCEDURE_WORKER_THREAD_COUNT("procedure_worker_thread_count"),
+  PROCEDURE_ACTIVE_WORKER_THREAD_COUNT("procedure_active_worker_thread_count"),
+  PROCEDURE_QUEUE_LENGTH("procedure_queue_length"),
+  PROCEDURE_SUBMITTED_COUNT("procedure_submitted_count"),
+  PROCEDURE_FAILED_COUNT("procedure_failed_count"),
+  PROCEDURE_EXECUTION_TIME("procedure_execution_time"),
   // protocol related
   ENTRY("entry"),
   SESSION_IDLE_TIME("session_idle_time"),
@@ -65,6 +71,15 @@ public enum Metric {
   WAL_COST("wal_cost"),
   FLUSH_COST("flush_cost"),
   FLUSH_SUB_TASK_COST("flush_sub_task_cost"),
+  FLUSH_THRESHOLD("flush_threshold"),
+  REJECT_THRESHOLD("reject_threshold"),
+  TIMED_FLUSH_MEMTABLE_COUNT("timed_flush_memtable_count"),
+  WAL_FLUSH_MEMTABLE_COUNT("wal_flush_memtable_count"),
+  SERIES_FULL_FLUSH_MEMTABLE("series_full_flush_memtable"),
+  ACTIVE_MEMTABLE_COUNT("active_memtable_count"),
+  ACTIVE_TIME_PARTITION_COUNT("active_time_partition_count"),
+  MEMTABLE_LIVE_DURATION("memtable_live_duration"),
+
   // compaction related
   DATA_WRITTEN("data_written"),
   DATA_READ("data_read"),
@@ -138,7 +153,8 @@ public enum Metric {
   PIPE_EVENT_COMMIT_QUEUE_SIZE("pipe_event_commit_queue_size"),
   PIPE_PROCEDURE("pipe_procedure"),
   PIPE_TASK_STATUS("pipe_task_status"),
-  ;
+  // load related
+  LOAD_MEM("load_mem");
 
   final String value;
 

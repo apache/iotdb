@@ -23,4 +23,9 @@ public class CompactionValidationFailedException extends RuntimeException {
   public CompactionValidationFailedException(String msg) {
     super(msg);
   }
+
+  @Override
+  public Throwable fillInStackTrace() {
+    return this;
+  }
 }

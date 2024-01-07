@@ -83,12 +83,20 @@ public class PipeTaskMeta {
     return new ArrayList<>(exceptionMessages.values());
   }
 
+  public synchronized String getExceptionMessagesString() {
+    return exceptionMessages.toString();
+  }
+
   public synchronized void trackExceptionMessage(PipeRuntimeException exceptionMessage) {
     exceptionMessages.put(exceptionMessage, exceptionMessage);
   }
 
   public synchronized boolean containsExceptionMessage(PipeRuntimeException exceptionMessage) {
     return exceptionMessages.containsKey(exceptionMessage);
+  }
+
+  public synchronized boolean hasExceptionMessages() {
+    return !exceptionMessages.isEmpty();
   }
 
   public synchronized void clearExceptionMessages() {

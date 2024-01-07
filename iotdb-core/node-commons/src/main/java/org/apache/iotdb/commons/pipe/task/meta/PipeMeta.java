@@ -75,6 +75,35 @@ public class PipeMeta {
     return new PipeMeta(staticMeta, runtimeMeta);
   }
 
+  public String coreReportMessage() {
+    return "PipeName="
+        + staticMeta.getPipeName()
+        + ", CreationTime="
+        + staticMeta.getCreationTime()
+        + ", ProgressIndex={"
+        + runtimeMeta.getConsensusGroupId2TaskMetaMap().entrySet().stream()
+            .map(
+                entry ->
+                    "ConsensusGroupId="
+                        + entry.getKey()
+                        + ", ProgressIndex="
+                        + entry.getValue().getProgressIndex())
+            .reduce((s1, s2) -> s1 + "; " + s2)
+            .orElse("")
+        + "}, Exceptions={"
+        + runtimeMeta.getConsensusGroupId2TaskMetaMap().entrySet().stream()
+            .filter(entry -> entry.getValue().hasExceptionMessages())
+            .map(
+                entry ->
+                    "ConsensusGroupId="
+                        + entry.getKey()
+                        + ", ExceptionMessage="
+                        + entry.getValue().getExceptionMessagesString())
+            .reduce((s1, s2) -> s1 + "; " + s2)
+            .orElse("")
+        + "}";
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {

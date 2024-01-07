@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
@@ -140,6 +141,13 @@ public class LimitOffsetPushDown implements PlanOptimizer {
       // Value filtering push-down occurs during the logical planning phase. If there is still a
       // FilterNode here, it means that there are read filter conditions that cannot be pushed
       // down.
+      context.setEnablePushDown(false);
+      return node;
+    }
+
+    @Override
+    public PlanNode visitSort(SortNode node, RewriterContext context) {
+      // Limit/Offset in ORDER BY focus the sorted result, so it should not be pushed down.
       context.setEnablePushDown(false);
       return node;
     }

@@ -86,7 +86,13 @@ public class SessionConnectionTest {
     sessionConnection = new SessionConnection();
     Whitebox.setInternalState(sessionConnection, "transport", transport);
     Whitebox.setInternalState(sessionConnection, "client", client);
-    session = new Session(Arrays.asList("127.0.0.1:12"), "root", "root");
+    session =
+        new Session.Builder()
+            .nodeUrls(Collections.singletonList("127.0.0.1:12"))
+            .username("root")
+            .password("root")
+            .enableAutoFetch(false)
+            .build();
     Whitebox.setInternalState(sessionConnection, "session", session);
     Mockito.when(transport.isOpen()).thenReturn(true);
     TSStatus tsStatus = new TSStatus(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
@@ -151,7 +157,14 @@ public class SessionConnectionTest {
 
   @Test(expected = NumberFormatException.class)
   public void testBuildSessionConnection() throws IoTDBConnectionException {
-    session = new Session("local", 12, "root", "root");
+    session =
+        new Session.Builder()
+            .host("local")
+            .port(12)
+            .username("root")
+            .password("root")
+            .enableAutoFetch(false)
+            .build();
     SessionConnection sessionConnection1 =
         new SessionConnection(
             session,
@@ -161,7 +174,14 @@ public class SessionConnectionTest {
 
   @Test(expected = IoTDBConnectionException.class)
   public void testBuildSessionConnection2() throws IoTDBConnectionException {
-    session = new Session("local", 12, "root", "root");
+    session =
+        new Session.Builder()
+            .host("local")
+            .port(12)
+            .username("root")
+            .password("root")
+            .enableAutoFetch(false)
+            .build();
     SessionConnection sessionConnection1 =
         new SessionConnection(
             session,

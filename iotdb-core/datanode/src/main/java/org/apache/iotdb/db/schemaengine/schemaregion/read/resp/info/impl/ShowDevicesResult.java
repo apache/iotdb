@@ -26,11 +26,6 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
   private Boolean isAligned;
   private int templateId;
 
-  public ShowDevicesResult(String name, Boolean isAligned) {
-    super(name);
-    this.isAligned = isAligned;
-  }
-
   public ShowDevicesResult(String name, Boolean isAligned, int templateId) {
     super(name);
     this.isAligned = isAligned;
@@ -54,6 +49,8 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
         + ", isAligned = "
         + isAligned
         + '\''
+        + ", templateId = "
+        + templateId
         + "}";
   }
 
@@ -66,11 +63,13 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
       return false;
     }
     ShowDevicesResult result = (ShowDevicesResult) o;
-    return Objects.equals(path, result.path) && isAligned == result.isAligned;
+    return Objects.equals(path, result.path)
+        && isAligned == result.isAligned
+        && templateId == result.templateId;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(path, isAligned);
+    return Objects.hash(path, isAligned, templateId);
   }
 }

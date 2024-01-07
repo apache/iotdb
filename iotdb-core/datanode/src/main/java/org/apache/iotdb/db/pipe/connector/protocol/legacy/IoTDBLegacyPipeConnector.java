@@ -216,19 +216,18 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
   public void handshake() throws Exception {
     close();
 
-    client =
-        new IoTDBThriftSyncConnectorClient(
-            new ThriftClientProperty.Builder()
-                .setConnectionTimeoutMs(COMMON_CONFIG.getConnectionTimeoutInMS())
-                .setRpcThriftCompressionEnabled(COMMON_CONFIG.isRpcThriftCompressionEnabled())
-                .build(),
-            ipAddress,
-            port,
-            useSSL,
-            trustStore,
-            trustStorePwd);
-
     try {
+      client =
+          new IoTDBThriftSyncConnectorClient(
+              new ThriftClientProperty.Builder()
+                  .setConnectionTimeoutMs(COMMON_CONFIG.getConnectionTimeoutInMS())
+                  .setRpcThriftCompressionEnabled(COMMON_CONFIG.isRpcThriftCompressionEnabled())
+                  .build(),
+              ipAddress,
+              port,
+              useSSL,
+              trustStore,
+              trustStorePwd);
       final TSyncIdentityInfo identityInfo =
           new TSyncIdentityInfo(
               pipeName, creationTime, syncConnectorVersion, IoTDBConstant.PATH_ROOT);
@@ -243,9 +242,7 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
       }
     } catch (TException e) {
       throw new PipeConnectionException(
-          String.format(
-              "Connect to receiver %s:%s error, because: %s", ipAddress, port, e.getMessage()),
-          e);
+          String.format(PipeConnectionException.CONNECTION_ERROR_FORMATTER, ipAddress, port), e);
     }
 
     sessionPool =

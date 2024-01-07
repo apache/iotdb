@@ -173,7 +173,7 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
         setNextState(getStateId(state));
       }
 
-      LOG.info("{} {}; cycles={}", state, this, cycles);
+      LOG.debug("{} {}; cycles={}", state, this, cycles);
       // Keep running count of cycles
       if (getStateId(state) != this.previousState) {
         this.previousState = getStateId(state);

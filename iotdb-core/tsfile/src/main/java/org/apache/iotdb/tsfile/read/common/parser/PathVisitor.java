@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.tsfile.read.common.parser;
 
-import org.apache.iotdb.db.qp.sql.PathParser;
-import org.apache.iotdb.db.qp.sql.PathParser.NodeNameContext;
-import org.apache.iotdb.db.qp.sql.PathParserBaseVisitor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import org.apache.commons.lang3.math.NumberUtils;
+import org.apache.tsfile.parser.PathParser;
+import org.apache.tsfile.parser.PathParser.NodeNameContext;
+import org.apache.tsfile.parser.PathParserBaseVisitor;
 
 import java.util.List;
 

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.utils;
 
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
@@ -422,7 +421,6 @@ public class TsFileResourceUtils {
       }
     }
     resource.setStatus(TsFileResourceStatus.NORMAL);
-    PipeAgent.runtime().assignProgressIndexForTsFileLoad(resource);
     return resource;
   }
 }

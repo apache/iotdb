@@ -616,7 +616,7 @@ public class NodeManager {
       }
 
       // Check whether the remove ConfigNode is leader
-      TConfigNodeLocation leader = getConsensusManager().getLeader();
+      TConfigNodeLocation leader = getConsensusManager().getLeaderLocation();
       if (leader == null) {
         return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
             .setMessage(

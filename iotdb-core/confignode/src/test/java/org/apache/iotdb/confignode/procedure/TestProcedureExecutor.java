@@ -99,7 +99,7 @@ public class TestProcedureExecutor extends TestProcedureBase {
   private int waitThreadCount(final int expectedThreads) {
     long startTime = System.currentTimeMillis();
     while (procExecutor.isRunning()
-        && TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis() - startTime) <= 30) {
+        && TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis() - startTime) <= 180) {
       if (procExecutor.getWorkerThreadCount() == expectedThreads) {
         break;
       }

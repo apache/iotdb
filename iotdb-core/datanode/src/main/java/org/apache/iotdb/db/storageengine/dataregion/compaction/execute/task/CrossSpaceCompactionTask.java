@@ -271,8 +271,9 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
                 "%.2f",
                 (selectedSeqFileSize + selectedUnseqFileSize) / 1024.0d / 1024.0d / costTime),
             summary);
+      } finally {
+        Files.deleteIfExists(logFile.toPath());
       }
-      Files.deleteIfExists(logFile.toPath());
     } catch (Exception e) {
       isSuccess = false;
       printLogWhenException(LOGGER, e);
