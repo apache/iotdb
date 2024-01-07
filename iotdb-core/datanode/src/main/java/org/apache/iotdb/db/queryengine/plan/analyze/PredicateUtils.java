@@ -259,7 +259,7 @@ public class PredicateUtils {
       } else if (isRightTrue) {
         return left;
       }
-      return predicate;
+      return ExpressionFactory.and(left, right);
     } else if (predicate.getExpressionType().equals(ExpressionType.LOGIC_OR)) {
       Expression left = simplifyPredicate(((BinaryExpression) predicate).getLeftExpression());
       Expression right = simplifyPredicate(((BinaryExpression) predicate).getRightExpression());
