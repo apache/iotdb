@@ -36,6 +36,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.InnerTimeJoinNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.LeftOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
@@ -90,10 +92,24 @@ public class TestPlanBuilder {
     return this;
   }
 
+  public TestPlanBuilder scan(String id, PartialPath path, Expression predicate) {
+    SeriesScanNode node = new SeriesScanNode(new PlanNodeId(id), (MeasurementPath) path);
+    node.setPushDownPredicate(predicate);
+    this.root = node;
+    return this;
+  }
+
   public TestPlanBuilder scanAligned(String id, PartialPath path, int limit, int offset) {
     AlignedSeriesScanNode node = new AlignedSeriesScanNode(new PlanNodeId(id), (AlignedPath) path);
     node.setPushDownLimit(limit);
     node.setPushDownOffset(offset);
+    this.root = node;
+    return this;
+  }
+
+  public TestPlanBuilder scanAligned(String id, PartialPath path, Expression predicate) {
+    AlignedSeriesScanNode node = new AlignedSeriesScanNode(new PlanNodeId(id), (AlignedPath) path);
+    node.setPushDownPredicate(predicate);
     this.root = node;
     return this;
   }
@@ -204,18 +220,41 @@ public class TestPlanBuilder {
     return this;
   }
 
-  public TestPlanBuilder timeJoin(List<PartialPath> paths) {
+  public TestPlanBuilder fullOuterTimeJoin(List<PartialPath> paths) {
     int planId = 0;
-
     List<PlanNode> seriesSourceNodes = new ArrayList<>();
     for (PartialPath path : paths) {
-      seriesSourceNodes.add(
-          new SeriesScanNode(new PlanNodeId(String.valueOf(planId)), (MeasurementPath) path));
+      if (path instanceof AlignedPath) {
+        seriesSourceNodes.add(
+            new AlignedSeriesScanNode(new PlanNodeId(String.valueOf(planId)), (AlignedPath) path));
+      } else {
+        seriesSourceNodes.add(
+            new SeriesScanNode(new PlanNodeId(String.valueOf(planId)), (MeasurementPath) path));
+      }
       planId++;
     }
     this.root =
         new FullOuterTimeJoinNode(
             new PlanNodeId(String.valueOf(planId)), Ordering.ASC, seriesSourceNodes);
+    return this;
+  }
+
+  public TestPlanBuilder fullOuterTimeJoin(
+      String rootId, Ordering mergeOrder, List<String> ids, List<PartialPath> paths) {
+    List<PlanNode> seriesSourceNodes = new ArrayList<>();
+    for (int i = 0; i < ids.size(); i++) {
+      PartialPath path = paths.get(i);
+      if (path instanceof AlignedPath) {
+        seriesSourceNodes.add(
+            new AlignedSeriesScanNode(new PlanNodeId(ids.get(i)), (AlignedPath) paths.get(i)));
+      } else {
+        seriesSourceNodes.add(
+            new SeriesScanNode(new PlanNodeId(ids.get(i)), (MeasurementPath) paths.get(i)));
+      }
+    }
+    this.root =
+        new FullOuterTimeJoinNode(
+            new PlanNodeId(String.valueOf(rootId)), mergeOrder, seriesSourceNodes);
     return this;
   }
 
@@ -330,6 +369,33 @@ public class TestPlanBuilder {
             deviceToMeasurementIndexesMap);
     deviceViewNode.setChildren(children);
     this.root = deviceViewNode;
+    return this;
+  }
+
+  public TestPlanBuilder leftOuterTimeJoin(
+      String id, Ordering mergeOrder, PlanNode leftChild, PlanNode rightChild) {
+    this.root = new LeftOuterTimeJoinNode(new PlanNodeId(id), mergeOrder, leftChild, rightChild);
+    return this;
+  }
+
+  public TestPlanBuilder innerTimeJoin(
+      String rootId,
+      Ordering mergeOrder,
+      List<String> ids,
+      List<PartialPath> paths,
+      List<Expression> predicates) {
+    List<PlanNode> seriesSourceNodes = new ArrayList<>();
+    for (int i = 0; i < ids.size(); i++) {
+      SeriesScanNode seriesScanNode =
+          new SeriesScanNode(
+              new PlanNodeId(String.valueOf(ids.get(i))), (MeasurementPath) paths.get(i));
+      seriesScanNode.setPushDownPredicate(predicates.get(i));
+      seriesSourceNodes.add(seriesScanNode);
+    }
+
+    this.root =
+        new InnerTimeJoinNode(
+            new PlanNodeId(String.valueOf(rootId)), mergeOrder, seriesSourceNodes);
     return this;
   }
 }
