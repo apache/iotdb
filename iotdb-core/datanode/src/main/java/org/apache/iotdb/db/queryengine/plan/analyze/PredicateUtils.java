@@ -26,15 +26,12 @@ import org.apache.iotdb.db.queryengine.plan.expression.UnknownExpressionTypeExce
 import org.apache.iotdb.db.queryengine.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicAndExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
-import org.apache.iotdb.db.queryengine.plan.expression.leaf.NullOperand;
-import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
-import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.other.CaseWhenThenExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.UnaryExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.logical.SourceSymbolUniquenessChecker;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.logical.TimeFilterExistChecker;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ConvertPredicateToTimeFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ReversePredicateVisitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -194,37 +191,7 @@ public class PredicateUtils {
    * @return true if the given expression contains time filter
    */
   public static boolean checkIfTimeFilterExist(Expression predicate) {
-    if (predicate instanceof TernaryExpression) {
-      return checkIfTimeFilterExist(((TernaryExpression) predicate).getFirstExpression())
-          || checkIfTimeFilterExist(((TernaryExpression) predicate).getSecondExpression())
-          || checkIfTimeFilterExist(((TernaryExpression) predicate).getThirdExpression());
-    } else if (predicate instanceof BinaryExpression) {
-      return checkIfTimeFilterExist(((BinaryExpression) predicate).getLeftExpression())
-          || checkIfTimeFilterExist(((BinaryExpression) predicate).getRightExpression());
-    } else if (predicate instanceof UnaryExpression) {
-      return checkIfTimeFilterExist(((UnaryExpression) predicate).getExpression());
-    } else if (predicate instanceof FunctionExpression) {
-      boolean timeFilterExist = false;
-      for (Expression childExpression : predicate.getExpressions()) {
-        timeFilterExist = timeFilterExist || checkIfTimeFilterExist(childExpression);
-      }
-      return timeFilterExist;
-    } else if (predicate instanceof CaseWhenThenExpression) {
-      for (Expression childExpression : predicate.getExpressions()) {
-        if (checkIfTimeFilterExist(childExpression)) {
-          return true;
-        }
-      }
-      return false;
-    } else if (predicate instanceof TimeSeriesOperand
-        || predicate instanceof ConstantOperand
-        || predicate instanceof NullOperand) {
-      return false;
-    } else if (predicate instanceof TimestampOperand) {
-      return true;
-    } else {
-      throw new UnknownExpressionTypeException(predicate.getExpressionType());
-    }
+    return new TimeFilterExistChecker().process(predicate, null);
   }
 
   /**
@@ -357,6 +324,12 @@ public class PredicateUtils {
     return combineConjuncts(new ArrayList<>(conjuncts));
   }
 
+  public static List<Expression> extractConjuncts(Expression predicate) {
+    Set<Expression> conjuncts = new HashSet<>();
+    extractConjuncts(predicate, conjuncts);
+    return new ArrayList<>(conjuncts);
+  }
+
   private static void extractConjuncts(Expression predicate, Set<Expression> conjuncts) {
     if (predicate.getExpressionType().equals(ExpressionType.LOGIC_AND)) {
       extractConjuncts(((BinaryExpression) predicate).getLeftExpression(), conjuncts);
@@ -364,5 +337,10 @@ public class PredicateUtils {
     } else {
       conjuncts.add(predicate);
     }
+  }
+
+  public static boolean isPredicateOnlyContainSourceSymbol(
+      Expression predicate, String checkedSourceSymbol) {
+    return new SourceSymbolUniquenessChecker().process(predicate, checkedSourceSymbol);
   }
 }
