@@ -69,10 +69,19 @@ public class AggregationDescriptor {
       List<Expression> inputExpressions,
       Map<String, String> inputAttributes) {
     this.aggregationFuncName = aggregationFuncName;
-    this.aggregationType = TAggregationType.valueOf(aggregationFuncName.toUpperCase());
+    this.aggregationType = getAggregationTypeByFuncName(aggregationFuncName);
     this.step = step;
     this.inputExpressions = inputExpressions;
     this.inputAttributes = inputAttributes;
+  }
+
+  private TAggregationType getAggregationTypeByFuncName(String funcName) {
+    try {
+      return TAggregationType.valueOf(funcName.toUpperCase());
+    } catch (IllegalArgumentException e) {
+      // fallback to UDAF if no enum found
+      return TAggregationType.UDAF;
+    }
   }
 
   // Old method, please don't use it any more

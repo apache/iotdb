@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
+import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.db.queryengine.common.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
@@ -39,6 +40,7 @@ import org.apache.iotdb.udf.api.customizer.strategy.AccessStrategy;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -115,11 +117,18 @@ public class FunctionExpression extends Expression {
 
   private void initializeFunctionType() {
     final String lowerCaseFunctionName = this.functionName.toLowerCase();
-    if (BuiltinAggregationFunction.getNativeFunctionNames().contains(lowerCaseFunctionName)) {
-      functionType = FunctionType.AGGREGATION_FUNCTION;
-    } else if (BuiltinScalarFunction.getNativeFunctionNames().contains(lowerCaseFunctionName)) {
-      functionType = FunctionType.BUILT_IN_SCALAR_FUNCTION;
-    } else {
+    try {
+      if (BuiltinAggregationFunction.getNativeFunctionNames().contains(lowerCaseFunctionName)) {
+        functionType = FunctionType.BUILT_IN_AGGREGATION_FUNCTION;
+      } else if (BuiltinScalarFunction.getNativeFunctionNames().contains(lowerCaseFunctionName)) {
+        functionType = FunctionType.BUILT_IN_SCALAR_FUNCTION;
+      } else if (UDFManagementService.getInstance().isUDAF(functionName)) {
+        functionType = FunctionType.EXTERNAL_AGGREGATION_FUNCTION;
+      } else {
+        functionType = FunctionType.UDF;
+      }
+    } catch (Exception ignore) {
+      // fallback to FunctionType.UDF if `.isUDAF()` throws an exception
       functionType = FunctionType.UDF;
     }
   }
@@ -129,7 +138,7 @@ public class FunctionExpression extends Expression {
     if (functionType == null) {
       initializeFunctionType();
     }
-    return functionType == FunctionType.AGGREGATION_FUNCTION;
+    return functionType == FunctionType.BUILT_IN_AGGREGATION_FUNCTION;
   }
 
   public boolean isBuiltInScalarFunction() {
@@ -137,6 +146,14 @@ public class FunctionExpression extends Expression {
       initializeFunctionType();
     }
     return functionType == FunctionType.BUILT_IN_SCALAR_FUNCTION;
+  }
+
+  @Override
+  public boolean isExternalAggregationFunctionExpression() {
+    if (functionType == null) {
+      initializeFunctionType();
+    }
+    return functionType == FunctionType.EXTERNAL_AGGREGATION_FUNCTION;
   }
 
   @Override

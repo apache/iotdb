@@ -90,6 +90,10 @@ public abstract class Expression extends StatementNode {
     return false;
   }
 
+  public boolean isExternalAggregationFunctionExpression() {
+    return false;
+  }
+
   public boolean isCompareBinaryExpression() {
     return false;
   }

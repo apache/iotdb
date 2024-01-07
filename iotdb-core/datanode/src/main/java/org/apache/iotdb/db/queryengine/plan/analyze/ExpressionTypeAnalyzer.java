@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
+import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -40,12 +41,14 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.NegationExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionVisitor;
+import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDAFInformationInferrer;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFInformationInferrer;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -293,19 +296,32 @@ public class ExpressionTypeAnalyzer {
             functionExpression,
             TypeInferenceUtils.getBuiltInScalarFunctionDataType(
                 functionExpression, expressionTypes.get(NodeRef.of(inputExpressions.get(0)))));
-      } else {
-        return setExpressionType(
-            functionExpression,
-            new UDTFInformationInferrer(functionExpression.getFunctionName())
-                .inferOutputType(
-                    inputExpressions.stream()
-                        .map(Expression::getExpressionString)
-                        .collect(Collectors.toList()),
-                    inputExpressions.stream()
-                        .map(f -> expressionTypes.get(NodeRef.of(f)))
-                        .collect(Collectors.toList()),
-                    functionExpression.getFunctionAttributes()));
       }
+      if (functionExpression.isExternalAggregationFunctionExpression()) {
+        return setExpressionType(
+                functionExpression,
+                new UDAFInformationInferrer(functionExpression.getFunctionName())
+                        .inferOutputType(
+                                inputExpressions.stream()
+                                        .map(Expression::getExpressionString)
+                                        .collect(Collectors.toList()),
+                                inputExpressions.stream()
+                                        .map(f -> expressionTypes.get(NodeRef.of(f)))
+                                        .collect(Collectors.toList()),
+                                functionExpression.getFunctionAttributes()));
+      }
+
+      return setExpressionType(
+          functionExpression,
+          new UDTFInformationInferrer(functionExpression.getFunctionName())
+              .inferOutputType(
+                  inputExpressions.stream()
+                      .map(Expression::getExpressionString)
+                      .collect(Collectors.toList()),
+                  inputExpressions.stream()
+                      .map(f -> expressionTypes.get(NodeRef.of(f)))
+                      .collect(Collectors.toList()),
+                  functionExpression.getFunctionAttributes()));
     }
 
     @Override

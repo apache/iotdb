@@ -174,6 +174,7 @@ public class SchemaUtils {
       case VAR_POP:
       case VAR_SAMP:
       case MAX_BY:
+      case UDAF:
         return true;
       default:
         throw new IllegalArgumentException(
