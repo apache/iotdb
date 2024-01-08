@@ -45,21 +45,24 @@ public class PipeInclusionNormalizer {
       LEGAL_PATHS.add(new PartialPath("schema.database.alter"));
       LEGAL_PATHS.add(new PartialPath("schema.database.drop"));
 
-      LEGAL_PATHS.add(new PartialPath("schema.view.create"));
-      LEGAL_PATHS.add(new PartialPath("schema.view.rename"));
-      LEGAL_PATHS.add(new PartialPath("schema.view.drop"));
+      LEGAL_PATHS.add(new PartialPath("schema.timeseries.view.create"));
+      LEGAL_PATHS.add(new PartialPath("schema.timeseries.view.alter"));
+      LEGAL_PATHS.add(new PartialPath("schema.timeseries.view.drop"));
 
-      LEGAL_PATHS.add(new PartialPath("schema.timeseries.create"));
-      LEGAL_PATHS.add(new PartialPath("schema.timeseries.alter"));
-      LEGAL_PATHS.add(new PartialPath("schema.timeseries.delete"));
+      LEGAL_PATHS.add(new PartialPath("schema.timeseries.ordinary.create"));
+      LEGAL_PATHS.add(new PartialPath("schema.timeseries.ordinary.alter"));
+      LEGAL_PATHS.add(new PartialPath("schema.timeseries.ordinary.delete"));
 
-      LEGAL_PATHS.add(new PartialPath("schema.template.create"));
-      LEGAL_PATHS.add(new PartialPath("schema.template.set"));
-      LEGAL_PATHS.add(new PartialPath("schema.template.unset"));
-      LEGAL_PATHS.add(new PartialPath("schema.template.alter"));
-      LEGAL_PATHS.add(new PartialPath("schema.template.drop"));
-      LEGAL_PATHS.add(new PartialPath("schema.template.activate"));
-      LEGAL_PATHS.add(new PartialPath("schema.template.deactivate"));
+      LEGAL_PATHS.add(new PartialPath("schema.timeseries.template.create"));
+      LEGAL_PATHS.add(new PartialPath("schema.timeseries.template.set"));
+      LEGAL_PATHS.add(new PartialPath("schema.timeseries.template.unset"));
+      LEGAL_PATHS.add(new PartialPath("schema.timeseries.template.alter"));
+      LEGAL_PATHS.add(new PartialPath("schema.timeseries.template.drop"));
+      LEGAL_PATHS.add(new PartialPath("schema.timeseries.template.activate"));
+      LEGAL_PATHS.add(new PartialPath("schema.timeseries.template.deactivate"));
+
+      LEGAL_PATHS.add(new PartialPath("schema.ttl.set"));
+      LEGAL_PATHS.add(new PartialPath("schema.ttl.unset"));
 
       LEGAL_PATHS.add(new PartialPath("auth.role.create"));
       LEGAL_PATHS.add(new PartialPath("auth.role.drop"));
@@ -71,11 +74,7 @@ public class PipeInclusionNormalizer {
       LEGAL_PATHS.add(new PartialPath("auth.user.drop"));
       LEGAL_PATHS.add(new PartialPath("auth.user.grant"));
       LEGAL_PATHS.add(new PartialPath("auth.user.revoke"));
-      LEGAL_PATHS.add(new PartialPath("auth.grantRoleToUser"));
-      LEGAL_PATHS.add(new PartialPath("auth.revokeRoleFromUser"));
 
-      LEGAL_PATHS.add(new PartialPath("ttl.set"));
-      LEGAL_PATHS.add(new PartialPath("ttl.unset"));
     } catch (IllegalPathException ignore) {
       // There won't be any exceptions here
     }

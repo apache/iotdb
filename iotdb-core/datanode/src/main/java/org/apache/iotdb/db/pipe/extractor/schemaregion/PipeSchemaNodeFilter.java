@@ -47,17 +47,17 @@ class PipeSchemaNodeFilter {
   static {
     try {
       NODE_MAP.put(
-          new PartialPath("schema.view.create"),
+          new PartialPath("schema.timeseries.view.create"),
           Collections.singletonList(PlanNodeType.CREATE_LOGICAL_VIEW));
       NODE_MAP.put(
-          new PartialPath("schema.view.rename"),
+          new PartialPath("schema.timeseries.view.alter"),
           Collections.singletonList(PlanNodeType.ALTER_LOGICAL_VIEW));
       NODE_MAP.put(
-          new PartialPath("schema.view.drop"),
+          new PartialPath("schema.timeseries.view.drop"),
           Collections.singletonList(PlanNodeType.DELETE_LOGICAL_VIEW));
 
       NODE_MAP.put(
-          new PartialPath("schema.timeseries.create"),
+          new PartialPath("schema.timeseries.ordinary.create"),
           Collections.unmodifiableList(
               Arrays.asList(
                   PlanNodeType.CREATE_TIME_SERIES,
@@ -66,21 +66,21 @@ class PipeSchemaNodeFilter {
                   PlanNodeType.INTERNAL_CREATE_MULTI_TIMESERIES,
                   PlanNodeType.INTERNAL_CREATE_TIMESERIES)));
       NODE_MAP.put(
-          new PartialPath("schema.timeseries.alter"),
+          new PartialPath("schema.timeseries.ordinary.alter"),
           Collections.singletonList(PlanNodeType.ALTER_TIME_SERIES));
       NODE_MAP.put(
-          new PartialPath("schema.timeseries.delete"),
+          new PartialPath("schema.timeseries.ordinary.delete"),
           Collections.singletonList(PlanNodeType.DELETE_TIMESERIES));
 
       NODE_MAP.put(
-          new PartialPath("schema.template.activate"),
+          new PartialPath("schema.timeseries.template.activate"),
           Collections.unmodifiableList(
               Arrays.asList(
                   PlanNodeType.ACTIVATE_TEMPLATE,
                   PlanNodeType.BATCH_ACTIVATE_TEMPLATE,
                   PlanNodeType.INTERNAL_BATCH_ACTIVATE_TEMPLATE)));
       NODE_MAP.put(
-          new PartialPath("schema.template.deactivate"),
+          new PartialPath("schema.timeseries.template.deactivate"),
           Collections.singletonList(PlanNodeType.DEACTIVATE_TEMPLATE_NODE));
     } catch (IllegalPathException ignore) {
       // There won't be any exceptions here
