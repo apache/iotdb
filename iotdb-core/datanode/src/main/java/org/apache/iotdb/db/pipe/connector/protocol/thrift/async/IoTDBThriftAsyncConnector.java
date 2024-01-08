@@ -89,7 +89,6 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
                   e instanceof EnrichedEvent ? ((EnrichedEvent) e).getCommitId() : 0));
 
   private IoTDBThriftAsyncPipeTransferBatchReqBuilder tabletBatchBuilder;
-  private long firstEncounterTime;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -334,6 +333,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
   private synchronized void transferQueuedEventsIfNecessary() throws Exception {
     while (!retryEventQueue.isEmpty()) {
       final Event event = retryEventQueue.peek();
+
       if (event instanceof PipeInsertNodeTabletInsertionEvent) {
         retryConnector.transfer((PipeInsertNodeTabletInsertionEvent) event);
       } else if (event instanceof PipeRawTabletInsertionEvent) {
@@ -351,7 +351,6 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       }
 
       retryEventQueue.poll();
-      firstEncounterTime = 0;
     }
   }
 
