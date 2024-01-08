@@ -765,9 +765,7 @@ public class LogicalPlanBuilder {
             ? queryStatement.getRowOffset() + queryStatement.getRowLimit()
             : queryStatement.getRowLimit();
 
-    if (!queryStatement.isAggregationQuery()
-        && queryStatement.hasOrderBy()
-        && !queryStatement.isOrderByBasedOnDevice()) {
+    if (queryStatement.hasOrderBy() && !queryStatement.isOrderByBasedOnDevice()) {
       // only one device, use DeviceViewNode
       if (deviceNameToSourceNodesMap.size() == 1) {
         this.root =

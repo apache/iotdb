@@ -60,6 +60,7 @@ public class AlignByDeviceOrderByLimitOffsetTest {
   DistributionPlanner planner;
   DistributedQueryPlan plan;
   PlanNode firstFiRoot;
+  PlanNode firstFiTopNode;
   PlanNode mergeSortNode;
 
   /*
@@ -281,12 +282,50 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     assertTrue(thirdFiRoot.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
   }
 
+  /*
+   * IdentitySinkNode-44
+   *   └──TopK-10
+   *       ├──TopK-34
+   *       │   ├──SingleDeviceView-17
+   *       │   │   └──FullOuterTimeJoinNode-16
+   *       │   │       ├──SeriesScanNode-14:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │   │       └──SeriesScanNode-15:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │   └──SingleDeviceView-29
+   *       │       └──FullOuterTimeJoinNode-28
+   *       │           ├──SeriesScanNode-26:[SeriesPath: root.sg.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │           └──SeriesScanNode-27:[SeriesPath: root.sg.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       ├──ExchangeNode-38: [SourceAddress:192.0.3.1/test.2.0/41]
+   *       ├──ExchangeNode-39: [SourceAddress:192.0.2.1/test.3.0/42]
+   *       └──ExchangeNode-40: [SourceAddress:192.0.4.1/test.4.0/43]
+   *
+   *  IdentitySinkNode-41
+   *   └──TopK-36
+   *       └──SingleDeviceView-25
+   *           └──FullOuterTimeJoinNode-24
+   *               ├──SeriesScanNode-22:[SeriesPath: root.sg.d22.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *               └──SeriesScanNode-23:[SeriesPath: root.sg.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *
+   *  IdentitySinkNode-42
+   *   └──TopK-35
+   *       └──SingleDeviceView-21
+   *           └──FullOuterTimeJoinNode-20
+   *               ├──SeriesScanNode-18:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *               └──SeriesScanNode-19:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *
+   *  IdentitySinkNode-43
+   *   └──TopK-37
+   *       └──SingleDeviceView-33
+   *           └──FullOuterTimeJoinNode-32
+   *               ├──SeriesScanNode-30:[SeriesPath: root.sg.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *               └──SeriesScanNode-31:[SeriesPath: root.sg.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   */
   @Test
-  public void orderByTimeNoValueFilterTest() {
-    // 1. order by time, no value filter
+  public void orderByTimeTest1() {
+    // only order by time, no filter
     sql =
         String.format(
-            "select * from root.sg.** ORDER BY TIME DESC LIMIT %s align by device", LIMIT_VALUE);
+            "select * from root.sg.d1,root.sg.d22,root.sg.d333 ORDER BY TIME DESC LIMIT %s align by device",
+            LIMIT_VALUE);
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -313,25 +352,67 @@ public class AlignByDeviceOrderByLimitOffsetTest {
         plan.getInstances().get(3).getFragment().getPlanNodeTree(), LIMIT_VALUE);
   }
 
+  /*
+   * IdentitySinkNode-60
+   *   └──TopK-13
+   *       ├──TopK-50
+   *       │   ├──SingleDeviceView-25
+   *       │   │   └──LimitNode-24
+   *       │   │       └──FilterNode-23
+   *       │   │           └──FullOuterTimeJoinNode-22
+   *       │   │               ├──SeriesScanNode-20:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │   │               └──SeriesScanNode-21:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │   └──SingleDeviceView-43
+   *       │       └──LimitNode-42
+   *       │           └──FilterNode-41
+   *       │               └──FullOuterTimeJoinNode-40
+   *       │                   ├──SeriesScanNode-38:[SeriesPath: root.sg.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │                   └──SeriesScanNode-39:[SeriesPath: root.sg.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       ├──ExchangeNode-54: [SourceAddress:192.0.3.1/test.2.0/57]
+   *       ├──ExchangeNode-55: [SourceAddress:192.0.2.1/test.3.0/58]
+   *       └──ExchangeNode-56: [SourceAddress:192.0.4.1/test.4.0/59]
+   *
+   *  IdentitySinkNode-57
+   *   └──TopK-52
+   *       └──SingleDeviceView-37
+   *           └──LimitNode-36
+   *               └──FilterNode-35
+   *                   └──FullOuterTimeJoinNode-34
+   *                       ├──SeriesScanNode-32:[SeriesPath: root.sg.d22.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *                       └──SeriesScanNode-33:[SeriesPath: root.sg.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *
+   *  IdentitySinkNode-58
+   *   └──TopK-51
+   *       └──SingleDeviceView-31
+   *           └──LimitNode-30
+   *               └──FilterNode-29
+   *                   └──FullOuterTimeJoinNode-28
+   *                       ├──SeriesScanNode-26:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *                       └──SeriesScanNode-27:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *
+   *  IdentitySinkNode-59
+   *   └──TopK-53
+   *       └──SingleDeviceView-49
+   *           └──LimitNode-48
+   *               └──FilterNode-47
+   *                   └──FullOuterTimeJoinNode-46
+   *                       ├──SeriesScanNode-44:[SeriesPath: root.sg.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *                       └──SeriesScanNode-45:[SeriesPath: root.sg.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   */
   @Test
-  public void orderByTimeWithValueFilterTest() {
-    QueryId queryId = new QueryId("test");
-    MPPQueryContext context =
-        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
-
-    // 2. order by time, has value filter
+  public void orderByTimeTest2() {
+    // only order by time, has value filter
     // put LIMIT-NODE below of SingleDeviceViewNode
-    String sql =
+    sql =
         String.format(
-            "select * from root.sg.** where s1>1 ORDER BY TIME DESC LIMIT %s align by device",
+            "select s1 from root.sg.d1,root.sg.d22,root.sg.d333 where s2>1 ORDER BY TIME DESC LIMIT %s align by device",
             LIMIT_VALUE);
-    Analysis analysis = Util.analyze(sql, context);
-    PlanNode logicalPlanNode = Util.genLogicalPlan(analysis, context);
-    DistributionPlanner planner =
-        new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
-    DistributedQueryPlan plan = planner.planFragments();
+    analysis = Util.analyze(sql, context);
+    logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    plan = planner.planFragments();
     assertEquals(4, plan.getInstances().size());
-    PlanNode firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
+    firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
     PlanNode firstFiTopNode = firstFiRoot.getChildren().get(0);
     assertTrue(firstFiTopNode instanceof TopKNode);
     for (PlanNode node : firstFiTopNode.getChildren().get(0).getChildren()) {
@@ -348,28 +429,69 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     assertScanNodeLimitValue(plan.getInstances().get(3).getFragment().getPlanNodeTree(), 0);
   }
 
+  /*
+   * IdentitySinkNode-98
+   *   └──TopK-54
+   *       ├──TopK-88
+   *       │   └──DeviceView-69
+   *       │       ├──LimitNode-63
+   *       │       │   └──FilterNode-62
+   *       │       │       └──FullOuterTimeJoinNode-61
+   *       │       │           ├──SeriesScanNode-59:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │       │           └──SeriesScanNode-60:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │       └──LimitNode-68
+   *       │           └──FilterNode-67
+   *       │               └──FullOuterTimeJoinNode-66
+   *       │                   ├──SeriesScanNode-64:[SeriesPath: root.sg.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │                   └──SeriesScanNode-65:[SeriesPath: root.sg.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       ├──ExchangeNode-92: [SourceAddress:192.0.3.1/test.6.0/95]
+   *       ├──ExchangeNode-93: [SourceAddress:192.0.2.1/test.7.0/96]
+   *       └──ExchangeNode-94: [SourceAddress:192.0.4.1/test.8.0/97]
+   *
+   *  IdentitySinkNode-95
+   *   └──TopK-89
+   *       └──DeviceView-75
+   *           └──LimitNode-74
+   *               └──FilterNode-73
+   *                   └──FullOuterTimeJoinNode-72
+   *                       ├──SeriesScanNode-70:[SeriesPath: root.sg.d22.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *                       └──SeriesScanNode-71:[SeriesPath: root.sg.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *
+   *  IdentitySinkNode-96
+   *   └──TopK-90
+   *       └──DeviceView-81
+   *           └──LimitNode-80
+   *               └──FilterNode-79
+   *                   └──FullOuterTimeJoinNode-78
+   *                       ├──SeriesScanNode-76:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *                       └──SeriesScanNode-77:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *
+   *  IdentitySinkNode-97
+   *   └──TopK-91
+   *       └──DeviceView-87
+   *           └──LimitNode-86
+   *               └──FilterNode-85
+   *                   └──FullOuterTimeJoinNode-84
+   *                       ├──SeriesScanNode-82:[SeriesPath: root.sg.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *                       └──SeriesScanNode-83:[SeriesPath: root.sg.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   */
   @Test
-  public void orderByTimeAndExpressionNoValueFilterTest() {
-    QueryId queryId = new QueryId("test");
-    MPPQueryContext context =
-        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
-
-    // 3. order by time, expression
+  public void orderByTimeTest3() {
+    // order by time and expression, no filter
     // need read all data, use DeviceViewNode instead of SingleDeviceViewNode
-    // no LIMIT-NODE below DeviceViewNode
+    // no LimitNode below DeviceViewNode
     // can push down LIMIT value to ScanNode
-    String sql =
+    sql =
         String.format(
-            "select * from root.sg.** ORDER BY TIME DESC, s1 DESC LIMIT %s align by device",
+            "select s1 from root.sg.d1,root.sg.d22,root.sg.d333 ORDER BY TIME DESC, s2 DESC LIMIT %s align by device",
             LIMIT_VALUE);
-    Analysis analysis = Util.analyze(sql, context);
-    PlanNode logicalPlanNode = Util.genLogicalPlan(analysis, context);
-    DistributionPlanner planner =
-        new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
-    DistributedQueryPlan plan = planner.planFragments();
+    analysis = Util.analyze(sql, context);
+    logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    plan = planner.planFragments();
     assertEquals(4, plan.getInstances().size());
-    PlanNode firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
-    PlanNode firstFiTopNode = firstFiRoot.getChildren().get(0);
+    firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
+    firstFiTopNode = firstFiRoot.getChildren().get(0);
     assertTrue(firstFiTopNode instanceof TopKNode);
     for (PlanNode node : firstFiTopNode.getChildren().get(0).getChildren()) {
       assertTrue(node instanceof DeviceViewNode);
@@ -385,29 +507,22 @@ public class AlignByDeviceOrderByLimitOffsetTest {
         plan.getInstances().get(2).getFragment().getPlanNodeTree(), LIMIT_VALUE);
     assertScanNodeLimitValue(
         plan.getInstances().get(3).getFragment().getPlanNodeTree(), LIMIT_VALUE);
-  }
 
-  @Test
-  public void orderByTimeAndExpressionWithValueFilterTest() {
-    QueryId queryId = new QueryId("test");
-    MPPQueryContext context =
-        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
-
-    // 4. order by time, expression, has value filter
+    // order by time and expression, has value filter
     // need read all data, use DeviceViewNode instead of SingleDeviceViewNode
-    // no LIMIT-NODE below DeviceViewNode
-    String sql =
+    // has LimitNode below DeviceViewNode
+    // can not push down LIMIT value to ScanNode
+    sql =
         String.format(
-            "select * from root.sg.** where s1>1 ORDER BY TIME DESC, s1 DESC LIMIT %s align by device",
+            "select s1 from root.sg.d1,root.sg.d22,root.sg.d333 where s2>1 ORDER BY TIME DESC, s2 DESC LIMIT %s align by device",
             LIMIT_VALUE);
-    Analysis analysis = Util.analyze(sql, context);
-    PlanNode logicalPlanNode = Util.genLogicalPlan(analysis, context);
-    DistributionPlanner planner =
-        new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
-    DistributedQueryPlan plan4 = planner.planFragments();
-    assertEquals(4, plan4.getInstances().size());
-    PlanNode firstFiRoot = plan4.getInstances().get(0).getFragment().getPlanNodeTree();
-    PlanNode firstFiTopNode = firstFiRoot.getChildren().get(0);
+    analysis = Util.analyze(sql, context);
+    logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    plan = planner.planFragments();
+    assertEquals(4, plan.getInstances().size());
+    firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
+    firstFiTopNode = firstFiRoot.getChildren().get(0);
     assertTrue(firstFiTopNode instanceof TopKNode);
     for (PlanNode node : firstFiTopNode.getChildren().get(0).getChildren()) {
       assertTrue(node instanceof DeviceViewNode);
@@ -417,30 +532,68 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     assertTrue(firstFiTopNode.getChildren().get(1) instanceof ExchangeNode);
     assertTrue(firstFiTopNode.getChildren().get(2) instanceof ExchangeNode);
     assertTrue(firstFiTopNode.getChildren().get(3) instanceof ExchangeNode);
-    assertScanNodeLimitValue(plan4.getInstances().get(0).getFragment().getPlanNodeTree(), 0);
-    assertScanNodeLimitValue(plan4.getInstances().get(1).getFragment().getPlanNodeTree(), 0);
-    assertScanNodeLimitValue(plan4.getInstances().get(2).getFragment().getPlanNodeTree(), 0);
-    assertScanNodeLimitValue(plan4.getInstances().get(3).getFragment().getPlanNodeTree(), 0);
+    assertScanNodeLimitValue(plan.getInstances().get(0).getFragment().getPlanNodeTree(), 0);
+    assertScanNodeLimitValue(plan.getInstances().get(1).getFragment().getPlanNodeTree(), 0);
+    assertScanNodeLimitValue(plan.getInstances().get(2).getFragment().getPlanNodeTree(), 0);
+    assertScanNodeLimitValue(plan.getInstances().get(3).getFragment().getPlanNodeTree(), 0);
+  }
+
+  /*
+   * IdentitySinkNode-21
+   *   └──MergeSort-8
+   *       ├──SingleDeviceView-5
+   *       │   └──AggregationNode-9
+   *       │       ├──SeriesAggregationScanNode-10:[SeriesPath: root.sg.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │       └──ExchangeNode-15: [SourceAddress:192.0.2.1/test.2.0/18]
+   *       ├──ExchangeNode-17: [SourceAddress:192.0.3.1/test.3.0/19]
+   *       └──SingleDeviceView-7
+   *           └──AggregationNode-12
+   *               ├──SeriesAggregationScanNode-13:[SeriesPath: root.sg.d333.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *               └──ExchangeNode-16: [SourceAddress:192.0.4.1/test.4.0/20]
+   *
+   * ShuffleSinkNode-18
+   *   └──SeriesAggregationScanNode-11:[SeriesPath: root.sg.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *
+   * ShuffleSinkNode-19
+   *   └──SingleDeviceView-6
+   *       └──SeriesAggregationScanNode-2:[SeriesPath: root.sg.d22.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *
+   * ShuffleSinkNode-20
+   *   └──SeriesAggregationScanNode-14:[SeriesPath: root.sg.d333.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   */
+  @Test
+  public void orderByTimeTest4() {
+    // aggregation, order by time, no LIMIT
+    // SingleDeviceViewNode + MergeSortNode
+    sql =
+        "select count(s1) from root.sg.d1,root.sg.d22,root.sg.d333 ORDER BY TIME DESC align by device";
+    analysis = Util.analyze(sql, context);
+    logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    plan = planner.planFragments();
+    assertEquals(4, plan.getInstances().size());
+    firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
+    firstFiTopNode = firstFiRoot.getChildren().get(0);
+    assertTrue(firstFiTopNode instanceof MergeSortNode);
+    assertEquals(3, firstFiTopNode.getChildren().size());
+    assertTrue(firstFiTopNode.getChildren().get(0) instanceof SingleDeviceViewNode);
+    assertTrue(firstFiTopNode.getChildren().get(1) instanceof ExchangeNode);
+    assertTrue(firstFiTopNode.getChildren().get(2) instanceof SingleDeviceViewNode);
   }
 
   @Test
-  public void orderByExpressionTest() {
-    QueryId queryId = new QueryId("test");
-    MPPQueryContext context =
-        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
-
-    // 5. only order by expression
-    String sql =
+  public void orderByExpressionTest1() {
+    // only order by expression
+    sql =
         String.format(
             "select * from root.sg.** ORDER BY s1 DESC LIMIT %s align by device", LIMIT_VALUE);
-    Analysis analysis = Util.analyze(sql, context);
-    PlanNode logicalPlanNode = Util.genLogicalPlan(analysis, context);
-    DistributionPlanner planner =
-        new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
-    DistributedQueryPlan plan5 = planner.planFragments();
-    assertEquals(4, plan5.getInstances().size());
-    PlanNode firstFiRoot = plan5.getInstances().get(0).getFragment().getPlanNodeTree();
-    PlanNode firstFiTopNode = firstFiRoot.getChildren().get(0);
+    analysis = Util.analyze(sql, context);
+    logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    plan = planner.planFragments();
+    assertEquals(4, plan.getInstances().size());
+    firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
+    firstFiTopNode = firstFiRoot.getChildren().get(0);
     assertTrue(firstFiTopNode instanceof TopKNode);
     for (PlanNode node : firstFiTopNode.getChildren().get(0).getChildren()) {
       assertTrue(node instanceof DeviceViewNode);
@@ -449,31 +602,26 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     assertTrue(firstFiTopNode.getChildren().get(1) instanceof ExchangeNode);
     assertTrue(firstFiTopNode.getChildren().get(2) instanceof ExchangeNode);
     assertTrue(firstFiTopNode.getChildren().get(3) instanceof ExchangeNode);
-    assertScanNodeLimitValue(plan5.getInstances().get(0).getFragment().getPlanNodeTree(), 0);
-    assertScanNodeLimitValue(plan5.getInstances().get(1).getFragment().getPlanNodeTree(), 0);
-    assertScanNodeLimitValue(plan5.getInstances().get(2).getFragment().getPlanNodeTree(), 0);
-    assertScanNodeLimitValue(plan5.getInstances().get(3).getFragment().getPlanNodeTree(), 0);
+    assertScanNodeLimitValue(plan.getInstances().get(0).getFragment().getPlanNodeTree(), 0);
+    assertScanNodeLimitValue(plan.getInstances().get(1).getFragment().getPlanNodeTree(), 0);
+    assertScanNodeLimitValue(plan.getInstances().get(2).getFragment().getPlanNodeTree(), 0);
+    assertScanNodeLimitValue(plan.getInstances().get(3).getFragment().getPlanNodeTree(), 0);
   }
 
   @Test
   public void orderByTimeWithOffsetTest() {
-    QueryId queryId = new QueryId("test");
-    MPPQueryContext context =
-        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
-
-    // 6. order by time, offset + limit
+    // order by time, offset + limit
     // on top of TOP-K NODE, LIMIT-NODE is necessary
-    String sql =
+    sql =
         String.format(
             "select * from root.sg.** ORDER BY time DESC OFFSET %s LIMIT %s align by device",
             LIMIT_VALUE, LIMIT_VALUE);
-    Analysis analysis = Util.analyze(sql, context);
-    PlanNode logicalPlanNode = Util.genLogicalPlan(analysis, context);
-    DistributionPlanner planner =
-        new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
-    DistributedQueryPlan plan6 = planner.planFragments();
-    assertEquals(4, plan6.getInstances().size());
-    PlanNode firstFiRoot = plan6.getInstances().get(0).getFragment().getPlanNodeTree();
+    analysis = Util.analyze(sql, context);
+    logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    plan = planner.planFragments();
+    assertEquals(4, plan.getInstances().size());
+    firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
     PlanNode firstFIFirstNode = firstFiRoot.getChildren().get(0);
     assertTrue(firstFIFirstNode instanceof LimitNode);
     PlanNode firstFiTopNode = ((LimitNode) firstFIFirstNode).getChild().getChildren().get(0);
@@ -484,13 +632,13 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     assertTrue(firstFiTopNode.getChildren().get(2) instanceof ExchangeNode);
     assertTrue(firstFiTopNode.getChildren().get(3) instanceof ExchangeNode);
     assertScanNodeLimitValue(
-        plan6.getInstances().get(0).getFragment().getPlanNodeTree(), LIMIT_VALUE * 2);
+        plan.getInstances().get(0).getFragment().getPlanNodeTree(), LIMIT_VALUE * 2);
     assertScanNodeLimitValue(
-        plan6.getInstances().get(1).getFragment().getPlanNodeTree(), LIMIT_VALUE * 2);
+        plan.getInstances().get(1).getFragment().getPlanNodeTree(), LIMIT_VALUE * 2);
     assertScanNodeLimitValue(
-        plan6.getInstances().get(2).getFragment().getPlanNodeTree(), LIMIT_VALUE * 2);
+        plan.getInstances().get(2).getFragment().getPlanNodeTree(), LIMIT_VALUE * 2);
     assertScanNodeLimitValue(
-        plan6.getInstances().get(3).getFragment().getPlanNodeTree(), LIMIT_VALUE * 2);
+        plan.getInstances().get(3).getFragment().getPlanNodeTree(), LIMIT_VALUE * 2);
   }
 
   private void assertScanNodeLimitValue(PlanNode root, long limitValue) {
