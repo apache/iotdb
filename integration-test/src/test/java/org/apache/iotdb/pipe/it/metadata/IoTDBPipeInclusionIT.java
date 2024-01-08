@@ -100,4 +100,45 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualMetaIT {
           receiverEnv, "select * from root.**", "Time,", Collections.emptySet());
     }
   }
+
+  @Test
+  public void testAuthExclusion() throws Exception {
+    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    String receiverIp = receiverDataNode.getIp();
+    int receiverPort = receiverDataNode.getPort();
+
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      Map<String, String> extractorAttributes = new HashMap<>();
+      Map<String, String> processorAttributes = new HashMap<>();
+      Map<String, String> connectorAttributes = new HashMap<>();
+
+      extractorAttributes.put("extractor.inclusion", "all");
+      extractorAttributes.put("extractor.inclusion.exclusion", "auth");
+
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.ip", receiverIp);
+      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+
+      TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("testPipe", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
+
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv, "create user `ln_write_user` 'write_pwd'")) {
+        return;
+      }
+
+      TestUtils.assertDataAlwaysOnEnv(
+          receiverEnv, "list user", "user,", Collections.singleton("root,"));
+    }
+  }
 }
