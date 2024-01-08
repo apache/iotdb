@@ -70,8 +70,7 @@ public class IoTDBConfigRegionConnector extends IoTDBMetaConnector {
       doTransfer((PipeWriteConfigPlanEvent) event);
     } else if (event instanceof PipeConfigRegionSnapshotEvent) {
       doTransfer((PipeConfigRegionSnapshotEvent) event);
-    }
-    if (!(event instanceof PipeHeartbeatEvent)) {
+    } else if (!(event instanceof PipeHeartbeatEvent)) {
       LOGGER.warn(
           "IoTDBConfigRegionConnector does not support transferring generic event: {}.", event);
     }
