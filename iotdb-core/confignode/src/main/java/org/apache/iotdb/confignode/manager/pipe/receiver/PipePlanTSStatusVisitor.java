@@ -24,10 +24,16 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.PhysicalPlanVisitor;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+/**
+ * This visitor translated some {@link TSStatus} to pipe related status to help sender classify them
+ * and apply different error handling tactics. Please DO NOT modify the {@link TSStatus} returned by
+ * the processes that generate the following {@link TSStatus}es in the class.
+ */
 public class PipePlanTSStatusVisitor extends PhysicalPlanVisitor<TSStatus, TSStatus> {
 
   @Override
@@ -53,6 +59,15 @@ public class PipePlanTSStatusVisitor extends PhysicalPlanVisitor<TSStatus, TSSta
           .setMessage(context.getMessage());
     }
     return super.visitCreateDatabase(plan, context);
+  }
+
+  @Override
+  public TSStatus visitAlterDatabase(DatabaseSchemaPlan plan, TSStatus context) {
+    if (context.getCode() == TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return super.visitAlterDatabase(plan, context);
   }
 
   @Override
@@ -86,6 +101,15 @@ public class PipePlanTSStatusVisitor extends PhysicalPlanVisitor<TSStatus, TSSta
   }
 
   @Override
+  public TSStatus visitUpdateUser(AuthorPlan plan, TSStatus context) {
+    if (context.getCode() == TSStatusCode.USER_NOT_EXIST.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return super.visitUpdateUser(plan, context);
+  }
+
+  @Override
   public TSStatus visitDropUser(AuthorPlan plan, TSStatus context) {
     if (context.getCode() == TSStatusCode.USER_NOT_EXIST.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
@@ -95,9 +119,21 @@ public class PipePlanTSStatusVisitor extends PhysicalPlanVisitor<TSStatus, TSSta
   }
 
   @Override
+  public TSStatus visitGrantUser(AuthorPlan plan, TSStatus context) {
+    if (context.getCode() == TSStatusCode.USER_NOT_EXIST.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return super.visitGrantUser(plan, context);
+  }
+
+  @Override
   public TSStatus visitRevokeUser(AuthorPlan plan, TSStatus context) {
     if (context.getCode() == TSStatusCode.NOT_HAS_PRIVILEGE.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    } else if (context.getCode() == TSStatusCode.USER_NOT_EXIST.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }
     return super.visitRevokeUser(plan, context);
@@ -122,9 +158,21 @@ public class PipePlanTSStatusVisitor extends PhysicalPlanVisitor<TSStatus, TSSta
   }
 
   @Override
+  public TSStatus visitGrantRole(AuthorPlan plan, TSStatus context) {
+    if (context.getCode() == TSStatusCode.ROLE_NOT_EXIST.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return super.visitGrantRole(plan, context);
+  }
+
+  @Override
   public TSStatus visitRevokeRole(AuthorPlan plan, TSStatus context) {
     if (context.getCode() == TSStatusCode.NOT_HAS_PRIVILEGE.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    } else if (context.getCode() == TSStatusCode.ROLE_NOT_EXIST.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }
     return super.visitRevokeRole(plan, context);
@@ -144,7 +192,19 @@ public class PipePlanTSStatusVisitor extends PhysicalPlanVisitor<TSStatus, TSSta
     if (context.getCode() == TSStatusCode.USER_NOT_HAS_ROLE.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
+    } else if (context.getCode() == TSStatusCode.ROLE_NOT_EXIST.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
     }
     return super.visitRevokeRoleFromUser(plan, context);
+  }
+
+  @Override
+  public TSStatus visitTTL(SetTTLPlan plan, TSStatus context) {
+    if (context.getCode() == TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return super.visitTTL(plan, context);
   }
 }
