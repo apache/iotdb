@@ -63,7 +63,6 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.UnknownHostException;
 import java.util.Arrays;
-import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -187,11 +186,6 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
 
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
-    // ignore event with zero rows
-    if (Objects.isNull(tabletInsertionEvent)) {
-      return;
-    }
-
     // PipeProcessor can change the type of TabletInsertionEvent
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
@@ -201,6 +195,13 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
               + "Ignore {}.",
           tabletInsertionEvent);
       return;
+    }
+
+    // ignore raw tablet event with zero rows
+    if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
+      if (((PipeRawTabletInsertionEvent) tabletInsertionEvent).isEmpty()) {
+        return;
+      }
     }
 
     if (((EnrichedEvent) tabletInsertionEvent).shouldParsePatternOrTime()) {

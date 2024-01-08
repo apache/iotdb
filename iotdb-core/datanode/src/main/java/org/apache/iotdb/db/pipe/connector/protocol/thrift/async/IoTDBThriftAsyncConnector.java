@@ -53,7 +53,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Objects;
 import java.util.concurrent.PriorityBlockingQueue;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY;
@@ -142,11 +141,6 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
     transferQueuedEventsIfNecessary();
 
-    // ignore event with zero rows
-    if (Objects.isNull(tabletInsertionEvent)) {
-      return;
-    }
-
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
       LOGGER.warn(
@@ -154,6 +148,13 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
               + "Current event: {}.",
           tabletInsertionEvent);
       return;
+    }
+
+    // ignore raw tablet event with zero rows
+    if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
+      if (((PipeRawTabletInsertionEvent) tabletInsertionEvent).isEmpty()) {
+        return;
+      }
     }
 
     if (((EnrichedEvent) tabletInsertionEvent).shouldParsePatternOrTime()) {

@@ -227,11 +227,6 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
 
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
-    // ignore event with zero rows
-    if (Objects.isNull(tabletInsertionEvent)) {
-      return;
-    }
-
     // PipeProcessor can change the type of TabletInsertionEvent
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
@@ -241,6 +236,13 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
               + "Ignore {}.",
           tabletInsertionEvent);
       return;
+    }
+
+    // ignore raw tablet event with zero rows
+    if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
+      if (((PipeRawTabletInsertionEvent) tabletInsertionEvent).isEmpty()) {
+        return;
+      }
     }
 
     if (((EnrichedEvent) tabletInsertionEvent).shouldParsePatternOrTime()) {
