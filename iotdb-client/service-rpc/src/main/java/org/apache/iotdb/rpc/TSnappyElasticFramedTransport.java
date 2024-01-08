@@ -20,11 +20,19 @@
 package org.apache.iotdb.rpc;
 
 import org.apache.thrift.transport.TTransport;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xerial.snappy.Snappy;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class TSnappyElasticFramedTransport extends TCompressedElasticFramedTransport {
+  private static final Logger LOGGER = LoggerFactory.getLogger(TSnappyElasticFramedTransport.class);
+  private static final AtomicLong totalUncompressionTime = new AtomicLong(0);
+  private static final AtomicLong totalUncompressionCount = new AtomicLong(0);
+  private static final AtomicLong totalOriginalDataSize = new AtomicLong(0);
+  private static final AtomicLong totalCompressedDataSize = new AtomicLong(0);
 
   public static class Factory extends TElasticFramedTransport.Factory {
 
@@ -74,6 +82,23 @@ public class TSnappyElasticFramedTransport extends TCompressedElasticFramedTrans
   @Override
   protected void uncompress(byte[] input, int inOff, int size, byte[] output, int outOff)
       throws IOException {
-    Snappy.uncompress(input, inOff, size, output, outOff);
+
+    long startTime = System.nanoTime();
+    int uncompressedSize = Snappy.uncompress(input, inOff, size, output, outOff);
+    long endTime = System.nanoTime();
+    totalUncompressionTime.addAndGet(endTime - startTime);
+    totalOriginalDataSize.addAndGet(uncompressedSize);
+    totalCompressedDataSize.addAndGet(size);
+    long count = totalUncompressionCount.incrementAndGet();
+    if (count % 1000 == 0) {
+      LOGGER.info(
+          "Average uncompression time: {} ms, average compression rate: {}",
+          totalUncompressionTime.doubleValue() / count / 1000000,
+          totalOriginalDataSize.doubleValue() / totalCompressedDataSize.doubleValue());
+      totalUncompressionCount.set(0);
+      totalUncompressionTime.set(0);
+      totalOriginalDataSize.set(0);
+      totalCompressedDataSize.set(0);
+    }
   }
 }
