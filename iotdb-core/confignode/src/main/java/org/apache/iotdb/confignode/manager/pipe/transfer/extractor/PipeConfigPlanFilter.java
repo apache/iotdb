@@ -78,11 +78,7 @@ class PipeConfigPlanFilter {
           Collections.singletonList(ConfigPhysicalPlanType.UnsetTemplate));
 
       PLAN_MAP.put(
-          new PartialPath("schema.ttl.set"),
-          Collections.singletonList(ConfigPhysicalPlanType.SetTTL));
-      PLAN_MAP.put(
-          new PartialPath("schema.ttl.unset"),
-          Collections.singletonList(ConfigPhysicalPlanType.SetTTL));
+          new PartialPath("schema.ttl"), Collections.singletonList(ConfigPhysicalPlanType.SetTTL));
 
       PLAN_MAP.put(
           new PartialPath("auth.role.create"),

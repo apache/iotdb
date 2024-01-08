@@ -61,8 +61,7 @@ public class PipeInclusionNormalizer {
       LEGAL_PATHS.add(new PartialPath("schema.timeseries.template.activate"));
       LEGAL_PATHS.add(new PartialPath("schema.timeseries.template.deactivate"));
 
-      LEGAL_PATHS.add(new PartialPath("schema.ttl.set"));
-      LEGAL_PATHS.add(new PartialPath("schema.ttl.unset"));
+      LEGAL_PATHS.add(new PartialPath("schema.ttl"));
 
       LEGAL_PATHS.add(new PartialPath("auth.role.create"));
       LEGAL_PATHS.add(new PartialPath("auth.role.drop"));
