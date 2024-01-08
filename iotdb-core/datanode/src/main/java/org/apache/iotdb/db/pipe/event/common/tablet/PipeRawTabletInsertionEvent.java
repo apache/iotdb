@@ -201,7 +201,13 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   /////////////////////////// parsePattern ///////////////////////////
 
   public TabletInsertionEvent parseEventWithPatternOrTime() {
+    Tablet tablet = convertToTablet();
+    if (tablet.rowSize == 0) {
+      // Returning null here to indicate to the caller to ignore this event when parsing during
+      // transfer.
+      return null;
+    }
     return new PipeRawTabletInsertionEvent(
-        convertToTablet(), isAligned, pipeName, pipeTaskMeta, this, needToReport);
+        tablet, isAligned, pipeName, pipeTaskMeta, this, needToReport);
   }
 }

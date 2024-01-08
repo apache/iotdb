@@ -81,6 +81,11 @@ public class WriteBackConnector implements PipeConnector {
 
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
+    // ignore event with zero rows
+    if (Objects.isNull(tabletInsertionEvent)) {
+      return;
+    }
+
     // PipeProcessor can change the type of TabletInsertionEvent
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
