@@ -229,6 +229,7 @@ public class ConfigManager implements IManager {
   /** Manage cluster authorization. */
   private final PermissionManager permissionManager;
 
+  /** Manage load balancing. */
   private final LoadManager loadManager;
 
   /** Manage procedure. */
@@ -943,6 +944,11 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public PermissionManager getPermissionManager() {
+    return permissionManager;
+  }
+
+  @Override
   public LoadManager getLoadManager() {
     return loadManager;
   }
@@ -961,7 +967,7 @@ public class ConfigManager implements IManager {
   public TSStatus operatePermission(AuthorPlan authorPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return permissionManager.operatePermission(authorPlan);
+      return permissionManager.operatePermission(authorPlan, false);
     } else {
       return status;
     }

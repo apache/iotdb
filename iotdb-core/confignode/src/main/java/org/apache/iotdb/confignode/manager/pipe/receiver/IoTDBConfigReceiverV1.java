@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.connector.payload.request.PipeTransferFileS
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiverV1;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
@@ -148,6 +149,18 @@ public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
         return configManager.dropTrigger(
             new TDropTriggerReq(((DeleteTriggerInTablePlan) plan).getTriggerName())
                 .setIsGeneratedByPipe(true));
+      case CreateUser:
+      case CreateRole:
+      case DropUser:
+      case DropRole:
+      case GrantRole:
+      case GrantUser:
+      case GrantRoleToUser:
+      case RevokeUser:
+      case RevokeRole:
+      case RevokeRoleFromUser:
+      case UpdateUser:
+        return configManager.getPermissionManager().operatePermission((AuthorPlan) plan, true);
       default:
         return configManager.getConsensusManager().write(new PipeEnrichedPlan(plan));
     }

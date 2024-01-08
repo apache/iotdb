@@ -907,10 +907,11 @@ public class ProcedureManager {
     }
   }
 
-  public TSStatus operateAuthPlan(AuthorPlan authorPlan, List<TDataNodeConfiguration> dns) {
+  public TSStatus operateAuthPlan(
+      AuthorPlan authorPlan, List<TDataNodeConfiguration> dns, boolean isGeneratedByPipe) {
     try {
       final long procedureId =
-          executor.submitProcedure(new AuthOperationProcedure(authorPlan, dns));
+          executor.submitProcedure(new AuthOperationProcedure(authorPlan, dns, isGeneratedByPipe));
       List<TSStatus> statusList = new ArrayList<>();
       boolean isSucceed =
           waitingProcedureFinished(Collections.singletonList(procedureId), statusList);

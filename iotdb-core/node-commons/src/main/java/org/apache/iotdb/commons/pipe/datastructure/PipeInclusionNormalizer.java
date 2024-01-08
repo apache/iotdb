@@ -86,9 +86,10 @@ public class PipeInclusionNormalizer {
             new HashSet<>(
                 Arrays.asList(
                     "schema.database.drop",
-                    "schema.timeseries.ordinary.drop",
+                    "schema.timeseries.ordinary.delete",
                     "schema.timeseries.view.drop",
                     "schema.timeseries.template.drop",
+                    "schema.timeseries.template.deactivate",
                     "auth.role.drop",
                     "auth.user.drop"))));
     SUBSTITUTION_MAP.put(
@@ -97,9 +98,10 @@ public class PipeInclusionNormalizer {
             new HashSet<>(
                 Arrays.asList(
                     "schema.database.drop",
-                    "schema.timeseries.ordinary.drop",
+                    "schema.timeseries.ordinary.delete",
                     "schema.timeseries.view.drop",
-                    "schema.timeseries.template.drop"))));
+                    "schema.timeseries.template.drop",
+                    "schema.timeseries.template.deactivate"))));
     SUBSTITUTION_MAP.put(
         "auth.deletion",
         Collections.unmodifiableSet(
