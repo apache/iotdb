@@ -43,7 +43,7 @@ abstract class AbstractPipeDualDataIT {
 
       senderEnv.initClusterEnvironment();
       receiverEnv.initClusterEnvironment();
-    } catch (Exception | Error e) {
+    } catch (Throwable e) {
       Assume.assumeNoException(e);
     }
   }
@@ -53,7 +53,7 @@ abstract class AbstractPipeDualDataIT {
     try {
       senderEnv.cleanClusterEnvironment();
       receiverEnv.cleanClusterEnvironment();
-    } catch (Exception | Error e) {
+    } catch (Throwable e) {
       Assume.assumeNoException(e);
     }
   }

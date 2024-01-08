@@ -88,7 +88,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualDataIT {
 
       senderEnv.initClusterEnvironment(3, 3, 180);
       receiverEnv.initClusterEnvironment(3, 3, 180);
-    } catch (Exception | Error e) {
+    } catch (Throwable e) {
       Assume.assumeNoException(e);
     }
   }

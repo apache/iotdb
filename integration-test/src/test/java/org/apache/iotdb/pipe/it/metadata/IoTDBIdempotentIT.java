@@ -61,7 +61,7 @@ public class IoTDBIdempotentIT extends AbstractPipeDualMetaIT {
       // of the tested idempotent sql.
       senderEnv.initClusterEnvironment(1, 1);
       receiverEnv.initClusterEnvironment();
-    } catch (Exception | Error e) {
+    } catch (Throwable e) {
       Assume.assumeNoException(e);
     }
   }

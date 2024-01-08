@@ -55,7 +55,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualDataIT {
       MultiEnvFactory.createEnv(2);
       senderEnv = MultiEnvFactory.getEnv(0);
       receiverEnv = MultiEnvFactory.getEnv(1);
-    } catch (Exception | Error e) {
+    } catch (Throwable e) {
       Assume.assumeNoException(e);
     }
   }
