@@ -26,6 +26,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+/**
+ * This visitor translated some exceptions to pipe related status to help sender classify them and
+ * apply different error handling tactics. Please DO NOT modify the exceptions returned by the
+ * processes that generate the following exceptions in the class.
+ */
 public class PipeStatementExceptionVisitor extends StatementVisitor<TSStatus, Exception> {
   @Override
   public TSStatus visitNode(StatementNode node, Exception context) {

@@ -36,6 +36,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.Activate
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+/**
+ * This visitor translated some {@link TSStatus} to pipe related status to help sender classify them
+ * and apply different error handling tactics. Please DO NOT modify the {@link TSStatus} returned by
+ * the processes that generate the following {@link TSStatus}es in the class.
+ */
 public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSStatus> {
   @Override
   public TSStatus visitNode(StatementNode node, TSStatus context) {

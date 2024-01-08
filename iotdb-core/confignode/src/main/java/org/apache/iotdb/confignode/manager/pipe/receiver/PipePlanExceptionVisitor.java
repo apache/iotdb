@@ -24,6 +24,11 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.PhysicalPlanVisitor;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+/**
+ * This visitor translated some exceptions to pipe related status to help sender classify them and
+ * apply different error handling tactics. Please DO NOT modify the exceptions returned by the
+ * processes that generate the following exceptions in the class.
+ */
 public class PipePlanExceptionVisitor extends PhysicalPlanVisitor<TSStatus, Exception> {
   @Override
   public TSStatus visitPlan(ConfigPhysicalPlan plan, Exception context) {
