@@ -436,7 +436,7 @@ public class TestUtils {
   }
 
   // This method will not throw failure given that a failure is encountered.
-  // Instead, it return a flag to indicate the result of the execution.
+  // Instead, it returns a flag to indicate the result of the execution.
   public static boolean tryExecuteNonQueriesWithRetry(
       BaseEnv env, List<String> sqlList, String userName, String password) {
     int lastIndex = 0;

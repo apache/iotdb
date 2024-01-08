@@ -79,22 +79,27 @@ public class PipeInclusionNormalizer {
     }
 
     SUBSTITUTION_MAP.put(
-        "all",
-        Collections.unmodifiableSet(new HashSet<>(Arrays.asList("data", "schema", "auth", "ttl"))));
+        "all", Collections.unmodifiableSet(new HashSet<>(Arrays.asList("data", "schema", "auth"))));
     SUBSTITUTION_MAP.put(
         "deletion",
         Collections.unmodifiableSet(
             new HashSet<>(
                 Arrays.asList(
                     "schema.database.drop",
-                    "schema.template.drop",
+                    "schema.timeseries.ordinary.drop",
+                    "schema.timeseries.view.drop",
+                    "schema.timeseries.template.drop",
                     "auth.role.drop",
-                    "auth.user.drop",
-                    "ttl.unset"))));
+                    "auth.user.drop"))));
     SUBSTITUTION_MAP.put(
         "schema.deletion",
         Collections.unmodifiableSet(
-            new HashSet<>(Arrays.asList("schema.database.drop", "schema.template.drop"))));
+            new HashSet<>(
+                Arrays.asList(
+                    "schema.database.drop",
+                    "schema.timeseries.ordinary.drop",
+                    "schema.timeseries.view.drop",
+                    "schema.timeseries.template.drop"))));
     SUBSTITUTION_MAP.put(
         "auth.deletion",
         Collections.unmodifiableSet(

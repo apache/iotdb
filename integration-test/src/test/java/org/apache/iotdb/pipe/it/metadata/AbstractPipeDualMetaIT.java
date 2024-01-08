@@ -49,7 +49,7 @@ abstract class AbstractPipeDualMetaIT {
   }
 
   @After
-  public void tearDown() {
+  public final void tearDown() {
     try {
       senderEnv.cleanClusterEnvironment();
       receiverEnv.cleanClusterEnvironment();
