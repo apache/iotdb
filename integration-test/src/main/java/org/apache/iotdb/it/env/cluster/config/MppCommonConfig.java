@@ -36,9 +36,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
 
   public MppCommonConfig() {
     super();
+    // Set the default disk_space_warning_threshold in ClusterIT environment to 1%
+    setProperty("disk_space_warning_threshold", String.valueOf(0.01));
   }
 
-  public MppCommonConfig(String filePath) throws IOException {
+  // This constructor is no longer in use
+  protected MppCommonConfig(String filePath) throws IOException {
     super(filePath);
   }
 

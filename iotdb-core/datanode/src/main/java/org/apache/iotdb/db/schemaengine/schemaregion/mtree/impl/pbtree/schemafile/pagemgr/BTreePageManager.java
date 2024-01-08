@@ -392,6 +392,61 @@ public class BTreePageManager extends PageManager {
     }
   }
 
+  /**
+   * Since transplant and replacement may invalidate page instance held by a blocked read-thread,
+   * the read-thread need to validate its page object once it obtained the lock.
+   *
+   * @param initPage page instance with read lock held
+   * @param parent MTree node to read children, containing latest segment address
+   * @param cxt update context if page/segment modified
+   * @return validated page
+   */
+  private ISchemaPage validatePage(ISchemaPage initPage, ICachedMNode parent, SchemaPageContext cxt)
+      throws IOException, MetadataException {
+    boolean safeFlag = false;
+    // check like crabbing
+    ISchemaPage crabPage;
+    SchemaPageContext doubleCheckContext;
+    while (getPageIndex(getNodeAddress(parent)) != initPage.getPageIndex()) {
+      // transplanted, release the stale and obtain/lock the new
+      doubleCheckContext = new SchemaPageContext();
+      long addrB4Lock = getNodeAddress(parent);
+      int piB4Lock = getPageIndex(addrB4Lock);
+
+      initPage.decrementAndGetRefCnt();
+      initPage.getLock().readLock().unlock();
+
+      crabPage = getPageInstance(piB4Lock, doubleCheckContext);
+      crabPage.getLock().readLock().lock();
+
+      // UNNECESSARY to TRACE lock since the very page will be unlocked at end of read
+      cxt.referredPages.remove(initPage.getPageIndex());
+      cxt.referredPages.put(crabPage.getPageIndex(), crabPage);
+      initPage = crabPage;
+    }
+
+    // a fresh context to read-through from global cache
+    doubleCheckContext = new SchemaPageContext();
+    crabPage = getPageInstance(initPage.getPageIndex(), doubleCheckContext);
+    if (crabPage != initPage) {
+      // replaced, the lock and ref count should be the same
+      if (crabPage.getLock() != initPage.getLock()
+          || crabPage.getRefCnt() != initPage.getRefCnt()) {
+        crabPage.decrementAndGetRefCnt();
+        initPage.decrementAndGetRefCnt();
+        initPage.getLock().readLock().unlock();
+        throw new MetadataException(
+            "Page[%d] replacement error: Different ref count or lock object.");
+      }
+      // update context is enough, ref and lock is left for main read process
+      cxt.referredPages.put(initPage.getPageIndex(), crabPage);
+      initPage = crabPage;
+    }
+    // same page shall only be referred once
+    crabPage.decrementAndGetRefCnt();
+    return initPage;
+  }
+
   @Override
   public ICachedMNode getChildNode(ICachedMNode parent, String childName)
       throws MetadataException, IOException {
@@ -406,7 +461,9 @@ public class BTreePageManager extends PageManager {
 
     // a single read lock on initial page is sufficient to mutex write, no need to trace it
     int initIndex = getPageIndex(getNodeAddress(parent));
-    getPageInstance(initIndex, cxt).getLock().readLock().lock();
+    ISchemaPage initPage = getPageInstance(initIndex, cxt);
+    initPage.getLock().readLock().lock();
+    initPage = validatePage(initPage, parent, cxt);
     try {
       long actualSegAddr = getTargetSegmentAddress(getNodeAddress(parent), childName, cxt);
       ICachedMNode child =
@@ -429,7 +486,7 @@ public class BTreePageManager extends PageManager {
       }
       return child;
     } finally {
-      getPageInstance(initIndex, cxt).getLock().readLock().unlock();
+      initPage.getLock().readLock().unlock();
       releaseReferent(cxt);
       threadContexts.remove(Thread.currentThread().getId(), cxt);
     }
@@ -460,8 +517,10 @@ public class BTreePageManager extends PageManager {
     int pageIdx = getPageIndex(getNodeAddress(parent));
 
     short segId = getSegIndex(getNodeAddress(parent));
-    ISchemaPage page = getPageInstance(pageIdx, cxt);
+    ISchemaPage page = getPageInstance(pageIdx, cxt), pageHeldLock;
     page.getLock().readLock().lock();
+    page = validatePage(page, parent, cxt);
+    pageHeldLock = page;
 
     try {
       while (page.getAsSegmentedPage() == null) {
@@ -512,7 +571,7 @@ public class BTreePageManager extends PageManager {
       };
     } finally {
       // safety of iterator should be guaranteed by upper layer
-      getPageInstance(pageIdx, cxt).getLock().readLock().unlock();
+      pageHeldLock.getLock().readLock().unlock();
       releaseReferent(cxt);
     }
   }

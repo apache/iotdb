@@ -333,31 +333,38 @@ public class ConsensusManager {
     return consensusImpl.isLeaderReady(DEFAULT_CONSENSUS_GROUP_ID);
   }
 
-  /** @return ConfigNode-leader's location if leader exists, null otherwise. */
-  public TConfigNodeLocation getLeader() {
+  /** @return ConfigNode-leader peer if leader exists, null otherwise. */
+  private Peer getLeaderPeer() {
     for (int retry = 0; retry < 50; retry++) {
       Peer leaderPeer = consensusImpl.getLeader(DEFAULT_CONSENSUS_GROUP_ID);
       if (leaderPeer != null) {
-        List<TConfigNodeLocation> registeredConfigNodes =
-            getNodeManager().getRegisteredConfigNodes();
-        TConfigNodeLocation leaderLocation =
-            registeredConfigNodes.stream()
-                .filter(leader -> leader.getConfigNodeId() == leaderPeer.getNodeId())
-                .findFirst()
-                .orElse(null);
-        if (leaderLocation != null) {
-          return leaderLocation;
-        }
+        return leaderPeer;
       }
-
       try {
         TimeUnit.MILLISECONDS.sleep(100);
       } catch (InterruptedException e) {
-        LOGGER.warn("ConsensusManager getLeader been interrupted, ", e);
+        LOGGER.warn("ConsensusManager getLeaderPeer been interrupted, ", e);
         Thread.currentThread().interrupt();
       }
     }
     return null;
+  }
+
+  /** @return ConfigNode-leader's location if leader exists, null otherwise. */
+  public TConfigNodeLocation getLeaderLocation() {
+    Peer leaderPeer = getLeaderPeer();
+    if (leaderPeer != null) {
+      return getNodeManager().getRegisteredConfigNodes().stream()
+          .filter(leader -> leader.getConfigNodeId() == leaderPeer.getNodeId())
+          .findFirst()
+          .orElse(null);
+    }
+    return null;
+  }
+
+  /** @return true if ConfigNode-leader is elected, false otherwise. */
+  public boolean isLeaderExist() {
+    return getLeaderPeer() != null;
   }
 
   /**
@@ -379,7 +386,7 @@ public class ConsensusManager {
         result.setMessage(
             "The current ConfigNode is not leader, please redirect to a new ConfigNode.");
       }
-      TConfigNodeLocation leaderLocation = getLeader();
+      TConfigNodeLocation leaderLocation = getLeaderLocation();
       if (leaderLocation != null) {
         result.setRedirectNode(leaderLocation.getInternalEndPoint());
       }

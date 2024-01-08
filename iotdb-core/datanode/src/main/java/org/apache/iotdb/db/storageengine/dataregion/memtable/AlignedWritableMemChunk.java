@@ -349,7 +349,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       int nextRowIndex = sortedRowIndex + 1;
       while (nextRowIndex < list.rowCount()
           && rowBitMap != null
-          && rowBitMap.isMarked(nextRowIndex)) {
+          && rowBitMap.isMarked(list.getValueIndex(nextRowIndex))) {
         nextRowIndex++;
       }
       if (nextRowIndex != list.rowCount() && time == list.getTime(nextRowIndex)) {

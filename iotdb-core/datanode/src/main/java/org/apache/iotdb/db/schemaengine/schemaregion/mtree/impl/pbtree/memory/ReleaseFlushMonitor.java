@@ -28,7 +28,6 @@ import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaEngineStatistics;
 import org.apache.iotdb.db.schemaengine.rescon.ISchemaEngineStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.CachedMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.flush.Scheduler;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.IReleaseFlushStrategy;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.ReleaseFlushStrategyNumBasedImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.ReleaseFlushStrategySizeBasedImpl;
@@ -42,7 +41,6 @@ import javax.annotation.concurrent.NotThreadSafe;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -93,6 +91,7 @@ public class ReleaseFlushMonitor {
 
   public void clearCachedMTreeStore(CachedMTreeStore store) {
     regionToStoreMap.remove(store.getRegionStatistics().getSchemaRegionId());
+    regionToTraverserTime.remove(store.getRegionStatistics().getSchemaRegionId());
   }
 
   public void init(ISchemaEngineStatistics engineStatistics) {
@@ -190,66 +189,42 @@ public class ReleaseFlushMonitor {
     regionToTraverserTime.computeIfAbsent(regionId, k -> new RecordList());
   }
 
-  public List<Pair<Integer, Long>> getRegionsToFlush(long windowsEndTime) {
+  public List<Integer> getRegionsToFlush(long windowsEndTime) {
     long windowsStartTime = windowsEndTime - MONITOR_INETRVAL_MILLISECONDS;
     List<Pair<Integer, Long>> regionAndFreeTimeList = new ArrayList<>();
-    Map<Integer, Long> storeToLockStamp = new HashMap<>();
     for (Map.Entry<Integer, RecordList> entry : regionToTraverserTime.entrySet()) {
       int regionId = entry.getKey();
-      CachedMTreeStore store = regionToStoreMap.get(regionId);
-      if (store == null) {
-        // already been removed
-        continue;
+
+      long traverserEndTime = windowsStartTime;
+      long traverserFreeTime = 0;
+      RecordList recordList = entry.getValue();
+      Iterator<RecordNode> iterator = recordList.iterator();
+      while (iterator.hasNext()) {
+        RecordNode recordNode = iterator.next();
+        if (recordNode.startTime > windowsEndTime) {
+          break;
+        }
+        if (recordNode.startTime > traverserEndTime) {
+          traverserFreeTime += (recordNode.startTime - traverserEndTime);
+          traverserEndTime = recordNode.endTime;
+        } else if (recordNode.endTime > traverserEndTime) {
+          traverserEndTime = recordNode.endTime;
+        }
+        if (recordNode.endTime < windowsStartTime) {
+          iterator.remove();
+        } else if (recordNode.endTime >= windowsEndTime) {
+          break;
+        }
       }
-
-      LockManager lockManager = store.getLockManager();
-      long lockStamp = lockManager.globalStampedReadLock();
-      boolean needReleaseLock = true;
-      try {
-        if (!regionToStoreMap.containsKey(regionId)) {
-          // already been removed
-          continue;
-        }
-
-        long traverserEndTime = windowsStartTime;
-        long traverserFreeTime = 0;
-        RecordList recordList = entry.getValue();
-        Iterator<RecordNode> iterator = recordList.iterator();
-        while (iterator.hasNext()) {
-          RecordNode recordNode = iterator.next();
-          if (recordNode.startTime > windowsEndTime) {
-            break;
-          }
-          if (recordNode.startTime > traverserEndTime) {
-            traverserFreeTime += (recordNode.startTime - traverserEndTime);
-            traverserEndTime = recordNode.endTime;
-          } else if (recordNode.endTime > traverserEndTime) {
-            traverserEndTime = recordNode.endTime;
-          }
-          if (recordNode.endTime < windowsStartTime) {
-            iterator.remove();
-          } else if (recordNode.endTime >= windowsEndTime) {
-            break;
-          }
-        }
-        if (traverserEndTime < windowsEndTime) {
-          traverserFreeTime += (windowsEndTime - traverserEndTime);
-        }
-        if (traverserFreeTime > FREE_FLUSH_PROPORTION * MONITOR_INETRVAL_MILLISECONDS) {
-          regionAndFreeTimeList.add(new Pair<>(regionId, traverserFreeTime));
-          storeToLockStamp.put(regionId, lockStamp);
-          needReleaseLock = false;
-        }
-      } finally {
-        if (needReleaseLock) {
-          lockManager.globalStampedReadUnlock(lockStamp);
-        }
+      if (traverserEndTime < windowsEndTime) {
+        traverserFreeTime += (windowsEndTime - traverserEndTime);
+      }
+      if (traverserFreeTime > FREE_FLUSH_PROPORTION * MONITOR_INETRVAL_MILLISECONDS) {
+        regionAndFreeTimeList.add(new Pair<>(regionId, traverserFreeTime));
       }
     }
     regionAndFreeTimeList.sort(Comparator.comparing((Pair<Integer, Long> o) -> o.right).reversed());
-    return regionAndFreeTimeList.stream()
-        .map(o -> new Pair<>(o.getLeft(), storeToLockStamp.get(o.getLeft())))
-        .collect(Collectors.toList());
+    return regionAndFreeTimeList.stream().map(Pair::getLeft).collect(Collectors.toList());
   }
 
   @TestOnly

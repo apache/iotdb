@@ -21,21 +21,29 @@ package org.apache.iotdb.db.pipe.agent.plugin.schemaregion;
 
 import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginAgent;
 import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginConstructor;
+import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMetaKeeper;
 
 public class PipeSchemaRegionPluginAgent extends PipePluginAgent {
 
+  public PipeSchemaRegionPluginAgent(PipePluginMetaKeeper pipePluginMetaKeeper) {
+    super(pipePluginMetaKeeper);
+  }
+
   @Override
-  protected PipePluginConstructor createPipeExtractorConstructor() {
+  protected PipePluginConstructor createPipeExtractorConstructor(
+      PipePluginMetaKeeper pipePluginMetaKeeper) {
     return new PipeSchemaRegionExtractorConstructor();
   }
 
   @Override
-  protected PipePluginConstructor createPipeProcessorConstructor() {
+  protected PipePluginConstructor createPipeProcessorConstructor(
+      PipePluginMetaKeeper pipePluginMetaKeeper) {
     return new PipeSchemaRegionProcessorConstructor();
   }
 
   @Override
-  protected PipePluginConstructor createPipeConnectorConstructor() {
+  protected PipePluginConstructor createPipeConnectorConstructor(
+      PipePluginMetaKeeper pipePluginMetaKeeper) {
     return new PipeSchemaRegionConnectorConstructor();
   }
 }

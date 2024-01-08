@@ -236,7 +236,7 @@ public abstract class PageManager implements IPageManager {
   /** Context only tracks write locks, and so it shall be released. */
   protected void releaseLocks(SchemaPageContext cxt) {
     for (int i : cxt.lockTraces) {
-      pageInstCache.get(i).getLock().writeLock().unlock();
+      cxt.referredPages.get(i).getLock().writeLock().unlock();
     }
   }
 
@@ -788,8 +788,7 @@ public abstract class PageManager implements IPageManager {
         cxt.traceLock(targetPage);
 
         // transfer the page from pageIndexBuckets to cxt.buckets thus not be accessed by other
-        // WRITE
-        // thread
+        //  WRITE thread
         cxt.indexBuckets.sortIntoBucket(targetPage, size);
         return targetPage.getAsSegmentedPage();
       }
@@ -1020,11 +1019,11 @@ public abstract class PageManager implements IPageManager {
       interleavedFlushCnt = 0;
     }
 
-    public void markDirty(ISchemaPage page) {
+    protected void markDirty(ISchemaPage page) {
       markDirty(page, false);
     }
 
-    private void markDirty(ISchemaPage page, boolean forceReplace) {
+    protected void markDirty(ISchemaPage page, boolean forceReplace) {
       if (!page.isDirtyPage()) {
         dirtyCnt++;
       }
@@ -1041,7 +1040,7 @@ public abstract class PageManager implements IPageManager {
       }
     }
 
-    private void traceLock(ISchemaPage page) {
+    protected void traceLock(ISchemaPage page) {
       refer(page);
       lockTraces.add(page.getPageIndex());
     }
