@@ -54,8 +54,8 @@ public class IoTDBIdempotentIT extends AbstractPipeDualMetaIT {
       senderEnv = MultiEnvFactory.getEnv(0);
       receiverEnv = MultiEnvFactory.getEnv(1);
 
-      senderEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(false);
-      receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(false);
+      senderEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
+      receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
 
       // Limit the schemaRegion number to 1 to guarantee the after sql executed on the same region
       // of the tested idempotent sql.
@@ -78,7 +78,18 @@ public class IoTDBIdempotentIT extends AbstractPipeDualMetaIT {
   }
 
   @Test
-  public void testTemplateIdempotent() throws Exception {
+  public void testInternalCreateTimeseriesIdempotent() throws Exception {
+    testIdempotent(
+        Collections.emptyList(),
+        "insert into root.test.g1(time, speed) values(now(), 1.0);",
+        "create timeseries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
+        "count timeseries",
+        "count(timeseries),",
+        Collections.singleton("2,"));
+  }
+
+  @Test
+  public void testCreateTemplateIdempotent() throws Exception {
     testIdempotent(
         Collections.emptyList(),
         "create schema template t1 (s1 INT64 encoding=RLE, s2 INT64 encoding=RLE, s3 INT64 encoding=RLE compression=SNAPPY)",
@@ -89,7 +100,34 @@ public class IoTDBIdempotentIT extends AbstractPipeDualMetaIT {
   }
 
   @Test
-  public void testDatabaseIdempotent() throws Exception {
+  public void testSetTemplateIdempotent() throws Exception {
+    testIdempotent(
+        Arrays.asList(
+            "create schema template t1 (s1 INT64 encoding=RLE, s2 INT64 encoding=RLE, s3 INT64 encoding=RLE compression=SNAPPY)",
+            "create database root.sg1"),
+        "set schema template t1 to root.sg1",
+        "create database root.sg2",
+        "count databases",
+        "count,",
+        Collections.singleton("2,"));
+  }
+
+  @Test
+  public void testActivateTemplateIdempotent() throws Exception {
+    testIdempotent(
+        Arrays.asList(
+            "create schema template t1 (s1 INT64 encoding=RLE, s2 INT64 encoding=RLE, s3 INT64 encoding=RLE compression=SNAPPY)",
+            "create database root.sg1",
+            "set schema template t1 to root.sg1"),
+        "create timeseries using device template on root.sg1.d1",
+        "create timeseries using device template on root.sg1.d2",
+        "count timeseries",
+        "count(timeseries),",
+        Collections.singleton("6,"));
+  }
+
+  @Test
+  public void testCreateDatabaseIdempotent() throws Exception {
     testIdempotent(
         Collections.emptyList(),
         "create database root.sg1",
@@ -97,6 +135,17 @@ public class IoTDBIdempotentIT extends AbstractPipeDualMetaIT {
         "count databases",
         "count,",
         Collections.singleton("2,"));
+  }
+
+  @Test
+  public void testDropDatabaseIdempotent() throws Exception {
+    testIdempotent(
+        Collections.singletonList("create database root.sg1"),
+        "drop database root.sg1",
+        "create database root.sg2",
+        "count databases",
+        "count,",
+        Collections.singleton("1,"));
   }
 
   @Test
