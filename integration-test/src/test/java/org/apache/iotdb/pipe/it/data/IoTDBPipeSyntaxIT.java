@@ -628,4 +628,91 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualDataIT {
       Assert.assertFalse(showPipeResult.stream().anyMatch((o) -> o.id.equals("p3")));
     }
   }
+
+  @Test
+  public void testInclusionPattern() throws Exception {
+    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    String receiverIp = receiverDataNode.getIp();
+    int receiverPort = receiverDataNode.getPort();
+
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      // Empty inclusion
+      try (Connection connection = senderEnv.getConnection();
+          Statement statement = connection.createStatement()) {
+        statement.execute(
+            String.format(
+                "create pipe p2"
+                    + " with extractor ('extractor.inclusion'='schema, auth.role', 'extractor.inclusion.exclusion'='all')"
+                    + " with processor ()"
+                    + " with connector ("
+                    + "'connector'='iotdb-thrift-connector',"
+                    + "'connector.ip'='%s',"
+                    + "'connector.port'='%s',"
+                    + "'connector.batch.enable'='false')",
+                receiverIp, receiverPort));
+        fail();
+      } catch (SQLException ignored) {
+      }
+
+      // Invalid inclusion
+      try (Connection connection = senderEnv.getConnection();
+          Statement statement = connection.createStatement()) {
+        statement.execute(
+            String.format(
+                "create pipe p3"
+                    + " with extractor ('extractor.inclusion'='wrong')"
+                    + " with processor ()"
+                    + " with connector ("
+                    + "'connector'='iotdb-thrift-connector',"
+                    + "'connector.ip'='%s',"
+                    + "'connector.port'='%s',"
+                    + "'connector.batch.enable'='false')",
+                receiverIp, receiverPort));
+        fail();
+      } catch (SQLException ignored) {
+      }
+
+      // Invalid exclusion
+      try (Connection connection = senderEnv.getConnection();
+          Statement statement = connection.createStatement()) {
+        statement.execute(
+            String.format(
+                "create pipe p4"
+                    + " with extractor ('extractor.inclusion.exclusion'='wrong')"
+                    + " with processor ()"
+                    + " with connector ("
+                    + "'connector'='iotdb-thrift-connector',"
+                    + "'connector.ip'='%s',"
+                    + "'connector.port'='%s',"
+                    + "'connector.batch.enable'='false')",
+                receiverIp, receiverPort));
+        fail();
+      } catch (SQLException ignored) {
+      }
+
+      // Valid
+      try (Connection connection = senderEnv.getConnection();
+          Statement statement = connection.createStatement()) {
+        statement.execute(
+            String.format(
+                "create pipe p4"
+                    + " with extractor ('extractor.inclusion'='all', 'extractor.inclusion.exclusion'='schema.database.drop, auth.role')"
+                    + " with processor ()"
+                    + " with connector ("
+                    + "'connector'='iotdb-thrift-connector',"
+                    + "'connector.ip'='%s',"
+                    + "'connector.port'='%s',"
+                    + "'connector.batch.enable'='false')",
+                receiverIp, receiverPort));
+      } catch (SQLException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+
+      List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      Assert.assertEquals(1, showPipeResult.size());
+    }
+  }
 }

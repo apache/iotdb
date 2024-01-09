@@ -22,6 +22,9 @@ package org.apache.iotdb.commons.pipe.datastructure;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -33,6 +36,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 public class PipeInclusionNormalizer {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeInclusionNormalizer.class);
   private static final Map<String, Set<String>> SUBSTITUTION_MAP = new HashMap<>();
   private static final Set<PartialPath> LEGAL_PATHS = new HashSet<>();
 
@@ -108,6 +112,35 @@ public class PipeInclusionNormalizer {
             new HashSet<>(Arrays.asList("auth.role.drop", "auth.user.drop"))));
   }
 
+  public static boolean isEmpty(String inclusionStr, String exclusionStr) {
+    try {
+      Set<PartialPath> planTypes = new HashSet<>();
+      List<PartialPath> inclusionPath = getPartialPaths(inclusionStr);
+      List<PartialPath> exclusionPath = getPartialPaths(exclusionStr);
+      inclusionPath.forEach(
+          inclusion ->
+              planTypes.addAll(
+                  LEGAL_PATHS.stream()
+                      .filter(path -> path.overlapWithFullPathPrefix(inclusion))
+                      .collect(Collectors.toSet())));
+      exclusionPath.forEach(
+          exclusion ->
+              planTypes.removeAll(
+                  LEGAL_PATHS.stream()
+                      .filter(path -> path.overlapWithFullPathPrefix(exclusion))
+                      .collect(Collectors.toSet())));
+
+      return planTypes.isEmpty();
+    } catch (IllegalPathException e) {
+      LOGGER.warn(
+          "Illegal path encountered when judging isEmpty() for inclusionStr {} and exclusionStr {}: ",
+          inclusionStr,
+          exclusionStr,
+          e);
+      return true;
+    }
+  }
+
   public static boolean allLegal(String prefixesRawStr) {
     try {
       return getPartialPaths(prefixesRawStr).stream()
@@ -115,6 +148,7 @@ public class PipeInclusionNormalizer {
               prefix ->
                   LEGAL_PATHS.stream().anyMatch(path -> path.overlapWithFullPathPrefix(prefix)));
     } catch (IllegalPathException e) {
+      LOGGER.warn("Illegal path encountered when parsing pipe prefixStr {}: ", prefixesRawStr, e);
       return false;
     }
   }
