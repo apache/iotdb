@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
@@ -142,7 +143,8 @@ public class OrderByExpressionWithLimitChangeToTopK implements PlanOptimizer {
         } else {
           return topKNode;
         }
-      } else if (limitNode.getChild() instanceof TransformNode) {
+      } else if (limitNode.getChild() instanceof TransformNode
+          && !(limitNode.getChild() instanceof FilterNode)) {
         TransformNode transformNode = (TransformNode) limitNode.getChild();
         if (transformNode.getChild() instanceof SortNode) {
           SortNode sortNode = (SortNode) transformNode.getChild();
@@ -217,7 +219,8 @@ public class OrderByExpressionWithLimitChangeToTopK implements PlanOptimizer {
                 sortNode.getOutputColumnNames());
         topKNode.setChildren(sortNode.getChildren());
         offsetNode.setChild(topKNode);
-      } else if (offsetNode.getChild() instanceof TransformNode) {
+      } else if (offsetNode.getChild() instanceof TransformNode
+          && !(offsetNode.getChild() instanceof FilterNode)) {
         TransformNode transformNode = (TransformNode) offsetNode.getChild();
         if (transformNode.getChild() instanceof SortNode) {
           SortNode sortNode = (SortNode) transformNode.getChild();

@@ -767,10 +767,12 @@ public class LogicalPlanBuilder {
 
     // 1. has LIMIT and LIMIT_VALUE is smaller than 1000000.
     // 2. `order by based on time` or `order by based on expression`.
+    // 3. no aggregation.
     // when satisfy all cases above will use ToKNode.
     if (queryStatement.hasLimit()
         && queryStatement.hasOrderBy()
         && !queryStatement.isOrderByBasedOnDevice()
+        && !queryStatement.isAggregationQuery()
         && limitValue <= LIMIT_VALUE_USE_TOP_K) {
 
       TopKNode topKNode =
