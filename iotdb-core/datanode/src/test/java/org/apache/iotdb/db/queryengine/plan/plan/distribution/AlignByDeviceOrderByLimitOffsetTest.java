@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.Aggregatio
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.HorizontallyConcatNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
@@ -886,6 +887,11 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     assertTrue(mergeSortNode.getChildren().get(0).getChildren().get(0) instanceof AggregationNode);
     assertTrue(mergeSortNode.getChildren().get(0).getChildren().get(1) instanceof ExchangeNode);
     assertTrue(mergeSortNode.getChildren().get(0).getChildren().get(2) instanceof AggregationNode);
+    for (int i = 1; i < 4; i++) {
+      assertTrue(
+          plan.getInstances().get(i).getFragment().getPlanNodeTree().getChildren().get(0)
+              instanceof HorizontallyConcatNode);
+    }
     for (int i = 0; i < 4; i++) {
       assertScanNodeLimitValue(plan.getInstances().get(i).getFragment().getPlanNodeTree(), 0);
     }
@@ -923,7 +929,7 @@ public class AlignByDeviceOrderByLimitOffsetTest {
   @Test
   public void orderByExpressionTest4() {
     // aggregation, order by expression, has LIMIT
-    // use TopKNode
+    // use TopKNode, not need MergeSortNode and LimitNode
     sql =
         "select count(s1) from root.sg.d1,root.sg.d22,root.sg.d333 ORDER BY count(s2) DESC LIMIT 10 align by device";
     analysis = Util.analyze(sql, context);
@@ -938,6 +944,11 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     assertTrue(firstFiTopNode.getChildren().get(0).getChildren().get(0) instanceof AggregationNode);
     assertTrue(firstFiTopNode.getChildren().get(0).getChildren().get(1) instanceof ExchangeNode);
     assertTrue(firstFiTopNode.getChildren().get(0).getChildren().get(2) instanceof AggregationNode);
+    for (int i = 1; i < 4; i++) {
+      assertTrue(
+          plan.getInstances().get(i).getFragment().getPlanNodeTree().getChildren().get(0)
+              instanceof HorizontallyConcatNode);
+    }
     for (int i = 0; i < 4; i++) {
       assertScanNodeLimitValue(plan.getInstances().get(i).getFragment().getPlanNodeTree(), 0);
     }
