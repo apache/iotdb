@@ -269,11 +269,7 @@ public class ReadPointCompactionPerformer
     while (reader.hasNextBatch()) {
       TsBlock tsBlock = reader.nextBatch();
       if (isAligned) {
-        writer.write(
-            tsBlock.getTimeColumn(),
-            tsBlock.getValueColumns(),
-            subTaskId,
-            tsBlock.getPositionCount());
+        writer.write(tsBlock, subTaskId);
       } else {
         IPointReader pointReader = tsBlock.getTsBlockSingleColumnIterator();
         while (pointReader.hasNextTimeValuePair()) {
@@ -283,7 +279,7 @@ public class ReadPointCompactionPerformer
     }
   }
 
-  private AbstractCompactionWriter getCompactionWriter(
+  protected AbstractCompactionWriter getCompactionWriter(
       List<TsFileResource> seqFileResources,
       List<TsFileResource> unseqFileResources,
       List<TsFileResource> targetFileResources)
