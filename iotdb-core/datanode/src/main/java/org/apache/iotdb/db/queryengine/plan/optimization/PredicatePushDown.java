@@ -197,7 +197,7 @@ public class PredicatePushDown implements PlanOptimizer {
       if (children.size() == 1) {
         resultNode = children.get(0);
       } else if (children.size() > 1) {
-        resultNode = new InnerTimeJoinNode(context.genPlanNodeId(), mergeOrder, children);
+        resultNode = new InnerTimeJoinNode(context.genPlanNodeId(), children, mergeOrder);
       }
       return resultNode;
     }

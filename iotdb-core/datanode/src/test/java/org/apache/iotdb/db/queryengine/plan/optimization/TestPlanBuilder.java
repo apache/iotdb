@@ -395,7 +395,7 @@ public class TestPlanBuilder {
 
     this.root =
         new InnerTimeJoinNode(
-            new PlanNodeId(String.valueOf(rootId)), mergeOrder, seriesSourceNodes);
+            new PlanNodeId(String.valueOf(rootId)), seriesSourceNodes, mergeOrder);
     return this;
   }
 }
