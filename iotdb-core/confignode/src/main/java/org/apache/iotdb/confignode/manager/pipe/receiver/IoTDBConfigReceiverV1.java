@@ -149,8 +149,6 @@ public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
         return configManager.dropTrigger(
             new TDropTriggerReq(((DeleteTriggerInTablePlan) plan).getTriggerName())
                 .setIsGeneratedByPipe(true));
-      case CreateUser:
-      case CreateRole:
       case DropUser:
       case DropRole:
       case GrantRole:
