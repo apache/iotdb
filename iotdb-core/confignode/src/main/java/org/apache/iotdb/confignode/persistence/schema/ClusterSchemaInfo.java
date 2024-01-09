@@ -728,6 +728,10 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return result;
   }
 
+  public Template getTemplate(int id) throws MetadataException {
+    return templateTable.getTemplate(id);
+  }
+
   public synchronized TemplateInfoResp checkTemplateSettable(
       CheckTemplateSettablePlan checkTemplateSettablePlan) {
     TemplateInfoResp resp = new TemplateInfoResp();

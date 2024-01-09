@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.manager.pipe.transfer.extractor;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.pipe.datastructure.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
@@ -32,7 +33,7 @@ import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaT
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigSerializableEventType;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeWriteConfigPlanEvent;
-import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
+import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -75,14 +76,21 @@ public class ConfigPlanListeningQueue extends AbstractPipeListeningQueue
           tryListenToPlan(((PipeEnrichedPlan) plan).getInnerPlan(), true);
           return;
         case UnsetTemplate:
-          event =
-              new PipeWriteConfigPlanEvent(
-                  new PipeUnsetSchemaTemplatePlan(
-                      ClusterTemplateManager.getInstance()
-                          .getTemplate(((UnsetSchemaTemplatePlan) plan).getTemplateId())
-                          .getName(),
-                      ((UnsetSchemaTemplatePlan) plan).getPath().getFullPath()),
-                  isGeneratedByPipe);
+          try {
+            event =
+                new PipeWriteConfigPlanEvent(
+                    new PipeUnsetSchemaTemplatePlan(
+                        ConfigNode.getInstance()
+                            .getConfigManager()
+                            .getClusterSchemaManager()
+                            .getTemplate(((UnsetSchemaTemplatePlan) plan).getTemplateId())
+                            .getName(),
+                        ((UnsetSchemaTemplatePlan) plan).getPath().getFullPath()),
+                    isGeneratedByPipe);
+          } catch (MetadataException e) {
+            LOGGER.warn("Failed to collect UnsetTemplatePlan because ", e);
+            return;
+          }
           break;
         default:
           event = new PipeWriteConfigPlanEvent(plan, isGeneratedByPipe);

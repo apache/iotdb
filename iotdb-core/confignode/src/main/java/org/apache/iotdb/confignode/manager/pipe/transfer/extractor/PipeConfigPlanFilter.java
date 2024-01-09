@@ -75,7 +75,7 @@ class PipeConfigPlanFilter {
           Collections.singletonList(ConfigPhysicalPlanType.DropSchemaTemplate));
       PLAN_MAP.put(
           new PartialPath("schema.timeseries.template.unset"),
-          Collections.singletonList(ConfigPhysicalPlanType.UnsetTemplate));
+          Collections.singletonList(ConfigPhysicalPlanType.PipeUnsetTemplate));
 
       PLAN_MAP.put(
           new PartialPath("schema.ttl"), Collections.singletonList(ConfigPhysicalPlanType.SetTTL));
@@ -124,6 +124,7 @@ class PipeConfigPlanFilter {
       return false;
     }
     return type.equals(ConfigPhysicalPlanType.PipeEnriched)
+        || type.equals(ConfigPhysicalPlanType.UnsetTemplate)
         || PLAN_MAP.values().stream().anyMatch(types -> types.contains(type));
   }
 

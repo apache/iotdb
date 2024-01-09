@@ -794,6 +794,11 @@ public class ClusterSchemaManager {
     return resp;
   }
 
+  /** Get template by id. Only leader uses this interface. */
+  public Template getTemplate(int id) throws MetadataException {
+    return clusterSchemaInfo.getTemplate(id);
+  }
+
   /** show path set template xx */
   public TGetPathsSetTemplatesResp getPathsSetTemplate(String templateName, PathPatternTree scope) {
     GetPathsSetTemplatePlan getPathsSetTemplatePlan =
