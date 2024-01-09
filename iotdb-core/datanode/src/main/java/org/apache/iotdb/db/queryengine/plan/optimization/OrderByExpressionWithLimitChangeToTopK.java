@@ -36,13 +36,23 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode.LIMIT_VALUE_USE_TOP_K;
 
 /**
- * Replace `SortNode` to `TopKNode` in these cases:
- * <li>`LimitNode + SortNode` change to `TopKNode`.
- * <li>`LimitNode + OffsetNode + SortNode` change to `LimitNode + OffsetNode + TopKNode(topValue =
+ * Replace `SortNode`+`LimitNode` to `TopKNode` and replace `MergeSortNode`+`LimitNode` to
+ * `TopKNode` in below cases. Notice that, `TransformNode` below is only used to transform the
+ * projection columns, an example query used `TransformNode`: `select s1 from root.** order by s2`.
+ *
+ * <p>The cases which can use this optimize rule.
+ * <li>`LimitNode + SortNode` ==> `TopKNode`.
+ * <li>`LimitNode + MergeSortNode` ==> `TopKNode`.
+ * <li>`LimitNode + OffsetNode + SortNode` ==> `LimitNode + OffsetNode + TopKNode(where topValue =
  *     limitValue+offsetValue)`.
- * <li>`LimitNode + TransformNode + SortNode` change to `TransformNode + TopKNode`.
- * <li>`LimitNode + OffsetNode + TransformNode + SortNode` change to `LimitNode + OffsetNode +
- *     TransformNode + TopKNode(topValue = limitValue+offsetValue)`.
+ * <li>`LimitNode + OffsetNode + MergeSortNode` ==> `LimitNode + OffsetNode + TopKNode(where
+ *     topValue = limitValue+offsetValue)`.
+ * <li>`LimitNode + TransformNode + SortNode` ==> `TransformNode + TopKNode`.
+ * <li>`LimitNode + TransformNode + MergeSortNode` ==> `TransformNode + TopKNode`.
+ * <li>`LimitNode + OffsetNode + TransformNode + SortNode` ==> `LimitNode + OffsetNode +
+ *     TransformNode + TopKNode(where topValue = limitValue+offsetValue)`.
+ * <li>`LimitNode + OffsetNode + TransformNode + MergeSortNode` ==> `LimitNode + OffsetNode + *
+ *     TransformNode + TopKNode(where topValue = limitValue+offsetValue)`.
  */
 public class OrderByExpressionWithLimitChangeToTopK implements PlanOptimizer {
 
