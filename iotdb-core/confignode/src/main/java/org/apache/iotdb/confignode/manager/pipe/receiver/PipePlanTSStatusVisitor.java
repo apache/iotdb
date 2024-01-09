@@ -84,9 +84,15 @@ public class PipePlanTSStatusVisitor extends PhysicalPlanVisitor<TSStatus, TSSta
   @Override
   public TSStatus visitCommitSetSchemaTemplate(CommitSetSchemaTemplatePlan plan, TSStatus context) {
     if (context.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()) {
-      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
-          .setMessage(context.getMessage());
-    } else if (context.getCode() == TSStatusCode.DATANODE_NOT_EXIST.getStatusCode()) {
+      if (context.getMessage().contains("Template already exists")) {
+        return new TSStatus(
+                TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+            .setMessage(context.getMessage());
+      } else if (context.getMessage().contains("Template t1 does not exist")) {
+        return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+            .setMessage(context.getMessage());
+      }
+    } else if (context.getCode() == TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }
