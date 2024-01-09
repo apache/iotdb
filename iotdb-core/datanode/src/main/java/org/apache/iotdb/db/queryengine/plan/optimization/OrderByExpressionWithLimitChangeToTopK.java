@@ -151,6 +151,23 @@ public class OrderByExpressionWithLimitChangeToTopK implements PlanOptimizer {
           } else {
             return transformNode;
           }
+        } else if (transformNode.getChild() instanceof MergeSortNode) {
+          MergeSortNode mergeSortNode = (MergeSortNode) transformNode.getChild();
+          TopKNode topKNode =
+              new TopKNode(
+                  rewriterContext.getMppQueryContext().getQueryId().genPlanNodeId(),
+                  (int) limitNode.getLimit(),
+                  mergeSortNode.getMergeOrderParameter(),
+                  mergeSortNode.getOutputColumnNames());
+          topKNode.setChildren(mergeSortNode.getChildren());
+          transformNode.setChild(topKNode);
+
+          if (parent != null) {
+            ((SingleChildProcessNode) parent).setChild(transformNode);
+            return parent;
+          } else {
+            return transformNode;
+          }
         }
       }
 
@@ -201,6 +218,16 @@ public class OrderByExpressionWithLimitChangeToTopK implements PlanOptimizer {
                   sortNode.getOrderByParameter(),
                   sortNode.getOutputColumnNames());
           topKNode.setChildren(sortNode.getChildren());
+          transformNode.setChild(topKNode);
+        } else if (transformNode.getChild() instanceof MergeSortNode) {
+          MergeSortNode mergeSortNode = (MergeSortNode) transformNode.getChild();
+          TopKNode topKNode =
+              new TopKNode(
+                  rewriterContext.getMppQueryContext().getQueryId().genPlanNodeId(),
+                  (int) ((int) ((LimitNode) parent).getLimit() + offsetNode.getOffset()),
+                  mergeSortNode.getMergeOrderParameter(),
+                  mergeSortNode.getOutputColumnNames());
+          topKNode.setChildren(mergeSortNode.getChildren());
           transformNode.setChild(topKNode);
         }
       }

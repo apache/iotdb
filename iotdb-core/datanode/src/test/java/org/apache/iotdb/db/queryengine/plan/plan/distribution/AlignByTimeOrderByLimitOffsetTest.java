@@ -44,7 +44,7 @@ public class AlignByTimeOrderByLimitOffsetTest {
   private static final long LIMIT_VALUE = 10;
 
   @Test
-  public void alignByTimeOrderByExpressionLimitTest() {
+  public void orderByExpressionLimitTest() {
     QueryId queryId = new QueryId("test");
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
