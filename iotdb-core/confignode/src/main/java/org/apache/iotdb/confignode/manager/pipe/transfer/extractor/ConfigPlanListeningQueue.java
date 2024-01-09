@@ -26,11 +26,13 @@ import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.event.SerializableEvent;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigSerializableEventType;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeWriteConfigPlanEvent;
+import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -65,12 +67,26 @@ public class ConfigPlanListeningQueue extends AbstractPipeListeningQueue
 
   /////////////////////////////// Function ///////////////////////////////
 
-  public void tryListenToPlan(ConfigPhysicalPlan plan) {
+  public void tryListenToPlan(ConfigPhysicalPlan plan, boolean isGeneratedByPipe) {
     if (PipeConfigPlanFilter.shouldBeListenedByQueue(plan)) {
-      PipeWriteConfigPlanEvent event =
-          plan.getType().equals(ConfigPhysicalPlanType.PipeEnriched)
-              ? new PipeWriteConfigPlanEvent(((PipeEnrichedPlan) plan).getInnerPlan(), true)
-              : new PipeWriteConfigPlanEvent(plan, false);
+      PipeWriteConfigPlanEvent event;
+      switch (plan.getType()) {
+        case PipeEnriched:
+          tryListenToPlan(((PipeEnrichedPlan) plan).getInnerPlan(), true);
+          return;
+        case UnsetTemplate:
+          event =
+              new PipeWriteConfigPlanEvent(
+                  new PipeUnsetSchemaTemplatePlan(
+                      ClusterTemplateManager.getInstance()
+                          .getTemplate(((UnsetSchemaTemplatePlan) plan).getTemplateId())
+                          .getName(),
+                      ((UnsetSchemaTemplatePlan) plan).getPath().getFullPath()),
+                  isGeneratedByPipe);
+          break;
+        default:
+          event = new PipeWriteConfigPlanEvent(plan, isGeneratedByPipe);
+      }
       event.increaseReferenceCount(ConfigPlanListeningQueue.class.getName());
       super.listenToElement(event);
     }

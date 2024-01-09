@@ -124,7 +124,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       writeLogForSimpleConsensus(plan);
     }
     if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      ConfigPlanListeningQueue.getInstance().tryListenToPlan(plan);
+      ConfigPlanListeningQueue.getInstance().tryListenToPlan(plan, false);
     }
     return result;
   }

@@ -74,7 +74,8 @@ import org.apache.iotdb.confignode.consensus.request.write.function.DropFunction
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
@@ -166,7 +167,7 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
       ConfigPhysicalPlanType configPhysicalPlanType =
           ConfigPhysicalPlanType.convertToConfigPhysicalPlanType(planType);
       if (configPhysicalPlanType == null) {
-        throw new IOException("unrecognized log configPhysicalPlanType: " + planType);
+        throw new IOException("Unrecognized log configPhysicalPlanType: " + planType);
       }
 
       ConfigPhysicalPlan plan;
@@ -422,6 +423,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case PipeEnriched:
           plan = new PipeEnrichedPlan();
+          break;
+        case PipeUnsetTemplate:
+          plan = new PipeUnsetSchemaTemplatePlan();
           break;
         case GetRegionId:
           plan = new GetRegionIdPlan();

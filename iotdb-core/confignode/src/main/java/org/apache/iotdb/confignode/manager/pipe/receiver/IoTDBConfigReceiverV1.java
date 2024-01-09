@@ -28,7 +28,8 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -39,6 +40,7 @@ import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.reque
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
@@ -139,9 +141,13 @@ public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
                     ((CommitSetSchemaTemplatePlan) plan).getName(),
                     ((CommitSetSchemaTemplatePlan) plan).getPath())
                 .setIsGeneratedByPipe(true));
-      case UnsetTemplate:
-        // TODO: Sender send name to receiver and execute directly
-        return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      case PipeUnsetTemplate:
+        return configManager.unsetSchemaTemplate(
+            new TUnsetSchemaTemplateReq(
+                    getPseudoQueryId(),
+                    ((PipeUnsetSchemaTemplatePlan) plan).getName(),
+                    ((PipeUnsetSchemaTemplatePlan) plan).getPath())
+                .setIsGeneratedByPipe(true));
       case UpdateTriggerStateInTable:
         // TODO: Record complete message in trigger
         return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
