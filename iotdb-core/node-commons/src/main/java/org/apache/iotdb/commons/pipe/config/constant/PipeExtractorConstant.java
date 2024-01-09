@@ -30,7 +30,7 @@ public class PipeExtractorConstant {
 
   public static final String EXTRACTOR_EXCLUSION_KEY = "extractor.inclusion.exclusion";
   public static final String SOURCE_EXCLUSION_KEY = "source.inclusion.exclusion";
-  public static final String EXTRACTOR_EXCLUSION_DEFAULT_VALUE = "deletion";
+  public static final String EXTRACTOR_EXCLUSION_DEFAULT_VALUE = "";
 
   public static final String EXTRACTOR_PATTERN_KEY = "extractor.pattern";
   public static final String SOURCE_PATTERN_KEY = "source.pattern";
