@@ -144,11 +144,9 @@ public class AnalyzeTest {
                   new ConstantOperand(TSDataType.INT64, "5"))));
       expectedAnalysis.setWhereExpression(
           new LogicAndExpression(
-              new LogicAndExpression(
-                  new ConstantOperand(TSDataType.BOOLEAN, "true"),
-                  new GreaterEqualExpression(
-                      new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")),
-                      new ConstantOperand(TSDataType.INT64, "10"))),
+              new GreaterEqualExpression(
+                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")),
+                  new ConstantOperand(TSDataType.INT64, "10")),
               new NonEqualExpression(
                   new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")),
                   new ConstantOperand(TSDataType.INT64, "6"))));
