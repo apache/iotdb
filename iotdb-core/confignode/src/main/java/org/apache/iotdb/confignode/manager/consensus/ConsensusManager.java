@@ -158,6 +158,10 @@ public class ConsensusManager {
                                           TimeDuration.valueOf(
                                               CONF.getConfigNodeRatisRequestTimeoutMs(),
                                               TimeUnit.MILLISECONDS))
+                                      .setSlownessTimeout(
+                                          TimeDuration.valueOf(
+                                              CONF.getConfigNodeRatisRequestTimeoutMs() * 6,
+                                              TimeUnit.MILLISECONDS))
                                       .setFirstElectionTimeoutMin(
                                           TimeDuration.valueOf(
                                               CONF.getRatisFirstElectionTimeoutMinMs(),

@@ -105,6 +105,10 @@ public class SchemaRegionConsensusImpl {
                                         TimeDuration.valueOf(
                                             CONF.getSchemaRatisConsensusRequestTimeoutMs(),
                                             TimeUnit.MILLISECONDS))
+                                    .setSlownessTimeout(
+                                        TimeDuration.valueOf(
+                                            CONF.getSchemaRatisConsensusRequestTimeoutMs() * 6,
+                                            TimeUnit.MILLISECONDS))
                                     .setFirstElectionTimeoutMin(
                                         TimeDuration.valueOf(
                                             CONF.getRatisFirstElectionTimeoutMinMs(),
