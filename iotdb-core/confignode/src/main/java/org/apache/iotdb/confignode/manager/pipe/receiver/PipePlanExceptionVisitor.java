@@ -20,8 +20,10 @@
 package org.apache.iotdb.confignode.manager.pipe.receiver;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.PhysicalPlanVisitor;
+import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaTemplatePlan;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 /**
@@ -34,5 +36,15 @@ public class PipePlanExceptionVisitor extends PhysicalPlanVisitor<TSStatus, Exce
   public TSStatus visitPlan(ConfigPhysicalPlan plan, Exception context) {
     return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
         .setMessage(context.getMessage());
+  }
+
+  @Override
+  public TSStatus visitPipeUnsetSchemaTemplate(
+      UnsetSchemaTemplatePlan unsetSchemaTemplatePlan, Exception context) {
+    if (context instanceof MetadataException) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return super.visitPipeUnsetSchemaTemplate(unsetSchemaTemplatePlan, context);
   }
 }

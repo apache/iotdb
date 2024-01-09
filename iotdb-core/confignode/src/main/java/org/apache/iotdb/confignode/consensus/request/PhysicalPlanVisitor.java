@@ -46,8 +46,8 @@ public abstract class PhysicalPlanVisitor<R, C> {
         return visitExtendSchemaTemplate((ExtendSchemaTemplatePlan) plan, context);
       case DropSchemaTemplate:
         return visitDropSchemaTemplate((DropSchemaTemplatePlan) plan, context);
-      case UnsetTemplate:
-        return visitUnsetSchemaTemplate((UnsetSchemaTemplatePlan) plan, context);
+      case PipeUnsetTemplate:
+        return visitPipeUnsetSchemaTemplate((UnsetSchemaTemplatePlan) plan, context);
       case CreateRole:
         return visitCreateRole((AuthorPlan) plan, context);
       case DropRole:
@@ -101,32 +101,17 @@ public abstract class PhysicalPlanVisitor<R, C> {
     return visitPlan(commitSetSchemaTemplatePlan, context);
   }
 
+  public R visitPipeUnsetSchemaTemplate(
+      UnsetSchemaTemplatePlan unsetSchemaTemplatePlan, C context) {
+    return visitPlan(unsetSchemaTemplatePlan, context);
+  }
+
   public R visitExtendSchemaTemplate(ExtendSchemaTemplatePlan extendSchemaTemplatePlan, C context) {
     return visitPlan(extendSchemaTemplatePlan, context);
   }
 
   public R visitDropSchemaTemplate(DropSchemaTemplatePlan dropSchemaTemplatePlan, C context) {
     return visitPlan(dropSchemaTemplatePlan, context);
-  }
-
-  public R visitUnsetSchemaTemplate(UnsetSchemaTemplatePlan unsetSchemaTemplatePlan, C context) {
-    return visitPlan(unsetSchemaTemplatePlan, context);
-  }
-
-  public R visitCreateRole(AuthorPlan createRolePlan, C context) {
-    return visitPlan(createRolePlan, context);
-  }
-
-  public R visitDropRole(AuthorPlan dropRolePlan, C context) {
-    return visitPlan(dropRolePlan, context);
-  }
-
-  public R visitGrantRole(AuthorPlan grantRolePlan, C context) {
-    return visitPlan(grantRolePlan, context);
-  }
-
-  public R visitRevokeRole(AuthorPlan revokeRolePlan, C context) {
-    return visitPlan(revokeRolePlan, context);
   }
 
   public R visitCreateUser(AuthorPlan createUserPlan, C context) {
@@ -147,6 +132,22 @@ public abstract class PhysicalPlanVisitor<R, C> {
 
   public R visitRevokeUser(AuthorPlan revokeUserPlan, C context) {
     return visitPlan(revokeUserPlan, context);
+  }
+
+  public R visitCreateRole(AuthorPlan createRolePlan, C context) {
+    return visitPlan(createRolePlan, context);
+  }
+
+  public R visitDropRole(AuthorPlan dropRolePlan, C context) {
+    return visitPlan(dropRolePlan, context);
+  }
+
+  public R visitGrantRole(AuthorPlan grantRolePlan, C context) {
+    return visitPlan(grantRolePlan, context);
+  }
+
+  public R visitRevokeRole(AuthorPlan revokeRolePlan, C context) {
+    return visitPlan(revokeRolePlan, context);
   }
 
   public R visitGrantRoleToUser(AuthorPlan grantRoleToUserPlan, C context) {

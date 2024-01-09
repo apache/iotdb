@@ -27,6 +27,8 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSche
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaTemplatePlan;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 /**
@@ -89,6 +91,30 @@ public class PipePlanTSStatusVisitor extends PhysicalPlanVisitor<TSStatus, TSSta
           .setMessage(context.getMessage());
     }
     return super.visitCommitSetSchemaTemplate(plan, context);
+  }
+
+  @Override
+  public TSStatus visitPipeUnsetSchemaTemplate(
+      UnsetSchemaTemplatePlan unsetSchemaTemplatePlan, TSStatus context) {
+    if (context.getCode() == TSStatusCode.TEMPLATE_NOT_SET.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    } else if (context.getCode() == TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode()
+        || context.getCode() == TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return super.visitPipeUnsetSchemaTemplate(unsetSchemaTemplatePlan, context);
+  }
+
+  @Override
+  public TSStatus visitDropSchemaTemplate(
+      DropSchemaTemplatePlan dropSchemaTemplatePlan, TSStatus context) {
+    if (context.getCode() == TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return super.visitDropSchemaTemplate(dropSchemaTemplatePlan, context);
   }
 
   @Override
