@@ -444,8 +444,8 @@ public class TestUtils {
       try (Connection connection = env.getConnection(userName, password);
           Statement statement = connection.createStatement()) {
         for (int i = lastIndex; i < sqlList.size(); ++i) {
-          statement.execute(sqlList.get(i));
           lastIndex = i;
+          statement.execute(sqlList.get(i));
         }
         return true;
       } catch (SQLException e) {
@@ -695,13 +695,18 @@ public class TestUtils {
       // Keep retrying if there are execution failure
       await()
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
-          .ignoreExceptions()
           .untilAsserted(
-              () ->
+              () -> {
+                try {
                   TestUtils.assertResultSetEqual(
-                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet));
+                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
+                } catch (Exception e) {
+                  Assert.fail();
+                }
+              });
     } catch (Exception e) {
       e.printStackTrace();
+      fail();
     }
   }
 
@@ -721,13 +726,18 @@ public class TestUtils {
       // Keep retrying if there are execution failure
       await()
           .atMost(consistentSeconds, TimeUnit.SECONDS)
-          .ignoreExceptions()
           .failFast(
-              () ->
+              () -> {
+                try {
                   TestUtils.assertResultSetEqual(
-                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet));
+                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
+                } catch (Exception e) {
+                  Assert.fail();
+                }
+              });
     } catch (Exception e) {
       e.printStackTrace();
+      fail();
     }
   }
 }

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.metadata;
+package org.apache.iotdb.pipe.it;
 
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.itbase.env.BaseEnv;
@@ -26,7 +26,7 @@ import org.junit.After;
 import org.junit.Assume;
 import org.junit.Before;
 
-abstract class AbstractPipeDualMetaIT {
+public abstract class AbstractPipeDualManualSchemaIT {
 
   protected BaseEnv senderEnv;
   protected BaseEnv receiverEnv;

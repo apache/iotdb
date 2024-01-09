@@ -27,6 +27,7 @@ import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2;
+import org.apache.iotdb.pipe.it.AbstractPipeDualManualSchemaIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
@@ -45,7 +46,7 @@ import java.util.Set;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
-public class IoTDBIdempotentIT extends AbstractPipeDualMetaIT {
+public class IoTDBIdempotentIT extends AbstractPipeDualManualSchemaIT {
   @Override
   @Before
   public void setUp() {

@@ -35,6 +35,7 @@ import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2;
+import org.apache.iotdb.pipe.it.AbstractPipeDualAutoSchemaIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -60,7 +61,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
-public class IoTDBPipeClusterIT extends AbstractPipeDualDataIT {
+public class IoTDBPipeClusterIT extends AbstractPipeDualAutoSchemaIT {
 
   @Override
   @Before

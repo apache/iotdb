@@ -20,10 +20,14 @@
 package org.apache.iotdb.db.pipe.receiver;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 /**
@@ -45,5 +49,26 @@ public class PipeStatementExceptionVisitor extends StatementVisitor<TSStatus, Ex
           .setMessage(context.getMessage());
     }
     return super.visitLoadFile(loadTsFileStatement, context);
+  }
+
+  @Override
+  public TSStatus visitActivateTemplate(
+      ActivateTemplateStatement activateTemplateStatement, Exception context) {
+    return visitGeneralActivateTemplate(activateTemplateStatement, context);
+  }
+
+  @Override
+  public TSStatus visitBatchActivateTemplate(
+      BatchActivateTemplateStatement batchActivateTemplateStatement, Exception context) {
+    return visitGeneralActivateTemplate(batchActivateTemplateStatement, context);
+  }
+
+  private TSStatus visitGeneralActivateTemplate(
+      Statement activateTemplateStatement, Exception context) {
+    if (context instanceof MetadataException) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return visitStatement(activateTemplateStatement, context);
   }
 }
