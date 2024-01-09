@@ -130,15 +130,15 @@ public class PipeExceptionHandler {
               "User conflict exception status in pipe transfer, will retry for {} seconds. status: {}",
               conflictRetryMaxSeconds,
               status);
-          throw new PipeException(exceptionMessage);
         } else if (System.currentTimeMillis() - firstEncounterTime > conflictRetryMaxSeconds) {
           LOGGER.info("User conflict exception timeout, release the event.");
           if (conflictRecordIgnoredData) {
             LOGGER.warn("Ignored event: {}", recordMessage);
           }
           firstEncounterTime = 0;
+          return;
         }
-        return;
+        throw new PipeException(exceptionMessage);
         // Other exceptions
       default:
         if (firstEncounterTime == 0) {
@@ -147,14 +147,15 @@ public class PipeExceptionHandler {
               "Unclassified exception in pipe transfer, will retry for {} seconds. status: {}",
               othersRetryMaxSeconds,
               status);
-          throw new PipeException(exceptionMessage);
         } else if (System.currentTimeMillis() - firstEncounterTime > othersRetryMaxSeconds) {
           LOGGER.info("Unclassified exception timeout, release the event.");
           if (othersRecordIgnoredData) {
             LOGGER.warn("Ignored event: {}", recordMessage);
           }
           firstEncounterTime = 0;
+          return;
         }
+        throw new PipeException(exceptionMessage);
     }
   }
 }

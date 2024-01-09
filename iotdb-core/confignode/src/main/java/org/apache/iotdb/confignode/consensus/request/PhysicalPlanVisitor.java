@@ -23,11 +23,11 @@ import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaTemplatePlan;
 
 public abstract class PhysicalPlanVisitor<R, C> {
   public R process(ConfigPhysicalPlan plan, C context) {
@@ -47,7 +47,7 @@ public abstract class PhysicalPlanVisitor<R, C> {
       case DropSchemaTemplate:
         return visitDropSchemaTemplate((DropSchemaTemplatePlan) plan, context);
       case PipeUnsetTemplate:
-        return visitPipeUnsetSchemaTemplate((UnsetSchemaTemplatePlan) plan, context);
+        return visitPipeUnsetSchemaTemplate((PipeUnsetSchemaTemplatePlan) plan, context);
       case CreateRole:
         return visitCreateRole((AuthorPlan) plan, context);
       case DropRole:
@@ -102,8 +102,8 @@ public abstract class PhysicalPlanVisitor<R, C> {
   }
 
   public R visitPipeUnsetSchemaTemplate(
-      UnsetSchemaTemplatePlan unsetSchemaTemplatePlan, C context) {
-    return visitPlan(unsetSchemaTemplatePlan, context);
+      PipeUnsetSchemaTemplatePlan pipeUnsetSchemaTemplatePlan, C context) {
+    return visitPlan(pipeUnsetSchemaTemplatePlan, context);
   }
 
   public R visitExtendSchemaTemplate(ExtendSchemaTemplatePlan extendSchemaTemplatePlan, C context) {

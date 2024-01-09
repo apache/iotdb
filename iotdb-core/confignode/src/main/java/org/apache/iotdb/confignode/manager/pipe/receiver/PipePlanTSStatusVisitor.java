@@ -25,10 +25,10 @@ import org.apache.iotdb.confignode.consensus.request.PhysicalPlanVisitor;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaTemplatePlan;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 /**
@@ -101,7 +101,7 @@ public class PipePlanTSStatusVisitor extends PhysicalPlanVisitor<TSStatus, TSSta
 
   @Override
   public TSStatus visitPipeUnsetSchemaTemplate(
-      UnsetSchemaTemplatePlan unsetSchemaTemplatePlan, TSStatus context) {
+      PipeUnsetSchemaTemplatePlan pipeUnsetSchemaTemplatePlan, TSStatus context) {
     if (context.getCode() == TSStatusCode.TEMPLATE_NOT_SET.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
@@ -110,7 +110,7 @@ public class PipePlanTSStatusVisitor extends PhysicalPlanVisitor<TSStatus, TSSta
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }
-    return super.visitPipeUnsetSchemaTemplate(unsetSchemaTemplatePlan, context);
+    return super.visitPipeUnsetSchemaTemplate(pipeUnsetSchemaTemplatePlan, context);
   }
 
   @Override
