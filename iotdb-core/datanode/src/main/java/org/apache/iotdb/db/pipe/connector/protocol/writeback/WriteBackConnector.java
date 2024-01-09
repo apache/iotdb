@@ -102,6 +102,13 @@ public class WriteBackConnector implements PipeConnector {
             ((PipeRawTabletInsertionEvent) tabletInsertionEvent).parseEventWithPatternOrTime());
       }
       return;
+    } else {
+      // ignore raw tablet event with zero rows
+      if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
+        if (((PipeRawTabletInsertionEvent) tabletInsertionEvent).hasNoNeedParsingAndIsEmpty()) {
+          return;
+        }
+      }
     }
 
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {

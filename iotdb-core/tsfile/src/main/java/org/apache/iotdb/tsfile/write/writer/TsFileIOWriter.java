@@ -321,7 +321,6 @@ public class TsFileIOWriter implements AutoCloseable {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void endFile() throws IOException {
-    long startTime = System.currentTimeMillis();
     checkInMemoryPathCount();
     readChunkMetadataAndConstructIndexTree();
 
@@ -348,8 +347,6 @@ public class TsFileIOWriter implements AutoCloseable {
       }
     }
     canWrite = false;
-    long cost = System.currentTimeMillis() - startTime;
-    logger.debug("Time for flushing metadata is {} ms", cost);
   }
 
   private void checkInMemoryPathCount() {

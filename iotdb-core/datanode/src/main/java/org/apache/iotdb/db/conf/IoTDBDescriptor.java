@@ -893,6 +893,11 @@ public class IoTDBDescriptor {
       conf.setIntoOperationExecutionThreadCount(2);
     }
 
+    conf.setMaxAllocateMemoryRatioForLoad(
+        Double.parseDouble(
+            properties.getProperty(
+                "max_allocate_memory_ratio_for_load",
+                String.valueOf(conf.getMaxAllocateMemoryRatioForLoad()))));
     conf.setLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber(
         Integer.parseInt(
             properties.getProperty(

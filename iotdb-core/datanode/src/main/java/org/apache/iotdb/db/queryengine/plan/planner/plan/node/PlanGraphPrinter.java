@@ -44,6 +44,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.InnerTimeJoinNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.LeftOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
@@ -70,6 +72,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 
 public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter.GraphContext> {
 
@@ -326,9 +329,51 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   }
 
   @Override
+  public List<String> visitLeftOuterTimeJoin(LeftOuterTimeJoinNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("LeftOuterTimeJoin-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("Order: %s", node.getMergeOrder()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitInnerTimeJoin(InnerTimeJoinNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("InnerTimeJoin-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("Order: %s", node.getMergeOrder()));
+    Optional<List<Long>> timePartitions = node.getTimePartitions();
+    if (timePartitions.isPresent()) {
+      int size = timePartitions.get().size();
+      if (size > 0) {
+        StringBuilder builder =
+            new StringBuilder("TimePartitions: [").append(timePartitions.get().get(0));
+        for (int i = 1; i < Math.min(size, 4); i++) {
+          builder.append(",").append(timePartitions.get().get(i));
+        }
+        for (int i = 4; i < size; i += 4) {
+          builder.append(",").append(System.lineSeparator());
+          builder.append(timePartitions.get().get(i));
+          int j = i + 1;
+          while (j < Math.min(i + 4, size)) {
+            builder.append(",").append(timePartitions.get().get(j));
+          }
+        }
+        builder.append("]");
+        boxValue.add(builder.toString());
+      } else {
+        boxValue.add("TimePartitions: []");
+      }
+    } else {
+      boxValue.add("TimePartitions: ALL");
+    }
+
+    return render(node, boxValue, context);
+  }
+
+  @Override
   public List<String> visitFullOuterTimeJoin(FullOuterTimeJoinNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
-    boxValue.add(String.format("TimeJoin-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("FullOuterTimeJoin-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("Order: %s", node.getMergeOrder()));
     return render(node, boxValue, context);
   }
