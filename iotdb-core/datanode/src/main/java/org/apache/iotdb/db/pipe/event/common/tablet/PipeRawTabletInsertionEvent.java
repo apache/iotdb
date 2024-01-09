@@ -205,7 +205,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
         convertToTablet(), isAligned, pipeName, pipeTaskMeta, this, needToReport);
   }
 
-  public boolean isParsedOrEmptyAfterParsing() {
+  public boolean hasNoNeedParsingAndIsEmpty() {
     return !shouldParsePatternOrTime() && tablet.rowSize == 0;
   }
 }

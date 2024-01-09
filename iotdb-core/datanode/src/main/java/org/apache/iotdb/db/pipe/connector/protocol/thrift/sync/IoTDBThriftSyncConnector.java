@@ -210,7 +210,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
     } else {
       // ignore raw tablet event with zero rows
       if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
-        if (((PipeRawTabletInsertionEvent) tabletInsertionEvent).isParsedOrEmptyAfterParsing()) {
+        if (((PipeRawTabletInsertionEvent) tabletInsertionEvent).hasNoNeedParsingAndIsEmpty()) {
           return;
         }
       }
