@@ -70,8 +70,8 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   protected String pattern;
   private boolean isDbNameCoveredByPattern = false;
 
-  protected long realtimeDataExtractionStartTime; // Event time
-  protected long realtimeDataExtractionEndTime; // Event time
+  protected long realtimeDataExtractionStartTime = Long.MIN_VALUE; // Event time
+  protected long realtimeDataExtractionEndTime = Long.MAX_VALUE; // Event time
 
   private final AtomicBoolean enableSkippingTimeParseByTimePartition = new AtomicBoolean(false);
   private boolean disableSkippingTimeParse = false;
