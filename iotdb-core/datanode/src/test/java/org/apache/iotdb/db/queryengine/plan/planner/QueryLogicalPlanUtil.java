@@ -54,8 +54,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.TimeFilterApi;
 
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -111,36 +109,32 @@ public class QueryLogicalPlanUtil {
     String sql = "SELECT last * FROM root.sg.** WHERE time > 100 ORDER BY timeseries ASC";
 
     QueryId queryId = new QueryId("test");
-    List<PlanNode> sourceNodeList = new ArrayList<>();
-    sourceNodeList.add(
-        new LastQueryScanNode(
-            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s1"), null));
-    sourceNodeList.add(
-        new LastQueryScanNode(
-            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s2"), null));
-    sourceNodeList.add(
-        new LastQueryScanNode(
-            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s3"), null));
-    sourceNodeList.add(
-        new AlignedLastQueryScanNode(
-            queryId.genPlanNodeId(),
-            new AlignedPath((MeasurementPath) schemaMap.get("root.sg.d2.a.s1")),
-            null));
-    sourceNodeList.add(
-        new AlignedLastQueryScanNode(
-            queryId.genPlanNodeId(),
-            new AlignedPath((MeasurementPath) schemaMap.get("root.sg.d2.a.s2")),
-            null));
-    sourceNodeList.add(
-        new LastQueryScanNode(
-            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s1"), null));
-    sourceNodeList.add(
-        new LastQueryScanNode(
-            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s2"), null));
-    sourceNodeList.add(
-        new LastQueryScanNode(
-            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s4"), null));
+    // fake initResultNodeContext()
+    queryId.genPlanNodeId();
 
+    LastQueryScanNode d1s1 =
+        new LastQueryScanNode(
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s1"), null);
+    LastQueryScanNode d1s2 =
+        new LastQueryScanNode(
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s2"), null);
+    LastQueryScanNode d1s3 =
+        new LastQueryScanNode(
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s3"), null);
+    LastQueryScanNode d2s1 =
+        new LastQueryScanNode(
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s1"), null);
+    LastQueryScanNode d2s2 =
+        new LastQueryScanNode(
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s2"), null);
+    LastQueryScanNode d2s4 =
+        new LastQueryScanNode(
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s4"), null);
+    AlignedLastQueryScanNode d2a =
+        new AlignedLastQueryScanNode(
+            queryId.genPlanNodeId(), (AlignedPath) schemaMap.get("root.sg.d2.a"), null);
+
+    List<PlanNode> sourceNodeList = Arrays.asList(d1s1, d1s2, d1s3, d2a, d2s1, d2s2, d2s4);
     LastQueryNode lastQueryNode =
         new LastQueryNode(queryId.genPlanNodeId(), sourceNodeList, Ordering.ASC, false);
 
@@ -153,6 +147,9 @@ public class QueryLogicalPlanUtil {
     String sql = "SELECT ** FROM root.sg.d2 WHERE time > 100 LIMIT 10 OFFSET 10";
 
     QueryId queryId = new QueryId("test");
+    // fake initResultNodeContext()
+    queryId.genPlanNodeId();
+
     List<PlanNode> sourceNodeList = new ArrayList<>();
     sourceNodeList.add(
         new SeriesScanNode(
@@ -174,7 +171,7 @@ public class QueryLogicalPlanUtil {
             queryId.genPlanNodeId(),
             (AlignedPath) schemaMap.get("root.sg.d2.a"),
             Ordering.ASC,
-            false));
+            true));
 
     FullOuterTimeJoinNode fullOuterTimeJoinNode =
         new FullOuterTimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC, sourceNodeList);
@@ -192,6 +189,9 @@ public class QueryLogicalPlanUtil {
             + "ORDER BY TIME DESC LIMIT 100 OFFSET 100 SLIMIT 1 SOFFSET 1";
 
     QueryId queryId = new QueryId("test");
+    // fake initResultNodeContext()
+    queryId.genPlanNodeId();
+
     List<PlanNode> sourceNodeList = new ArrayList<>();
     sourceNodeList.add(
         new SeriesScanNode(
@@ -248,6 +248,9 @@ public class QueryLogicalPlanUtil {
             + "ORDER BY DEVICE,TIME DESC LIMIT 100 OFFSET 100 ALIGN BY DEVICE";
 
     QueryId queryId = new QueryId("test");
+    // fake initResultNodeContext()
+    queryId.genPlanNodeId();
+
     List<PlanNode> sourceNodeList1 = new ArrayList<>();
     sourceNodeList1.add(
         new SeriesScanNode(
@@ -354,8 +357,10 @@ public class QueryLogicalPlanUtil {
         "SELECT last_value(s1), first_value(s1), sum(s2) FROM root.sg.** WHERE time > 100 LIMIT 10 OFFSET 10";
 
     QueryId queryId = new QueryId("test");
+    // fake initResultNodeContext()
+    queryId.genPlanNodeId();
+
     List<PlanNode> sourceNodeList = new ArrayList<>();
-    Filter timeFilter = TimeFilterApi.gt(100);
     try {
       sourceNodeList.add(
           new AlignedSeriesAggregationScanNode(
@@ -481,8 +486,10 @@ public class QueryLogicalPlanUtil {
             + "GROUP BY LEVEL = 1 ORDER BY TIME DESC LIMIT 100 OFFSET 100";
 
     QueryId queryId = new QueryId("test");
+    // fake initResultNodeContext()
+    queryId.genPlanNodeId();
+
     List<PlanNode> sourceNodeList = new ArrayList<>();
-    Filter timeFilter = TimeFilterApi.gt(100);
     try {
       sourceNodeList.add(
           new AlignedSeriesAggregationScanNode(
@@ -644,7 +651,9 @@ public class QueryLogicalPlanUtil {
             + "ORDER BY DEVICE,TIME DESC LIMIT 100 OFFSET 100 ALIGN BY DEVICE";
 
     QueryId queryId = new QueryId("test");
-    Filter timeFilter = TimeFilterApi.gt(100);
+    // fake initResultNodeContext()
+    queryId.genPlanNodeId();
+
     List<PlanNode> sourceNodeList1 = new ArrayList<>();
     sourceNodeList1.add(
         new SeriesAggregationScanNode(
@@ -743,6 +752,9 @@ public class QueryLogicalPlanUtil {
             + "GROUP BY LEVEL = 1 ORDER BY TIME DESC LIMIT 100 OFFSET 100";
 
     QueryId queryId = new QueryId("test");
+    // fake initResultNodeContext()
+    queryId.genPlanNodeId();
+
     List<PlanNode> sourceNodeList = new ArrayList<>();
     sourceNodeList.add(
         new SeriesScanNode(
@@ -879,6 +891,9 @@ public class QueryLogicalPlanUtil {
             + "ORDER BY DEVICE,TIME DESC LIMIT 100 OFFSET 100 ALIGN BY DEVICE";
 
     QueryId queryId = new QueryId("test");
+    // fake initResultNodeContext()
+    queryId.genPlanNodeId();
+
     List<PlanNode> sourceNodeList1 = new ArrayList<>();
     sourceNodeList1.add(
         new SeriesScanNode(

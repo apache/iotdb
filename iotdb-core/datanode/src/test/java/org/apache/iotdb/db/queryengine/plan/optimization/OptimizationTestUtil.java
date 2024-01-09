@@ -30,7 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.Analyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.FakePartitionFetcherImpl;
 import org.apache.iotdb.db.queryengine.plan.analyze.FakeSchemaFetcherImpl;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
-import org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanner;
+import org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -38,7 +38,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.junit.Assert;
 
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -105,8 +104,8 @@ public class OptimizationTestUtil {
         new Analyzer(context, new FakePartitionFetcherImpl(), new FakeSchemaFetcherImpl());
     Analysis analysis = analyzer.analyze(statement);
 
-    LogicalPlanner planner = new LogicalPlanner(context, new ArrayList<>());
-    PlanNode actualPlan = planner.plan(analysis).getRootNode();
+    PlanNode actualPlan =
+        new LogicalPlanVisitor(analysis).process(analysis.getStatement(), context);
     Assert.assertEquals(rawPlan, actualPlan);
 
     PlanNode actualOptPlan = optimizer.optimize(actualPlan, analysis, context);
@@ -121,9 +120,8 @@ public class OptimizationTestUtil {
         new Analyzer(context, new FakePartitionFetcherImpl(), new FakeSchemaFetcherImpl());
     Analysis analysis = analyzer.analyze(statement);
 
-    LogicalPlanner planner = new LogicalPlanner(context, new ArrayList<>());
-    PlanNode actualPlan = planner.plan(analysis).getRootNode();
-
+    PlanNode actualPlan =
+        new LogicalPlanVisitor(analysis).process(analysis.getStatement(), context);
     Assert.assertEquals(rawPlan, actualPlan);
 
     PlanNode actualOptPlan = optimizer.optimize(actualPlan, analysis, context);
