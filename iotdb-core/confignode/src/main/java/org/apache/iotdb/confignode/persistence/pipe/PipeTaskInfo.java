@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
@@ -43,6 +44,7 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleMetaCha
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -281,9 +283,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
       pipeMetaKeeper.addPipeMeta(
           plan.getPipeStaticMeta().getPipeName(),
           new PipeMeta(plan.getPipeStaticMeta(), plan.getPipeRuntimeMeta()));
-      PipeConfigNodeAgent.task()
-          .handleSinglePipeMetaChanges(
-              new PipeMeta(plan.getPipeStaticMeta(), plan.getPipeRuntimeMeta()));
+      handleSinglePipeMetaChangeOnConfigTaskAgent(
+          new PipeMeta(plan.getPipeStaticMeta(), plan.getPipeRuntimeMeta()));
       ConfigPlanListeningQueue.getInstance()
           .increaseReferenceCountForListeningPipe(
               plan.getPipeStaticMeta().getExtractorParameters());
@@ -303,7 +304,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
       PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
       runtimeMeta.getStatus().set(plan.getPipeStatus());
       runtimeMeta.setShouldBeRunning(plan.getPipeStatus() == PipeStatus.RUNNING);
-      PipeConfigNodeAgent.task().handleSinglePipeMetaChanges(pipeMeta);
+      handleSinglePipeMetaChangeOnConfigTaskAgent(pipeMeta);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
@@ -324,7 +325,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
                     .getPipeMetaByPipeName(pipeName)
                     .getStaticMeta()
                     .getExtractorParameters());
-        PipeConfigNodeAgent.task().handleDropPipe(pipeName);
+        dropPipeOnConfigTaskAgent(pipeName);
       }
       pipeMetaKeeper.removePipeMeta(pipeName);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -475,8 +476,9 @@ public class PipeTaskInfo implements SnapshotProcessor {
       // the queue when there are config tasks that haven't been started yet
       earliestIndex.set(0);
     }
-    PipeConfigNodeAgent.task().handlePipeMetaChanges(plan.getPipeMetaList());
     ConfigPlanListeningQueue.getInstance().removeBefore(earliestIndex.get());
+
+    // No need to handle meta changes here since pipeMetas here only change on follower
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
@@ -521,7 +523,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
     runtimeMeta.setExceptionsClearTime(System.currentTimeMillis());
 
     final Map<Integer, PipeRuntimeException> exceptionMap =
-        runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap();
+        runtimeMeta.getNodeId2PipeRuntimeExceptionMap();
     if (!exceptionMap.isEmpty()) {
       exceptionMap.clear();
     }
@@ -538,7 +540,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   /**
-   * Record the exceptions of all pipes locally if they encountered failure when pushing pipe meta.
+   * Record the exceptions of all pipes locally if they encountered failure when pushing pipe meta
+   * to dataNodes.
    *
    * <p>If there are exceptions recorded, the related pipes will be stopped, and the exception
    * messages will then be updated to all the nodes through {@link PipeHandleMetaChangeProcedure}.
@@ -546,16 +549,17 @@ public class PipeTaskInfo implements SnapshotProcessor {
    * @param respMap The responseMap after pushing pipe meta
    * @return true if there are exceptions encountered
    */
-  public boolean recordPushPipeMetaExceptions(Map<Integer, TPushPipeMetaResp> respMap) {
+  public boolean recordDataNodePushPipeMetaExceptions(Map<Integer, TPushPipeMetaResp> respMap) {
     acquireWriteLock();
     try {
-      return recordPushPipeMetaExceptionsInternal(respMap);
+      return recordDataNodePushPipeMetaExceptionsInternal(respMap);
     } finally {
       releaseWriteLock();
     }
   }
 
-  private boolean recordPushPipeMetaExceptionsInternal(Map<Integer, TPushPipeMetaResp> respMap) {
+  private boolean recordDataNodePushPipeMetaExceptionsInternal(
+      Map<Integer, TPushPipeMetaResp> respMap) {
     boolean hasException = false;
 
     for (final Map.Entry<Integer, TPushPipeMetaResp> respEntry : respMap.entrySet()) {
@@ -581,7 +585,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
                     runtimeMeta.getStatus().set(PipeStatus.STOPPED);
 
                     final Map<Integer, PipeRuntimeException> exceptionMap =
-                        runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap();
+                        runtimeMeta.getNodeId2PipeRuntimeExceptionMap();
                     if (!exceptionMap.containsKey(dataNodeId)
                         || exceptionMap.get(dataNodeId).getTimeStamp() < message.getTimeStamp()) {
                       exceptionMap.put(
@@ -633,6 +637,12 @@ public class PipeTaskInfo implements SnapshotProcessor {
     if (needRestart.get()) {
       LOGGER.info("PipeMetaSyncer is trying to restart the pipes: {}", pipeToRestart);
     }
+
+    try {
+      handlePipeMetaChangesOnConfigTaskAgent();
+    } catch (IOException e) {
+      LOGGER.warn("Failed to restart on configNode, ", e);
+    }
     return needRestart.get();
   }
 
@@ -646,7 +656,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   /**
-   * Clear the exceptions of, and set the isAutoStopped flag to false for the successfully restarted
+   * Clear the exceptions to, and set the isAutoStopped flag to false for the successfully restarted
    * pipe.
    */
   private void handleSuccessfulRestartInternal() {
@@ -659,6 +669,56 @@ public class PipeTaskInfo implements SnapshotProcessor {
                     pipeMeta.getStaticMeta().getPipeName());
               }
             });
+  }
+
+  /////////////////////////////// ConfigTask ///////////////////////////////
+
+  private void dropPipeOnConfigTaskAgent(String pipeName) {
+    TPushPipeMetaRespExceptionMessage message = PipeConfigNodeAgent.task().handleDropPipe(pipeName);
+    if (message != null) {
+      pipeMetaKeeper
+          .getPipeMeta(message.getPipeName())
+          .getRuntimeMeta()
+          .getNodeId2PipeRuntimeExceptionMap()
+          .put(
+              ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
+              new PipeRuntimeCriticalException(message.getMessage(), message.getTimeStamp()));
+    }
+  }
+
+  private void handleSinglePipeMetaChangeOnConfigTaskAgent(PipeMeta pipeMeta) throws IOException {
+    // Hard copy to keep PipeConfigNodeTaskAgent and PipeTaskInfo apart
+    TPushPipeMetaRespExceptionMessage message =
+        PipeConfigNodeAgent.task()
+            .handleSinglePipeMetaChanges(PipeMeta.deserialize(pipeMeta.serialize()));
+    if (message != null) {
+      pipeMetaKeeper
+          .getPipeMeta(message.getPipeName())
+          .getRuntimeMeta()
+          .getNodeId2PipeRuntimeExceptionMap()
+          .put(
+              ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
+              new PipeRuntimeCriticalException(message.getMessage(), message.getTimeStamp()));
+    }
+  }
+
+  private void handlePipeMetaChangesOnConfigTaskAgent() throws IOException {
+    List<PipeMeta> pipeMetas = new ArrayList<>();
+    for (PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
+      pipeMetas.add(PipeMeta.deserialize(pipeMeta.serialize()));
+    }
+    PipeConfigNodeAgent.task()
+        .handlePipeMetaChanges(pipeMetas)
+        .forEach(
+            message ->
+                pipeMetaKeeper
+                    .getPipeMeta(message.getPipeName())
+                    .getRuntimeMeta()
+                    .getNodeId2PipeRuntimeExceptionMap()
+                    .put(
+                        ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
+                        new PipeRuntimeCriticalException(
+                            message.getMessage(), message.getTimeStamp())));
   }
 
   /////////////////////////////// Snapshot ///////////////////////////////

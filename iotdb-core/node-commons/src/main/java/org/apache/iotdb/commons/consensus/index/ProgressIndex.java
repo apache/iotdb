@@ -93,13 +93,14 @@ public abstract class ProgressIndex {
    * Define the isEqualOrAfter relation, A.isEqualOrAfter(B) if and only if each tuple member in A
    * is greater than or equal to B in the corresponding total order relation.
    *
-   * <p>C = A.updateToMinimumIsAfterProgressIndex(B) should be satisfied:
+   * <p>C = A.updateToMinimumEqualOrIsAfterProgressIndex(B) should be satisfied:
    *
-   * <p>C.isEqualOrAfter(A) is true,
+   * <p>C.isEqualOrAfter(A) is {@code true},
    *
-   * <p>C.isEqualOrAfter(B) is true
+   * <p>C.isEqualOrAfter(B) is {@code true},
    *
-   * <p>there is no D such that C.isEqualOrAfter(D) is true.
+   * <p>there is no D such that C.isEqualOrAfter(D) is {@code true} and D.isEqualOrAfter(A) is
+   * {@code true} and D.isEqualOrAfter(B) is {@code true}.
    *
    * <p>The implementation of this function should be reflexive, that is
    * A.updateToMinimumIsAfterProgressIndex(B).equals(B.updateToMinimumIsAfterProgressIndex(A)) is
@@ -110,7 +111,8 @@ public abstract class ProgressIndex {
    * @param progressIndex the progress index to be compared
    * @return the minimum progress index after the given progress index and this progress index
    */
-  public abstract ProgressIndex updateToMinimumIsAfterProgressIndex(ProgressIndex progressIndex);
+  public abstract ProgressIndex updateToMinimumEqualOrIsAfterProgressIndex(
+      ProgressIndex progressIndex);
 
   /** @return the type of this progress index */
   public abstract ProgressIndexType getType();
@@ -164,7 +166,7 @@ public abstract class ProgressIndex {
     }
 
     return new HybridProgressIndex(progressIndex1)
-        .updateToMinimumIsAfterProgressIndex(progressIndex2);
+        .updateToMinimumEqualOrIsAfterProgressIndex(progressIndex2);
   }
 
   /**

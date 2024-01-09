@@ -142,6 +142,9 @@ public abstract class PipeTaskAgent {
     final String pipeName = metaFromCoordinator.getStaticMeta().getPipeName();
     final PipeMeta metaInAgent = pipeMetaKeeper.getPipeMeta(pipeName);
 
+    System.out.println(metaFromCoordinator);
+    System.out.println(metaInAgent);
+
     // If pipe meta does not exist on local agent, create a new pipe
     if (metaInAgent == null) {
       if (createPipe(metaFromCoordinator)) {
@@ -387,12 +390,12 @@ public abstract class PipeTaskAgent {
   ////////////////////////// Manage by Pipe Name //////////////////////////
 
   /**
-   * Create a new pipe. If the pipe already exists, do nothing and return false. Otherwise, create
-   * the pipe and return true.
+   * Create a new pipe. If the pipe already exists, do nothing and return {@code false}. Otherwise,
+   * create the pipe and return {@code true}.
    *
    * @param pipeMetaFromCoordinator pipe meta from coordinator
-   * @return true if the pipe is created successfully and should be started, false if the pipe
-   *     already exists or is created but should not be started
+   * @return {@code true} if the pipe is created successfully and should be started, {@code false}
+   *     if the pipe already exists or is created but should not be started
    * @throws IllegalStateException if the status is illegal
    */
   private boolean createPipe(PipeMeta pipeMetaFromCoordinator) {

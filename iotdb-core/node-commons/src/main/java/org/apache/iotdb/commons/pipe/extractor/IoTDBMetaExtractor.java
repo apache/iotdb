@@ -50,7 +50,7 @@ public abstract class IoTDBMetaExtractor extends IoTDBCommonExtractor {
       index = !Objects.isNull(eventPair.getLeft()) ? eventPair.getLeft() + 1 : 0;
       historicalEvents = eventPair.getRight();
     } else {
-      index = ((MetaProgressIndex) progressIndex).getIndex();
+      index = ((MetaProgressIndex) progressIndex).getIndex() + 1;
     }
     itr = getListeningQueue().newIterator(index);
   }

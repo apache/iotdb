@@ -98,7 +98,7 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
     LOGGER.info("PipeMetaSyncProcedure: executeFromOperateOnDataNodes");
 
     Map<Integer, TPushPipeMetaResp> respMap = pushPipeMetaToDataNodes(env);
-    if (pipeTaskInfo.get().recordPushPipeMetaExceptions(respMap)) {
+    if (pipeTaskInfo.get().recordDataNodePushPipeMetaExceptions(respMap)) {
       throw new PipeException(
           String.format(
               "Failed to push pipe meta to dataNodes, details: %s",

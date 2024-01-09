@@ -135,7 +135,7 @@ public class MetaProgressIndex extends ProgressIndex {
   }
 
   @Override
-  public ProgressIndex updateToMinimumIsAfterProgressIndex(ProgressIndex progressIndex) {
+  public ProgressIndex updateToMinimumEqualOrIsAfterProgressIndex(ProgressIndex progressIndex) {
     lock.writeLock().lock();
     try {
       if (!(progressIndex instanceof MetaProgressIndex)) {
