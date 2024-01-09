@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.TimeComparator;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -35,6 +36,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -61,6 +63,8 @@ public class InnerTimeJoinOperator implements ProcessOperator {
 
   private final TimeComparator comparator;
 
+  private final Map<InputLocation, Integer> outputColumnMap;
+
   /** Index of the child that is currently fetching input */
   private int currentChildIndex = 0;
 
@@ -71,7 +75,8 @@ public class InnerTimeJoinOperator implements ProcessOperator {
       OperatorContext operatorContext,
       List<Operator> children,
       List<TSDataType> dataTypes,
-      TimeComparator comparator) {
+      TimeComparator comparator,
+      Map<InputLocation, Integer> outputColumnMap) {
     this.operatorContext = operatorContext;
     this.children = children;
     this.inputOperatorsCount = children.size();
@@ -82,6 +87,7 @@ public class InnerTimeJoinOperator implements ProcessOperator {
     this.inputIndex = new int[this.inputOperatorsCount];
     this.resultBuilder = new TsBlockBuilder(dataTypes);
     this.comparator = comparator;
+    this.outputColumnMap = outputColumnMap;
   }
 
   @Override
@@ -143,9 +149,8 @@ public class InnerTimeJoinOperator implements ProcessOperator {
 
       // build value columns for each child
       if (selectedRowIndexArray[0].length > 0) {
-        int columnIndex = 0;
         for (int i = 0; i < inputOperatorsCount; i++) {
-          columnIndex += buildValueColumns(columnIndex, i, selectedRowIndexArray[i]);
+          buildValueColumns(i, selectedRowIndexArray[i]);
         }
       }
     }
@@ -251,11 +256,12 @@ public class InnerTimeJoinOperator implements ProcessOperator {
     return res;
   }
 
-  private int buildValueColumns(int startColumnIndex, int childIndex, int[] selectedRowIndex) {
+  private void buildValueColumns(int childIndex, int[] selectedRowIndex) {
     TsBlock tsBlock = inputTsBlocks[childIndex];
     for (int i = 0, size = inputTsBlocks[childIndex].getValueColumnCount(); i < size; i++) {
-      ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(startColumnIndex + i);
-      Column column = inputTsBlocks[childIndex].getColumn(i);
+      ColumnBuilder columnBuilder =
+          resultBuilder.getColumnBuilder(outputColumnMap.get(new InputLocation(childIndex, i)));
+      Column column = tsBlock.getColumn(i);
       if (column.mayHaveNull()) {
         for (int rowIndex : selectedRowIndex) {
           if (column.isNull(rowIndex)) {
@@ -270,8 +276,6 @@ public class InnerTimeJoinOperator implements ProcessOperator {
         }
       }
     }
-
-    return startColumnIndex + tsBlock.getValueColumnCount();
   }
 
   /**
@@ -384,9 +388,9 @@ public class InnerTimeJoinOperator implements ProcessOperator {
     long currentRetainedSize = 0;
     long minChildReturnSize = Long.MAX_VALUE;
     for (Operator child : children) {
-      long maxReturnSize = child.calculateMaxReturnSize();
-      currentRetainedSize += (maxReturnSize + child.calculateRetainedSizeAfterCallingNext());
-      minChildReturnSize = Math.min(minChildReturnSize, maxReturnSize);
+      long tmpMaxReturnSize = child.calculateMaxReturnSize();
+      currentRetainedSize += (tmpMaxReturnSize + child.calculateRetainedSizeAfterCallingNext());
+      minChildReturnSize = Math.min(minChildReturnSize, tmpMaxReturnSize);
     }
     // max cached TsBlock
     return currentRetainedSize - minChildReturnSize;
