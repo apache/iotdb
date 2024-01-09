@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it;
+package org.apache.iotdb.pipe.it.autocreate;
 
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.itbase.env.BaseEnv;
@@ -26,7 +26,7 @@ import org.junit.After;
 import org.junit.Assume;
 import org.junit.Before;
 
-public abstract class AbstractPipeDualAutoSchemaIT {
+abstract class AbstractPipeDualAutoIT {
 
   protected BaseEnv senderEnv;
   protected BaseEnv receiverEnv;
