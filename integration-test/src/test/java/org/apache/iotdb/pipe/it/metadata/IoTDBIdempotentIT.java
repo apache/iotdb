@@ -100,12 +100,38 @@ public class IoTDBIdempotentIT extends AbstractPipeDualMetaIT {
   }
 
   @Test
+  public void testDropTemplateIdempotent() throws Exception {
+    testIdempotent(
+        Collections.singletonList(
+            "create schema template t1 (s1 INT64 encoding=RLE, s2 INT64 encoding=RLE, s3 INT64 encoding=RLE compression=SNAPPY)"),
+        "drop schema template t1",
+        "create database root.sg1",
+        "count databases",
+        "count,",
+        Collections.singleton("1,"));
+  }
+
+  @Test
   public void testSetTemplateIdempotent() throws Exception {
     testIdempotent(
         Arrays.asList(
             "create schema template t1 (s1 INT64 encoding=RLE, s2 INT64 encoding=RLE, s3 INT64 encoding=RLE compression=SNAPPY)",
             "create database root.sg1"),
         "set schema template t1 to root.sg1",
+        "create database root.sg2",
+        "count databases",
+        "count,",
+        Collections.singleton("2,"));
+  }
+
+  @Test
+  public void testUnsetTemplateIdempotent() throws Exception {
+    testIdempotent(
+        Arrays.asList(
+            "create schema template t1 (s1 INT64 encoding=RLE, s2 INT64 encoding=RLE, s3 INT64 encoding=RLE compression=SNAPPY)",
+            "create database root.sg1",
+            "set schema template t1 to root.sg1"),
+        "unset schema template t1 from root.sg1",
         "create database root.sg2",
         "count databases",
         "count,",
