@@ -238,13 +238,6 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
       return;
     }
 
-    // ignore raw tablet event with zero rows
-    if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
-      if (((PipeRawTabletInsertionEvent) tabletInsertionEvent).isEmpty()) {
-        return;
-      }
-    }
-
     if (((EnrichedEvent) tabletInsertionEvent).shouldParsePatternOrTime()) {
       if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
         transfer(
@@ -255,6 +248,13 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
             ((PipeRawTabletInsertionEvent) tabletInsertionEvent).parseEventWithPatternOrTime());
       }
       return;
+    } else {
+      // ignore raw tablet event with zero rows
+      if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
+        if (((PipeRawTabletInsertionEvent) tabletInsertionEvent).isParsedOrEmptyAfterParsing()) {
+          return;
+        }
+      }
     }
 
     final int socketIndex = nextSocketIndex();
