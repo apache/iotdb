@@ -89,6 +89,8 @@ public class LocalExecutionPlanner {
 
     instanceContext.setSourcePaths(collectSourcePaths(context));
 
+    context.getTimePartitions().ifPresent(instanceContext::setTimePartitions);
+
     // set maxBytes one SourceHandle can reserve after visiting the whole tree
     context.setMaxBytesOneHandleCanReserve();
 
