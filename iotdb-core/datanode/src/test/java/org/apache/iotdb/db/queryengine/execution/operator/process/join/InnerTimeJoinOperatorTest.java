@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.DescTimeComparator;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -37,9 +38,13 @@ import org.mockito.Mockito;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class InnerTimeJoinOperatorTest {
@@ -245,12 +250,17 @@ public class InnerTimeJoinOperatorTest {
           }
         };
 
+    Map<InputLocation, Integer> outputColumnMap = new HashMap<>();
+    outputColumnMap.put(new InputLocation(0, 0), 0);
+    outputColumnMap.put(new InputLocation(1, 0), 1);
+
     InnerTimeJoinOperator innerTimeJoinOperator =
         new InnerTimeJoinOperator(
             operatorContext,
             Arrays.asList(leftChild, rightChild),
             Arrays.asList(TSDataType.INT32, TSDataType.INT64),
-            new AscTimeComparator());
+            new AscTimeComparator(),
+            outputColumnMap);
 
     assertEquals(
         TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes() + 64 * 1024 * 2,
@@ -559,12 +569,19 @@ public class InnerTimeJoinOperatorTest {
           }
         };
 
+    Map<InputLocation, Integer> outputColumnMap = new HashMap<>();
+    outputColumnMap.put(new InputLocation(0, 0), 0);
+    outputColumnMap.put(new InputLocation(0, 1), 1);
+    outputColumnMap.put(new InputLocation(1, 0), 2);
+    outputColumnMap.put(new InputLocation(1, 1), 3);
+
     InnerTimeJoinOperator innerTimeJoinOperator =
         new InnerTimeJoinOperator(
             operatorContext,
             Arrays.asList(leftChild, rightChild),
             Arrays.asList(TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.BOOLEAN),
-            new DescTimeComparator());
+            new DescTimeComparator(),
+            outputColumnMap);
 
     long[] timeArray = new long[] {19L, 18L, 15L, 7L, 3L};
     int[] column1Array = new int[] {19, 18, 0, 7, 3};
@@ -833,12 +850,19 @@ public class InnerTimeJoinOperatorTest {
           }
         };
 
+    Map<InputLocation, Integer> outputColumnMap = new HashMap<>();
+    outputColumnMap.put(new InputLocation(0, 0), 0);
+    outputColumnMap.put(new InputLocation(0, 1), 1);
+    outputColumnMap.put(new InputLocation(1, 0), 2);
+    outputColumnMap.put(new InputLocation(1, 1), 3);
+
     InnerTimeJoinOperator innerTimeJoinOperator =
         new InnerTimeJoinOperator(
             operatorContext,
             Arrays.asList(child1, child2),
             Arrays.asList(TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.BOOLEAN),
-            new DescTimeComparator());
+            new DescTimeComparator(),
+            outputColumnMap);
 
     long[] timeArray = new long[] {100L, 90L, 50L, 20L, 10L};
     int[] column1Array = new int[] {100, 90, 50, 20, 10};
@@ -938,7 +962,7 @@ public class InnerTimeJoinOperatorTest {
     // --------------------- TsBlock-3
 
     // result table
-    // Time, s1,     s2,     s3,     s4
+    // Time, s1,     s2,     s3,     s4,     s5
     // empty
 
     OperatorContext operatorContext = Mockito.mock(OperatorContext.class);
@@ -1212,6 +1236,13 @@ public class InnerTimeJoinOperatorTest {
           }
         };
 
+    Map<InputLocation, Integer> outputColumnMap = new HashMap<>();
+    outputColumnMap.put(new InputLocation(0, 0), 0);
+    outputColumnMap.put(new InputLocation(0, 1), 1);
+    outputColumnMap.put(new InputLocation(1, 0), 2);
+    outputColumnMap.put(new InputLocation(1, 1), 3);
+    outputColumnMap.put(new InputLocation(2, 0), 4);
+
     InnerTimeJoinOperator innerTimeJoinOperator =
         new InnerTimeJoinOperator(
             operatorContext,
@@ -1222,7 +1253,8 @@ public class InnerTimeJoinOperatorTest {
                 TSDataType.FLOAT,
                 TSDataType.BOOLEAN,
                 TSDataType.TEXT),
-            new DescTimeComparator());
+            new DescTimeComparator(),
+            outputColumnMap);
 
     try {
       int count = 0;
@@ -1237,6 +1269,381 @@ public class InnerTimeJoinOperatorTest {
         listenableFuture.get();
       }
       assertEquals(0, count);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testInnerJoin5() {
+    // child-1
+    // Time, s1,     s2
+    // 100   100     200
+    // 90    90      180
+    // 80    80      160
+    // 70    70      140
+    // 60    60      120
+    // 50    50      100
+    // 40    40      80
+    // 30    30      60
+    // 20    20      40
+    // 10    10      20
+    // 0     0       0
+    // ---------------------- TsBlock-1
+
+    // child-2
+    // Time,   s3,        s4
+    // 1000    3000.0     false
+    // 500     500.0      true
+    // 100     300.0      null
+    // ------------------------- TsBlock-1
+    // 99      99.0       true
+    // 95      95.0       null
+    // 90      null       false
+    // ------------------------- TsBlock-2
+    // 50      150.0      true
+    // 48      48.0       true
+    // 20      60.0       null
+    // 10      null       false
+    // ------------------------- TsBlock-3
+
+    // child-3
+    // Time,   s5,
+    // 1000    "iotdb"
+    // 500     "ty"
+    // 101     "zm"
+    // --------------------- TsBlock-1
+    // 99      "ty"
+    // 90      "love"
+    // 80      "zm"
+    // 60      "2018-05-06"
+    // --------------------- TsBlock-2
+    // 40      "1997-09-09"
+    // 22      "1995-04-21"
+    // 11      "2022-04-21"
+    // 0       "2023-12-30"
+    // --------------------- TsBlock-3
+
+    // result table
+    // Time, s1,     s2,     s3,     s4,     s5
+    // 90    90      180     null    false   "love"
+
+    OperatorContext operatorContext = Mockito.mock(OperatorContext.class);
+    Mockito.when(operatorContext.getMaxRunTime()).thenReturn(new Duration(1000, TimeUnit.SECONDS));
+
+    Operator child1 =
+        new Operator() {
+          private final long[][] timeArray =
+              new long[][] {{100L, 90L, 80L, 70L, 60L, 50L, 40L, 30L, 20L, 10L, 0L}};
+
+          private final int[][] value1Array =
+              new int[][] {{100, 90, 80, 70, 60, 50, 40, 30, 20, 10, 0}};
+
+          private final long[][] value2Array =
+              new long[][] {{200L, 180L, 160, 140, 120, 100L, 80L, 60L, 40L, 20L, 0L}};
+
+          private final boolean[][][] valueIsNull =
+              new boolean[][][] {
+                {{false, false, false, false, false, false, false, false, false, false, false}},
+                {{false, false, false, false, false, false, false, false, false, false, false}}
+              };
+
+          private int index = 0;
+
+          @Override
+          public OperatorContext getOperatorContext() {
+            return operatorContext;
+          }
+
+          @Override
+          public TsBlock next() {
+            if (timeArray[index] == null) {
+              index++;
+              return null;
+            }
+            TsBlockBuilder builder =
+                new TsBlockBuilder(
+                    timeArray[index].length, Arrays.asList(TSDataType.INT32, TSDataType.INT64));
+            for (int i = 0, size = timeArray[index].length; i < size; i++) {
+              builder.getTimeColumnBuilder().writeLong(timeArray[index][i]);
+              if (valueIsNull[0][index][i]) {
+                builder.getColumnBuilder(0).appendNull();
+              } else {
+                builder.getColumnBuilder(0).writeInt(value1Array[index][i]);
+              }
+              if (valueIsNull[1][index][i]) {
+                builder.getColumnBuilder(1).appendNull();
+              } else {
+                builder.getColumnBuilder(1).writeLong(value2Array[index][i]);
+              }
+            }
+            builder.declarePositions(timeArray[index].length);
+            index++;
+            return builder.build();
+          }
+
+          @Override
+          public boolean hasNext() {
+            return index < 1;
+          }
+
+          @Override
+          public void close() {}
+
+          @Override
+          public boolean isFinished() {
+            return index >= 1;
+          }
+
+          @Override
+          public long calculateMaxPeekMemory() {
+            return 64 * 1024;
+          }
+
+          @Override
+          public long calculateMaxReturnSize() {
+            return 64 * 1024;
+          }
+
+          @Override
+          public long calculateRetainedSizeAfterCallingNext() {
+            return 0;
+          }
+        };
+
+    Operator child2 =
+        new Operator() {
+          private final long[][] timeArray =
+              new long[][] {{1000L, 500L, 100L}, {99L, 95L, 90L}, {50L, 48L, 20L, 10L}};
+
+          private final float[][] value1Array =
+              new float[][] {
+                {3000.0f, 500.0f, 300.0f},
+                {99.0f, 95.0f, 0.0f},
+                {150.0f, 48.0f, 60.0f, 0.0f}
+              };
+
+          private final boolean[][] value2Array =
+              new boolean[][] {
+                {false, true, false},
+                {true, false, false},
+                {true, true, false, false}
+              };
+
+          private final boolean[][][] valueIsNull =
+              new boolean[][][] {
+                {
+                  {false, false, false},
+                  {false, false, true},
+                  {false, false, false, true}
+                },
+                {
+                  {false, false, true},
+                  {false, true, false},
+                  {false, false, true, false}
+                }
+              };
+
+          private int index = 0;
+
+          @Override
+          public OperatorContext getOperatorContext() {
+            return operatorContext;
+          }
+
+          @Override
+          public TsBlock next() {
+            if (timeArray[index] == null) {
+              index++;
+              return null;
+            }
+            TsBlockBuilder builder =
+                new TsBlockBuilder(
+                    timeArray[index].length, Arrays.asList(TSDataType.FLOAT, TSDataType.BOOLEAN));
+            for (int i = 0, size = timeArray[index].length; i < size; i++) {
+              builder.getTimeColumnBuilder().writeLong(timeArray[index][i]);
+              if (valueIsNull[0][index][i]) {
+                builder.getColumnBuilder(0).appendNull();
+              } else {
+                builder.getColumnBuilder(0).writeFloat(value1Array[index][i]);
+              }
+              if (valueIsNull[1][index][i]) {
+                builder.getColumnBuilder(1).appendNull();
+              } else {
+                builder.getColumnBuilder(1).writeBoolean(value2Array[index][i]);
+              }
+            }
+            builder.declarePositions(timeArray[index].length);
+            index++;
+            return builder.build();
+          }
+
+          @Override
+          public boolean hasNext() {
+            return index < 3;
+          }
+
+          @Override
+          public void close() {}
+
+          @Override
+          public boolean isFinished() {
+            return index >= 3;
+          }
+
+          @Override
+          public long calculateMaxPeekMemory() {
+            return 64 * 1024;
+          }
+
+          @Override
+          public long calculateMaxReturnSize() {
+            return 64 * 1024;
+          }
+
+          @Override
+          public long calculateRetainedSizeAfterCallingNext() {
+            return 0;
+          }
+        };
+
+    Operator child3 =
+        new Operator() {
+          private final long[][] timeArray =
+              new long[][] {{1000L, 500L, 101L}, {99L, 90L, 80L, 60L}, {40L, 22L, 11L, 0L}};
+
+          private final Binary[][] value1Array =
+              new Binary[][] {
+                {
+                  new Binary("iotdb".getBytes(StandardCharsets.UTF_8)),
+                  new Binary("ty".getBytes(StandardCharsets.UTF_8)),
+                  new Binary("zm".getBytes(StandardCharsets.UTF_8))
+                },
+                {
+                  new Binary("ty".getBytes(StandardCharsets.UTF_8)),
+                  new Binary("love".getBytes(StandardCharsets.UTF_8)),
+                  new Binary("zm".getBytes(StandardCharsets.UTF_8)),
+                  new Binary("2018-05-06".getBytes(StandardCharsets.UTF_8))
+                },
+                {
+                  new Binary("1997-09-09".getBytes(StandardCharsets.UTF_8)),
+                  new Binary("1995-04-21".getBytes(StandardCharsets.UTF_8)),
+                  new Binary("2022-04-21".getBytes(StandardCharsets.UTF_8)),
+                  new Binary("2023-12-30".getBytes(StandardCharsets.UTF_8))
+                }
+              };
+
+          private final boolean[][][] valueIsNull =
+              new boolean[][][] {
+                {
+                  {false, false, false},
+                  {false, false, false, false},
+                  {false, false, false, false}
+                }
+              };
+
+          private int index = 0;
+
+          @Override
+          public OperatorContext getOperatorContext() {
+            return operatorContext;
+          }
+
+          @Override
+          public TsBlock next() {
+            if (timeArray[index] == null) {
+              index++;
+              return null;
+            }
+            TsBlockBuilder builder =
+                new TsBlockBuilder(timeArray[index].length, Arrays.asList(TSDataType.TEXT));
+            for (int i = 0, size = timeArray[index].length; i < size; i++) {
+              builder.getTimeColumnBuilder().writeLong(timeArray[index][i]);
+              if (valueIsNull[0][index][i]) {
+                builder.getColumnBuilder(0).appendNull();
+              } else {
+                builder.getColumnBuilder(0).writeBinary(value1Array[index][i]);
+              }
+            }
+            builder.declarePositions(timeArray[index].length);
+            index++;
+            return builder.build();
+          }
+
+          @Override
+          public boolean hasNext() {
+            return index < 3;
+          }
+
+          @Override
+          public void close() {}
+
+          @Override
+          public boolean isFinished() {
+            return index >= 3;
+          }
+
+          @Override
+          public long calculateMaxPeekMemory() {
+            return 64 * 1024;
+          }
+
+          @Override
+          public long calculateMaxReturnSize() {
+            return 64 * 1024;
+          }
+
+          @Override
+          public long calculateRetainedSizeAfterCallingNext() {
+            return 0;
+          }
+        };
+
+    Map<InputLocation, Integer> outputColumnMap = new HashMap<>();
+    outputColumnMap.put(new InputLocation(0, 0), 0);
+    outputColumnMap.put(new InputLocation(0, 1), 1);
+    outputColumnMap.put(new InputLocation(1, 0), 2);
+    outputColumnMap.put(new InputLocation(1, 1), 3);
+    outputColumnMap.put(new InputLocation(2, 0), 4);
+
+    InnerTimeJoinOperator innerTimeJoinOperator =
+        new InnerTimeJoinOperator(
+            operatorContext,
+            Arrays.asList(child1, child2, child3),
+            Arrays.asList(
+                TSDataType.INT32,
+                TSDataType.INT64,
+                TSDataType.FLOAT,
+                TSDataType.BOOLEAN,
+                TSDataType.TEXT),
+            new DescTimeComparator(),
+            outputColumnMap);
+
+    try {
+      int count = 0;
+      ListenableFuture<?> listenableFuture = innerTimeJoinOperator.isBlocked();
+      listenableFuture.get();
+      while (!innerTimeJoinOperator.isFinished() && innerTimeJoinOperator.hasNext()) {
+        TsBlock tsBlock = innerTimeJoinOperator.next();
+        if (tsBlock != null && !tsBlock.isEmpty()) {
+          count += tsBlock.getPositionCount();
+          assertEquals(90, tsBlock.getTimeByIndex(0));
+          assertFalse(tsBlock.getColumn(0).isNull(0));
+          assertEquals(90, tsBlock.getColumn(0).getInt(0));
+          assertFalse(tsBlock.getColumn(1).isNull(0));
+          assertEquals(180L, tsBlock.getColumn(1).getLong(0));
+          assertTrue(tsBlock.getColumn(2).isNull(0));
+          assertFalse(tsBlock.getColumn(3).isNull(0));
+          assertFalse(tsBlock.getColumn(3).getBoolean(0));
+          assertFalse(tsBlock.getColumn(4).isNull(0));
+          assertEquals(
+              "love", tsBlock.getColumn(4).getBinary(0).getStringValue(StandardCharsets.UTF_8));
+        }
+        listenableFuture = innerTimeJoinOperator.isBlocked();
+        listenableFuture.get();
+      }
+      assertEquals(1, count);
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

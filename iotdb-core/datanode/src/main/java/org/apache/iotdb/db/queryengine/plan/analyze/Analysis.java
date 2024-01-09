@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -293,11 +294,25 @@ public class Analysis {
   }
 
   public List<TRegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
-    return dataPartition.getDataRegionReplicaSet(seriesPath.getDevice(), timefilter);
+    return dataPartition.getDataRegionReplicaSetWithTimeFilter(seriesPath.getDevice(), timefilter);
+  }
+
+  public TRegionReplicaSet getPartitionInfo(
+      PartialPath seriesPath, TTimePartitionSlot tTimePartitionSlot) {
+    return dataPartition.getDataRegionReplicaSet(seriesPath.getDevice(), tTimePartitionSlot).get(0);
+  }
+
+  /**
+   * Get all time partition ids and combine adjacent time partition if they belong to same data
+   * region
+   */
+  public List<List<TTimePartitionSlot>> getTimePartitionRange(
+      PartialPath seriesPath, Filter timefilter) {
+    return dataPartition.getTimePartitionRange(seriesPath.getDevice(), timefilter);
   }
 
   public List<TRegionReplicaSet> getPartitionInfo(String deviceName, Filter globalTimeFilter) {
-    return dataPartition.getDataRegionReplicaSet(deviceName, globalTimeFilter);
+    return dataPartition.getDataRegionReplicaSetWithTimeFilter(deviceName, globalTimeFilter);
   }
 
   public Statement getStatement() {

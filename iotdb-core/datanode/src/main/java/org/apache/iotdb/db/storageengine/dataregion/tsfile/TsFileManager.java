@@ -58,14 +58,31 @@ public class TsFileManager {
   }
 
   public List<TsFileResource> getTsFileList(boolean sequence) {
+    return getTsFileList(sequence, null);
+  }
+
+  /**
+   * @param sequence true for sequence, false for unsequence
+   * @param timePartitions null for all time partitions, empty for zero time partitions
+   */
+  public List<TsFileResource> getTsFileList(boolean sequence, List<Long> timePartitions) {
     // the iteration of ConcurrentSkipListMap is not concurrent secure
     // so we must add read lock here
     readLock();
     try {
       List<TsFileResource> allResources = new ArrayList<>();
       Map<Long, TsFileResourceList> chosenMap = sequence ? sequenceFiles : unsequenceFiles;
-      for (Map.Entry<Long, TsFileResourceList> entry : chosenMap.entrySet()) {
-        allResources.addAll(entry.getValue().getArrayList());
+      if (timePartitions == null) {
+        for (Map.Entry<Long, TsFileResourceList> entry : chosenMap.entrySet()) {
+          allResources.addAll(entry.getValue().getArrayList());
+        }
+      } else {
+        for (Long timePartitionId : timePartitions) {
+          TsFileResourceList tsFileResources = chosenMap.get(timePartitionId);
+          if (tsFileResources != null) {
+            allResources.addAll(tsFileResources.getArrayList());
+          }
+        }
       }
       return allResources;
     } finally {

@@ -39,7 +39,8 @@ public interface IDataRegionForQuery {
       List<PartialPath> pathList,
       String singleDeviceId,
       QueryContext context,
-      Filter globalTimeFilter)
+      Filter globalTimeFilter,
+      List<Long> timePartitions)
       throws QueryProcessException;
 
   /** Get TTL of this DataRegion */
