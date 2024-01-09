@@ -765,9 +765,52 @@ public class LogicalPlanBuilder {
             ? queryStatement.getRowOffset() + queryStatement.getRowLimit()
             : queryStatement.getRowLimit();
 
-    if (queryStatement.hasOrderBy() && !queryStatement.isOrderByBasedOnDevice()) {
-      // only one device, use DeviceViewNode
+    // 1. has LIMIT and LIMIT_VALUE is smaller than 1000000.
+    // 2. `order by based on time` or `order by based on expression`.
+    // when satisfy all cases above will use ToKNode.
+    if (queryStatement.hasLimit()
+        && queryStatement.hasOrderBy()
+        && !queryStatement.isOrderByBasedOnDevice()
+        && limitValue <= LIMIT_VALUE_USE_TOP_K) {
+
+      TopKNode topKNode =
+          new TopKNode(
+              context.getQueryId().genPlanNodeId(),
+              (int) limitValue,
+              orderByParameter,
+              outputColumnNames);
+
+      // if value filter exists, need add a LIMIT-NODE as the child node of TopKNode
+      long valueFilterLimit = queryStatement.hasWhere() ? limitValue : -1;
+
+      // only order by based on time, use TopKNode + SingleDeviceViewNode
+      if (queryStatement.isOrderByBasedOnTime() && !queryStatement.hasOrderByExpression()) {
+        addSingleDeviceViewNodes(
+            topKNode,
+            deviceNameToSourceNodesMap,
+            outputColumnNames,
+            deviceToMeasurementIndexesMap,
+            valueFilterLimit);
+      } else {
+        // has order by expression, use TopKNode + DeviceViewNode
+        topKNode.addChild(
+            addDeviceViewNode(
+                orderByParameter,
+                outputColumnNames,
+                deviceToMeasurementIndexesMap,
+                deviceNameToSourceNodesMap,
+                valueFilterLimit));
+      }
+
+      analysis.setUseTopKNode();
+      this.root = topKNode;
+    }
+    // 1. `order by based on time` + `no order by expression`.
+    // 2. no LIMIT or LIMIT_VALUE is larger than 1000000.
+    // when satisfy all above requirements use MergeSortNode.
+    else if (queryStatement.isOrderByBasedOnTime() && !queryStatement.hasOrderByExpression()) {
       if (deviceNameToSourceNodesMap.size() == 1) {
+        // only one device, use DeviceViewNode, no need MergeSortNode
         this.root =
             addDeviceViewNode(
                 orderByParameter,
@@ -776,50 +819,20 @@ public class LogicalPlanBuilder {
                 deviceNameToSourceNodesMap,
                 -1);
       } else {
-        // 1. `order by based on time` or `order by based on expression`, i.e. not order by device.
-        // 2. limitValue is greater than 0 than is less than LIMIT_VALUE_USE_TOP_K.
-        // when satisfy all above requirements use ToKNode.
-        MultiChildProcessNode processNode;
-        if (limitValue > 0 && limitValue < LIMIT_VALUE_USE_TOP_K) {
-          analysis.setUseTopKNode();
-          processNode =
-              new TopKNode(
-                  context.getQueryId().genPlanNodeId(),
-                  (int) limitValue,
-                  orderByParameter,
-                  outputColumnNames);
-        } else {
-          processNode =
-              new MergeSortNode(
-                  context.getQueryId().genPlanNodeId(), orderByParameter, outputColumnNames);
-        }
-
-        // if value filter exists, need add a LIMIT-NODE as the child node of processNode
-        long valueFilterLimit = queryStatement.hasWhere() ? limitValue : -1;
-
-        // order by based on time, use SingleDeviceViewNode
-        if (queryStatement.isOrderByBasedOnTime() && !queryStatement.hasOrderByExpression()) {
-          addSingleDeviceViewNodes(
-              processNode,
-              deviceNameToSourceNodesMap,
-              outputColumnNames,
-              deviceToMeasurementIndexesMap,
-              valueFilterLimit);
-        } else {
-          // order by based on expression, use DeviceViewNode
-          processNode.addChild(
-              addDeviceViewNode(
-                  orderByParameter,
-                  outputColumnNames,
-                  deviceToMeasurementIndexesMap,
-                  deviceNameToSourceNodesMap,
-                  valueFilterLimit));
-        }
-
-        this.root = processNode;
+        // otherwise use MergeSortNode + SingleDeviceViewNode
+        MergeSortNode mergeSortNode =
+            new MergeSortNode(
+                context.getQueryId().genPlanNodeId(), orderByParameter, outputColumnNames);
+        addSingleDeviceViewNodes(
+            mergeSortNode,
+            deviceNameToSourceNodesMap,
+            outputColumnNames,
+            deviceToMeasurementIndexesMap,
+            -1);
+        this.root = mergeSortNode;
       }
     } else {
-      // order by based on device or has aggregation, use DeviceViewNode
+      // order by based on device, use DeviceViewNode
       this.root =
           addDeviceViewNode(
               orderByParameter,
