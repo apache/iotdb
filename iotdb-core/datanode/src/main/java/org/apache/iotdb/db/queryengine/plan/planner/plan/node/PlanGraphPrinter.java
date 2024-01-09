@@ -111,6 +111,12 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     if (offset > 0) {
       boxValue.add(String.format("Offset: %s", offset));
     }
+
+    Expression predicate = node.getPushDownPredicate();
+    if (predicate != null) {
+      boxValue.add(String.format("Predicate: %s", predicate));
+    }
+
     boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
   }
@@ -132,6 +138,12 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     if (offset > 0) {
       boxValue.add(String.format("Offset: %s", offset));
     }
+
+    Expression predicate = node.getPushDownPredicate();
+    if (predicate != null) {
+      boxValue.add(String.format("Predicate: %s", predicate));
+    }
+
     boxValue.add(String.format("QueryAllSensors: %s", node.isQueryAllSensors()));
     boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
