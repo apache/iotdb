@@ -222,6 +222,7 @@ public class PipeDataNodeThriftRequestTest {
     Assert.assertArrayEquals(
         new byte[] {'a', 'b'}, deserializedReq.getBinaryReqs().get(0).getBody());
     Assert.assertEquals(node, deserializedReq.getInsertNodeReqs().get(0).getInsertNode());
+    Assert.assertEquals(t, deserializedReq.getTabletReqs().get(0).getTablet());
     Assert.assertFalse(deserializedReq.getTabletReqs().get(0).getIsAligned());
   }
 
