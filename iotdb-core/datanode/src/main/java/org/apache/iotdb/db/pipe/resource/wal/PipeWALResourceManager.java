@@ -82,8 +82,9 @@ public abstract class PipeWALResourceManager {
         }
       }
     } catch (ConcurrentModificationException e) {
-      LOGGER.info(
-          "Concurrent modification issues happened, skipping the WAL in this round of ttl check");
+      LOGGER.error(
+          "Concurrent modification issues happened, skipping the WAL in this round of ttl check",
+          e);
     }
   }
 

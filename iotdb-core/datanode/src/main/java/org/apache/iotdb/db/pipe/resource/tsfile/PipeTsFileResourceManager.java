@@ -33,11 +33,10 @@ import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ConcurrentModificationException;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class PipeTsFileResourceManager {
@@ -45,7 +44,7 @@ public class PipeTsFileResourceManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileResourceManager.class);
 
   private final Map<String, PipeTsFileResource> hardlinkOrCopiedFileToPipeTsFileResourceMap =
-      new HashMap<>();
+      new ConcurrentHashMap<>();
   private final ReentrantLock lock = new ReentrantLock();
 
   public PipeTsFileResourceManager() {
@@ -57,13 +56,13 @@ public class PipeTsFileResourceManager {
   }
 
   private void ttlCheck() {
-    final Iterator<Map.Entry<String, PipeTsFileResource>> iterator =
-        hardlinkOrCopiedFileToPipeTsFileResourceMap.entrySet().iterator();
+    lock.lock();
     try {
+      final Iterator<Map.Entry<String, PipeTsFileResource>> iterator =
+          hardlinkOrCopiedFileToPipeTsFileResourceMap.entrySet().iterator();
       while (iterator.hasNext()) {
         final Map.Entry<String, PipeTsFileResource> entry = iterator.next();
 
-        lock.lock();
         try {
           if (entry.getValue().closeIfOutOfTimeToLive()) {
             iterator.remove();
@@ -75,13 +74,10 @@ public class PipeTsFileResourceManager {
           }
         } catch (IOException e) {
           LOGGER.warn("failed to close PipeTsFileResource when checking TTL: ", e);
-        } finally {
-          lock.unlock();
         }
       }
-    } catch (ConcurrentModificationException e) {
-      LOGGER.info(
-          "Concurrent modification issues happened, skipping the file in this round of ttl check");
+    } finally {
+      lock.unlock();
     }
   }
 
