@@ -60,6 +60,8 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualIT {
   // 2. is or not parsed
   // 3. session insertRecord, session insertTablet, SQL insert
   // 4. partial null, all null
+  // 5. one row or more (TODO)
+  // 6. more data types (TODO)
 
   private enum InsertType {
     SESSION_INSERT_RECORD,
@@ -67,48 +69,84 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualIT {
     SQL_INSERT,
   }
 
-  private enum NullType {
-    ALL_NULL,
-    PARTIAL_NULL,
-  }
+  private static final Map<InsertType, Consumer<Boolean>> INSERT_NULL_VALUE_MAP = new HashMap<>();
 
-  private static final Map<InsertType, Consumer<NullType>> INSERT_NULL_VALUE_MAP = new HashMap<>();
-
-  private static final Map<NullType, Consumer<NullType>> ASSERT_RECEIVER_MAP = new HashMap<>();
-
-  public static final List<String> CREATE_TIMESERIES_SQL =
+  private static final List<String> CREATE_TIMESERIES_SQL =
       Arrays.asList(
           "create timeseries root.sg.d1.s0 with datatype=float",
           "create timeseries root.sg.d1.s1 with datatype=float");
 
-  public static final List<String> CREATE_ALIGNED_TIMESERIES_SQL =
+  private static final List<String> CREATE_ALIGNED_TIMESERIES_SQL =
       Collections.singletonList("create aligned timeseries root.sg.d1(s0 float, s1 float)");
 
-  public final String deviceId = "root.sg.d1";
-  public final long time = 3;
-  public final List<String> measurements = Arrays.asList("s0", "s1");
-  public final List<TSDataType> types = Arrays.asList(TSDataType.FLOAT, TSDataType.FLOAT);
+  private final String deviceId = "root.sg.d1";
+  private final long time = 3;
+  private final List<String> measurements = Arrays.asList("s0", "s1");
+  private final List<TSDataType> types = Arrays.asList(TSDataType.FLOAT, TSDataType.FLOAT);
+
+  private final List<Object> partialNullValues = Arrays.asList(null, 25.34);
+  private final List<Object> allNullValues = Arrays.asList(null, null);
+
+  private Tablet partialNullTablet;
+  private Tablet allNullTablet;
+
+  private void constructTablet() {
+    final MeasurementSchema[] schemas = new MeasurementSchema[2];
+    for (int i = 0; i < schemas.length; i++) {
+      schemas[i] = new MeasurementSchema(measurements.get(i), types.get(i));
+    }
+
+    final BitMap[] bitMapsForPartialNull = new BitMap[2];
+    bitMapsForPartialNull[0] = new BitMap(1);
+    bitMapsForPartialNull[0].markAll();
+    bitMapsForPartialNull[1] = new BitMap(1);
+
+    final BitMap[] bitMapsForAllNull = new BitMap[2];
+    bitMapsForAllNull[0] = new BitMap(1);
+    bitMapsForAllNull[0].markAll();
+    bitMapsForAllNull[1] = new BitMap(1);
+    bitMapsForAllNull[0].markAll();
+
+    final Object[] valuesForPartialNull = new Object[2];
+    valuesForPartialNull[0] = new float[] {0F};
+    valuesForPartialNull[1] = new float[] {25.34F};
+
+    final Object[] valuesForAllNull = new Object[2];
+    valuesForAllNull[0] = new float[] {0F};
+    valuesForAllNull[1] = new float[] {0F};
+
+    partialNullTablet = new Tablet(deviceId, Arrays.asList(schemas), 1);
+    partialNullTablet.values = valuesForPartialNull;
+    partialNullTablet.timestamps = new long[] {time};
+    partialNullTablet.rowSize = 1;
+    partialNullTablet.bitMaps = bitMapsForPartialNull;
+
+    allNullTablet = new Tablet(deviceId, Arrays.asList(schemas), 1);
+    allNullTablet.values = valuesForAllNull;
+    allNullTablet.timestamps = new long[] {time};
+    allNullTablet.rowSize = 1;
+    allNullTablet.bitMaps = bitMapsForAllNull;
+  }
 
   @Override
   @Before
   public void setUp() throws PipeEnvironmentException {
     super.setUp();
 
+    constructTablet();
+
     // init INSERT_NULL_VALUE_MAP
     INSERT_NULL_VALUE_MAP.put(
         InsertType.SESSION_INSERT_RECORD,
-        (type) -> {
-          List<Object> partialNullValues = Arrays.asList(null, 25.34);
-          List<Object> allNullValues = Arrays.asList(null, null);
-
+        (isAligned) -> {
           try {
             try (ISession session = senderEnv.getSessionConnection()) {
-              if (NullType.ALL_NULL.equals(type)) {
-                session.insertRecord(deviceId, time, measurements, types, allNullValues);
-              } else if (NullType.PARTIAL_NULL.equals(type)) {
-                session.insertRecord(deviceId, time, measurements, types, partialNullValues);
+              if (isAligned) {
+                session.insertAlignedRecord(deviceId, time, measurements, types, allNullValues);
+                session.insertAlignedRecord(deviceId, time, measurements, types, partialNullValues);
               } else {
-                fail();
+                session.insertRecord(deviceId, time, measurements, types, allNullValues);
+                session.insertRecord(deviceId, time, measurements, types, partialNullValues);
               }
             } catch (StatementExecutionException e) {
               fail(e.getMessage());
@@ -119,54 +157,15 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualIT {
         });
     INSERT_NULL_VALUE_MAP.put(
         InsertType.SESSION_INSERT_TABLET,
-        (type) -> {
-          Tablet partialNullTablet;
-          Tablet allNullTablet;
-
-          final MeasurementSchema[] schemas = new MeasurementSchema[2];
-          for (int i = 0; i < schemas.length; i++) {
-            schemas[i] = new MeasurementSchema(measurements.get(i), types.get(i));
-          }
-
-          final BitMap[] bitMapsForPartialNull = new BitMap[2];
-          bitMapsForPartialNull[0] = new BitMap(1);
-          bitMapsForPartialNull[0].markAll();
-          bitMapsForPartialNull[1] = new BitMap(1);
-
-          final BitMap[] bitMapsForAllNull = new BitMap[2];
-          bitMapsForAllNull[0] = new BitMap(1);
-          bitMapsForAllNull[0].markAll();
-          bitMapsForAllNull[1] = new BitMap(1);
-          bitMapsForAllNull[0].markAll();
-
-          final Object[] valuesForPartialNull = new Object[2];
-          valuesForPartialNull[0] = new float[] {0F};
-          valuesForPartialNull[1] = new float[] {25.34F};
-
-          final Object[] valuesForAllNull = new Object[2];
-          valuesForAllNull[0] = new float[] {0F};
-          valuesForAllNull[1] = new float[] {0F};
-
-          partialNullTablet = new Tablet(deviceId, Arrays.asList(schemas), 1);
-          partialNullTablet.values = valuesForPartialNull;
-          partialNullTablet.timestamps = new long[] {time};
-          partialNullTablet.rowSize = 1;
-          partialNullTablet.bitMaps = bitMapsForPartialNull;
-
-          allNullTablet = new Tablet(deviceId, Arrays.asList(schemas), 1);
-          allNullTablet.values = valuesForAllNull;
-          allNullTablet.timestamps = new long[] {time};
-          allNullTablet.rowSize = 1;
-          allNullTablet.bitMaps = bitMapsForAllNull;
-
+        (isAligned) -> {
           try {
             try (ISession session = senderEnv.getSessionConnection()) {
-              if (NullType.ALL_NULL.equals(type)) {
-                session.insertTablet(allNullTablet);
-              } else if (NullType.PARTIAL_NULL.equals(type)) {
-                session.insertTablet(partialNullTablet);
+              if (isAligned) {
+                session.insertAlignedTablet(allNullTablet);
+                session.insertAlignedTablet(partialNullTablet);
               } else {
-                fail();
+                session.insertTablet(allNullTablet);
+                session.insertTablet(partialNullTablet);
               }
             } catch (StatementExecutionException e) {
               fail(e.getMessage());
@@ -177,48 +176,30 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualIT {
         });
     INSERT_NULL_VALUE_MAP.put(
         InsertType.SQL_INSERT,
-        (type) -> {
-          if (NullType.ALL_NULL.equals(type)) {
-            if (!TestUtils.tryExecuteNonQueriesWithRetry(
-                senderEnv,
-                Collections.singletonList(
-                    "insert into root.sg.d1(time, s0, s1) values (3, null, null)"))) {
-              fail();
-            }
-          } else if (NullType.PARTIAL_NULL.equals(type)) {
-            if (!TestUtils.tryExecuteNonQueriesWithRetry(
-                senderEnv,
-                Collections.singletonList(
-                    "insert into root.sg.d1(time, s0, s1) values (3, null, 25.34)"))) {
-              fail();
-            }
-          } else {
+        (isAligned) -> {
+          if (!TestUtils.tryExecuteNonQueriesWithRetry(
+              senderEnv,
+              isAligned
+                  ? Collections.singletonList(
+                      "insert into root.sg.d1(time, s0, s1) aligned values (3, null, null)")
+                  : Collections.singletonList(
+                      "insert into root.sg.d1(time, s0, s1) values (3, null, null)"))) {
+            fail();
+          }
+          if (!TestUtils.tryExecuteNonQueriesWithRetry(
+              senderEnv,
+              isAligned
+                  ? Collections.singletonList(
+                      "insert into root.sg.d1(time, s0, s1) aligned values (3, null, 25.34)")
+                  : Collections.singletonList(
+                      "insert into root.sg.d1(time, s0, s1) values (3, null, 25.34)"))) {
             fail();
           }
         });
-
-    // init ASSERT_RECEIVER_MAP
-    ASSERT_RECEIVER_MAP.put(
-        NullType.PARTIAL_NULL,
-        (type) ->
-            TestUtils.assertDataOnEnv(
-                receiverEnv,
-                "select * from root.**",
-                "Time,root.sg.d1.s0,root.sg.d1.s1,",
-                Collections.singleton("3,null,25.34,")));
-    ASSERT_RECEIVER_MAP.put(
-        NullType.ALL_NULL,
-        (type) ->
-            TestUtils.assertDataOnEnv(
-                receiverEnv,
-                "select * from root.**",
-                "Time,root.sg.d1.s0,root.sg.d1.s1,",
-                Collections.singleton("3,null,null,")));
   }
 
   private void testInsertNullValueTemplate(
-      InsertType insertType, NullType nullType, boolean isAligned, boolean withParsing)
-      throws Exception {
+      InsertType insertType, boolean isAligned, boolean withParsing) throws Exception {
     DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     String receiverIp = receiverDataNode.getIp();
@@ -256,144 +237,81 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualIT {
       return;
     }
 
-    INSERT_NULL_VALUE_MAP.get(insertType).accept(nullType);
-    ASSERT_RECEIVER_MAP.get(nullType).accept(nullType);
+    INSERT_NULL_VALUE_MAP.get(insertType).accept(isAligned);
+
+    TestUtils.assertDataOnEnv(
+        receiverEnv,
+        "select count(*) from root.**",
+        "count(root.sg.d1.s0),count(root.sg.d1.s1),",
+        Collections.singleton("0,1,"));
   }
 
   // ---------------------- //
   // Scenario 1: SQL Insert //
   // ---------------------- //
   @Test
-  public void testSQLInsertPartialNullWithParsing() throws Exception {
-    testInsertNullValueTemplate(InsertType.SQL_INSERT, NullType.PARTIAL_NULL, false, true);
+  public void testSQLInsertWithParsing() throws Exception {
+    testInsertNullValueTemplate(InsertType.SQL_INSERT, false, true);
   }
 
   @Test
-  public void testSQLInsertPartialNullWithoutParsing() throws Exception {
-    testInsertNullValueTemplate(InsertType.SQL_INSERT, NullType.PARTIAL_NULL, false, false);
+  public void testSQLInsertWithoutParsing() throws Exception {
+    testInsertNullValueTemplate(InsertType.SQL_INSERT, false, false);
   }
 
   @Test
-  public void testSQLInsertAllNullWithParsing() throws Exception {
-    testInsertNullValueTemplate(InsertType.SQL_INSERT, NullType.ALL_NULL, false, true);
+  public void testSQLInsertAlignedWithParsing() throws Exception {
+    testInsertNullValueTemplate(InsertType.SQL_INSERT, true, true);
   }
 
   @Test
-  public void testSQLInsertAllNullWithoutParsing() throws Exception {
-    testInsertNullValueTemplate(InsertType.SQL_INSERT, NullType.ALL_NULL, false, false);
-  }
-
-  @Test
-  public void testSQLInsertPartialNullAlignedWithParsing() throws Exception {
-    testInsertNullValueTemplate(InsertType.SQL_INSERT, NullType.PARTIAL_NULL, true, true);
-  }
-
-  @Test
-  public void testSQLInsertPartialNullAlignedWithoutParsing() throws Exception {
-    testInsertNullValueTemplate(InsertType.SQL_INSERT, NullType.PARTIAL_NULL, true, false);
-  }
-
-  @Test
-  public void testSQLInsertAllNullAlignedWithParsing() throws Exception {
-    testInsertNullValueTemplate(InsertType.SQL_INSERT, NullType.ALL_NULL, true, true);
-  }
-
-  @Test
-  public void testSQLInsertAllNullAlignedWithoutParsing() throws Exception {
-    testInsertNullValueTemplate(InsertType.SQL_INSERT, NullType.ALL_NULL, true, false);
+  public void testSQLInsertAlignedWithoutParsing() throws Exception {
+    testInsertNullValueTemplate(InsertType.SQL_INSERT, true, false);
   }
 
   // --------------------------------- //
   // Scenario 2: Session Insert Record //
   // --------------------------------- //
   @Test
-  public void testSessionInsertRecordPartialNullWithParsing() throws Exception {
-    testInsertNullValueTemplate(
-        InsertType.SESSION_INSERT_RECORD, NullType.PARTIAL_NULL, false, true);
+  public void testSessionInsertRecordWithParsing() throws Exception {
+    testInsertNullValueTemplate(InsertType.SESSION_INSERT_RECORD, false, true);
   }
 
   @Test
-  public void testSessionInsertRecordPartialNullWithoutParsing() throws Exception {
-    testInsertNullValueTemplate(
-        InsertType.SESSION_INSERT_RECORD, NullType.PARTIAL_NULL, false, false);
+  public void testSessionInsertRecordWithoutParsing() throws Exception {
+    testInsertNullValueTemplate(InsertType.SESSION_INSERT_RECORD, false, false);
   }
 
   @Test
-  public void testSessionInsertRecordAllNullWithParsing() throws Exception {
-    testInsertNullValueTemplate(InsertType.SESSION_INSERT_RECORD, NullType.ALL_NULL, false, true);
+  public void testSessionInsertRecordAlignedWithParsing() throws Exception {
+    testInsertNullValueTemplate(InsertType.SESSION_INSERT_RECORD, true, true);
   }
 
   @Test
-  public void testSessionInsertRecordAllNullWithoutParsing() throws Exception {
-    testInsertNullValueTemplate(InsertType.SESSION_INSERT_RECORD, NullType.ALL_NULL, false, false);
-  }
-
-  @Test
-  public void testSessionInsertRecordPartialNullAlignedWithParsing() throws Exception {
-    testInsertNullValueTemplate(
-        InsertType.SESSION_INSERT_RECORD, NullType.PARTIAL_NULL, true, true);
-  }
-
-  @Test
-  public void testSessionInsertRecordPartialNullAlignedWithoutParsing() throws Exception {
-    testInsertNullValueTemplate(
-        InsertType.SESSION_INSERT_RECORD, NullType.PARTIAL_NULL, true, false);
-  }
-
-  @Test
-  public void testSessionInsertRecordAllNullAlignedWithParsing() throws Exception {
-    testInsertNullValueTemplate(InsertType.SESSION_INSERT_RECORD, NullType.ALL_NULL, true, true);
-  }
-
-  @Test
-  public void testSessionInsertRecordAllNullAlignedWithoutParsing() throws Exception {
-    testInsertNullValueTemplate(InsertType.SESSION_INSERT_RECORD, NullType.ALL_NULL, true, false);
+  public void testSessionInsertRecordAlignedWithoutParsing() throws Exception {
+    testInsertNullValueTemplate(InsertType.SESSION_INSERT_RECORD, true, false);
   }
 
   // --------------------------------- //
   // Scenario 3: Session Insert Tablet //
   // --------------------------------- //
   @Test
-  public void testSessionInsertTabletPartialNullWithParsing() throws Exception {
-    testInsertNullValueTemplate(
-        InsertType.SESSION_INSERT_TABLET, NullType.PARTIAL_NULL, false, true);
+  public void testSessionInsertTabletWithParsing() throws Exception {
+    testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, false, true);
   }
 
   @Test
-  public void testSessionInsertTabletPartialNullWithoutParsing() throws Exception {
-    testInsertNullValueTemplate(
-        InsertType.SESSION_INSERT_TABLET, NullType.PARTIAL_NULL, false, false);
+  public void testSessionInsertTabletWithoutParsing() throws Exception {
+    testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, false, false);
   }
 
   @Test
-  public void testSessionInsertTabletAllNullWithParsing() throws Exception {
-    testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, NullType.ALL_NULL, false, true);
+  public void testSessionInsertTabletAlignedWithParsing() throws Exception {
+    testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, true, true);
   }
 
   @Test
-  public void testSessionInsertTabletAllNullWithoutParsing() throws Exception {
-    testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, NullType.ALL_NULL, false, false);
-  }
-
-  @Test
-  public void testSessionInsertTabletPartialNullAlignedWithParsing() throws Exception {
-    testInsertNullValueTemplate(
-        InsertType.SESSION_INSERT_TABLET, NullType.PARTIAL_NULL, true, true);
-  }
-
-  @Test
-  public void testSessionInsertTabletPartialNullAlignedWithoutParsing() throws Exception {
-    testInsertNullValueTemplate(
-        InsertType.SESSION_INSERT_TABLET, NullType.PARTIAL_NULL, true, false);
-  }
-
-  @Test
-  public void testSessionInsertTabletAllNullAlignedWithParsing() throws Exception {
-    testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, NullType.ALL_NULL, true, true);
-  }
-
-  @Test
-  public void testSessionInsertTabletAllNullAlignedWithoutParsing() throws Exception {
-    testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, NullType.ALL_NULL, true, false);
+  public void testSessionInsertTabletAlignedWithoutParsing() throws Exception {
+    testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, true, false);
   }
 }
