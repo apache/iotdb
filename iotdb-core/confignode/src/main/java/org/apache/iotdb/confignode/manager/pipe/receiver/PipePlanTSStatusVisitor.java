@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnse
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 /**
@@ -79,6 +80,15 @@ public class PipePlanTSStatusVisitor extends PhysicalPlanVisitor<TSStatus, TSSta
           .setMessage(context.getMessage());
     }
     return super.visitCreateSchemaTemplate(plan, context);
+  }
+
+  @Override
+  public TSStatus visitExtendSchemaTemplate(ExtendSchemaTemplatePlan plan, TSStatus context) {
+    if (context.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return super.visitExtendSchemaTemplate(plan, context);
   }
 
   @Override
