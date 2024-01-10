@@ -19,27 +19,30 @@
 
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.builder;
 
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReq;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_DELAY_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_DELAY_KEY;
@@ -52,9 +55,12 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferBatchReqBuilder.class);
 
-  protected final List<TPipeTransferReq> reqs = new ArrayList<>();
   protected final List<Event> events = new ArrayList<>();
   protected final List<Long> requestCommitIds = new ArrayList<>();
+
+  protected final List<ByteBuffer> binaryBuffers = new ArrayList<>();
+  protected final List<ByteBuffer> insertNodeBuffers = new ArrayList<>();
+  protected final List<ByteBuffer> tabletBuffers = new ArrayList<>();
 
   // limit in delayed time
   protected final int maxDelayInMs;
@@ -62,7 +68,7 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
 
   // limit in buffer size
   protected final PipeMemoryBlock allocatedMemoryBlock;
-  protected long bufferSize = 0;
+  protected long totalBufferSize = 0;
 
   protected PipeTransferBatchReqBuilder(PipeParameters parameters) {
     maxDelayInMs =
@@ -79,13 +85,13 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
     allocatedMemoryBlock =
         PipeResourceManager.memory()
             .tryAllocate(requestMaxBatchSizeInBytes)
-            .setShrinkMethod((oldMemory) -> Math.max(oldMemory / 2, 0))
+            .setShrinkMethod(oldMemory -> Math.max(oldMemory / 2, 0))
             .setShrinkCallback(
                 (oldMemory, newMemory) ->
                     LOGGER.info(
                         "The batch size limit has shrunk from {} to {}.", oldMemory, newMemory))
             .setExpandMethod(
-                (oldMemory) -> Math.min(Math.max(oldMemory, 1) * 2, requestMaxBatchSizeInBytes))
+                oldMemory -> Math.min(Math.max(oldMemory, 1) * 2, requestMaxBatchSizeInBytes))
             .setExpandCallback(
                 (oldMemory, newMemory) ->
                     LOGGER.info(
@@ -111,15 +117,14 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
       return false;
     }
 
-    final TPipeTransferReq req = buildTabletInsertionReq(event);
     final long requestCommitId = ((EnrichedEvent) event).getCommitId();
 
     // The deduplication logic here is to avoid the accumulation of the same event in a batch when
     // retrying.
     if ((events.isEmpty() || !events.get(events.size() - 1).equals(event))) {
-      reqs.add(req);
       events.add(event);
       requestCommitIds.add(requestCommitId);
+      final int bufferSize = buildTabletInsertionBuffer(event);
 
       ((EnrichedEvent) event).increaseReferenceCount(PipeTransferBatchReqBuilder.class.getName());
 
@@ -127,25 +132,29 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
         firstEventProcessingTime = System.currentTimeMillis();
       }
 
-      bufferSize += req.getBody().length;
+      totalBufferSize += bufferSize;
     }
 
-    return bufferSize >= getMaxBatchSizeInBytes()
+    return totalBufferSize >= getMaxBatchSizeInBytes()
         || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs;
   }
 
   public void onSuccess() {
-    reqs.clear();
+    binaryBuffers.clear();
+    insertNodeBuffers.clear();
+    tabletBuffers.clear();
+
     events.clear();
     requestCommitIds.clear();
 
     firstEventProcessingTime = Long.MIN_VALUE;
 
-    bufferSize = 0;
+    totalBufferSize = 0;
   }
 
-  public List<TPipeTransferReq> getTPipeTransferReqs() {
-    return reqs;
+  public PipeTransferTabletBatchReq toTPipeTransferReq() throws IOException {
+    return PipeTransferTabletBatchReq.toTPipeTransferReq(
+        binaryBuffers, insertNodeBuffers, tabletBuffers);
   }
 
   protected long getMaxBatchSizeInBytes() {
@@ -153,32 +162,38 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
   }
 
   public boolean isEmpty() {
-    return reqs.isEmpty();
+    return binaryBuffers.isEmpty() && insertNodeBuffers.isEmpty() && tabletBuffers.isEmpty();
   }
 
-  protected TPipeTransferReq buildTabletInsertionReq(TabletInsertionEvent event)
+  protected int buildTabletInsertionBuffer(TabletInsertionEvent event)
       throws IOException, WALPipeException {
-    final TPipeTransferReq req;
+    final ByteBuffer buffer;
     if (event instanceof PipeInsertNodeTabletInsertionEvent) {
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
           (PipeInsertNodeTabletInsertionEvent) event;
       // Read the bytebuffer from the wal file and transfer it directly without serializing or
       // deserializing if possible
-      req =
-          pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible() == null
-              ? PipeTransferTabletBinaryReq.toTPipeTransferReq(
-                  pipeInsertNodeTabletInsertionEvent.getByteBuffer())
-              : PipeTransferTabletInsertNodeReq.toTPipeTransferReq(
-                  pipeInsertNodeTabletInsertionEvent.getInsertNode());
+      final InsertNode insertNode =
+          pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
+      if (Objects.isNull(insertNode)) {
+        buffer = pipeInsertNodeTabletInsertionEvent.getByteBuffer();
+        binaryBuffers.add(buffer);
+      } else {
+        buffer = insertNode.serializeToByteBuffer();
+        insertNodeBuffers.add(buffer);
+      }
     } else {
       final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
           (PipeRawTabletInsertionEvent) event;
-      req =
-          PipeTransferTabletRawReq.toTPipeTransferReq(
-              pipeRawTabletInsertionEvent.convertToTablet(),
-              pipeRawTabletInsertionEvent.isAligned());
+      try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+          final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+        pipeRawTabletInsertionEvent.convertToTablet().serialize(outputStream);
+        ReadWriteIOUtils.write(pipeRawTabletInsertionEvent.isAligned(), outputStream);
+        buffer = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+      }
+      tabletBuffers.add(buffer);
     }
-    return req;
+    return buffer.limit();
   }
 
   @Override

@@ -212,7 +212,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       deviceViewNodeList.add(regionDeviceViewNode);
     }
 
-    if (deviceViewNodeList.size() == 1 || analysis.isHasSort() || analysis.isUseTopKNode()) {
+    if (deviceViewNodeList.size() == 1 || analysis.isHasSortNode() || analysis.isUseTopKNode()) {
       return deviceViewNodeList;
     }
 
@@ -288,7 +288,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   @Override
   public List<PlanNode> visitSort(SortNode node, DistributionPlanContext context) {
 
-    analysis.setHasSort(true);
+    analysis.setHasSortNode(true);
 
     List<PlanNode> children = rewrite(node.getChild(), context);
     if (children.size() == 1) {

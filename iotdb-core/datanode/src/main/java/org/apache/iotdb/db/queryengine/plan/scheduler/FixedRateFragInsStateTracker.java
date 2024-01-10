@@ -124,7 +124,9 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
                   instance.getId(), k -> new InstanceStateMetrics(instance.isRoot()));
           if (needPrintState(
               metrics.lastState, instanceInfo.getState(), metrics.durationToLastPrintInMS)) {
-            logger.debug("[PrintFIState] state is {}", instanceInfo.getState());
+            if (logger.isDebugEnabled()) {
+              logger.debug("[PrintFIState] state is {}", instanceInfo.getState());
+            }
             metrics.reset(instanceInfo.getState());
           } else {
             metrics.addDuration(STATE_FETCH_INTERVAL_IN_MS);
@@ -144,7 +146,9 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
       if (instanceInfo.getFailureInfoList() == null
           || instanceInfo.getFailureInfoList().isEmpty()) {
         stateMachine.transitionToFailed(
-            new RuntimeException(String.format("FragmentInstance[%s] is failed.", instanceId)));
+            new RuntimeException(
+                String.format(
+                    "FragmentInstance[%s] is failed. %s", instanceId, instanceInfo.getMessage())));
       } else {
         stateMachine.transitionToFailed(instanceInfo.getFailureInfoList().get(0).toException());
       }

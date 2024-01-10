@@ -418,7 +418,7 @@ public class QueryStatement extends AuthorityInformationStatement {
     return orderByComponent.getDeviceOrder();
   }
 
-  // push down only support raw data query currently
+  // align by device + order by device, expression
   public boolean needPushDownSort() {
     return !isAggregationQuery() && hasOrderByExpression() && isOrderByBasedOnDevice();
   }

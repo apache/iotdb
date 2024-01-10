@@ -129,7 +129,8 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDC
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.DEVICE;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.ENDTIME;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer.analyzeExpression;
-import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode.LIMIT_USE_TOP_K_FOR_ALIGN_BY_DEVICE;
+import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode.LIMIT_VALUE_USE_TOP_K;
+import static org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy.LINEAR;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_VALUE;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.MAX_TIME;
@@ -739,7 +740,8 @@ public class LogicalPlanBuilder {
       Set<Expression> deviceViewOutputExpressions,
       Map<String, List<Integer>> deviceToMeasurementIndexesMap,
       Set<Expression> selectExpression,
-      QueryStatement queryStatement) {
+      QueryStatement queryStatement,
+      Analysis analysis) {
     List<String> outputColumnNames =
         deviceViewOutputExpressions.stream()
             .map(Expression::getExpressionString)
@@ -764,16 +766,7 @@ public class LogicalPlanBuilder {
             ? queryStatement.getRowOffset() + queryStatement.getRowLimit()
             : queryStatement.getRowLimit();
 
-    // 1. LIMIT and LIMIT_VALUE is smaller than 1000000,
-    // 2. `order by based on time` or `order by based on expression`,
-    // 3. no aggregation,
-    // when satisfy all above requirements use ToKNode.
-    if (!queryStatement.isAggregationQuery()
-        && queryStatement.hasLimit()
-        && queryStatement.getOrderByComponent() != null
-        && !queryStatement.isOrderByBasedOnDevice()
-        && limitValue <= LIMIT_USE_TOP_K_FOR_ALIGN_BY_DEVICE) {
-
+    if (canUseTopKNode(queryStatement, limitValue)) {
       TopKNode topKNode =
           new TopKNode(
               context.getQueryId().genPlanNodeId(),
@@ -784,7 +777,7 @@ public class LogicalPlanBuilder {
       // if value filter exists, need add a LIMIT-NODE as the child node of TopKNode
       long valueFilterLimit = queryStatement.hasWhere() ? limitValue : -1;
 
-      // order by based on time, use TopKNode + SingleDeviceViewNode
+      // only order by based on time, use TopKNode + SingleDeviceViewNode
       if (queryStatement.isOrderByBasedOnTime() && !queryStatement.hasOrderByExpression()) {
         addSingleDeviceViewNodes(
             topKNode,
@@ -793,7 +786,7 @@ public class LogicalPlanBuilder {
             deviceToMeasurementIndexesMap,
             valueFilterLimit);
       } else {
-        // order by based on expression, use TopKNode + DeviceViewNode
+        // has order by expression, use TopKNode + DeviceViewNode
         topKNode.addChild(
             addDeviceViewNode(
                 orderByParameter,
@@ -803,35 +796,22 @@ public class LogicalPlanBuilder {
                 valueFilterLimit));
       }
 
+      analysis.setUseTopKNode();
       this.root = topKNode;
-    }
-    // 1. `order by based on time` + `no order by expression`,
-    // 2. no LIMIT or LIMIT_VALUE is larger than 1000000,
-    // when satisfy all above requirements use MergeSortNode.
-    else if (queryStatement.isOrderByBasedOnTime() && !queryStatement.hasOrderByExpression()) {
-      if (deviceNameToSourceNodesMap.size() == 1) {
-        // only one device, use DeviceViewNode, no need MergeSortNode
-        this.root =
-            addDeviceViewNode(
-                orderByParameter,
-                outputColumnNames,
-                deviceToMeasurementIndexesMap,
-                deviceNameToSourceNodesMap,
-                -1);
-      } else {
-        // otherwise use MergeSortNode + SingleDeviceViewNode
-        MergeSortNode mergeSortNode =
-            new MergeSortNode(
-                context.getQueryId().genPlanNodeId(), orderByParameter, outputColumnNames);
-        addSingleDeviceViewNodes(
-            mergeSortNode,
-            deviceNameToSourceNodesMap,
-            outputColumnNames,
-            deviceToMeasurementIndexesMap,
-            -1);
-        this.root = mergeSortNode;
-      }
+    } else if (canUseMergeSortNode(queryStatement, deviceNameToSourceNodesMap.size())) {
+      // otherwise use MergeSortNode + SingleDeviceViewNode
+      MergeSortNode mergeSortNode =
+          new MergeSortNode(
+              context.getQueryId().genPlanNodeId(), orderByParameter, outputColumnNames);
+      addSingleDeviceViewNodes(
+          mergeSortNode,
+          deviceNameToSourceNodesMap,
+          outputColumnNames,
+          deviceToMeasurementIndexesMap,
+          -1);
+      this.root = mergeSortNode;
     } else {
+      // order by based on device, use DeviceViewNode
       this.root =
           addDeviceViewNode(
               orderByParameter,
@@ -857,6 +837,31 @@ public class LogicalPlanBuilder {
     }
 
     return this;
+  }
+
+  private boolean canUseTopKNode(QueryStatement queryStatement, long limitValue) {
+    // 1. has LIMIT and LIMIT_VALUE is smaller than 1000000.
+    // 2. `order by based on time` or `order by based on expression`.
+    // 3. no aggregation or has aggregation but no having.
+    // 4. no fill or has fill but not LINEAR fill.
+    // when satisfy all cases above will use ToKNode.
+    return queryStatement.hasLimit()
+        && limitValue <= LIMIT_VALUE_USE_TOP_K
+        && queryStatement.hasOrderBy()
+        && !queryStatement.isOrderByBasedOnDevice()
+        && (!queryStatement.isAggregationQuery()
+            || (queryStatement.isAggregationQuery() && !queryStatement.hasHaving()))
+        && (!queryStatement.hasFill()
+            || !LINEAR.equals(queryStatement.getFillComponent().getFillPolicy()));
+  }
+
+  private boolean canUseMergeSortNode(QueryStatement queryStatement, int deviceSize) {
+    // 1. `order by based on time` + `no order by expression`.
+    // 2. deviceSize is larger than 1.
+    // when satisfy all above cases use MergeSortNode.
+    return queryStatement.isOrderByBasedOnTime()
+        && !queryStatement.hasOrderByExpression()
+        && deviceSize > 1;
   }
 
   private void addSingleDeviceViewNodes(
@@ -1186,10 +1191,6 @@ public class LogicalPlanBuilder {
 
   public LogicalPlanBuilder planLimit(long rowLimit) {
     if (rowLimit == 0) {
-      return this;
-    }
-
-    if (this.getRoot() instanceof TopKNode) {
       return this;
     }
 
@@ -1557,10 +1558,7 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public LogicalPlanBuilder planOrderBy(
-      QueryStatement queryStatement,
-      Set<Expression> orderByExpressions,
-      Set<Expression> selectExpression) {
+  public LogicalPlanBuilder planOrderBy(QueryStatement queryStatement, Analysis analysis) {
     // only the order by clause having expression needs a sortNode
     if (!queryStatement.hasOrderByExpression()) {
       return this;
@@ -1571,13 +1569,16 @@ public class LogicalPlanBuilder {
       return this;
     }
 
+    Set<Expression> orderByExpressions = analysis.getOrderByExpressions();
     updateTypeProvider(orderByExpressions);
     OrderByParameter orderByParameter = new OrderByParameter(queryStatement.getSortItemList());
     if (orderByParameter.isEmpty()) {
       return this;
     }
+
     this.root = new SortNode(context.getQueryId().genPlanNodeId(), root, orderByParameter);
 
+    Set<Expression> selectExpression = analysis.getSelectExpressions();
     if (root.getOutputColumnNames().size() != selectExpression.size()) {
       this.root =
           new TransformNode(
@@ -1588,6 +1589,7 @@ public class LogicalPlanBuilder {
               queryStatement.getSelectComponent().getZoneId(),
               queryStatement.getResultTimeOrder());
     }
+
     return this;
   }
 

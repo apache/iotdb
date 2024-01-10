@@ -39,6 +39,7 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -63,6 +64,7 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.zip.CRC32;
@@ -331,12 +333,13 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
   private void doTransfer(
       Socket socket, PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, WALPipeException, IOException {
+    final InsertNode insertNode =
+        pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
     final byte[] bytes =
-        pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible() == null
+        Objects.isNull(insertNode)
             ? PipeTransferTabletBinaryReq.toTransferInsertNodeBytes(
                 pipeInsertNodeTabletInsertionEvent.getByteBuffer())
-            : PipeTransferTabletInsertNodeReq.toTransferInsertNodeBytes(
-                pipeInsertNodeTabletInsertionEvent.getInsertNode());
+            : PipeTransferTabletInsertNodeReq.toTransferInsertNodeBytes(insertNode);
 
     if (!send(socket, bytes)) {
       throw new PipeException(
