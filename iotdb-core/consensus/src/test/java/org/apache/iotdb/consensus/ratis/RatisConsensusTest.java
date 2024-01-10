@@ -30,7 +30,6 @@ import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 
-import org.apache.iotdb.consensus.ratis.utils.Retriable;
 import org.apache.ratis.util.TimeDuration;
 import org.junit.After;
 import org.junit.Assert;
@@ -45,9 +44,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-
 public class RatisConsensusTest {
-  private final static Logger logger = LoggerFactory.getLogger(RatisConsensusTest.class);
+  private static final Logger logger = LoggerFactory.getLogger(RatisConsensusTest.class);
 
   private ConsensusGroupId gid;
   private List<Peer> peers;
@@ -254,9 +252,11 @@ public class RatisConsensusTest {
     doConsensus(leader, 10, 20);
 
     // transfer will fail since the server 2 is down
-    Assert.assertThrows(ConsensusException.class, () -> {
-      servers.get(leader).transferLeader(gid, peers.get(f1));
-    });
+    Assert.assertThrows(
+        ConsensusException.class,
+        () -> {
+          servers.get(leader).transferLeader(gid, peers.get(f1));
+        });
   }
 
   @Test
