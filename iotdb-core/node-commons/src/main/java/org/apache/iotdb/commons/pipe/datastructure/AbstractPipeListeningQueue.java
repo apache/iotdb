@@ -69,12 +69,13 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
     }
   }
 
-  /////////////////////////////// Snapshot Getter ///////////////////////////////
+  /////////////////////////////// Snapshot Cache ///////////////////////////////
 
   // This method is thread-unsafe but snapshot must not be parallel with other
   // snapshots or write-plan.
   public void listenToSnapshots(List<PipeSnapshotEvent> events) {
     if (!isSealed.get()) {
+      clearSnapshot();
       snapshotCache.setLeft(queue.getTailIndex());
       snapshotCache.setRight(events);
     }
@@ -83,10 +84,19 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
   public Pair<Long, List<PipeSnapshotEvent>> findAvailableSnapshots() {
     // TODO: configure maximum number of events from snapshot to queue tail
     if (snapshotCache.getLeft() < queue.getTailIndex() - 1000) {
-      snapshotCache.setLeft(Long.MIN_VALUE);
-      snapshotCache.setRight(new ArrayList<>());
+      clearSnapshot();
     }
     return snapshotCache;
+  }
+
+  private void clearSnapshot() {
+    snapshotCache.setLeft(Long.MIN_VALUE);
+    snapshotCache
+        .getRight()
+        .forEach(
+            event ->
+                event.decreaseReferenceCount(AbstractPipeListeningQueue.class.getName(), false));
+    snapshotCache.setRight(new ArrayList<>());
   }
 
   /////////////////////////////// Snapshot ///////////////////////////////
@@ -146,8 +156,7 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
 
   @Override
   public synchronized void close() throws IOException {
+    clearSnapshot();
     super.close();
-    snapshotCache.setLeft(Long.MIN_VALUE);
-    snapshotCache.setRight(new ArrayList<>());
   }
 }

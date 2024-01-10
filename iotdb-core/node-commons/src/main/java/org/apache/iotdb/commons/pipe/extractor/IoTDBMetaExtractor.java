@@ -58,20 +58,22 @@ public abstract class IoTDBMetaExtractor extends IoTDBCommonExtractor {
   @Override
   public EnrichedEvent supply() throws Exception {
     if (!historicalEvents.isEmpty()) {
+      PipeSnapshotEvent event;
       if (historicalEvents.size() != 1) {
         // Do not report progress for non-final snapshot events since we re-transmit all snapshot
         // files currently
-        return historicalEvents.remove(0);
+        event = historicalEvents.remove(0);
       } else {
-        PipeSnapshotEvent event =
+        event =
             (PipeSnapshotEvent)
                 historicalEvents
                     .remove(0)
                     .shallowCopySelfAndBindPipeTaskMetaForProgressReport(
                         pipeName, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
         event.bindProgressIndex(new MetaProgressIndex(itr.getNextIndex() - 1));
-        return event;
       }
+      event.increaseReferenceCount(IoTDBMetaExtractor.class.getName());
+      return event;
     }
 
     EnrichedEvent event;

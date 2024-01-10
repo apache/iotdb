@@ -77,8 +77,7 @@ public class PipeRuntimeConfigNodeAgent implements IService {
 
     pipeTaskMeta.trackExceptionMessage(pipeRuntimeException);
 
-    // Quick stop all pipes locally if critical exception occurs,
-    // no need to wait for the next heartbeat cycle.
+    // Stop all pipes locally if critical exception occurs
     if (pipeRuntimeException instanceof PipeRuntimeCriticalException) {
       PipeConfigNodeAgent.task().stopAllPipesWithCriticalException();
     }
