@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
@@ -121,6 +122,25 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
           .setMessage(context.getMessage());
     }
     return visitStatement(internalCreateTimeSeriesStatement, context);
+  }
+
+  @Override
+  public TSStatus visitAlterTimeseries(
+      AlterTimeSeriesStatement alterTimeSeriesStatement, TSStatus context) {
+    if (context.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()) {
+      if (context.getMessage().contains("already")) {
+        return new TSStatus(
+                TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+            .setMessage(context.getMessage());
+      } else if (context.getMessage().contains("does not")) {
+        return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+            .setMessage(context.getMessage());
+      }
+    } else if (context.getCode() == TSStatusCode.PATH_NOT_EXIST.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return visitStatement(alterTimeSeriesStatement, context);
   }
 
   @Override

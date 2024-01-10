@@ -67,7 +67,7 @@ public class IoTDBIdempotentIT extends AbstractPipeDualManualIT {
   }
 
   @Test
-  public void testTimeseriesIdempotent() throws Exception {
+  public void testCreateTimeseriesIdempotent() throws Exception {
     testIdempotent(
         Collections.emptyList(),
         "create timeseries root.ln.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN",
@@ -82,6 +82,43 @@ public class IoTDBIdempotentIT extends AbstractPipeDualManualIT {
     testIdempotent(
         Collections.emptyList(),
         "insert into root.test.g1(time, speed) values(now(), 1.0);",
+        "create timeseries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
+        "count timeseries",
+        "count(timeseries),",
+        Collections.singleton("2,"));
+  }
+
+  @Test
+  public void testAlterTimeseriesAddTagIdempotent() throws Exception {
+    testIdempotent(
+        Collections.singletonList(
+            "create timeseries root.ln.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN"),
+        "ALTER timeseries root.ln.wf01.wt01.status0 ADD TAGS tag3=v3;",
+        "create timeseries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
+        "count timeseries",
+        "count(timeseries),",
+        Collections.singleton("2,"));
+  }
+
+  @Test
+  public void testAlterTimeseriesAddAttrIdempotent() throws Exception {
+    testIdempotent(
+        Collections.singletonList(
+            "create timeseries root.ln.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN"),
+        "ALTER timeseries root.ln.wf01.wt01.status0 ADD ATTRIBUTES attr1=newV1;",
+        "create timeseries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
+        "count timeseries",
+        "count(timeseries),",
+        Collections.singleton("2,"));
+  }
+
+  @Test
+  public void testAlterTimeseriesRenameIdempotent() throws Exception {
+    testIdempotent(
+        Arrays.asList(
+            "create timeseries root.ln.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN",
+            "ALTER timeseries root.ln.wf01.wt01.status0 ADD ATTRIBUTES attr1=newV1;"),
+        "ALTER timeseries root.ln.wf01.wt01.status0 RENAME attr1 TO newAttr1;",
         "create timeseries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
         "count timeseries",
         "count(timeseries),",
