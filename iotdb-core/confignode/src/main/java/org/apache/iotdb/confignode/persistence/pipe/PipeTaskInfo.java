@@ -378,7 +378,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   /////////////////////////////// Pipe Runtime Management ///////////////////////////////
 
-  /** Handle the data region leader change event and update the pipe task meta accordingly. */
+  /** Handle the region leader change event and update the pipe task meta accordingly. */
   public TSStatus handleLeaderChange(PipeHandleLeaderChangePlan plan) {
     acquireWriteLock();
     try {
@@ -423,10 +423,13 @@ public class PipeTaskInfo implements SnapshotProcessor {
                           }
                         }));
 
-    // Notify configNode agent to handle config leader change
-    List<PipeMeta> pipeMetas = new ArrayList<>();
-    pipeMetaKeeper.getPipeMetaList().forEach(pipeMetas::add);
-    PipeConfigNodeAgent.task().handlePipeMetaChanges(pipeMetas);
+    try {
+      // Notify configNode agent to handle config leader change
+      handlePipeMetaChangesOnConfigTaskAgent();
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+          .setMessage("Failed to handle leader change on configNode, because " + e.getMessage());
+    }
 
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
@@ -478,7 +481,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
     ConfigPlanListeningQueue.getInstance().removeBefore(earliestIndex.get());
 
-    // No need to handle meta changes here since pipeMetas here only change on follower
+    // No need to handle meta changes on configNodeAgent here since pipeMetas here only change on
+    // follower
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
@@ -614,7 +618,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
    * Set the statuses of all the pipes stopped automatically because of critical exceptions to
    * {@link PipeStatus#RUNNING} in order to restart them.
    *
-   * @return true if there are pipes need restarting
+   * @return {@code true} if there are pipes need restarting
    */
   private boolean autoRestartInternal() {
     final AtomicBoolean needRestart = new AtomicBoolean(false);
@@ -638,11 +642,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
       LOGGER.info("PipeMetaSyncer is trying to restart the pipes: {}", pipeToRestart);
     }
 
-    try {
-      handlePipeMetaChangesOnConfigTaskAgent();
-    } catch (IOException e) {
-      LOGGER.warn("Failed to restart on configNode, ", e);
-    }
+    handlePipeMetaChangesOnConfigTaskAgent();
     return needRestart.get();
   }
 
@@ -686,11 +686,19 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
   }
 
-  private void handleSinglePipeMetaChangeOnConfigTaskAgent(PipeMeta pipeMeta) throws IOException {
-    // Hard copy to keep PipeConfigNodeTaskAgent and PipeTaskInfo apart
+  private void handleSinglePipeMetaChangeOnConfigTaskAgent(PipeMeta pipeMeta) {
+    // The new agent meta has separated status to enable control by diff
+    // Yet the taskMetaMap is reused to let configNode pipe report directly to the
+    // original meta. No lock is needed since the configNode taskMeta is only
+    // altered by one pipe.
+    PipeMeta agentMeta =
+        new PipeMeta(
+            pipeMeta.getStaticMeta(),
+            new PipeRuntimeMeta(pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap()));
+    agentMeta.getRuntimeMeta().getStatus().set(pipeMeta.getRuntimeMeta().getStatus().get());
+
     TPushPipeMetaRespExceptionMessage message =
-        PipeConfigNodeAgent.task()
-            .handleSinglePipeMetaChanges(PipeMeta.deserialize(pipeMeta.serialize()));
+        PipeConfigNodeAgent.task().handleSinglePipeMetaChanges(agentMeta);
     if (message != null) {
       pipeMetaKeeper
           .getPipeMeta(message.getPipeName())
@@ -702,10 +710,15 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
   }
 
-  private void handlePipeMetaChangesOnConfigTaskAgent() throws IOException {
+  private void handlePipeMetaChangesOnConfigTaskAgent() {
     List<PipeMeta> pipeMetas = new ArrayList<>();
     for (PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
-      pipeMetas.add(PipeMeta.deserialize(pipeMeta.serialize()));
+      PipeMeta agentMeta =
+          new PipeMeta(
+              pipeMeta.getStaticMeta(),
+              new PipeRuntimeMeta(pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap()));
+      agentMeta.getRuntimeMeta().getStatus().set(pipeMeta.getRuntimeMeta().getStatus().get());
+      pipeMetas.add(agentMeta);
     }
     PipeConfigNodeAgent.task()
         .handlePipeMetaChanges(pipeMetas)
