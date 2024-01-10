@@ -293,10 +293,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
     Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus = clientManager.getClient();
     final TPipeTransferResp resp;
     try {
-      resp =
-          clientAndStatus
-              .getLeft()
-              .pipeTransfer(tabletBatchBuilder.buildPipeTransferTabletBatchReq());
+      resp = clientAndStatus.getLeft().pipeTransfer(tabletBatchBuilder.toTPipeTransferReq());
     } catch (Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(

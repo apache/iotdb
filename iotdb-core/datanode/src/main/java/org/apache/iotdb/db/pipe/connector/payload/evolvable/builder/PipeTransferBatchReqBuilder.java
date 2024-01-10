@@ -25,6 +25,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -121,9 +122,9 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
     // The deduplication logic here is to avoid the accumulation of the same event in a batch when
     // retrying.
     if ((events.isEmpty() || !events.get(events.size() - 1).equals(event))) {
-      final int bufferSize = buildTabletInsertionBuffer(event);
       events.add(event);
       requestCommitIds.add(requestCommitId);
+      final int bufferSize = buildTabletInsertionBuffer(event);
 
       ((EnrichedEvent) event).increaseReferenceCount(PipeTransferBatchReqBuilder.class.getName());
 
@@ -151,7 +152,7 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
     totalBufferSize = 0;
   }
 
-  public PipeTransferTabletBatchReq buildPipeTransferTabletBatchReq() throws IOException {
+  public PipeTransferTabletBatchReq toTPipeTransferReq() throws IOException {
     return PipeTransferTabletBatchReq.toTPipeTransferReq(
         binaryBuffers, insertNodeBuffers, tabletBuffers);
   }
@@ -166,17 +167,19 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
 
   protected int buildTabletInsertionBuffer(TabletInsertionEvent event)
       throws IOException, WALPipeException {
-    ByteBuffer buffer;
+    final ByteBuffer buffer;
     if (event instanceof PipeInsertNodeTabletInsertionEvent) {
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
           (PipeInsertNodeTabletInsertionEvent) event;
       // Read the bytebuffer from the wal file and transfer it directly without serializing or
       // deserializing if possible
-      if (Objects.isNull(pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible())) {
+      final InsertNode insertNode =
+          pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
+      if (Objects.isNull(insertNode)) {
         buffer = pipeInsertNodeTabletInsertionEvent.getByteBuffer();
         binaryBuffers.add(buffer);
       } else {
-        buffer = pipeInsertNodeTabletInsertionEvent.getInsertNode().serializeToByteBuffer();
+        buffer = insertNode.serializeToByteBuffer();
         insertNodeBuffers.add(buffer);
       }
     } else {
@@ -188,9 +191,9 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
         ReadWriteIOUtils.write(pipeRawTabletInsertionEvent.isAligned(), outputStream);
         buffer = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
       }
-
       tabletBuffers.add(buffer);
     }
+    // We assume that the real data size is the same as the buffer size
     return buffer.array().length;
   }
 
