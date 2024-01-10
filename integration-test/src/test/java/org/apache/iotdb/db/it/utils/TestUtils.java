@@ -654,7 +654,7 @@ public class TestUtils {
         Statement statement = connection.createStatement()) {
       // Keep retrying if there are execution failure
       await()
-          .atMost(600, TimeUnit.SECONDS)
+          .atMost(60, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
                 try {
