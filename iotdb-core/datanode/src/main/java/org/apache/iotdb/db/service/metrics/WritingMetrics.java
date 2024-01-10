@@ -782,7 +782,7 @@ public class WritingMetrics implements IMetricSet {
         .count(
             number,
             Metric.TIMED_FLUSH_MEMTABLE_COUNT.toString(),
-            MetricLevel.CORE,
+            MetricLevel.IMPORTANT,
             Tag.REGION.toString(),
             dataRegionId);
   }
@@ -792,7 +792,7 @@ public class WritingMetrics implements IMetricSet {
         .count(
             number,
             Metric.WAL_FLUSH_MEMTABLE_COUNT.toString(),
-            MetricLevel.CORE,
+            MetricLevel.IMPORTANT,
             Tag.REGION.toString(),
             dataRegionId);
   }
@@ -802,7 +802,7 @@ public class WritingMetrics implements IMetricSet {
         .count(
             number,
             Metric.SERIES_FULL_FLUSH_MEMTABLE.toString(),
-            MetricLevel.CORE,
+            MetricLevel.IMPORTANT,
             Tag.REGION.toString(),
             dataRegionId);
   }
@@ -812,14 +812,14 @@ public class WritingMetrics implements IMetricSet {
         .count(
             number,
             Metric.ACTIVE_MEMTABLE_COUNT.toString(),
-            MetricLevel.CORE,
+            MetricLevel.IMPORTANT,
             Tag.REGION.toString(),
             dataRegionId);
   }
 
   public void recordActiveTimePartitionCount(int number) {
     MetricService.getInstance()
-        .count(number, Metric.ACTIVE_TIME_PARTITION_COUNT.toString(), MetricLevel.CORE);
+        .count(number, Metric.ACTIVE_TIME_PARTITION_COUNT.toString(), MetricLevel.IMPORTANT);
   }
 
   // endregion

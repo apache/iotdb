@@ -1372,12 +1372,12 @@ public class DataRegion implements IDataRegionForQuery {
           .updateAfterOpeningTsFileProcessor(
               new DataRegionId(Integer.valueOf(dataRegionId)), timeRangeId);
       res = newTsFileProcessor(sequence, timeRangeId);
-      tsFileProcessorTreeMap.put(timeRangeId, res);
-      tsFileManager.add(res.getTsFileResource(), sequence);
-      if (!workSequenceTsFileProcessors.containsKey(timeRangeId)
-          && !workSequenceTsFileProcessors.containsKey(timeRangeId)) {
+      if (workSequenceTsFileProcessors.get(timeRangeId) == null
+          && workUnsequenceTsFileProcessors.get(timeRangeId) == null) {
         WritingMetrics.getInstance().recordActiveTimePartitionCount(1);
       }
+      tsFileProcessorTreeMap.put(timeRangeId, res);
+      tsFileManager.add(res.getTsFileResource(), sequence);
     }
 
     return res;
