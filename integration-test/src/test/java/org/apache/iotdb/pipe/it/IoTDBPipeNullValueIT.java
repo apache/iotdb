@@ -33,15 +33,16 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
-public class IoTDBPipeDataSinkIT extends AbstractPipeDualIT {
+public class IoTDBPipeNullValueIT extends AbstractPipeDualIT {
   @Test
-  public void testThriftConnector() throws Exception {
+  public void testInsertNull() throws Exception {
     DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     String receiverIp = receiverDataNode.getIp();
@@ -53,10 +54,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualIT {
       Map<String, String> processorAttributes = new HashMap<>();
       Map<String, String> connectorAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.realtime.mode", "log");
-
       connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
@@ -65,29 +63,26 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualIT {
               new TCreatePipeReq("testPipe", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)
                   .setProcessorAttributes(processorAttributes));
-
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
-
-      // Do not fail if the failure has nothing to do with pipe
-      // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "insert into root.vehicle.d0(time, s1) values (0, 1)")) {
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          receiverEnv,
+          Arrays.asList(
+              "create aligned timeseries root.sg.d1(s0 float, s1 float)",
+              "insert into root.sg.d1(time, s0, s1) values (3, null, 25.34)"))) {
         return;
       }
 
       TestUtils.assertDataOnEnv(
           receiverEnv,
           "select * from root.**",
-          "Time,root.vehicle.d0.s1,",
-          Collections.singleton("0,1.0,"));
+          "Time,root.sg.d1.s0,root.sg.d1.s1,",
+          Collections.singleton("3,null,25.34,"));
     }
   }
 
   @Test
-  public void testLegacyConnector() throws Exception {
+  public void testInsertNullWithParsing() throws Exception {
     DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     String receiverIp = receiverDataNode.getIp();
@@ -99,39 +94,32 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualIT {
       Map<String, String> processorAttributes = new HashMap<>();
       Map<String, String> connectorAttributes = new HashMap<>();
 
-      extractorAttributes.put("source.realtime.mode", "log");
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.ip", receiverIp);
+      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
-      connectorAttributes.put("sink", "iotdb-legacy-pipe-sink");
-      connectorAttributes.put("sink.batch.enable", "false");
-      connectorAttributes.put("sink.ip", receiverIp);
-      connectorAttributes.put("sink.port", Integer.toString(receiverPort));
-
-      // This version does not matter since it's no longer checked by the legacy receiver
-      connectorAttributes.put("sink.version", "1.3");
+      extractorAttributes.put("extractor.pattern", "root.test.g_0.d_0");
 
       TSStatus status =
           client.createPipe(
               new TCreatePipeReq("testPipe", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)
                   .setProcessorAttributes(processorAttributes));
-
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
-
-      // Do not fail if the failure has nothing to do with pipe
-      // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "insert into root.vehicle.d0(time, s1) values (0, 1)")) {
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          receiverEnv,
+          Arrays.asList(
+              "insert into root.test.g_0.d_0(time, s_0, s_1, s_2) values(1, true, 44, 11)",
+              "insert into root.test.g_0.d_0(time, s_0, s_1, s_2) values(2, true, 44, null)"))) {
         return;
       }
 
       TestUtils.assertDataOnEnv(
           receiverEnv,
           "select * from root.**",
-          "Time,root.vehicle.d0.s1,",
-          Collections.singleton("0,1.0,"));
+          "Time,root.sg.d1.s0,root.sg.d1.s1,",
+          Collections.singleton("3,null,25.34,"));
     }
   }
 }

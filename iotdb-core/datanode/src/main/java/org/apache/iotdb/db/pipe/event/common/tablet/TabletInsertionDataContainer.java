@@ -171,7 +171,7 @@ public class TabletInsertionDataContainer {
                   originValueColumns[i],
                   rowIndexList,
                   true,
-                  bitMap,
+                  bitMap, // use the output bitmap since there is no bitmap in InsertRowNode
                   bitMap);
         }
         this.nullValueColumnBitmaps[filteredColumnIndex] = bitMap;
