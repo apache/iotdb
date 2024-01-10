@@ -396,8 +396,8 @@ public class ClusterSchemaManager {
    * Update TTL for the specific StorageGroup or all databases in a path
    *
    * @param setTTLPlan setTTLPlan
-   * @return SUCCESS_STATUS if successfully update the TTL, STORAGE_GROUP_NOT_EXIST if the path
-   *     doesn't exist
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if successfully update the TTL, {@link
+   *     TSStatusCode#DATABASE_NOT_EXIST} if the path doesn't exist
    */
   public TSStatus setTTL(SetTTLPlan setTTLPlan, boolean isGeneratedByPipe) {
 
