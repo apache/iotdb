@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.resource.tsfile;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.runtime.PipePeriodicalJobExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -37,6 +38,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class PipeTsFileResourceManager {
@@ -51,33 +53,46 @@ public class PipeTsFileResourceManager {
     PipeAgent.runtime()
         .registerPeriodicalJob(
             "PipeTsFileResourceManager#ttlCheck()",
-            this::ttlCheck,
+            this::tryTtlCheck,
             Math.max(PipeTsFileResource.TSFILE_MIN_TIME_TO_LIVE_IN_MS / 1000, 1));
   }
 
-  private void ttlCheck() {
-    lock.lock();
+  private void tryTtlCheck() {
     try {
-      final Iterator<Map.Entry<String, PipeTsFileResource>> iterator =
-          hardlinkOrCopiedFileToPipeTsFileResourceMap.entrySet().iterator();
-      while (iterator.hasNext()) {
-        final Map.Entry<String, PipeTsFileResource> entry = iterator.next();
-
+      final long timeout = PipePeriodicalJobExecutor.getMinIntervalSeconds() >> 1;
+      if (lock.tryLock(timeout, TimeUnit.SECONDS)) {
         try {
-          if (entry.getValue().closeIfOutOfTimeToLive()) {
-            iterator.remove();
-          } else {
-            LOGGER.info(
-                "Pipe file (file name: {}) is still referenced {} times",
-                entry.getKey(),
-                entry.getValue().getReferenceCount());
-          }
-        } catch (IOException e) {
-          LOGGER.warn("failed to close PipeTsFileResource when checking TTL: ", e);
+          ttlCheck();
+        } finally {
+          lock.unlock();
         }
+      } else {
+        LOGGER.warn("failed to try lock when checking TTL because of timeout ({}s)", timeout);
       }
-    } finally {
-      lock.unlock();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.warn("failed to try lock when checking TTL because of interruption", e);
+    }
+  }
+
+  private void ttlCheck() {
+    final Iterator<Map.Entry<String, PipeTsFileResource>> iterator =
+        hardlinkOrCopiedFileToPipeTsFileResourceMap.entrySet().iterator();
+    while (iterator.hasNext()) {
+      final Map.Entry<String, PipeTsFileResource> entry = iterator.next();
+
+      try {
+        if (entry.getValue().closeIfOutOfTimeToLive()) {
+          iterator.remove();
+        } else {
+          LOGGER.info(
+              "Pipe file (file name: {}) is still referenced {} times",
+              entry.getKey(),
+              entry.getValue().getReferenceCount());
+        }
+      } catch (IOException e) {
+        LOGGER.warn("failed to close PipeTsFileResource when checking TTL: ", e);
+      }
     }
   }
 

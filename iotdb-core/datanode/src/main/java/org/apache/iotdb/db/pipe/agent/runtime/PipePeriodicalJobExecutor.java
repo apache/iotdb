@@ -114,4 +114,8 @@ public class PipePeriodicalJobExecutor {
     periodicalJobs.clear();
     LOGGER.info("All pipe periodical jobs are cleared successfully.");
   }
+
+  public static long getMinIntervalSeconds() {
+    return MIN_INTERVAL_SECONDS;
+  }
 }
