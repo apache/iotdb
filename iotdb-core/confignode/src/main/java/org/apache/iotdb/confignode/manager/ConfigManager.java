@@ -507,7 +507,7 @@ public class ConfigManager implements IManager {
   public TSStatus setTTL(SetTTLPlan setTTLPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return clusterSchemaManager.setTTL(setTTLPlan);
+      return clusterSchemaManager.setTTL(setTTLPlan, false);
     } else {
       return status;
     }

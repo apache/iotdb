@@ -399,7 +399,7 @@ public class ClusterSchemaManager {
    * @return SUCCESS_STATUS if successfully update the TTL, STORAGE_GROUP_NOT_EXIST if the path
    *     doesn't exist
    */
-  public TSStatus setTTL(SetTTLPlan setTTLPlan) {
+  public TSStatus setTTL(SetTTLPlan setTTLPlan, boolean isGeneratedByPipe) {
 
     Map<String, TDatabaseSchema> storageSchemaMap =
         clusterSchemaInfo.getMatchedDatabaseSchemasByOneName(setTTLPlan.getDatabasePathPattern());
@@ -443,7 +443,8 @@ public class ClusterSchemaManager {
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
 
     try {
-      return getConsensusManager().write(setTTLPlan);
+      return getConsensusManager()
+          .write(isGeneratedByPipe ? new PipeEnrichedPlan(setTTLPlan) : setTTLPlan);
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       TSStatus result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());

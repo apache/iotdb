@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
@@ -160,6 +161,8 @@ public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
         return configManager.dropTrigger(
             new TDropTriggerReq(((DeleteTriggerInTablePlan) plan).getTriggerName())
                 .setIsGeneratedByPipe(true));
+      case SetTTL:
+        return configManager.getClusterSchemaManager().setTTL((SetTTLPlan) plan, true);
       case DropUser:
       case DropRole:
       case GrantRole:
@@ -170,6 +173,10 @@ public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
       case RevokeRoleFromUser:
       case UpdateUser:
         return configManager.getPermissionManager().operatePermission((AuthorPlan) plan, true);
+      case CreateDatabase:
+      case CreateSchemaTemplate:
+      case CreateUser:
+      case CreateRole:
       default:
         return configManager.getConsensusManager().write(new PipeEnrichedPlan(plan));
     }
