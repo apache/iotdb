@@ -201,7 +201,8 @@ public class SizeTieredCompactionSelector
   private List<InnerSpaceCompactionTask> selectFileNeedToRepair() {
     List<InnerSpaceCompactionTask> taskList = new ArrayList<>();
     for (TsFileResource resource : tsFileResources) {
-      if (resource.getTsFileRepairStatus() == TsFileRepairStatus.NEED_TO_REPAIR) {
+      if (resource.getStatus() == TsFileResourceStatus.NORMAL
+          && resource.getTsFileRepairStatus() == TsFileRepairStatus.NEED_TO_REPAIR) {
         taskList.add(
             new RepairUnsortedFileCompactionTask(
                 timePartition,
