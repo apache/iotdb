@@ -110,7 +110,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
         return;
       }
 
-      TestUtils.assertDataEventuallyOnEnv(
+      TestUtils.assertDataAlwaysOnEnv(
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
 
       Assert.assertEquals(
@@ -141,6 +141,9 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
       Map<String, String> processorAttributes = new HashMap<>();
       Map<String, String> connectorAttributes = new HashMap<>();
 
+      extractorAttributes.put("extractor.inclusion", "all");
+      extractorAttributes.put("extractor.inclusion.exclusion", "");
+
       extractorAttributes.put("extractor.history.enable", "false");
       // start-time and end-time should not work
       extractorAttributes.put("extractor.history.start-time", "0001.01.01T00:00:00");
@@ -162,26 +165,60 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (2, 2)")) {
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList(
+              "create database root.ln",
+              "create timeseries root.db.d1.s2 with datatype=BOOLEAN,encoding=PLAIN",
+              "insert into root.db.d1(time, s1) values (2, 2)"))) {
         return;
       }
 
-      Set<String> expectedResSet = new HashSet<>();
-      expectedResSet.add("2,2.0,");
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+          receiverEnv,
+          "select s1 from root.db.d1",
+          "Time,root.db.d1.s1,",
+          Collections.singleton("2,2.0,"));
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("2,"));
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv, "count databases", "count,", Collections.singleton("2,"));
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (3, 3)")) {
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList(
+              "create database root.ln0",
+              "create timeseries root.db.d1.s3 with datatype=BOOLEAN,encoding=PLAIN",
+              "insert into root.db.d1(time, s1) values (3, 3)"))) {
         return;
       }
 
+      TestUtils.assertDataAlwaysOnEnv(
+          receiverEnv,
+          "select s1 from root.db.d1",
+          "Time,root.db.d1.s1,",
+          Collections.singleton("2,2.0,"));
+      TestUtils.assertDataAlwaysOnEnv(
+          receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("2,"));
+      TestUtils.assertDataAlwaysOnEnv(
+          receiverEnv, "count databases", "count,", Collections.singleton("2,"));
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
+
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+          receiverEnv,
+          "select s1 from root.db.d1",
+          "Time,root.db.d1.s1,",
+          new HashSet<>(Arrays.asList("2,2.0,", "3,3.0,")),
+          10);
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("3,"));
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv, "count databases", "count,", Collections.singleton("3,"));
     }
   }
 
