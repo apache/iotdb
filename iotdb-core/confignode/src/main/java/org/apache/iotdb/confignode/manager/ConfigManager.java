@@ -1664,7 +1664,7 @@ public class ConfigManager implements IManager {
           TemplateAlterOperationUtil.parseOperationType(buffer);
       if (operationType.equals(TemplateAlterOperationType.EXTEND_TEMPLATE)) {
         return clusterSchemaManager.extendSchemaTemplate(
-            TemplateAlterOperationUtil.parseTemplateExtendInfo(buffer));
+            TemplateAlterOperationUtil.parseTemplateExtendInfo(buffer), false);
       }
       return RpcUtils.getStatus(TSStatusCode.UNSUPPORTED_OPERATION);
     } else {

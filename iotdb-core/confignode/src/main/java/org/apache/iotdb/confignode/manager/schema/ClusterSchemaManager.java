@@ -1000,7 +1000,8 @@ public class ClusterSchemaManager {
     }
   }
 
-  public synchronized TSStatus extendSchemaTemplate(TemplateExtendInfo templateExtendInfo) {
+  public synchronized TSStatus extendSchemaTemplate(
+      TemplateExtendInfo templateExtendInfo, boolean isGeneratedByPipe) {
     if (templateExtendInfo.getEncodings() != null) {
       for (int i = 0; i < templateExtendInfo.getDataTypes().size(); i++) {
         try {
@@ -1039,7 +1040,12 @@ public class ClusterSchemaManager {
         new ExtendSchemaTemplatePlan(templateExtendInfo);
     TSStatus status;
     try {
-      status = getConsensusManager().write(extendSchemaTemplatePlan);
+      status =
+          getConsensusManager()
+              .write(
+                  isGeneratedByPipe
+                      ? new PipeEnrichedPlan(extendSchemaTemplatePlan)
+                      : extendSchemaTemplatePlan);
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());

@@ -208,7 +208,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TGetClusterIdResp getClusterId() throws TException {
+  public TGetClusterIdResp getClusterId() {
     TGetClusterIdResp resp = new TGetClusterIdResp();
     String clusterId = configManager.getClusterManager().getClusterId();
     if (clusterId == null) {

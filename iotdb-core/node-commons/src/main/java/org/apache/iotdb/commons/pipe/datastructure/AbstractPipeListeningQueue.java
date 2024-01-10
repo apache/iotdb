@@ -75,7 +75,7 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
   // snapshots or write-plan.
   public void listenToSnapshots(List<PipeSnapshotEvent> events) {
     if (!isSealed.get()) {
-      clearSnapshot();
+      clearSnapshots();
       snapshotCache.setLeft(queue.getTailIndex());
       snapshotCache.setRight(events);
     }
@@ -84,12 +84,12 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
   public Pair<Long, List<PipeSnapshotEvent>> findAvailableSnapshots() {
     // TODO: configure maximum number of events from snapshot to queue tail
     if (snapshotCache.getLeft() < queue.getTailIndex() - 1000) {
-      clearSnapshot();
+      clearSnapshots();
     }
     return snapshotCache;
   }
 
-  private void clearSnapshot() {
+  private void clearSnapshots() {
     snapshotCache.setLeft(Long.MIN_VALUE);
     snapshotCache
         .getRight()
@@ -156,7 +156,7 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
 
   @Override
   public synchronized void close() throws IOException {
-    clearSnapshot();
+    clearSnapshots();
     super.close();
   }
 }
