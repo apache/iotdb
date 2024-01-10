@@ -251,20 +251,6 @@ public class IoTDBOrderByIT {
   }
 
   @Test
-  public void orderByTest17() {
-    String sql = "select num,bigNum,floatNum,str,bool from root.sg.d order by str desc, str asc";
-    int[] ans = {3, 2, 5, 12, 0, 9, 13, 8, 4, 7, 1, 10, 6, 11, 14};
-    testNormalOrderBy(sql, Arrays.reverse(ans));
-  }
-
-  @Test
-  public void orderByTest18() {
-    String sql = "select num,bigNum,floatNum,str,bool from root.sg.d order by str, str";
-    int[] ans = {3, 2, 5, 12, 0, 9, 13, 8, 4, 7, 1, 10, 6, 11, 14};
-    testNormalOrderBy(sql, ans);
-  }
-
-  @Test
   public void orderByTest15() {
     String sql = "select num+bigNum,floatNum from root.sg.d order by str";
     int[] ans = {3, 2, 5, 12, 0, 9, 13, 8, 4, 7, 1, 10, 6, 11, 14};
@@ -387,6 +373,46 @@ public class IoTDBOrderByIT {
               actualNum,
               0.001);
 
+          i++;
+        }
+        assertEquals(i, ans.length);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void orderByTest17() {
+    String sql = "select num,bigNum,floatNum,str,bool from root.sg.d order by str desc, str asc";
+    int[] ans = {3, 2, 5, 12, 0, 9, 13, 8, 4, 7, 1, 10, 6, 11, 14};
+    testNormalOrderBy(sql, Arrays.reverse(ans));
+  }
+
+  @Test
+  public void orderByTest18() {
+    String sql = "select num,bigNum,floatNum,str,bool from root.sg.d order by str, str";
+    int[] ans = {3, 2, 5, 12, 0, 9, 13, 8, 4, 7, 1, 10, 6, 11, 14};
+    testNormalOrderBy(sql, ans);
+  }
+
+  // limit cannot be pushed down in ORDER BY
+  @Test
+  public void orderByTest19() {
+    String sql = "select num from root.sg.d order by num limit 5";
+    int[] ans = {2, 1, 0, 7, 8};
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        checkHeader(metaData, new String[] {"Time", "root.sg.d.num"});
+        int i = 0;
+        while (resultSet.next()) {
+          String actualTime = resultSet.getString(1);
+          String actualNum = resultSet.getString(2);
+          assertEquals(res[ans[i]][0], actualTime);
+          assertEquals(res[ans[i]][1], actualNum);
           i++;
         }
         assertEquals(i, ans.length);

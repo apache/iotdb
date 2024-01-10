@@ -171,6 +171,20 @@ public class IoTDBGroupByNaturalMonthIT {
         currPrecision);
   }
 
+  @Test
+  public void groupByNaturalMonthTest5() {
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, sum("root.sg1.d1.temperature")};
+    String[] retArray = {
+      "01/30/2021:00:00:00,29.0,", "02/28/2021:00:00:00,30.0,", "03/30/2021:00:00:00,1.0,"
+    };
+    resultSetEqualTest(
+        "select sum(temperature) from root.sg1.d1 GROUP BY ([2021-01-30, 2021-03-31), 1mo)",
+        expectedHeader,
+        retArray,
+        df,
+        currPrecision);
+  }
+
   /** Test group by month with order by time desc. */
   @Test
   public void groupByNaturalMonthFailTest() {
@@ -241,12 +255,12 @@ public class IoTDBGroupByNaturalMonthIT {
       "10/31/2020:00:00:00,30.0,",
       "11/10/2020:00:00:00,30.0,",
       "11/20/2020:00:00:00,30.0,",
-      "11/30/2020:00:00:00,31.0,",
-      "12/10/2020:00:00:00,31.0,",
-      "12/20/2020:00:00:00,31.0,",
-      "12/30/2020:00:00:00,31.0,",
-      "01/09/2021:00:00:00,31.0,",
-      "01/19/2021:00:00:00,31.0,",
+      "11/30/2020:00:00:00,30.0,",
+      "12/10/2020:00:00:00,30.0,",
+      "12/20/2020:00:00:00,30.0,",
+      "12/30/2020:00:00:00,30.0,",
+      "01/09/2021:00:00:00,30.0,",
+      "01/19/2021:00:00:00,30.0,",
       "01/29/2021:00:00:00,30.0,",
       "02/08/2021:00:00:00,21.0,",
       "02/18/2021:00:00:00,11.0,",
@@ -363,11 +377,11 @@ public class IoTDBGroupByNaturalMonthIT {
           // [01-28, 03-01)
           "01/28/2023:00:00:00,1,",
           // [03-01, 04-02)
-          "03/01/2023:00:00:00,2,",
+          "03/01/2023:00:00:00,1,",
           // [04-02, 05-03)
-          "04/02/2023:00:00:00,1,",
+          "03/30/2023:00:00:00,1,",
           // [05-03, 05-29)
-          "05/03/2023:00:00:00,0,"
+          "05/01/2023:00:00:00,1,"
         };
     resultSetEqualTest(
         "select count(s1) from root.test.d1 " + "group by ([2023-01-28, 2023-05-29), 1mo1d)",
@@ -384,12 +398,12 @@ public class IoTDBGroupByNaturalMonthIT {
         new String[] {
           // [01-28, 03-01)
           "1674864000000,1,",
-          // [03-01, 04-02)
-          "1677628800000,2,",
-          // [04-02, 05-03)
-          "1680393600000,1,",
-          // [05-03, 05-29)
-          "1683072000000,0,"
+          // [03-01, 03-30)
+          "1677628800000,1,",
+          // [03-30, 05-01)
+          "1680134400000,1,",
+          // [05-01, 05-29)
+          "1682899200000,1,"
         };
     // the part in timeDuration finer than current time precision will be discarded
     resultSetEqualTest(

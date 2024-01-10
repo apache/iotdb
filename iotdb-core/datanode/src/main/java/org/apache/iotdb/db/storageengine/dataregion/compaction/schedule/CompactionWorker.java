@@ -27,6 +27,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.FileCannotTransitToCompactingException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractCompactionEstimator;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 
@@ -35,7 +36,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.validation.constraints.NotNull;
 
-import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -72,6 +72,7 @@ public class CompactionWorker implements Runnable {
     long estimatedMemoryCost = 0L;
     boolean memoryAcquired = false;
     boolean fileHandleAcquired = false;
+    boolean taskSuccess = false;
     try {
       if (task == null || !task.isCompactionAllowed()) {
         LOGGER.info(
@@ -100,12 +101,12 @@ public class CompactionWorker implements Runnable {
       CompactionTaskFuture future = new CompactionTaskFuture(summary);
       CompactionTaskManager.getInstance().recordTask(task, future);
       task.start();
+      taskSuccess = true;
       return true;
     } catch (FileCannotTransitToCompactingException
-        | IOException
         | CompactionMemoryNotEnoughException
         | CompactionFileCountExceededException e) {
-      LOGGER.info("CompactionTask {} cannot be executed. Reason: {}", task, e);
+      LOGGER.info("CompactionTask {} cannot be executed. Reason: {}", task, e.getMessage());
     } catch (InterruptedException e) {
       LOGGER.warn("InterruptedException occurred when preparing compaction task. {}", task, e);
       Thread.currentThread().interrupt();
@@ -120,6 +121,10 @@ public class CompactionWorker implements Runnable {
       }
       if (fileHandleAcquired) {
         SystemInfo.getInstance().decreaseCompactionFileNumCost(task.getProcessedFileNum());
+      }
+      if (taskSuccess) {
+        task.getAllSourceTsFiles()
+            .forEach(AbstractCompactionEstimator::removeFileInfoFromGlobalFileInfoCache);
       }
     }
     return false;

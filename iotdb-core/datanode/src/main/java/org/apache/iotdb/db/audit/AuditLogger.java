@@ -215,7 +215,7 @@ public class AuditLogger {
       case BATCH_INSERT_ROWS:
       case BATCH_INSERT_ONE_DEVICE:
       case MULTI_BATCH_INSERT:
-      case PIPE_ENRICHED_INSERT:
+      case PIPE_ENRICHED:
       case DELETE:
       case SELECT_INTO:
       case LOAD_FILES:

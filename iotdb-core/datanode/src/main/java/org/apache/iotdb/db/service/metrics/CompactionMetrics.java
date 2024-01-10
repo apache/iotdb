@@ -443,7 +443,7 @@ public class CompactionMetrics implements IMetricSet {
         Metric.COMPACTION_TASK_COUNT.toString(),
         MetricLevel.IMPORTANT,
         this,
-        (metrics) -> {
+        metrics -> {
           updateCompactionTaskInfo();
           return finishSeqInnerCompactionTaskNum.get();
         },

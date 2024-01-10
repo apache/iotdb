@@ -326,7 +326,7 @@ public class ConfigNodeTestUtils {
     clusterParameters.setSchemaReplicationFactor(1);
     clusterParameters.setDataRegionPerDataNode(5.0);
     clusterParameters.setSchemaRegionPerDataNode(1.0);
-    clusterParameters.setDiskSpaceWarningThreshold(0.05);
+    clusterParameters.setDiskSpaceWarningThreshold(0.01);
     clusterParameters.setReadConsistencyLevel("strong");
     clusterParameters.setTimestampPrecision("ms");
     clusterParameters.setSchemaEngineMode("Memory");

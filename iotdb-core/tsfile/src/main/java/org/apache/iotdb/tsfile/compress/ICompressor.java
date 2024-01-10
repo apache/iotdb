@@ -198,12 +198,20 @@ public interface ICompressor extends Serializable {
   }
 
   class IOTDBLZ4Compressor implements ICompressor {
-    private LZ4Compressor compressor;
+    /**
+     * This instance should be cached to avoid performance problem. See:
+     * https://github.com/lz4/lz4-java/issues/152 and https://github.com/apache/spark/pull/24905
+     */
+    private static final LZ4Factory factory = LZ4Factory.fastestInstance();
+
+    private static final LZ4Compressor compressor = factory.fastCompressor();
+
+    public static LZ4Factory getFactory() {
+      return factory;
+    }
 
     public IOTDBLZ4Compressor() {
       super();
-      LZ4Factory factory = LZ4Factory.fastestInstance();
-      compressor = factory.fastCompressor();
     }
 
     @Override

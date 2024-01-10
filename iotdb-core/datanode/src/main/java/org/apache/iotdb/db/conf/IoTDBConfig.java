@@ -171,11 +171,6 @@ public class IoTDBConfig {
   /** The proportion of write memory for compaction */
   private double compactionProportion = 0.2;
 
-  /** The proportion of write memory for loading TsFile */
-  private double loadTsFileProportion = 0.125;
-
-  private int maxLoadingTimeseriesNumber = 2000;
-
   /**
    * If memory cost of data region increased more than proportion of {@linkplain
    * IoTDBConfig#getAllocateMemoryForStorageEngine()}*{@linkplain
@@ -235,6 +230,7 @@ public class IoTDBConfig {
 
   /** The period when outdated wal files are periodically deleted. Unit: millisecond */
   private volatile long deleteWalFilesPeriodInMs = 20 * 1000L;
+
   // endregion
 
   /**
@@ -430,7 +426,7 @@ public class IoTDBConfig {
   private boolean enableCrossSpaceCompaction = true;
 
   /** Insert the non overlapped unsequence files into sequence space */
-  private boolean enableInsertionCrossSpaceCompaction = false;
+  private boolean enableInsertionCrossSpaceCompaction = true;
 
   /** The buffer for sort operation */
   private long sortBufferSize = 1024 * 1024L;
@@ -537,6 +533,22 @@ public class IoTDBConfig {
 
   /** The size of candidate compaction task queue. */
   private int candidateCompactionTaskQueueSize = 50;
+
+  /**
+   * When the size of the mods file corresponding to TsFile exceeds this value, inner compaction
+   * tasks containing mods files are selected first.
+   */
+  private long innerCompactionTaskSelectionModsFileThreshold = 10 * 1024 * 1024L;
+
+  /**
+   * When disk availability is lower than the sum of (disk_space_warning_threshold +
+   * inner_compaction_task_selection_disk_redundancy), inner compaction tasks containing mods files
+   * are selected first.
+   */
+  private double innerCompactionTaskSelectionDiskRedundancy = 0.05;
+
+  /** The size of global compaction estimation file info cahce. */
+  private int globalCompactionFileInfoCacheSize = 1000;
 
   /** whether to cache meta data(ChunkMetaData and TsFileMetaData) or not. */
   private boolean metaDataCacheEnable = true;
@@ -824,7 +836,11 @@ public class IoTDBConfig {
   /** the interval to log recover progress of each vsg when starting iotdb */
   private long recoveryLogIntervalInMs = 5_000L;
 
-  private boolean enableDiscardOutOfOrderData = false;
+  /**
+   * Separate sequence and unsequence data or not. If it is false, then all data will be written
+   * into unsequence data dir.
+   */
+  private boolean enableSeparateData = true;
 
   /** the method to transform device path to device id, can be 'Plain' or 'SHA256' */
   private String deviceIDTransformationMethod = "Plain";
@@ -949,6 +965,7 @@ public class IoTDBConfig {
 
   /** Number of queues per forwarding trigger */
   private int triggerForwardMaxQueueNumber = 8;
+
   /** The length of one of the queues per forwarding trigger */
   private int triggerForwardMaxSizePerQueue = 2000;
 
@@ -1073,6 +1090,17 @@ public class IoTDBConfig {
   private int maxSizePerBatch = 16 * 1024 * 1024;
   private int maxPendingBatchesNum = 5;
   private double maxMemoryRatioForQueue = 0.6;
+
+  /** Load related */
+  private double maxAllocateMemoryRatioForLoad = 0.8;
+
+  private int loadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber = 4096;
+
+  private long loadTsFileAnalyzeSchemaMemorySizeInBytes =
+      0; // 0 means that the decision will be adaptive based on the number of sequences
+
+  private long loadMemoryAllocateRetryIntervalMs = 1000;
+  private int loadMemoryAllocateMaxRetries = 5;
 
   /** Pipe related */
   /** initialized as empty, updated based on the latest `systemDir` during querying */
@@ -1387,12 +1415,12 @@ public class IoTDBConfig {
     this.rpcPort = rpcPort;
   }
 
-  public boolean isEnableDiscardOutOfOrderData() {
-    return enableDiscardOutOfOrderData;
+  public boolean isEnableSeparateData() {
+    return enableSeparateData;
   }
 
-  public void setEnableDiscardOutOfOrderData(boolean enableDiscardOutOfOrderData) {
-    this.enableDiscardOutOfOrderData = enableDiscardOutOfOrderData;
+  public void setEnableSeparateData(boolean enableSeparateData) {
+    this.enableSeparateData = enableSeparateData;
   }
 
   public String getSystemDir() {
@@ -3250,18 +3278,6 @@ public class IoTDBConfig {
     return compactionProportion;
   }
 
-  public double getLoadTsFileProportion() {
-    return loadTsFileProportion;
-  }
-
-  public int getMaxLoadingTimeseriesNumber() {
-    return maxLoadingTimeseriesNumber;
-  }
-
-  public void setMaxLoadingTimeseriesNumber(int maxLoadingTimeseriesNumber) {
-    this.maxLoadingTimeseriesNumber = maxLoadingTimeseriesNumber;
-  }
-
   public static String getEnvironmentVariables() {
     return "\n\t"
         + IoTDBConstant.IOTDB_HOME
@@ -3668,6 +3684,14 @@ public class IoTDBConfig {
     this.candidateCompactionTaskQueueSize = candidateCompactionTaskQueueSize;
   }
 
+  public int getGlobalCompactionFileInfoCacheSize() {
+    return globalCompactionFileInfoCacheSize;
+  }
+
+  public void setGlobalCompactionFileInfoCacheSize(int globalCompactionFileInfoCacheSize) {
+    this.globalCompactionFileInfoCacheSize = globalCompactionFileInfoCacheSize;
+  }
+
   public boolean isEnableAuditLog() {
     return enableAuditLog;
   }
@@ -3706,6 +3730,49 @@ public class IoTDBConfig {
 
   public int getModeMapSizeThreshold() {
     return modeMapSizeThreshold;
+  }
+
+  public double getMaxAllocateMemoryRatioForLoad() {
+    return maxAllocateMemoryRatioForLoad;
+  }
+
+  public void setMaxAllocateMemoryRatioForLoad(double maxAllocateMemoryRatioForLoad) {
+    this.maxAllocateMemoryRatioForLoad = maxAllocateMemoryRatioForLoad;
+  }
+
+  public int getLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber() {
+    return loadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber;
+  }
+
+  public void setLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber(
+      int loadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber) {
+    this.loadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber =
+        loadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber;
+  }
+
+  public long getLoadTsFileAnalyzeSchemaMemorySizeInBytes() {
+    return loadTsFileAnalyzeSchemaMemorySizeInBytes;
+  }
+
+  public void setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
+      long loadTsFileAnalyzeSchemaMemorySizeInBytes) {
+    this.loadTsFileAnalyzeSchemaMemorySizeInBytes = loadTsFileAnalyzeSchemaMemorySizeInBytes;
+  }
+
+  public long getLoadMemoryAllocateRetryIntervalMs() {
+    return loadMemoryAllocateRetryIntervalMs;
+  }
+
+  public void setLoadMemoryAllocateRetryIntervalMs(long loadMemoryAllocateRetryIntervalMs) {
+    this.loadMemoryAllocateRetryIntervalMs = loadMemoryAllocateRetryIntervalMs;
+  }
+
+  public int getLoadMemoryAllocateMaxRetries() {
+    return loadMemoryAllocateMaxRetries;
+  }
+
+  public void setLoadMemoryAllocateMaxRetries(int loadMemoryAllocateMaxRetries) {
+    this.loadMemoryAllocateMaxRetries = loadMemoryAllocateMaxRetries;
   }
 
   public void setPipeReceiverFileDirs(String[] pipeReceiverFileDirs) {
@@ -3776,5 +3843,24 @@ public class IoTDBConfig {
 
   public void setEnableTsFileValidation(boolean enableTsFileValidation) {
     this.enableTsFileValidation = enableTsFileValidation;
+  }
+
+  public long getInnerCompactionTaskSelectionModsFileThreshold() {
+    return innerCompactionTaskSelectionModsFileThreshold;
+  }
+
+  public void setInnerCompactionTaskSelectionModsFileThreshold(
+      long innerCompactionTaskSelectionModsFileThreshold) {
+    this.innerCompactionTaskSelectionModsFileThreshold =
+        innerCompactionTaskSelectionModsFileThreshold;
+  }
+
+  public double getInnerCompactionTaskSelectionDiskRedundancy() {
+    return innerCompactionTaskSelectionDiskRedundancy;
+  }
+
+  public void setInnerCompactionTaskSelectionDiskRedundancy(
+      double innerCompactionTaskSelectionDiskRedundancy) {
+    this.innerCompactionTaskSelectionDiskRedundancy = innerCompactionTaskSelectionDiskRedundancy;
   }
 }

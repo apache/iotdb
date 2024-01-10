@@ -107,6 +107,10 @@ public class InsertRowsNode extends InsertNode {
     return results;
   }
 
+  public void clearResults() {
+    results.clear();
+  }
+
   public TSStatus[] getFailingStatus() {
     return StatusUtils.getFailingStatus(results, insertRowNodeList.size());
   }

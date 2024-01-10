@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -133,8 +134,10 @@ public class StorageEngine implements IService {
   private ScheduledExecutorService unseqMemtableTimedFlushCheckThread;
 
   private TsFileFlushPolicy fileFlushPolicy = new DirectFlushPolicy();
+
   /** used to do short-lived asynchronous tasks */
   private ExecutorService cachedThreadPool;
+
   // add customized listeners here for flush and close events
   private List<CloseFileListener> customCloseFileListeners = new ArrayList<>();
   private List<FlushListener> customFlushListeners = new ArrayList<>();
@@ -644,6 +647,10 @@ public class StorageEngine implements IService {
       region.markDeleted();
       WRITING_METRICS.removeDataRegionMemoryCostMetrics(regionId);
       WRITING_METRICS.removeFlushingMemTableStatusMetrics(regionId);
+      WRITING_METRICS.removeActiveMemtableCounterMetrics(regionId);
+      WRITING_METRICS.removeWalFlushMemTableCounterMetrics(regionId);
+      WRITING_METRICS.removeTimedFlushMemTableCounterMetrics(regionId);
+      WRITING_METRICS.removeSeriesFullFlushMemTableCounterMetrics(regionId);
       try {
         region.abortCompaction();
         region.syncDeleteDataFiles();
@@ -791,13 +798,16 @@ public class StorageEngine implements IService {
   }
 
   public TSStatus executeLoadCommand(
-      LoadTsFileScheduler.LoadCommand loadCommand, String uuid, boolean isGeneratedByPipe) {
+      LoadTsFileScheduler.LoadCommand loadCommand,
+      String uuid,
+      boolean isGeneratedByPipe,
+      ProgressIndex progressIndex) {
     TSStatus status = new TSStatus();
 
     try {
       switch (loadCommand) {
         case EXECUTE:
-          if (getLoadTsFileManager().loadAll(uuid, isGeneratedByPipe)) {
+          if (getLoadTsFileManager().loadAll(uuid, isGeneratedByPipe, progressIndex)) {
             status = RpcUtils.SUCCESS_STATUS;
           } else {
             status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());

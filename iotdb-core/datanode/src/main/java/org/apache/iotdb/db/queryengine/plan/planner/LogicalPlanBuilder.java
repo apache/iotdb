@@ -70,9 +70,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryTransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedLastQueryScanNode;
@@ -403,7 +403,7 @@ public class LogicalPlanBuilder {
       GroupByTimeParameter groupByTimeParameter,
       Set<Expression> aggregationExpressions,
       Set<Expression> sourceTransformExpressions,
-      LinkedHashMap<Expression, Set<Expression>> crossGroupByAggregations,
+      Map<Expression, Set<Expression>> crossGroupByAggregations,
       List<String> tagKeys,
       Map<List<String>, LinkedHashMap<Expression, List<Expression>>>
           tagValuesToGroupedTimeseriesOperands) {
@@ -449,10 +449,11 @@ public class LogicalPlanBuilder {
       GroupByTimeParameter groupByTimeParameter,
       Set<Expression> aggregationExpressions,
       Set<Expression> sourceTransformExpressions,
-      LinkedHashMap<Expression, Set<Expression>> crossGroupByExpressions,
-      List<Integer> deviceViewInputIndexes) {
+      Map<Expression, Set<Expression>> crossGroupByExpressions,
+      List<Integer> deviceViewInputIndexes,
+      boolean outputEndTime) {
     checkArgument(
-        aggregationExpressions.size() == deviceViewInputIndexes.size(),
+        aggregationExpressions.size() <= deviceViewInputIndexes.size(),
         "Each aggregate should correspond to a column of output.");
 
     boolean needCheckAscending = groupByTimeParameter == null;
@@ -461,7 +462,8 @@ public class LogicalPlanBuilder {
     Map<AggregationDescriptor, Integer> aggregationToIndexMap = new HashMap<>();
     Map<PartialPath, List<AggregationDescriptor>> countTimeAggregations = new HashMap<>();
 
-    int index = 0;
+    // If need output endTime, the first index is used by __endTime
+    int index = outputEndTime ? 1 : 0;
     for (Expression aggregationExpression : aggregationExpressions) {
       AggregationDescriptor aggregationDescriptor =
           createAggregationDescriptor(
@@ -489,6 +491,9 @@ public class LogicalPlanBuilder {
     if (!curStep.isOutputPartial()) {
       // update measurementIndexes
       deviceViewInputIndexes.clear();
+      if (outputEndTime) {
+        deviceViewInputIndexes.add(1);
+      }
       deviceViewInputIndexes.addAll(
           sourceNodeList.stream()
               .map(
@@ -623,7 +628,7 @@ public class LogicalPlanBuilder {
       Ordering scanOrder,
       GroupByTimeParameter groupByTimeParameter,
       Set<Expression> aggregationExpressions,
-      LinkedHashMap<Expression, Set<Expression>> crossGroupByExpressions,
+      Map<Expression, Set<Expression>> crossGroupByExpressions,
       List<String> tagKeys,
       Map<List<String>, LinkedHashMap<Expression, List<Expression>>>
           tagValuesToGroupedTimeseriesOperands) {
@@ -723,7 +728,8 @@ public class LogicalPlanBuilder {
     if (sourceNodes.size() == 1) {
       tmpNode = sourceNodes.get(0);
     } else {
-      tmpNode = new TimeJoinNode(context.getQueryId().genPlanNodeId(), mergeOrder, sourceNodes);
+      tmpNode =
+          new FullOuterTimeJoinNode(context.getQueryId().genPlanNodeId(), mergeOrder, sourceNodes);
     }
     return tmpNode;
   }

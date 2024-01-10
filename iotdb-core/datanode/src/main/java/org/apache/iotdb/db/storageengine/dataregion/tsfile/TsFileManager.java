@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 
 import java.io.IOException;
@@ -57,14 +58,31 @@ public class TsFileManager {
   }
 
   public List<TsFileResource> getTsFileList(boolean sequence) {
+    return getTsFileList(sequence, null);
+  }
+
+  /**
+   * @param sequence true for sequence, false for unsequence
+   * @param timePartitions null for all time partitions, empty for zero time partitions
+   */
+  public List<TsFileResource> getTsFileList(boolean sequence, List<Long> timePartitions) {
     // the iteration of ConcurrentSkipListMap is not concurrent secure
     // so we must add read lock here
     readLock();
     try {
       List<TsFileResource> allResources = new ArrayList<>();
       Map<Long, TsFileResourceList> chosenMap = sequence ? sequenceFiles : unsequenceFiles;
-      for (Map.Entry<Long, TsFileResourceList> entry : chosenMap.entrySet()) {
-        allResources.addAll(entry.getValue().getArrayList());
+      if (timePartitions == null) {
+        for (Map.Entry<Long, TsFileResourceList> entry : chosenMap.entrySet()) {
+          allResources.addAll(entry.getValue().getArrayList());
+        }
+      } else {
+        for (Long timePartitionId : timePartitions) {
+          TsFileResourceList tsFileResources = chosenMap.get(timePartitionId);
+          if (tsFileResources != null) {
+            allResources.addAll(tsFileResources.getArrayList());
+          }
+        }
       }
       return allResources;
     } finally {
@@ -119,10 +137,14 @@ public class TsFileManager {
         if (!seqResource.isClosed()) {
           continue;
         }
-        Set<String> deviceSet = seqResource.getDevices();
-        if (deviceSet.contains(devicePath)) {
-          lastFlushTime = seqTsFileResourceList.get(i).getEndTime(devicePath);
-          break;
+        if (seqResource.getTimeIndexType() == ITimeIndex.DEVICE_TIME_INDEX_TYPE) {
+          Set<String> deviceSet = seqResource.getDevices();
+          if (deviceSet.contains(devicePath)) {
+            lastFlushTime = Math.max(lastFlushTime, seqResource.getEndTime(devicePath));
+            break;
+          }
+        } else {
+          lastFlushTime = Math.max(lastFlushTime, seqResource.getEndTime(devicePath));
         }
       }
       List<TsFileResource> unseqTsFileResourceList =

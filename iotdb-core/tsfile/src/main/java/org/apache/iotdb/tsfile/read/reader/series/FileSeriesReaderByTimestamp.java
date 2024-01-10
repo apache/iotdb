@@ -150,7 +150,7 @@ public class FileSeriesReaderByTimestamp {
   private void initChunkReader(IChunkMetadata chunkMetaData) throws IOException {
     if (chunkMetaData instanceof ChunkMetadata) {
       Chunk chunk = chunkLoader.loadChunk((ChunkMetadata) chunkMetaData);
-      this.chunkReader = new ChunkReader(chunk, null, currentTimestamp);
+      this.chunkReader = new ChunkReader(chunk, currentTimestamp);
     } else {
       AlignedChunkMetadata alignedChunkMetadata = (AlignedChunkMetadata) chunkMetaData;
       Chunk timeChunk =
@@ -159,7 +159,7 @@ public class FileSeriesReaderByTimestamp {
       for (IChunkMetadata metadata : alignedChunkMetadata.getValueChunkMetadataList()) {
         valueChunkList.add(chunkLoader.loadChunk((ChunkMetadata) metadata));
       }
-      this.chunkReader = new AlignedChunkReader(timeChunk, valueChunkList, null, currentTimestamp);
+      this.chunkReader = new AlignedChunkReader(timeChunk, valueChunkList, currentTimestamp);
     }
   }
 

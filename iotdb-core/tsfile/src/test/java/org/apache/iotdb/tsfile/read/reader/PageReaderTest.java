@@ -212,8 +212,7 @@ public class PageReaderTest {
         ByteBuffer page = ByteBuffer.wrap(pageWriter.getUncompressedBytes().array());
 
         PageReader pageReader =
-            new PageReader(
-                page, dataType, decoder, new DeltaBinaryDecoder.LongDeltaDecoder(), null);
+            new PageReader(page, dataType, decoder, new DeltaBinaryDecoder.LongDeltaDecoder());
 
         int index = 0;
         BatchData data = pageReader.getAllSatisfiedPageData();
@@ -243,8 +242,7 @@ public class PageReaderTest {
         ByteBuffer page = ByteBuffer.wrap(pageWriter.getUncompressedBytes().array());
 
         PageReader pageReader =
-            new PageReader(
-                page, dataType, decoder, new DeltaBinaryDecoder.LongDeltaDecoder(), null);
+            new PageReader(page, dataType, decoder, new DeltaBinaryDecoder.LongDeltaDecoder());
 
         int index = 0;
         List<TimeRange> deleteIntervals = new ArrayList<>();

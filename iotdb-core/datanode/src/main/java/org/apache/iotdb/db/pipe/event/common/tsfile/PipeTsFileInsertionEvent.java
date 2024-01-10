@@ -41,10 +41,6 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileInsertionEvent.class);
 
-  // used to filter data
-  private final long startTime;
-  private final long endTime;
-  private final boolean needParseTime;
   private boolean isTsFileFormatValid = true;
 
   private final TsFileResource resource;
@@ -58,16 +54,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   public PipeTsFileInsertionEvent(
       TsFileResource resource, boolean isLoaded, boolean isGeneratedByPipe) {
-    this(
-        resource,
-        isLoaded,
-        isGeneratedByPipe,
-        null,
-        null,
-        null,
-        Long.MIN_VALUE,
-        Long.MAX_VALUE,
-        false);
+    this(resource, isLoaded, isGeneratedByPipe, null, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   public PipeTsFileInsertionEvent(
@@ -78,17 +65,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
       PipeTaskMeta pipeTaskMeta,
       String pattern,
       long startTime,
-      long endTime,
-      boolean needParseTime) {
-    super(pipeName, pipeTaskMeta, pattern);
-
-    this.startTime = startTime;
-    this.endTime = endTime;
-    this.needParseTime = needParseTime;
-
-    if (needParseTime) {
-      isTimeParsed = false;
-    }
+      long endTime) {
+    super(pipeName, pipeTaskMeta, pattern, startTime, endTime);
 
     this.resource = resource;
     tsFile = resource.getTsFile();
@@ -186,22 +164,19 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   @Override
   public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern) {
+      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime) {
     return new PipeTsFileInsertionEvent(
-        resource,
-        isLoaded,
-        isGeneratedByPipe,
-        pipeName,
-        pipeTaskMeta,
-        pattern,
-        startTime,
-        endTime,
-        needParseTime);
+        resource, isLoaded, isGeneratedByPipe, pipeName, pipeTaskMeta, pattern, startTime, endTime);
   }
 
   @Override
   public boolean isGeneratedByPipe() {
     return isGeneratedByPipe;
+  }
+
+  @Override
+  public boolean isEventTimeOverlappedWithTimeRange() {
+    return startTime <= resource.getFileEndTime() && resource.getFileStartTime() <= endTime;
   }
 
   /////////////////////////// TsFileInsertionEvent ///////////////////////////

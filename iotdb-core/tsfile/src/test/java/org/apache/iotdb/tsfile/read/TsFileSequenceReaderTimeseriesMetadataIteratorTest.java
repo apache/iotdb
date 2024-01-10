@@ -36,8 +36,8 @@ public class TsFileSequenceReaderTimeseriesMetadataIteratorTest {
 
   @Before
   public void before() throws IOException {
-    // create 2020 timeseries, 101 measurements per device.
-    FileGenerator.generateFile(100, 20, 101);
+    // create 4040 timeseries, 101 measurements per device.
+    FileGenerator.generateFile(100, 40, 101);
     TsFileSequenceReader fileReader = new TsFileSequenceReader(FILE_PATH);
     tsFile = new TsFileReader(fileReader);
   }
@@ -55,8 +55,8 @@ public class TsFileSequenceReaderTimeseriesMetadataIteratorTest {
         new TsFileSequenceReaderTimeseriesMetadataIterator(fileReader, false);
 
     Assert.assertTrue(iterator.hasNext());
-    Assert.assertEquals(2000, iterator.next().values().stream().mapToLong(List::size).sum());
+    Assert.assertEquals(4000, iterator.next().values().stream().mapToLong(List::size).sum());
     Assert.assertTrue(iterator.hasNext());
-    Assert.assertEquals(20, iterator.next().values().stream().mapToLong(List::size).sum());
+    Assert.assertEquals(40, iterator.next().values().stream().mapToLong(List::size).sum());
   }
 }

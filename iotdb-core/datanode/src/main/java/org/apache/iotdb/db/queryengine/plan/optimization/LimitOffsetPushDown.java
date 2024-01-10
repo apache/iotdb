@@ -33,7 +33,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TwoChildProcessNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.LeftOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -41,13 +44,15 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.utils.DateTimeUtils;
+import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
- * <b>Optimization phase:</b> Distributed plan planning
+ * <b>Optimization phase:</b> Distributed plan planning.
  *
  * <p><b>Rule:</b> The LIMIT OFFSET condition can be pushed down to the SeriesScanNode, when the
  * following conditions are met:
@@ -143,6 +148,13 @@ public class LimitOffsetPushDown implements PlanOptimizer {
     }
 
     @Override
+    public PlanNode visitSort(SortNode node, RewriterContext context) {
+      // Limit/Offset in ORDER BY focus the sorted result, so it should not be pushed down.
+      context.setEnablePushDown(false);
+      return node;
+    }
+
+    @Override
     public PlanNode visitTransform(TransformNode node, RewriterContext context) {
       Expression[] outputExpressions = node.getOutputExpressions();
       boolean enablePushDown = true;
@@ -163,6 +175,19 @@ public class LimitOffsetPushDown implements PlanOptimizer {
 
     @Override
     public PlanNode visitMultiChildProcess(MultiChildProcessNode node, RewriterContext context) {
+      context.setEnablePushDown(false);
+      return node;
+    }
+
+    @Override
+    public PlanNode visitTwoChildProcess(TwoChildProcessNode node, RewriterContext context) {
+      context.setEnablePushDown(false);
+      return node;
+    }
+
+    @Override
+    public PlanNode visitLeftOuterTimeJoin(LeftOuterTimeJoinNode node, RewriterContext context) {
+      // TODO we may need to push limit and offset to left child
       context.setEnablePushDown(false);
       return node;
     }
@@ -261,8 +286,61 @@ public class LimitOffsetPushDown implements PlanOptimizer {
     return false;
   }
 
+  private static void pushDownLimitOffsetToTimeParameterContainingMonth(
+      QueryStatement queryStatement) {
+    GroupByTimeComponent groupByTimeComponent = queryStatement.getGroupByTimeComponent();
+    long startTime = groupByTimeComponent.getStartTime();
+    long endTime = groupByTimeComponent.getEndTime();
+    TimeDuration slidingStep = groupByTimeComponent.getSlidingStep();
+    TimeDuration interval = groupByTimeComponent.getInterval();
+    long limitSize = queryStatement.getRowLimit();
+    long offsetSize = queryStatement.getRowOffset();
+
+    // Evaluate the day of month as 28 days
+    long totalStep = slidingStep.getMinTotalDuration(TimeUnit.MILLISECONDS);
+    long size = (endTime - startTime + totalStep - 1) / totalStep;
+    if (size > offsetSize) {
+      // ordering in group by month must be ascending
+      long newStartTime =
+          DateTimeUtils.calcPositiveIntervalByMonth(startTime, slidingStep.multiple(offsetSize));
+
+      if (limitSize != 0) {
+        endTime =
+            Math.min(
+                endTime,
+                DateTimeUtils.calcPositiveIntervalByMonth(
+                    startTime,
+                    calculateEndTimeDuration(slidingStep, interval, limitSize, offsetSize)));
+      }
+      groupByTimeComponent.setEndTime(endTime);
+      groupByTimeComponent.setStartTime(newStartTime);
+    } else {
+      // finish the query, resultSet is empty
+      queryStatement.setResultSetEmpty(true);
+    }
+    // If windows overlap, we need to keep LIMIT because the window size can be less than interval
+    // which may result in more windows than we need in the target time range.
+    queryStatement.setRowLimit(interval.isGreaterThan(slidingStep) ? limitSize : 0);
+    queryStatement.setRowOffset(0);
+  }
+
+  private static TimeDuration calculateEndTimeDuration(
+      TimeDuration slidingStep, TimeDuration interval, long limitSize, long offsetSize) {
+    long length = offsetSize + limitSize - 1;
+    // startTime + offsetSize * step + (limitSize - 1) * step + interval
+    int monthDuration = (int) (length * slidingStep.monthDuration + interval.monthDuration);
+    long nonMonthDuration = length * slidingStep.nonMonthDuration + interval.nonMonthDuration;
+    return new TimeDuration(monthDuration, nonMonthDuration);
+  }
+
   public static void pushDownLimitOffsetToTimeParameter(QueryStatement queryStatement) {
     GroupByTimeComponent groupByTimeComponent = queryStatement.getGroupByTimeComponent();
+    // if group by time contains month, we use another push down limit/offset
+    if (groupByTimeComponent.getInterval().containsMonth()
+        || groupByTimeComponent.getSlidingStep().containsMonth()) {
+      pushDownLimitOffsetToTimeParameterContainingMonth(queryStatement);
+      return;
+    }
     long startTime = groupByTimeComponent.getStartTime();
     long endTime = groupByTimeComponent.getEndTime();
     long step = groupByTimeComponent.getSlidingStep().nonMonthDuration;
@@ -313,7 +391,7 @@ public class LimitOffsetPushDown implements PlanOptimizer {
     GroupByTimeComponent groupByTimeComponent = queryStatement.getGroupByTimeComponent();
     if (groupByTimeComponent.getInterval().containsMonth()
         || groupByTimeComponent.getSlidingStep().containsMonth()) {
-      return Collections.emptyList();
+      return deviceNames;
     }
     long startTime = groupByTimeComponent.getStartTime();
     long endTime = groupByTimeComponent.getEndTime();

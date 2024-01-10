@@ -22,7 +22,9 @@ package org.apache.iotdb.db.schemaengine.schemaregion.utils.filter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
+import org.apache.iotdb.commons.schema.filter.impl.TemplateFilter;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
+import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 
 public class DeviceFilterVisitor extends SchemaFilterVisitor<IDeviceSchemaInfo> {
   @Override
@@ -37,5 +39,24 @@ public class DeviceFilterVisitor extends SchemaFilterVisitor<IDeviceSchemaInfo> 
       return true;
     }
     return info.getFullPath().toLowerCase().contains(pathContainsFilter.getContainString());
+  }
+
+  @Override
+  public boolean visitTemplateFilter(TemplateFilter templateFilter, IDeviceSchemaInfo info) {
+    boolean equalAns;
+    int templateId = info.getTemplateId();
+    String filterTemplateName = templateFilter.getTemplateName();
+    if (templateId != -1) {
+      equalAns =
+          ClusterTemplateManager.getInstance()
+              .getTemplate(templateId)
+              .getName()
+              .equals(filterTemplateName);
+      return templateFilter.isEqual() == equalAns;
+    } else if (filterTemplateName == null) {
+      return templateFilter.isEqual();
+    } else {
+      return false;
+    }
   }
 }

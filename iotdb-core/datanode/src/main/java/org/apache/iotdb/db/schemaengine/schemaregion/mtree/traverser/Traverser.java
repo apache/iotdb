@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.schema.tree.AbstractTreeVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.IMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.iterator.MNodeIterator;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.ReentrantReadOnlyCachedMTreeStore;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.ReleaseFlushMonitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MNodeUtils;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
@@ -74,6 +75,8 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
   // default false means fullPath pattern match
   protected boolean isPrefixMatch = false;
   private IDeviceMNode<N> skipTemplateDevice;
+  private ReleaseFlushMonitor.RecordNode timeRecorder;
+  private final long startTime = System.currentTimeMillis();
 
   protected Traverser() {}
 
@@ -104,6 +107,7 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
     }
     this.startNode = startNode;
     this.nodes = nodes;
+    this.timeRecorder = store.recordTraverserStatistics();
   }
 
   /**
@@ -120,6 +124,7 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
     this.store = store.getWithReentrantReadLock();
     initStack();
     this.startNode = startNode;
+    this.timeRecorder = store.recordTraverserStatistics();
   }
 
   /**
@@ -250,9 +255,13 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
   public void close() {
     super.close();
     if (store instanceof ReentrantReadOnlyCachedMTreeStore) {
-      // TODO update here
       ((ReentrantReadOnlyCachedMTreeStore) store).unlockRead();
     }
+    long endTime = System.currentTimeMillis();
+    if (timeRecorder != null) {
+      timeRecorder.setEndTime(endTime);
+    }
+    store.recordTraverserMetric(endTime - startTime);
   }
 
   public void setTemplateMap(Map<Integer, Template> templateMap, IMNodeFactory<N> nodeFactory) {

@@ -20,11 +20,11 @@
 package org.apache.iotdb.commons.conf;
 
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
-import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 
 import java.io.File;
+import java.util.Optional;
 import java.util.Properties;
 
 public class CommonDescriptor {
@@ -50,13 +50,26 @@ public class CommonDescriptor {
     return config;
   }
 
+  public String getConfDir() {
+    // Check if a config-directory was specified first.
+    String confString = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
+    // If it wasn't, check if a home directory was provided (This usually contains a config)
+    if (confString == null) {
+      confString = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
+      if (confString != null) {
+        confString = confString + File.separatorChar + "conf";
+      }
+    }
+    return confString;
+  }
+
   public void initCommonConfigDir(String systemDir) {
     config.setUserFolder(systemDir + File.separator + "users");
     config.setRoleFolder(systemDir + File.separator + "roles");
     config.setProcedureWalFolder(systemDir + File.separator + "procedure");
   }
 
-  public void loadCommonProps(Properties properties) throws BadNodeUrlException {
+  public void loadCommonProps(Properties properties) {
     config.setAuthorizerProvider(
         properties.getProperty("authorizer_provider_class", config.getAuthorizerProvider()).trim());
     // if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
@@ -295,61 +308,96 @@ public class CommonDescriptor {
 
     config.setPipeExtractorAssignerDisruptorRingBufferSize(
         Integer.parseInt(
-            properties.getProperty(
-                "pipe_extractor_assigner_disruptor_ring_buffer_size",
-                String.valueOf(config.getPipeExtractorAssignerDisruptorRingBufferSize()))));
+            Optional.ofNullable(
+                    properties.getProperty("pipe_source_assigner_disruptor_ring_buffer_size"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_extractor_assigner_disruptor_ring_buffer_size",
+                        String.valueOf(
+                            config.getPipeExtractorAssignerDisruptorRingBufferSize())))));
     config.setPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes( // 1MB
         Integer.parseInt(
-            properties.getProperty(
-                "pipe_extractor_assigner_disruptor_ring_buffer_entry_size_in_bytes",
-                String.valueOf(
-                    config.getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes()))));
+            Optional.ofNullable(
+                    properties.getProperty(
+                        "pipe_source_assigner_disruptor_ring_buffer_entry_size_in_bytes"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_extractor_assigner_disruptor_ring_buffer_entry_size_in_bytes",
+                        String.valueOf(
+                            config
+                                .getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes())))));
     config.setPipeExtractorMatcherCacheSize(
         Integer.parseInt(
-            properties.getProperty(
-                "pipe_extractor_matcher_cache_size",
-                String.valueOf(config.getPipeExtractorMatcherCacheSize()))));
+            Optional.ofNullable(properties.getProperty("pipe_source_matcher_cache_size"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_extractor_matcher_cache_size",
+                        String.valueOf(config.getPipeExtractorMatcherCacheSize())))));
 
-    config.setPipeConnectorTimeoutMs(
+    config.setPipeConnectorHandshakeTimeoutMs(
         Long.parseLong(
-            properties.getProperty(
-                "pipe_connector_timeout_ms", String.valueOf(config.getPipeConnectorTimeoutMs()))));
+            Optional.ofNullable(properties.getProperty("pipe_sink_handshake_timeout_ms"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_connector_handshake_timeout_ms",
+                        String.valueOf(config.getPipeConnectorHandshakeTimeoutMs())))));
+    config.setPipeConnectorTransferTimeoutMs(
+        Long.parseLong(
+            Optional.ofNullable(properties.getProperty("pipe_sink_timeout_ms"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_connector_timeout_ms",
+                        String.valueOf(config.getPipeConnectorTransferTimeoutMs())))));
     config.setPipeConnectorReadFileBufferSize(
         Integer.parseInt(
-            properties.getProperty(
-                "pipe_connector_read_file_buffer_size",
-                String.valueOf(config.getPipeConnectorReadFileBufferSize()))));
+            Optional.ofNullable(properties.getProperty("pipe_sink_read_file_buffer_size"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_connector_read_file_buffer_size",
+                        String.valueOf(config.getPipeConnectorReadFileBufferSize())))));
     config.setPipeConnectorRetryIntervalMs(
         Long.parseLong(
-            properties.getProperty(
-                "pipe_connector_retry_interval_ms",
-                String.valueOf(config.getPipeConnectorRetryIntervalMs()))));
+            Optional.ofNullable(properties.getProperty("pipe_sink_retry_interval_ms"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_connector_retry_interval_ms",
+                        String.valueOf(config.getPipeConnectorRetryIntervalMs())))));
     config.setPipeConnectorPendingQueueSize(
         Integer.parseInt(
-            properties.getProperty(
-                "pipe_connector_pending_queue_size",
-                String.valueOf(config.getPipeConnectorPendingQueueSize()))));
+            Optional.ofNullable(properties.getProperty("pipe_sink_pending_queue_size"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_connector_pending_queue_size",
+                        String.valueOf(config.getPipeConnectorPendingQueueSize())))));
     config.setPipeConnectorRPCThriftCompressionEnabled(
         Boolean.parseBoolean(
-            properties.getProperty(
-                "pipe_connector_rpc_thrift_compression_enabled",
-                String.valueOf(config.isPipeConnectorRPCThriftCompressionEnabled()))));
+            Optional.ofNullable(properties.getProperty("pipe_sink_rpc_thrift_compression_enabled"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_connector_rpc_thrift_compression_enabled",
+                        String.valueOf(config.isPipeConnectorRPCThriftCompressionEnabled())))));
 
     config.setPipeAsyncConnectorSelectorNumber(
         Integer.parseInt(
-            properties.getProperty(
-                "pipe_async_connector_selector_number",
-                String.valueOf(config.getPipeAsyncConnectorSelectorNumber()))));
+            Optional.ofNullable(properties.getProperty("pipe_sink_selector_number"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_async_connector_selector_number",
+                        String.valueOf(config.getPipeAsyncConnectorSelectorNumber())))));
     config.setPipeAsyncConnectorCoreClientNumber(
         Integer.parseInt(
-            properties.getProperty(
-                "pipe_async_connector_core_client_number",
-                String.valueOf(config.getPipeAsyncConnectorCoreClientNumber()))));
+            Optional.ofNullable(properties.getProperty("pipe_sink_core_client_number"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_async_connector_core_client_number",
+                        String.valueOf(config.getPipeAsyncConnectorCoreClientNumber())))));
     config.setPipeAsyncConnectorMaxClientNumber(
         Integer.parseInt(
-            properties.getProperty(
-                "pipe_async_connector_max_client_number",
-                String.valueOf(config.getPipeAsyncConnectorMaxClientNumber()))));
+            Optional.ofNullable(properties.getProperty("pipe_sink_max_client_number"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_async_connector_max_client_number",
+                        String.valueOf(config.getPipeAsyncConnectorMaxClientNumber())))));
 
     config.setSeperatedPipeHeartbeatEnabled(
         Boolean.parseBoolean(
@@ -433,6 +481,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_memory_expander_interval_seconds",
                 String.valueOf(config.getPipeMemoryExpanderIntervalSeconds()))));
+    config.setPipeLeaderCacheMemoryUsagePercentage(
+        Float.parseFloat(
+            properties.getProperty(
+                "pipe_leader_cache_memory_usage_percentage",
+                String.valueOf(config.getPipeLeaderCacheMemoryUsagePercentage()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {

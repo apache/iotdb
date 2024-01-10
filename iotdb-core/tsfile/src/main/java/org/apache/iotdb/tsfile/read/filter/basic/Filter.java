@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.read.filter.basic;
 
 import org.apache.iotdb.tsfile.file.metadata.IMetadata;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.filter.factory.TimeFilterApi;
 import org.apache.iotdb.tsfile.read.filter.factory.ValueFilterApi;
@@ -72,6 +73,14 @@ public abstract class Filter {
    * @return true if the row is satisfied with the filter, false otherwise
    */
   public abstract boolean satisfyRow(long time, Object[] values);
+
+  /**
+   * To examine whether the page(with many rows) is satisfied with the filter.
+   *
+   * @param tsBlock page data
+   * @return for each row, true if the row is satisfied with the filter, false otherwise
+   */
+  public abstract boolean[] satisfyTsBlock(TsBlock tsBlock);
 
   /**
    * To examine whether the block can be skipped.

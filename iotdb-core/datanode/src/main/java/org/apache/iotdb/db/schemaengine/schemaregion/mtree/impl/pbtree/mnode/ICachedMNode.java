@@ -19,10 +19,15 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode;
 
 import org.apache.iotdb.commons.schema.node.IMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.CacheEntry;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockEntry;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.cache.CacheEntry;
 
 public interface ICachedMNode extends IMNode<ICachedMNode> {
   CacheEntry getCacheEntry();
 
   void setCacheEntry(CacheEntry cacheEntry);
+
+  LockEntry getLockEntry();
+
+  void setLockEntry(LockEntry lockEntry);
 }

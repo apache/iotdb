@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.regex.Matcher;
@@ -73,12 +75,15 @@ public class WALFileUtils {
   }
 
   /** Get the .wal file starts with the specified version id in the directory. */
-  public static File getWALFile(File dir, long versionId) {
+  public static File getWALFile(File dir, long versionId) throws FileNotFoundException {
     String filePrefix = WAL_FILE_PREFIX + versionId + FILE_NAME_SEPARATOR;
     File[] files =
         dir.listFiles((d, name) -> walFilenameFilter(d, name) && name.startsWith(filePrefix));
     if (files == null || files.length != 1) {
-      return null;
+      throw new FileNotFoundException(
+          String.format(
+              "Fail to get wal file by versionId=%s and files=%s.",
+              versionId, Arrays.toString(files)));
     }
     return files[0];
   }
@@ -163,5 +168,18 @@ public class WALFileUtils {
   /** Get .wal filename. */
   public static String getLogFileName(long versionId, long startSearchIndex, WALFileStatus status) {
     return String.format(WAL_FILE_NAME_FORMAT, versionId, startSearchIndex, status.getCode());
+  }
+
+  /**
+   * get tsFile relative path from sequence or unsequence dir. <br>
+   * eg: <br>
+   * input: <br>
+   * /iotdb/absolute/path/data/datanode/data/sequence/root.db/1/2818/1704354353829-1-0-0.tsfile
+   * output: <br>
+   * sequence/root.db/1/2818/1704354353829-1-0-0.tsfile
+   */
+  public static String getTsFileRelativePath(String absolutePath) {
+    Path path = new File(absolutePath).toPath();
+    return path.subpath(path.getNameCount() - 5, path.getNameCount()).toString();
   }
 }

@@ -33,6 +33,7 @@ import org.apache.iotdb.db.pipe.metric.PipeDataNodeMetrics;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet;
 import org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet;
+import org.apache.iotdb.db.queryengine.metric.LoadTsFileMemMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
@@ -75,7 +76,7 @@ public class DataNodeMetricsHelper {
     MetricService.getInstance().addMetricSet(DataExchangeCostMetricSet.getInstance());
     MetricService.getInstance().addMetricSet(DataExchangeCountMetricSet.getInstance());
     MetricService.getInstance().addMetricSet(DriverSchedulerMetricSet.getInstance());
-    MetricService.getInstance().addMetricSet(new QueryRelatedResourceMetricSet());
+    MetricService.getInstance().addMetricSet(QueryRelatedResourceMetricSet.getInstance());
 
     // bind performance overview related metrics
     MetricService.getInstance().addMetricSet(PerformanceOverviewMetrics.getInstance());
@@ -85,6 +86,9 @@ public class DataNodeMetricsHelper {
 
     // bind pipe related metrics
     MetricService.getInstance().addMetricSet(PipeDataNodeMetrics.getInstance());
+
+    // bind load tsfile memory related metrics
+    MetricService.getInstance().addMetricSet(LoadTsFileMemMetricSet.getInstance());
   }
 
   private static void initSystemMetrics() {

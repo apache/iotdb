@@ -26,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ConcurrentModificationException;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -69,12 +70,15 @@ public abstract class PipeWALResourceManager {
       try {
         if (entry.getValue().invalidateIfPossible()) {
           iterator.remove();
-        } else {
-          LOGGER.info(
+        } else if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
               "WAL (memtableId {}) is still referenced {} times",
               entry.getKey(),
               entry.getValue().getReferenceCount());
         }
+      } catch (ConcurrentModificationException e) {
+        LOGGER.info(
+            "Concurrent modification issues happened, skipping the WAL in this round of ttl check");
       } finally {
         lock.unlock();
       }
