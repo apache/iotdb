@@ -276,7 +276,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       }
     } catch (Exception e) {
       isSuccess = false;
-      printLogWhenException(LOGGER, e);
+      handleException(LOGGER, e);
       recover();
     } finally {
       releaseAllLocks();

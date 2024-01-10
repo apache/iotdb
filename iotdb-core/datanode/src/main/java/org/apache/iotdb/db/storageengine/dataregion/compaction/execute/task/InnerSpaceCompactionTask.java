@@ -304,7 +304,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       }
     } catch (Exception e) {
       isSuccess = false;
-      printLogWhenException(LOGGER, e);
+      handleException(LOGGER, e);
       recover();
     } finally {
       releaseAllLocks();

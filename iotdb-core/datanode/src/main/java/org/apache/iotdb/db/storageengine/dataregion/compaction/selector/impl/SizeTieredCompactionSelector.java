@@ -115,7 +115,7 @@ public class SizeTieredCompactionSelector
         selectedFileSize = 0L;
         continue;
       }
-      if (!canSelectCurrentFileByLevel(currentFile)) {
+      if (!canSelectCurrentFileToNormalCompaction(currentFile)) {
         selectedFileList.clear();
         selectedFileSize = 0L;
         continue;
@@ -148,7 +148,7 @@ public class SizeTieredCompactionSelector
     return taskList;
   }
 
-  private boolean canSelectCurrentFileByLevel(TsFileResource resource) {
+  private boolean canSelectCurrentFileToNormalCompaction(TsFileResource resource) {
     return resource.getStatus() == TsFileResourceStatus.NORMAL
         && resource.getTsFileRepairStatus() == TsFileRepairStatus.NORMAL;
   }
@@ -221,7 +221,7 @@ public class SizeTieredCompactionSelector
       if (Objects.isNull(modFile) || !modFile.exists()) {
         continue;
       }
-      if (tsFileResource.getStatus() != TsFileResourceStatus.NORMAL) {
+      if (!canSelectCurrentFileToNormalCompaction(tsFileResource)) {
         continue;
       }
       if (modFile.getSize() > config.getInnerCompactionTaskSelectionModsFileThreshold()
