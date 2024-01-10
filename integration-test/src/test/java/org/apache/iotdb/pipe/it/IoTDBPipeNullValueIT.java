@@ -80,11 +80,10 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualIT {
       Collections.singletonList("create aligned timeseries root.sg.d1(s0 float, s1 float)");
 
   private final String deviceId = "root.sg.d1";
-  private final long time = 3;
   private final List<String> measurements = Arrays.asList("s0", "s1");
   private final List<TSDataType> types = Arrays.asList(TSDataType.FLOAT, TSDataType.FLOAT);
 
-  private final List<Object> partialNullValues = Arrays.asList(null, 25.34);
+  private final List<Object> partialNullValues = Arrays.asList(null, 25.34F);
   private final List<Object> allNullValues = Arrays.asList(null, null);
 
   private Tablet partialNullTablet;
@@ -105,7 +104,7 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualIT {
     bitMapsForAllNull[0] = new BitMap(1);
     bitMapsForAllNull[0].markAll();
     bitMapsForAllNull[1] = new BitMap(1);
-    bitMapsForAllNull[0].markAll();
+    bitMapsForAllNull[1].markAll();
 
     final Object[] valuesForPartialNull = new Object[2];
     valuesForPartialNull[0] = new float[] {0F};
@@ -117,13 +116,13 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualIT {
 
     partialNullTablet = new Tablet(deviceId, Arrays.asList(schemas), 1);
     partialNullTablet.values = valuesForPartialNull;
-    partialNullTablet.timestamps = new long[] {time};
+    partialNullTablet.timestamps = new long[] {3};
     partialNullTablet.rowSize = 1;
     partialNullTablet.bitMaps = bitMapsForPartialNull;
 
     allNullTablet = new Tablet(deviceId, Arrays.asList(schemas), 1);
     allNullTablet.values = valuesForAllNull;
-    allNullTablet.timestamps = new long[] {time};
+    allNullTablet.timestamps = new long[] {4};
     allNullTablet.rowSize = 1;
     allNullTablet.bitMaps = bitMapsForAllNull;
   }
@@ -142,11 +141,11 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualIT {
           try {
             try (ISession session = senderEnv.getSessionConnection()) {
               if (isAligned) {
-                session.insertAlignedRecord(deviceId, time, measurements, types, allNullValues);
-                session.insertAlignedRecord(deviceId, time, measurements, types, partialNullValues);
+                session.insertAlignedRecord(deviceId, 3, measurements, types, partialNullValues);
+                session.insertAlignedRecord(deviceId, 4, measurements, types, allNullValues);
               } else {
-                session.insertRecord(deviceId, time, measurements, types, allNullValues);
-                session.insertRecord(deviceId, time, measurements, types, partialNullValues);
+                session.insertRecord(deviceId, 3, measurements, types, partialNullValues);
+                session.insertRecord(deviceId, 4, measurements, types, allNullValues);
               }
             } catch (StatementExecutionException e) {
               fail(e.getMessage());
@@ -155,17 +154,18 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualIT {
             fail(e.getMessage());
           }
         });
+
     INSERT_NULL_VALUE_MAP.put(
         InsertType.SESSION_INSERT_TABLET,
         (isAligned) -> {
           try {
             try (ISession session = senderEnv.getSessionConnection()) {
               if (isAligned) {
-                session.insertAlignedTablet(allNullTablet);
                 session.insertAlignedTablet(partialNullTablet);
+                session.insertAlignedTablet(allNullTablet);
               } else {
-                session.insertTablet(allNullTablet);
                 session.insertTablet(partialNullTablet);
+                session.insertTablet(allNullTablet);
               }
             } catch (StatementExecutionException e) {
               fail(e.getMessage());
@@ -174,18 +174,11 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualIT {
             fail(e.getMessage());
           }
         });
+
     INSERT_NULL_VALUE_MAP.put(
         InsertType.SQL_INSERT,
         (isAligned) -> {
-          if (!TestUtils.tryExecuteNonQueriesWithRetry(
-              senderEnv,
-              isAligned
-                  ? Collections.singletonList(
-                      "insert into root.sg.d1(time, s0, s1) aligned values (3, null, null)")
-                  : Collections.singletonList(
-                      "insert into root.sg.d1(time, s0, s1) values (3, null, null)"))) {
-            fail();
-          }
+          // partial null
           if (!TestUtils.tryExecuteNonQueriesWithRetry(
               senderEnv,
               isAligned
@@ -193,6 +186,16 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualIT {
                       "insert into root.sg.d1(time, s0, s1) aligned values (3, null, 25.34)")
                   : Collections.singletonList(
                       "insert into root.sg.d1(time, s0, s1) values (3, null, 25.34)"))) {
+            fail();
+          }
+          // all null
+          if (!TestUtils.tryExecuteNonQueriesWithRetry(
+              senderEnv,
+              isAligned
+                  ? Collections.singletonList(
+                      "insert into root.sg.d1(time, s0, s1) aligned values (4, null, null)")
+                  : Collections.singletonList(
+                      "insert into root.sg.d1(time, s0, s1) values (4, null, null)"))) {
             fail();
           }
         });
