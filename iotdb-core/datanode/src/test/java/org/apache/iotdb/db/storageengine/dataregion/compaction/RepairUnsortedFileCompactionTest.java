@@ -51,9 +51,12 @@ import java.util.concurrent.TimeUnit;
 
 public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
 
-  private boolean enableSeqSpaceCompaction = IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
-  private boolean enableUnSeqSpaceCompaction = IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
-  private boolean enableCrossSpaceCompaction = IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
+  private boolean enableSeqSpaceCompaction =
+      IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
+  private boolean enableUnSeqSpaceCompaction =
+      IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
+  private boolean enableCrossSpaceCompaction =
+      IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
 
   @Before
   public void setUp()
@@ -68,8 +71,12 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
   @After
   public void tearDown() throws IOException, StorageEngineException {
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
-    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(enableUnSeqSpaceCompaction);
-    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setEnableUnseqSpaceCompaction(enableUnSeqSpaceCompaction);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
     super.tearDown();
   }
 
@@ -128,7 +135,11 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
       writer.startChunkGroup("d1");
       writer.generateSimpleNonAlignedSeriesToCurrentDevice(
           "s1",
-          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 20), new TimeRange(29, 30), new TimeRange(21, 25)}}},
+          new TimeRange[][][] {
+            new TimeRange[][] {
+              new TimeRange[] {new TimeRange(10, 20), new TimeRange(29, 30), new TimeRange(21, 25)}
+            }
+          },
           TSEncoding.PLAIN,
           CompressionType.LZ4);
       writer.endChunkGroup();
@@ -152,7 +163,11 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
       writer.startChunkGroup("d1");
       writer.generateSimpleNonAlignedSeriesToCurrentDevice(
           "s1",
-          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 20), new TimeRange(29, 30), new TimeRange(21, 25)}}},
+          new TimeRange[][][] {
+            new TimeRange[][] {
+              new TimeRange[] {new TimeRange(10, 20), new TimeRange(29, 30), new TimeRange(21, 25)}
+            }
+          },
           TSEncoding.PLAIN,
           CompressionType.LZ4);
       writer.endChunkGroup();
@@ -176,7 +191,11 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
       writer.startChunkGroup("d1");
       writer.generateSimpleAlignedSeriesToCurrentDevice(
           Arrays.asList("s1", "s2"),
-          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 20), new TimeRange(29, 30), new TimeRange(21, 25)}}},
+          new TimeRange[][][] {
+            new TimeRange[][] {
+              new TimeRange[] {new TimeRange(10, 20), new TimeRange(29, 30), new TimeRange(21, 25)}
+            }
+          },
           TSEncoding.PLAIN,
           CompressionType.LZ4);
       writer.endChunkGroup();
@@ -191,7 +210,9 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
     Assert.assertTrue(
         TsFileResourceUtils.validateTsFileDataCorrectness(
             tsFileManager.getTsFileList(false).get(0)));
-    Assert.assertTrue(TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(tsFileManager.getOrCreateSequenceListByTimePartition(0)));
+    Assert.assertTrue(
+        TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(
+            tsFileManager.getOrCreateSequenceListByTimePartition(0)));
   }
 
   @Test
@@ -201,7 +222,11 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
       writer.startChunkGroup("d1");
       writer.generateSimpleAlignedSeriesToCurrentDevice(
           Arrays.asList("s1", "s2"),
-          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 20), new TimeRange(29, 30), new TimeRange(21, 25)}}},
+          new TimeRange[][][] {
+            new TimeRange[][] {
+              new TimeRange[] {new TimeRange(10, 20), new TimeRange(29, 30), new TimeRange(21, 25)}
+            }
+          },
           TSEncoding.PLAIN,
           CompressionType.LZ4);
       writer.endChunkGroup();
@@ -227,21 +252,23 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
             Arrays.asList(seqResource1, seqResource2),
             true,
             new ReadChunkCompactionPerformer(),
-            0
-        );
+            0);
     Assert.assertFalse(task.start());
 
     for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
       Assert.assertEquals(resource.getTsFileRepairStatus(), TsFileRepairStatus.NEED_TO_REPAIR);
     }
 
-    long initialFinishedCompactionTaskNum = CompactionTaskManager.getInstance().getFinishedTaskNum();
+    long initialFinishedCompactionTaskNum =
+        CompactionTaskManager.getInstance().getFinishedTaskNum();
     CompactionScheduleSummary summary = new CompactionScheduleSummary();
     CompactionScheduler.scheduleCompaction(tsFileManager, 0, summary);
     Assert.assertEquals(2, summary.getSubmitSeqInnerSpaceCompactionTaskNum());
 
     int waitSecond = 20;
-    while (CompactionTaskManager.getInstance().getFinishedTaskNum() - initialFinishedCompactionTaskNum < 2) {
+    while (CompactionTaskManager.getInstance().getFinishedTaskNum()
+            - initialFinishedCompactionTaskNum
+        < 2) {
       if (waitSecond == 0) {
         Assert.fail("Exceed the max time to wait repair compaction");
       }
@@ -257,7 +284,9 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
     for (TsFileResource resource : tsFileManager.getTsFileList(false)) {
       TsFileResourceUtils.validateTsFileDataCorrectness(resource);
     }
-    Assert.assertTrue(TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(tsFileManager.getOrCreateSequenceListByTimePartition(0)));
+    Assert.assertTrue(
+        TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(
+            tsFileManager.getOrCreateSequenceListByTimePartition(0)));
   }
 
   @Test
@@ -267,7 +296,11 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
       writer.startChunkGroup("d1");
       writer.generateSimpleAlignedSeriesToCurrentDevice(
           Arrays.asList("s1", "s2"),
-          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 20), new TimeRange(29, 30), new TimeRange(21, 25)}}},
+          new TimeRange[][][] {
+            new TimeRange[][] {
+              new TimeRange[] {new TimeRange(10, 20), new TimeRange(29, 30), new TimeRange(21, 25)}
+            }
+          },
           TSEncoding.PLAIN,
           CompressionType.LZ4);
       writer.endChunkGroup();
@@ -293,21 +326,23 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
             Arrays.asList(unSeqResource1, unSeqResource2),
             false,
             new FastCompactionPerformer(false),
-            0
-        );
+            0);
     Assert.assertFalse(task.start());
 
     for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
       Assert.assertEquals(resource.getTsFileRepairStatus(), TsFileRepairStatus.NEED_TO_REPAIR);
     }
 
-    long initialFinishedCompactionTaskNum = CompactionTaskManager.getInstance().getFinishedTaskNum();
+    long initialFinishedCompactionTaskNum =
+        CompactionTaskManager.getInstance().getFinishedTaskNum();
     CompactionScheduleSummary summary = new CompactionScheduleSummary();
     CompactionScheduler.scheduleCompaction(tsFileManager, 0, summary);
     Assert.assertEquals(2, summary.getSubmitUnseqInnerSpaceCompactionTaskNum());
 
     int waitSecond = 20;
-    while (CompactionTaskManager.getInstance().getFinishedTaskNum() - initialFinishedCompactionTaskNum < 2) {
+    while (CompactionTaskManager.getInstance().getFinishedTaskNum()
+            - initialFinishedCompactionTaskNum
+        < 2) {
       if (waitSecond == 0) {
         Assert.fail("Exceed the max time to wait repair compaction");
       }
@@ -323,7 +358,9 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
     for (TsFileResource resource : tsFileManager.getTsFileList(false)) {
       TsFileResourceUtils.validateTsFileDataCorrectness(resource);
     }
-    Assert.assertTrue(TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(tsFileManager.getOrCreateSequenceListByTimePartition(0)));
+    Assert.assertTrue(
+        TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(
+            tsFileManager.getOrCreateSequenceListByTimePartition(0)));
   }
 
   @Test
@@ -333,7 +370,11 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
       writer.startChunkGroup("d1");
       writer.generateSimpleAlignedSeriesToCurrentDevice(
           Arrays.asList("s1", "s2"),
-          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 20), new TimeRange(29, 30), new TimeRange(21, 25)}}},
+          new TimeRange[][][] {
+            new TimeRange[][] {
+              new TimeRange[] {new TimeRange(10, 20), new TimeRange(29, 30), new TimeRange(21, 25)}
+            }
+          },
           TSEncoding.PLAIN,
           CompressionType.LZ4);
       writer.endChunkGroup();
@@ -360,22 +401,24 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
             Collections.singletonList(unSeqResource1),
             new FastCompactionPerformer(true),
             0,
-            0
-        );
+            0);
     Assert.assertFalse(task.start());
 
     for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
       Assert.assertEquals(resource.getTsFileRepairStatus(), TsFileRepairStatus.NEED_TO_REPAIR);
     }
 
-    long initialFinishedCompactionTaskNum = CompactionTaskManager.getInstance().getFinishedTaskNum();
+    long initialFinishedCompactionTaskNum =
+        CompactionTaskManager.getInstance().getFinishedTaskNum();
     CompactionScheduleSummary summary = new CompactionScheduleSummary();
     CompactionScheduler.scheduleCompaction(tsFileManager, 0, summary);
     Assert.assertEquals(1, summary.getSubmitSeqInnerSpaceCompactionTaskNum());
     Assert.assertEquals(1, summary.getSubmitUnseqInnerSpaceCompactionTaskNum());
 
     int waitSecond = 20;
-    while (CompactionTaskManager.getInstance().getFinishedTaskNum() - initialFinishedCompactionTaskNum < 2) {
+    while (CompactionTaskManager.getInstance().getFinishedTaskNum()
+            - initialFinishedCompactionTaskNum
+        < 2) {
       if (waitSecond == 0) {
         Assert.fail("Exceed the max time to wait repair compaction");
       }
