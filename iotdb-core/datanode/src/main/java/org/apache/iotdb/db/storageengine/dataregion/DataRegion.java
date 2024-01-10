@@ -894,8 +894,18 @@ public class DataRegion implements IDataRegionForQuery {
                   > lastFlushTimeMap.getFlushedTime(
                       timePartitionId, insertRowNode.getDevicePath().getFullPath());
 
+      Map<TsFileProcessor, Boolean> tsFileProcessorMapForFlushing = new HashMap<>();
+
       // insert to sequence or unSequence file
-      insertToTsFileProcessor(insertRowNode, isSequence, timePartitionId);
+      insertToTsFileProcessor(
+          insertRowNode, isSequence, timePartitionId, tsFileProcessorMapForFlushing);
+
+      // check memtable size and may asyncTryToFlush the work memtable
+      for (Map.Entry<TsFileProcessor, Boolean> entry : tsFileProcessorMapForFlushing.entrySet()) {
+        if (entry.getKey().shouldFlush()) {
+          fileFlushPolicy.apply(this, entry.getKey(), entry.getValue());
+        }
+      }
     } finally {
       writeUnlock();
     }
@@ -1110,7 +1120,10 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void insertToTsFileProcessor(
-      InsertRowNode insertRowNode, boolean sequence, long timePartitionId)
+      InsertRowNode insertRowNode,
+      boolean sequence,
+      long timePartitionId,
+      Map<TsFileProcessor, Boolean> tsFileProcessorMapForFlushing)
       throws WriteProcessException {
     if (insertRowNode.allMeasurementFailed()) {
       return;
@@ -1126,10 +1139,7 @@ public class DataRegion implements IDataRegionForQuery {
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleWalCost(costsForMetrics[2]);
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(costsForMetrics[3]);
 
-    // check memtable size and may asyncTryToFlush the work memtable
-    if (tsFileProcessor.shouldFlush()) {
-      fileFlushPolicy.apply(this, tsFileProcessor, sequence);
-    }
+    tsFileProcessorMapForFlushing.put(tsFileProcessor, sequence);
 
     if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
       if ((config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
@@ -1174,6 +1184,7 @@ public class DataRegion implements IDataRegionForQuery {
       InsertRowsNode insertRowsNode, boolean[] areSequence, long[] timePartitionIds) {
     List<InsertRowNode> executedInsertRowNodeList = new ArrayList<>();
     long[] costsForMetrics = new long[4];
+    Map<TsFileProcessor, Boolean> tsFileProcessorMapForFlushing = new HashMap<>();
     for (int i = 0; i < areSequence.length; i++) {
       InsertRowNode insertRowNode = insertRowsNode.getInsertRowNodeList().get(i);
       if (insertRowNode.allMeasurementFailed()) {
@@ -1184,16 +1195,19 @@ public class DataRegion implements IDataRegionForQuery {
       if (tsFileProcessor == null) {
         continue;
       }
+      tsFileProcessorMapForFlushing.put(tsFileProcessor, areSequence[i]);
       try {
         tsFileProcessor.insert(insertRowNode, costsForMetrics);
       } catch (WriteProcessException e) {
         insertRowsNode.getResults().put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       }
       executedInsertRowNodeList.add(insertRowNode);
+    }
 
-      // check memtable size and may asyncTryToFlush the work memtable
-      if (tsFileProcessor.shouldFlush()) {
-        fileFlushPolicy.apply(this, tsFileProcessor, areSequence[i]);
+    // check memtable size and may asyncTryToFlush the work memtable
+    for (Map.Entry<TsFileProcessor, Boolean> entry : tsFileProcessorMapForFlushing.entrySet()) {
+      if (entry.getKey().shouldFlush()) {
+        fileFlushPolicy.apply(this, entry.getKey(), entry.getValue());
       }
     }
 
@@ -3057,6 +3071,7 @@ public class DataRegion implements IDataRegionForQuery {
       if (deleted) {
         return;
       }
+      Map<TsFileProcessor, Boolean> tsFileProcessorMapForFlushing = new HashMap<>();
       for (int i = 0; i < insertRowsOfOneDeviceNode.getInsertRowNodeList().size(); i++) {
         InsertRowNode insertRowNode = insertRowsOfOneDeviceNode.getInsertRowNodeList().get(i);
         if (!isAlive(insertRowNode.getTime())) {
@@ -3099,11 +3114,18 @@ public class DataRegion implements IDataRegionForQuery {
 
         // insert to sequence or unSequence file
         try {
-          insertToTsFileProcessor(insertRowNode, isSequence, timePartitionId);
+          insertToTsFileProcessor(
+              insertRowNode, isSequence, timePartitionId, tsFileProcessorMapForFlushing);
         } catch (WriteProcessException e) {
           insertRowsOfOneDeviceNode
               .getResults()
               .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+        }
+      }
+      // check memtable size and may asyncTryToFlush the work memtable
+      for (Map.Entry<TsFileProcessor, Boolean> entry : tsFileProcessorMapForFlushing.entrySet()) {
+        if (entry.getKey().shouldFlush()) {
+          fileFlushPolicy.apply(this, entry.getKey(), entry.getValue());
         }
       }
     } finally {
