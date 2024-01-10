@@ -89,7 +89,7 @@ public class IoTDBOrderByLimitOffsetAlignByDeviceIT {
   public void aggregationWithHavingTest() {
     // when aggregation with having, can only use MergeSortNode but not use TopKNode
     String[] expectedHeader = new String[] {"Time,Device,sum(s1)"};
-    String[] retArray = new String[] {"3,root.db.d2,222,", "3,root.db.d3,333,"};
+    String[] retArray = new String[] {"3,root.db.d2,222.0,", "3,root.db.d3,333.0,"};
     resultSetEqualTest(
         "select sum(s1) from root.db.** group by ((1,5],1ms) having(sum(s1)>111) order by time limit 2 align by device;",
         expectedHeader,
@@ -101,10 +101,10 @@ public class IoTDBOrderByLimitOffsetAlignByDeviceIT {
     String[] expectedHeader = new String[] {"Time,Device,s1,s2"};
     String[] retArray =
         new String[] {
-          "1,root.fill.d1,1,null",
-          "1,root.fill.d2,2,null",
-          "1,root.fill.d3,3,null",
-          "2,root.fill.d1,12,null",
+          "1,root.fill.d1,1,null,",
+          "1,root.fill.d2,2,null,",
+          "1,root.fill.d3,3,null,",
+          "2,root.fill.d1,12,11.0,",
         };
     resultSetEqualTest(
         "select * from root.fill.** order by time fill(linear) limit 4 align by device;",
