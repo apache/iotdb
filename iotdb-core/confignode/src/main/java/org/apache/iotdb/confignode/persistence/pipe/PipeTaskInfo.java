@@ -477,6 +477,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
     if (earliestIndex.get() == Long.MAX_VALUE) {
       // Do not clear if there are only "minimumProgressIndex"s to avoid clearing
       // the queue when there are config tasks that haven't been started yet
+      // Note that there's no need to clear when there are no pipeTasks on
+      // configNode because the ConfigPlanListeningQueue is closed
       earliestIndex.set(0);
     }
     ConfigPlanListeningQueue.getInstance().removeBefore(earliestIndex.get());
@@ -713,6 +715,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
   private void handlePipeMetaChangesOnConfigTaskAgent() {
     List<PipeMeta> pipeMetas = new ArrayList<>();
     for (PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
+      // The new agent meta has separated status to enable control by diff
+      // Yet the taskMetaMap is reused to let configNode pipe report directly to the
+      // original meta. No lock is needed since the configNode taskMeta is only
+      // altered by one pipe.
       PipeMeta agentMeta =
           new PipeMeta(
               pipeMeta.getStaticMeta(),

@@ -128,6 +128,8 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
 
     // Do not clear if there are only "minimumProgressIndex"s to avoid clearing
     // the queue when there are schema tasks that haven't been started yet
+    // If there are no pipeTasks on schema region the queue will at the latest
+    // be closed at this round of meta sync, no need to clear here
     earliestIndexMap.forEach(
         (schemaId, index) -> SchemaNodeListeningQueue.getInstance(schemaId).removeBefore(index));
 
