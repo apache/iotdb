@@ -307,6 +307,18 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualIT {
   // Scenario 2: Session Insert Record //
   // --------------------------------- //
   @Test
+  public void testSessionInsertRecordPartialNullWithParsing() throws Exception {
+    testInsertNullValueTemplate(
+        InsertType.SESSION_INSERT_RECORD, NullType.PARTIAL_NULL, false, true);
+  }
+
+  @Test
+  public void testSessionInsertRecordPartialNullWithoutParsing() throws Exception {
+    testInsertNullValueTemplate(
+        InsertType.SESSION_INSERT_RECORD, NullType.PARTIAL_NULL, false, false);
+  }
+
+  @Test
   public void testSessionInsertRecordAllNullWithParsing() throws Exception {
     testInsertNullValueTemplate(InsertType.SESSION_INSERT_RECORD, NullType.ALL_NULL, false, true);
   }
@@ -341,6 +353,18 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualIT {
   // --------------------------------- //
   // Scenario 3: Session Insert Tablet //
   // --------------------------------- //
+  @Test
+  public void testSessionInsertTabletPartialNullWithParsing() throws Exception {
+    testInsertNullValueTemplate(
+        InsertType.SESSION_INSERT_TABLET, NullType.PARTIAL_NULL, false, true);
+  }
+
+  @Test
+  public void testSessionInsertTabletPartialNullWithoutParsing() throws Exception {
+    testInsertNullValueTemplate(
+        InsertType.SESSION_INSERT_TABLET, NullType.PARTIAL_NULL, false, false);
+  }
+
   @Test
   public void testSessionInsertTabletAllNullWithParsing() throws Exception {
     testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, NullType.ALL_NULL, false, true);
