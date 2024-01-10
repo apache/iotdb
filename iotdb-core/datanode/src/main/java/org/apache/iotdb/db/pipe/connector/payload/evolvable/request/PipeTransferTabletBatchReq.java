@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -39,6 +40,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
@@ -126,17 +128,17 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
       ReadWriteIOUtils.write(binaryBuffers.size(), outputStream);
       for (final ByteBuffer binaryBuffer : binaryBuffers) {
         ReadWriteIOUtils.write(binaryBuffer.array().length, outputStream);
-        outputStream.write(binaryBuffer.array());
+        outputStream.write(binaryBuffer.array(), 0, binaryBuffer.limit());
       }
 
       ReadWriteIOUtils.write(insertNodeBuffers.size(), outputStream);
       for (final ByteBuffer insertNodeBuffer : insertNodeBuffers) {
-        outputStream.write(insertNodeBuffer.array());
+        outputStream.write(insertNodeBuffer.array(), 0, insertNodeBuffer.limit());
       }
 
       ReadWriteIOUtils.write(tabletBuffers.size(), outputStream);
       for (final ByteBuffer tabletBuffer : tabletBuffers) {
-        outputStream.write(tabletBuffer.array());
+        outputStream.write(tabletBuffer.array(), 0, tabletBuffer.limit());
       }
 
       batchReq.body =
