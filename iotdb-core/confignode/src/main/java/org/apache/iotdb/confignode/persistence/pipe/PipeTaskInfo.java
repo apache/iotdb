@@ -435,9 +435,9 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   /**
-   * Replace the local pipeMetas by the pipeMetas from the leader ConfigNode.
+   * Replace the local {@link PipeMeta}s by the {@link PipeMeta}s from the leader ConfigNode.
    *
-   * @param plan The plan containing all the pipeMetas from leader ConfigNode
+   * @param plan The plan containing all the {@link PipeMeta}s from leader ConfigNode
    * @return {@link TSStatusCode#SUCCESS_STATUS}
    */
   public TSStatus handleMetaChanges(PipeHandleMetaChangePlan plan) {
@@ -544,14 +544,14 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   /**
-   * Record the exceptions of all pipes locally if they encountered failure when pushing pipe meta
-   * to dataNodes.
+   * Record the exceptions of all pipes locally if they encountered failure when pushing {@link
+   * PipeMeta}s to dataNodes.
    *
    * <p>If there are exceptions recorded, the related pipes will be stopped, and the exception
    * messages will then be updated to all the nodes through {@link PipeHandleMetaChangeProcedure}.
    *
    * @param respMap The responseMap after pushing pipe meta
-   * @return true if there are exceptions encountered
+   * @return {@link true} if there are exceptions encountered
    */
   public boolean recordDataNodePushPipeMetaExceptions(Map<Integer, TPushPipeMetaResp> respMap) {
     acquireWriteLock();
