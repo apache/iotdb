@@ -712,7 +712,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
   }
 
-  private void handlePipeMetaChangesOnConfigTaskAgent() {
+  public void handlePipeMetaChangesOnConfigTaskAgent() {
     List<PipeMeta> pipeMetas = new ArrayList<>();
     for (PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
       // The new agent meta has separated status to enable control by diff

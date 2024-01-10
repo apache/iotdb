@@ -19,17 +19,13 @@
 
 package org.apache.iotdb.confignode.manager.pipe.transfer.agent.runtime;
 
-import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.service.ConfigNode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 class PipeConfigNodeAgentLauncher {
@@ -50,9 +46,7 @@ class PipeConfigNodeAgentLauncher {
       return;
     }
     try {
-      List<PipeMeta> pipeMetaList = new ArrayList<>();
-      pipeTaskInfo.get().getPipeMetaList().forEach(pipeMetaList::add);
-      PipeConfigNodeAgent.task().handlePipeMetaChanges(pipeMetaList);
+      pipeTaskInfo.get().handlePipeMetaChangesOnConfigTaskAgent();
     } finally {
       configManager.getPipeManager().getPipeTaskCoordinator().unlock();
     }
