@@ -230,8 +230,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             sequence ? selectedTsFileResourceList : Collections.emptyList(),
             sequence ? Collections.emptyList() : selectedTsFileResourceList,
             targetTsFileList,
-            timePartition,
-            sequence);
+            timePartition);
 
         if (targetTsFileResource.isDeleted()) {
           compactionLogger.logEmptyTargetFile(targetTsFileResource);

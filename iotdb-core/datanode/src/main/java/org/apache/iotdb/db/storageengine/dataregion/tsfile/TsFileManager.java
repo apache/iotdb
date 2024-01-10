@@ -255,8 +255,7 @@ public class TsFileManager {
       List<TsFileResource> seqFileResources,
       List<TsFileResource> unseqFileResources,
       List<TsFileResource> targetFileResources,
-      long timePartition,
-      boolean isTargetSequence)
+      long timePartition)
       throws IOException {
     writeLock("replace");
     try {
@@ -270,24 +269,16 @@ public class TsFileManager {
           TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
         }
       }
-      if (isTargetSequence) {
-        // seq inner space compaction or cross space compaction
-        for (TsFileResource resource : targetFileResources) {
-          if (!resource.isDeleted()) {
-            TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
+      for (TsFileResource resource : targetFileResources) {
+        if (!resource.isDeleted()) {
+          TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
+          if (resource.isSeq()) {
             sequenceFiles.get(timePartition).keepOrderInsert(resource);
-          }
-        }
-      } else {
-        // unseq inner space compaction
-        for (TsFileResource resource : targetFileResources) {
-          if (!resource.isDeleted()) {
-            TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
+          } else {
             unsequenceFiles.get(timePartition).keepOrderInsert(resource);
           }
         }
       }
-
     } finally {
       writeUnlock();
     }
