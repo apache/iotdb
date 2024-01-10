@@ -78,6 +78,28 @@ public class IoTDBIdempotentIT extends AbstractPipeDualManualIT {
   }
 
   @Test
+  public void testCreateAlignedTimeseriesIdempotent() throws Exception {
+    testIdempotent(
+        Collections.emptyList(),
+        "CREATE ALIGNED TIMESERIES root.ln.wf01.GPS(latitude FLOAT encoding=PLAIN compressor=SNAPPY, longitude FLOAT encoding=PLAIN compressor=SNAPPY)",
+        "create timeseries root.ln.wf01.wt01.status1(status) with datatype=BOOLEAN,encoding=PLAIN",
+        "count timeseries",
+        "count(timeseries),",
+        Collections.singleton("3,"));
+  }
+
+  @Test
+  public void testCreateTimeseriesWithAliasIdempotent() throws Exception {
+    testIdempotent(
+        Collections.emptyList(),
+        "create timeseries root.ln.wf01.wt01.status0(status0) with datatype=BOOLEAN,encoding=PLAIN",
+        "create timeseries root.ln.wf01.wt01.status1(status1) with datatype=BOOLEAN,encoding=PLAIN",
+        "count timeseries",
+        "count(timeseries),",
+        Collections.singleton("2,"));
+  }
+
+  @Test
   public void testInternalCreateTimeseriesIdempotent() throws Exception {
     testIdempotent(
         Collections.emptyList(),
