@@ -37,6 +37,7 @@ import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
+import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionCachedMetric;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaRegionStatistics;
@@ -57,7 +58,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.logfile.SchemaLogWriter;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.visitor.SchemaRegionPlanDeserializer;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.visitor.SchemaRegionPlanSerializer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.MTreeBelowSGCachedImpl;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.CacheMemoryManager;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.ReleaseFlushMonitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowDevicesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowNodesPlan;
@@ -85,8 +86,8 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IAlterLogica
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.ICreateLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.utils.SchemaUtils;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -155,6 +156,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   private MLogDescriptionWriter logDescriptionWriter;
 
   private final CachedSchemaRegionStatistics regionStatistics;
+  private final SchemaRegionCachedMetric metric;
   private final DataNodeSchemaQuotaManager schemaQuotaManager =
       DataNodeSchemaQuotaManager.getInstance();
 
@@ -172,6 +174,9 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     this.regionStatistics =
         new CachedSchemaRegionStatistics(
             schemaRegionId.getId(), schemaRegionParams.getSchemaEngineStatistics());
+    this.metric =
+        new SchemaRegionCachedMetric(
+            regionStatistics, schemaRegionParams.getDatabase().getFullPath());
     init();
   }
 
@@ -197,7 +202,8 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
               measurementInitProcess(),
               deviceInitProcess(),
               schemaRegionId.getId(),
-              regionStatistics);
+              regionStatistics,
+              metric);
 
       if (!(config.isClusterMode()
           && config
@@ -329,8 +335,8 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   }
 
   @Override
-  public ISchemaRegionMetric createSchemaRegionMetric(String database) {
-    return new SchemaRegionCachedMetric(regionStatistics, database);
+  public ISchemaRegionMetric getSchemaRegionMetric() {
+    return metric;
   }
 
   /** Init from metadata log file. */
@@ -517,6 +523,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
               storageGroupFullPath,
               schemaRegionId.getId(),
               regionStatistics,
+              metric,
               measurementInitProcess(),
               deviceInitProcess(),
               tagManager::readTags,
@@ -579,7 +586,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException {
     while (!regionStatistics.isAllowToCreateNewSeries()) {
-      CacheMemoryManager.getInstance().waitIfReleasing();
+      ReleaseFlushMonitor.getInstance().waitIfReleasing();
     }
 
     PartialPath path = plan.getPath();
@@ -665,7 +672,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   public void createAlignedTimeSeries(ICreateAlignedTimeSeriesPlan plan) throws MetadataException {
     int seriesCount = plan.getMeasurements().size();
     while (!regionStatistics.isAllowToCreateNewSeries()) {
-      CacheMemoryManager.getInstance().waitIfReleasing();
+      ReleaseFlushMonitor.getInstance().waitIfReleasing();
     }
 
     try {
@@ -840,7 +847,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   @Override
   public void createLogicalView(ICreateLogicalViewPlan plan) throws MetadataException {
     while (!regionStatistics.isAllowToCreateNewSeries()) {
-      CacheMemoryManager.getInstance().waitIfReleasing();
+      ReleaseFlushMonitor.getInstance().waitIfReleasing();
     }
     try {
       List<PartialPath> pathList = plan.getViewPathList();
@@ -976,24 +983,32 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   // region Interfaces for timeseries, measurement and schema info Query
 
   @Override
-  public List<MeasurementPath> fetchSchema(
-      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
-      throws MetadataException {
-    return mtree.fetchSchema(pathPattern, templateMap, withTags);
+  public MeasurementPath fetchMeasurementPath(PartialPath fullPath) throws MetadataException {
+    IMeasurementMNode<ICachedMNode> node = mtree.getMeasurementMNode(fullPath);
+    try {
+      MeasurementPath res = new MeasurementPath(node.getPartialPath(), node.getSchema());
+      res.setUnderAlignedEntity(node.getParent().getAsDeviceMNode().isAligned());
+      return res;
+    } finally {
+      mtree.unPinMNode(node.getAsMNode());
+    }
   }
 
   @Override
-  public List<MeasurementPath> fetchSchema(
-      PathPatternTree patternTree, Map<Integer, Template> templateMap, boolean withTags)
+  public ClusterSchemaTree fetchSchema(
+      PathPatternTree patternTree,
+      Map<Integer, Template> templateMap,
+      boolean withTags,
+      boolean withTemplate)
       throws MetadataException {
     if (patternTree.isContainWildcard()) {
-      List<MeasurementPath> res = new ArrayList<>();
+      ClusterSchemaTree schemaTree = new ClusterSchemaTree();
       for (PartialPath path : patternTree.getAllPathPatterns()) {
-        res.addAll(mtree.fetchSchema(path, templateMap, withTags));
+        schemaTree.mergeSchemaTree(mtree.fetchSchema(path, templateMap, withTags, withTemplate));
       }
-      return res;
+      return schemaTree;
     } else {
-      return mtree.fetchSchemaWithoutWildcard(patternTree, templateMap, withTags);
+      return mtree.fetchSchemaWithoutWildcard(patternTree, templateMap, withTags, withTemplate);
     }
   }
 
@@ -1223,7 +1238,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   public void activateSchemaTemplate(IActivateTemplateInClusterPlan plan, Template template)
       throws MetadataException {
     while (!regionStatistics.isAllowToCreateNewSeries()) {
-      CacheMemoryManager.getInstance().waitIfReleasing();
+      ReleaseFlushMonitor.getInstance().waitIfReleasing();
     }
     try {
       ICachedMNode deviceNode = getDeviceNodeWithAutoCreate(plan.getActivatePath());

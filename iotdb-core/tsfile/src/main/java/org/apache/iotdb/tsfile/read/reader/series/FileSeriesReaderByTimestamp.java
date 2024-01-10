@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.tsfile.read.reader.series;
 
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
@@ -150,7 +150,7 @@ public class FileSeriesReaderByTimestamp {
   private void initChunkReader(IChunkMetadata chunkMetaData) throws IOException {
     if (chunkMetaData instanceof ChunkMetadata) {
       Chunk chunk = chunkLoader.loadChunk((ChunkMetadata) chunkMetaData);
-      this.chunkReader = new ChunkReader(chunk, null, currentTimestamp);
+      this.chunkReader = new ChunkReader(chunk, currentTimestamp);
     } else {
       AlignedChunkMetadata alignedChunkMetadata = (AlignedChunkMetadata) chunkMetaData;
       Chunk timeChunk =
@@ -159,7 +159,7 @@ public class FileSeriesReaderByTimestamp {
       for (IChunkMetadata metadata : alignedChunkMetadata.getValueChunkMetadataList()) {
         valueChunkList.add(chunkLoader.loadChunk((ChunkMetadata) metadata));
       }
-      this.chunkReader = new AlignedChunkReader(timeChunk, valueChunkList, null, currentTimestamp);
+      this.chunkReader = new AlignedChunkReader(timeChunk, valueChunkList, currentTimestamp);
     }
   }
 

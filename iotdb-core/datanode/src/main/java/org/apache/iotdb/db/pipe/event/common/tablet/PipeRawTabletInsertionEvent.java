@@ -51,9 +51,12 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
       boolean isAligned,
       EnrichedEvent sourceEvent,
       boolean needToReport,
+      String pipeName,
       PipeTaskMeta pipeTaskMeta,
-      String pattern) {
-    super(pipeTaskMeta, pattern);
+      String pattern,
+      long startTime,
+      long endTime) {
+    super(pipeName, pipeTaskMeta, pattern, startTime, endTime);
     this.tablet = Objects.requireNonNull(tablet);
     this.isAligned = isAligned;
     this.sourceEvent = sourceEvent;
@@ -63,20 +66,35 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   public PipeRawTabletInsertionEvent(
       Tablet tablet,
       boolean isAligned,
+      String pipeName,
       PipeTaskMeta pipeTaskMeta,
       EnrichedEvent sourceEvent,
       boolean needToReport) {
-    this(tablet, isAligned, sourceEvent, needToReport, pipeTaskMeta, null);
+    this(
+        tablet,
+        isAligned,
+        sourceEvent,
+        needToReport,
+        pipeName,
+        pipeTaskMeta,
+        null,
+        Long.MIN_VALUE,
+        Long.MAX_VALUE);
   }
 
   @TestOnly
   public PipeRawTabletInsertionEvent(Tablet tablet, boolean isAligned) {
-    this(tablet, isAligned, null, false, null, null);
+    this(tablet, isAligned, null, false, null, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @TestOnly
   public PipeRawTabletInsertionEvent(Tablet tablet, boolean isAligned, String pattern) {
-    this(tablet, isAligned, null, false, null, pattern);
+    this(tablet, isAligned, null, false, null, null, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
+  }
+
+  @TestOnly
+  public PipeRawTabletInsertionEvent(Tablet tablet, long startTime, long endTime) {
+    this(tablet, false, null, false, null, null, null, startTime, endTime);
   }
 
   @Override
@@ -105,9 +123,17 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      PipeTaskMeta pipeTaskMeta, String pattern) {
+      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime) {
     return new PipeRawTabletInsertionEvent(
-        tablet, isAligned, sourceEvent, needToReport, pipeTaskMeta, pattern);
+        tablet,
+        isAligned,
+        sourceEvent,
+        needToReport,
+        pipeName,
+        pipeTaskMeta,
+        pattern,
+        startTime,
+        endTime);
   }
 
   @Override
@@ -115,8 +141,22 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
     throw new UnsupportedOperationException("isGeneratedByPipe() is not supported!");
   }
 
+  @Override
+  public boolean isEventTimeOverlappedWithTimeRange() {
+    long[] timestamps = tablet.timestamps;
+    if (Objects.isNull(timestamps) || timestamps.length == 0) {
+      return false;
+    }
+    // We assume that `timestamps` is ordered.
+    return startTime <= timestamps[timestamps.length - 1] && timestamps[0] <= endTime;
+  }
+
   public void markAsNeedToReport() {
     this.needToReport = true;
+  }
+
+  public String getDeviceId() {
+    return tablet.deviceId;
   }
 
   /////////////////////////// TabletInsertionEvent ///////////////////////////
@@ -158,10 +198,14 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
     return dataContainer.convertToTablet();
   }
 
-  /////////////////////////// parsePattern ///////////////////////////
+  /////////////////////////// parsePatternOrTime ///////////////////////////
 
-  public TabletInsertionEvent parseEventWithPattern() {
+  public TabletInsertionEvent parseEventWithPatternOrTime() {
     return new PipeRawTabletInsertionEvent(
-        convertToTablet(), isAligned, pipeTaskMeta, this, needToReport);
+        convertToTablet(), isAligned, pipeName, pipeTaskMeta, this, needToReport);
+  }
+
+  public boolean hasNoNeedParsingAndIsEmpty() {
+    return !shouldParsePatternOrTime() && tablet.rowSize == 0;
   }
 }

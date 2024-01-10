@@ -25,10 +25,12 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous;
 
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
-import org.apache.iotdb.tsfile.access.Column;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFillFilter;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.${type.column};
 import org.apache.iotdb.tsfile.read.common.block.column.${type.column}Builder;
 import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 <#if type.dataType == "Binary">
   import org.apache.iotdb.tsfile.utils.Binary;
 </#if>
@@ -43,11 +45,19 @@ public class ${className} implements IFill {
 
   // previous value
   private ${type.dataType} value;
+  // previous time
+  private long previousTime;
   // whether previous value is null
   private boolean previousIsNull = true;
 
+  private final IFillFilter filter;
+
+  public ${className}(IFillFilter filter) {
+    this.filter = filter;
+  }
+
   @Override
-  public Column fill(Column valueColumn) {
+  public Column fill(TimeColumn timeColumn, Column valueColumn) {
     int size = valueColumn.getPositionCount();
     // if this valueColumn is empty, just return itself;
     if (size == 0) {
@@ -58,6 +68,7 @@ public class ${className} implements IFill {
     if (!valueColumn.mayHaveNull()) {
       previousIsNull = false;
       // update the value using last non-null value
+      previousTime = timeColumn.getLong(size - 1);
       value = valueColumn.get${type.dataType?cap_first}(size - 1);
       return valueColumn;
     }
@@ -65,34 +76,35 @@ public class ${className} implements IFill {
     if (valueColumn instanceof RunLengthEncodedColumn) {
       if (previousIsNull) {
         return new RunLengthEncodedColumn(${type.column}Builder.NULL_VALUE_BLOCK, size);
-      } else {
+      } else if (filter.needFill(timeColumn.getLong(size - 1), previousTime)) {
         return new RunLengthEncodedColumn(
             new ${type.column}(1, Optional.empty(), new ${type.dataType}[] {value}), size);
       }
-    } else {
-      ${type.dataType}[] array = new ${type.dataType}[size];
-      boolean[] isNull = new boolean[size];
-      // have null value
-      boolean hasNullValue = false;
-      for (int i = 0; i < size; i++) {
-        if (valueColumn.isNull(i)) {
-          if (previousIsNull) {
-            isNull[i] = true;
-            hasNullValue = true;
-          } else {
-            array[i] = value;
-          }
+    }
+
+    ${type.dataType}[] array = new ${type.dataType}[size];
+    boolean[] isNull = new boolean[size];
+    // have null value
+    boolean hasNullValue = false;
+    for (int i = 0; i < size; i++) {
+      if (valueColumn.isNull(i)) {
+        if (previousIsNull || !filter.needFill(timeColumn.getLong(i), previousTime)) {
+          isNull[i] = true;
+          hasNullValue = true;
         } else {
-          array[i] = valueColumn.get${type.dataType?cap_first}(i);
-          value = array[i];
-          previousIsNull = false;
+          array[i] = value;
         }
-      }
-      if (hasNullValue) {
-        return new ${type.column}(size, Optional.of(isNull), array);
       } else {
-        return new ${type.column}(size, Optional.empty(), array);
+        array[i] = valueColumn.get${type.dataType?cap_first}(i);
+        previousTime = timeColumn.getLong(i);
+        value = array[i];
+        previousIsNull = false;
       }
+    }
+    if (hasNullValue) {
+      return new ${type.column}(size, Optional.of(isNull), array);
+    } else {
+      return new ${type.column}(size, Optional.empty(), array);
     }
   }
 }

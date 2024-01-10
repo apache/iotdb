@@ -32,7 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.BuiltInScal
 import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.BuiltInScalarFunctionHelperFactory;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -145,6 +145,12 @@ public class TypeInferenceUtils {
         return dataType;
       case SqlConstant.AVG:
       case SqlConstant.SUM:
+      case SqlConstant.STDDEV:
+      case SqlConstant.STDDEV_POP:
+      case SqlConstant.STDDEV_SAMP:
+      case SqlConstant.VARIANCE:
+      case SqlConstant.VAR_POP:
+      case SqlConstant.VAR_SAMP:
         return TSDataType.DOUBLE;
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
@@ -162,11 +168,17 @@ public class TypeInferenceUtils {
       case SqlConstant.EXTREME:
       case SqlConstant.MIN_VALUE:
       case SqlConstant.MAX_VALUE:
+      case SqlConstant.STDDEV:
+      case SqlConstant.STDDEV_POP:
+      case SqlConstant.STDDEV_SAMP:
+      case SqlConstant.VARIANCE:
+      case SqlConstant.VAR_POP:
+      case SqlConstant.VAR_SAMP:
         if (dataType.isNumeric()) {
           return;
         }
         throw new SemanticException(
-            "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]");
+            "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE, STDDEV, STDDEV_POP, STDDEV_SAMP, VARIANCE, VAR_POP, VAR_SAMP] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]");
       case SqlConstant.COUNT:
       case SqlConstant.COUNT_TIME:
       case SqlConstant.MIN_TIME:
@@ -213,6 +225,12 @@ public class TypeInferenceUtils {
       case SqlConstant.LAST_VALUE:
       case SqlConstant.TIME_DURATION:
       case SqlConstant.MODE:
+      case SqlConstant.STDDEV:
+      case SqlConstant.STDDEV_POP:
+      case SqlConstant.STDDEV_SAMP:
+      case SqlConstant.VARIANCE:
+      case SqlConstant.VAR_POP:
+      case SqlConstant.VAR_SAMP:
         return;
       case SqlConstant.COUNT_IF:
         Expression keepExpression = inputExpressions.get(1);

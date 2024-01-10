@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.udf.api.utils;
 
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.type.Binary;
 import org.apache.iotdb.udf.api.type.Type;

@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -28,7 +26,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.Set;
 
 /** TSFileMetaData collects all metadata info and saves in its data structure. */
 public class TsFileMetadata {
@@ -100,19 +97,6 @@ public class TsFileMetadata {
     return byteLen;
   }
 
-  /**
-   * use the given outputStream to serialize bloom filter.
-   *
-   * @param outputStream -output stream to determine byte length
-   * @return -byte length
-   * @throws IOException error when operating outputStream
-   */
-  public int buildAndSerializeBloomFilter(OutputStream outputStream, Set<Path> paths)
-      throws IOException {
-    BloomFilter filter = buildBloomFilter(paths);
-    return serializeBloomFilter(outputStream, filter);
-  }
-
   public int serializeBloomFilter(OutputStream outputStream, BloomFilter filter)
       throws IOException {
     int byteLen = 0;
@@ -124,21 +108,6 @@ public class TsFileMetadata {
     byteLen +=
         ReadWriteForEncodingUtils.writeUnsignedVarInt(filter.getHashFunctionSize(), outputStream);
     return byteLen;
-  }
-
-  /**
-   * build bloom filter.
-   *
-   * @return bloom filter
-   */
-  private BloomFilter buildBloomFilter(Set<Path> paths) {
-    BloomFilter filter =
-        BloomFilter.getEmptyBloomFilter(
-            TSFileDescriptor.getInstance().getConfig().getBloomFilterErrorRate(), paths.size());
-    for (Path path : paths) {
-      filter.add(path.toString());
-    }
-    return filter;
   }
 
   public long getMetaOffset() {

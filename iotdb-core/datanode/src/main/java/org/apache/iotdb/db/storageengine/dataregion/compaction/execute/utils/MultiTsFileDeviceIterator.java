@@ -357,9 +357,6 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       TsFileSequenceReader reader = readerMap.get(tsFileResource);
       List<AlignedChunkMetadata> alignedChunkMetadataList =
           reader.getAlignedChunkMetadata(currentDevice.left);
-      if (!alignedChunkMetadataList.isEmpty()) {
-        alignedChunkMetadataList.forEach(x -> x.setFilePath(tsFileResource.getTsFilePath()));
-      }
       applyModificationForAlignedChunkMetadataList(tsFileResource, alignedChunkMetadataList);
       readerAndChunkMetadataList.add(new Pair<>(reader, alignedChunkMetadataList));
     }
@@ -395,16 +392,15 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       valueSeriesPaths.add(
           valueChunkMetadata == null
               ? null
-              : new PartialPath(currentDevice.left, valueChunkMetadata.getMeasurementUid()));
+              : CompactionPathUtils.getPath(
+                  currentDevice.left, valueChunkMetadata.getMeasurementUid()));
     }
 
     for (Modification modification : modifications) {
-      if (modification.getDevice().equals(currentDevice.left)) {
-        for (int i = 0; i < valueChunkMetadataList.size(); ++i) {
-          PartialPath path = valueSeriesPaths.get(i);
-          if (path != null && modification.getPath().matchFullPath(path)) {
-            modificationForCurDevice.get(i).add(modification);
-          }
+      for (int i = 0; i < valueChunkMetadataList.size(); ++i) {
+        PartialPath path = valueSeriesPaths.get(i);
+        if (path != null && modification.getPath().matchFullPath(path)) {
+          modificationForCurDevice.get(i).add(modification);
         }
       }
     }
@@ -552,7 +548,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
 
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>>
           readerAndChunkMetadataForThisSeries = new LinkedList<>();
-      PartialPath path = new PartialPath(device, currentCompactingSeries);
+      PartialPath path = CompactionPathUtils.getPath(device, currentCompactingSeries);
 
       for (TsFileResource resource : tsFileResourcesSortedByAsc) {
         TsFileSequenceReader reader = readerMap.get(resource);

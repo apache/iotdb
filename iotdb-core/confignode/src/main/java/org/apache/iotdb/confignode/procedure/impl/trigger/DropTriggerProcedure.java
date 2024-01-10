@@ -108,7 +108,7 @@ public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState
       }
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
-        LOG.error("Fail in DropTriggerProcedure", e);
+        LOG.warn("Drop trigger {} failed.", triggerName, e);
         setFailure(new ProcedureException(e.getMessage()));
       } else {
         LOG.error(

@@ -19,47 +19,4 @@
 
 package org.apache.iotdb.commons.pipe.plugin.meta;
 
-import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
-import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoader;
-
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
-public class DataNodePipePluginMetaKeeper extends PipePluginMetaKeeper {
-
-  private final Map<String, Class<?>> pipePluginNameToClassMap;
-
-  public DataNodePipePluginMetaKeeper() {
-    pipePluginNameToClassMap = new ConcurrentHashMap<>();
-
-    loadBuiltInPlugins();
-  }
-
-  @Override
-  protected void loadBuiltInPlugins() {
-    super.loadBuiltInPlugins();
-
-    for (final BuiltinPipePlugin builtinPipePlugin : BuiltinPipePlugin.values()) {
-      addPluginAndClass(
-          builtinPipePlugin.getPipePluginName(), builtinPipePlugin.getPipePluginClass());
-    }
-  }
-
-  public void addPluginAndClass(String pluginName, Class<?> clazz) {
-    pipePluginNameToClassMap.put(pluginName.toUpperCase(), clazz);
-  }
-
-  public Class<?> getPluginClass(String pluginName) {
-    return pipePluginNameToClassMap.get(pluginName.toUpperCase());
-  }
-
-  public void removePluginClass(String pluginName) {
-    pipePluginNameToClassMap.remove(pluginName.toUpperCase());
-  }
-
-  public void updatePluginClass(PipePluginMeta pipePluginMeta, PipePluginClassLoader classLoader)
-      throws ClassNotFoundException {
-    final Class<?> functionClass = Class.forName(pipePluginMeta.getClassName(), true, classLoader);
-    pipePluginNameToClassMap.put(pipePluginMeta.getPluginName().toUpperCase(), functionClass);
-  }
-}
+public class DataNodePipePluginMetaKeeper extends PipePluginMetaKeeper {}

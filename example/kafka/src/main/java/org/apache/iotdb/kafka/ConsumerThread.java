@@ -22,7 +22,7 @@ package org.apache.iotdb.kafka;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.pool.SessionPool;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -39,7 +39,7 @@ import java.util.List;
 @SuppressWarnings({"squid:S1144"})
 public class ConsumerThread implements Runnable {
 
-  private static final Logger logger = LoggerFactory.getLogger(ConsumerThread.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ConsumerThread.class);
   private KafkaConsumer<String, String> consumer;
   private SessionPool pool;
 
@@ -158,7 +158,7 @@ public class ConsumerThread implements Runnable {
         insertDatas(datas);
       } while (true);
     } catch (Exception e) {
-      logger.error(e.getMessage());
+      LOGGER.error(e.getMessage());
     }
   }
 }

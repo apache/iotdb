@@ -19,18 +19,17 @@
 
 package org.apache.iotdb.tsfile.read.reader;
 
-import org.apache.iotdb.tsfile.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.file.metadata.IMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.util.List;
 
-public interface IPageReader {
+public interface IPageReader extends IMetadata {
 
   default BatchData getAllSatisfiedPageData() throws IOException {
     return getAllSatisfiedPageData(true);
@@ -40,9 +39,7 @@ public interface IPageReader {
 
   TsBlock getAllSatisfiedData() throws IOException;
 
-  Statistics<? extends Serializable> getStatistics();
-
-  void setFilter(Filter filter);
+  void addRecordFilter(Filter filter);
 
   boolean isModified();
 

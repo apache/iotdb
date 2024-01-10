@@ -24,8 +24,8 @@ import org.apache.iotdb.isession.pool.ISessionPool;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.record.Tablet;
@@ -43,6 +43,7 @@ import org.powermock.reflect.Whitebox;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,6 +51,7 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -67,7 +69,14 @@ public class SessionPoolExceptionTest {
   public void setUp() {
     MockitoAnnotations.initMocks(this);
 
-    sessionPool = new SessionPool(Arrays.asList("host:11"), "user", "password", 10);
+    sessionPool =
+        new SessionPool.Builder()
+            .nodeUrls(Collections.singletonList("host:11"))
+            .user("user")
+            .password("password")
+            .maxSize(10)
+            .enableAutoFetch(false)
+            .build();
     ConcurrentLinkedDeque<ISession> queue = new ConcurrentLinkedDeque<>();
     queue.add(session);
     Whitebox.setInternalState(sessionPool, "queue", queue);
@@ -261,6 +270,16 @@ public class SessionPoolExceptionTest {
       sessionPool.insertRecords(deviceIds, timeList, measurementsList, typesList, valuesList);
     } catch (IoTDBConnectionException e) {
       assertTrue(e instanceof IoTDBConnectionException);
+    }
+  }
+
+  @Test
+  public void testEmptyNodeUrls() {
+    try {
+      ISessionPool failedSession = new SessionPool(Collections.emptyList(), "root", "root", 1);
+      fail();
+    } catch (IllegalArgumentException e) {
+      assertEquals("nodeUrls shouldn't be empty.", e.getMessage());
     }
   }
 }

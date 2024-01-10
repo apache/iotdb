@@ -31,7 +31,7 @@ import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.operator.process.SortOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.join.RowBasedTimeJoinOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.join.FullOuterTimeJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.DescTimeComparator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.SingleColumnMerger;
@@ -45,8 +45,8 @@ import org.apache.iotdb.db.storageengine.dataregion.read.reader.series.SeriesRea
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -81,9 +81,12 @@ public class SortOperatorTest {
 
   private int dataNodeId;
 
+  private int maxTsBlockSizeInBytes;
+
   @Before
   public void setUp() throws MetadataException, IOException, WriteProcessException {
     dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    maxTsBlockSizeInBytes = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
     IoTDBDescriptor.getInstance().getConfig().setDataNodeId(0);
     TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(200);
     SeriesReaderTestUtil.setUp(
@@ -94,6 +97,7 @@ public class SortOperatorTest {
   public void tearDown() throws IOException {
     SeriesReaderTestUtil.tearDown(seqResources, unSeqResources);
     IoTDBDescriptor.getInstance().getConfig().setDataNodeId(dataNodeId);
+    TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(maxTsBlockSizeInBytes);
   }
 
   // ------------------------------------------------------------------------------------------------
@@ -127,7 +131,7 @@ public class SortOperatorTest {
       PlanNodeId planNodeId2 = new PlanNodeId("2");
       driverContext.addOperatorContext(2, planNodeId2, SeriesScanOperator.class.getSimpleName());
       driverContext.addOperatorContext(
-          3, new PlanNodeId("3"), RowBasedTimeJoinOperator.class.getSimpleName());
+          3, new PlanNodeId("3"), FullOuterTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(4, new PlanNodeId("4"), SortOperator.class.getSimpleName());
 
       MeasurementPath measurementPath1 =
@@ -162,8 +166,8 @@ public class SortOperatorTest {
       List<TSDataType> tsDataTypes =
           new LinkedList<>(Arrays.asList(TSDataType.INT32, TSDataType.INT32));
 
-      RowBasedTimeJoinOperator timeJoinOperator1 =
-          new RowBasedTimeJoinOperator(
+      FullOuterTimeJoinOperator timeJoinOperator1 =
+          new FullOuterTimeJoinOperator(
               driverContext.getOperatorContexts().get(2),
               Arrays.asList(seriesScanOperator1, seriesScanOperator2),
               timeOrdering,
@@ -228,26 +232,31 @@ public class SortOperatorTest {
   // with data spilling
   @Test
   public void sortOperatorSpillingTest() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setSortBufferSize(5000);
-    SortOperator root = (SortOperator) genSortOperator(Ordering.ASC, true);
-    int lastValue = -1;
-    int count = 0;
-    while (root.isBlocked().isDone() && root.hasNext()) {
-      TsBlock tsBlock = root.next();
-      if (tsBlock == null) continue;
-      for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-        long time = tsBlock.getTimeByIndex(i);
-        int v1 = tsBlock.getColumn(0).getInt(i);
-        int v2 = tsBlock.getColumn(1).getInt(i);
-        assertTrue(lastValue == -1 || lastValue < v1);
-        assertEquals(getValue(time), v1);
-        assertEquals(v1, v2);
-        lastValue = v1;
-        count++;
+    long sortBufferSize = IoTDBDescriptor.getInstance().getConfig().getSortBufferSize();
+    try {
+      IoTDBDescriptor.getInstance().getConfig().setSortBufferSize(5000);
+      SortOperator root = (SortOperator) genSortOperator(Ordering.ASC, true);
+      int lastValue = -1;
+      int count = 0;
+      while (root.isBlocked().isDone() && root.hasNext()) {
+        TsBlock tsBlock = root.next();
+        if (tsBlock == null) continue;
+        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+          long time = tsBlock.getTimeByIndex(i);
+          int v1 = tsBlock.getColumn(0).getInt(i);
+          int v2 = tsBlock.getColumn(1).getInt(i);
+          assertTrue(lastValue == -1 || lastValue < v1);
+          assertEquals(getValue(time), v1);
+          assertEquals(v1, v2);
+          lastValue = v1;
+          count++;
+        }
       }
+      root.close();
+      assertEquals(500, count);
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setSortBufferSize(sortBufferSize);
     }
-    root.close();
-    assertEquals(count, 500);
   }
 
   // no data spilling
@@ -271,6 +280,6 @@ public class SortOperatorTest {
       }
     }
     root.close();
-    assertEquals(count, 500);
+    assertEquals(500, count);
   }
 }

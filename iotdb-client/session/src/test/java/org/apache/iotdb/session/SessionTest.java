@@ -28,8 +28,8 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
@@ -49,11 +49,13 @@ import java.io.IOException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 
 public class SessionTest {
@@ -65,7 +67,14 @@ public class SessionTest {
   @Before
   public void setUp() throws IoTDBConnectionException, StatementExecutionException {
     MockitoAnnotations.initMocks(this);
-    session = new Session("host", 11, "user", "pwd");
+    session =
+        new Session.Builder()
+            .host("host")
+            .port(11)
+            .username("user")
+            .password("pwd")
+            .enableAutoFetch(false)
+            .build();
     Whitebox.setInternalState(session, "defaultSessionConnection", sessionConnection);
     TSQueryTemplateResp resp = new TSQueryTemplateResp();
     resp.setMeasurements(Arrays.asList("root.sg1.d1.s1"));
@@ -1179,5 +1188,15 @@ public class SessionTest {
   public void testGetBackupConfiguration()
       throws IoTDBConnectionException, StatementExecutionException {
     session.getBackupConfiguration();
+  }
+
+  @Test
+  public void testEmptyNodeUrls() {
+    try {
+      ISession failedSession = new Session(Collections.emptyList(), "root", "root");
+      fail();
+    } catch (IllegalArgumentException e) {
+      assertEquals("nodeUrls shouldn't be empty.", e.getMessage());
+    }
   }
 }

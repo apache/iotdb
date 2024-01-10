@@ -94,6 +94,7 @@ public class IoTDBDynamicTableFactory
     optionalOptions.add(Options.CDC_PORT);
     optionalOptions.add(Options.SQL);
     optionalOptions.add(Options.PATTERN);
+    optionalOptions.add(Options.CDC_MODE);
 
     return optionalOptions;
   }
@@ -201,6 +202,12 @@ public class IoTDBDynamicTableFactory
             || sqlLower.contains("last_value(")
             || sqlLower.contains("max_time(")
             || sqlLower.contains("min_time(")
+            || sqlLower.contains("stddev(")
+            || sqlLower.contains("stddev_pop(")
+            || sqlLower.contains("stddev_samp(")
+            || sqlLower.contains("variance(")
+            || sqlLower.contains("var_pop(")
+            || sqlLower.contains("var_samp(")
             || sqlLower.contains("group")
             || sqlLower.contains("where")
             || sqlLower.contains("create")

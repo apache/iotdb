@@ -25,7 +25,6 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -52,7 +51,7 @@ import java.util.Set;
 import java.util.function.Function;
 
 public class LoadSingleTsFileNode extends WritePlanNode {
-  private static final Logger logger = LoggerFactory.getLogger(LoadSingleTsFileNode.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(LoadSingleTsFileNode.class);
 
   private final File tsFile;
   private final TsFileResource resource;
@@ -98,13 +97,6 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     } else {
       needDecodeTsFile = !isDispatchedToLocal(new HashSet<>(partitionFetcher.apply(slotList)));
     }
-
-    PipeAgent.runtime().assignProgressIndexForTsFileLoad(resource);
-
-    // we serialize the resource file even if the tsfile does not need to be decoded
-    // or the resource file is already existed because we need to serialize the
-    // progress index of the tsfile
-    resource.serialize();
 
     return needDecodeTsFile;
   }
@@ -219,7 +211,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
             new File(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX).toPath());
       }
     } catch (IOException e) {
-      logger.warn(String.format("Delete After Loading %s error.", tsFile), e);
+      LOGGER.warn("Delete After Loading {} error.", tsFile, e);
     }
   }
 

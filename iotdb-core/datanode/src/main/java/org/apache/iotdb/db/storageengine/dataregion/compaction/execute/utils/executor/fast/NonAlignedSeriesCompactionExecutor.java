@@ -20,12 +20,14 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.FileElement;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.NonAlignedPageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.PageElement;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.reader.CompactionChunkReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -40,7 +42,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -142,7 +143,8 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
             iChunkMetadataList,
             getModificationsFromCache(
                 resource,
-                new PartialPath(deviceId, iChunkMetadataList.get(0).getMeasurementUid())));
+                CompactionPathUtils.getPath(
+                    deviceId, iChunkMetadataList.get(0).getMeasurementUid())));
         if (iChunkMetadataList.isEmpty()) {
           // all chunks has been deleted in this file, just remove it
           removeFile(fileElement);
@@ -167,7 +169,7 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
   void deserializeChunkIntoPageQueue(ChunkMetadataElement chunkMetadataElement) throws IOException {
     updateSummary(chunkMetadataElement, ChunkStatus.DESERIALIZE_CHUNK);
     Chunk chunk = chunkMetadataElement.chunk;
-    ChunkReader chunkReader = new ChunkReader(chunk);
+    CompactionChunkReader chunkReader = new CompactionChunkReader(chunk);
     ByteBuffer chunkDataBuffer = chunk.getData();
     ChunkHeader chunkHeader = chunk.getHeader();
     while (chunkDataBuffer.remaining() > 0) {
@@ -182,7 +184,7 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
 
       boolean isLastPage = chunkDataBuffer.remaining() <= 0;
       pageQueue.add(
-          new PageElement(
+          new NonAlignedPageElement(
               pageHeader,
               compressedPageData,
               chunkReader,
@@ -234,9 +236,11 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
    * ALL_DELETED means that all data on this page has been deleted.
    */
   protected ModifiedStatus isPageModified(PageElement pageElement) {
-    long startTime = pageElement.startTime;
-    long endTime = pageElement.pageHeader.getEndTime();
+    long startTime = pageElement.getStartTime();
+    long endTime = pageElement.getEndTime();
     return checkIsModified(
-        startTime, endTime, pageElement.chunkMetadataElement.chunkMetadata.getDeleteIntervalList());
+        startTime,
+        endTime,
+        pageElement.getChunkMetadataElement().chunkMetadata.getDeleteIntervalList());
   }
 }

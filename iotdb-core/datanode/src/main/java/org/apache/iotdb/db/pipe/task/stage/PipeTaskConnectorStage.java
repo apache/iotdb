@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.pipe.task.stage;
 
-import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
-import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutorManager;
-import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskConnectorRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.task.stage.PipeTaskStage;
+import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtaskManager;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -29,20 +31,29 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 public class PipeTaskConnectorStage extends PipeTaskStage {
 
+  private final String pipeName;
+  private final int dataRegionId;
   protected final PipeParameters pipeConnectorParameters;
 
   protected String connectorSubtaskId;
 
   public PipeTaskConnectorStage(
-      String pipeName, long creationTime, PipeParameters pipeConnectorParameters) {
+      String pipeName,
+      long creationTime,
+      PipeParameters pipeConnectorParameters,
+      TConsensusGroupId dataRegionId,
+      PipeConnectorSubtaskExecutor executor) {
+    this.pipeName = pipeName;
+    this.dataRegionId = dataRegionId.getId();
     this.pipeConnectorParameters = pipeConnectorParameters;
 
     connectorSubtaskId =
         PipeConnectorSubtaskManager.instance()
             .register(
-                PipeSubtaskExecutorManager.getInstance().getConnectorSubtaskExecutor(),
+                executor,
                 pipeConnectorParameters,
-                new PipeTaskRuntimeEnvironment(pipeName, creationTime));
+                new PipeTaskConnectorRuntimeEnvironment(
+                    this.pipeName, creationTime, this.dataRegionId));
   }
 
   @Override
@@ -62,7 +73,7 @@ public class PipeTaskConnectorStage extends PipeTaskStage {
 
   @Override
   public void dropSubtask() throws PipeException {
-    PipeConnectorSubtaskManager.instance().deregister(connectorSubtaskId);
+    PipeConnectorSubtaskManager.instance().deregister(pipeName, dataRegionId, connectorSubtaskId);
   }
 
   public BoundedBlockingPendingQueue<Event> getPipeConnectorPendingQueue() {

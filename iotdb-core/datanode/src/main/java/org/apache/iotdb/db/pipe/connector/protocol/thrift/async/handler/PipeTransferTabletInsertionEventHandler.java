@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
-import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -33,39 +34,27 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Optional;
-
 public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTransferResp>
     implements AsyncMethodCallback<E> {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeTransferTabletInsertionEventHandler.class);
 
-  private final long requestCommitId;
-  private final Event event;
-  private final TPipeTransferReq req;
+  protected final TabletInsertionEvent event;
+  protected final TPipeTransferReq req;
 
-  private final IoTDBThriftAsyncConnector connector;
+  protected final IoTDBThriftAsyncConnector connector;
 
   protected PipeTransferTabletInsertionEventHandler(
-      long requestCommitId,
-      Event event,
-      TPipeTransferReq req,
-      IoTDBThriftAsyncConnector connector) {
-    this.requestCommitId = requestCommitId;
+      TabletInsertionEvent event, TPipeTransferReq req, IoTDBThriftAsyncConnector connector) {
     this.event = event;
     this.req = req;
     this.connector = connector;
 
-    Optional.ofNullable(event)
-        .ifPresent(
-            e -> {
-              if (e instanceof EnrichedEvent) {
-                ((EnrichedEvent) e)
-                    .increaseReferenceCount(
-                        PipeTransferTabletInsertionEventHandler.class.getName());
-              }
-            });
+    if (this.event instanceof EnrichedEvent) {
+      ((EnrichedEvent) this.event)
+          .increaseReferenceCount(PipeTransferTabletInsertionEventHandler.class.getName());
+    }
   }
 
   public void transfer(AsyncPipeDataTransferServiceClient client) throws TException {
@@ -83,22 +72,31 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
       return;
     }
 
-    if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      connector.commit(
-          requestCommitId, event instanceof EnrichedEvent ? (EnrichedEvent) event : null);
+    final TSStatus status = response.getStatus();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (event instanceof EnrichedEvent) {
+        ((EnrichedEvent) event)
+            .decreaseReferenceCount(PipeTransferTabletInsertionEventHandler.class.getName(), true);
+      }
+      if (status.isSetRedirectNode()) {
+        updateLeaderCache(status);
+      }
     } else {
-      onError(new PipeException(response.getStatus().getMessage()));
+      onError(new PipeException(status.getMessage()));
     }
   }
+
+  protected abstract void updateLeaderCache(TSStatus status);
 
   @Override
   public void onError(Exception exception) {
     LOGGER.warn(
-        "Failed to transfer TabletInsertionEvent {} (requestCommitId={}).",
+        "Failed to transfer TabletInsertionEvent {} (committer key={}, commit id={}).",
         event,
-        requestCommitId,
+        event instanceof EnrichedEvent ? ((EnrichedEvent) event).getCommitterKey() : null,
+        event instanceof EnrichedEvent ? ((EnrichedEvent) event).getCommitId() : null,
         exception);
 
-    connector.addFailureEventToRetryQueue(requestCommitId, event);
+    connector.addFailureEventToRetryQueue(event);
   }
 }

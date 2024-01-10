@@ -24,7 +24,7 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import java.util.concurrent.TimeUnit;
 
 public class TimestampPrecisionUtils {
-  static String TIMESTAMP_PRECISION =
+  public static String TIMESTAMP_PRECISION =
       CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
   private static final boolean isTimestampPrecisionCheckEnabled =
       CommonDescriptor.getInstance().getConfig().isTimestampPrecisionCheckEnabled();

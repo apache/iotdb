@@ -26,8 +26,8 @@ import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -60,7 +60,7 @@ public class SchemaFetchScanOperatorTest {
 
     SchemaFetchScanOperator schemaFetchScanOperator =
         new SchemaFetchScanOperator(
-            null, null, patternTree, Collections.emptyMap(), schemaRegion, false);
+            null, null, patternTree, Collections.emptyMap(), schemaRegion, false, true);
 
     Assert.assertTrue(schemaFetchScanOperator.hasNext());
 
@@ -139,20 +139,20 @@ public class SchemaFetchScanOperatorTest {
             true);
     d2as2.setMeasurementAlias("status");
 
-    Mockito.when(
-            schemaRegion.fetchSchema(
-                new PartialPath("root.**.status"), Collections.emptyMap(), false))
-        .thenReturn(Arrays.asList(d1s2, d2as2, d2s2));
-    Mockito.when(
-            schemaRegion.fetchSchema(new PartialPath("root.**.s1"), Collections.emptyMap(), false))
-        .thenReturn(Arrays.asList(d1s1, d2as1, d2s1));
+    ClusterSchemaTree clusterSchemaTree = new ClusterSchemaTree();
+    clusterSchemaTree.appendSingleMeasurementPath(d1s2);
+    clusterSchemaTree.appendSingleMeasurementPath(d2as2);
+    clusterSchemaTree.appendSingleMeasurementPath(d2s2);
+    clusterSchemaTree.appendSingleMeasurementPath(d1s1);
+    clusterSchemaTree.appendSingleMeasurementPath(d2as1);
+    clusterSchemaTree.appendSingleMeasurementPath(d2s1);
 
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(new PartialPath("root.**.status"));
     patternTree.appendPathPattern(new PartialPath("root.**.s1"));
     patternTree.constructTree();
-    Mockito.when(schemaRegion.fetchSchema(patternTree, Collections.emptyMap(), false))
-        .thenReturn(Arrays.asList(d1s2, d2as2, d2s2, d1s1, d2as1, d2s1));
+    Mockito.when(schemaRegion.fetchSchema(patternTree, Collections.emptyMap(), false, true))
+        .thenReturn(clusterSchemaTree);
 
     return schemaRegion;
   }

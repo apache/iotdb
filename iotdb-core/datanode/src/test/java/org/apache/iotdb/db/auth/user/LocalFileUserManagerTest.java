@@ -20,8 +20,6 @@ package org.apache.iotdb.db.auth.user;
 
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
-import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.auth.user.LocalFileUserManager;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -184,51 +182,5 @@ public class LocalFileUserManagerTest {
     for (int i = 0; i < users.length - 1; i++) {
       assertEquals(users[i].getName(), usernames.get(i + 1));
     }
-  }
-
-  @Test
-  public void testPathCheckForUpgrade() throws AuthException, IllegalPathException {
-    manager.createUser("test", "pwssord", false);
-    manager.setPreVersion(true);
-
-    // turn to root.d.a
-    manager.grantPrivilegeToUser(
-        "test", new PartialPath("root.d.a"), PrivilegeType.READ_SCHEMA.ordinal(), false);
-    // turn to root.**
-    manager.grantPrivilegeToUser(
-        "test", new PartialPath("root.d*.a"), PrivilegeType.READ_DATA.ordinal(), false);
-    // turn to root.**
-    manager.grantPrivilegeToUser(
-        "test", new PartialPath("root.d*.a"), PrivilegeType.READ_SCHEMA.ordinal(), false);
-    // turn to root.**
-    manager.grantPrivilegeToUser(
-        "test", new PartialPath("root.*.a.b"), PrivilegeType.READ_SCHEMA.ordinal(), false);
-    // turn to root.ds.a.**
-    manager.grantPrivilegeToUser(
-        "test", new PartialPath("root.ds.a.b*"), PrivilegeType.READ_SCHEMA.ordinal(), false);
-    // turn to root.ds.a.b
-    manager.grantPrivilegeToUser(
-        "test", new PartialPath("root.ds.a.b"), PrivilegeType.READ_SCHEMA.ordinal(), false);
-    assertFalse(manager.getUser("test").getServiceReady());
-    // after this operation, the user has these privileges:
-    // root.d.a : read_schema
-    // root.** : read_data, read_schema
-    // root.ds.a.** :read_schema
-    // root.ds.a.b : read_schema
-    manager.checkAndRefreshPathPri();
-    Role role = manager.getUser("test");
-    assertTrue(role.getServiceReady());
-    assertEquals(4, role.getPathPrivilegeList().size());
-    manager.revokePrivilegeFromUser(
-        "test", new PartialPath("root.**"), PrivilegeType.READ_SCHEMA.ordinal());
-    manager.revokePrivilegeFromUser(
-        "test", new PartialPath("root.**"), PrivilegeType.READ_DATA.ordinal());
-    assertEquals(3, role.getPathPrivilegeList().size());
-    assertTrue(
-        role.checkPathPrivilege(
-            new PartialPath("root.ds.a.**"), PrivilegeType.READ_SCHEMA.ordinal()));
-    assertFalse(
-        role.checkPathPrivilege(
-            new PartialPath("root.ds.a.**"), PrivilegeType.READ_DATA.ordinal()));
   }
 }

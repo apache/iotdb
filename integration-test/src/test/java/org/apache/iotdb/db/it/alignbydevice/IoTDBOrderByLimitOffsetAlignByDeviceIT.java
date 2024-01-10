@@ -19,10 +19,15 @@
 package org.apache.iotdb.db.it.alignbydevice;
 
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.Statement;
@@ -31,6 +36,8 @@ import static org.apache.iotdb.db.it.alignbydevice.IoTDBOrderByWithAlignByDevice
 import static org.apache.iotdb.db.it.alignbydevice.IoTDBOrderByWithAlignByDeviceIT.insertData2;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBOrderByLimitOffsetAlignByDeviceIT {
 
   @BeforeClass

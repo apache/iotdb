@@ -29,7 +29,7 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
-import org.apache.iotdb.db.queryengine.execution.operator.process.join.RowBasedTimeJoinOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.join.FullOuterTimeJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.DescTimeComparator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.SingleColumnMerger;
@@ -41,8 +41,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOpt
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumn;
@@ -128,7 +128,8 @@ public class AlignedSeriesScanOperatorTest {
               alignedPath,
               Ordering.ASC,
               getDefaultSeriesScanOptions(alignedPath),
-              false);
+              false,
+              null);
       seriesScanOperator.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator
           .getOperatorContext()
@@ -214,7 +215,7 @@ public class AlignedSeriesScanOperatorTest {
       PlanNodeId planNodeId8 = new PlanNodeId("8");
       driverContext.addOperatorContext(8, planNodeId8, SeriesScanOperator.class.getSimpleName());
       driverContext.addOperatorContext(
-          9, new PlanNodeId("9"), RowBasedTimeJoinOperator.class.getSimpleName());
+          9, new PlanNodeId("9"), FullOuterTimeJoinOperator.class.getSimpleName());
       AlignedSeriesScanOperator seriesScanOperator1 =
           new AlignedSeriesScanOperator(
               driverContext.getOperatorContexts().get(0),
@@ -222,7 +223,8 @@ public class AlignedSeriesScanOperatorTest {
               alignedPath1,
               Ordering.ASC,
               getDefaultSeriesScanOptions(alignedPath1),
-              false);
+              false,
+              null);
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator1
           .getOperatorContext()
@@ -244,7 +246,8 @@ public class AlignedSeriesScanOperatorTest {
               alignedPath2,
               Ordering.ASC,
               getDefaultSeriesScanOptions(alignedPath2),
-              false);
+              false,
+              null);
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator2
           .getOperatorContext()
@@ -346,8 +349,8 @@ public class AlignedSeriesScanOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      RowBasedTimeJoinOperator timeJoinOperator =
-          new RowBasedTimeJoinOperator(
+      FullOuterTimeJoinOperator timeJoinOperator =
+          new FullOuterTimeJoinOperator(
               driverContext.getOperatorContexts().get(8),
               Arrays.asList(
                   seriesScanOperator1,
@@ -506,7 +509,7 @@ public class AlignedSeriesScanOperatorTest {
       PlanNodeId planNodeId8 = new PlanNodeId("8");
       driverContext.addOperatorContext(8, planNodeId8, SeriesScanOperator.class.getSimpleName());
       driverContext.addOperatorContext(
-          9, new PlanNodeId("9"), RowBasedTimeJoinOperator.class.getSimpleName());
+          9, new PlanNodeId("9"), FullOuterTimeJoinOperator.class.getSimpleName());
       AlignedSeriesScanOperator seriesScanOperator1 =
           new AlignedSeriesScanOperator(
               driverContext.getOperatorContexts().get(0),
@@ -514,7 +517,8 @@ public class AlignedSeriesScanOperatorTest {
               alignedPath1,
               Ordering.DESC,
               getDefaultSeriesScanOptions(alignedPath1),
-              false);
+              false,
+              null);
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator1
           .getOperatorContext()
@@ -536,7 +540,8 @@ public class AlignedSeriesScanOperatorTest {
               alignedPath2,
               Ordering.DESC,
               getDefaultSeriesScanOptions(alignedPath2),
-              false);
+              false,
+              null);
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator2
           .getOperatorContext()
@@ -637,8 +642,8 @@ public class AlignedSeriesScanOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      RowBasedTimeJoinOperator timeJoinOperator =
-          new RowBasedTimeJoinOperator(
+      FullOuterTimeJoinOperator timeJoinOperator =
+          new FullOuterTimeJoinOperator(
               driverContext.getOperatorContexts().get(8),
               Arrays.asList(
                   seriesScanOperator1,

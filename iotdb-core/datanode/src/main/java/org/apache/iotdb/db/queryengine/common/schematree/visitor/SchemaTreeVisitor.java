@@ -22,14 +22,22 @@ package org.apache.iotdb.db.queryengine.common.schematree.visitor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.tree.AbstractTreeVisitor;
+import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaMeasurementNode;
 import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaNode;
+import org.apache.iotdb.db.schemaengine.template.Template;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 
+import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
+
 public abstract class SchemaTreeVisitor<R> extends AbstractTreeVisitor<SchemaNode, R> {
+
+  private Map<Integer, Template> templateMap;
 
   protected SchemaTreeVisitor() {}
 
@@ -52,6 +60,10 @@ public abstract class SchemaTreeVisitor<R> extends AbstractTreeVisitor<SchemaNod
     return result;
   }
 
+  public void setTemplateMap(Map<Integer, Template> templateMap) {
+    this.templateMap = templateMap;
+  }
+
   @Override
   protected boolean shouldVisitSubtreeOfInternalMatchedNode(SchemaNode node) {
     return !node.isMeasurement();
@@ -64,6 +76,14 @@ public abstract class SchemaTreeVisitor<R> extends AbstractTreeVisitor<SchemaNod
 
   @Override
   protected SchemaNode getChild(SchemaNode parent, String childName) {
+    if (templateMap != null
+        && parent.isEntity()
+        && parent.getAsEntityNode().getTemplateId() != NON_TEMPLATE) {
+      Template template = templateMap.get(parent.getAsEntityNode().getTemplateId());
+      if (template != null && template.getSchema(childName) != null) {
+        return new SchemaMeasurementNode(childName, template.getSchema(childName));
+      }
+    }
     return parent.getChild(childName);
   }
 
@@ -97,6 +117,49 @@ public abstract class SchemaTreeVisitor<R> extends AbstractTreeVisitor<SchemaNod
 
   @Override
   protected Iterator<SchemaNode> getChildrenIterator(SchemaNode parent) {
-    return parent.getChildrenIterator();
+    if (templateMap != null
+        && parent.isEntity()
+        && parent.getAsEntityNode().getTemplateId() != NON_TEMPLATE) {
+      return new Iterator<SchemaNode>() {
+        private final Iterator<IMeasurementSchema> templateChildrenIterator =
+            templateMap
+                .get(parent.getAsEntityNode().getTemplateId())
+                .getSchemaMap()
+                .values()
+                .iterator();
+        private final Iterator<SchemaNode> directChildrenIterator = parent.getChildrenIterator();
+
+        private SchemaNode next = null;
+
+        @Override
+        public boolean hasNext() {
+          while (next == null) {
+            if (directChildrenIterator.hasNext()) {
+              next = directChildrenIterator.next();
+            } else if (templateChildrenIterator.hasNext()) {
+              IMeasurementSchema measurementSchema = templateChildrenIterator.next();
+              next =
+                  new SchemaMeasurementNode(
+                      measurementSchema.getMeasurementId(), measurementSchema);
+            } else {
+              return false;
+            }
+          }
+          return true;
+        }
+
+        @Override
+        public SchemaNode next() {
+          if (!hasNext()) {
+            throw new NoSuchElementException();
+          }
+          SchemaNode result = next;
+          next = null;
+          return result;
+        }
+      };
+    } else {
+      return parent.getChildrenIterator();
+    }
   }
 }

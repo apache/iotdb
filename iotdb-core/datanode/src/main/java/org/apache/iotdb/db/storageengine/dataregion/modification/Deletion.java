@@ -118,6 +118,10 @@ public class Deletion extends Modification implements Cloneable {
         new PartialPath(ReadWriteIOUtils.readString(stream)), 0, startTime, endTime);
   }
 
+  public long getSerializedSize() {
+    return Long.BYTES * 2 + Integer.BYTES + (long) getPathString().length() * Character.BYTES;
+  }
+
   @Override
   public boolean equals(Object obj) {
     if (this == obj) {

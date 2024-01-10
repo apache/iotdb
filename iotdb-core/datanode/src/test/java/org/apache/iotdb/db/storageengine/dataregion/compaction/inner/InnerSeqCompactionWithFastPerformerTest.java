@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -55,6 +56,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -101,6 +103,7 @@ public class InnerSeqCompactionWithFastPerformerTest {
     CompactionClearUtils.clearAllCompactionFiles();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
+    BloomFilterCache.getInstance().clear();
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanAllDir();
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(prevMaxDegreeOfIndexNode);
@@ -1110,10 +1113,7 @@ public class InnerSeqCompactionWithFastPerformerTest {
     pagePointsNum = new ArrayList<>();
     pagePointsNum.add(300L);
     chunkPagePointsNum.add(pagePointsNum);
-    Set<String> paths = new HashSet<>();
-    for (int i = 0; i < fullPaths.length; i++) {
-      paths.add(fullPaths[i]);
-    }
+    Set<String> paths = new HashSet<>(Arrays.asList(fullPaths));
 
     for (int i = 0; i < 5; i++) {
       TsFileResource tsFileResource =

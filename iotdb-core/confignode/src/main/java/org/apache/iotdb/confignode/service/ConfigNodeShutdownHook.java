@@ -46,6 +46,8 @@ public class ConfigNodeShutdownHook extends Thread {
 
   @Override
   public void run() {
+    LOGGER.info("ConfigNode exiting...");
+
     boolean isLeader = getConfigNodeInstance().getConfigManager().getConsensusManager().isLeader();
 
     try {

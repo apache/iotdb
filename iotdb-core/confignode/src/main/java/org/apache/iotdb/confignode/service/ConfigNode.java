@@ -41,6 +41,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.pipe.metric.PipeConfigNodeMetrics;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
@@ -128,15 +129,7 @@ public class ConfigNode implements ConfigNodeMBean {
 
         int configNodeId = CONF.getConfigNodeId();
         configManager.initConsensusManager();
-        while (configManager.getConsensusManager().getLeader() == null) {
-          LOGGER.info("Leader has not been elected yet, wait for 1 second");
-          try {
-            Thread.sleep(1000);
-          } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            LOGGER.warn("Unexpected interruption during waiting for leader election.");
-          }
-        }
+        waitForLeaderElected();
         setUpMetricService();
         // Notice: We always set up Seed-ConfigNode's RPC service lastly to ensure
         // that the external service is not provided until ConfigNode is fully available
@@ -178,6 +171,9 @@ public class ConfigNode implements ConfigNodeMBean {
         // Persistence system parameters after the consensusGroup is built,
         // or the consensusGroup will not be initialized successfully otherwise.
         SystemPropertiesUtils.storeSystemParameters();
+
+        // Wait for ConfigNode-leader elected before applying itself
+        waitForLeaderElected();
 
         // Seed-ConfigNode should apply itself when first start
         configManager
@@ -267,6 +263,8 @@ public class ConfigNode implements ConfigNodeMBean {
     MetricService.getInstance().addMetricSet(ThreadPoolMetrics.getInstance());
     initCpuMetrics();
     initSystemMetrics();
+    MetricService.getInstance()
+        .addMetricSet(new PipeConfigNodeMetrics(configManager.getPipeManager()));
   }
 
   private void initSystemMetrics() {
@@ -385,6 +383,18 @@ public class ConfigNode implements ConfigNodeMBean {
         new ConfigNodeRPCServiceProcessor(configManager);
     configNodeRPCService.initSyncedServiceImpl(configNodeRPCServiceProcessor);
     registerManager.register(configNodeRPCService);
+  }
+
+  private void waitForLeaderElected() {
+    while (!configManager.getConsensusManager().isLeaderExist()) {
+      LOGGER.info("Leader has not been elected yet, wait for 1 second");
+      try {
+        TimeUnit.SECONDS.sleep(1);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        LOGGER.warn("Unexpected interruption during waiting for leader election.");
+      }
+    }
   }
 
   /**

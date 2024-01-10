@@ -22,9 +22,10 @@ package org.apache.iotdb.db.pipe.event;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.db.pipe.progress.committer.PipeEventCommitManager;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.slf4j.Logger;
@@ -42,18 +43,33 @@ public abstract class EnrichedEvent implements Event {
 
   private final AtomicInteger referenceCount;
 
+  protected final String pipeName;
   protected final PipeTaskMeta pipeTaskMeta;
+
+  private String committerKey;
+  public static final long NO_COMMIT_ID = -1;
+  private long commitId = NO_COMMIT_ID;
 
   private final String pattern;
 
-  protected boolean isPatternParsed;
-  protected boolean isTimeParsed = true;
+  protected final long startTime;
+  protected final long endTime;
 
-  protected EnrichedEvent(PipeTaskMeta pipeTaskMeta, String pattern) {
+  protected boolean isPatternParsed;
+  protected boolean isTimeParsed;
+
+  private boolean shouldReportOnCommit = false;
+
+  protected EnrichedEvent(
+      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime) {
     referenceCount = new AtomicInteger(0);
+    this.pipeName = pipeName;
     this.pipeTaskMeta = pipeTaskMeta;
     this.pattern = pattern;
+    this.startTime = startTime;
+    this.endTime = endTime;
     isPatternParsed = getPattern().equals(PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE);
+    isTimeParsed = Long.MIN_VALUE == startTime && Long.MAX_VALUE == endTime;
   }
 
   /**
@@ -97,8 +113,9 @@ public abstract class EnrichedEvent implements Event {
       if (referenceCount.get() == 1) {
         isSuccessful = internallyDecreaseResourceReferenceCount(holderMessage);
         if (shouldReport) {
-          reportProgress();
+          shouldReportOnCommit = true;
         }
+        PipeEventCommitManager.getInstance().commit(this, committerKey);
       }
       final int newReferenceCount = referenceCount.decrementAndGet();
       if (newReferenceCount < 0) {
@@ -154,6 +171,10 @@ public abstract class EnrichedEvent implements Event {
     return referenceCount.get();
   }
 
+  public final String getPipeName() {
+    return pipeName;
+  }
+
   /**
    * Get the pattern of this event.
    *
@@ -161,6 +182,14 @@ public abstract class EnrichedEvent implements Event {
    */
   public final String getPattern() {
     return pattern == null ? PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE : pattern;
+  }
+
+  public final long getStartTime() {
+    return startTime;
+  }
+
+  public final long getEndTime() {
+    return endTime;
   }
 
   /**
@@ -171,12 +200,20 @@ public abstract class EnrichedEvent implements Event {
     isPatternParsed = true;
   }
 
+  public void skipParsingTime() {
+    isTimeParsed = true;
+  }
+
   public boolean shouldParsePatternOrTime() {
     return !isPatternParsed || !isTimeParsed;
   }
 
+  public boolean shouldParseTime() {
+    return !isTimeParsed;
+  }
+
   public abstract EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      PipeTaskMeta pipeTaskMeta, String pattern);
+      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime);
 
   public void reportException(PipeRuntimeException pipeRuntimeException) {
     if (pipeTaskMeta != null) {
@@ -187,4 +224,25 @@ public abstract class EnrichedEvent implements Event {
   }
 
   public abstract boolean isGeneratedByPipe();
+
+  public abstract boolean isEventTimeOverlappedWithTimeRange();
+
+  public void setCommitterKeyAndCommitId(String committerKey, long commitId) {
+    this.committerKey = committerKey;
+    this.commitId = commitId;
+  }
+
+  public String getCommitterKey() {
+    return committerKey;
+  }
+
+  public long getCommitId() {
+    return commitId;
+  }
+
+  public void onCommitted() {
+    if (shouldReportOnCommit) {
+      reportProgress();
+    }
+  }
 }

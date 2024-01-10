@@ -105,6 +105,10 @@ public class SchemaRegionConsensusImpl {
                                         TimeDuration.valueOf(
                                             CONF.getSchemaRatisConsensusRequestTimeoutMs(),
                                             TimeUnit.MILLISECONDS))
+                                    .setSlownessTimeout(
+                                        TimeDuration.valueOf(
+                                            CONF.getSchemaRatisConsensusRequestTimeoutMs() * 6,
+                                            TimeUnit.MILLISECONDS))
                                     .setFirstElectionTimeoutMin(
                                         TimeDuration.valueOf(
                                             CONF.getRatisFirstElectionTimeoutMinMs(),
@@ -142,6 +146,7 @@ public class SchemaRegionConsensusImpl {
                                     .build())
                             .setRead(
                                 RatisConfig.Read.newBuilder()
+                                    .setReadOption(RatisConfig.Read.Option.LINEARIZABLE)
                                     // use thrift connection timeout to unify read timeout
                                     .setReadTimeout(
                                         TimeDuration.valueOf(

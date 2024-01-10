@@ -22,9 +22,10 @@ import org.apache.iotdb.commons.schema.filter.impl.AndFilter;
 import org.apache.iotdb.commons.schema.filter.impl.DataTypeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
 import org.apache.iotdb.commons.schema.filter.impl.TagFilter;
+import org.apache.iotdb.commons.schema.filter.impl.TemplateFilter;
 import org.apache.iotdb.commons.schema.filter.impl.ViewTypeFilter;
 import org.apache.iotdb.commons.schema.view.ViewType;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class SchemaFilterFactory {
 
@@ -42,6 +43,10 @@ public class SchemaFilterFactory {
 
   public static SchemaFilter createViewTypeFilter(ViewType viewType) {
     return new ViewTypeFilter(viewType);
+  }
+
+  public static SchemaFilter createTemplateNameFilter(String templateName, boolean isEqual) {
+    return new TemplateFilter(templateName, isEqual);
   }
 
   public static SchemaFilter and(SchemaFilter left, SchemaFilter right) {

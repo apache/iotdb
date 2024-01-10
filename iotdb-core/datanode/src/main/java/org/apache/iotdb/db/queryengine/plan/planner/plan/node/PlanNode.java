@@ -20,6 +20,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 
 import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -41,9 +42,12 @@ public abstract class PlanNode implements IConsensusRequest {
 
   protected static final int NO_CHILD_ALLOWED = 0;
   protected static final int ONE_CHILD = 1;
+  protected static final int TWO_CHILDREN = 2;
   protected static final int CHILD_COUNT_NO_LIMIT = -1;
 
-  private PlanNodeId id;
+  protected PlanNodeId id;
+
+  protected boolean isGeneratedByPipe = false;
 
   protected PlanNode(PlanNodeId id) {
     requireNonNull(id, "id is null");
@@ -56,6 +60,14 @@ public abstract class PlanNode implements IConsensusRequest {
 
   public void setPlanNodeId(PlanNodeId id) {
     this.id = id;
+  }
+
+  public boolean isGeneratedByPipe() {
+    return isGeneratedByPipe;
+  }
+
+  public void markAsGeneratedByPipe() {
+    isGeneratedByPipe = true;
   }
 
   public abstract List<PlanNode> getChildren();
@@ -130,6 +142,21 @@ public abstract class PlanNode implements IConsensusRequest {
       ReadWriteIOUtils.write(planNodes.size(), stream);
       for (PlanNode planNode : planNodes) {
         planNode.serialize(stream);
+      }
+    }
+  }
+
+  public void serializeUseTemplate(DataOutputStream stream, TypeProvider typeProvider)
+      throws IOException {
+    serializeAttributes(stream);
+    id.serialize(stream);
+    List<PlanNode> planNodes = getChildren();
+    if (planNodes == null) {
+      ReadWriteIOUtils.write(0, stream);
+    } else {
+      ReadWriteIOUtils.write(planNodes.size(), stream);
+      for (PlanNode planNode : planNodes) {
+        planNode.serializeUseTemplate(stream, typeProvider);
       }
     }
   }

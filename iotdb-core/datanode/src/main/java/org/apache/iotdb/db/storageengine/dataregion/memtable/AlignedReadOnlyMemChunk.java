@@ -20,14 +20,15 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.MemAlignedChunkLoader;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
@@ -38,18 +39,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
-
   private final String timeChunkName;
 
   private final List<String> valueChunkNames;
 
   private final List<TSDataType> dataTypes;
-
-  // only used for limit and offset push down optimizer, if we select all columns from aligned
-  // device, we
-  // can use statistics to skip.
-  // it's only exact while using limit & offset push down
-  private boolean queryAllSensors;
 
   /**
    * The constructor for Aligned type.
@@ -60,9 +54,12 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
    * @throws QueryProcessException if there is unsupported data type.
    */
   public AlignedReadOnlyMemChunk(
-      IMeasurementSchema schema, TVList tvList, List<List<TimeRange>> deletionList)
+      QueryContext context,
+      IMeasurementSchema schema,
+      TVList tvList,
+      List<List<TimeRange>> deletionList)
       throws QueryProcessException {
-    super();
+    super(context);
     this.timeChunkName = schema.getMeasurementId();
     this.valueChunkNames = schema.getSubMeasurementsList();
     this.dataTypes = schema.getSubMeasurementsTSDataTypeList();
@@ -152,7 +149,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     }
     IChunkMetadata alignedChunkMetadata =
         new AlignedChunkMetadata(timeChunkMetadata, valueChunkMetadataList);
-    alignedChunkMetadata.setChunkLoader(new MemAlignedChunkLoader(this, queryAllSensors));
+    alignedChunkMetadata.setChunkLoader(new MemAlignedChunkLoader(context, this));
     alignedChunkMetadata.setVersion(Long.MAX_VALUE);
     cachedMetaData = alignedChunkMetadata;
   }
@@ -165,9 +162,5 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
   @Override
   public IPointReader getPointReader() {
     return tsBlock.getTsBlockAlignedRowIterator();
-  }
-
-  public void setQueryAllSensors(boolean queryAllSensors) {
-    this.queryAllSensors = queryAllSensors;
   }
 }

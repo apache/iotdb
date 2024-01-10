@@ -141,6 +141,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.MigrateRegionStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildPathsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowConfigNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowContinuousQueriesStatement;
@@ -199,8 +200,8 @@ import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.trigger.api.enums.TriggerType;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.TimeDuration;
@@ -222,6 +223,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
@@ -257,6 +259,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private static final String LIMIT_CONFIGURATION_ENABLED_ERROR_MSG =
       "Limit configuration is not enabled, please enable it first.";
+
+  private static final String NODE_NAME_IN_INTO_PATH_MATCHER = "([a-zA-Z0-9_${}\\u2E80-\\u9FFF]+)";
+  private static final Pattern NODE_NAME_IN_INTO_PATH_PATTERN =
+      Pattern.compile(NODE_NAME_IN_INTO_PATH_MATCHER);
 
   private static final String IGNORENULL = "IgnoreNull";
   private ZoneId zoneId;
@@ -708,8 +714,24 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private SchemaFilter parseDevicesWhereClause(IoTDBSqlParser.DevicesWhereClauseContext ctx) {
     // path contains filter
-    return SchemaFilterFactory.createPathContainsFilter(
-        parseStringLiteral(ctx.deviceContainsExpression().value.getText()));
+    if (ctx.deviceContainsExpression() != null) {
+      return SchemaFilterFactory.createPathContainsFilter(
+          parseStringLiteral(ctx.deviceContainsExpression().value.getText()));
+    } else {
+      String templateName = null;
+      boolean isEqual = true;
+      if (ctx.templateEqualExpression().operator_is() != null) {
+        if (ctx.templateEqualExpression().operator_not() != null) {
+          isEqual = false;
+        }
+      } else {
+        templateName = parseStringLiteral(ctx.templateEqualExpression().templateName.getText());
+        if (ctx.templateEqualExpression().OPERATOR_NEQ() != null) {
+          isEqual = false;
+        }
+      }
+      return SchemaFilterFactory.createTemplateNameFilter(templateName, isEqual);
+    }
   }
 
   // Count Devices ========================================================================
@@ -1667,12 +1689,21 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       fillComponent.setFillPolicy(FillPolicy.LINEAR);
     } else if (ctx.PREVIOUS() != null) {
       fillComponent.setFillPolicy(FillPolicy.PREVIOUS);
+
     } else if (ctx.constant() != null) {
       fillComponent.setFillPolicy(FillPolicy.VALUE);
       Literal fillValue = parseLiteral(ctx.constant());
       fillComponent.setFillValue(fillValue);
     } else {
       throw new SemanticException("Unknown FILL type.");
+    }
+    if (ctx.interval != null) {
+      if (fillComponent.getFillPolicy() != FillPolicy.PREVIOUS) {
+        throw new SemanticException(
+            "Only FILL(PREVIOUS) support specifying the time duration threshold.");
+      }
+      fillComponent.setTimeDurationThreshold(
+          DateTimeUtils.constructTimeDuration(ctx.interval.getText()));
     }
     return fillComponent;
   }
@@ -2006,7 +2037,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private static void checkNodeNameInIntoPath(String src) {
     // ${} are allowed
-    if (!TsFileConstant.NODE_NAME_IN_INTO_PATH_PATTERN.matcher(src).matches()) {
+    if (!NODE_NAME_IN_INTO_PATH_PATTERN.matcher(src).matches()) {
       throw new SemanticException(
           String.format(
               "%s is illegal, unquoted node name in select into clause can only consist of digits, characters, $, { and }",
@@ -2478,6 +2509,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   @Override
+  public Statement visitShowClusterId(IoTDBSqlParser.ShowClusterIdContext ctx) {
+    return new ShowClusterIdStatement();
+  }
+
+  @Override
   public Statement visitDropDatabase(IoTDBSqlParser.DropDatabaseContext ctx) {
     DeleteDatabaseStatement dropDatabaseStatement = new DeleteDatabaseStatement();
     List<IoTDBSqlParser.PrefixPathContext> prefixPathContexts = ctx.prefixPath();
@@ -2866,6 +2902,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       case SqlConstant.SUM:
       case SqlConstant.TIME_DURATION:
       case SqlConstant.MODE:
+      case SqlConstant.STDDEV:
+      case SqlConstant.STDDEV_POP:
+      case SqlConstant.STDDEV_SAMP:
+      case SqlConstant.VARIANCE:
+      case SqlConstant.VAR_POP:
+      case SqlConstant.VAR_SAMP:
         checkFunctionExpressionInputSize(
             functionExpression.getExpressionString(),
             functionExpression.getExpressions().size(),
@@ -2904,13 +2946,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private Expression parseRegularExpression(ExpressionContext context, boolean canUseFullPath) {
     return new RegularExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, canUseFullPath),
-        parseStringLiteral(context.STRING_LITERAL().getText()));
+        parseStringLiteral(context.STRING_LITERAL().getText()),
+        false);
   }
 
   private Expression parseLikeExpression(ExpressionContext context, boolean canUseFullPath) {
     return new LikeExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, canUseFullPath),
-        parseStringLiteral(context.STRING_LITERAL().getText()));
+        parseStringLiteral(context.STRING_LITERAL().getText()),
+        false);
   }
 
   private Expression parseIsNullExpression(ExpressionContext context, boolean canUseFullPath) {
@@ -3652,9 +3696,56 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else {
       getRegionIdStatement.setDevice(ctx.device.getText());
     }
-    if (ctx.time != null) {
-      long timestamp = parseTimeValue(ctx.time, CommonDateTimeUtils.currentTime());
-      getRegionIdStatement.setTimeStamp(timestamp);
+    getRegionIdStatement.setStartTimeStamp(-1L);
+    getRegionIdStatement.setEndTimeStamp(Long.MAX_VALUE);
+
+    if (ctx.timeRangeExpression != null) {
+      Expression timeRangeExpression = parseExpression(ctx.timeRangeExpression, true);
+      getRegionIdStatement = parseTimeRangeExpression(timeRangeExpression, getRegionIdStatement);
+    }
+
+    return getRegionIdStatement;
+  }
+
+  public GetRegionIdStatement parseTimeRangeExpression(
+      Expression timeRangeExpression, GetRegionIdStatement getRegionIdStatement) {
+    List<Expression> result = timeRangeExpression.getExpressions();
+    if (timeRangeExpression.getExpressionType() == ExpressionType.LOGIC_AND) {
+      getRegionIdStatement = parseTimeRangeExpression(result.get(0), getRegionIdStatement);
+      getRegionIdStatement = parseTimeRangeExpression(result.get(1), getRegionIdStatement);
+    } else if (result.get(0).getExpressionType() == ExpressionType.TIMESTAMP
+        && result.get(1) instanceof ConstantOperand
+        && ((ConstantOperand) result.get(1)).getDataType() == TSDataType.INT64) {
+      ExpressionType tmpType = timeRangeExpression.getExpressionType();
+      long timestamp = Long.parseLong(((ConstantOperand) result.get(1)).getValueString());
+      switch (tmpType) {
+        case EQUAL_TO:
+          getRegionIdStatement.setStartTimeStamp(
+              Math.max(getRegionIdStatement.getStartTimeStamp(), timestamp));
+          getRegionIdStatement.setEndTimeStamp(
+              Math.min(getRegionIdStatement.getEndTimeStamp(), timestamp));
+          break;
+        case GREATER_EQUAL:
+          getRegionIdStatement.setStartTimeStamp(
+              Math.max(getRegionIdStatement.getStartTimeStamp(), timestamp));
+          break;
+        case GREATER_THAN:
+          getRegionIdStatement.setStartTimeStamp(
+              Math.max(getRegionIdStatement.getStartTimeStamp(), timestamp + 1));
+          break;
+        case LESS_EQUAL:
+          getRegionIdStatement.setEndTimeStamp(
+              Math.min(getRegionIdStatement.getEndTimeStamp(), timestamp));
+          break;
+        case LESS_THAN:
+          getRegionIdStatement.setEndTimeStamp(
+              Math.min(getRegionIdStatement.getEndTimeStamp(), timestamp - 1));
+          break;
+        default:
+          throw new UnsupportedOperationException();
+      }
+    } else {
+      throw new SemanticException("Get region id statement‘ expression must be a time expression");
     }
     return getRegionIdStatement;
   }

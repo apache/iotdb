@@ -18,166 +18,193 @@
  */
 package org.apache.iotdb.tsfile.read.filter;
 
-import org.apache.iotdb.tsfile.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.file.metadata.IMetadata;
+import org.apache.iotdb.tsfile.file.metadata.statistics.LongStatistics;
+import org.apache.iotdb.tsfile.file.metadata.statistics.TimeStatistics;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilterApi;
+import org.apache.iotdb.tsfile.read.filter.factory.ValueFilterApi;
 
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.Serializable;
-
-import static org.apache.iotdb.tsfile.read.filter.operator.NotFilter.CONTAIN_NOT_ERR_MSG;
+import static org.apache.iotdb.tsfile.read.filter.FilterTestUtil.newAlignedMetadata;
+import static org.apache.iotdb.tsfile.read.filter.FilterTestUtil.newMetadata;
+import static org.apache.iotdb.tsfile.read.filter.operator.Not.CONTAIN_NOT_ERR_MSG;
+import static org.apache.iotdb.tsfile.read.filter.operator.ValueFilterOperators.CANNOT_PUSH_DOWN_MSG;
 import static org.junit.Assert.fail;
 
 public class StatisticsFilterTest {
 
-  private final Statistics<? extends Serializable> statistics1 =
-      Statistics.getStatsByType(TSDataType.INT64);
-  private final Statistics<? extends Serializable> statistics2 =
-      Statistics.getStatsByType(TSDataType.INT64);
-  private final Statistics<? extends Serializable> statistics3 =
-      Statistics.getStatsByType(TSDataType.INT64);
+  private IMetadata metadata1;
+  private IMetadata metadata2;
+  private IMetadata metadata3;
+
+  private IMetadata alignedMetadata1;
+  private IMetadata alignedMetadata2;
+  private IMetadata alignedMetadata3;
 
   @Before
   public void before() {
-    statistics1.update(1L, 1L);
-    statistics1.update(100L, 100L);
-    statistics2.update(101L, 101L);
-    statistics2.update(200L, 200L);
-    statistics3.update(10L, 10L);
+    LongStatistics statistic1 = new LongStatistics();
+    statistic1.update(1L, 1L);
+    statistic1.update(100L, 100L);
+
+    TimeStatistics timeStatistics1 = new TimeStatistics();
+    timeStatistics1.update(1L);
+    timeStatistics1.update(100L);
+
+    LongStatistics statistic2 = new LongStatistics();
+    statistic2.update(101L, 101L);
+    statistic2.update(200L, 200L);
+
+    TimeStatistics timeStatistics2 = new TimeStatistics();
+    timeStatistics2.update(101L);
+    timeStatistics2.update(200L);
+    timeStatistics2.update(201L);
+
+    LongStatistics statistic3 = new LongStatistics();
+    statistic3.update(10L, 10L);
+
+    metadata1 = newMetadata(statistic1);
+    metadata2 = newMetadata(statistic2);
+    metadata3 = newMetadata(statistic3);
+
+    alignedMetadata1 = newAlignedMetadata(timeStatistics1, statistic1);
+    alignedMetadata2 = newAlignedMetadata(timeStatistics2, statistic2);
+    alignedMetadata3 = newAlignedMetadata(timeStatistics1, null);
   }
 
   @Test
   public void testEq() {
-    Filter timeEq = TimeFilter.eq(10L);
-    Assert.assertTrue(timeEq.satisfy(statistics1));
-    Assert.assertFalse(timeEq.satisfy(statistics2));
-    Assert.assertFalse(timeEq.allSatisfy(statistics1));
-    Assert.assertFalse(timeEq.allSatisfy(statistics2));
-    Assert.assertTrue(timeEq.allSatisfy(statistics3));
+    Filter timeEq = TimeFilterApi.eq(10L);
+    Assert.assertFalse(timeEq.canSkip(metadata1));
+    Assert.assertTrue(timeEq.canSkip(metadata2));
+    Assert.assertFalse(timeEq.allSatisfy(metadata1));
+    Assert.assertFalse(timeEq.allSatisfy(metadata2));
+    Assert.assertTrue(timeEq.allSatisfy(metadata3));
 
-    Filter valueEq = ValueFilter.eq(101L);
-    Assert.assertFalse(valueEq.satisfy(statistics1));
-    Assert.assertTrue(valueEq.satisfy(statistics2));
-    Assert.assertFalse(valueEq.allSatisfy(statistics1));
-    Assert.assertFalse(valueEq.allSatisfy(statistics2));
-    Assert.assertFalse(valueEq.allSatisfy(statistics3));
+    Filter valueEq = ValueFilterApi.eq(101L);
+    Assert.assertTrue(valueEq.canSkip(metadata1));
+    Assert.assertFalse(valueEq.canSkip(metadata2));
+    Assert.assertFalse(valueEq.allSatisfy(metadata1));
+    Assert.assertFalse(valueEq.allSatisfy(metadata2));
+    Assert.assertFalse(valueEq.allSatisfy(metadata3));
   }
 
   @Test
   public void testNotEq() {
-    Filter timeNotEq = TimeFilter.notEq(10L);
-    Assert.assertTrue(timeNotEq.satisfy(statistics1));
-    Assert.assertTrue(timeNotEq.satisfy(statistics2));
-    Assert.assertFalse(timeNotEq.allSatisfy(statistics1));
-    Assert.assertTrue(timeNotEq.allSatisfy(statistics2));
-    Assert.assertFalse(timeNotEq.allSatisfy(statistics3));
+    Filter timeNotEq = TimeFilterApi.notEq(10L);
+    Assert.assertFalse(timeNotEq.canSkip(metadata1));
+    Assert.assertFalse(timeNotEq.canSkip(metadata2));
+    Assert.assertFalse(timeNotEq.allSatisfy(metadata1));
+    Assert.assertTrue(timeNotEq.allSatisfy(metadata2));
+    Assert.assertFalse(timeNotEq.allSatisfy(metadata3));
 
-    Filter valueNotEq = ValueFilter.notEq(101L);
-    Assert.assertTrue(valueNotEq.satisfy(statistics1));
-    Assert.assertTrue(valueNotEq.satisfy(statistics2));
-    Assert.assertTrue(valueNotEq.allSatisfy(statistics1));
-    Assert.assertFalse(valueNotEq.allSatisfy(statistics2));
-    Assert.assertTrue(valueNotEq.allSatisfy(statistics3));
+    Filter valueNotEq = ValueFilterApi.notEq(101L);
+    Assert.assertFalse(valueNotEq.canSkip(metadata1));
+    Assert.assertFalse(valueNotEq.canSkip(metadata2));
+    Assert.assertTrue(valueNotEq.allSatisfy(metadata1));
+    Assert.assertFalse(valueNotEq.allSatisfy(metadata2));
+    Assert.assertTrue(valueNotEq.allSatisfy(metadata3));
   }
 
   @Test
   public void testGt() {
-    Filter timeGt = TimeFilter.gt(10L);
-    Assert.assertTrue(timeGt.satisfy(statistics1));
-    Assert.assertTrue(timeGt.satisfy(statistics2));
-    Assert.assertFalse(timeGt.allSatisfy(statistics1));
-    Assert.assertTrue(timeGt.allSatisfy(statistics2));
+    Filter timeGt = TimeFilterApi.gt(10L);
+    Assert.assertFalse(timeGt.canSkip(metadata1));
+    Assert.assertFalse(timeGt.canSkip(metadata2));
+    Assert.assertFalse(timeGt.allSatisfy(metadata1));
+    Assert.assertTrue(timeGt.allSatisfy(metadata2));
 
-    Filter valueGt = ValueFilter.gt(100L);
-    Assert.assertFalse(valueGt.satisfy(statistics1));
-    Assert.assertTrue(valueGt.satisfy(statistics2));
-    Assert.assertFalse(valueGt.allSatisfy(statistics1));
-    Assert.assertTrue(valueGt.allSatisfy(statistics2));
+    Filter valueGt = ValueFilterApi.gt(100L);
+    Assert.assertTrue(valueGt.canSkip(metadata1));
+    Assert.assertFalse(valueGt.canSkip(metadata2));
+    Assert.assertFalse(valueGt.allSatisfy(metadata1));
+    Assert.assertTrue(valueGt.allSatisfy(metadata2));
   }
 
   @Test
   public void testGtEq() {
-    Filter timeGtEq = TimeFilter.gtEq(10L);
-    Assert.assertTrue(timeGtEq.satisfy(statistics1));
-    Assert.assertTrue(timeGtEq.satisfy(statistics2));
-    Assert.assertFalse(timeGtEq.allSatisfy(statistics1));
-    Assert.assertTrue(timeGtEq.allSatisfy(statistics2));
+    Filter timeGtEq = TimeFilterApi.gtEq(10L);
+    Assert.assertFalse(timeGtEq.canSkip(metadata1));
+    Assert.assertFalse(timeGtEq.canSkip(metadata2));
+    Assert.assertFalse(timeGtEq.allSatisfy(metadata1));
+    Assert.assertTrue(timeGtEq.allSatisfy(metadata2));
 
-    Filter valueGtEq = ValueFilter.gtEq(100L);
-    Assert.assertTrue(valueGtEq.satisfy(statistics1));
-    Assert.assertTrue(valueGtEq.satisfy(statistics2));
-    Assert.assertFalse(valueGtEq.allSatisfy(statistics1));
-    Assert.assertTrue(valueGtEq.allSatisfy(statistics2));
+    Filter valueGtEq = ValueFilterApi.gtEq(100L);
+    Assert.assertFalse(valueGtEq.canSkip(metadata1));
+    Assert.assertFalse(valueGtEq.canSkip(metadata2));
+    Assert.assertFalse(valueGtEq.allSatisfy(metadata1));
+    Assert.assertTrue(valueGtEq.allSatisfy(metadata2));
   }
 
   @Test
   public void testLt() {
-    Filter timeLt = TimeFilter.lt(101L);
-    Assert.assertTrue(timeLt.satisfy(statistics1));
-    Assert.assertFalse(timeLt.satisfy(statistics2));
-    Assert.assertTrue(timeLt.allSatisfy(statistics1));
-    Assert.assertFalse(timeLt.allSatisfy(statistics2));
+    Filter timeLt = TimeFilterApi.lt(101L);
+    Assert.assertFalse(timeLt.canSkip(metadata1));
+    Assert.assertTrue(timeLt.canSkip(metadata2));
+    Assert.assertTrue(timeLt.allSatisfy(metadata1));
+    Assert.assertFalse(timeLt.allSatisfy(metadata2));
 
-    Filter valueLt = ValueFilter.lt(11L);
-    Assert.assertTrue(valueLt.satisfy(statistics1));
-    Assert.assertFalse(valueLt.satisfy(statistics2));
-    Assert.assertFalse(valueLt.allSatisfy(statistics1));
-    Assert.assertFalse(valueLt.allSatisfy(statistics2));
+    Filter valueLt = ValueFilterApi.lt(11L);
+    Assert.assertFalse(valueLt.canSkip(metadata1));
+    Assert.assertTrue(valueLt.canSkip(metadata2));
+    Assert.assertFalse(valueLt.allSatisfy(metadata1));
+    Assert.assertFalse(valueLt.allSatisfy(metadata2));
   }
 
   @Test
   public void testLtEq() {
-    Filter timeLtEq = TimeFilter.ltEq(101L);
-    Assert.assertTrue(timeLtEq.satisfy(statistics1));
-    Assert.assertTrue(timeLtEq.satisfy(statistics2));
+    Filter timeLtEq = TimeFilterApi.ltEq(101L);
+    Assert.assertFalse(timeLtEq.canSkip(metadata1));
+    Assert.assertFalse(timeLtEq.canSkip(metadata2));
 
-    Filter valueLtEq = ValueFilter.ltEq(11L);
-    Assert.assertTrue(valueLtEq.satisfy(statistics1));
-    Assert.assertFalse(valueLtEq.satisfy(statistics2));
-    Assert.assertFalse(valueLtEq.allSatisfy(statistics1));
-    Assert.assertFalse(valueLtEq.allSatisfy(statistics2));
+    Filter valueLtEq = ValueFilterApi.ltEq(11L);
+    Assert.assertFalse(valueLtEq.canSkip(metadata1));
+    Assert.assertTrue(valueLtEq.canSkip(metadata2));
+    Assert.assertFalse(valueLtEq.allSatisfy(metadata1));
+    Assert.assertFalse(valueLtEq.allSatisfy(metadata2));
   }
 
   @Test
   public void testAndOr() {
-    Filter andFilter = FilterFactory.and(TimeFilter.gt(10L), ValueFilter.lt(50L));
-    Assert.assertTrue(andFilter.satisfy(statistics1));
-    Assert.assertFalse(andFilter.satisfy(statistics2));
+    Filter andFilter = FilterFactory.and(TimeFilterApi.gt(10L), ValueFilterApi.lt(50L));
+    Assert.assertFalse(andFilter.canSkip(metadata1));
+    Assert.assertTrue(andFilter.canSkip(metadata2));
 
-    Filter orFilter = FilterFactory.or(andFilter, TimeFilter.eq(200L));
-    Assert.assertTrue(orFilter.satisfy(statistics1));
-    Assert.assertTrue(orFilter.satisfy(statistics2));
+    Filter orFilter = FilterFactory.or(andFilter, TimeFilterApi.eq(200L));
+    Assert.assertFalse(orFilter.canSkip(metadata1));
+    Assert.assertFalse(orFilter.canSkip(metadata2));
   }
 
   @Test
   public void testNot() {
-    Filter timeNotEq = FilterFactory.not(TimeFilter.eq(10L));
+    Filter timeNotEq = FilterFactory.not(TimeFilterApi.eq(10L));
     try {
-      timeNotEq.satisfy(statistics1);
+      timeNotEq.canSkip(metadata1);
       fail();
     } catch (Exception e) {
       Assert.assertTrue(e.getMessage().contains(CONTAIN_NOT_ERR_MSG));
     }
     try {
-      timeNotEq.allSatisfy(statistics1);
+      timeNotEq.allSatisfy(metadata1);
       fail();
     } catch (Exception e) {
       Assert.assertTrue(e.getMessage().contains(CONTAIN_NOT_ERR_MSG));
     }
 
-    Filter valueNotEq = FilterFactory.not(ValueFilter.eq(101L));
+    Filter valueNotEq = FilterFactory.not(ValueFilterApi.eq(101L));
     try {
-      valueNotEq.satisfy(statistics1);
+      valueNotEq.canSkip(metadata1);
       fail();
     } catch (Exception e) {
       Assert.assertTrue(e.getMessage().contains(CONTAIN_NOT_ERR_MSG));
     }
     try {
-      valueNotEq.allSatisfy(statistics1);
+      valueNotEq.allSatisfy(metadata1);
       fail();
     } catch (Exception e) {
       Assert.assertTrue(e.getMessage().contains(CONTAIN_NOT_ERR_MSG));
@@ -186,20 +213,71 @@ public class StatisticsFilterTest {
 
   @Test
   public void testBetweenAnd() {
-    Filter timeBetweenAnd = TimeFilter.between(0, 20);
-    Assert.assertTrue(timeBetweenAnd.satisfy(statistics1));
-    Assert.assertFalse(timeBetweenAnd.satisfy(statistics2));
-    Assert.assertTrue(timeBetweenAnd.satisfy(statistics3));
-    Assert.assertFalse(timeBetweenAnd.allSatisfy(statistics1));
-    Assert.assertFalse(timeBetweenAnd.allSatisfy(statistics2));
-    Assert.assertTrue(timeBetweenAnd.allSatisfy(statistics3));
+    Filter timeBetweenAnd = TimeFilterApi.between(0L, 20L);
+    Assert.assertFalse(timeBetweenAnd.canSkip(metadata1));
+    Assert.assertTrue(timeBetweenAnd.canSkip(metadata2));
+    Assert.assertFalse(timeBetweenAnd.canSkip(metadata3));
+    Assert.assertFalse(timeBetweenAnd.allSatisfy(metadata1));
+    Assert.assertFalse(timeBetweenAnd.allSatisfy(metadata2));
+    Assert.assertTrue(timeBetweenAnd.allSatisfy(metadata3));
 
-    Filter timeNotBetweenAnd = TimeFilter.notBetween(0, 20);
-    Assert.assertTrue(timeNotBetweenAnd.satisfy(statistics1));
-    Assert.assertTrue(timeNotBetweenAnd.satisfy(statistics2));
-    Assert.assertFalse(timeNotBetweenAnd.satisfy(statistics3));
-    Assert.assertFalse(timeNotBetweenAnd.allSatisfy(statistics1));
-    Assert.assertTrue(timeNotBetweenAnd.allSatisfy(statistics2));
-    Assert.assertFalse(timeNotBetweenAnd.allSatisfy(statistics3));
+    Filter valueBetweenAnd = ValueFilterApi.between(0L, 20L);
+    Assert.assertFalse(valueBetweenAnd.canSkip(metadata1));
+    Assert.assertTrue(valueBetweenAnd.canSkip(metadata2));
+    Assert.assertFalse(valueBetweenAnd.canSkip(metadata3));
+    Assert.assertFalse(valueBetweenAnd.allSatisfy(metadata1));
+    Assert.assertFalse(valueBetweenAnd.allSatisfy(metadata2));
+    Assert.assertTrue(valueBetweenAnd.allSatisfy(metadata3));
+  }
+
+  @Test
+  public void testNotBetweenAnd() {
+    Filter timeNotBetweenAnd = TimeFilterApi.notBetween(0L, 20L);
+    Assert.assertFalse(timeNotBetweenAnd.canSkip(metadata1));
+    Assert.assertFalse(timeNotBetweenAnd.canSkip(metadata2));
+    Assert.assertTrue(timeNotBetweenAnd.canSkip(metadata3));
+    Assert.assertFalse(timeNotBetweenAnd.allSatisfy(metadata1));
+    Assert.assertTrue(timeNotBetweenAnd.allSatisfy(metadata2));
+    Assert.assertFalse(timeNotBetweenAnd.allSatisfy(metadata3));
+
+    Filter valueNotBetweenAnd = ValueFilterApi.notBetween(0L, 20L);
+    Assert.assertFalse(valueNotBetweenAnd.canSkip(metadata1));
+    Assert.assertFalse(valueNotBetweenAnd.canSkip(metadata2));
+    Assert.assertTrue(valueNotBetweenAnd.canSkip(metadata3));
+    Assert.assertFalse(valueNotBetweenAnd.allSatisfy(metadata1));
+    Assert.assertTrue(valueNotBetweenAnd.allSatisfy(metadata2));
+    Assert.assertFalse(valueNotBetweenAnd.allSatisfy(metadata3));
+  }
+
+  @Test
+  public void testIsNull() {
+    Filter valueIsNull = ValueFilterApi.isNull(0);
+
+    try {
+      valueIsNull.canSkip(alignedMetadata1);
+      fail();
+    } catch (IllegalArgumentException e) {
+      Assert.assertTrue(e.getMessage().contains(CANNOT_PUSH_DOWN_MSG));
+    }
+
+    try {
+      valueIsNull.allSatisfy(alignedMetadata1);
+      fail();
+    } catch (IllegalArgumentException e) {
+      Assert.assertTrue(e.getMessage().contains(CANNOT_PUSH_DOWN_MSG));
+    }
+  }
+
+  @Test
+  public void testIsNotNull() {
+    Filter valueIsNotNull = ValueFilterApi.isNotNull(0);
+
+    Assert.assertFalse(valueIsNotNull.canSkip(alignedMetadata1));
+    Assert.assertFalse(valueIsNotNull.canSkip(alignedMetadata2));
+    Assert.assertTrue(valueIsNotNull.canSkip(alignedMetadata3));
+
+    Assert.assertTrue(valueIsNotNull.allSatisfy(alignedMetadata1));
+    Assert.assertFalse(valueIsNotNull.allSatisfy(alignedMetadata2));
+    Assert.assertFalse(valueIsNotNull.allSatisfy(alignedMetadata3));
   }
 }

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.tsfile.read.common;
 
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 /**
  * This class is just for reading batch data reversely. The data source is from page reader. For

@@ -64,11 +64,11 @@ public enum ThreadName {
   TIMED_FLUSH_UNSEQ_MEMTABLE("Timed-Flush-Unseq-Memtable"),
   // -------------------------- SchemaEngine --------------------------
   SCHEMA_REGION_RELEASE_PROCESSOR("SchemaRegion-Release-Task-Processor"),
-  SCHEMA_REGION_RECOVER_TASK("SchemaRegion-recover-task"),
-  SCHEMA_RELEASE_MONITOR("Schema-Release-Task-Monitor"),
-  SCHEMA_REGION_FLUSH_PROCESSOR("SchemaRegion-Flush-Task-Processor"),
-  SCHEMA_FLUSH_MONITOR("Schema-Flush-Task-Monitor"),
+  SCHEMA_REGION_RECOVER_TASK("SchemaRegion-Recover-Task"),
   SCHEMA_FORCE_MLOG("SchemaEngine-TimedForceMLog-Thread"),
+  PBTREE_RELEASE_MONITOR("PBTree-Release-Task-Monitor"),
+  PBTREE_FLUSH_MONITOR("PBTree-Flush-Monitor"),
+  PBTREE_WORKER_POOL("PBTree-Worker-Pool"),
   // -------------------------- ClientService --------------------------
   CLIENT_RPC_SERVICE("ClientRPC-Service"),
   CLIENT_RPC_PROCESSOR("ClientRPC-Processor"),
@@ -103,7 +103,7 @@ public enum ThreadName {
   IOT_CONSENSUS_RPC_PROCESSOR("IoTConsensusRPC-Processor"),
   ASYNC_DATANODE_IOT_CONSENSUS_CLIENT_POOL("AsyncDataNodeIoTConsensusServiceClientPool"),
   LOG_DISPATCHER("LogDispatcher"),
-  LOG_DISPATCHER_RETRY_EXECUTOR("LogDispatcherRetryExecutor"),
+  IOT_CONSENSUS_BACKGROUND_TASK_EXECUTOR("IoTConsensusBackgroundTaskExecutor"),
   // -------------------------- Ratis --------------------------
   // NOTICE: The thread name of ratis cannot be edited here!
   // We list the thread name here just for distinguishing what module the thread belongs to.
@@ -124,16 +124,19 @@ public enum ThreadName {
   GROUP_MANAGEMENT("groupManagement"),
   // -------------------------- Compute --------------------------
   PIPE_EXTRACTOR_DISRUPTOR("Pipe-Extractor-Disruptor"),
-  PIPE_ASSIGNER_EXECUTOR_POOL("Pipe-Assigner-Executor-Pool"),
-  PIPE_PROCESSOR_EXECUTOR_POOL("Pipe-Processor-Executor-Pool"),
-  PIPE_CONNECTOR_EXECUTOR_POOL("Pipe-Connector-Executor-Pool"),
+  PIPE_DATAREGION_ASSIGNER_EXECUTOR_POOL("Pipe-DataRegion-Assigner-Executor-Pool"),
+  PIPE_DATAREGION_PROCESSOR_EXECUTOR_POOL("Pipe-DataRegion-Processor-Executor-Pool"),
+  PIPE_DATAREGION_CONNECTOR_EXECUTOR_POOL("Pipe-DataRegion-Connector-Executor-Pool"),
+  PIPE_SCHEMAREGION_ASSIGNER_EXECUTOR_POOL("Pipe-SchemaRegion-Assigner-Executor-Pool"),
+  PIPE_SCHEMAREGION_PROCESSOR_EXECUTOR_POOL("Pipe-SchemaRegion-Processor-Executor-Pool"),
+  PIPE_SCHEMAREGION_CONNECTOR_EXECUTOR_POOL("Pipe-SchemaRegion-Connector-Executor-Pool"),
+  PIPE_CONFIGNODE_EXECUTOR_POOL("Pipe-ConfigNode-Executor-Pool"),
   PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL("Pipe-SubTask-Callback-Executor-Pool"),
   PIPE_RUNTIME_META_SYNCER("Pipe-Runtime-Meta-Syncer"),
   PIPE_RUNTIME_HEARTBEAT("Pipe-Runtime-Heartbeat"),
   PIPE_RUNTIME_PROCEDURE_SUBMITTER("Pipe-Runtime-Procedure-Submitter"),
   PIPE_RUNTIME_PERIODICAL_JOB_EXECUTOR("Pipe-Runtime-Periodical-Job-Executor"),
   PIPE_ASYNC_CONNECTOR_CLIENT_POOL("Pipe-Async-Connector-Client-Pool"),
-  PIPE_WAL_RESOURCE_TTL_CHECKER("Pipe-WAL-Resource-TTL-Checker"),
   PIPE_RECEIVER_AIR_GAP_AGENT("Pipe-Receiver-Air-Gap-Agent"),
   WINDOW_EVALUATION_SERVICE("WindowEvaluationTaskPoolManager"),
   STATEFUL_TRIGGER_INFORMATION_UPDATER("Stateful-Trigger-Information-Updater"),
@@ -178,7 +181,7 @@ public enum ThreadName {
   UNKOWN("UNKNOWN");
 
   private final String name;
-  private static final Logger log = LoggerFactory.getLogger(ThreadName.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ThreadName.class);
   private static final Set<ThreadName> queryThreadNames =
       new HashSet<>(
           Arrays.asList(
@@ -221,10 +224,10 @@ public enum ThreadName {
           Arrays.asList(
               SCHEMA_REGION_RELEASE_PROCESSOR,
               SCHEMA_REGION_RECOVER_TASK,
-              SCHEMA_RELEASE_MONITOR,
-              SCHEMA_REGION_FLUSH_PROCESSOR,
-              SCHEMA_FLUSH_MONITOR,
-              SCHEMA_FORCE_MLOG));
+              PBTREE_RELEASE_MONITOR,
+              SCHEMA_FORCE_MLOG,
+              PBTREE_FLUSH_MONITOR,
+              PBTREE_WORKER_POOL));
 
   private static final Set<ThreadName> clientServiceThreadNames =
       new HashSet<>(Arrays.asList(CLIENT_RPC_SERVICE, CLIENT_RPC_PROCESSOR));
@@ -236,7 +239,7 @@ public enum ThreadName {
               IOT_CONSENSUS_RPC_PROCESSOR,
               ASYNC_DATANODE_IOT_CONSENSUS_CLIENT_POOL,
               LOG_DISPATCHER,
-              LOG_DISPATCHER_RETRY_EXECUTOR));
+              IOT_CONSENSUS_BACKGROUND_TASK_EXECUTOR));
 
   private static final Set<ThreadName> ratisThreadNames =
       new HashSet<>(
@@ -260,16 +263,19 @@ public enum ThreadName {
       new HashSet<>(
           Arrays.asList(
               PIPE_EXTRACTOR_DISRUPTOR,
-              PIPE_ASSIGNER_EXECUTOR_POOL,
-              PIPE_PROCESSOR_EXECUTOR_POOL,
-              PIPE_CONNECTOR_EXECUTOR_POOL,
+              PIPE_DATAREGION_ASSIGNER_EXECUTOR_POOL,
+              PIPE_DATAREGION_PROCESSOR_EXECUTOR_POOL,
+              PIPE_DATAREGION_CONNECTOR_EXECUTOR_POOL,
+              PIPE_SCHEMAREGION_ASSIGNER_EXECUTOR_POOL,
+              PIPE_SCHEMAREGION_PROCESSOR_EXECUTOR_POOL,
+              PIPE_SCHEMAREGION_CONNECTOR_EXECUTOR_POOL,
+              PIPE_CONFIGNODE_EXECUTOR_POOL,
               PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL,
               PIPE_RUNTIME_META_SYNCER,
               PIPE_RUNTIME_HEARTBEAT,
               PIPE_RUNTIME_PROCEDURE_SUBMITTER,
               PIPE_RUNTIME_PERIODICAL_JOB_EXECUTOR,
               PIPE_ASYNC_CONNECTOR_CLIENT_POOL,
-              PIPE_WAL_RESOURCE_TTL_CHECKER,
               PIPE_RECEIVER_AIR_GAP_AGENT,
               WINDOW_EVALUATION_SERVICE,
               STATEFUL_TRIGGER_INFORMATION_UPDATER));
@@ -450,7 +456,7 @@ public enum ThreadName {
         }
       }
     }
-    log.debug("Unknown thread name: {}", givenThreadName);
+    LOGGER.debug("Unknown thread name: {}", givenThreadName);
     return ThreadName.UNKOWN;
   }
 }

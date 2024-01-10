@@ -33,10 +33,17 @@ public enum Metric {
   REGION_NUM("region_num"),
   REGION_NUM_IN_DATA_NODE("region_num_in_data_node"),
   REGION_GROUP_LEADER_NUM_IN_DATA_NODE("region_group_leader_num_in_data_node"),
+  SCATTER_WIDTH_NUM_IN_DATA_NODE("scatter_width_num_in_data_node"),
   SERIES_SLOT_NUM_IN_DATABASE("series_slot_num_in_database"),
   TIME_SLOT_NUM_IN_DATABASE("time_slot_num_in_database"),
   REGION_GROUP_NUM_IN_DATABASE("region_group_num_in_database"),
   REPLICATION_FACTOR("replication_factor"),
+  PROCEDURE_WORKER_THREAD_COUNT("procedure_worker_thread_count"),
+  PROCEDURE_ACTIVE_WORKER_THREAD_COUNT("procedure_active_worker_thread_count"),
+  PROCEDURE_QUEUE_LENGTH("procedure_queue_length"),
+  PROCEDURE_SUBMITTED_COUNT("procedure_submitted_count"),
+  PROCEDURE_FAILED_COUNT("procedure_failed_count"),
+  PROCEDURE_EXECUTION_TIME("procedure_execution_time"),
   // protocol related
   ENTRY("entry"),
   SESSION_IDLE_TIME("session_idle_time"),
@@ -64,6 +71,15 @@ public enum Metric {
   WAL_COST("wal_cost"),
   FLUSH_COST("flush_cost"),
   FLUSH_SUB_TASK_COST("flush_sub_task_cost"),
+  FLUSH_THRESHOLD("flush_threshold"),
+  REJECT_THRESHOLD("reject_threshold"),
+  TIMED_FLUSH_MEMTABLE_COUNT("timed_flush_memtable_count"),
+  WAL_FLUSH_MEMTABLE_COUNT("wal_flush_memtable_count"),
+  SERIES_FULL_FLUSH_MEMTABLE("series_full_flush_memtable"),
+  ACTIVE_MEMTABLE_COUNT("active_memtable_count"),
+  ACTIVE_TIME_PARTITION_COUNT("active_time_partition_count"),
+  MEMTABLE_LIVE_DURATION("memtable_live_duration"),
+
   // compaction related
   DATA_WRITTEN("data_written"),
   DATA_READ("data_read"),
@@ -85,6 +101,8 @@ public enum Metric {
   OPERATOR_EXECUTION_COST("operator_execution_cost"),
   OPERATOR_EXECUTION_COUNT("operator_execution_count"),
   SERIES_SCAN_COST("series_scan_cost"),
+  METRIC_LOAD_TIME_SERIES_METADATA("metric_load_time_series_metadata"),
+  QUERY_METADATA_COST("query_metadata_cost"),
   DISPATCHER("dispatcher"),
   QUERY_EXECUTION("query_execution"),
   AGGREGATION("aggregation"),
@@ -125,11 +143,18 @@ public enum Metric {
   PIPE_CONNECTOR_HEARTBEAT_TRANSFER("pipe_connector_heartbeat_transfer"),
   PIPE_HEARTBEAT_EVENT("pipe_heartbeat_event"),
   PIPE_WAL_INSERT_NODE_CACHE_HIT_RATE("pipe_wal_insert_node_cache_hit_rate"),
+  PIPE_WAL_INSERT_NODE_CACHE_HIT_COUNT("pipe_wal_insert_node_cache_hit_count"),
+  PIPE_WAL_INSERT_NODE_CACHE_REQUEST_COUNT("pipe_wal_insert_node_cache_request_count"),
   PIPE_EXTRACTOR_TSFILE_EPOCH_STATE("pipe_extractor_tsfile_epoch_state"),
   PIPE_MEM("pipe_mem"),
   PIPE_PINNED_MEMTABLE_COUNT("pipe_pinned_memtable_count"),
   PIPE_LINKED_TSFILE_COUNT("pipe_linked_tsfile_count"),
-  ;
+  PIPE_ASYNC_CONNECTOR_RETRY_EVENT_QUEUE_SIZE("pipe_async_connector_retry_event_queue_size"),
+  PIPE_EVENT_COMMIT_QUEUE_SIZE("pipe_event_commit_queue_size"),
+  PIPE_PROCEDURE("pipe_procedure"),
+  PIPE_TASK_STATUS("pipe_task_status"),
+  // load related
+  LOAD_MEM("load_mem");
 
   final String value;
 

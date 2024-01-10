@@ -27,7 +27,7 @@ import org.apache.iotdb.it.utils.TsFileGenerator;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -48,9 +48,11 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.assertNonQueryTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
@@ -63,6 +65,8 @@ import static org.apache.iotdb.db.it.utils.TestUtils.grantUserSystemPrivileges;
 public class IOTDBLoadTsFileIT {
   private static final Logger LOGGER = LoggerFactory.getLogger(IOTDBLoadTsFileIT.class);
   private static final long PARTITION_INTERVAL = 10 * 1000L;
+  private static final int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(300);
+  private static final long loadTsFileAnalyzeSchemaMemorySizeInBytes = 10 * 1024L;
 
   private File tmpDir;
 
@@ -70,6 +74,11 @@ public class IOTDBLoadTsFileIT {
   public void setUp() throws Exception {
     tmpDir = new File(Files.createTempDirectory("load").toUri());
     EnvFactory.getEnv().getConfig().getCommonConfig().setTimePartitionInterval(PARTITION_INTERVAL);
+    EnvFactory.getEnv()
+        .getConfig()
+        .getDataNodeConfig()
+        .setConnectionTimeoutInMS(connectionTimeoutInMS)
+        .setLoadTsFileAnalyzeSchemaMemorySizeInBytes(loadTsFileAnalyzeSchemaMemorySizeInBytes);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -119,7 +128,7 @@ public class IOTDBLoadTsFileIT {
             "create timeseries %s %s",
             new Path(device, schema.getMeasurementId(), true).getFullPath(),
             schema.getType().name());
-    LOGGER.info(String.format("schema execute: %s.", sql));
+    LOGGER.info("schema execute: {}", sql);
     return sql;
   }
 
@@ -130,7 +139,7 @@ public class IOTDBLoadTsFileIT {
       sql += (String.format("%s %s", schema.getMeasurementId(), schema.getType().name()));
       sql += (i == schemas.size() - 1 ? ")" : ",");
     }
-    LOGGER.info(String.format("schema execute: %s.", sql));
+    LOGGER.info("schema execute: {}.", sql);
     return sql;
   }
 
@@ -338,7 +347,7 @@ public class IOTDBLoadTsFileIT {
 
     assertNonQueryTestFail(
         String.format("load \"%s\" sgLevel=2", tmpDir.getAbsolutePath()),
-        "Auto create or verify schema error when executing statement LoadTsFileStatement",
+        "No permissions for this operation, please add privilege MANAGE_DATABASE",
         "test",
         "test123");
 
@@ -684,6 +693,36 @@ public class IOTDBLoadTsFileIT {
       statement.execute(String.format("load \"%s\"", tmpDir.getAbsolutePath()));
     } catch (IoTDBSQLException e) {
       Assert.assertTrue(e.getMessage().contains("Current system timestamp precision is ms"));
+    }
+  }
+
+  @Test
+  public void testLoadLocally() throws Exception {
+    registerSchema();
+
+    long writtenPoint1 = 0;
+    // device 0, device 1, sg 0
+    try (TsFileGenerator generator = new TsFileGenerator(new File(tmpDir, "1-0-0-0.tsfile"))) {
+      generator.registerTimeseries(
+          SchemaConfig.DEVICE_0, Collections.singletonList(SchemaConfig.MEASUREMENT_00));
+      generator.generateData(SchemaConfig.DEVICE_0, 1, PARTITION_INTERVAL / 10_000, false);
+      writtenPoint1 = generator.getTotalNumber();
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select count(*) from root.** group by level=1,2")) {
+        if (resultSet.next()) {
+          long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
+          Assert.assertEquals(writtenPoint1, sg1Count);
+        } else {
+          Assert.fail("This ResultSet is empty.");
+        }
+      }
     }
   }
 

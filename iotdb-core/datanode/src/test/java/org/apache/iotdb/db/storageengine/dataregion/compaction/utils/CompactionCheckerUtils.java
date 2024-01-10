@@ -35,12 +35,12 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -125,7 +125,7 @@ public class CompactionCheckerUtils {
           modifyChunkMetaData(chunkMetadataList, seriesModifications);
           for (ChunkMetadata chunkMetadata : chunkMetadataList) {
             Chunk chunk = reader.readMemChunk(chunkMetadata);
-            ChunkReader chunkReader = new ChunkReader(chunk, null);
+            ChunkReader chunkReader = new ChunkReader(chunk);
             while (chunkReader.hasNextSatisfiedPage()) {
               BatchData batchData = chunkReader.nextPageData();
               IBatchDataIterator batchDataIterator = batchData.getBatchDataIterator();
@@ -232,7 +232,7 @@ public class CompactionCheckerUtils {
                 ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
                 PageReader reader1 =
                     new PageReader(
-                        pageData, header.getDataType(), valueDecoder, defaultTimeDecoder, null);
+                        pageData, header.getDataType(), valueDecoder, defaultTimeDecoder);
                 BatchData batchData = reader1.getAllSatisfiedPageData();
                 long count = fullPathPointNum.getOrDefault(path.getFullPath(), 0L);
                 if (header.getChunkType() == MetaMarker.CHUNK_HEADER) {
@@ -426,8 +426,7 @@ public class CompactionCheckerUtils {
                       header.getDataType(), header.getChunkType() == MetaMarker.CHUNK_HEADER);
               ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
               PageReader reader1 =
-                  new PageReader(
-                      pageData, header.getDataType(), valueDecoder, defaultTimeDecoder, null);
+                  new PageReader(pageData, header.getDataType(), valueDecoder, defaultTimeDecoder);
               BatchData batchData = reader1.getAllSatisfiedPageData();
               if (header.getChunkType() == MetaMarker.CHUNK_HEADER) {
                 pagePointsNum.add(pageHeader.getNumOfValues());

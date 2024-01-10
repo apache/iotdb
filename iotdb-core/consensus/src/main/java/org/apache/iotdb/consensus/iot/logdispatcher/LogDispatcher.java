@@ -62,6 +62,7 @@ public class LogDispatcher {
   private final IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager;
   private ExecutorService executorService;
 
+  private final ConsensusReqReader reader;
   private boolean stopped = false;
 
   private final AtomicLong logEntriesFromWAL = new AtomicLong(0);
@@ -71,6 +72,7 @@ public class LogDispatcher {
       IoTConsensusServerImpl impl,
       IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager) {
     this.impl = impl;
+    this.reader = (ConsensusReqReader) impl.getStateMachine().read(new GetConsensusReqReaderPlan());
     this.selfPeerId = impl.getThisNode().getNodeId();
     this.clientManager = clientManager;
     this.threads =
@@ -153,6 +155,22 @@ public class LogDispatcher {
     return threads.stream().mapToLong(LogDispatcherThread::getCurrentSyncIndex).min();
   }
 
+  public synchronized OptionalLong getMinFlushedSyncIndex() {
+    return threads.stream().mapToLong(LogDispatcherThread::getLastFlushedSyncIndex).min();
+  }
+
+  public void checkAndFlushIndex() {
+    if (!threads.isEmpty()) {
+      threads.forEach(
+          thread -> {
+            IndexController controller = thread.getController();
+            controller.update(controller.getCurrentIndex(), true);
+          });
+      // do not set SafelyDeletedSearchIndex as it is Long.MAX_VALUE when replica is 1
+      reader.setSafelyDeletedSearchIndex(impl.getMinFlushedSyncIndex());
+    }
+  }
+
   public void offer(IndexedConsensusRequest request) {
     // we don't need to serialize and offer request when replicaNum is 1.
     if (!threads.isEmpty()) {
@@ -231,6 +249,10 @@ public class LogDispatcher {
 
     public long getCurrentSyncIndex() {
       return controller.getCurrentIndex();
+    }
+
+    public long getLastFlushedSyncIndex() {
+      return controller.getLastFlushedIndex();
     }
 
     public Peer getPeer() {
@@ -343,8 +365,10 @@ public class LogDispatcher {
     public void updateSafelyDeletedSearchIndex() {
       // update safely deleted search index to delete outdated info,
       // indicating that insert nodes whose search index are before this value can be deleted
-      // safely
-      long currentSafelyDeletedSearchIndex = impl.getCurrentSafelyDeletedSearchIndex();
+      // safely.
+      //
+      // Use minFlushedSyncIndex here to reserve the WAL which are not flushed and support kill -9.
+      long currentSafelyDeletedSearchIndex = impl.getMinFlushedSyncIndex();
       reader.setSafelyDeletedSearchIndex(currentSafelyDeletedSearchIndex);
       // notify
       if (impl.unblockWrite()) {

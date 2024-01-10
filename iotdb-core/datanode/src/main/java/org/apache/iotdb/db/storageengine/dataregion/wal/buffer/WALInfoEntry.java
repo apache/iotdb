@@ -77,6 +77,8 @@ public class WALInfoEntry extends WALEntry {
       case MEMORY_TABLE_SNAPSHOT:
         value.serializeToWAL(buffer);
         break;
+      case MEMORY_TABLE_CHECKPOINT:
+        throw new RuntimeException("Cannot serialize checkpoint to wal files.");
       default:
         throw new RuntimeException("Unsupported wal entry type " + type);
     }

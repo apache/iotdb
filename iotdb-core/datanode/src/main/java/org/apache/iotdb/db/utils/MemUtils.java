@@ -21,7 +21,7 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -41,7 +41,7 @@ import java.util.List;
 // Notice : methods in this class may not be accurate.
 public class MemUtils {
 
-  private static Logger logger = LoggerFactory.getLogger(MemUtils.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(MemUtils.class);
 
   private MemUtils() {}
 
@@ -205,7 +205,7 @@ public class MemUtils {
       memUsed += 8;
       memUsed += getStringMem(TSFileConfig.STRING_ENCODING);
     } else {
-      logger.error("Unsupported data point type");
+      LOGGER.error("Unsupported data point type");
     }
 
     return memUsed;

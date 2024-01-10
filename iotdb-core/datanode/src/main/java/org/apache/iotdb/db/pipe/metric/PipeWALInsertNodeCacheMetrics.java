@@ -67,6 +67,20 @@ public class PipeWALInsertNodeCacheMetrics implements IMetricSet {
         WALInsertNodeCache::getCacheHitRate,
         Tag.REGION.toString(),
         String.valueOf(dataRegionId));
+    metricService.createAutoGauge(
+        Metric.PIPE_WAL_INSERT_NODE_CACHE_HIT_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        cacheMap.get(dataRegionId),
+        WALInsertNodeCache::getCacheHitCount,
+        Tag.REGION.toString(),
+        String.valueOf(dataRegionId));
+    metricService.createAutoGauge(
+        Metric.PIPE_WAL_INSERT_NODE_CACHE_REQUEST_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        cacheMap.get(dataRegionId),
+        WALInsertNodeCache::getCacheRequestCount,
+        Tag.REGION.toString(),
+        String.valueOf(dataRegionId));
   }
 
   @Override
@@ -88,6 +102,16 @@ public class PipeWALInsertNodeCacheMetrics implements IMetricSet {
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.PIPE_WAL_INSERT_NODE_CACHE_HIT_RATE.toString(),
+        Tag.REGION.toString(),
+        String.valueOf(dataRegionId));
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PIPE_WAL_INSERT_NODE_CACHE_HIT_COUNT.toString(),
+        Tag.REGION.toString(),
+        String.valueOf(dataRegionId));
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PIPE_WAL_INSERT_NODE_CACHE_REQUEST_COUNT.toString(),
         Tag.REGION.toString(),
         String.valueOf(dataRegionId));
   }

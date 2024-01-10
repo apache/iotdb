@@ -19,17 +19,16 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
-import org.apache.iotdb.tsfile.access.Column;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
@@ -188,15 +187,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
    */
   protected void checkTimeAndMayFlushChunkToCurrentFile(long timestamp, int subTaskId)
       throws IOException {
-    if (timestamp <= lastTime[subTaskId]) {
-      throw new RuntimeException(
-          "Timestamp of the current point of "
-              + (deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId[subTaskId])
-              + " is "
-              + timestamp
-              + ", which should be later than the last time "
-              + lastTime[subTaskId]);
-    }
+    checkPreviousTimestamp(timestamp, subTaskId);
 
     int fileIndex = seqFileIndexArray[subTaskId];
     boolean hasFlushedCurrentChunk = false;

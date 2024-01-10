@@ -43,7 +43,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowPath
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -71,7 +71,8 @@ public class StatementMemorySourceVisitor
     return (context.getAnalysis().getSourceExpressions() == null
             || context.getAnalysis().getSourceExpressions().isEmpty())
         && (context.getAnalysis().getDeviceToSourceExpressions() == null
-            || context.getAnalysis().getDeviceToSourceExpressions().isEmpty());
+            || context.getAnalysis().getDeviceToSourceExpressions().isEmpty())
+        && context.getAnalysis().getDeviceTemplate() == null;
   }
 
   @Override

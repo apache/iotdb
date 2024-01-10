@@ -219,7 +219,11 @@ public class IoTDBStatement implements Statement {
       return executeSQL(sql);
     } catch (TException e) {
       if (reConnect()) {
-        throw new SQLException(String.format("Fail to execute %s", sql), e);
+        try {
+          return executeSQL(sql);
+        } catch (TException e2) {
+          throw new SQLException(e2);
+        }
       } else {
         throw new SQLException(
             String.format(
@@ -732,9 +736,16 @@ public class IoTDBStatement implements Statement {
     }
   }
 
-  private void reInit() {
+  private boolean reInit() throws SQLException {
     this.client = connection.getClient();
     this.sessionId = connection.getSessionId();
+    try {
+      this.stmtId = client.requestStatementId(sessionId);
+      return true;
+    } catch (Exception e) {
+      throw new SQLException(
+          "Cannot get id for statement after reconnecting. please check server status", e);
+    }
   }
 
   private void requestStmtId() throws SQLException {
@@ -755,9 +766,9 @@ public class IoTDBStatement implements Statement {
     }
   }
 
-  private boolean reConnect() {
+  private boolean reConnect() throws SQLException {
     boolean flag = connection.reconnect();
-    reInit();
+    flag = flag && reInit();
     return flag;
   }
 

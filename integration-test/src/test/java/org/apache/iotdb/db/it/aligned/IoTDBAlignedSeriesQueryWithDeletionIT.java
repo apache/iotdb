@@ -126,4 +126,32 @@ public class IoTDBAlignedSeriesQueryWithDeletionIT {
       fail(e.getMessage());
     }
   }
+
+  @Test
+  public void selectPartialDeletedColumns() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "insert into root.sg1.factory0.d1.group1(time, s_lat, s_son)"
+              + " aligned values (10,3.3,4.4),(20,13.3,14.4),(30,23.3,24.4),(40,43.3,44.4);");
+      statement.execute(
+          "insert into root.sg1.factory0.d1.group1(time, s_lat, s_son, s_boolean)"
+              + " aligned values (10,3.3,4.4, true),(20,13.3,14.4, false),(30,23.3,24.4, true),(40,43.3,44.4, true);");
+      ResultSet resultSet = statement.executeQuery("select * from root.sg1.factory0.d1.group1;");
+      int cnt = 0;
+      while (resultSet.next()) {
+        cnt++;
+      }
+      assertEquals(4, cnt);
+      statement.execute("delete from root.sg1.factory0.d1.group1.* where time < 30;");
+      resultSet = statement.executeQuery("select * from root.sg1.factory0.d1.group1;");
+      cnt = 0;
+      while (resultSet.next()) {
+        cnt++;
+      }
+      assertEquals(2, cnt);
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
+  }
 }

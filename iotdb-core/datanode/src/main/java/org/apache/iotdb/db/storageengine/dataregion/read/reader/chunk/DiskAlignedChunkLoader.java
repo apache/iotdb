@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
@@ -34,25 +36,22 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.CONSTRUCT_CHUNK_READER_ALIGNED_DISK;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.INIT_CHUNK_READER_ALIGNED_DISK;
 
 public class DiskAlignedChunkLoader implements IChunkLoader {
 
+  private final QueryContext context;
   private final boolean debug;
 
-  // only used for limit and offset push down optimizer, if we select all columns from aligned
-  // device, we
-  // can use statistics to skip.
-  // it's only exact while using limit & offset push down
-  private final boolean queryAllSensors;
+  private final TsFileResource resource;
 
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
 
-  public DiskAlignedChunkLoader(boolean debug, boolean queryAllSensors) {
-    this.debug = debug;
-    this.queryAllSensors = queryAllSensors;
+  public DiskAlignedChunkLoader(QueryContext context, TsFileResource resource) {
+    this.context = context;
+    this.debug = context.isDebug();
+    this.resource = resource;
   }
 
   @Override
@@ -66,32 +65,51 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
   }
 
   @Override
-  public IChunkReader getChunkReader(IChunkMetadata chunkMetaData, Filter timeFilter)
+  public IChunkReader getChunkReader(IChunkMetadata chunkMetaData, Filter globalTimeFilter)
       throws IOException {
     long t1 = System.nanoTime();
     try {
       AlignedChunkMetadata alignedChunkMetadata = (AlignedChunkMetadata) chunkMetaData;
+      ChunkMetadata timeChunkMetadata = (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata();
       Chunk timeChunk =
           ChunkCache.getInstance()
-              .get((ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata(), debug);
+              .get(
+                  new ChunkCache.ChunkCacheKey(
+                      resource.getTsFilePath(),
+                      resource.getTsFileID(),
+                      timeChunkMetadata.getOffsetOfChunkHeader(),
+                      resource.isClosed()),
+                  timeChunkMetadata.getDeleteIntervalList(),
+                  timeChunkMetadata.getStatistics(),
+                  debug);
       List<Chunk> valueChunkList = new ArrayList<>();
       for (IChunkMetadata valueChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
         valueChunkList.add(
             valueChunkMetadata == null
                 ? null
-                : ChunkCache.getInstance().get((ChunkMetadata) valueChunkMetadata, debug));
+                : ChunkCache.getInstance()
+                    .get(
+                        new ChunkCache.ChunkCacheKey(
+                            resource.getTsFilePath(),
+                            resource.getTsFileID(),
+                            valueChunkMetadata.getOffsetOfChunkHeader(),
+                            resource.isClosed()),
+                        valueChunkMetadata.getDeleteIntervalList(),
+                        valueChunkMetadata.getStatistics(),
+                        debug));
       }
 
       long t2 = System.nanoTime();
       IChunkReader chunkReader =
-          new AlignedChunkReader(timeChunk, valueChunkList, timeFilter, queryAllSensors);
+          new AlignedChunkReader(timeChunk, valueChunkList, globalTimeFilter);
       SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
           INIT_CHUNK_READER_ALIGNED_DISK, System.nanoTime() - t2);
 
       return chunkReader;
     } finally {
-      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-          CONSTRUCT_CHUNK_READER_ALIGNED_DISK, System.nanoTime() - t1);
+      long time = System.nanoTime() - t1;
+      context.getQueryStatistics().constructAlignedChunkReadersDiskCount.getAndAdd(1);
+      context.getQueryStatistics().constructAlignedChunkReadersDiskTime.getAndAdd(time);
     }
   }
 }

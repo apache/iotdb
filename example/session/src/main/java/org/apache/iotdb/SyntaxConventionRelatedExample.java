@@ -25,8 +25,8 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.slf4j.Logger;
@@ -42,7 +42,8 @@ import java.util.List;
  */
 public class SyntaxConventionRelatedExample {
 
-  private static Logger logger = LoggerFactory.getLogger(SyntaxConventionRelatedExample.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(SyntaxConventionRelatedExample.class);
 
   private static Session session;
   private static final String LOCAL_HOST = "127.0.0.1";
@@ -121,10 +122,10 @@ public class SyntaxConventionRelatedExample {
     try (SessionDataSet dataSet1 =
         session.executeRawDataQuery(paths, startTime, endTime, timeOut)) {
 
-      logger.info("columnNames = {}", dataSet1.getColumnNames());
+      LOGGER.info("columnNames = {}", dataSet1.getColumnNames());
       dataSet1.setFetchSize(1024);
       while (dataSet1.hasNext()) {
-        logger.info("data = {}", dataSet1.next());
+        LOGGER.info("data = {}", dataSet1.next());
       }
     }
   }

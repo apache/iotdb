@@ -21,8 +21,8 @@ package org.apache.iotdb.db.pipe.extractor.historical;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -35,6 +35,7 @@ import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeCo
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,18 +52,20 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE;
-import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_END_TIME_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_LOOSE_RANGE_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_START_TIME_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE;
-import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_ENABLE_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_END_TIME_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_LOOSE_RANGE_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_START_TIME_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_END_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_LOOSE_RANGE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_END_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_END_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_LOOSE_RANGE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_START_TIME_KEY;
 
 public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDataRegionExtractor {
 
@@ -72,6 +75,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private static final Map<Integer, Long> DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP = new HashMap<>();
   private static final long PIPE_MIN_FLUSH_INTERVAL_IN_MS = 2000;
 
+  private String pipeName;
   private PipeTaskMeta pipeTaskMeta;
   private ProgressIndex startIndex;
 
@@ -80,8 +84,10 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private String pattern;
   private boolean isDbNameCoveredByPattern = false;
 
-  private long historicalDataExtractionStartTime; // Event time
-  private long historicalDataExtractionEndTime; // Event time
+  private boolean isHistoricalExtractorEnabled = false;
+
+  private long historicalDataExtractionStartTime = Long.MIN_VALUE; // Event time
+  private long historicalDataExtractionEndTime = Long.MAX_VALUE; // Event time
 
   private long historicalDataExtractionTimeLowerBound; // Arrival time
 
@@ -91,7 +97,74 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   @Override
   public void validate(PipeParameterValidator validator) {
-    // Do nothing
+    PipeParameters parameters = validator.getParameters();
+
+    if (parameters.hasAnyAttributes(SOURCE_START_TIME_KEY, SOURCE_END_TIME_KEY)) {
+      isHistoricalExtractorEnabled = true;
+
+      try {
+        historicalDataExtractionStartTime =
+            parameters.hasAnyAttributes(SOURCE_START_TIME_KEY)
+                ? DateTimeUtils.convertDatetimeStrToLong(
+                    parameters.getStringByKeys(SOURCE_START_TIME_KEY), ZoneId.systemDefault())
+                : Long.MIN_VALUE;
+        historicalDataExtractionEndTime =
+            parameters.hasAnyAttributes(SOURCE_END_TIME_KEY)
+                ? DateTimeUtils.convertDatetimeStrToLong(
+                    parameters.getStringByKeys(SOURCE_END_TIME_KEY), ZoneId.systemDefault())
+                : Long.MAX_VALUE;
+        if (historicalDataExtractionStartTime > historicalDataExtractionEndTime) {
+          throw new PipeParameterNotValidException(
+              String.format(
+                  "%s should be less than or equal to %s.",
+                  SOURCE_START_TIME_KEY, SOURCE_END_TIME_KEY));
+        }
+        return;
+      } catch (Exception e) {
+        // compatible with the current validation framework
+        throw new PipeParameterNotValidException(e.getMessage());
+      }
+    }
+
+    // User may set the EXTRACTOR_HISTORY_START_TIME and EXTRACTOR_HISTORY_END_TIME without
+    // enabling the historical data extraction, which may affect the realtime data extraction.
+    isHistoricalExtractorEnabled =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(EXTRACTOR_HISTORY_ENABLE_KEY, SOURCE_HISTORY_ENABLE_KEY),
+            EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE);
+
+    try {
+      historicalDataExtractionStartTime =
+          isHistoricalExtractorEnabled
+                  && parameters.hasAnyAttributes(
+                      EXTRACTOR_HISTORY_START_TIME_KEY, SOURCE_HISTORY_START_TIME_KEY)
+              ? DateTimeUtils.convertDatetimeStrToLong(
+                  parameters.getStringByKeys(
+                      EXTRACTOR_HISTORY_START_TIME_KEY, SOURCE_HISTORY_START_TIME_KEY),
+                  ZoneId.systemDefault())
+              : Long.MIN_VALUE;
+      historicalDataExtractionEndTime =
+          isHistoricalExtractorEnabled
+                  && parameters.hasAnyAttributes(
+                      EXTRACTOR_HISTORY_END_TIME_KEY, SOURCE_HISTORY_END_TIME_KEY)
+              ? DateTimeUtils.convertDatetimeStrToLong(
+                  parameters.getStringByKeys(
+                      EXTRACTOR_HISTORY_END_TIME_KEY, SOURCE_HISTORY_END_TIME_KEY),
+                  ZoneId.systemDefault())
+              : Long.MAX_VALUE;
+      if (historicalDataExtractionStartTime > historicalDataExtractionEndTime) {
+        throw new PipeParameterNotValidException(
+            String.format(
+                "%s (%s) should be less than or equal to %s (%s).",
+                EXTRACTOR_HISTORY_START_TIME_KEY,
+                SOURCE_HISTORY_START_TIME_KEY,
+                EXTRACTOR_HISTORY_END_TIME_KEY,
+                SOURCE_HISTORY_END_TIME_KEY));
+      }
+    } catch (Exception e) {
+      // compatible with the current validation framework
+      throw new PipeParameterNotValidException(e.getMessage());
+    }
   }
 
   @Override
@@ -100,6 +173,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     final PipeTaskExtractorRuntimeEnvironment environment =
         (PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment();
 
+    pipeName = environment.getPipeName();
     pipeTaskMeta = environment.getPipeTaskMeta();
     startIndex = environment.getPipeTaskMeta().getProgressIndex();
 
@@ -123,36 +197,9 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       }
     }
 
-    // User may set the EXTRACTOR_HISTORY_START_TIME and EXTRACTOR_HISTORY_END_TIME without
-    // enabling the historical data extraction, which may affect the realtime data extraction.
-    final boolean isHistoricalExtractorEnabledByUser =
-        parameters.getBooleanOrDefault(
-            Arrays.asList(EXTRACTOR_HISTORY_ENABLE_KEY, SOURCE_HISTORY_ENABLE_KEY),
-            EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE);
-    historicalDataExtractionStartTime =
-        isHistoricalExtractorEnabledByUser
-                && parameters.hasAnyAttributes(
-                    EXTRACTOR_HISTORY_START_TIME_KEY, SOURCE_HISTORY_START_TIME_KEY)
-            ? DateTimeUtils.convertDatetimeStrToLong(
-                parameters.getStringByKeys(
-                    EXTRACTOR_HISTORY_START_TIME_KEY, SOURCE_HISTORY_START_TIME_KEY),
-                ZoneId.systemDefault())
-            : Long.MIN_VALUE;
-    historicalDataExtractionEndTime =
-        isHistoricalExtractorEnabledByUser
-                && parameters.hasAnyAttributes(
-                    EXTRACTOR_HISTORY_END_TIME_KEY, SOURCE_HISTORY_END_TIME_KEY)
-            ? DateTimeUtils.convertDatetimeStrToLong(
-                parameters.getStringByKeys(
-                    EXTRACTOR_HISTORY_END_TIME_KEY, SOURCE_HISTORY_END_TIME_KEY),
-                ZoneId.systemDefault())
-            : Long.MAX_VALUE;
-
     // Enable historical extractor by default
     historicalDataExtractionTimeLowerBound =
-        parameters.getBooleanOrDefault(
-                Arrays.asList(EXTRACTOR_HISTORY_ENABLE_KEY, SOURCE_HISTORY_ENABLE_KEY),
-                EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE)
+        isHistoricalExtractorEnabled
             ? Long.MIN_VALUE
             // We define the realtime data as the data generated after the creation time
             // of the pipe from user's perspective. But we still need to use
@@ -351,13 +398,17 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             resource,
             false,
             false,
+            pipeName,
             pipeTaskMeta,
             pattern,
             historicalDataExtractionStartTime,
-            historicalDataExtractionEndTime,
-            !sloppyTimeRange && !isTsFileResourceCoveredByTimeRange(resource));
+            historicalDataExtractionEndTime);
     if (isDbNameCoveredByPattern) {
       event.skipParsingPattern();
+    }
+
+    if (sloppyTimeRange || isTsFileResourceCoveredByTimeRange(resource)) {
+      event.skipParsingTime();
     }
 
     event.increaseReferenceCount(PipeHistoricalDataRegionTsFileExtractor.class.getName());

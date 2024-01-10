@@ -89,8 +89,8 @@ import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TimeDuration;
@@ -639,6 +639,11 @@ public class StatementGenerator {
       TSEncoding encoding = TSEncoding.deserialize(ReadWriteIOUtils.readByte(buffer));
       CompressionType compressionType =
           CompressionType.deserialize(ReadWriteIOUtils.readByte(buffer));
+
+      if (measurementName == null) {
+        throw new MetadataException(
+            "The name of a measurement in schema template shall not be null.");
+      }
 
       if (alignedPrefix.containsKey(prefix) && !isAlign) {
         throw new MetadataException("Align designation incorrect at: " + prefix);

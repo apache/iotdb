@@ -25,12 +25,14 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.fa.IFAState;
 import org.apache.iotdb.commons.path.fa.IFATransition;
 import org.apache.iotdb.commons.schema.node.IMNode;
+import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.commons.schema.tree.AbstractTreeVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.IMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.iterator.MNodeIterator;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.ReentrantReadOnlyCachedMTreeStore;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.ReleaseFlushMonitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MNodeUtils;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
@@ -72,6 +74,9 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
 
   // default false means fullPath pattern match
   protected boolean isPrefixMatch = false;
+  private IDeviceMNode<N> skipTemplateDevice;
+  private ReleaseFlushMonitor.RecordNode timeRecorder;
+  private final long startTime = System.currentTimeMillis();
 
   protected Traverser() {}
 
@@ -102,6 +107,7 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
     }
     this.startNode = startNode;
     this.nodes = nodes;
+    this.timeRecorder = store.recordTraverserStatistics();
   }
 
   /**
@@ -118,6 +124,7 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
     this.store = store.getWithReentrantReadLock();
     initStack();
     this.startNode = startNode;
+    this.timeRecorder = store.recordTraverserStatistics();
   }
 
   /**
@@ -137,11 +144,17 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
 
   @Override
   protected N getChild(N parent, String childName) throws MetadataException {
+    return getChild(parent, childName, parent == skipTemplateDevice);
+  }
+
+  private N getChild(N parent, String childName, boolean skipTemplateChildren)
+      throws MetadataException {
     N child = null;
     if (parent.isAboveDatabase()) {
       child = parent.getChild(childName);
     } else {
       if (templateMap != null
+          && !skipTemplateChildren
           && !templateMap.isEmpty() // this task will cover some timeseries represented by template
           && (parent.isDevice()
               && parent.getAsDeviceMNode().getSchemaTemplateId()
@@ -177,15 +190,17 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
   @Override
   protected Iterator<N> getChildrenIterator(N parent, Iterator<String> childrenName)
       throws Exception {
+
     return new IMNodeIterator<N>() {
       private N next = null;
+      private boolean skipTemplateChildren = false;
 
       @Override
       public boolean hasNext() {
         if (next == null) {
           while (next == null && childrenName.hasNext()) {
             try {
-              next = getChild(parent, childrenName.next());
+              next = getChild(parent, childrenName.next(), skipTemplateChildren);
             } catch (Throwable e) {
               logger.warn(e.getMessage(), e);
               throw new RuntimeException(e);
@@ -203,6 +218,11 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
         N result = next;
         next = null;
         return result;
+      }
+
+      @Override
+      public void skipTemplateChildren() {
+        skipTemplateChildren = true;
       }
 
       @Override
@@ -235,9 +255,13 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
   public void close() {
     super.close();
     if (store instanceof ReentrantReadOnlyCachedMTreeStore) {
-      // TODO update here
       ((ReentrantReadOnlyCachedMTreeStore) store).unlockRead();
     }
+    long endTime = System.currentTimeMillis();
+    if (timeRecorder != null) {
+      timeRecorder.setEndTime(endTime);
+    }
+    store.recordTraverserMetric(endTime - startTime);
   }
 
   public void setTemplateMap(Map<Integer, Template> templateMap, IMNodeFactory<N> nodeFactory) {
@@ -306,5 +330,13 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
       return patternFA.getNextState(sourceState, transition);
     }
     return null;
+  }
+
+  protected void skipTemplateChildren(IDeviceMNode<N> deviceMNode) {
+    skipTemplateDevice = deviceMNode;
+    Iterator<N> iterator = getCurrentChildrenIterator();
+    if (iterator instanceof IMNodeIterator) {
+      ((IMNodeIterator<N>) iterator).skipTemplateChildren();
+    }
   }
 }

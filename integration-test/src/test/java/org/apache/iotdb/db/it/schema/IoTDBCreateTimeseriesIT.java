@@ -141,10 +141,10 @@ public class IoTDBCreateTimeseriesIT extends AbstractSchemaIT {
     }
 
     String[] timeSeriesArray = {
-      "root.sg.d.`a.b`", "root.sg.d.`a“（Φ）”b`", "root.sg.d.`a>b`",
+      "root.sg.d.`a.b`", "root.sg.d.`a“（Φ）”b`", "root.sg.d.`a>b`", "root.sg.d.`0e38`"
     };
     String[] timeSeriesResArray = {
-      "root.sg.d.`a.b`", "root.sg.d.`a“（Φ）”b`", "root.sg.d.`a>b`",
+      "root.sg.d.`a.b`", "root.sg.d.`a“（Φ）”b`", "root.sg.d.`a>b`", "root.sg.d.`0e38`",
     };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();

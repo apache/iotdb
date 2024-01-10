@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
-import org.apache.iotdb.tsfile.access.Column;
-import org.apache.iotdb.tsfile.access.ColumnBuilder;
-import org.apache.iotdb.tsfile.enums.TSDataType;
-import org.apache.iotdb.tsfile.exception.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.IntegerStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.utils.BitMap;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -72,6 +72,15 @@ public class SumAccumulator implements Accumulator {
     }
     initResult = true;
     sumValue += partialResult[0].getDouble(0);
+  }
+
+  @Override
+  public void removeIntermediate(Column[] input) {
+    checkArgument(input.length == 1, "input of Sum should be 1");
+    if (input[0].isNull(0)) {
+      return;
+    }
+    sumValue -= input[0].getDouble(0);
   }
 
   @Override

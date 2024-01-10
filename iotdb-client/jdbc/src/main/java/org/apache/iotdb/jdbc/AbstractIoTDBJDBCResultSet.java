@@ -455,7 +455,7 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
         nonAlign = true;
       }
     } catch (SQLException throwables) {
-      LOGGER.error(String.format("get meta data error:%s", throwables.getMessage()));
+      LOGGER.error("Get meta data error: {}", throwables.getMessage());
     }
     return new IoTDBResultMetadata(
         nonAlign,

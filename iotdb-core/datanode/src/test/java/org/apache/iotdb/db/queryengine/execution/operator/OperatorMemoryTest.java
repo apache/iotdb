@@ -46,8 +46,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.SlidingWindowA
 import org.apache.iotdb.db.queryengine.execution.operator.process.SortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear.LinearFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.join.FullOuterTimeJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.HorizontallyConcatOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.join.RowBasedTimeJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryCollectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryMergeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryOperator;
@@ -86,7 +86,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareL
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.ConstantColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.TimeColumnTransformer;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
@@ -193,7 +193,8 @@ public class OperatorMemoryTest {
               alignedPath,
               Ordering.ASC,
               SeriesScanOptions.getDefaultSeriesScanOptions(alignedPath),
-              false);
+              false,
+              null);
 
       long maxPeekMemory =
           Math.max(
@@ -457,13 +458,13 @@ public class OperatorMemoryTest {
     expectedMaxPeekMemory =
         Math.max(expectedMaxPeekMemory + expectedMaxReturnSize, childrenMaxPeekMemory);
 
-    RowBasedTimeJoinOperator rowBasedTimeJoinOperator =
-        new RowBasedTimeJoinOperator(
+    FullOuterTimeJoinOperator fullOuterTimeJoinOperator =
+        new FullOuterTimeJoinOperator(
             Mockito.mock(OperatorContext.class), children, Ordering.ASC, dataTypeList, null, null);
 
-    assertEquals(expectedMaxPeekMemory, rowBasedTimeJoinOperator.calculateMaxPeekMemory());
-    assertEquals(expectedMaxReturnSize, rowBasedTimeJoinOperator.calculateMaxReturnSize());
-    assertEquals(3 * 64 * 1024L, rowBasedTimeJoinOperator.calculateRetainedSizeAfterCallingNext());
+    assertEquals(expectedMaxPeekMemory, fullOuterTimeJoinOperator.calculateMaxPeekMemory());
+    assertEquals(expectedMaxReturnSize, fullOuterTimeJoinOperator.calculateMaxReturnSize());
+    assertEquals(3 * 64 * 1024L, fullOuterTimeJoinOperator.calculateRetainedSizeAfterCallingNext());
   }
 
   @Test
@@ -829,7 +830,13 @@ public class OperatorMemoryTest {
 
       SchemaFetchScanOperator operator =
           new SchemaFetchScanOperator(
-              planNodeId, driverContext.getOperatorContexts().get(0), null, null, null, false);
+              planNodeId,
+              driverContext.getOperatorContexts().get(0),
+              null,
+              null,
+              null,
+              false,
+              false);
 
       assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxPeekMemory());
       assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxReturnSize());
@@ -1338,6 +1345,7 @@ public class OperatorMemoryTest {
             timeRangeIterator,
             child,
             true,
+            false,
             groupByTimeParameter,
             maxReturnSize);
 
@@ -1416,6 +1424,7 @@ public class OperatorMemoryTest {
             aggregators,
             timeRangeIterator,
             children,
+            false,
             maxReturnSize);
 
     long expectedMaxReturnSize =

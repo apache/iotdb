@@ -21,8 +21,11 @@ package org.apache.iotdb.db.queryengine.common;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
+import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -53,6 +56,10 @@ public class MPPQueryContext {
   private final List<TEndPoint> endPointBlackList;
 
   private final TypeProvider typeProvider = new TypeProvider();
+
+  private Filter globalTimeFilter;
+
+  private boolean acquiredLock;
 
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
@@ -148,5 +155,23 @@ public class MPPQueryContext {
 
   public String getSql() {
     return sql;
+  }
+
+  public boolean getAcquiredLock() {
+    return acquiredLock;
+  }
+
+  public void setAcquiredLock(boolean acuqired) {
+    acquiredLock = acuqired;
+  }
+
+  public void generateGlobalTimeFilter(Analysis analysis) {
+    this.globalTimeFilter =
+        PredicateUtils.convertPredicateToTimeFilter(analysis.getGlobalTimePredicate());
+  }
+
+  public Filter getGlobalTimeFilter() {
+    // time filter may be stateful, so we need to copy it
+    return globalTimeFilter != null ? globalTimeFilter.copy() : null;
   }
 }

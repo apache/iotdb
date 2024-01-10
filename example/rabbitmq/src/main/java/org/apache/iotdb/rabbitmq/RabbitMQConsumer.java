@@ -22,8 +22,8 @@ package org.apache.iotdb.rabbitmq;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import com.rabbitmq.client.AMQP;
@@ -44,7 +44,7 @@ import java.util.List;
  */
 public class RabbitMQConsumer {
 
-  private static final Logger logger = LoggerFactory.getLogger(RabbitMQConsumer.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(RabbitMQConsumer.class);
 
   public static void main(String[] args) throws Exception {
     try (Session session =
@@ -75,11 +75,11 @@ public class RabbitMQConsumer {
                 byte[] body) {
               String param =
                   consumerTag + ", " + envelope.toString() + ", " + properties.toString();
-              logger.info(param);
+              LOGGER.info(param);
               try {
                 consumer.insert(session, new String(body));
               } catch (Exception e) {
-                logger.error(e.getMessage());
+                LOGGER.error(e.getMessage());
               }
             }
           };

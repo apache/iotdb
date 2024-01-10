@@ -65,7 +65,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.PipeEnrichedLoadTsFileStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -221,6 +221,7 @@ public class QueryExecution implements IQueryExecution {
     checkTimeOutForQuery();
     doLogicalPlan();
     doDistributedPlan();
+
     // update timeout after finishing plan stage
     context.setTimeOut(
         context.getTimeOut() - (System.currentTimeMillis() - context.getStartTime()));
@@ -317,7 +318,11 @@ public class QueryExecution implements IQueryExecution {
 
   private void schedule() {
     final long startTime = System.nanoTime();
-    if (rawStatement instanceof LoadTsFileStatement) {
+    boolean isPipeEnrichedTsFileLoad =
+        rawStatement instanceof PipeEnrichedStatement
+            && ((PipeEnrichedStatement) rawStatement).getInnerStatement()
+                instanceof LoadTsFileStatement;
+    if (rawStatement instanceof LoadTsFileStatement || isPipeEnrichedTsFileLoad) {
       this.scheduler =
           new LoadTsFileScheduler(
               distributedPlan,
@@ -325,7 +330,7 @@ public class QueryExecution implements IQueryExecution {
               stateMachine,
               syncInternalServiceClientManager,
               partitionFetcher,
-              rawStatement instanceof PipeEnrichedLoadTsFileStatement);
+              isPipeEnrichedTsFileLoad);
       this.scheduler.start();
       return;
     }
@@ -381,6 +386,7 @@ public class QueryExecution implements IQueryExecution {
           distributedPlan.getInstances().size(),
           printFragmentInstances(distributedPlan.getInstances()));
     }
+
     // check timeout after building distribution plan because it could be time-consuming in some
     // cases.
     checkTimeOutForQuery();

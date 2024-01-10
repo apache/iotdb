@@ -25,7 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionVisitor
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.transformation.dag.memory.LayerMemoryAssigner;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -93,8 +93,6 @@ public abstract class UnaryExpression extends Expression {
   public boolean isMappable(Map<NodeRef<Expression>, TSDataType> expressionTypes) {
     return expression.isMappable(expressionTypes);
   }
-
-  protected abstract Expression constructExpression(Expression childExpression);
 
   @Override
   protected void serialize(ByteBuffer byteBuffer) {

@@ -29,9 +29,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.ICreateTimeSeriesPlan;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -187,7 +187,7 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
 
   public static CreateTimeSeriesNode deserialize(ByteBuffer byteBuffer) {
     String id;
-    PartialPath path = null;
+    PartialPath path;
     TSDataType dataType;
     TSEncoding encoding;
     CompressionType compressor;

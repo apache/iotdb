@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 
 import java.io.IOException;
@@ -35,20 +36,20 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class TsFileManager {
-  private String storageGroupName;
+  private final String storageGroupName;
   private String dataRegionId;
-  private String storageGroupDir;
+  private final String storageGroupDir;
 
   /** Serialize queries, delete resource files, compaction cleanup files */
   private final ReadWriteLock resourceListLock = new ReentrantReadWriteLock();
 
   private String writeLockHolder;
   // time partition -> double linked list of tsfiles
-  private TreeMap<Long, TsFileResourceList> sequenceFiles = new TreeMap<>();
-  private TreeMap<Long, TsFileResourceList> unsequenceFiles = new TreeMap<>();
+  private final TreeMap<Long, TsFileResourceList> sequenceFiles = new TreeMap<>();
+  private final TreeMap<Long, TsFileResourceList> unsequenceFiles = new TreeMap<>();
 
   private boolean allowCompaction = true;
-  private AtomicLong currentCompactionTaskSerialId = new AtomicLong(0);
+  private final AtomicLong currentCompactionTaskSerialId = new AtomicLong(0);
 
   public TsFileManager(String storageGroupName, String dataRegionId, String storageGroupDir) {
     this.storageGroupName = storageGroupName;
@@ -57,14 +58,31 @@ public class TsFileManager {
   }
 
   public List<TsFileResource> getTsFileList(boolean sequence) {
+    return getTsFileList(sequence, null);
+  }
+
+  /**
+   * @param sequence true for sequence, false for unsequence
+   * @param timePartitions null for all time partitions, empty for zero time partitions
+   */
+  public List<TsFileResource> getTsFileList(boolean sequence, List<Long> timePartitions) {
     // the iteration of ConcurrentSkipListMap is not concurrent secure
     // so we must add read lock here
     readLock();
     try {
       List<TsFileResource> allResources = new ArrayList<>();
       Map<Long, TsFileResourceList> chosenMap = sequence ? sequenceFiles : unsequenceFiles;
-      for (Map.Entry<Long, TsFileResourceList> entry : chosenMap.entrySet()) {
-        allResources.addAll(entry.getValue().getArrayList());
+      if (timePartitions == null) {
+        for (Map.Entry<Long, TsFileResourceList> entry : chosenMap.entrySet()) {
+          allResources.addAll(entry.getValue().getArrayList());
+        }
+      } else {
+        for (Long timePartitionId : timePartitions) {
+          TsFileResourceList tsFileResources = chosenMap.get(timePartitionId);
+          if (tsFileResources != null) {
+            allResources.addAll(tsFileResources.getArrayList());
+          }
+        }
       }
       return allResources;
     } finally {
@@ -115,10 +133,18 @@ public class TsFileManager {
       List<TsFileResource> seqTsFileResourceList =
           sequenceFiles.computeIfAbsent(partitionId, l -> new TsFileResourceList());
       for (int i = seqTsFileResourceList.size() - 1; i >= 0; i--) {
-        Set<String> deviceSet = seqTsFileResourceList.get(i).getDevices();
-        if (deviceSet.contains(devicePath)) {
-          lastFlushTime = seqTsFileResourceList.get(i).getEndTime(devicePath);
-          break;
+        TsFileResource seqResource = seqTsFileResourceList.get(i);
+        if (!seqResource.isClosed()) {
+          continue;
+        }
+        if (seqResource.getTimeIndexType() == ITimeIndex.DEVICE_TIME_INDEX_TYPE) {
+          Set<String> deviceSet = seqResource.getDevices();
+          if (deviceSet.contains(devicePath)) {
+            lastFlushTime = Math.max(lastFlushTime, seqResource.getEndTime(devicePath));
+            break;
+          }
+        } else {
+          lastFlushTime = Math.max(lastFlushTime, seqResource.getEndTime(devicePath));
         }
       }
       List<TsFileResource> unseqTsFileResourceList =

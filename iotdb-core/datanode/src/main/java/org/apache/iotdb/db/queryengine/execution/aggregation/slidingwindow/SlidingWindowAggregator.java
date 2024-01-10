@@ -23,13 +23,10 @@ import org.apache.iotdb.db.queryengine.execution.aggregation.Accumulator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.tsfile.access.Column;
-import org.apache.iotdb.tsfile.access.ColumnBuilder;
-import org.apache.iotdb.tsfile.enums.TSDataType;
-import org.apache.iotdb.tsfile.exception.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 
 import java.util.Arrays;
@@ -107,37 +104,6 @@ public abstract class SlidingWindowAggregator extends Aggregator {
           .sequential()
           .map(Column::getDataType)
           .collect(Collectors.toList());
-    }
-
-    public Column[] opposite() {
-      List<TSDataType> dataTypes = getDataTypes();
-      TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(dataTypes);
-      ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
-      Column[] results = new Column[partialResultColumns.length];
-      for (int i = 0; i < partialResultColumns.length; i++) {
-        switch (dataTypes.get(i)) {
-          case INT32:
-            columnBuilders[i].writeInt(partialResultColumns[i].getInt(0) * -1);
-            break;
-          case INT64:
-            columnBuilders[i].writeLong(partialResultColumns[i].getLong(0) * -1);
-            break;
-          case FLOAT:
-            columnBuilders[i].writeFloat(partialResultColumns[i].getFloat(0) * -1);
-            break;
-          case DOUBLE:
-            columnBuilders[i].writeDouble(partialResultColumns[i].getDouble(0) * -1);
-            break;
-          case TEXT:
-          case BOOLEAN:
-            throw new UnSupportedDataTypeException(
-                String.format("Unsupported data type in opposite : %s", dataTypes.get(i)));
-          default:
-            throw new IllegalArgumentException("Unknown data type: " + dataTypes.get(i));
-        }
-        results[i] = columnBuilders[i].build();
-      }
-      return results;
     }
   }
 }

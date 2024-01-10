@@ -105,6 +105,18 @@ public class PipeConnectorMetrics implements IMetricSet {
         String.valueOf(connector.getConnectorIndex()),
         Tag.CREATION_TIME.toString(),
         String.valueOf(connector.getCreationTime()));
+    // metrics related to IoTDBThriftAsyncConnector
+    metricService.createAutoGauge(
+        Metric.PIPE_ASYNC_CONNECTOR_RETRY_EVENT_QUEUE_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        connector,
+        PipeConnectorSubtask::getAsyncConnectorRetryEventQueueSize,
+        Tag.NAME.toString(),
+        connector.getAttributeSortedString(),
+        Tag.INDEX.toString(),
+        String.valueOf(connector.getConnectorIndex()),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(connector.getCreationTime()));
   }
 
   private void createRate(String taskID) {
@@ -185,6 +197,16 @@ public class PipeConnectorMetrics implements IMetricSet {
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.UNTRANSFERRED_HEARTBEAT_COUNT.toString(),
+        Tag.NAME.toString(),
+        connector.getAttributeSortedString(),
+        Tag.INDEX.toString(),
+        String.valueOf(connector.getConnectorIndex()),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(connector.getCreationTime()));
+    // metrics related to IoTDBThriftAsyncConnector
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PIPE_ASYNC_CONNECTOR_RETRY_EVENT_QUEUE_SIZE.toString(),
         Tag.NAME.toString(),
         connector.getAttributeSortedString(),
         Tag.INDEX.toString(),

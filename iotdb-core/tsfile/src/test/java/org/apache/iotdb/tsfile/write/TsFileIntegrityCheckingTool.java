@@ -23,7 +23,6 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -31,6 +30,7 @@ import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -124,7 +124,7 @@ public class TsFileIntegrityCheckingTool {
               } else { // NonAligned Chunk
                 PageReader pageReader =
                     new PageReader(
-                        pageData, header.getDataType(), valueDecoder, defaultTimeDecoder, null);
+                        pageData, header.getDataType(), valueDecoder, defaultTimeDecoder);
                 BatchData batchData = pageReader.getAllSatisfiedPageData();
               }
               pageIndex++;
@@ -189,7 +189,7 @@ public class TsFileIntegrityCheckingTool {
             chunkMetadataList.sort(Comparator.comparing(IChunkMetadata::getStartTime));
             for (int i = 0; i < chunkMetadataList.size(); ++i) {
               Chunk chunk = reader.readMemChunk((ChunkMetadata) chunkMetadataList.get(i));
-              ChunkReader chunkReader = new ChunkReader(chunk, null);
+              ChunkReader chunkReader = new ChunkReader(chunk);
               List<Pair<Long, TsPrimitiveType>> originValue = originChunks.get(i);
               // deserialize the chunk and verify it with origin data
               for (int valIdx = 0; chunkReader.hasNextSatisfiedPage(); ) {
@@ -224,8 +224,7 @@ public class TsFileIntegrityCheckingTool {
                   reader.readMemChunk((ChunkMetadata) valueChunkMetadataList.get(chunkIdx));
               // construct an aligned chunk reader using time chunk and value chunk
               IChunkReader chunkReader =
-                  new AlignedChunkReader(
-                      timeChunk, Collections.singletonList(valueChunk), null, false);
+                  new AlignedChunkReader(timeChunk, Collections.singletonList(valueChunk));
               // verify the values
               List<Pair<Long, TsPrimitiveType>> originValue = originDataChunks.get(chunkIdx);
               for (int valIdx = 0; chunkReader.hasNextSatisfiedPage(); ) {

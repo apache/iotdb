@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.IManager;
+import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.confignode.manager.load.cache.node.BaseNodeCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.ConfigNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.DataNodeHeartbeatCache;
@@ -65,6 +66,10 @@ public class LoadCache {
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private static final long HEARTBEAT_INTERVAL = CONF.getHeartbeatIntervalInMs();
+  private static final long LEADER_ELECTION_WAITING_TIMEOUT =
+      Math.max(
+          ProcedureManager.PROCEDURE_WAIT_TIME_OUT - TimeUnit.SECONDS.toMillis(2),
+          TimeUnit.SECONDS.toMillis(10));
 
   // Map<NodeId, INodeCache>
   private final Map<Integer, BaseNodeCache> nodeCacheMap;
@@ -536,7 +541,9 @@ public class LoadCache {
    * @param regionGroupIds Specified RegionGroupIds
    */
   public void waitForLeaderElection(List<TConsensusGroupId> regionGroupIds) {
-    for (int retry = 0; retry < 10; retry++) {
+    long startTime = System.currentTimeMillis();
+    LOGGER.info("[RegionElection] Wait for leader election of RegionGroups: {}", regionGroupIds);
+    while (System.currentTimeMillis() - startTime <= LEADER_ELECTION_WAITING_TIMEOUT) {
       AtomicBoolean allRegionLeaderElected = new AtomicBoolean(true);
       regionGroupIds.forEach(
           regionGroupId -> {
@@ -554,6 +561,7 @@ public class LoadCache {
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         LOGGER.warn("Interrupt when wait for leader election", e);
+        return;
       }
     }
 

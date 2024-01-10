@@ -76,6 +76,7 @@ public class SchemaMeasurementNode extends SchemaNode implements IMeasurementSch
     return null;
   }
 
+  @Override
   public Map<String, String> getTagMap() {
     return tagMap;
   }

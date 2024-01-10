@@ -19,25 +19,12 @@
 
 package org.apache.iotdb.tsfile.read.filter.factory;
 
-import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
-import org.apache.iotdb.tsfile.read.filter.GroupByMonthFilter;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
-import org.apache.iotdb.tsfile.read.filter.operator.Between;
-import org.apache.iotdb.tsfile.read.filter.operator.Eq;
-import org.apache.iotdb.tsfile.read.filter.operator.Gt;
-import org.apache.iotdb.tsfile.read.filter.operator.GtEq;
-import org.apache.iotdb.tsfile.read.filter.operator.In;
-import org.apache.iotdb.tsfile.read.filter.operator.Like;
-import org.apache.iotdb.tsfile.read.filter.operator.Lt;
-import org.apache.iotdb.tsfile.read.filter.operator.LtEq;
-import org.apache.iotdb.tsfile.read.filter.operator.NotEq;
-import org.apache.iotdb.tsfile.read.filter.operator.NotFilter;
-import org.apache.iotdb.tsfile.read.filter.operator.OrFilter;
-import org.apache.iotdb.tsfile.read.filter.operator.Regexp;
+import org.apache.iotdb.tsfile.read.filter.operator.And;
+import org.apache.iotdb.tsfile.read.filter.operator.Not;
+import org.apache.iotdb.tsfile.read.filter.operator.Or;
 
-import java.nio.ByteBuffer;
+import static org.apache.iotdb.tsfile.utils.Preconditions.checkArgument;
 
 public class FilterFactory {
 
@@ -45,75 +32,30 @@ public class FilterFactory {
     // forbidden construction
   }
 
-  public static AndFilter and(Filter left, Filter right) {
-    return new AndFilter(left, right);
-  }
-
-  public static OrFilter or(Filter left, Filter right) {
-    return new OrFilter(left, right);
-  }
-
-  public static NotFilter not(Filter filter) {
-    return new NotFilter(filter);
-  }
-
-  public static Filter deserialize(ByteBuffer buffer) {
-    FilterSerializeId id = FilterSerializeId.values()[buffer.get()];
-
-    Filter filter;
-    switch (id) {
-      case EQ:
-        filter = new Eq<>();
-        break;
-      case GT:
-        filter = new Gt<>();
-        break;
-      case LT:
-        filter = new Lt<>();
-        break;
-      case OR:
-        filter = new OrFilter();
-        break;
-      case AND:
-        filter = new AndFilter();
-        break;
-      case NEQ:
-        filter = new NotEq<>();
-        break;
-      case NOT:
-        filter = new NotFilter();
-        break;
-      case GTEQ:
-        filter = new GtEq<>();
-        break;
-      case LTEQ:
-        filter = new LtEq<>();
-        break;
-      case IN:
-        filter = new In<>();
-        break;
-      case GROUP_BY:
-        filter = new GroupByFilter();
-        break;
-      case GROUP_BY_MONTH:
-        filter = new GroupByMonthFilter();
-        break;
-      case REGEXP:
-        filter = new Regexp<>();
-        break;
-      case LIKE:
-        filter = new Like<>();
-        break;
-      case BETWEEN:
-        filter = new Between<>();
-        break;
-      case TIME_GTEQ_AND_LT:
-        filter = new TimeFilter.TimeGtEqAndLt();
-        break;
-      default:
-        throw new UnsupportedOperationException("Unknown filter type " + id);
+  public static Filter and(Filter left, Filter right) {
+    if (left == null && right == null) {
+      return null;
+    } else if (left == null) {
+      return right;
+    } else if (right == null) {
+      return left;
     }
-    filter.deserialize(buffer);
-    return filter;
+    return new And(left, right);
+  }
+
+  public static Filter or(Filter left, Filter right) {
+    if (left == null && right == null) {
+      return null;
+    } else if (left == null) {
+      return right;
+    } else if (right == null) {
+      return left;
+    }
+    return new Or(left, right);
+  }
+
+  public static Not not(Filter filter) {
+    checkArgument(filter != null, "filter cannot be null");
+    return new Not(filter);
   }
 }

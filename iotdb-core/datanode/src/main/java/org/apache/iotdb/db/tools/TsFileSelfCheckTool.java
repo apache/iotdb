@@ -40,7 +40,7 @@ import java.util.TreeMap;
 
 public class TsFileSelfCheckTool {
 
-  private static final Logger logger = LoggerFactory.getLogger(TsFileSelfCheckTool.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileSelfCheckTool.class);
 
   private Map<Long, Pair<Path, TimeseriesMetadata>> getTimeseriesMetadataMapWithReader(
       TsFileSelfCheckToolReader reader) throws Exception {
@@ -56,7 +56,7 @@ public class TsFileSelfCheckTool {
     try {
       timeseriesMetadataMap = getTimeseriesMetadataMapWithReader(reader);
     } catch (Exception e) {
-      logger.error("Error occurred while getting all TimeseriesMetadata with offset in TsFile.");
+      LOGGER.error("Error occurred while getting all TimeseriesMetadata with offset in TsFile.");
       throw new TsFileTimeseriesMetadataException(
           "Error occurred while getting all TimeseriesMetadata with offset in TsFile.");
     }
@@ -78,7 +78,7 @@ public class TsFileSelfCheckTool {
    */
   public long check(String filename, boolean fastFinish)
       throws IOException, TsFileStatisticsMistakesException, TsFileTimeseriesMetadataException {
-    logger.info("file path: {}", filename);
+    LOGGER.info("file path: {}", filename);
     TsFileSelfCheckToolReader reader = new TsFileSelfCheckToolReader(filename);
     Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap = null;
     long res = -1;
@@ -88,7 +88,7 @@ public class TsFileSelfCheckTool {
     } catch (TsFileStatisticsMistakesException e) {
       throw e;
     } catch (Exception e) {
-      logger.error("Error occurred while getting all TimeseriesMetadata with offset in TsFile.");
+      LOGGER.error("Error occurred while getting all TimeseriesMetadata with offset in TsFile.");
       throw new TsFileTimeseriesMetadataException(
           "Error occurred while getting all TimeseriesMetadata with offset in TsFile.");
     } finally {

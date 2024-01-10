@@ -24,16 +24,19 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
@@ -47,11 +50,13 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.createChunkWriter;
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.createCompressionType;
@@ -435,7 +440,7 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
     }
     seqFile1
         .getModFile()
-        .write(new Deletion(new PartialPath("root.testsg.d1.**"), Long.MAX_VALUE, Long.MAX_VALUE));
+        .write(new Deletion(new PartialPath("root.testsg.d1.s1"), Long.MAX_VALUE, Long.MAX_VALUE));
     seqFile1.getModFile().close();
     TsFileResource seqFile2 = createEmptyFileAndResource(true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile2)) {
@@ -527,6 +532,113 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
   }
 
   @Test
+  public void testReadChunkPerformerWithEmptyTargetFile5()
+      throws IOException, IllegalPathException {
+    TsFileResource seqFile1 = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile1)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s1", new TimeRange[] {new TimeRange(1, 2)}, TSEncoding.PLAIN, CompressionType.LZ4);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    seqFile1
+        .getModFile()
+        .write(new Deletion(new PartialPath("root.**"), Long.MAX_VALUE, Long.MAX_VALUE));
+    seqFile1.getModFile().close();
+    TsFileResource seqFile2 = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile2)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s1", new TimeRange[] {new TimeRange(5, 6)}, TSEncoding.PLAIN, CompressionType.LZ4);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    seqFile2
+        .getModFile()
+        .write(new Deletion(new PartialPath("root.**"), Long.MAX_VALUE, Long.MAX_VALUE));
+    seqFile2.getModFile().close();
+    TsFileResource seqFile3 = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile3)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s1", new TimeRange[] {new TimeRange(10, 20)}, TSEncoding.PLAIN, CompressionType.LZ4);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    seqFile3
+        .getModFile()
+        .write(new Deletion(new PartialPath("root.testsg.**"), Long.MAX_VALUE, Long.MAX_VALUE));
+    seqFile3.getModFile().close();
+    seqResources.add(seqFile1);
+    seqResources.add(seqFile2);
+    seqResources.add(seqFile3);
+    InnerSpaceCompactionTask task =
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
+    Assert.assertTrue(task.start());
+    Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
+  }
+
+  @Test
+  public void testReadChunkPerformerWithEmptyTargetFile6()
+      throws IOException, IllegalPathException {
+    TsFileResource seqFile1 = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile1)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleAlignedSeriesToCurrentDevice(
+          Arrays.asList("s1"),
+          new TimeRange[] {new TimeRange(1, 2)},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    seqFile1
+        .getModFile()
+        .write(new Deletion(new PartialPath("root.**"), Long.MAX_VALUE, Long.MAX_VALUE));
+    seqFile1.getModFile().close();
+    TsFileResource seqFile2 = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile2)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleAlignedSeriesToCurrentDevice(
+          Arrays.asList("s1"),
+          new TimeRange[] {new TimeRange(5, 6)},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    seqFile2
+        .getModFile()
+        .write(new Deletion(new PartialPath("root.**"), Long.MAX_VALUE, Long.MAX_VALUE));
+    seqFile2.getModFile().close();
+    TsFileResource seqFile3 = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile3)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleAlignedSeriesToCurrentDevice(
+          Arrays.asList("s1"),
+          new TimeRange[] {new TimeRange(10, 20)},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    seqFile3
+        .getModFile()
+        .write(new Deletion(new PartialPath("root.testsg.**"), Long.MAX_VALUE, Long.MAX_VALUE));
+    seqFile3.getModFile().close();
+    seqResources.add(seqFile1);
+    seqResources.add(seqFile2);
+    seqResources.add(seqFile3);
+    InnerSpaceCompactionTask task =
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
+    Assert.assertTrue(task.start());
+    Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
+  }
+
+  @Test
   public void testReadChunkPerformerWithNonEmptyTargetFile() throws IOException {
     TsFileResource seqFile1 = createEmptyFileAndResource(true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile1)) {
@@ -552,5 +664,49 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
             0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
     Assert.assertTrue(task.start());
     Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
+  }
+
+  @Test
+  public void testCompactionLogIsDeletedAfterException() throws IOException {
+    TsFileResource seqResource1 = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqResource1)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s1",
+          new TimeRange[][][] {
+            new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12), new TimeRange(3, 12)}}
+          },
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    TsFileResource seqResource2 = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqResource2)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s1", new TimeRange[] {new TimeRange(1, 9)}, TSEncoding.PLAIN, CompressionType.LZ4);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    seqResources.add(seqResource1);
+    seqResources.add(seqResource2);
+    tsFileManager.addAll(seqResources, true);
+
+    InnerSpaceCompactionTask task =
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, new FastCompactionPerformer(false), 0);
+    Assert.assertFalse(task.start());
+    Assert.assertFalse(
+        new File(
+                seqResource1
+                    .getTsFile()
+                    .getAbsolutePath()
+                    .replace(
+                        "0-0" + TsFileConstant.TSFILE_SUFFIX,
+                        "1-0.inner" + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX))
+            .exists());
+    Assert.assertEquals(
+        4, Objects.requireNonNull(seqResource1.getTsFile().getParentFile().listFiles()).length);
   }
 }

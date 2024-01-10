@@ -23,7 +23,7 @@ import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -39,7 +39,8 @@ import java.util.List;
  */
 public class HybridTimeseriesSessionExample {
 
-  private static Logger logger = LoggerFactory.getLogger(HybridTimeseriesSessionExample.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(HybridTimeseriesSessionExample.class);
 
   private static Session session;
   private static final String ROOT_SG1_ALIGNEDDEVICE = "root.sg_1.aligned_device";
@@ -65,9 +66,9 @@ public class HybridTimeseriesSessionExample {
 
   private static void selectTest() throws StatementExecutionException, IoTDBConnectionException {
     SessionDataSet dataSet = session.executeQueryStatement("select ** from root.sg_1");
-    logger.info("columnNames = {}", dataSet.getColumnNames());
+    LOGGER.info("columnNames = {}", dataSet.getColumnNames());
     while (dataSet.hasNext()) {
-      logger.info("data = {}", dataSet.next());
+      LOGGER.info("data = {}", dataSet.next());
     }
 
     dataSet.closeOperationHandle();

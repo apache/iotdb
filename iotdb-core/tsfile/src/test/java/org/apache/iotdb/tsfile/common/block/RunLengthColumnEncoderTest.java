@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.tsfile.common.block;
 
-import org.apache.iotdb.tsfile.access.Column;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.enums.ColumnEncoding;
 import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnEncoder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnEncoderFactory;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnEncoding;
 import org.apache.iotdb.tsfile.read.common.block.column.DoubleColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.FloatColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;

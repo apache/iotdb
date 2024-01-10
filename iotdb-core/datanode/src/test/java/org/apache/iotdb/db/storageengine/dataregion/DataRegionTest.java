@@ -53,8 +53,8 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameG
 import org.apache.iotdb.db.storageengine.rescon.memory.MemTableManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
@@ -218,6 +218,7 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
+            null,
             null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
@@ -294,6 +295,7 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
+            null,
             null);
 
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
@@ -375,6 +377,7 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
+            null,
             null);
 
     Assert.assertEquals(0, queryDataSource.getSeqResources().size());
@@ -455,6 +458,7 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
+            null,
             null);
 
     Assert.assertEquals(0, queryDataSource.getSeqResources().size());
@@ -489,6 +493,7 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
+            null,
             null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     Assert.assertEquals(10, queryDataSource.getUnseqResources().size());
@@ -529,6 +534,7 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
+            null,
             null);
     Assert.assertEquals(0, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
@@ -541,10 +547,10 @@ public class DataRegionTest {
   }
 
   @Test
-  public void testEnableDiscardOutOfOrderDataForInsertRowPlan()
+  public void testDisableSeparateDataForInsertRowPlan()
       throws WriteProcessException, QueryProcessException, IllegalPathException, IOException {
-    boolean defaultValue = config.isEnableDiscardOutOfOrderData();
-    config.setEnableDiscardOutOfOrderData(true);
+    boolean defaultValue = config.isEnableSeparateData();
+    config.setEnableSeparateData(false);
 
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
@@ -572,9 +578,10 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
+            null,
             null);
-    Assert.assertEquals(10, queryDataSource.getSeqResources().size());
-    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
+    Assert.assertEquals(0, queryDataSource.getSeqResources().size());
+    Assert.assertEquals(20, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
@@ -582,15 +589,15 @@ public class DataRegionTest {
       Assert.assertTrue(resource.isClosed());
     }
 
-    config.setEnableDiscardOutOfOrderData(defaultValue);
+    config.setEnableSeparateData(defaultValue);
   }
 
   @Test
-  public void testEnableDiscardOutOfOrderDataForInsertTablet1()
+  public void testDisableSeparateDataForInsertTablet1()
       throws QueryProcessException, IllegalPathException, IOException, WriteProcessException {
-    boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
+    boolean defaultEnableDiscard = config.isEnableSeparateData();
     long defaultTimePartition = COMMON_CONFIG.getTimePartitionInterval();
-    config.setEnableDiscardOutOfOrderData(true);
+    config.setEnableSeparateData(false);
     COMMON_CONFIG.setTimePartitionInterval(100000);
 
     String[] measurements = new String[2];
@@ -661,24 +668,25 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
+            null,
             null);
 
-    Assert.assertEquals(2, queryDataSource.getSeqResources().size());
-    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
+    Assert.assertEquals(0, queryDataSource.getSeqResources().size());
+    Assert.assertEquals(2, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
 
-    config.setEnableDiscardOutOfOrderData(defaultEnableDiscard);
+    config.setEnableSeparateData(defaultEnableDiscard);
     COMMON_CONFIG.setTimePartitionInterval(defaultTimePartition);
   }
 
   @Test
-  public void testEnableDiscardOutOfOrderDataForInsertTablet2()
+  public void testDisableSeparateDataForInsertTablet2()
       throws QueryProcessException, IllegalPathException, IOException, WriteProcessException {
-    boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
+    boolean defaultEnableDiscard = config.isEnableSeparateData();
     long defaultTimePartition = COMMON_CONFIG.getTimePartitionInterval();
-    config.setEnableDiscardOutOfOrderData(true);
+    config.setEnableSeparateData(false);
     COMMON_CONFIG.setTimePartitionInterval(1200000);
 
     String[] measurements = new String[2];
@@ -749,24 +757,25 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
+            null,
             null);
 
-    Assert.assertEquals(2, queryDataSource.getSeqResources().size());
-    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
+    Assert.assertEquals(0, queryDataSource.getSeqResources().size());
+    Assert.assertEquals(2, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
 
-    config.setEnableDiscardOutOfOrderData(defaultEnableDiscard);
+    config.setEnableSeparateData(defaultEnableDiscard);
     COMMON_CONFIG.setTimePartitionInterval(defaultTimePartition);
   }
 
   @Test
-  public void testEnableDiscardOutOfOrderDataForInsertTablet3()
+  public void testDisableSeparateDataForInsertTablet3()
       throws QueryProcessException, IllegalPathException, IOException, WriteProcessException {
-    boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
+    boolean defaultEnableDiscard = config.isEnableSeparateData();
     long defaultTimePartition = COMMON_CONFIG.getTimePartitionInterval();
-    config.setEnableDiscardOutOfOrderData(true);
+    config.setEnableSeparateData(false);
     COMMON_CONFIG.setTimePartitionInterval(1000000);
 
     String[] measurements = new String[2];
@@ -837,15 +846,16 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
+            null,
             null);
 
-    Assert.assertEquals(2, queryDataSource.getSeqResources().size());
-    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
+    Assert.assertEquals(0, queryDataSource.getSeqResources().size());
+    Assert.assertEquals(2, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
 
-    config.setEnableDiscardOutOfOrderData(defaultEnableDiscard);
+    config.setEnableSeparateData(defaultEnableDiscard);
     COMMON_CONFIG.setTimePartitionInterval(defaultTimePartition);
   }
 
@@ -874,6 +884,7 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath("root.ln22", measurementId)),
             "root.ln22",
             context,
+            null,
             null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
@@ -898,8 +909,16 @@ public class DataRegionTest {
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     boolean originEnableUnseqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
+    boolean originEnableCrossSpaceCompaction =
+        IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
+    boolean originEnableInsertionCompaction =
+        IoTDBDescriptor.getInstance().getConfig().isEnableInsertionCrossSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
+    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(false);
+    IoTDBDescriptor.getInstance().getConfig().setEnableInsertionCrossSpaceCompaction(false);
+    long finishedCompactionTaskNumWhenTestStart =
+        CompactionTaskManager.getInstance().getFinishedTaskNum();
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
@@ -933,13 +952,15 @@ public class DataRegionTest {
         Assert.fail();
         break;
       }
-    } while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0);
+    } while (CompactionTaskManager.getInstance().getFinishedTaskNum()
+        <= finishedCompactionTaskNumWhenTestStart + 1);
 
     QueryDataSource queryDataSource =
         dataRegion.query(
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
+            null,
             null);
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
@@ -952,6 +973,12 @@ public class DataRegionTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setEnableSeqSpaceCompaction(originEnableSeqSpaceCompaction);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setEnableCrossSpaceCompaction(originEnableCrossSpaceCompaction);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setEnableInsertionCrossSpaceCompaction(originEnableInsertionCompaction);
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setEnableUnseqSpaceCompaction(originEnableUnseqSpaceCompaction);
@@ -1345,5 +1372,91 @@ public class DataRegionTest {
         throws DataRegionException {
       super(systemInfoDir, "0", new TsFileFlushPolicy.DirectFlushPolicy(), storageGroupName);
     }
+  }
+
+  // -- test for deleting data directly
+  // -- delete data and file only when:
+  // 1. tsfile is closed
+  // 2. tsfile is not compating
+  // 3. tsfile's start time and end time must be a subinterval
+  // of the given time range.
+
+  @Test
+  public void testDeleteDataDirectlySeqWriteModsOrDeleteFiles()
+      throws IllegalPathException, WriteProcessException, IOException {
+    for (int j = 100; j < 200; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+    }
+
+    TsFileResource tsFileResource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+    // delete data in work mem, no mods.
+    dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 50, 100, 0);
+    Assert.assertTrue(tsFileResource.getTsFile().exists());
+    Assert.assertFalse(tsFileResource.getModFile().exists());
+
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    // delete data in closed file, but time not match
+    dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 100, 120, 0);
+    Assert.assertTrue(tsFileResource.getTsFile().exists());
+    Assert.assertTrue(tsFileResource.getModFile().exists());
+
+    // delete data in closed file, and time all match
+    dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 100, 199, 0);
+    Assert.assertFalse(tsFileResource.getTsFile().exists());
+    Assert.assertFalse(tsFileResource.getModFile().exists());
+  }
+
+  @Test
+  public void testDeleteDataDirectlyUnseqWriteModsOrDeleteFiles()
+      throws IllegalPathException, WriteProcessException, IOException {
+    for (int j = 100; j < 200; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+    }
+    TsFileResource tsFileResourceSeq = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+    for (int j = 30; j < 100; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+    }
+
+    for (TsFileProcessor processor : dataRegion.getWorkSequenceTsFileProcessors()) {
+      processor.syncFlush();
+    }
+    TsFileResource tsFileResourceUnSeq = dataRegion.getTsFileManager().getTsFileList(false).get(0);
+
+    Assert.assertTrue(tsFileResourceSeq.getTsFile().exists());
+    Assert.assertTrue(tsFileResourceUnSeq.getTsFile().exists());
+
+    // already closed, will have a mods file.
+    dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 40, 60, 0);
+    // not close yet, just delete in memory.
+    dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 140, 160, 0);
+
+    // delete data in mem table, there is no mods
+    Assert.assertTrue(tsFileResourceSeq.getTsFile().exists());
+    Assert.assertTrue(tsFileResourceUnSeq.getTsFile().exists());
+    Assert.assertTrue(tsFileResourceSeq.getModFile().exists());
+    Assert.assertFalse(tsFileResourceUnSeq.getModFile().exists());
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 40, 80, 0);
+    Assert.assertTrue(tsFileResourceUnSeq.getTsFile().exists());
+    Assert.assertTrue(tsFileResourceUnSeq.getModFile().exists());
+
+    // seq file and unseq file have data file and mod file now,
+    // this deletion will remove data file and mod file.
+    dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 30, 100, 0);
+    dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 100, 199, 0);
+
+    Assert.assertFalse(tsFileResourceSeq.getTsFile().exists());
+    Assert.assertFalse(tsFileResourceUnSeq.getTsFile().exists());
+    Assert.assertFalse(tsFileResourceSeq.getModFile().exists());
+    Assert.assertFalse(tsFileResourceUnSeq.getModFile().exists());
   }
 }

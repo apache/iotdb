@@ -28,7 +28,7 @@ import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpressionType;
 import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimeSeriesViewOperand;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 /**
@@ -158,7 +158,7 @@ public class LogicalViewInfo implements IMeasurementInfo {
     throw new SchemaExecutionException(
         new IllegalArgumentException(
             "Type of newMNode is not LogicalViewMNode! It's "
-                + newMNode.getMNodeType(false).toString()));
+                + newMNode.getMNodeType().toString()));
   }
   // endregion
 }

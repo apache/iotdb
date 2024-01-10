@@ -21,9 +21,12 @@ import org.apache.iotdb.db.protocol.rest.v2.model.ExpressionRequest;
 import org.apache.iotdb.db.protocol.rest.v2.model.InsertRecordsRequest;
 import org.apache.iotdb.db.protocol.rest.v2.model.InsertTabletRequest;
 import org.apache.iotdb.db.protocol.rest.v2.model.SQL;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.apache.commons.lang3.Validate;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 public class RequestValidationHandler {
@@ -42,7 +45,22 @@ public class RequestValidationHandler {
     Objects.requireNonNull(insertTabletRequest.getIsAligned(), "is_aligned should not be null");
     Objects.requireNonNull(insertTabletRequest.getDevice(), "device should not be null");
     Objects.requireNonNull(insertTabletRequest.getDataTypes(), "data_types should not be null");
+    Objects.requireNonNull(
+        insertTabletRequest.getMeasurements(), "measurements should not be null");
     Objects.requireNonNull(insertTabletRequest.getValues(), "values should not be null");
+    List<String> errorMessages = new ArrayList<>();
+    String device = insertTabletRequest.getDevice();
+    for (int i = 0; i < insertTabletRequest.getMeasurements().size(); i++) {
+      String dataType = insertTabletRequest.getDataTypes().get(i);
+      String measurement = insertTabletRequest.getMeasurements().get(i);
+      if (isDataType(dataType)) {
+        errorMessages.add(
+            "The " + dataType + " data type of " + device + "." + measurement + " is illegal");
+      }
+    }
+    if (!errorMessages.isEmpty()) {
+      throw new RuntimeException(String.join(",", errorMessages));
+    }
   }
 
   public static void validateInsertRecordsRequest(InsertRecordsRequest insertRecordsRequest) {
@@ -54,6 +72,31 @@ public class RequestValidationHandler {
     Objects.requireNonNull(insertRecordsRequest.getValuesList(), "values_list should not be null");
     Objects.requireNonNull(
         insertRecordsRequest.getMeasurementsList(), "measurements_list should not be null");
+    List<String> errorMessages = new ArrayList<>();
+    for (int i = 0; i < insertRecordsRequest.getDataTypesList().size(); i++) {
+      String device = insertRecordsRequest.getDevices().get(i);
+      List<String> measurements = insertRecordsRequest.getMeasurementsList().get(i);
+      for (int c = 0; c < insertRecordsRequest.getDataTypesList().get(i).size(); c++) {
+        String dataType = insertRecordsRequest.getDataTypesList().get(i).get(c);
+        String measurement = measurements.get(c);
+        if (isDataType(dataType)) {
+          errorMessages.add(
+              "The " + dataType + " data type of " + device + "." + measurement + " is illegal");
+        }
+      }
+    }
+    if (!errorMessages.isEmpty()) {
+      throw new RuntimeException(String.join(",", errorMessages));
+    }
+  }
+
+  private static boolean isDataType(String dataType) {
+    try {
+      TSDataType.valueOf(dataType.toUpperCase());
+    } catch (IllegalArgumentException e) {
+      return true;
+    }
+    return false;
   }
 
   public static void validateExpressionRequest(ExpressionRequest expressionRequest) {

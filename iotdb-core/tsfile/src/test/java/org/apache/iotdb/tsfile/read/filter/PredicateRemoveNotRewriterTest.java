@@ -20,17 +20,8 @@
 package org.apache.iotdb.tsfile.read.filter;
 
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
-import org.apache.iotdb.tsfile.read.filter.operator.Between;
-import org.apache.iotdb.tsfile.read.filter.operator.Eq;
-import org.apache.iotdb.tsfile.read.filter.operator.Gt;
-import org.apache.iotdb.tsfile.read.filter.operator.GtEq;
-import org.apache.iotdb.tsfile.read.filter.operator.In;
-import org.apache.iotdb.tsfile.read.filter.operator.Like;
-import org.apache.iotdb.tsfile.read.filter.operator.Lt;
-import org.apache.iotdb.tsfile.read.filter.operator.LtEq;
-import org.apache.iotdb.tsfile.read.filter.operator.NotEq;
-import org.apache.iotdb.tsfile.read.filter.operator.Regexp;
+import org.apache.iotdb.tsfile.read.filter.factory.TimeFilterApi;
+import org.apache.iotdb.tsfile.read.filter.factory.ValueFilterApi;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -42,80 +33,50 @@ public class PredicateRemoveNotRewriterTest {
 
   @Test
   public void testReverse() {
+    Assert.assertEquals(TimeFilterApi.gt(1), TimeFilterApi.ltEq(1).reverse());
+    Assert.assertEquals(TimeFilterApi.gtEq(1), TimeFilterApi.lt(1).reverse());
+    Assert.assertEquals(TimeFilterApi.lt(1), TimeFilterApi.gtEq(1).reverse());
+    Assert.assertEquals(TimeFilterApi.ltEq(1), TimeFilterApi.gt(1).reverse());
+    Assert.assertEquals(TimeFilterApi.eq(1), TimeFilterApi.notEq(1).reverse());
+    Assert.assertEquals(TimeFilterApi.notEq(1), TimeFilterApi.eq(1).reverse());
+    Assert.assertEquals(ValueFilterApi.like("s*"), ValueFilterApi.notLike("s*").reverse());
+    Assert.assertEquals(ValueFilterApi.notLike("s*"), ValueFilterApi.like("s*").reverse());
+    Assert.assertEquals(ValueFilterApi.regexp("s*"), ValueFilterApi.notRegexp("s*").reverse());
+    Assert.assertEquals(ValueFilterApi.notRegexp("s*"), ValueFilterApi.regexp("s*").reverse());
+    Assert.assertEquals(TimeFilterApi.between(1, 100), TimeFilterApi.notBetween(1, 100).reverse());
+    Assert.assertEquals(TimeFilterApi.notBetween(1, 100), TimeFilterApi.between(1, 100).reverse());
     Assert.assertEquals(
-        new Gt<>(1, FilterType.TIME_FILTER), new LtEq<>(1, FilterType.TIME_FILTER).reverse());
+        ValueFilterApi.in(new HashSet<>(Arrays.asList("a", "b"))),
+        ValueFilterApi.notIn(new HashSet<>(Arrays.asList("a", "b"))).reverse());
     Assert.assertEquals(
-        new GtEq<>(1, FilterType.TIME_FILTER), new Lt<>(1, FilterType.TIME_FILTER).reverse());
+        ValueFilterApi.notIn(new HashSet<>(Arrays.asList("a", "b"))),
+        ValueFilterApi.in(new HashSet<>(Arrays.asList("a", "b"))).reverse());
+    Assert.assertEquals(TimeFilterApi.gt(1), FilterFactory.not(TimeFilterApi.gt(1)).reverse());
     Assert.assertEquals(
-        new Lt<>(1, FilterType.TIME_FILTER), new GtEq<>(1, FilterType.TIME_FILTER).reverse());
+        FilterFactory.and(TimeFilterApi.gt(1), TimeFilterApi.ltEq(1)),
+        FilterFactory.or(TimeFilterApi.ltEq(1), TimeFilterApi.gt(1)).reverse());
     Assert.assertEquals(
-        new LtEq<>(1, FilterType.TIME_FILTER), new Gt<>(1, FilterType.TIME_FILTER).reverse());
-    Assert.assertEquals(
-        new Eq<>(1, FilterType.TIME_FILTER), new NotEq<>(1, FilterType.TIME_FILTER).reverse());
-    Assert.assertEquals(
-        new NotEq<>(1, FilterType.TIME_FILTER), new Eq<>(1, FilterType.TIME_FILTER).reverse());
-    Assert.assertEquals(
-        new Like<>("s*", FilterType.TIME_FILTER, true),
-        new Like<>("s*", FilterType.TIME_FILTER, false).reverse());
-    Assert.assertEquals(
-        new Like<>("s*", FilterType.TIME_FILTER, false),
-        new Like<>("s*", FilterType.TIME_FILTER, true).reverse());
-    Assert.assertEquals(
-        new Regexp<>("s*", FilterType.TIME_FILTER, true),
-        new Regexp<>("s*", FilterType.TIME_FILTER, false).reverse());
-    Assert.assertEquals(
-        new Regexp<>("s*", FilterType.TIME_FILTER, false),
-        new Regexp<>("s*", FilterType.TIME_FILTER, true).reverse());
-    Assert.assertEquals(
-        new Between<>(1, 100, FilterType.TIME_FILTER, true),
-        new Between<>(1, 100, FilterType.TIME_FILTER, false).reverse());
-    Assert.assertEquals(
-        new Between<>(1, 100, FilterType.TIME_FILTER, false),
-        new Between<>(1, 100, FilterType.TIME_FILTER, true).reverse());
-    Assert.assertEquals(
-        new In<>(new HashSet<>(Arrays.asList("a", "b")), FilterType.TIME_FILTER, true),
-        new In<>(new HashSet<>(Arrays.asList("a", "b")), FilterType.TIME_FILTER, false).reverse());
-    Assert.assertEquals(
-        new In<>(new HashSet<>(Arrays.asList("a", "b")), FilterType.TIME_FILTER, false),
-        new In<>(new HashSet<>(Arrays.asList("a", "b")), FilterType.TIME_FILTER, true).reverse());
-    Assert.assertEquals(
-        new Gt<>(1, FilterType.TIME_FILTER),
-        FilterFactory.not(new Gt<>(1, FilterType.TIME_FILTER)).reverse());
-    Assert.assertEquals(
-        FilterFactory.and(
-            new Gt<>(1, FilterType.TIME_FILTER), new LtEq<>(1, FilterType.TIME_FILTER)),
-        FilterFactory.or(new LtEq<>(1, FilterType.TIME_FILTER), new Gt<>(1, FilterType.TIME_FILTER))
-            .reverse());
-    Assert.assertEquals(
-        FilterFactory.or(
-            new LtEq<>(1, FilterType.TIME_FILTER), new Gt<>(1, FilterType.TIME_FILTER)),
-        FilterFactory.and(
-                new Gt<>(1, FilterType.TIME_FILTER), new LtEq<>(1, FilterType.TIME_FILTER))
-            .reverse());
+        FilterFactory.or(TimeFilterApi.ltEq(1), TimeFilterApi.gt(1)),
+        FilterFactory.and(TimeFilterApi.gt(1), TimeFilterApi.ltEq(1)).reverse());
   }
 
   @Test
   public void testRemoveNot() {
     Assert.assertEquals(
-        new LtEq<>(1, FilterType.TIME_FILTER),
-        PredicateRemoveNotRewriter.rewrite(FilterFactory.not(new Gt<>(1, FilterType.TIME_FILTER))));
+        TimeFilterApi.ltEq(1),
+        PredicateRemoveNotRewriter.rewrite(FilterFactory.not(TimeFilterApi.gt(1))));
     Assert.assertEquals(
-        new Like<>("s*", FilterType.TIME_FILTER, false),
-        PredicateRemoveNotRewriter.rewrite(
-            FilterFactory.not(new Like<>("s*", FilterType.TIME_FILTER, true))));
+        ValueFilterApi.like("s*"),
+        PredicateRemoveNotRewriter.rewrite(FilterFactory.not(ValueFilterApi.notLike("s*"))));
     Assert.assertEquals(
-        FilterFactory.or(
-            new Gt<>(1, FilterType.TIME_FILTER), new LtEq<>(1, FilterType.TIME_FILTER)),
+        FilterFactory.or(TimeFilterApi.gt(1), TimeFilterApi.ltEq(1)),
         PredicateRemoveNotRewriter.rewrite(
             FilterFactory.or(
-                FilterFactory.not(new LtEq<>(1, FilterType.TIME_FILTER)),
-                FilterFactory.not(new Gt<>(1, FilterType.TIME_FILTER)))));
+                FilterFactory.not(TimeFilterApi.ltEq(1)), FilterFactory.not(TimeFilterApi.gt(1)))));
     Assert.assertEquals(
-        FilterFactory.and(
-            new Gt<>(1, FilterType.TIME_FILTER), new LtEq<>(1, FilterType.TIME_FILTER)),
+        FilterFactory.and(TimeFilterApi.gt(1), TimeFilterApi.ltEq(1)),
         PredicateRemoveNotRewriter.rewrite(
             FilterFactory.and(
-                FilterFactory.not(new LtEq<>(1, FilterType.TIME_FILTER)),
-                FilterFactory.not(new Gt<>(1, FilterType.TIME_FILTER)))));
+                FilterFactory.not(TimeFilterApi.ltEq(1)), FilterFactory.not(TimeFilterApi.gt(1)))));
   }
 }

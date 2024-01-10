@@ -28,8 +28,8 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
@@ -60,7 +60,8 @@ public interface ISession extends AutoCloseable {
   void open(
       boolean enableRPCCompression,
       int connectionTimeoutInMs,
-      Map<String, TEndPoint> deviceIdToEndpoint)
+      Map<String, TEndPoint> deviceIdToEndpoint,
+      INodeSupplier nodeSupplier)
       throws IoTDBConnectionException;
 
   void close() throws IoTDBConnectionException;

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.expression.visitor;
 
 import org.apache.iotdb.db.queryengine.common.NodeRef;
+import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.WhenThenExpression;
@@ -68,7 +69,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.RegularCo
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.TransformUtils;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 import org.apache.iotdb.tsfile.read.common.type.TypeFactory;
 
@@ -535,6 +536,8 @@ public class ColumnTransformerVisitor
 
     int originSize;
 
+    TypeProvider typeProvider;
+
     @SuppressWarnings("squid:S107")
     public ColumnTransformerVisitorContext(
         UDTFContext udtfContext,
@@ -545,7 +548,8 @@ public class ColumnTransformerVisitor
         Map<Expression, ColumnTransformer> hasSeen,
         List<ColumnTransformer> commonTransformerList,
         List<TSDataType> inputDataTypes,
-        int originSize) {
+        int originSize,
+        TypeProvider typeProvider) {
       this.udtfContext = udtfContext;
       this.expressionTypes = expressionTypes;
       this.leafList = leafList;
@@ -555,10 +559,18 @@ public class ColumnTransformerVisitor
       this.commonTransformerList = commonTransformerList;
       this.inputDataTypes = inputDataTypes;
       this.originSize = originSize;
+      this.typeProvider = typeProvider;
     }
 
     public TSDataType getType(Expression expression) {
+      if (typeProvider != null) {
+        return typeProvider.getType(expression.getOutputSymbol());
+      }
       return expressionTypes.get(NodeRef.of(expression));
+    }
+
+    public TypeProvider getTypeProvider() {
+      return this.typeProvider;
     }
   }
 }

@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -32,6 +33,7 @@ import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByParameter;
@@ -44,9 +46,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -105,7 +108,7 @@ public class Analysis {
 
   // An ordered map from cross-timeseries aggregation to list of inner-timeseries aggregations. The
   // keys' order is the output one.
-  private LinkedHashMap<Expression, Set<Expression>> crossGroupByExpressions;
+  private Map<Expression, Set<Expression>> crossGroupByExpressions;
 
   // tag keys specified in `GROUP BY TAG` clause
   private List<String> tagKeys;
@@ -130,9 +133,6 @@ public class Analysis {
 
   // the list of device names
   private List<PartialPath> deviceList;
-
-  // map from output device name to queried devices
-  private Map<String, List<String>> outputDeviceToQueriedDevicesMap;
 
   // map from device name to series/aggregation under this device
   private Map<String, Set<Expression>> deviceToSourceExpressions;
@@ -164,7 +164,10 @@ public class Analysis {
 
   private Set<Expression> deviceViewOutputExpressions;
 
-  private final Map<String, Set<Expression>> deviceToOutputExpressions = new HashMap<>();
+  private Map<String, Set<Expression>> deviceToOutputExpressions = new HashMap<>();
+
+  // map from output device name to queried devices
+  private Map<String, String> outputDeviceToQueriedDevicesMap;
 
   // indicates whether DeviceView need special process when rewriteSource in DistributionPlan,
   // you can see SourceRewriter#visitDeviceView to get more information
@@ -177,8 +180,8 @@ public class Analysis {
   // indicate is there a value filter
   private boolean hasValueFilter = false;
 
-  // a global time filter used in `initQueryDataSource` and filter push down
-  private Filter globalTimeFilter;
+  // a global time predicate used in `initQueryDataSource` and filter push down
+  private Expression globalTimePredicate;
 
   // expression of output column to be calculated
   private Set<Expression> selectExpressions;
@@ -271,16 +274,45 @@ public class Analysis {
   // if `order by limit N align by device` query use topK optimization
   private boolean useTopKNode = false;
 
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // All Queries Devices Set In One Template
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // if all devices are set in one template in align by device query, this variable will not be null
+  private Template deviceTemplate;
+  // when deviceTemplate is not empty and all expressions in this query are templated measurements,
+  // i.e. no aggregation and arithmetic expression
+  private boolean onlyQueryTemplateMeasurements = true;
+  // if it is wildcard query in templated align by device query
+  private boolean templateWildCardQuery;
+  // all queried measurementList and schemaList in deviceTemplate.
+  private List<String> measurementList;
+  private List<IMeasurementSchema> measurementSchemaList;
+
   public Analysis() {
     this.finishQueryAfterAnalyze = false;
   }
 
   public List<TRegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
-    return dataPartition.getDataRegionReplicaSet(seriesPath.getDevice(), timefilter);
+    return dataPartition.getDataRegionReplicaSetWithTimeFilter(seriesPath.getDevice(), timefilter);
+  }
+
+  public TRegionReplicaSet getPartitionInfo(
+      PartialPath seriesPath, TTimePartitionSlot tTimePartitionSlot) {
+    return dataPartition.getDataRegionReplicaSet(seriesPath.getDevice(), tTimePartitionSlot).get(0);
+  }
+
+  /**
+   * Get all time partition ids and combine adjacent time partition if they belong to same data
+   * region
+   */
+  public List<List<TTimePartitionSlot>> getTimePartitionRange(
+      PartialPath seriesPath, Filter timefilter) {
+    return dataPartition.getTimePartitionRange(seriesPath.getDevice(), timefilter);
   }
 
   public List<TRegionReplicaSet> getPartitionInfo(String deviceName, Filter globalTimeFilter) {
-    return dataPartition.getDataRegionReplicaSet(deviceName, globalTimeFilter);
+    return dataPartition.getDataRegionReplicaSetWithTimeFilter(deviceName, globalTimeFilter);
   }
 
   public Statement getStatement() {
@@ -330,12 +362,12 @@ public class Analysis {
     redirectNodeList.add(endPoint);
   }
 
-  public Filter getGlobalTimeFilter() {
-    return globalTimeFilter;
+  public Expression getGlobalTimePredicate() {
+    return globalTimePredicate;
   }
 
-  public void setGlobalTimeFilter(Filter timeFilter) {
-    this.globalTimeFilter = timeFilter;
+  public void setGlobalTimePredicate(Expression timeFilter) {
+    this.globalTimePredicate = timeFilter;
   }
 
   public DatasetHeader getRespDatasetHeader() {
@@ -348,9 +380,16 @@ public class Analysis {
 
   public TSDataType getType(Expression expression) {
     // NULL_Operand needn't check
-    if (expression.getExpressionType() == ExpressionType.NULL) {
+    if (expression.getExpressionType().equals(ExpressionType.NULL)) {
       return null;
     }
+
+    if (isAllDevicesInOneTemplate()
+        && (isOnlyQueryTemplateMeasurements() || expression instanceof TimeSeriesOperand)) {
+      TimeSeriesOperand seriesOperand = (TimeSeriesOperand) expression;
+      return deviceTemplate.getSchemaMap().get(seriesOperand.getPath().getMeasurement()).getType();
+    }
+
     TSDataType type = expressionTypes.get(NodeRef.of(expression));
     checkArgument(type != null, "Expression is not analyzed: %s", expression);
     return type;
@@ -364,12 +403,11 @@ public class Analysis {
             && ((QueryStatement) statement).isAggregationQuery());
   }
 
-  public LinkedHashMap<Expression, Set<Expression>> getCrossGroupByExpressions() {
+  public Map<Expression, Set<Expression>> getCrossGroupByExpressions() {
     return crossGroupByExpressions;
   }
 
-  public void setCrossGroupByExpressions(
-      LinkedHashMap<Expression, Set<Expression>> crossGroupByExpressions) {
+  public void setCrossGroupByExpressions(Map<Expression, Set<Expression>> crossGroupByExpressions) {
     this.crossGroupByExpressions = crossGroupByExpressions;
   }
 
@@ -751,17 +789,21 @@ public class Analysis {
     this.lastQueryNonWritableViewSourceExpressionMap = lastQueryNonWritableViewSourceExpressionMap;
   }
 
-  public Map<String, List<String>> getOutputDeviceToQueriedDevicesMap() {
+  public Map<String, String> getOutputDeviceToQueriedDevicesMap() {
     return outputDeviceToQueriedDevicesMap;
   }
 
   public void setOutputDeviceToQueriedDevicesMap(
-      Map<String, List<String>> outputDeviceToQueriedDevicesMap) {
+      Map<String, String> outputDeviceToQueriedDevicesMap) {
     this.outputDeviceToQueriedDevicesMap = outputDeviceToQueriedDevicesMap;
   }
 
   public Map<String, Set<Expression>> getDeviceToOutputExpressions() {
     return deviceToOutputExpressions;
+  }
+
+  public void setDeviceToOutputExpressions(Map<String, Set<Expression>> deviceToOutputExpressions) {
+    this.deviceToOutputExpressions = deviceToOutputExpressions;
   }
 
   public boolean isLastLevelUseWildcard() {
@@ -786,5 +828,53 @@ public class Analysis {
 
   public List<PartialPath> getDeviceList() {
     return deviceList;
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // All Queries Devices Set In One Template
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public boolean isAllDevicesInOneTemplate() {
+    return this.deviceTemplate != null;
+  }
+
+  public Template getDeviceTemplate() {
+    return this.deviceTemplate;
+  }
+
+  public void setDeviceTemplate(Template template) {
+    this.deviceTemplate = template;
+  }
+
+  public boolean isOnlyQueryTemplateMeasurements() {
+    return onlyQueryTemplateMeasurements;
+  }
+
+  public void setOnlyQueryTemplateMeasurements(boolean onlyQueryTemplateMeasurements) {
+    this.onlyQueryTemplateMeasurements = onlyQueryTemplateMeasurements;
+  }
+
+  public List<String> getMeasurementList() {
+    return this.measurementList;
+  }
+
+  public void setMeasurementList(List<String> measurementList) {
+    this.measurementList = measurementList;
+  }
+
+  public List<IMeasurementSchema> getMeasurementSchemaList() {
+    return this.measurementSchemaList;
+  }
+
+  public void setMeasurementSchemaList(List<IMeasurementSchema> measurementSchemaList) {
+    this.measurementSchemaList = measurementSchemaList;
+  }
+
+  public void setTemplateWildCardQuery() {
+    this.templateWildCardQuery = true;
+  }
+
+  public boolean isTemplateWildCardQuery() {
+    return this.templateWildCardQuery;
   }
 }

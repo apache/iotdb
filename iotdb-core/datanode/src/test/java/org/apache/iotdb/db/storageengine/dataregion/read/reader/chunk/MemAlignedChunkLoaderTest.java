@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedReadOnlyMemChunk;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -37,6 +38,7 @@ import org.mockito.Mockito;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 import static org.apache.iotdb.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
 import static org.junit.Assert.assertEquals;
@@ -53,7 +55,8 @@ public class MemAlignedChunkLoaderTest {
     AlignedReadOnlyMemChunk chunk = Mockito.mock(AlignedReadOnlyMemChunk.class);
     ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
 
-    MemAlignedChunkLoader memAlignedChunkLoader = new MemAlignedChunkLoader(chunk, false);
+    MemAlignedChunkLoader memAlignedChunkLoader =
+        new MemAlignedChunkLoader(new QueryContext(), chunk);
     try {
       memAlignedChunkLoader.loadChunk(chunkMetadata);
       fail();
@@ -83,11 +86,7 @@ public class MemAlignedChunkLoaderTest {
 
     Mockito.when(chunkMetadata1.getStatistics()).thenReturn(timeStatistics);
     Mockito.when(chunkMetadata1.getTimeStatistics()).thenReturn(timeStatistics);
-    Mockito.when(chunkMetadata1.getStatistics(0)).thenReturn(statistics1);
-    Mockito.when(chunkMetadata1.getValueStatisticsList())
-        .thenReturn(
-            Arrays.asList(
-                statistics1, statistics2, statistics3, statistics4, statistics5, statistics6));
+    Mockito.when(chunkMetadata1.getMeasurementStatistics(0)).thenReturn(Optional.of(statistics1));
 
     MemAlignedChunkReader chunkReader =
         (MemAlignedChunkReader) memAlignedChunkLoader.getChunkReader(chunkMetadata1, null);
@@ -137,11 +136,11 @@ public class MemAlignedChunkLoaderTest {
     assertEquals(2L, tsBlock.getTimeColumn().getLong(1));
 
     assertEquals(timeStatistics, pageReader.getStatistics());
-    assertEquals(statistics1, pageReader.getStatistics(0));
+    assertEquals(statistics1, pageReader.getMeasurementStatistics(0).orElse(null));
     assertEquals(timeStatistics, pageReader.getTimeStatistics());
     assertFalse(pageReader.isModified());
     pageReader.setLimitOffset(UNLIMITED_PAGINATION_CONTROLLER);
-    pageReader.setFilter(null);
+    pageReader.addRecordFilter(null);
 
     memAlignedChunkLoader.close();
   }

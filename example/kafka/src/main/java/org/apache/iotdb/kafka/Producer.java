@@ -32,7 +32,7 @@ import java.util.Properties;
 public class Producer {
 
   private final KafkaProducer<String, String> kafkaProducer;
-  private static final Logger logger = LoggerFactory.getLogger(Producer.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(Producer.class);
 
   public Producer() {
 
@@ -53,7 +53,7 @@ public class Producer {
     for (int i = 0; i < Constant.ALL_DATA.length; i++) {
       String key = Integer.toString(i);
       kafkaProducer.send(new ProducerRecord<>(Constant.TOPIC, key, Constant.ALL_DATA[i]));
-      logger.info(Constant.ALL_DATA[i]);
+      LOGGER.info(Constant.ALL_DATA[i]);
     }
   }
 

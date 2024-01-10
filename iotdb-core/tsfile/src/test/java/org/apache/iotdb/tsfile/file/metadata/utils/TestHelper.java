@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.utils;
 
-import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeaderTest;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
@@ -26,12 +25,14 @@ import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 
 public class TestHelper {
 
@@ -53,17 +54,17 @@ public class TestHelper {
     return new MeasurementSchema(measurementuid, TSDataType.INT64, TSEncoding.RLE);
   }
 
-  public static TimeseriesMetadata createSimpleTimseriesMetaData(String measurementuid) {
+  public static TimeseriesMetadata createSimpleTimeseriesMetaData(String measurementuid) {
     Statistics<? extends Serializable> statistics =
         Statistics.getStatsByType(PageHeaderTest.DATA_TYPE);
     statistics.setEmpty(false);
     TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
     timeseriesMetaData.setMeasurementId(measurementuid);
     timeseriesMetaData.setTsDataType(PageHeaderTest.DATA_TYPE);
-    timeseriesMetaData.setOffsetOfChunkMetaDataList(1000L);
     timeseriesMetaData.setDataSizeOfChunkMetaDataList(0);
     timeseriesMetaData.setChunkMetadataListBuffer(new PublicBAOS());
     timeseriesMetaData.setStatistics(statistics);
+    timeseriesMetaData.setChunkMetadataList(new ArrayList<>());
     return timeseriesMetaData;
   }
 

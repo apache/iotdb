@@ -33,7 +33,7 @@ import org.apache.iotdb.tsfile.encoding.encoder.IntRleEncoder;
 import org.apache.iotdb.tsfile.encoding.encoder.LongRleEncoder;
 import org.apache.iotdb.tsfile.encoding.encoder.PlainEncoder;
 import org.apache.iotdb.tsfile.encoding.encoder.SinglePrecisionEncoderV1;
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
@@ -212,8 +212,7 @@ public class PageReaderTest {
         ByteBuffer page = ByteBuffer.wrap(pageWriter.getUncompressedBytes().array());
 
         PageReader pageReader =
-            new PageReader(
-                page, dataType, decoder, new DeltaBinaryDecoder.LongDeltaDecoder(), null);
+            new PageReader(page, dataType, decoder, new DeltaBinaryDecoder.LongDeltaDecoder());
 
         int index = 0;
         BatchData data = pageReader.getAllSatisfiedPageData();
@@ -243,8 +242,7 @@ public class PageReaderTest {
         ByteBuffer page = ByteBuffer.wrap(pageWriter.getUncompressedBytes().array());
 
         PageReader pageReader =
-            new PageReader(
-                page, dataType, decoder, new DeltaBinaryDecoder.LongDeltaDecoder(), null);
+            new PageReader(page, dataType, decoder, new DeltaBinaryDecoder.LongDeltaDecoder());
 
         int index = 0;
         List<TimeRange> deleteIntervals = new ArrayList<>();

@@ -19,26 +19,37 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
-import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
+import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.openjdk.jol.info.ClassLayout;
+
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
+
+import static io.airlift.slice.SizeOf.sizeOfCharArray;
+import static io.airlift.slice.SizeOf.sizeOfObjectArray;
+import static org.apache.iotdb.tsfile.utils.Preconditions.checkArgument;
 
 public class TimeseriesMetadata implements ITimeSeriesMetadata {
 
-  /** used for old version tsfile. */
-  private long startOffsetOfChunkMetaDataList;
+  private static final int INSTANCE_SIZE =
+      ClassLayout.parseClass(TimeseriesMetadata.class).instanceSize()
+          + ClassLayout.parseClass(String.class).instanceSize()
+          + ClassLayout.parseClass(TSDataType.class).instanceSize()
+          + ClassLayout.parseClass(ArrayList.class).instanceSize();
 
   /**
    * 0 means this time series has only one chunk, no need to save the statistic again in chunk
@@ -97,7 +108,9 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
     this.dataType = timeseriesMetadata.dataType;
     this.statistics = timeseriesMetadata.statistics;
     this.modified = timeseriesMetadata.modified;
-    this.chunkMetadataList = new ArrayList<>(timeseriesMetadata.chunkMetadataList);
+    // we won't change the list in query process so it's safe to directly assign it without copying
+    // new one
+    this.chunkMetadataList = timeseriesMetadata.chunkMetadataList;
   }
 
   public static TimeseriesMetadata deserializeFrom(ByteBuffer buffer, boolean needChunkMetadata) {
@@ -120,6 +133,32 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
       timeseriesMetaData.chunkMetadataList.trimToSize();
     }
     buffer.position(buffer.position() + chunkMetaDataListDataSize);
+    return timeseriesMetaData;
+  }
+
+  public static TimeseriesMetadata deserializeFrom(
+      TsFileInput tsFileInput, boolean needChunkMetadata) throws IOException {
+    InputStream inputStream = tsFileInput.wrapAsInputStream();
+    TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
+    timeseriesMetaData.setTimeSeriesMetadataType(ReadWriteIOUtils.readByte(inputStream));
+    timeseriesMetaData.setMeasurementId(ReadWriteIOUtils.readVarIntString(inputStream));
+    timeseriesMetaData.setTsDataType(ReadWriteIOUtils.readDataType(inputStream));
+    int chunkMetaDataListDataSize = ReadWriteForEncodingUtils.readUnsignedVarInt(inputStream);
+    timeseriesMetaData.setDataSizeOfChunkMetaDataList(chunkMetaDataListDataSize);
+    timeseriesMetaData.setStatistics(
+        Statistics.deserialize(inputStream, timeseriesMetaData.dataType));
+    long startOffset = tsFileInput.position();
+    if (needChunkMetadata) {
+      timeseriesMetaData.chunkMetadataList = new ArrayList<>();
+      while (tsFileInput.position() < startOffset + chunkMetaDataListDataSize) {
+        timeseriesMetaData.chunkMetadataList.add(
+            ChunkMetadata.deserializeFrom(inputStream, timeseriesMetaData));
+      }
+      // minimize the storage of an ArrayList instance.
+      timeseriesMetaData.chunkMetadataList.trimToSize();
+    } else {
+      tsFileInput.position(startOffset + chunkMetaDataListDataSize);
+    }
     return timeseriesMetaData;
   }
 
@@ -186,14 +225,6 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
     this.timeSeriesMetadataType = timeSeriesMetadataType;
   }
 
-  public long getOffsetOfChunkMetaDataList() {
-    return startOffsetOfChunkMetaDataList;
-  }
-
-  public void setOffsetOfChunkMetaDataList(long position) {
-    this.startOffsetOfChunkMetaDataList = position;
-  }
-
   public String getMeasurementId() {
     return measurementId;
   }
@@ -227,8 +258,37 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
     this.statistics = statistics;
   }
 
+  @Override
+  public Statistics<? extends Serializable> getTimeStatistics() {
+    return getStatistics();
+  }
+
+  @Override
+  public Optional<Statistics<? extends Serializable>> getMeasurementStatistics(
+      int measurementIndex) {
+    checkArgument(
+        measurementIndex == 0,
+        "Non-aligned timeseries only has one measurement, but measurementIndex is "
+            + measurementIndex);
+    return Optional.ofNullable(statistics);
+  }
+
+  @Override
+  public boolean hasNullValue(int measurementIndex) {
+    return false;
+  }
+
   public void setChunkMetadataLoader(IChunkMetadataLoader chunkMetadataLoader) {
     this.chunkMetadataLoader = chunkMetadataLoader;
+  }
+
+  @Override
+  public boolean typeMatch(List<TSDataType> dataTypes) {
+    return typeMatch(dataTypes.get(0));
+  }
+
+  public boolean typeMatch(TSDataType dataType) {
+    return this.dataType == dataType;
   }
 
   @Override
@@ -241,9 +301,11 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
   }
 
   public List<IChunkMetadata> getCopiedChunkMetadataList() {
-    return chunkMetadataList.stream()
-        .map(chunkMetadata -> new ChunkMetadata((ChunkMetadata) chunkMetadata))
-        .collect(Collectors.toList());
+    List<IChunkMetadata> res = new ArrayList<>(chunkMetadataList.size());
+    for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+      res.add(new ChunkMetadata((ChunkMetadata) chunkMetadata));
+    }
+    return res;
   }
 
   @Override
@@ -276,12 +338,28 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
     this.chunkMetadataList = new ArrayList<>(chunkMetadataList);
   }
 
+  // it's only used for query cache, field chunkMetadataListBuffer and chunkMetadataLoader should
+  // always be null
+  public long getRetainedSizeInBytes() {
+    long retainedSize =
+        INSTANCE_SIZE
+            + sizeOfCharArray(measurementId.length())
+            + (statistics == null ? 0 : statistics.getRetainedSizeInBytes());
+    int length = chunkMetadataList == null ? 0 : chunkMetadataList.size();
+    if (length > 0) {
+      retainedSize += sizeOfObjectArray(length);
+      for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+        retainedSize +=
+            chunkMetadata == null ? 0 : ((ChunkMetadata) chunkMetadata).getRetainedSizeInBytes();
+      }
+    }
+    return retainedSize;
+  }
+
   @Override
   public String toString() {
     return "TimeseriesMetadata{"
-        + "startOffsetOfChunkMetaDataList="
-        + startOffsetOfChunkMetaDataList
-        + ", timeSeriesMetadataType="
+        + "timeSeriesMetadataType="
         + timeSeriesMetadataType
         + ", chunkMetaDataListDataSize="
         + chunkMetaDataListDataSize
