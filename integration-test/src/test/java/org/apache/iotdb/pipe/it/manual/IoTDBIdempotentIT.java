@@ -100,6 +100,18 @@ public class IoTDBIdempotentIT extends AbstractPipeDualManualIT {
   }
 
   @Test
+  public void testExtendTemplateIdempotent() throws Exception {
+    testIdempotent(
+        Collections.singletonList(
+            "create schema template t1 (s1 INT64 encoding=RLE, s2 INT64 encoding=RLE, s3 INT64 encoding=RLE compression=SNAPPY)"),
+        "alter schema template t1 add (rest FLOAT encoding=RLE, FLOAT2 TEXT encoding=PLAIN compression=SNAPPY)",
+        "create database root.sg1",
+        "count databases",
+        "count,",
+        Collections.singleton("1,"));
+  }
+
+  @Test
   public void testDropTemplateIdempotent() throws Exception {
     testIdempotent(
         Collections.singletonList(

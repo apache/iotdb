@@ -84,7 +84,10 @@ public class PipePlanTSStatusVisitor extends PhysicalPlanVisitor<TSStatus, TSSta
 
   @Override
   public TSStatus visitExtendSchemaTemplate(ExtendSchemaTemplatePlan plan, TSStatus context) {
-    if (context.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()) {
+    if (context.getCode() == TSStatusCode.MEASUREMENT_ALREADY_EXISTS_IN_TEMPLATE.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    } else if (context.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }
