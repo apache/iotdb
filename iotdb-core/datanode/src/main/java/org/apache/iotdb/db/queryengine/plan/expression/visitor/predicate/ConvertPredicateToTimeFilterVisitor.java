@@ -88,17 +88,17 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
 
   @Override
   public Filter visitIsNullExpression(IsNullExpression isNullExpression, Void context) {
-    throw new UnsupportedOperationException("TIMESTAMP does not support IS NULL");
+    throw new UnsupportedOperationException("TIMESTAMP does not support IS NULL/IS NOT NULL");
   }
 
   @Override
   public Filter visitLikeExpression(LikeExpression likeExpression, Void context) {
-    throw new UnsupportedOperationException("TIMESTAMP does not support LIKE");
+    throw new UnsupportedOperationException("TIMESTAMP does not support LIKE/NOT LIKE");
   }
 
   @Override
   public Filter visitRegularExpression(RegularExpression regularExpression, Void context) {
-    throw new UnsupportedOperationException("TIMESTAMP does not support REGEXP");
+    throw new UnsupportedOperationException("TIMESTAMP does not support REGEXP/NOT REGEXP");
   }
 
   @Override

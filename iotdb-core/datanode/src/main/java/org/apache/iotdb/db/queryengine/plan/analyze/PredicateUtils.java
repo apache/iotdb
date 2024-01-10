@@ -32,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.UnaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.logical.SourceSymbolUniquenessChecker;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.logical.TimeFilterExistChecker;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ConvertPredicateToFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ConvertPredicateToTimeFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ReversePredicateVisitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -290,6 +291,16 @@ public class PredicateUtils {
       return null;
     }
     return predicate.accept(new ConvertPredicateToTimeFilterVisitor(), null);
+  }
+
+  public static Filter convertPredicateToFilter(
+      Expression predicate, List<String> allMeasurements) {
+    if (predicate == null) {
+      return null;
+    }
+    return predicate.accept(
+        new ConvertPredicateToFilterVisitor(),
+        new ConvertPredicateToFilterVisitor.Context(allMeasurements));
   }
 
   /**
