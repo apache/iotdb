@@ -169,18 +169,19 @@ public class PipeDataNodeThriftRequestTest {
     final List<ByteBuffer> insertNodeBuffers = new ArrayList<>();
     final List<ByteBuffer> tabletBuffers = new ArrayList<>();
 
-    // InsertNode buffer
-    insertNodeBuffers.add(
+    InsertRowNode node =
         new InsertRowNode(
-                new PlanNodeId(""),
-                new PartialPath(new String[] {"root", "sg", "d"}),
-                false,
-                new String[] {"s"},
-                new TSDataType[] {TSDataType.INT32},
-                1,
-                new Object[] {1},
-                false)
-            .serializeToByteBuffer());
+            new PlanNodeId(""),
+            new PartialPath(new String[] {"root", "sg", "d"}),
+            false,
+            new String[] {"s"},
+            new TSDataType[] {TSDataType.INT32},
+            1,
+            new Object[] {1},
+            false);
+
+    // InsertNode buffer
+    insertNodeBuffers.add(node.serializeToByteBuffer());
 
     // Binary buffer
     // Not do real test here since "serializeToWal" needs private inner class of walBuffer
@@ -214,7 +215,15 @@ public class PipeDataNodeThriftRequestTest {
     PipeTransferTabletBatchReq req =
         PipeTransferTabletBatchReq.toTPipeTransferReq(
             binaryBuffers, insertNodeBuffers, tabletBuffers);
-    Assert.assertEquals(req, PipeTransferTabletBatchReq.fromTPipeTransferReq(req));
+
+    PipeTransferTabletBatchReq deserializedReq =
+        PipeTransferTabletBatchReq.fromTPipeTransferReq(req);
+
+    Assert.assertArrayEquals(
+        new byte[] {'a', 'b'}, deserializedReq.getBinaryReqs().get(0).getBody());
+    Assert.assertEquals(node, deserializedReq.getInsertNodeReqs().get(0).getInsertNode());
+    Assert.assertEquals(t, deserializedReq.getTabletReqs().get(0).getTablet());
+    Assert.assertFalse(deserializedReq.getTabletReqs().get(0).getIsAligned());
   }
 
   @Test

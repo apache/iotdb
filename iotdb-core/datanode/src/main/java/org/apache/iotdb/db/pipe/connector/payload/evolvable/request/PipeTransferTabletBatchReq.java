@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.connector.payload.evolvable.request;
 
 import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
@@ -128,12 +129,12 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
         outputStream.write(binaryBuffer.array());
       }
 
-      ReadWriteIOUtils.write(batchReq.insertNodeReqs.size(), outputStream);
+      ReadWriteIOUtils.write(insertNodeBuffers.size(), outputStream);
       for (final ByteBuffer insertNodeBuffer : insertNodeBuffers) {
         outputStream.write(insertNodeBuffer.array());
       }
 
-      ReadWriteIOUtils.write(batchReq.tabletReqs.size(), outputStream);
+      ReadWriteIOUtils.write(tabletBuffers.size(), outputStream);
       for (final ByteBuffer tabletBuffer : tabletBuffers) {
         outputStream.write(tabletBuffer.array());
       }
@@ -177,6 +178,23 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
     batchReq.body = transferReq.body;
 
     return batchReq;
+  }
+
+  /////////////////////////////// TestOnly ///////////////////////////////
+
+  @TestOnly
+  public List<PipeTransferTabletBinaryReq> getBinaryReqs() {
+    return binaryReqs;
+  }
+
+  @TestOnly
+  public List<PipeTransferTabletInsertNodeReq> getInsertNodeReqs() {
+    return insertNodeReqs;
+  }
+
+  @TestOnly
+  public List<PipeTransferTabletRawReq> getTabletReqs() {
+    return tabletReqs;
   }
 
   /////////////////////////////// Object ///////////////////////////////
