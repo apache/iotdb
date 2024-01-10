@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
@@ -35,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode.LIMIT_VALUE_USE_TOP_K;
+import static org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy.LINEAR;
 
 /**
  * Replace `SortNode`+`LimitNode` to `TopKNode` and replace `MergeSortNode`+`LimitNode` to
@@ -48,12 +50,12 @@ import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.Top
  *     limitValue+offsetValue)`.
  * <li>`LimitNode + OffsetNode + MergeSortNode` ==> `LimitNode + OffsetNode + TopKNode(where
  *     topValue = limitValue+offsetValue)`.
- * <li>`LimitNode + TransformNode + SortNode` ==> `TransformNode + TopKNode`.
- * <li>`LimitNode + TransformNode + MergeSortNode` ==> `TransformNode + TopKNode`.
- * <li>`LimitNode + OffsetNode + TransformNode + SortNode` ==> `LimitNode + OffsetNode +
- *     TransformNode + TopKNode(where topValue = limitValue+offsetValue)`.
- * <li>`LimitNode + OffsetNode + TransformNode + MergeSortNode` ==> `LimitNode + OffsetNode + *
- *     TransformNode + TopKNode(where topValue = limitValue+offsetValue)`.
+ * <li>`LimitNode + TransformNode/FillNode + SortNode` ==> `TransformNode/FillNode + TopKNode`.
+ * <li>`LimitNode + TransformNode/FillNode + MergeSortNode` ==> `TransformNode/FillNode + TopKNode`.
+ * <li>`LimitNode + OffsetNode + TransformNode/FillNode + SortNode` ==> `LimitNode + OffsetNode +
+ *     TransformNode/FillNode + TopKNode(where topValue = limitValue+offsetValue)`.
+ * <li>`LimitNode + OffsetNode + TransformNode/FillNode + MergeSortNode` ==> `LimitNode + OffsetNode
+ *     + TransformNode/FillNode + TopKNode(where topValue = limitValue+offsetValue)`.
  */
 public class OrderByExpressionWithLimitChangeToTopK implements PlanOptimizer {
 
@@ -112,75 +114,16 @@ public class OrderByExpressionWithLimitChangeToTopK implements PlanOptimizer {
       }
 
       if (limitNode.getChild() instanceof SortNode) {
-        SortNode sortNode = (SortNode) limitNode.getChild();
-        TopKNode topKNode =
-            new TopKNode(
-                rewriterContext.getMppQueryContext().getQueryId().genPlanNodeId(),
-                (int) limitNode.getLimit(),
-                sortNode.getOrderByParameter(),
-                sortNode.getOutputColumnNames());
-        topKNode.setChildren(sortNode.getChildren());
-
-        if (parent != null) {
-          ((SingleChildProcessNode) parent).setChild(topKNode);
-          return parent;
-        } else {
-          return topKNode;
-        }
+        return rewriterContext.returnSortNode(limitNode, parent);
       } else if (limitNode.getChild() instanceof MergeSortNode) {
-        MergeSortNode mergeSortNode = (MergeSortNode) limitNode.getChild();
-        TopKNode topKNode =
-            new TopKNode(
-                rewriterContext.getMppQueryContext().getQueryId().genPlanNodeId(),
-                (int) limitNode.getLimit(),
-                mergeSortNode.getMergeOrderParameter(),
-                mergeSortNode.getOutputColumnNames());
-        topKNode.setChildren(mergeSortNode.getChildren());
-
-        if (parent != null) {
-          ((SingleChildProcessNode) parent).setChild(topKNode);
-          return parent;
-        } else {
-          return topKNode;
-        }
+        return rewriterContext.returnMergeSortNode(limitNode, parent);
       } else if (limitNode.getChild() instanceof TransformNode
           && !(limitNode.getChild() instanceof FilterNode)) {
-        TransformNode transformNode = (TransformNode) limitNode.getChild();
-        if (transformNode.getChild() instanceof SortNode) {
-          SortNode sortNode = (SortNode) transformNode.getChild();
-          TopKNode topKNode =
-              new TopKNode(
-                  rewriterContext.getMppQueryContext().getQueryId().genPlanNodeId(),
-                  (int) limitNode.getLimit(),
-                  sortNode.getOrderByParameter(),
-                  sortNode.getOutputColumnNames());
-          topKNode.setChildren(sortNode.getChildren());
-          transformNode.setChild(topKNode);
-
-          if (parent != null) {
-            ((SingleChildProcessNode) parent).setChild(transformNode);
-            return parent;
-          } else {
-            return transformNode;
-          }
-        } else if (transformNode.getChild() instanceof MergeSortNode) {
-          MergeSortNode mergeSortNode = (MergeSortNode) transformNode.getChild();
-          TopKNode topKNode =
-              new TopKNode(
-                  rewriterContext.getMppQueryContext().getQueryId().genPlanNodeId(),
-                  (int) limitNode.getLimit(),
-                  mergeSortNode.getMergeOrderParameter(),
-                  mergeSortNode.getOutputColumnNames());
-          topKNode.setChildren(mergeSortNode.getChildren());
-          transformNode.setChild(topKNode);
-
-          if (parent != null) {
-            ((SingleChildProcessNode) parent).setChild(transformNode);
-            return parent;
-          } else {
-            return transformNode;
-          }
-        }
+        return rewriterContext.returnTransformNodeFillNode(limitNode, parent);
+      } else if (limitNode.getChild() instanceof FillNode
+          && !LINEAR.equals(
+              ((FillNode) limitNode.getChild()).getFillDescriptor().getFillPolicy())) {
+        return rewriterContext.returnTransformNodeFillNode(limitNode, parent);
       }
 
       return limitNode;
@@ -200,49 +143,16 @@ public class OrderByExpressionWithLimitChangeToTopK implements PlanOptimizer {
       }
 
       if (offsetNode.getChild() instanceof SortNode) {
-        SortNode sortNode = (SortNode) offsetNode.getChild();
-        TopKNode topKNode =
-            new TopKNode(
-                rewriterContext.getMppQueryContext().getQueryId().genPlanNodeId(),
-                (int) ((int) ((LimitNode) parent).getLimit() + offsetNode.getOffset()),
-                sortNode.getOrderByParameter(),
-                sortNode.getOutputColumnNames());
-        topKNode.setChildren(sortNode.getChildren());
-        offsetNode.setChild(topKNode);
+        rewriterContext.processSortNode(offsetNode, parent);
       } else if (offsetNode.getChild() instanceof MergeSortNode) {
-        MergeSortNode sortNode = (MergeSortNode) offsetNode.getChild();
-        TopKNode topKNode =
-            new TopKNode(
-                rewriterContext.getMppQueryContext().getQueryId().genPlanNodeId(),
-                (int) ((int) ((LimitNode) parent).getLimit() + offsetNode.getOffset()),
-                sortNode.getMergeOrderParameter(),
-                sortNode.getOutputColumnNames());
-        topKNode.setChildren(sortNode.getChildren());
-        offsetNode.setChild(topKNode);
+        rewriterContext.processMergeSortNode(offsetNode, parent);
       } else if (offsetNode.getChild() instanceof TransformNode
           && !(offsetNode.getChild() instanceof FilterNode)) {
-        TransformNode transformNode = (TransformNode) offsetNode.getChild();
-        if (transformNode.getChild() instanceof SortNode) {
-          SortNode sortNode = (SortNode) transformNode.getChild();
-          TopKNode topKNode =
-              new TopKNode(
-                  rewriterContext.getMppQueryContext().getQueryId().genPlanNodeId(),
-                  (int) ((int) ((LimitNode) parent).getLimit() + offsetNode.getOffset()),
-                  sortNode.getOrderByParameter(),
-                  sortNode.getOutputColumnNames());
-          topKNode.setChildren(sortNode.getChildren());
-          transformNode.setChild(topKNode);
-        } else if (transformNode.getChild() instanceof MergeSortNode) {
-          MergeSortNode mergeSortNode = (MergeSortNode) transformNode.getChild();
-          TopKNode topKNode =
-              new TopKNode(
-                  rewriterContext.getMppQueryContext().getQueryId().genPlanNodeId(),
-                  (int) ((int) ((LimitNode) parent).getLimit() + offsetNode.getOffset()),
-                  mergeSortNode.getMergeOrderParameter(),
-                  mergeSortNode.getOutputColumnNames());
-          topKNode.setChildren(mergeSortNode.getChildren());
-          transformNode.setChild(topKNode);
-        }
+        rewriterContext.processTransformNodeFillNode(offsetNode, parent);
+      } else if (offsetNode.getChild() instanceof FillNode
+          && !LINEAR.equals(
+              ((FillNode) offsetNode.getChild()).getFillDescriptor().getFillPolicy())) {
+        rewriterContext.processTransformNodeFillNode(offsetNode, parent);
       }
 
       return offsetNode;
@@ -268,6 +178,132 @@ public class OrderByExpressionWithLimitChangeToTopK implements PlanOptimizer {
 
     public MPPQueryContext getMppQueryContext() {
       return this.mppQueryContext;
+    }
+
+    private PlanNode returnSortNode(LimitNode limitNode, PlanNode parent) {
+      SortNode sortNode = (SortNode) limitNode.getChild();
+      TopKNode topKNode =
+          new TopKNode(
+              getMppQueryContext().getQueryId().genPlanNodeId(),
+              (int) limitNode.getLimit(),
+              sortNode.getOrderByParameter(),
+              sortNode.getOutputColumnNames());
+      topKNode.setChildren(sortNode.getChildren());
+
+      if (parent != null) {
+        ((SingleChildProcessNode) parent).setChild(topKNode);
+        return parent;
+      } else {
+        return topKNode;
+      }
+    }
+
+    private PlanNode returnMergeSortNode(LimitNode limitNode, PlanNode parent) {
+      MergeSortNode mergeSortNode = (MergeSortNode) limitNode.getChild();
+      TopKNode topKNode =
+          new TopKNode(
+              getMppQueryContext().getQueryId().genPlanNodeId(),
+              (int) limitNode.getLimit(),
+              mergeSortNode.getMergeOrderParameter(),
+              mergeSortNode.getOutputColumnNames());
+      topKNode.setChildren(mergeSortNode.getChildren());
+
+      if (parent != null) {
+        ((SingleChildProcessNode) parent).setChild(topKNode);
+        return parent;
+      } else {
+        return topKNode;
+      }
+    }
+
+    private PlanNode returnTransformNodeFillNode(LimitNode limitNode, PlanNode parent) {
+      SingleChildProcessNode singleNode = (SingleChildProcessNode) limitNode.getChild();
+      if (singleNode.getChild() instanceof SortNode) {
+        SortNode sortNode = (SortNode) singleNode.getChild();
+        TopKNode topKNode =
+            new TopKNode(
+                getMppQueryContext().getQueryId().genPlanNodeId(),
+                (int) limitNode.getLimit(),
+                sortNode.getOrderByParameter(),
+                sortNode.getOutputColumnNames());
+        topKNode.setChildren(sortNode.getChildren());
+        singleNode.setChild(topKNode);
+
+        if (parent != null) {
+          ((SingleChildProcessNode) parent).setChild(singleNode);
+          return parent;
+        } else {
+          return singleNode;
+        }
+      } else if (singleNode.getChild() instanceof MergeSortNode) {
+        MergeSortNode mergeSortNode = (MergeSortNode) singleNode.getChild();
+        TopKNode topKNode =
+            new TopKNode(
+                getMppQueryContext().getQueryId().genPlanNodeId(),
+                (int) limitNode.getLimit(),
+                mergeSortNode.getMergeOrderParameter(),
+                mergeSortNode.getOutputColumnNames());
+        topKNode.setChildren(mergeSortNode.getChildren());
+        singleNode.setChild(topKNode);
+
+        if (parent != null) {
+          ((SingleChildProcessNode) parent).setChild(singleNode);
+          return parent;
+        } else {
+          return singleNode;
+        }
+      }
+
+      return limitNode;
+    }
+
+    private void processSortNode(OffsetNode offsetNode, PlanNode parent) {
+      SortNode sortNode = (SortNode) offsetNode.getChild();
+      TopKNode topKNode =
+          new TopKNode(
+              getMppQueryContext().getQueryId().genPlanNodeId(),
+              (int) ((int) ((LimitNode) parent).getLimit() + offsetNode.getOffset()),
+              sortNode.getOrderByParameter(),
+              sortNode.getOutputColumnNames());
+      topKNode.setChildren(sortNode.getChildren());
+      offsetNode.setChild(topKNode);
+    }
+
+    private void processMergeSortNode(OffsetNode offsetNode, PlanNode parent) {
+      MergeSortNode sortNode = (MergeSortNode) offsetNode.getChild();
+      TopKNode topKNode =
+          new TopKNode(
+              getMppQueryContext().getQueryId().genPlanNodeId(),
+              (int) ((int) ((LimitNode) parent).getLimit() + offsetNode.getOffset()),
+              sortNode.getMergeOrderParameter(),
+              sortNode.getOutputColumnNames());
+      topKNode.setChildren(sortNode.getChildren());
+      offsetNode.setChild(topKNode);
+    }
+
+    private void processTransformNodeFillNode(OffsetNode offsetNode, PlanNode parent) {
+      SingleChildProcessNode singleNode = (SingleChildProcessNode) offsetNode.getChild();
+      if (singleNode.getChild() instanceof SortNode) {
+        SortNode sortNode = (SortNode) singleNode.getChild();
+        TopKNode topKNode =
+            new TopKNode(
+                getMppQueryContext().getQueryId().genPlanNodeId(),
+                (int) ((int) ((LimitNode) parent).getLimit() + offsetNode.getOffset()),
+                sortNode.getOrderByParameter(),
+                sortNode.getOutputColumnNames());
+        topKNode.setChildren(sortNode.getChildren());
+        singleNode.setChild(topKNode);
+      } else if (singleNode.getChild() instanceof MergeSortNode) {
+        MergeSortNode mergeSortNode = (MergeSortNode) singleNode.getChild();
+        TopKNode topKNode =
+            new TopKNode(
+                getMppQueryContext().getQueryId().genPlanNodeId(),
+                (int) ((int) ((LimitNode) parent).getLimit() + offsetNode.getOffset()),
+                mergeSortNode.getMergeOrderParameter(),
+                mergeSortNode.getOutputColumnNames());
+        topKNode.setChildren(mergeSortNode.getChildren());
+        singleNode.setChild(topKNode);
+      }
     }
   }
 }

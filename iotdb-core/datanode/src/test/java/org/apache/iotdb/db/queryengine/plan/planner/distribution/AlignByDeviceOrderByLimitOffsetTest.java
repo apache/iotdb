@@ -600,27 +600,29 @@ public class AlignByDeviceOrderByLimitOffsetTest {
   }
 
   /*
-   * IdentitySinkNode-24
-   *   └──TopK-23
-   *       ├──SingleDeviceView-5
-   *       │   └──AggregationNode-10
-   *       │       ├──SeriesAggregationScanNode-11:[SeriesPath: root.sg.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *       │       └──ExchangeNode-17: [SourceAddress:192.0.2.1/test.2.0/20]
-   *       ├──ExchangeNode-19: [SourceAddress:192.0.3.1/test.3.0/21]
-   *       └──SingleDeviceView-7
-   *           └──AggregationNode-13
-   *               ├──SeriesAggregationScanNode-14:[SeriesPath: root.sg.d333.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *               └──ExchangeNode-18: [SourceAddress:192.0.4.1/test.4.0/22]
+   * IdentitySinkNode-22
+   *   └──TopK-4
+   *       ├──TopK-16
+   *       │   ├──SingleDeviceView-5
+   *       │   │   └──AggregationNode-8
+   *       │   │       ├──SeriesAggregationScanNode-9:[SeriesPath: root.sg.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │   │       └──ExchangeNode-14: [SourceAddress:192.0.2.1/test.2.0/19]
+   *       │   └──SingleDeviceView-7
+   *       │       └──AggregationNode-11
+   *       │           ├──SeriesAggregationScanNode-12:[SeriesPath: root.sg.d333.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │           └──ExchangeNode-15: [SourceAddress:192.0.4.1/test.3.0/20]
+   *       └──ExchangeNode-18: [SourceAddress:192.0.3.1/test.4.0/21]
+   *
+   * IdentitySinkNode-19
+   *   └──SeriesAggregationScanNode-10:[SeriesPath: root.sg.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
    *
    * IdentitySinkNode-20
-   *   └──SeriesAggregationScanNode-12:[SeriesPath: root.sg.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *   └──SeriesAggregationScanNode-13:[SeriesPath: root.sg.d333.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
    *
    * IdentitySinkNode-21
-   *   └──SingleDeviceView-6
-   *       └──SeriesAggregationScanNode-2:[SeriesPath: root.sg.d22.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
-   *
-   * IdentitySinkNode-22
-   *   └──SeriesAggregationScanNode-15:[SeriesPath: root.sg.d333.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *   └──TopK-17
+   *       └──SingleDeviceView-6
+   *           └──SeriesAggregationScanNode-2:[SeriesPath: root.sg.d22.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
    */
   @Test
   public void orderByTimeTest5() {
@@ -636,19 +638,18 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
     firstFiTopNode = firstFiRoot.getChildren().get(0);
     assertTrue(firstFiTopNode instanceof TopKNode);
-    assertEquals(3, firstFiTopNode.getChildren().size());
-    assertTrue(firstFiTopNode.getChildren().get(0) instanceof SingleDeviceViewNode);
+    assertEquals(2, firstFiTopNode.getChildren().size());
+    assertTrue(firstFiTopNode.getChildren().get(0) instanceof TopKNode);
     assertTrue(firstFiTopNode.getChildren().get(1) instanceof ExchangeNode);
-    assertTrue(firstFiTopNode.getChildren().get(2) instanceof SingleDeviceViewNode);
     assertTrue(
         plan.getInstances().get(1).getFragment().getPlanNodeTree().getChildren().get(0)
             instanceof SeriesAggregationScanNode);
     assertTrue(
         plan.getInstances().get(2).getFragment().getPlanNodeTree().getChildren().get(0)
-            instanceof SingleDeviceViewNode);
+            instanceof SeriesAggregationScanNode);
     assertTrue(
         plan.getInstances().get(3).getFragment().getPlanNodeTree().getChildren().get(0)
-            instanceof SeriesAggregationScanNode);
+            instanceof TopKNode);
 
     // aggregation + order by time + group by time, has LIMIT
     // SingleDeviceViewNode + TopKNode
@@ -662,10 +663,70 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
     firstFiTopNode = firstFiRoot.getChildren().get(0);
     assertTrue(firstFiTopNode instanceof TopKNode);
-    assertEquals(3, firstFiTopNode.getChildren().size());
-    assertTrue(firstFiTopNode.getChildren().get(0) instanceof SingleDeviceViewNode);
+    assertTrue(firstFiTopNode.getChildren().get(0) instanceof TopKNode);
     assertTrue(firstFiTopNode.getChildren().get(1) instanceof ExchangeNode);
-    assertTrue(firstFiTopNode.getChildren().get(2) instanceof SingleDeviceViewNode);
+    assertTrue(
+        plan.getInstances().get(1).getFragment().getPlanNodeTree().getChildren().get(0)
+            instanceof SeriesAggregationScanNode);
+    assertTrue(
+        plan.getInstances().get(2).getFragment().getPlanNodeTree().getChildren().get(0)
+            instanceof SeriesAggregationScanNode);
+    assertTrue(
+        plan.getInstances().get(3).getFragment().getPlanNodeTree().getChildren().get(0)
+            instanceof TopKNode);
+  }
+
+  /*
+   * IdentitySinkNode-24
+   *   └──LimitNode-17
+   *       └──FilterNode-8
+   *           └──MergeSort-10
+   *               ├──SingleDeviceView-5
+   *               │   └──AggregationNode-11
+   *               │       ├──SeriesAggregationScanNode-12:[SeriesPath: root.sg.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *               │       └──ExchangeNode-18: [SourceAddress:192.0.2.1/test.2.0/21]
+   *               ├──ExchangeNode-20: [SourceAddress:192.0.3.1/test.3.0/22]
+   *               └──SingleDeviceView-7
+   *                   └──AggregationNode-14
+   *                       ├──SeriesAggregationScanNode-15:[SeriesPath: root.sg.d333.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *                       └──ExchangeNode-19: [SourceAddress:192.0.4.1/test.4.0/23]
+   *
+   * IdentitySinkNode-21
+   *   └──SeriesAggregationScanNode-13:[SeriesPath: root.sg.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *
+   * IdentitySinkNode-22
+   *   └──SingleDeviceView-6
+   *       └──SeriesAggregationScanNode-2:[SeriesPath: root.sg.d22.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *
+   * IdentitySinkNode-23
+   *   └──SeriesAggregationScanNode-16:[SeriesPath: root.sg.d333.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   */
+  @Test
+  public void orderByTimeTest6() {
+    // aggregation + order by time + having, has LIMIT
+    // SingleDeviceViewNode + MergeSortNode
+    sql =
+        "select count(s1) from root.sg.d1,root.sg.d22,root.sg.d333 having(count(s1)>1) ORDER BY TIME DESC  LIMIT 10 align by device";
+    analysis = Util.analyze(sql, context);
+    logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    plan = planner.planFragments();
+    assertEquals(4, plan.getInstances().size());
+    firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
+    firstFiTopNode = firstFiRoot.getChildren().get(0);
+    assertTrue(firstFiTopNode instanceof LimitNode);
+    assertTrue(firstFiTopNode.getChildren().get(0) instanceof FilterNode);
+    assertTrue(firstFiTopNode.getChildren().get(0).getChildren().get(0) instanceof MergeSortNode);
+    assertEquals(3, firstFiTopNode.getChildren().get(0).getChildren().get(0).getChildren().size());
+    assertTrue(
+        firstFiTopNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
+            instanceof SingleDeviceViewNode);
+    assertTrue(
+        firstFiTopNode.getChildren().get(0).getChildren().get(0).getChildren().get(1)
+            instanceof ExchangeNode);
+    assertTrue(
+        firstFiTopNode.getChildren().get(0).getChildren().get(0).getChildren().get(2)
+            instanceof SingleDeviceViewNode);
     assertTrue(
         plan.getInstances().get(1).getFragment().getPlanNodeTree().getChildren().get(0)
             instanceof SeriesAggregationScanNode);
@@ -916,34 +977,33 @@ public class AlignByDeviceOrderByLimitOffsetTest {
   }
 
   /*
-   * IdentitySinkNode-38
-   *   └──TransformNode-12
-   *       └──TopK-37
-   *           └──DeviceView-14
-   *               ├──AggregationNode-19
-   *               │   ├──SeriesAggregationScanNode-15:[SeriesPath: root.sg.d1.s2, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *               │   ├──SeriesAggregationScanNode-17:[SeriesPath: root.sg.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *               │   └──ExchangeNode-31: [SourceAddress:192.0.2.1/test.2.0/34]
-   *               ├──ExchangeNode-33: [SourceAddress:192.0.3.1/test.3.0/35]
-   *               └──AggregationNode-28
-   *                   ├──SeriesAggregationScanNode-24:[SeriesPath: root.sg.d333.s2, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *                   ├──SeriesAggregationScanNode-26:[SeriesPath: root.sg.d333.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *                   └──ExchangeNode-32: [SourceAddress:192.0.4.1/test.4.0/36]
-   *
    * IdentitySinkNode-34
-   *   └──HorizontallyConcatNode-20
-   *       ├──SeriesAggregationScanNode-16:[SeriesPath: root.sg.d1.s2, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
-   *       └──SeriesAggregationScanNode-18:[SeriesPath: root.sg.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *   └──TopK-10
+   *       └──DeviceView-12
+   *           ├──AggregationNode-17
+   *           │   ├──SeriesAggregationScanNode-13:[SeriesPath: root.sg.d1.s2, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *           │   ├──SeriesAggregationScanNode-15:[SeriesPath: root.sg.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *           │   └──ExchangeNode-28: [SourceAddress:192.0.2.1/test.2.0/31]
+   *           ├──ExchangeNode-30: [SourceAddress:192.0.3.1/test.3.0/32]
+   *           └──AggregationNode-26
+   *               ├──SeriesAggregationScanNode-22:[SeriesPath: root.sg.d333.s2, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *               ├──SeriesAggregationScanNode-24:[SeriesPath: root.sg.d333.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *               └──ExchangeNode-29: [SourceAddress:192.0.4.1/test.4.0/33]
    *
-   * IdentitySinkNode-35
-   *   └──HorizontallyConcatNode-23
-   *       ├──SeriesAggregationScanNode-21:[SeriesPath: root.sg.d22.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
-   *       └──SeriesAggregationScanNode-22:[SeriesPath: root.sg.d22.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   * IdentitySinkNode-31
+   *   └──HorizontallyConcatNode-18
+   *       ├──SeriesAggregationScanNode-14:[SeriesPath: root.sg.d1.s2, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *       └──SeriesAggregationScanNode-16:[SeriesPath: root.sg.d1.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
    *
-   * IdentitySinkNode-36
-   *   └──HorizontallyConcatNode-29
-   *       ├──SeriesAggregationScanNode-25:[SeriesPath: root.sg.d333.s2, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
-   *       └──SeriesAggregationScanNode-27:[SeriesPath: root.sg.d333.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   * IdentitySinkNode-32
+   *   └──HorizontallyConcatNode-21
+   *       ├──SeriesAggregationScanNode-19:[SeriesPath: root.sg.d22.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *       └──SeriesAggregationScanNode-20:[SeriesPath: root.sg.d22.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *
+   * IdentitySinkNode-33
+   *   └──HorizontallyConcatNode-27
+   *       ├──SeriesAggregationScanNode-23:[SeriesPath: root.sg.d333.s2, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *       └──SeriesAggregationScanNode-25:[SeriesPath: root.sg.d333.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
    */
   @Test
   public void orderByExpressionTest4() {
@@ -958,18 +1018,11 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     assertEquals(4, plan.getInstances().size());
     firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
     firstFiTopNode = firstFiRoot.getChildren().get(0);
-    assertTrue(firstFiTopNode instanceof TransformNode);
-    assertTrue(firstFiTopNode.getChildren().get(0) instanceof TopKNode);
-    assertTrue(firstFiTopNode.getChildren().get(0).getChildren().get(0) instanceof DeviceViewNode);
-    assertTrue(
-        firstFiTopNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof AggregationNode);
-    assertTrue(
-        firstFiTopNode.getChildren().get(0).getChildren().get(0).getChildren().get(1)
-            instanceof ExchangeNode);
-    assertTrue(
-        firstFiTopNode.getChildren().get(0).getChildren().get(0).getChildren().get(2)
-            instanceof AggregationNode);
+    assertTrue(firstFiTopNode instanceof TopKNode);
+    assertTrue(firstFiTopNode.getChildren().get(0) instanceof DeviceViewNode);
+    assertTrue(firstFiTopNode.getChildren().get(0).getChildren().get(0) instanceof AggregationNode);
+    assertTrue(firstFiTopNode.getChildren().get(0).getChildren().get(1) instanceof ExchangeNode);
+    assertTrue(firstFiTopNode.getChildren().get(0).getChildren().get(2) instanceof AggregationNode);
     for (int i = 1; i < 4; i++) {
       assertTrue(
           plan.getInstances().get(i).getFragment().getPlanNodeTree().getChildren().get(0)

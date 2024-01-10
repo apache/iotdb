@@ -27,8 +27,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
@@ -238,5 +240,77 @@ public class AlignByTimeOrderByLimitOffsetTest {
     assertTrue(
         firstFiTopNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
             instanceof TopKNode);
+  }
+
+  /*
+   * IdentitySinkNode-32
+   *   └──FillNode-9
+   *       └──TopK-31
+   *           └──FullOuterTimeJoinNode-7
+   *               ├──SeriesScanNode-11:[SeriesPath: root.sg.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *               ├──SeriesScanNode-15:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *               ├──SeriesScanNode-17:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *               ├──SeriesScanNode-19:[SeriesPath: root.sg.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *               ├──ExchangeNode-25: [SourceAddress:192.0.3.1/test.2.0/28]
+   *               ├──ExchangeNode-26: [SourceAddress:192.0.2.1/test.3.0/29]
+   *               └──ExchangeNode-27: [SourceAddress:192.0.4.1/test.4.0/30]
+   */
+  @Test
+  public void orderByFillTest() {
+    sql =
+        String.format(
+            "select * from root.sg.d1,root.sg.d22,root.sg.d333 ORDER BY root.sg.d1.s1 DESC fill(previous) LIMIT %s",
+            LIMIT_VALUE);
+    analysis = Util.analyze(sql, context);
+    logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    plan = planner.planFragments();
+    assertEquals(4, plan.getInstances().size());
+    firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
+    firstFiTopNode = firstFiRoot.getChildren().get(0);
+    assertTrue(firstFiTopNode instanceof FillNode);
+    assertTrue(firstFiTopNode.getChildren().get(0) instanceof TopKNode);
+    for (int i = 1; i < 4; i++) {
+      assertTrue(
+          plan.getInstances().get(i).getFragment().getPlanNodeTree().getChildren().get(0)
+              instanceof FullOuterTimeJoinNode);
+    }
+
+    /*
+     * IdentitySinkNode-63
+     *   └──LimitNode-56
+     *       └──FillNode-41
+     *           └──SortNode-40
+     *               └──FullOuterTimeJoinNode-39
+     *                   ├──SeriesScanNode-43:[SeriesPath: root.sg.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+     *                   ├──SeriesScanNode-47:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+     *                   ├──SeriesScanNode-49:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+     *                   ├──SeriesScanNode-51:[SeriesPath: root.sg.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+     *                   ├──ExchangeNode-57: [SourceAddress:192.0.3.1/test.6.0/60]
+     *                   ├──ExchangeNode-58: [SourceAddress:192.0.2.1/test.7.0/61]
+     *                   └──ExchangeNode-59: [SourceAddress:192.0.4.1/test.8.0/62]
+     */
+    sql =
+        String.format(
+            "select * from root.sg.d1,root.sg.d22,root.sg.d333 ORDER BY root.sg.d1.s1 DESC fill(linear) LIMIT %s",
+            LIMIT_VALUE);
+    analysis = Util.analyze(sql, context);
+    logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    plan = planner.planFragments();
+    assertEquals(4, plan.getInstances().size());
+    firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
+    firstFiTopNode = firstFiRoot.getChildren().get(0);
+    assertTrue(firstFiTopNode instanceof LimitNode);
+    assertTrue(firstFiTopNode.getChildren().get(0) instanceof FillNode);
+    assertTrue(firstFiTopNode.getChildren().get(0).getChildren().get(0) instanceof SortNode);
+    assertTrue(
+        firstFiTopNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
+            instanceof FullOuterTimeJoinNode);
+    for (int i = 1; i < 4; i++) {
+      assertTrue(
+          plan.getInstances().get(i).getFragment().getPlanNodeTree().getChildren().get(0)
+              instanceof FullOuterTimeJoinNode);
+    }
   }
 }
