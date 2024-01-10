@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+/** Used for fixing files which contains internal unsorted data */
 public class RepairUnsortedFileCompactionWriter extends ReadPointInnerCompactionWriter {
   private List<TimeValuePair> dataOfCurrentSeries;
 

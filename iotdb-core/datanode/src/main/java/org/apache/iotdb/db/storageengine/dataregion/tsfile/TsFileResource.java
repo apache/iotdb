@@ -104,6 +104,9 @@ public class TsFileResource {
   protected AtomicReference<TsFileResourceStatus> atomicStatus =
       new AtomicReference<>(TsFileResourceStatus.UNCLOSED);
 
+  /** used for check whether this file has internal unsorted data in compaction selection */
+  private TsFileRepairStatus tsFileRepairStatus = TsFileRepairStatus.NORMAL;
+
   private TsFileLock tsFileLock = new TsFileLock();
 
   private boolean isSeq;
@@ -646,6 +649,14 @@ public class TsFileResource {
       default:
         return false;
     }
+  }
+
+  public TsFileRepairStatus getTsFileRepairStatus() {
+    return this.tsFileRepairStatus;
+  }
+
+  public void setTsFileRepairStatus(TsFileRepairStatus fileRepairStatus) {
+    this.tsFileRepairStatus = fileRepairStatus;
   }
 
   public void forceMarkDeleted() {

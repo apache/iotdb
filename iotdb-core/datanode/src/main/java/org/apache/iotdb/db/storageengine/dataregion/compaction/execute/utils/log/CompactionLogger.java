@@ -32,6 +32,8 @@ public class CompactionLogger implements AutoCloseable {
   public static final String CROSS_COMPACTION_LOG_NAME_SUFFIX = ".cross-compaction.log";
   public static final String INNER_COMPACTION_LOG_NAME_SUFFIX = ".inner-compaction.log";
   public static final String INSERTION_COMPACTION_LOG_NAME_SUFFIX = ".insertion-compaction.log";
+  public static final String REPAIR_UNSORTED_FILE_COMPACTION_LOG_NAME_SUFFIX =
+      ".repair-compaction.log";
 
   public static final String STR_SOURCE_FILES = "source";
   public static final String STR_TARGET_FILES = "target";

@@ -62,7 +62,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   protected int sumOfCompactionCount;
   protected long maxFileVersion;
   protected int maxCompactionCount;
-  private File logFile;
+  protected File logFile;
   protected List<TsFileResource> targetTsFileList;
   protected boolean[] isHoldingWriteLock;
   protected long maxModsFileSize;
@@ -150,7 +150,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     createSummary();
   }
 
-  private void prepare() throws IOException {
+  protected void prepare() throws IOException {
     targetTsFileResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(
             selectedTsFileResourceList, sequence);
@@ -275,7 +275,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
                   targetTsFileResource.getDatabaseName(),
                   targetTsFileResource.getDataRegionId(),
                   targetTsFileResource.getTsFile().length(),
-                  sequence,
+                  targetTsFileResource.isSeq(),
                   targetTsFileResource.getTsFile().getName());
 
           // set target resource to CLOSED, so that it can be selected to compact
