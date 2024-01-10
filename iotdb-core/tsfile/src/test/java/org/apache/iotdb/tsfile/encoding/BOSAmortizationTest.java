@@ -479,9 +479,9 @@ public class BOSAmortizationTest {
         // Divided into buckets
         int bucket_num = (int) Math.ceil(((double) final_right_max + 1) / (double) q);
         int[] bucket_count = new int[bucket_num];
-        for (int i = 0; i < bucket_num; i++) {
-            bucket_count[i] = 0;
-        }
+//        for (int i = 0; i < bucket_num; i++) {
+//            bucket_count[i] = 0;
+//        }
         for (int i = 0; i < block_size; i++) {
             int tmp_i = ts_block_delta[i] / q;
             bucket_count[tmp_i]++;
@@ -596,9 +596,9 @@ public class BOSAmortizationTest {
         // Divided into buckets
         int bucket_num = (int) Math.ceil(((double) final_right_max + 1) / (double) q);
         int[] bucket_count = new int[bucket_num];
-        for (int i = 0; i < bucket_num; i++) {
-            bucket_count[i] = 0;
-        }
+//        for (int i = 0; i < bucket_num; i++) {
+//            bucket_count[i] = 0;
+//        }
         for (int i = 0; i < block_size; i++) {
             int tmp_i = ts_block_delta[i] / q;
             bucket_count[tmp_i]++;
@@ -908,8 +908,8 @@ public class BOSAmortizationTest {
 
     @Test
     public void BOSAmortization() throws IOException {
-        String parent_dir = "iotdb/iotdb-core/tsfile/src/test/resources/"; // your data path
-        String output_parent_dir = parent_dir + "bos_amortization";
+        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; // your data path
+        String output_parent_dir = parent_dir + "vldb/compression_ratio/bos_amortization";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
