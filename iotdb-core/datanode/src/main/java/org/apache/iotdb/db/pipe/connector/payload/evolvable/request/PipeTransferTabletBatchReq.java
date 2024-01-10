@@ -125,7 +125,7 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(binaryBuffers.size(), outputStream);
       for (final ByteBuffer binaryBuffer : binaryBuffers) {
-        ReadWriteIOUtils.write(binaryBuffer.array().length, outputStream);
+        ReadWriteIOUtils.write(binaryBuffer.limit(), outputStream);
         outputStream.write(binaryBuffer.array(), 0, binaryBuffer.limit());
       }
 

@@ -193,8 +193,7 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
       }
       tabletBuffers.add(buffer);
     }
-    // We assume that the real data size is the same as the buffer size
-    return buffer.array().length;
+    return buffer.limit();
   }
 
   @Override
