@@ -116,17 +116,20 @@ public class LeftOuterTimeJoinOperator implements ProcessOperator {
     // still have time
     if (System.nanoTime() - start < maxRuntime) {
       long currentEndTime =
-          comparator.getCurrentEndTime(leftTsBlock.getEndTime(), rightTsBlock.getEndTime());
+          rightFinished
+              ? leftTsBlock.getEndTime()
+              : comparator.getCurrentEndTime(leftTsBlock.getEndTime(), rightTsBlock.getEndTime());
 
       long time = leftTsBlock.getTimeByIndex(leftIndex);
 
       // all the rightTsBlock is less than leftTsBlock, just skip it
-      if (comparator.largerThan(time, rightTsBlock.getEndTime())) {
+      if (!rightFinished && comparator.largerThan(time, rightTsBlock.getEndTime())) {
         // clean rightTsBlock
         rightTsBlock = null;
         rightIndex = 0;
-      } else if (comparator.lessThan(
-          leftTsBlock.getEndTime(), rightTsBlock.getTimeByIndex(rightIndex))) {
+      } else if (rightFinished
+          || comparator.lessThan(
+              leftTsBlock.getEndTime(), rightTsBlock.getTimeByIndex(rightIndex))) {
         // all the rightTsBlock is larger than leftTsBlock, fill null for right child
         appendAllLeftTableAndFillNullForRightTable();
       } else {
