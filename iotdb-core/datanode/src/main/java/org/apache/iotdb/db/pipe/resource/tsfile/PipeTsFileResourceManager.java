@@ -59,27 +59,29 @@ public class PipeTsFileResourceManager {
   private void ttlCheck() {
     final Iterator<Map.Entry<String, PipeTsFileResource>> iterator =
         hardlinkOrCopiedFileToPipeTsFileResourceMap.entrySet().iterator();
-    while (iterator.hasNext()) {
-      final Map.Entry<String, PipeTsFileResource> entry = iterator.next();
+    try {
+      while (iterator.hasNext()) {
+        final Map.Entry<String, PipeTsFileResource> entry = iterator.next();
 
-      lock.lock();
-      try {
-        if (entry.getValue().closeIfOutOfTimeToLive()) {
-          iterator.remove();
-        } else {
-          LOGGER.info(
-              "Pipe file (file name: {}) is still referenced {} times",
-              entry.getKey(),
-              entry.getValue().getReferenceCount());
+        lock.lock();
+        try {
+          if (entry.getValue().closeIfOutOfTimeToLive()) {
+            iterator.remove();
+          } else {
+            LOGGER.info(
+                "Pipe file (file name: {}) is still referenced {} times",
+                entry.getKey(),
+                entry.getValue().getReferenceCount());
+          }
+        } catch (IOException e) {
+          LOGGER.warn("failed to close PipeTsFileResource when checking TTL: ", e);
+        } finally {
+          lock.unlock();
         }
-      } catch (ConcurrentModificationException e) {
-        LOGGER.info(
-            "Concurrent modification issues happened, skipping the file in this round of ttl check");
-      } catch (IOException e) {
-        LOGGER.warn("failed to close PipeTsFileResource when checking TTL: ", e);
-      } finally {
-        lock.unlock();
       }
+    } catch (ConcurrentModificationException e) {
+      LOGGER.info(
+          "Concurrent modification issues happened, skipping the file in this round of ttl check");
     }
   }
 
