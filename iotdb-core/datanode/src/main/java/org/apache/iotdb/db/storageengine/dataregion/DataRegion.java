@@ -1358,8 +1358,8 @@ public class DataRegion implements IDataRegionForQuery {
           .updateAfterOpeningTsFileProcessor(
               new DataRegionId(Integer.valueOf(dataRegionId)), timeRangeId);
       res = newTsFileProcessor(sequence, timeRangeId);
-      if (workSequenceTsFileProcessors.get(timeRangeId) != null
-          && workUnsequenceTsFileProcessors.get(timeRangeId) != null) {
+      if (workSequenceTsFileProcessors.get(timeRangeId) == null
+          && workUnsequenceTsFileProcessors.get(timeRangeId) == null) {
         WritingMetrics.getInstance().recordActiveTimePartitionCount(1);
       }
       tsFileProcessorTreeMap.put(timeRangeId, res);
