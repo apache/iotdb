@@ -115,6 +115,9 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
       throws IOException {
     final PipeTransferTabletBatchReq batchReq = new PipeTransferTabletBatchReq();
 
+    // batchReq.binaryReqs, batchReq.insertNodeReqs, batchReq.tabletReqs are empty
+    // when this method is called from PipeTransferTabletBatchReqBuilder.toTPipeTransferReq()
+
     batchReq.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
     batchReq.type = PipeRequestType.TRANSFER_TABLET_BATCH.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
