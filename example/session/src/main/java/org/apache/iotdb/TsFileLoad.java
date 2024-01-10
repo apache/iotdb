@@ -38,8 +38,6 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 
 public class TsFileLoad {
 
-  private static final String RENAME_SUFFIX = ".rename";
-
   // parallelism ip port username password tsfileDirs...
   public static void main(String[] args) {
     long startTime = System.nanoTime();
@@ -54,34 +52,6 @@ public class TsFileLoad {
       tsfileDirs[i - 5] = new File(args[i]);
     }
     List<String> tsfileList = new ArrayList<>();
-    for (File tsfileDir : tsfileDirs) {
-      if (tsfileDir.exists()) {
-        if (tsfileDir.isDirectory()) {
-          try (Stream<Path> paths = Files.walk(tsfileDir.toPath())) {
-            paths
-                .map(Path::toString)
-                .filter(f -> f.endsWith(RENAME_SUFFIX))
-                .forEach(tsfileList::add);
-          } catch (IOException e) {
-            System.out.println("Collect tsfile failed!");
-            e.printStackTrace();
-          }
-        } else if (tsfileDir.isFile() && tsfileDir.getName().endsWith(RENAME_SUFFIX)) {
-          tsfileList.add(tsfileDir.getName());
-        } else {
-          System.out.println("skip invalid tsfileDir: " + tsfileDir);
-        }
-      }
-    }
-
-    for (String tsfileName : tsfileList) {
-      File oldFile = new File(tsfileName);
-      if (!oldFile.renameTo(new File(tsfileName.substring(0, tsfileName.length() - 7)))) {
-        System.out.println("Failed to remove .rename suffix: " + tsfileName);
-      }
-    }
-
-    tsfileList.clear();
     for (File tsfileDir : tsfileDirs) {
       if (tsfileDir.exists()) {
         if (tsfileDir.isDirectory()) {
@@ -103,7 +73,9 @@ public class TsFileLoad {
     }
 
     System.out.println(
-        "Total renamed tsfile number: " + tsfileList.size() + System.lineSeparator());
+        "Total number of tsfile need to be repaired is: "
+            + tsfileList.size()
+            + System.lineSeparator());
 
     CountDownLatch countDownLatch = new CountDownLatch(parallelism);
     List<String> failedTsFileList = new ArrayList<>();
@@ -154,7 +126,7 @@ public class TsFileLoad {
                     failed.incrementAndGet();
                   }
                   System.out.println(
-                      "rename completed: "
+                      "repair completed: "
                           + completed.get()
                           + ", failed: "
                           + failed.get()
