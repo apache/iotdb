@@ -33,6 +33,10 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 
+/**
+ * Repair the internal unsorted file by compaction and move it to unSequence space after compaction
+ * whether the source TsFileResource is sequence or not.
+ */
 public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
 
   private final TsFileResource sourceFile;
