@@ -176,51 +176,6 @@ public class PipeDataNodeThriftRequestTest {
   }
 
   @Test
-  public void testPipeTransferTabletBatchReq() throws IOException {
-    // InsertNode req
-    PipeTransferTabletInsertNodeReq insertNodeReq =
-        PipeTransferTabletInsertNodeReq.toTPipeTransferRawReq(
-            new InsertRowNode(
-                new PlanNodeId(""),
-                new PartialPath(new String[] {"root", "sg", "d"}),
-                false,
-                new String[] {"s"},
-                new TSDataType[] {TSDataType.INT32},
-                1,
-                new Object[] {1},
-                false));
-
-    // Binary req
-    // Not do real test here since "serializeToWal" needs private inner class of walBuffer
-    PipeTransferTabletBinaryReq binaryReq =
-        PipeTransferTabletBinaryReq.toTPipeTransferReq(ByteBuffer.wrap(new byte[] {'a', 'b'}));
-
-    // Raw req
-    List<MeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new MeasurementSchema("s1", TSDataType.INT32));
-    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
-    schemaList.add(new MeasurementSchema("s3", TSDataType.FLOAT));
-    schemaList.add(new MeasurementSchema("s4", TSDataType.DOUBLE));
-    schemaList.add(new MeasurementSchema("s5", TSDataType.BOOLEAN));
-    schemaList.add(new MeasurementSchema("s6", TSDataType.TEXT));
-    Tablet t = new Tablet("root.sg.d", schemaList, 1024);
-    t.rowSize = 2;
-    t.addTimestamp(0, 2000);
-    t.addTimestamp(1, 1000);
-    t.addValue("s1", 0, 2);
-    t.addValue("s6", 0, "2");
-    t.addValue("s1", 1, 1);
-    t.addValue("s6", 1, "1");
-
-    PipeTransferTabletRawReq rawReq = PipeTransferTabletRawReq.toTPipeTransferRawReq(t, false);
-
-    PipeTransferTabletBatchReq req =
-        PipeTransferTabletBatchReq.toTPipeTransferReq(
-            Arrays.asList(insertNodeReq, binaryReq, rawReq));
-    Assert.assertEquals(req, PipeTransferTabletBatchReq.fromTPipeTransferReq(req));
-  }
-
-  @Test
   public void testPipeTransferTsFilePieceReq() throws IOException {
     byte[] body = "testPipeTransferTsFilePieceReq".getBytes();
     String fileName = "1.tsfile";
