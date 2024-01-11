@@ -89,7 +89,7 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
     final File snapshotFile = new File(String.valueOf(snapshotName));
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
-          "Failed to take snapshot, because snapshot file [{}] is already exist.",
+          "Failed to serialize to file, because file [{}] is already exist.",
           snapshotFile.getAbsolutePath());
       return false;
     }
@@ -108,7 +108,7 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
     final File snapshotFile = new File(String.valueOf(snapshotName));
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(
-          "Failed to load snapshot, snapshot file [{}] is not exist.",
+          "Failed to deserialize from file, file [{}] does not exist.",
           snapshotFile.getAbsolutePath());
       return;
     }
@@ -124,7 +124,7 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
             .get()
             .loadQueueFromFile(inputStream, queue, this::deserializeFromByteBuffer);
       } else {
-        throw new UnsupportedOperationException("Unknown listening queue type: " + type.getType());
+        throw new UnsupportedOperationException("Unknown serializer type: " + type.getType());
       }
     }
   }
