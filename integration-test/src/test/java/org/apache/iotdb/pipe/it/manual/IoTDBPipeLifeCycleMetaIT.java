@@ -39,9 +39,9 @@ import java.util.Map;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
-public class IoTDBLifeCycleMetaIT extends AbstractPipeDualManualIT {
+public class IoTDBPipeLifeCycleMetaIT extends AbstractPipeDualManualIT {
   @Test
-  public void testAutoRestart() throws Exception {
+  public void testAutoRestartSchemaTask() throws Exception {
     DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     String receiverIp = receiverDataNode.getIp();

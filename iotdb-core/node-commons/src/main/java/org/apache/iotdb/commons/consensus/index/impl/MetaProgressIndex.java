@@ -172,6 +172,6 @@ public class MetaProgressIndex extends ProgressIndex {
 
   @Override
   public String toString() {
-    return "SchemaProgressIndex{" + "index=" + index + '}';
+    return "MetaProgressIndex{" + "index=" + index + '}';
   }
 }
