@@ -260,25 +260,22 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
       return;
     }
 
-    for (int i = 100; i < 200; ++i) {
+    for (int i = 0; i < 200; ++i) {
       if (!TestUtils.tryExecuteNonQueryWithRetry(
           senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
         return;
       }
     }
 
-    for (int i = 200; i < 300; ++i) {
+    for (int i = 200; i < 400; ++i) {
       if (!TestUtils.tryExecuteNonQueryWithRetry(
           receiverEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
         return;
       }
     }
 
-    for (int i = 300; i < 400; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          receiverEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
-        return;
-      }
+    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+      return;
     }
 
     if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "flush")) {
