@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -64,6 +65,31 @@ public class PredicatePushDownTest {
                         gt(timeSeries(schemaMap.get("root.sg.d1.s1")), intValue("10")))
                     .getRoot(),
                 new TestPlanBuilder().scan("1", schemaMap.get("root.sg.d1.s2")).getRoot())
+            .getRoot());
+
+    checkPushDown(
+        "select s1 from root.sg.d1 where time > 100 and s2 > 10",
+        new TestPlanBuilder()
+            .fullOuterTimeJoin(
+                Arrays.asList(schemaMap.get("root.sg.d1.s1"), schemaMap.get("root.sg.d1.s2")))
+            .filter(
+                "3",
+                Collections.singletonList(timeSeries(schemaMap.get("root.sg.d1.s1"))),
+                gt(timeSeries(schemaMap.get("root.sg.d1.s2")), intValue("10")),
+                false)
+            .getRoot(),
+        new TestPlanBuilder()
+            .leftOuterTimeJoin(
+                "4",
+                Ordering.ASC,
+                new TestPlanBuilder()
+                    .scan(
+                        "1",
+                        schemaMap.get("root.sg.d1.s2"),
+                        gt(timeSeries(schemaMap.get("root.sg.d1.s2")), intValue("10")))
+                    .getRoot(),
+                new TestPlanBuilder().scan("0", schemaMap.get("root.sg.d1.s1")).getRoot())
+            .project("5", Collections.singletonList("root.sg.d1.s1"))
             .getRoot());
 
     checkPushDown(
@@ -109,6 +135,24 @@ public class PredicatePushDownTest {
                 "0",
                 schemaMap.get("root.sg.d2.a"),
                 gt(timeSeries(schemaMap.get("root.sg.d2.a.s1")), intValue("10")))
+            .getRoot());
+
+    checkPushDown(
+        "select s1 from root.sg.d2.a where time > 100 and s2 > 10",
+        new TestPlanBuilder()
+            .scanAligned("0", schemaMap.get("root.sg.d2.a"))
+            .filter(
+                "1",
+                Collections.singletonList(timeSeries(schemaMap.get("root.sg.d2.a.s1"))),
+                gt(timeSeries(schemaMap.get("root.sg.d2.a.s2")), intValue("10")),
+                false)
+            .getRoot(),
+        new TestPlanBuilder()
+            .scanAligned(
+                "0",
+                schemaMap.get("root.sg.d2.a"),
+                gt(timeSeries(schemaMap.get("root.sg.d2.a.s2")), intValue("10")))
+            .project("2", Collections.singletonList("root.sg.d2.a.s1"))
             .getRoot());
 
     checkPushDown(

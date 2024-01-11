@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
@@ -396,6 +397,11 @@ public class TestPlanBuilder {
     this.root =
         new InnerTimeJoinNode(
             new PlanNodeId(String.valueOf(rootId)), seriesSourceNodes, mergeOrder);
+    return this;
+  }
+
+  public TestPlanBuilder project(String id, List<String> outputColumnNames) {
+    this.root = new ProjectNode(new PlanNodeId(id), getRoot(), outputColumnNames);
     return this;
   }
 }

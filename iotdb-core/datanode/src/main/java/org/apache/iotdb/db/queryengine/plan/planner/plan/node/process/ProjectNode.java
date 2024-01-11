@@ -109,4 +109,9 @@ public class ProjectNode extends SingleChildProcessNode {
   public int hashCode() {
     return Objects.hash(super.hashCode(), outputColumnNames);
   }
+
+  @Override
+  public String toString() {
+    return "ProjectNode-" + this.getPlanNodeId();
+  }
 }
