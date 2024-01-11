@@ -584,7 +584,7 @@ public class ConfigManager implements IManager {
   public TSStatus alterDatabase(DatabaseSchemaPlan databaseSchemaPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return clusterSchemaManager.alterDatabase(databaseSchemaPlan);
+      return clusterSchemaManager.alterDatabase(databaseSchemaPlan, false);
     } else {
       return status;
     }

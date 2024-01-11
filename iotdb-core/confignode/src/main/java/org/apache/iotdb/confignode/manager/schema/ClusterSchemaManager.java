@@ -201,7 +201,7 @@ public class ClusterSchemaManager {
   }
 
   /** Alter Database */
-  public TSStatus alterDatabase(DatabaseSchemaPlan databaseSchemaPlan) {
+  public TSStatus alterDatabase(DatabaseSchemaPlan databaseSchemaPlan, boolean isGeneratedByPipe) {
     TSStatus result;
     TDatabaseSchema databaseSchema = databaseSchemaPlan.getSchema();
 
@@ -244,7 +244,12 @@ public class ClusterSchemaManager {
 
     // Alter DatabaseSchema
     try {
-      result = getConsensusManager().write(databaseSchemaPlan);
+      result =
+          getConsensusManager()
+              .write(
+                  isGeneratedByPipe
+                      ? new PipeEnrichedPlan(databaseSchemaPlan)
+                      : databaseSchemaPlan);
       PartitionMetrics.bindDatabaseReplicationFactorMetricsWhenUpdate(
           MetricService.getInstance(),
           databaseSchemaPlan.getSchema().getName(),

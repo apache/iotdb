@@ -134,6 +134,10 @@ public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
     switch (plan.getType()) {
       case CreateDatabase:
         return configManager.getClusterSchemaManager().setDatabase((DatabaseSchemaPlan) plan, true);
+      case AlterDatabase:
+        return configManager
+            .getClusterSchemaManager()
+            .alterDatabase((DatabaseSchemaPlan) plan, true);
       case DeleteDatabase:
         return configManager.deleteDatabases(
             new TDeleteDatabasesReq(
