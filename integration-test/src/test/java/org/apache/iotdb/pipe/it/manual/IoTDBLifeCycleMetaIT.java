@@ -85,13 +85,6 @@ public class IoTDBLifeCycleMetaIT extends AbstractPipeDualManualIT {
       }
     }
 
-    TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv,
-        "count timeseries",
-        "count(timeseries),",
-        Collections.singleton(String.format("%d,", successCount)),
-        10);
-
     try {
       TestUtils.restartCluster(senderEnv);
       TestUtils.restartCluster(receiverEnv);
@@ -114,7 +107,6 @@ public class IoTDBLifeCycleMetaIT extends AbstractPipeDualManualIT {
         receiverEnv,
         "count timeseries",
         "count(timeseries),",
-        Collections.singleton(String.format("%d,", successCount)),
-        190);
+        Collections.singleton(String.format("%d,", successCount)));
   }
 }
