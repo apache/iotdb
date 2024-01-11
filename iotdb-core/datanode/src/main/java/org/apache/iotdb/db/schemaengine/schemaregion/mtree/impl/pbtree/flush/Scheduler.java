@@ -80,7 +80,7 @@ public class Scheduler {
    * MNodes will be placed into node cache. This method will return synchronously after all stores
    * are successfully flushed.
    */
-  public synchronized void forceFlushAll() {
+  public synchronized CompletableFuture<Void> forceFlushAll() {
     List<Map.Entry<Integer, CachedMTreeStore>> flushEngineList = new ArrayList<>();
     for (Map.Entry<Integer, CachedMTreeStore> entry : regionToStore.entrySet()) {
       if (flushingRegionSet.contains(entry.getKey())) {
@@ -89,61 +89,59 @@ public class Scheduler {
       flushingRegionSet.add(entry.getKey());
       flushEngineList.add(entry);
     }
-    CompletableFuture.allOf(
-            flushEngineList.stream()
-                .map(
-                    entry ->
-                        CompletableFuture.runAsync(
-                            () -> {
-                              int regionId = entry.getKey();
-                              CachedMTreeStore store = entry.getValue();
-                              if (store == null) {
-                                // store has been closed
-                                return;
-                              }
-                              IMemoryManager memoryManager = store.getMemoryManager();
-                              ISchemaFile file = store.getSchemaFile();
-                              LockManager lockManager = store.getLockManager();
-                              long startTime = System.currentTimeMillis();
-                              AtomicLong flushNodeNum = new AtomicLong(0);
-                              AtomicLong flushMemSize = new AtomicLong(0);
-                              try {
-                                lockManager.globalReadLock();
-                                if (!regionToStore.containsKey(regionId)) {
-                                  // double check store have not been closed
-                                  return;
-                                }
-                                PBTreeFlushExecutor flushExecutor =
-                                    new PBTreeFlushExecutor(memoryManager, file, lockManager);
-                                flushExecutor.flushVolatileNodes(flushNodeNum, flushMemSize);
-                              } catch (MetadataException e) {
-                                LOGGER.warn(
-                                    "Error occurred during MTree flush, current SchemaRegionId is {} because {}",
-                                    regionId,
-                                    e.getMessage(),
-                                    e);
-                              } finally {
-                                long time = System.currentTimeMillis() - startTime;
-                                if (time > 10_000) {
-                                  LOGGER.info(
-                                      "It takes {}ms to flush MTree in SchemaRegion {}",
-                                      time,
-                                      regionId);
-                                } else {
-                                  LOGGER.debug(
-                                      "It takes {}ms to flush MTree in SchemaRegion {}",
-                                      time,
-                                      regionId);
-                                }
-                                store.recordFlushMetrics(
-                                    time, flushNodeNum.get(), flushMemSize.get());
-                                lockManager.globalReadUnlock();
-                                flushingRegionSet.remove(regionId);
-                              }
-                            },
-                            workerPool))
-                .toArray(CompletableFuture[]::new))
-        .join();
+    return CompletableFuture.allOf(
+        flushEngineList.stream()
+            .map(
+                entry ->
+                    CompletableFuture.runAsync(
+                        () -> {
+                          int regionId = entry.getKey();
+                          CachedMTreeStore store = entry.getValue();
+                          if (store == null) {
+                            // store has been closed
+                            return;
+                          }
+                          IMemoryManager memoryManager = store.getMemoryManager();
+                          ISchemaFile file = store.getSchemaFile();
+                          LockManager lockManager = store.getLockManager();
+                          long startTime = System.currentTimeMillis();
+                          AtomicLong flushNodeNum = new AtomicLong(0);
+                          AtomicLong flushMemSize = new AtomicLong(0);
+                          try {
+                            lockManager.globalReadLock();
+                            if (!regionToStore.containsKey(regionId)) {
+                              // double check store have not been closed
+                              return;
+                            }
+                            PBTreeFlushExecutor flushExecutor =
+                                new PBTreeFlushExecutor(memoryManager, file, lockManager);
+                            flushExecutor.flushVolatileNodes(flushNodeNum, flushMemSize);
+                          } catch (MetadataException e) {
+                            LOGGER.warn(
+                                "Error occurred during MTree flush, current SchemaRegionId is {} because {}",
+                                regionId,
+                                e.getMessage(),
+                                e);
+                          } finally {
+                            long time = System.currentTimeMillis() - startTime;
+                            if (time > 10_000) {
+                              LOGGER.info(
+                                  "It takes {}ms to flush MTree in SchemaRegion {}",
+                                  time,
+                                  regionId);
+                            } else {
+                              LOGGER.debug(
+                                  "It takes {}ms to flush MTree in SchemaRegion {}",
+                                  time,
+                                  regionId);
+                            }
+                            store.recordFlushMetrics(time, flushNodeNum.get(), flushMemSize.get());
+                            lockManager.globalReadUnlock();
+                            flushingRegionSet.remove(regionId);
+                          }
+                        },
+                        workerPool))
+            .toArray(CompletableFuture[]::new));
   }
 
   /**

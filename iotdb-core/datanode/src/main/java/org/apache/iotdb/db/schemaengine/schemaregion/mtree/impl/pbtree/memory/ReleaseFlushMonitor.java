@@ -121,7 +121,6 @@ public class ReleaseFlushMonitor {
                 if (releaseFlushStrategy.isExceedReleaseThreshold()) {
                   scheduler.forceFlushAll();
                   regionToTraverserTime.values().forEach(RecordList::clear);
-                  scheduler.scheduleRelease(false);
                 }
                 synchronized (blockObject) {
                   // invoke the notifyAll() method to wake up the thread waiting for the release
@@ -239,7 +238,7 @@ public class ReleaseFlushMonitor {
         }
       }
       if (needFlush) {
-        scheduler.forceFlushAll();
+        scheduler.forceFlushAll().join();
         scheduler.scheduleRelease(true);
       } else {
         break;
