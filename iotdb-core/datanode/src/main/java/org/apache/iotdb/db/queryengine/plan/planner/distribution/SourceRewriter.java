@@ -1210,15 +1210,13 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       Map<TRegionReplicaSet, List<SeriesAggregationSourceNode>> sourceGroup,
       DistributionPlanContext context) {
     GroupByLevelNode newRoot = (GroupByLevelNode) root.clone();
-    final boolean[] addParent = {false};
     sourceGroup.forEach(
         (dataRegion, sourceNodes) -> {
           if (sourceNodes.size() == 1) {
             newRoot.addChild(sourceNodes.get(0));
           } else {
-            if (!addParent[0]) {
+            if (sourceGroup.size() == 1) {
               sourceNodes.forEach(newRoot::addChild);
-              addParent[0] = true;
             } else {
               GroupByLevelNode parentOfGroup = (GroupByLevelNode) root.clone();
               parentOfGroup.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
@@ -1348,15 +1346,13 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       Map<TRegionReplicaSet, List<SeriesAggregationSourceNode>> sourceGroup,
       DistributionPlanContext context) {
     GroupByTagNode newRoot = (GroupByTagNode) root.clone();
-    final boolean[] addParent = {false};
     sourceGroup.forEach(
         (dataRegion, sourceNodes) -> {
           if (sourceNodes.size() == 1) {
             newRoot.addChild(sourceNodes.get(0));
           } else {
-            if (!addParent[0]) {
+            if (sourceGroup.size() == 1) {
               sourceNodes.forEach(newRoot::addChild);
-              addParent[0] = true;
             } else {
               HorizontallyConcatNode horizontallyConcatNode =
                   new HorizontallyConcatNode(context.queryContext.getQueryId().genPlanNodeId());
