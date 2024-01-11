@@ -197,7 +197,7 @@ public class CommonConfig {
   private float PipeLeaderCacheMemoryUsagePercentage = 0.1F;
 
   /** Whether to use persistent schema mode. */
-  private String schemaEngineMode = "Memory";
+  private String schemaEngineMode = "PBTree";
 
   /** Whether to enable Last cache. */
   private boolean lastCacheEnable = true;

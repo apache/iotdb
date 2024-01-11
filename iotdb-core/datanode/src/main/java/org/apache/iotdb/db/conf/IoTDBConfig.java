@@ -851,7 +851,7 @@ public class IoTDBConfig {
   private boolean enableIDTableLogFile = false;
 
   /** the memory used for metadata cache when using persistent schema */
-  private int cachedMNodeSizeInPBTreeMode = -1;
+  private int cachedMNodeSizeInPBTreeMode = 5;
 
   /** the minimum size (in bytes) of segment inside a pbtree file page */
   private short minimumSegmentInPBTree = 0;

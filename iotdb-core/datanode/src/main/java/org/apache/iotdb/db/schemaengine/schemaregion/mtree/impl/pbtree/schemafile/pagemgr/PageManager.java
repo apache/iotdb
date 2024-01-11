@@ -95,18 +95,13 @@ public abstract class PageManager implements IPageManager {
 
   private final AtomicInteger logCounter;
   private SchemaFileLogWriter logWriter;
-  private final SchemaRegionCachedMetric metric;
+  private SchemaRegionCachedMetric metric = null;
 
   // flush strategy is dependent on consensus protocol, only check protocol on init
   protected FlushPageStrategy flushDirtyPagesStrategy;
   protected SinglePageFlushStrategy singlePageFlushStrategy;
 
-  PageManager(
-      FileChannel channel,
-      File pmtFile,
-      int lastPageIndex,
-      String logPath,
-      SchemaRegionCachedMetric metric)
+  PageManager(FileChannel channel, File pmtFile, int lastPageIndex, String logPath)
       throws IOException, MetadataException {
     this.pageInstCache =
         Collections.synchronizedMap(new LinkedHashMap<>(SchemaFileConfig.PAGE_CACHE_SIZE, 1, true));
@@ -739,7 +734,7 @@ public abstract class PageManager implements IPageManager {
 
       ByteBuffer newBuf = ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH);
       if (metric != null) {
-        metric.recordFlushPageNum(1);
+        metric.recordLoadPageNum(1);
       }
       loadFromFile(newBuf, pageIdx);
       page = ISchemaPage.loadSchemaPage(newBuf);
@@ -1171,5 +1166,10 @@ public abstract class PageManager implements IPageManager {
       }
       return null;
     }
+  }
+
+  @Override
+  public void setMetric(SchemaRegionCachedMetric metric) {
+    this.metric = metric;
   }
 }
