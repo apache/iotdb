@@ -33,6 +33,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -182,5 +183,116 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
         senderEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+  }
+
+  @Test
+  public void testDoubleLivingAutoConflictTemplate() throws Exception {
+    // Double living is two clusters with pipes connecting each other.
+    DataNodeWrapper senderDataNode = senderEnv.getDataNodeWrapper(0);
+    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    String senderIp = senderDataNode.getIp();
+    int senderPort = senderDataNode.getPort();
+    String receiverIp = receiverDataNode.getIp();
+    int receiverPort = receiverDataNode.getPort();
+
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      Map<String, String> extractorAttributes = new HashMap<>();
+      Map<String, String> processorAttributes = new HashMap<>();
+      Map<String, String> connectorAttributes = new HashMap<>();
+
+      extractorAttributes.put("source.inclusion", "all");
+      extractorAttributes.put("source.inclusion.exclusion", "");
+      // add this property to avoid to make self cycle.
+      extractorAttributes.put("source.forwarding-pipe-requests", "false");
+
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.batch.enable", "false");
+      connectorAttributes.put("connector.ip", receiverIp);
+      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+
+      TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("p1", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
+    }
+
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) receiverEnv.getLeaderConfigNodeConnection()) {
+      Map<String, String> extractorAttributes = new HashMap<>();
+      Map<String, String> processorAttributes = new HashMap<>();
+      Map<String, String> connectorAttributes = new HashMap<>();
+
+      extractorAttributes.put("source.inclusion", "all");
+      extractorAttributes.put("source.inclusion.exclusion", "");
+      // add this property to avoid to make self cycle.
+      extractorAttributes.put("source.forwarding-pipe-requests", "false");
+
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.batch.enable", "false");
+      connectorAttributes.put("connector.ip", senderIp);
+      connectorAttributes.put("connector.port", Integer.toString(senderPort));
+
+      TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("p1", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
+    }
+
+    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+        senderEnv,
+        Arrays.asList(
+            // Auto extend s1
+            "create schema template t1 (s2 INT64 encoding=RLE, s3 INT64 encoding=RLE compression=SNAPPY)",
+            "create database root.db",
+            "set device template t1 to root.db"))) {
+      return;
+    }
+
+    for (int i = 100; i < 200; ++i) {
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
+        return;
+      }
+    }
+
+    for (int i = 200; i < 300; ++i) {
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          receiverEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
+        return;
+      }
+    }
+
+    for (int i = 300; i < 400; ++i) {
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          receiverEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
+        return;
+      }
+    }
+
+    if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "flush")) {
+      return;
+    }
+
+    Set<String> expectedResSet = new HashSet<>();
+    for (int i = 0; i < 400; ++i) {
+      expectedResSet.add(i + ",1.0,");
+    }
+
+    TestUtils.assertDataEventuallyOnEnv(
+        senderEnv, "select s1 from root.db.d1", "Time,root.db.d1.s1,", expectedResSet);
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv, "select s1 from root.db.d1", "Time,root.db.d1.s1,", expectedResSet);
   }
 }
