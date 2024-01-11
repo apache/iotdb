@@ -123,7 +123,7 @@ public class ConfigNode implements ConfigNodeMBean {
       setUpInternalServices();
       // Init ConfigManager
       initConfigManager();
-      // Init Pipe tasks
+      // Init Pipe RuntimeAgent
       registerManager.register(PipeConfigNodeAgent.runtime());
 
       /* Restart */
