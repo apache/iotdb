@@ -604,14 +604,7 @@ public class AggregationDistributionTest {
                 .get(0)
             instanceof GroupByLevelNode);
     assertTrue(
-        fragmentInstances
-                .get(0)
-                .getFragment()
-                .getPlanNodeTree()
-                .getChildren()
-                .get(2)
-                .getChildren()
-                .get(0)
+        fragmentInstances.get(2).getFragment().getPlanNodeTree().getChildren().get(0)
             instanceof GroupByLevelNode);
 
     Map<String, List<String>> expectedDescriptorValue = new HashMap<>();
