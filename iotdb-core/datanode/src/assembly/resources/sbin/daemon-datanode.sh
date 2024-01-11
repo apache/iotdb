@@ -58,7 +58,7 @@ RestartPreventExitStatus=SIGKILL
 WantedBy=multi-user.target
 EOF
 
-echo echo "Daemon service of IoTDB DataNode has been successfully registered."
+echo "Daemon service of IoTDB DataNode has been successfully registered."
 
 systemctl daemon-reload
 
