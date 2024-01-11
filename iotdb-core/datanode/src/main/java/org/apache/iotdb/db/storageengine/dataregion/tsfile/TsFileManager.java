@@ -273,9 +273,13 @@ public class TsFileManager {
         if (!resource.isDeleted()) {
           TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
           if (resource.isSeq()) {
-            sequenceFiles.get(timePartition).keepOrderInsert(resource);
+            sequenceFiles
+                .computeIfAbsent(timePartition, t -> new TsFileResourceList())
+                .keepOrderInsert(resource);
           } else {
-            unsequenceFiles.get(timePartition).keepOrderInsert(resource);
+            unsequenceFiles
+                .computeIfAbsent(timePartition, t -> new TsFileResourceList())
+                .keepOrderInsert(resource);
           }
         }
       }
