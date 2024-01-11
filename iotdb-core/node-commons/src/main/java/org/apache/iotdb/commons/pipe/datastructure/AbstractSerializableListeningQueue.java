@@ -95,6 +95,7 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
     }
 
     try (final FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile)) {
+      ReadWriteIOUtils.write(isSealed.get(), fileOutputStream);
       ReadWriteIOUtils.write(currentType.getType(), fileOutputStream);
       return serializerMap
           .get(currentType)
@@ -114,6 +115,7 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
 
     queue.clear();
     try (final FileInputStream inputStream = new FileInputStream(snapshotFile)) {
+      isSealed.set(ReadWriteIOUtils.readBool(inputStream));
       final LinkedQueueSerializerType type =
           LinkedQueueSerializerType.deserialize(ReadWriteIOUtils.readByte(inputStream));
       if (serializerMap.containsKey(type)) {
