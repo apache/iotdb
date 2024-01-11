@@ -111,6 +111,7 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
     }
 
     try (final FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile)) {
+      ReadWriteIOUtils.write(referenceCount, fileOutputStream);
       ReadWriteIOUtils.write(snapshotCache.getLeft(), fileOutputStream);
       ReadWriteIOUtils.write(snapshotCache.getRight().size(), fileOutputStream);
       for (PipeSnapshotEvent event : snapshotCache.getRight()) {
@@ -134,6 +135,11 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
 
     try (final FileInputStream inputStream = new FileInputStream(snapshotFile)) {
       try (FileChannel channel = inputStream.getChannel()) {
+        referenceCount = ReadWriteIOUtils.readInt(inputStream);
+        if (referenceCount > 0) {
+          // Open the queue to listen from redo process
+          open();
+        }
         snapshotCache.setLeft(ReadWriteIOUtils.readLong(inputStream));
         snapshotCache.setRight(new ArrayList<>());
         int size = ReadWriteIOUtils.readInt(inputStream);

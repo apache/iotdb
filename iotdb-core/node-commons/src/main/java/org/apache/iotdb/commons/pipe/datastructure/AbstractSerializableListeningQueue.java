@@ -40,7 +40,7 @@ import java.util.function.Supplier;
  * {@link AbstractSerializableListeningQueue} is the encapsulation of the {@link
  * ConcurrentIterableLinkedQueue} to enable flushing all the element to disk and reading from it. To
  * implement this, each element much be configured with its own ser/de method. Besides, this class
- * also provides a means of opening and closing the queue, and a queue will stay empty when closed.
+ * also provides a means of opening and closing the queue, and a queue will stay empty while closed.
  */
 public abstract class AbstractSerializableListeningQueue<E> implements Closeable {
 
