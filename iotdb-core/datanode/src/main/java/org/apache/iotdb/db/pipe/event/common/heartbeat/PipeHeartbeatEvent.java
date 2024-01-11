@@ -109,6 +109,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime) {
     // Should record PipeTaskMeta, for sometimes HeartbeatEvents should report exceptions.
+    // Here we ignore parameters `pattern`, `startTime`, and `endTime`.
     return new PipeHeartbeatEvent(
         pipeName, pipeTaskMeta, dataRegionId, timePublished, shouldPrintMessage);
   }

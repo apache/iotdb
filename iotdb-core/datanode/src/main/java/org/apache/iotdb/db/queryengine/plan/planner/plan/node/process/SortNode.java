@@ -100,4 +100,9 @@ public class SortNode extends SingleChildProcessNode {
   public int hashCode() {
     return Objects.hashCode(super.hashCode(), orderByParameter);
   }
+
+  @Override
+  public String toString() {
+    return "SortNode-" + this.getPlanNodeId();
+  }
 }

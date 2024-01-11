@@ -37,6 +37,7 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -54,6 +55,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Objects;
 import java.util.concurrent.PriorityBlockingQueue;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY;
@@ -161,6 +163,13 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
             ((PipeRawTabletInsertionEvent) tabletInsertionEvent).parseEventWithPatternOrTime());
       }
       return;
+    } else {
+      // ignore raw tablet event with zero rows
+      if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
+        if (((PipeRawTabletInsertionEvent) tabletInsertionEvent).hasNoNeedParsingAndIsEmpty()) {
+          return;
+        }
+      }
     }
 
     if (isTabletBatchModeEnabled) {
@@ -176,12 +185,13 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
         final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
             (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent;
+        final InsertNode insertNode =
+            pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
         final TPipeTransferReq pipeTransferReq =
-            pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible() == null
+            Objects.isNull(insertNode)
                 ? PipeTransferTabletBinaryReq.toTPipeTransferReq(
                     pipeInsertNodeTabletInsertionEvent.getByteBuffer())
-                : PipeTransferTabletInsertNodeReq.toTPipeTransferReq(
-                    pipeInsertNodeTabletInsertionEvent.getInsertNode());
+                : PipeTransferTabletInsertNodeReq.toTPipeTransferReq(insertNode);
         final PipeTransferTabletInsertNodeEventHandler pipeTransferInsertNodeReqHandler =
             new PipeTransferTabletInsertNodeEventHandler(
                 pipeInsertNodeTabletInsertionEvent, pipeTransferReq, this);

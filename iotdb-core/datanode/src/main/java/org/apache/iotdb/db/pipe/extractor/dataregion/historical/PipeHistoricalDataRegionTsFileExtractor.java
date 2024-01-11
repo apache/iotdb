@@ -86,8 +86,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   private boolean isHistoricalExtractorEnabled = false;
 
-  private long historicalDataExtractionStartTime; // Event time
-  private long historicalDataExtractionEndTime; // Event time
+  private long historicalDataExtractionStartTime = Long.MIN_VALUE; // Event time
+  private long historicalDataExtractionEndTime = Long.MAX_VALUE; // Event time
 
   private long historicalDataExtractionTimeLowerBound; // Arrival time
 

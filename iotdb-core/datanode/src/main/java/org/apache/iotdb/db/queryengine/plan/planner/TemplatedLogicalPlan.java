@@ -26,7 +26,6 @@ import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -158,7 +157,7 @@ public class TemplatedLogicalPlan {
           new TemplatedLogicalPlanBuilder(analysis, context, measurementList, schemaList)
               .withNewRoot(rootNode);
 
-      // sortOperator push down
+      // order by device, expression, push down sortOperator
       if (queryStatement.needPushDownSort()) {
         subPlanBuilder =
             subPlanBuilder.planOrderBy(
@@ -175,24 +174,21 @@ public class TemplatedLogicalPlan {
             analysis.getDeviceViewOutputExpressions(),
             analysis.getDeviceViewInputIndexesMap(),
             analysis.getSelectExpressions(),
-            queryStatement);
-
-    if (planBuilder.getRoot() instanceof TopKNode) {
-      analysis.setUseTopKNode();
-    }
+            queryStatement,
+            analysis);
 
     if (!queryStatement.needPushDownSort()) {
-      planBuilder =
-          planBuilder.planOrderBy(
-              queryStatement, analysis.getOrderByExpressions(), analysis.getSelectExpressions());
+      planBuilder = planBuilder.planOrderBy(queryStatement, analysis);
     }
 
-    // other upstream node
     planBuilder =
         planBuilder
             .planFill(analysis.getFillDescriptor(), queryStatement.getResultTimeOrder())
-            .planOffset(queryStatement.getRowOffset())
-            .planLimit(queryStatement.getRowLimit());
+            .planOffset(queryStatement.getRowOffset());
+
+    if (!analysis.isUseTopKNode() || queryStatement.hasOffset()) {
+      planBuilder = planBuilder.planLimit(queryStatement.getRowLimit());
+    }
 
     return planBuilder.getRoot();
   }

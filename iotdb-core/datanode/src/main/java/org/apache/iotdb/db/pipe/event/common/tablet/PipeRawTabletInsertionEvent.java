@@ -198,10 +198,14 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
     return dataContainer.convertToTablet();
   }
 
-  /////////////////////////// parsePattern ///////////////////////////
+  /////////////////////////// parsePatternOrTime ///////////////////////////
 
   public TabletInsertionEvent parseEventWithPatternOrTime() {
     return new PipeRawTabletInsertionEvent(
         convertToTablet(), isAligned, pipeName, pipeTaskMeta, this, needToReport);
+  }
+
+  public boolean hasNoNeedParsingAndIsEmpty() {
+    return !shouldParsePatternOrTime() && tablet.rowSize == 0;
   }
 }

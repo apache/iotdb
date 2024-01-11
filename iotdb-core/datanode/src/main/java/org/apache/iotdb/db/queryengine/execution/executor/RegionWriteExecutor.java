@@ -305,7 +305,8 @@ public class RegionWriteExecutor {
     @Override
     public RegionExecutionResult visitDeleteData(
         DeleteDataNode node, WritePlanNodeExecutionContext context) {
-      // data deletion should block data insertion, especially when executed for deleting timeseries
+      // data deletion don't need to block data insertion, but there are some creation operation
+      // require write lock on data region.
       context.getRegionWriteValidationRWLock().writeLock().lock();
       try {
         return super.visitDeleteData(node, context);
@@ -574,7 +575,11 @@ public class RegionWriteExecutor {
                           ((MeasurementAlreadyExistException) metadataException)
                               .getMeasurementPath())));
             } else {
-              LOGGER.warn(METADATA_ERROR_MSG, metadataException);
+              int errorCode = metadataException.getErrorCode();
+              if (errorCode != TSStatusCode.PATH_ALREADY_EXIST.getStatusCode()
+                  || errorCode != TSStatusCode.ALIAS_ALREADY_EXIST.getStatusCode()) {
+                LOGGER.warn(METADATA_ERROR_MSG, metadataException);
+              }
               failingStatus.add(
                   RpcUtils.getStatus(
                       metadataException.getErrorCode(), metadataException.getMessage()));

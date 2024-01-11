@@ -144,6 +144,10 @@ public class DataRegionConsensusImpl {
                                         TimeDuration.valueOf(
                                             CONF.getDataRatisConsensusRequestTimeoutMs(),
                                             TimeUnit.MILLISECONDS))
+                                    .setSlownessTimeout(
+                                        TimeDuration.valueOf(
+                                            CONF.getDataRatisConsensusRequestTimeoutMs() * 6,
+                                            TimeUnit.MILLISECONDS))
                                     .setFirstElectionTimeoutMin(
                                         TimeDuration.valueOf(
                                             CONF.getRatisFirstElectionTimeoutMinMs(),

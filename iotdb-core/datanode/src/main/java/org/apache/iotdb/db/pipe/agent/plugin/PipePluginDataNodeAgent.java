@@ -53,7 +53,7 @@ public class PipePluginDataNodeAgent {
     pipePluginMetaKeeper = new DataNodePipePluginMetaKeeper();
 
     dataRegionPluginAgent = new PipeDataRegionPluginAgent(pipePluginMetaKeeper);
-    schemaRegionPluginAgent = new PipeSchemaRegionPluginAgent();
+    schemaRegionPluginAgent = new PipeSchemaRegionPluginAgent(null);
 
     lock = new ReentrantLock();
   }

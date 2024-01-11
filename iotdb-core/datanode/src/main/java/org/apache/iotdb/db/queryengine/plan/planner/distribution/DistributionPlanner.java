@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.optimization.ColumnInjectionPushDown;
 import org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown;
+import org.apache.iotdb.db.queryengine.plan.optimization.OrderByExpressionWithLimitChangeToTopK;
 import org.apache.iotdb.db.queryengine.plan.optimization.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.planner.IFragmentParallelPlaner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
@@ -53,7 +54,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode.LIMIT_USE_TOP_K_FOR_ALIGN_BY_DEVICE;
+import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode.LIMIT_VALUE_USE_TOP_K;
 
 public class DistributionPlanner {
   private final Analysis analysis;
@@ -67,7 +68,11 @@ public class DistributionPlanner {
     this.logicalPlan = logicalPlan;
     this.context = logicalPlan.getContext();
 
-    this.optimizers = Arrays.asList(new LimitOffsetPushDown(), new ColumnInjectionPushDown());
+    this.optimizers =
+        Arrays.asList(
+            new LimitOffsetPushDown(),
+            new ColumnInjectionPushDown(),
+            new OrderByExpressionWithLimitChangeToTopK());
   }
 
   public PlanNode rewriteSource() {
@@ -166,7 +171,7 @@ public class DistributionPlanner {
       // TopKNode will use IdentityNode but not ShuffleSinkNode
       if (queryStatement.hasLimit()
           && !queryStatement.isOrderByBasedOnDevice()
-          && queryStatement.getRowLimit() <= LIMIT_USE_TOP_K_FOR_ALIGN_BY_DEVICE) {
+          && queryStatement.getRowLimit() <= LIMIT_VALUE_USE_TOP_K) {
         return false;
       }
 

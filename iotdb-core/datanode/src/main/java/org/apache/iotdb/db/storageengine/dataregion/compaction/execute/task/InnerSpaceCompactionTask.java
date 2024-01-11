@@ -277,9 +277,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
                   targetTsFileResource.getTsFile().length(),
                   sequence,
                   targetTsFileResource.getTsFile().getName());
-
-          // set target resource to CLOSED, so that it can be selected to compact
-          targetTsFileResource.setStatus(TsFileResourceStatus.NORMAL);
         } else {
           // target resource is empty after compaction, then delete it
           targetTsFileResource.remove();
@@ -299,8 +296,11 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             String.format("%.2f", costTime),
             String.format("%.2f", selectedFileSize / 1024.0d / 1024.0d / costTime),
             summary);
+      } finally {
+        Files.deleteIfExists(logFile.toPath());
+        // may failed to set status if the status of target resource is DELETED
+        targetTsFileResource.setStatus(TsFileResourceStatus.NORMAL);
       }
-      Files.deleteIfExists(logFile.toPath());
     } catch (Exception e) {
       isSuccess = false;
       printLogWhenException(LOGGER, e);

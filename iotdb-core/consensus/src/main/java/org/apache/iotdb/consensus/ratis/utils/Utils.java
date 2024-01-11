@@ -327,6 +327,7 @@ public class Utils {
 
     RaftServerConfigKeys.setSleepDeviationThreshold(
         properties, config.getUtils().getSleepDeviationThresholdMs());
+    RaftServerConfigKeys.setCloseThreshold(properties, config.getUtils().getCloseThresholdMs());
 
     final TimeDuration clientMaxRetryGap = getMaxRetrySleepTime(config.getClient());
     RaftServerConfigKeys.RetryCache.setExpiryTime(properties, clientMaxRetryGap);

@@ -50,6 +50,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.SettableFuture;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -576,6 +577,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
           task.unlock();
         }
         clearDriverTask(task);
+        String abortCause = task.getAbortCause();
         QueryId queryId = task.getDriverTaskId().getQueryId();
         Map<FragmentInstanceId, Set<DriverTask>> queryRelatedTasks = queryMap.remove(queryId);
         if (queryRelatedTasks != null) {
@@ -586,7 +588,10 @@ public class DriverScheduler implements IDriverScheduler, IService {
                   if (task.equals(otherTask)) {
                     continue;
                   }
-                  otherTask.setAbortCause(DriverTaskAbortedException.BY_QUERY_CASCADING_ABORTED);
+                  otherTask.setAbortCause(
+                      StringUtils.isEmpty(abortCause)
+                          ? DriverTaskAbortedException.BY_QUERY_CASCADING_ABORTED
+                          : abortCause);
                   clearDriverTask(otherTask);
                 }
               }

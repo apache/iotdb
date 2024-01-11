@@ -24,4 +24,9 @@ public class CompactionMemoryNotEnoughException extends Exception {
   public CompactionMemoryNotEnoughException(String message) {
     super(message);
   }
+
+  @Override
+  public Throwable fillInStackTrace() {
+    return this;
+  }
 }

@@ -166,7 +166,7 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
     try {
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
-        LOGGER.info("Reporting pipe meta: {}", pipeMeta);
+        LOGGER.info("Reporting pipe meta: {}", pipeMeta.coreReportMessage());
       }
     } catch (IOException e) {
       throw new TException(e);
@@ -196,7 +196,7 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
     try {
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
-        LOGGER.info("Reporting pipe meta: {}", pipeMeta);
+        LOGGER.info("Reporting pipe meta: {}", pipeMeta.coreReportMessage());
       }
     } catch (IOException e) {
       throw new TException(e);
