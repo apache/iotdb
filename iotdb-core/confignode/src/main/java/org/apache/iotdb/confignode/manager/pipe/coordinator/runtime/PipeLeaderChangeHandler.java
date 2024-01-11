@@ -73,19 +73,20 @@ public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
               final String databaseName =
                   configManager.getPartitionManager().getRegionStorageGroup(regionGroupId);
               // pipe only collect user's data, filter metric database here.
-              if (databaseName != null && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)) {
+              // databaseName may be null for config region group
+              if (!SchemaConstant.SYSTEM_DATABASE.equals(databaseName)) {
                 // null or -1 means empty origin leader
-                final int oldLeaderDataNodeId = (pair.left == null ? -1 : pair.left);
-                final int newLeaderDataNodeId = (pair.right == null ? -1 : pair.right);
+                final int oldLeaderNodeId = (pair.left == null ? -1 : pair.left);
+                final int newLeaderNodeId = (pair.right == null ? -1 : pair.right);
 
-                if (oldLeaderDataNodeId != newLeaderDataNodeId) {
+                if (oldLeaderNodeId != newLeaderNodeId) {
                   regionGroupToOldAndNewLeaderPairMap.put(
-                      regionGroupId, new Pair<>(oldLeaderDataNodeId, newLeaderDataNodeId));
+                      regionGroupId, new Pair<>(oldLeaderNodeId, newLeaderNodeId));
                 }
               }
             });
 
-    // if no data region leader change, return
+    // if no region leader change, return
     if (regionGroupToOldAndNewLeaderPairMap.isEmpty()) {
       return;
     }

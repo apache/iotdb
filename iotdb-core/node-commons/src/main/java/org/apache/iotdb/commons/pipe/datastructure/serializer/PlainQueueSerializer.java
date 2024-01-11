@@ -73,7 +73,7 @@ public class PlainQueueSerializer<E> implements QueueSerializer<E> {
         if (element == null) {
           throw new IOException("Failed to load snapshot.");
         }
-        queue.add(elementDeserializationFunction.apply(buffer));
+        queue.add(element);
       }
     }
   }
