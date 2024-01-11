@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.InnerTimeJoinNode;
@@ -157,6 +158,8 @@ public class PredicatePushDown implements PlanOptimizer {
         resultNode =
             planFilter(
                 resultNode, PredicateUtils.combineConjuncts(cannotPushDownConjuncts), context);
+      } else if (context.needProject()) {
+        resultNode = planProject(resultNode, context);
       }
       return resultNode;
     }
@@ -239,6 +242,12 @@ public class PredicatePushDown implements PlanOptimizer {
           pushDownFilterNode.getScanOrder());
     }
 
+    private PlanNode planProject(PlanNode child, RewriterContext context) {
+      FilterNode pushDownFilterNode = context.getPushDownFilterNode();
+      return new ProjectNode(
+          context.genPlanNodeId(), child, pushDownFilterNode.getOutputColumnNames());
+    }
+
     @Override
     public PlanNode visitSeriesScanSource(SeriesScanSourceNode node, RewriterContext context) {
       if (context.hasNotInheritedPredicate()) {
@@ -250,6 +259,9 @@ public class PredicatePushDown implements PlanOptimizer {
           inheritedPredicate, node.getSourceSymbol())) {
         node.setPushDownPredicate(inheritedPredicate);
         context.setEnablePushDown(true);
+        if (context.needProject()) {
+          return planProject(node, context);
+        }
         return node;
       }
 
@@ -266,6 +278,8 @@ public class PredicatePushDown implements PlanOptimizer {
 
     private boolean enablePushDown = false;
 
+    private boolean needProject = false;
+
     private RewriterContext(QueryId queryId) {
       this.queryId = queryId;
     }
@@ -280,6 +294,10 @@ public class PredicatePushDown implements PlanOptimizer {
 
     public void setPushDownFilterNode(FilterNode pushDownFilterNode) {
       this.pushDownFilterNode = pushDownFilterNode;
+      this.needProject =
+          !pushDownFilterNode
+              .getOutputColumnNames()
+              .equals(pushDownFilterNode.getChild().getOutputColumnNames());
     }
 
     public boolean hasNotInheritedPredicate() {
@@ -297,6 +315,10 @@ public class PredicatePushDown implements PlanOptimizer {
 
     public void setEnablePushDown(boolean enablePushDown) {
       this.enablePushDown = enablePushDown;
+    }
+
+    public boolean needProject() {
+      return needProject;
     }
 
     public void reset() {

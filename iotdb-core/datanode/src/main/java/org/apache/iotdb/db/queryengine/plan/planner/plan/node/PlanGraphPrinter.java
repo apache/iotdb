@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
@@ -407,6 +408,14 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
       boxValue.add(
           String.format("Exp-%d[%s]: %s", i, exp.getExpressionType(), exp.getExpressionString()));
     }
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitProject(ProjectNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Project-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("OutputColumns: %s", node.getOutputColumnNames()));
     return render(node, boxValue, context);
   }
 

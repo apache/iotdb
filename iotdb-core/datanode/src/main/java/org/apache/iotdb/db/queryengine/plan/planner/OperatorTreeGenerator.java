@@ -57,6 +57,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.LinearFillOper
 import org.apache.iotdb.db.queryengine.execution.operator.process.MergeSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.ProjectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.RawDataAggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.SingleDeviceViewOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.SlidingWindowAggregationOperator;
@@ -184,6 +185,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
@@ -365,11 +367,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     return seriesScanOperator;
   }
 
-  private boolean canPushIntoScan(Expression pushDownPredicate) {
-    return pushDownPredicate == null
-        || PredicatePushIntoScanValidator.canPushIntoScan(pushDownPredicate);
-  }
-
   @Override
   public Operator visitAlignedSeriesScan(
       AlignedSeriesScanNode node, LocalExecutionPlanContext context) {
@@ -382,6 +379,13 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         context.getTypeProvider().getTemplatedInfo() != null
             ? context.getTypeProvider().getTemplatedInfo().getAllSensors()
             : new HashSet<>(seriesPath.getMeasurementList()));
+
+    Expression pushDownPredicate = node.getPushDownPredicate();
+    boolean predicateCanPushIntoScan = canPushIntoScan(pushDownPredicate);
+    if (pushDownPredicate != null && predicateCanPushIntoScan) {
+      scanOptionsBuilder.withPushDownFilter(
+          convertPredicateToFilter(pushDownPredicate, node.getAlignedPath().getMeasurementList()));
+    }
 
     OperatorContext operatorContext =
         context
@@ -405,7 +409,55 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(seriesScanOperator);
     ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
     context.getDriverContext().setInputDriver(true);
+
+    if (!predicateCanPushIntoScan) {
+      AlignedPath alignedPath = node.getAlignedPath();
+      List<Expression> expressions = new ArrayList<>();
+      List<TSDataType> dataTypes = new ArrayList<>();
+      for (int i = 0; i < alignedPath.getMeasurementList().size(); i++) {
+        expressions.add(ExpressionFactory.timeSeries(alignedPath.getSubMeasurementPath(i)));
+        dataTypes.add(alignedPath.getSubMeasurementDataType(i));
+      }
+
+      return generateFilterOp(
+          pushDownPredicate,
+          seriesScanOperator,
+          expressions.toArray(new Expression[0]),
+          dataTypes,
+          makeLayout(Collections.singletonList(node)),
+          false,
+          null,
+          node.getPlanNodeId(),
+          node.getScanOrder(),
+          context);
+    }
     return seriesScanOperator;
+  }
+
+  private boolean canPushIntoScan(Expression pushDownPredicate) {
+    return pushDownPredicate == null
+        || PredicatePushIntoScanValidator.canPushIntoScan(pushDownPredicate);
+  }
+
+  @Override
+  public Operator visitProject(ProjectNode node, LocalExecutionPlanContext context) {
+    Operator child = node.getChild().accept(this, context);
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                ProjectOperator.class.getSimpleName());
+    List<String> outputColumnNames = node.getOutputColumnNames();
+    List<String> inputColumnNames = node.getChild().getOutputColumnNames();
+    List<Integer> remainingColumnIndexList = new ArrayList<>();
+    for (int i = 0; i < inputColumnNames.size(); i++) {
+      if (outputColumnNames.contains(inputColumnNames.get(i))) {
+        remainingColumnIndexList.add(i);
+      }
+    }
+    return new ProjectOperator(operatorContext, child, remainingColumnIndexList);
   }
 
   @Override
@@ -807,7 +859,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getPlanNodeId(),
                 SingleDeviceViewOperator.class.getSimpleName());
     Operator child = node.getChild().accept(this, context);
-    List<Integer> deviceColumnIndex = node.getDeviceToMeasurementIndexes();
+    List<java.lang.Integer> deviceColumnIndex = node.getDeviceToMeasurementIndexes();
     List<TSDataType> outputColumnTypes =
         node.isCacheOutputColumnNames()
             ? getOutputColumnTypes(node, context.getTypeProvider())
@@ -829,7 +881,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getPlanNodeId(),
                 DeviceViewOperator.class.getSimpleName());
     List<Operator> children = dealWithConsumeChildrenOneByOneNode(node, context);
-    List<List<Integer>> deviceColumnIndex =
+    List<List<java.lang.Integer>> deviceColumnIndex =
         node.getDevices().stream()
             .map(deviceName -> node.getDeviceToMeasurementIndexesMap().get(deviceName))
             .collect(Collectors.toList());
