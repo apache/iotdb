@@ -280,8 +280,9 @@ public class TabletInsertionDataContainer {
     this.deviceId = tablet.deviceId;
     this.isAligned = isAligned;
 
-    final long[] originTimestampColumn = tablet.timestamps;
-    final int originRowSize = originTimestampColumn.length;
+    final long[] originTimestampColumn =
+        Arrays.copyOf(
+            tablet.timestamps, tablet.rowSize); // tablet.timestamps.length == tablet.maxRowNumber
     List<Integer> rowIndexList = generateRowIndexList(originTimestampColumn);
     this.timestampColumn = rowIndexList.stream().mapToLong(i -> originTimestampColumn[i]).toArray();
 
@@ -312,17 +313,18 @@ public class TabletInsertionDataContainer {
       originColumnNameStringList[i] = originMeasurementSchemaList.get(i).getMeasurementId();
       originValueColumnTypes[i] = originMeasurementSchemaList.get(i).getType();
     }
-    final Object[] originValueColumns = tablet.values;
+    final Object[] originValueColumns =
+        tablet.values; // we do not reduce value columns here by origin row size
     final BitMap[] originBitMapList =
         tablet.bitMaps == null
             ? IntStream.range(0, originColumnSize)
                 .boxed()
-                .map(o -> new BitMap(originRowSize))
+                .map(o -> new BitMap(tablet.getMaxRowNumber()))
                 .toArray(BitMap[]::new)
-            : tablet.bitMaps;
+            : tablet.bitMaps; // we do not reduce bitmaps here by origin row size
     for (int i = 0; i < originBitMapList.length; i++) {
       if (originBitMapList[i] == null) {
-        originBitMapList[i] = new BitMap(originRowSize);
+        originBitMapList[i] = new BitMap(tablet.getMaxRowNumber());
       }
     }
 
