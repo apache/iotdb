@@ -51,7 +51,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.vie
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.DeleteLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.RollbackLogicalViewBlackListNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.OperateSchemaQueueReferenceNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.OperateSchemaQueueNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedConfigSchemaNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWriteSchemaNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
@@ -537,15 +537,15 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   }
 
   @Override
-  public TSStatus visitOperateSchemaQueueReferenceNode(
-      OperateSchemaQueueReferenceNode node, ISchemaRegion schemaRegion) {
+  public TSStatus visitOperateSchemaQueueNode(
+      OperateSchemaQueueNode node, ISchemaRegion schemaRegion) {
     SchemaNodeListeningQueue queue =
         SchemaNodeListeningQueue.getInstance(schemaRegion.getSchemaRegionId().getId());
     try {
       if (node.isOpen()) {
-        queue.increaseReferenceCount();
+        queue.open();
       } else {
-        queue.decreaseReferenceCount();
+        queue.close();
       }
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (IOException e) {

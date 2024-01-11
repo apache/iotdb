@@ -34,15 +34,15 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * {@link OperateSchemaQueueReferenceNode} is for pipe to manually open or close the schema
- * listening queue. It is for written to {@link SchemaRegion} consensus layer to ensure the identity
- * of the queue in all peers.
+ * {@link OperateSchemaQueueNode} is for pipe to manually open or close the schema listening queue.
+ * It is for written to {@link SchemaRegion} consensus layer to ensure the identity of the queue in
+ * all peers.
  */
-public class OperateSchemaQueueReferenceNode extends PlanNode {
+public class OperateSchemaQueueNode extends PlanNode {
 
   private final boolean isOpen;
 
-  public OperateSchemaQueueReferenceNode(PlanNodeId id, boolean isOpen) {
+  public OperateSchemaQueueNode(PlanNodeId id, boolean isOpen) {
     super(id);
     this.isOpen = isOpen;
   }
@@ -63,7 +63,7 @@ public class OperateSchemaQueueReferenceNode extends PlanNode {
 
   @Override
   public PlanNode clone() {
-    return new OperateSchemaQueueReferenceNode(id, isOpen);
+    return new OperateSchemaQueueNode(id, isOpen);
   }
 
   @Override
@@ -78,7 +78,7 @@ public class OperateSchemaQueueReferenceNode extends PlanNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitOperateSchemaQueueReferenceNode(this, context);
+    return visitor.visitOperateSchemaQueueNode(this, context);
   }
 
   @Override
@@ -93,10 +93,10 @@ public class OperateSchemaQueueReferenceNode extends PlanNode {
     ReadWriteIOUtils.write(isOpen, stream);
   }
 
-  public static OperateSchemaQueueReferenceNode deserialize(ByteBuffer byteBuffer) {
+  public static OperateSchemaQueueNode deserialize(ByteBuffer byteBuffer) {
     boolean isClose = ReadWriteIOUtils.readBool(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new OperateSchemaQueueReferenceNode(planNodeId, isClose);
+    return new OperateSchemaQueueNode(planNodeId, isClose);
   }
 
   @Override
@@ -108,7 +108,7 @@ public class OperateSchemaQueueReferenceNode extends PlanNode {
       return false;
     }
 
-    OperateSchemaQueueReferenceNode that = (OperateSchemaQueueReferenceNode) o;
+    OperateSchemaQueueNode that = (OperateSchemaQueueNode) o;
 
     return this.getPlanNodeId().equals(that.getPlanNodeId()) && Objects.equals(isOpen, that.isOpen);
   }

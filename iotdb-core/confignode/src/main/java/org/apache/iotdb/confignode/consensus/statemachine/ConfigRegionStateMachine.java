@@ -230,6 +230,9 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
         currentNodeTEndPoint);
 
+    // Enable creating pipe tasks
+    ConfigPlanListeningQueue.getInstance().notifyLeaderReady();
+
     // Always start load services first
     configManager.getLoadManager().startLoadServices();
 

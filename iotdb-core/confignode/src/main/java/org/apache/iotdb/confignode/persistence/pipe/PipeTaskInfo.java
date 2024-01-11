@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
@@ -676,6 +677,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
   /////////////////////////////// ConfigTask ///////////////////////////////
 
   private void dropPipeOnConfigTaskAgent(String pipeName) {
+    // Operate tasks only after leader get ready
+    if (!ConfigPlanListeningQueue.getInstance().isLeaderReady()) {
+      return;
+    }
     TPushPipeMetaRespExceptionMessage message = PipeConfigNodeAgent.task().handleDropPipe(pipeName);
     if (message != null) {
       pipeMetaKeeper
@@ -689,6 +694,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   private void handleSinglePipeMetaChangeOnConfigTaskAgent(PipeMeta pipeMeta) {
+    // Operate tasks only after leader get ready
+    if (!ConfigPlanListeningQueue.getInstance().isLeaderReady()) {
+      return;
+    }
     // The new agent meta has separated status to enable control by diff
     // Yet the taskMetaMap is reused to let configNode pipe report directly to the
     // original meta. No lock is needed since the configNode taskMeta is only
@@ -713,6 +722,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   public void handlePipeMetaChangesOnConfigTaskAgent() {
+    // Operate tasks only after leader get ready
+    if (!ConfigPlanListeningQueue.getInstance().isLeaderReady()) {
+      return;
+    }
     List<PipeMeta> pipeMetas = new ArrayList<>();
     for (PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
       // The new agent meta has separated status to enable control by diff
@@ -779,6 +792,17 @@ public class PipeTaskInfo implements SnapshotProcessor {
       try (final FileInputStream fileInputStream = new FileInputStream(snapshotFile)) {
         pipeMetaKeeper.processLoadSnapshot(fileInputStream);
       }
+      // We initialize reference count of listening pipes here to avoid separate
+      // serialization of it
+      for (PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
+        ConfigPlanListeningQueue.getInstance()
+            .increaseReferenceCountForListeningPipe(
+                pipeMeta.getStaticMeta().getExtractorParameters());
+      }
+    } catch (IllegalPathException e) {
+      LOGGER.warn(
+          "Failed to increase reference count for listening pipe, PipeMetas: {}",
+          pipeMetaKeeper.getPipeMetaList());
     } finally {
       releaseWriteLock();
     }

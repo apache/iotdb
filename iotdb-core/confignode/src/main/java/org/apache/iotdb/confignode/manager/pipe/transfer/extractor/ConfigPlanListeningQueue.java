@@ -62,6 +62,8 @@ public class ConfigPlanListeningQueue extends AbstractPipeListeningQueue
 
   private static final String SNAPSHOT_FILE_NAME = "pipe_listening_queue.bin";
 
+  private int referenceCount = -1;
+
   private ConfigPlanListeningQueue() {
     super();
   }
@@ -117,14 +119,20 @@ public class ConfigPlanListeningQueue extends AbstractPipeListeningQueue
   public void increaseReferenceCountForListeningPipe(PipeParameters parameters)
       throws IllegalPathException {
     if (needToRecord(parameters)) {
-      increaseReferenceCount();
+      referenceCount++;
+      if (referenceCount == 1) {
+        open();
+      }
     }
   }
 
   public void decreaseReferenceCountForListeningPipe(PipeParameters parameters)
       throws IllegalPathException, IOException {
     if (needToRecord(parameters)) {
-      decreaseReferenceCount();
+      referenceCount--;
+      if (referenceCount == 0) {
+        close();
+      }
     }
   }
 

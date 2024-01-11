@@ -78,6 +78,12 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   }
 
   @Override
+  public void notifyLeaderReady() {
+    SchemaNodeListeningQueue.getInstance(schemaRegion.getSchemaRegionId().getId())
+        .notifyLeaderReady();
+  }
+
+  @Override
   public TSStatus write(IConsensusRequest request) {
     try {
       TSStatus result = ((PlanNode) request).accept(new SchemaExecutionVisitor(), schemaRegion);

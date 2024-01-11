@@ -46,7 +46,12 @@ import java.util.List;
 public abstract class AbstractPipeListeningQueue extends AbstractSerializableListeningQueue<Event> {
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractPipeListeningQueue.class);
   private static final String SNAPSHOT_PREFIX = ".snapshot";
-  private int referenceCount = 0;
+
+  // Note that listening queue must serve extractors after the schemaRegion became ready,
+  // or else the queue may provide stale events to the extractors.
+  // On configNode this variable is also needed to prevent a created and dropped pipe
+  // send events again when redoing from log.
+  private volatile boolean leaderReady = false;
 
   private final Pair<Long, List<PipeSnapshotEvent>> snapshotCache =
       new Pair<>(Long.MIN_VALUE, new ArrayList<>());
@@ -55,18 +60,14 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
     super(LinkedQueueSerializerType.PLAIN);
   }
 
-  public synchronized void increaseReferenceCount() {
-    referenceCount++;
-    if (referenceCount == 1) {
-      open();
-    }
+  /////////////////////////// LeaderReady ///////////////////////////
+
+  public boolean isLeaderReady() {
+    return leaderReady;
   }
 
-  public synchronized void decreaseReferenceCount() throws IOException {
-    referenceCount--;
-    if (referenceCount == 0) {
-      close();
-    }
+  public void notifyLeaderReady() {
+    leaderReady = true;
   }
 
   /////////////////////////////// Snapshot Cache ///////////////////////////////
@@ -111,7 +112,6 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
     }
 
     try (final FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile)) {
-      ReadWriteIOUtils.write(referenceCount, fileOutputStream);
       ReadWriteIOUtils.write(snapshotCache.getLeft(), fileOutputStream);
       ReadWriteIOUtils.write(snapshotCache.getRight().size(), fileOutputStream);
       for (PipeSnapshotEvent event : snapshotCache.getRight()) {
@@ -135,11 +135,6 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
 
     try (final FileInputStream inputStream = new FileInputStream(snapshotFile)) {
       try (FileChannel channel = inputStream.getChannel()) {
-        referenceCount = ReadWriteIOUtils.readInt(inputStream);
-        if (referenceCount > 0) {
-          // Open the queue to listen from redo process
-          open();
-        }
         snapshotCache.setLeft(ReadWriteIOUtils.readLong(inputStream));
         snapshotCache.setRight(new ArrayList<>());
         int size = ReadWriteIOUtils.readInt(inputStream);

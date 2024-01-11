@@ -21,12 +21,13 @@ package org.apache.iotdb.db.pipe.extractor.schemaregion;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.pipe.datastructure.AbstractPipeListeningQueue;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.extractor.IoTDBMetaExtractor;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeWriteSchemaPlanEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.OperateSchemaQueueReferenceNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.OperateSchemaQueueNode;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -34,6 +35,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_KEY;
@@ -44,6 +46,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 
 public class IoTDBSchemaRegionExtractor extends IoTDBMetaExtractor {
   private Set<PlanNodeType> listenTypes = new HashSet<>();
+  private static final AtomicInteger referenceCount = new AtomicInteger(0);
 
   @Override
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
@@ -58,13 +61,35 @@ public class IoTDBSchemaRegionExtractor extends IoTDBMetaExtractor {
             parameters.getStringOrDefault(
                 Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
                 EXTRACTOR_EXCLUSION_DEFAULT_VALUE));
+  }
 
-    if (!listenTypes.isEmpty()) {
-      SchemaRegionConsensusImpl.getInstance()
-          .write(
-              new SchemaRegionId(regionId),
-              new OperateSchemaQueueReferenceNode(new PlanNodeId(""), true));
+  @Override
+  public void start() throws Exception {
+    // Delay the start process to schema region leader ready
+    if (!SchemaNodeListeningQueue.getInstance(regionId).isLeaderReady()) {
+      return;
     }
+    if (!listenTypes.isEmpty()) {
+      referenceCount.getAndIncrement();
+      if (referenceCount.get() == 1) {
+        SchemaRegionConsensusImpl.getInstance()
+            .write(
+                new SchemaRegionId(regionId), new OperateSchemaQueueNode(new PlanNodeId(""), true));
+      }
+    }
+    super.start();
+  }
+
+  // This method will return events only after schema region leader get ready
+  @Override
+  public EnrichedEvent supply() throws Exception {
+    if (!SchemaNodeListeningQueue.getInstance(regionId).isLeaderReady()) {
+      return null;
+    }
+    if (!hasBeenStarted.get()) {
+      start();
+    }
+    return super.supply();
   }
 
   @Override
@@ -81,10 +106,13 @@ public class IoTDBSchemaRegionExtractor extends IoTDBMetaExtractor {
   public void close() throws Exception {
     super.close();
     if (!listenTypes.isEmpty()) {
-      SchemaRegionConsensusImpl.getInstance()
-          .write(
-              new SchemaRegionId(regionId),
-              new OperateSchemaQueueReferenceNode(new PlanNodeId(""), false));
+      referenceCount.getAndDecrement();
+      if (referenceCount.get() == 0) {
+        SchemaRegionConsensusImpl.getInstance()
+            .write(
+                new SchemaRegionId(regionId),
+                new OperateSchemaQueueNode(new PlanNodeId(""), false));
+      }
     }
   }
 }
