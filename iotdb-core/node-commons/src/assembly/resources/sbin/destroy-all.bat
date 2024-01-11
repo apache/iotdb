@@ -37,6 +37,6 @@ rmdir /s /q "%IOTDB_HOME%\\data\\"
 start cmd /c "%IOTDB_HOME%\\sbin\\destroy-datanode.bat -f"
 start cmd /c "%IOTDB_HOME%\\sbin\\destroy-confignode.bat -f"
 
-ECHO Cluster cleanup complete ...
+ECHO "Cluster cleanup complete ..."
 :finally
 exit /b
