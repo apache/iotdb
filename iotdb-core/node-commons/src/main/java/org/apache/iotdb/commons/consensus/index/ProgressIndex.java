@@ -93,18 +93,18 @@ public abstract class ProgressIndex {
    * Define the isEqualOrAfter relation, A.isEqualOrAfter(B) if and only if each tuple member in A
    * is greater than or equal to B in the corresponding total order relation.
    *
-   * <p>C = A.updateToMinimumEqualOrIsAfterProgressIndex(B) should be satisfied:
+   * <p>C = A.updateToMinimumEqualOrIsAfterProgressIndex(B) should satisfy:
    *
    * <p>C.isEqualOrAfter(A) is {@code true},
    *
    * <p>C.isEqualOrAfter(B) is {@code true},
    *
-   * <p>there is no D such that C.isEqualOrAfter(D) is {@code true} and D.isEqualOrAfter(A) is
-   * {@code true} and D.isEqualOrAfter(B) is {@code true}.
+   * <p>there is no D such that C.isAfter(D) is {@code true} and D.isEqualOrAfter(A) is {@code true}
+   * and D.isEqualOrAfter(B) is {@code true}.
    *
    * <p>The implementation of this function should be reflexive, that is
    * A.updateToMinimumIsAfterProgressIndex(B).equals(B.updateToMinimumIsAfterProgressIndex(A)) is
-   * true
+   * {@code true}
    *
    * <p>Note: this function may modify the caller.
    *
