@@ -30,11 +30,11 @@ if [ -z "$JAVA_HOME" ]; then
     exit 1
 fi
 
-FILE_NAME=$SYSTEMD_DIR/iotdb-datanode.service
+FILE_NAME=$SYSTEMD_DIR/iotdb-confignode.service
 
 cat > "$FILE_NAME" <<EOF
 [Unit]
-Description=iotdb-datanode
+Description=iotdb-confignode
 Documentation=https://iotdb.apache.org/
 After=network.target
 
@@ -46,7 +46,7 @@ Type=simple
 User=root
 Group=root
 Environment=JAVA_HOME=$JAVA_HOME
-ExecStart=$IOTDB_SBIN_HOME/start-datanode.sh
+ExecStart=$IOTDB_SBIN_HOME/start-confignode.sh
 Restart=on-failure
 SuccessExitStatus=143
 RestartSec=5
@@ -58,23 +58,25 @@ RestartPreventExitStatus=SIGKILL
 WantedBy=multi-user.target
 EOF
 
-echo "DataNode service registration successful!"
+echo "Daemon service of IoTDB ConfigNode has been successfully registered."
 
 systemctl daemon-reload
 
-echo "Do you want to start IoTDB DataNode service ? y/n (default n)"
+echo "Do you want to start iotdb-confignode service ? y/n (default n)"
+echo "Or you can use 'systemctl start iotdb-confignode' to start it later."
 read -r START_SERVICE
 echo - - - - - - - - - -
 if [[ "$START_SERVICE" =~ ^[Yy]$ ]]; then
-    ${IOTDB_SBIN_HOME}/sbin/stop-datanode.sh >/dev/null 2>&1 &
-    systemctl start iotdb-datanode
+    "${IOTDB_SBIN_HOME}"/sbin/stop-confignode.sh >/dev/null 2>&1 &
+    systemctl start iotdb-confignode
 fi
 
-echo "Do you want to start IoTDB DataNode service when startup ? y/n (default n)"
+echo "Do you want to start iotdb-confignode service when system startup ? y/n (default n)"
+echo "Or you can use 'systemctl enable iotdb-confignode' to enable it later."
 read -r ADD_STARTUP
 echo - - - - - - - - - -
 if [[ "$ADD_STARTUP" =~ ^[Yy]$ ]]; then
-   systemctl enable iotdb-datanode
+   systemctl enable iotdb-confignode
 else
-   systemctl disable iotdb-datanode
+   systemctl disable iotdb-confignode
 fi
