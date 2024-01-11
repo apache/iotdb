@@ -25,9 +25,11 @@ if NOT DEFINED IOTDB_HOME set IOTDB_HOME=%cd%
 popd
 
 setlocal enabledelayedexpansion
-set "timestamp=%date:~0,4%%date:~5,2%%date:~8,2%"
-set "COLLECTION_DIR=%IOTDB_HOME%\collectioninfo"
-set "COLLECTION_FILE=%COLLECTION_DIR%\collection-%timestamp%.txt"
+
+set "COLLECTION_DIR_NAME=iotdb-info"
+set "COLLECTION_DIR=%IOTDB_HOME%\%COLLECTION_DIR_NAME%"
+set "COLLECTION_DIR_LOGS=%COLLECTION_DIR%\logs"
+set "COLLECTION_FILE=%COLLECTION_DIR%\collection.txt"
 set "START_CLI_PATH=%IOTDB_HOME%\sbin\start-cli.bat"
 
 set "HELP=Usage: %0 [-h <ip>] [-p <port>] [-u <username>] [-pw <password>] [-jp <jdk_path>] [-dd <data_dir>]"
@@ -36,7 +38,21 @@ set "passwd_param=root"
 set "host_param=127.0.0.1"
 set "port_param=6667"
 set "jdk_path_param="
-set "data_dir_param=%IOTDB_HOME%\data"
+
+set "properties_file=%IOTDB_HOME%\conf\iotdb-datanode.properties"
+set "key=dn_data_dirs"
+
+for /f "usebackq tokens=1,* delims==" %%a in ("%properties_file%") do (
+    if "%%a"=="%key%" (
+        set "value=%%b"
+    )
+)
+
+IF "%value%"=="" (
+    set "data_dir_param=%IOTDB_HOME%\data\datanode\data"
+) else (
+    set "data_dir_param=%value%"
+)
 
 :parse_args
 if "%~1"=="" goto done
@@ -91,68 +107,37 @@ echo data_dir_param: %data_dir_param%
 set "command=show version"
 
 call :collect_info
-call :execute_command "show version" >> "%COLLECTION_FILE%"
-call :execute_command "show cluster details" >> "%COLLECTION_FILE%"
-call :execute_command "show regions" >> "%COLLECTION_FILE%"
-call :execute_command "show databases" >> "%COLLECTION_FILE%"
-call :execute_command "count devices" >> "%COLLECTION_FILE%"
-call :execute_command "count timeseries" >> "%COLLECTION_FILE%"
 echo "Program execution completed, directory name is %COLLECTION_DIR%"
 exit /b
 
 :collect_info
 echo ---------------------
-echo Start Collection info
+echo Start collecting info
 echo ---------------------
 
 if exist "%COLLECTION_DIR%" rmdir /s /q "%COLLECTION_DIR%"
 
-mkdir "%COLLECTION_DIR%"
+mkdir "%COLLECTION_DIR_LOGS%"
 
 xcopy /E /I /Q "%IOTDB_HOME%\conf" "%COLLECTION_DIR%\conf"
 
-set "files_to_zip=%COLLECTION_FILE% ../conf"
-
-call :collect_cpu_info >> "%COLLECTION_FILE%"
-call :collect_memory_info >> "%COLLECTION_FILE%"
+call :collection_logs
 call :collect_system_info >> "%COLLECTION_FILE%"
 call :collect_jdk_version >> "%COLLECTION_FILE%"
 call :collect_activation_info >> "%COLLECTION_FILE%"
 call :total_file_num >> "%COLLECTION_FILE%"
+call :execute_command "show version" >> "%COLLECTION_FILE%" 2>&1
+call :execute_command "show cluster details" >> "%COLLECTION_FILE%" 2>&1
+call :execute_command "show regions" >> "%COLLECTION_FILE%" 2>&1
+call :execute_command "show databases" >> "%COLLECTION_FILE%" 2>&1
+call :execute_command "count devices" >> "%COLLECTION_FILE%" 2>&1
+call :execute_command "count timeseries" >> "%COLLECTION_FILE%" 2>&1
 
-exit /b
-
-:collect_cpu_info
-echo ====================== CPU Info ======================
-wmic cpu get name | more +1
-for /f %%b in ('wmic cpu get numberofcores ^| findstr "[0-9]"') do (
-	set system_cpu_cores=%%b
-)
-if %system_cpu_cores% LSS 1 set system_cpu_cores=1
-echo %system_cpu_cores% core
-exit /b
-
-
-:collect_memory_info
-echo ===================== Memory Info =====================
-
-REM Get total memory size
-for /f  %%b in ('wmic ComputerSystem get TotalPhysicalMemory ^| findstr "[0-9]"') do (
-	set system_memory=%%b
-)
-
-echo wsh.echo FormatNumber(cdbl(%system_memory%)/(1024*1024*1024), 0) > tmp.vbs
-for /f "tokens=*" %%a in ('cscript //nologo tmp.vbs') do set system_memory_in_gb=%%a
-del tmp.vbs
-set system_memory_in_gb=%system_memory_in_gb:,=%
-
-REM Output memory information
-echo Total Memory: !system_memory_in_gb! GB
 exit /b
 
 :collect_system_info
 echo ===================== System Info =====================
-wmic os get Caption
+systeminfo
 exit /b
 
 :collect_jdk_version
@@ -181,6 +166,15 @@ if exist "%~dp0/../activation" (
 )
 exit /b
 
+:collection_logs
+for %%F in ("%IOTDB_HOME%\logs\*.log") do (
+    echo %%F
+    if /I "%%~xF"==".log" (
+        copy "%%F" "%COLLECTION_DIR_LOGS%"
+    )
+)
+exit /b
+
 :execute_command
 setlocal enabledelayedexpansion
 set "command=%~1"
@@ -198,78 +192,88 @@ echo '===================== TsFile Info====================='
 set "directories=%data_dir_param%"
 set "seqFileCount=0"
 set "unseqFileCount=0"
-set /a seqFileSize=0
-set /a unseqFileSize=0
+
+
+set /a totalSeqFileSize=0
+set /a totalUnseqFileSize=0
+
+set "directories=!directories:,= !"
 
 for %%d in ("%directories: =" "%") do (
-    set "seqdirectory=%%~d\datanode\data\sequence"
-    set "unseqdirectory=%%~d\datanode\data\unsequence"
+    set "seqdirectory=%%~d\sequence"
+    set "unseqdirectory=%%~d\unsequence"
 
-    for /f %%a in ('dir /s /b /a-d "!seqdirectory!" ^| find /c /v ""') do (
-        set /a "seqFileCount+=%%a"
+    if exist "!seqdirectory!\\*.tsfile" (
+        for /f %%a in ('dir /s /b /a-d "!seqdirectory!\\*.tsfile"  ^| find /c /v ""') do (
+            set /a "seqFileCount+=%%a"
+        )
     )
-    for /f %%a in ('dir /s /b /a-d "!unseqdirectory!" ^| find /c /v ""') do (
-        set /a "unseqFileCount+=%%a"
+    if exist "!unseqdirectory!\\*.tsfile" (
+        for /f %%a in ('dir /s /b /a-d "!unseqdirectory!\\*.tsfile" ^| find /c /v ""') do (
+            set /a "unseqFileCount+=%%a"
+        )
     )
-
+    set /a seqFileSize=0
+    set /a unseqFileSize=0
     call :processDirectory "!seqdirectory!" seqFileSize
     call :processDirectory "!unseqdirectory!" unseqFileSize
+    set /a "totalSeqFileSize+=!seqFileSize!"
+    set /a "totalUnseqFileSize+=!unseqFileSize!"
 )
 
 echo sequence(tsfile number): %seqFileCount%
 echo unsequence(tsfile number): %unseqFileCount%
-call :convertSize !seqFileSize! convertedSeqSize
-call :convertSize !unseqFileSize! convertedUnseqSize
+call :convertSize %totalSeqFileSize% convertedSeqSize
+call :convertSize %totalUnseqFileSize% convertedUnSeqSize
 echo sequence(tsfile size): %convertedSeqSize%
-echo unsequence(tsfile size): %convertedUnseqSize%
+echo unsequence(tsfile size): %convertedUnSeqSize%
 exit /b
 
 :processDirectory
+setlocal enabledelayedexpansion
 set "dir=%~1"
 set "sizeVar=%~2"
-set /a "size=0"
 
-for /r "%dir%" %%f in (*) do (
-    set /a "size+=%%~zf"
-)
+echo Set objFSO = CreateObject("Scripting.FileSystemObject") > tmp.vbs
+echo Set objFolder = objFSO.GetFolder("%dir%") >> tmp.vbs
+echo size = 0 >> tmp.vbs
+echo For Each objFile In objFolder.Files >> tmp.vbs
+echo     size = size + objFile.Size >> tmp.vbs
+echo Next >> tmp.vbs
+echo WScript.Echo size >> tmp.vbs
 
-endlocal & set "%sizeVar%=%size%"
+for /f "tokens=*" %%a in ('cscript //nologo tmp.vbs') do set data_size=%%a
+del tmp.vbs
+
+endlocal & set "%sizeVar%=%data_size%"
 exit /b
 
 :convertSize
 setlocal enabledelayedexpansion
 set "size=%~1"
-set "unit=bytes"
-
-
-echo wsh.echo FormatNumber(cdbl(%size%)/(1024*1024*1024), 0) > tmp.vbs
-for /f "tokens=*" %%a in ('cscript //nologo tmp.vbs') do set data_size_gb=%%a
-del tmp.vbs
-set data_size_gb=%data_size_gb:,=%
-
-echo wsh.echo FormatNumber(cdbl(%size%)/(1024*1024), 0) > tmp.vbs
-for /f "tokens=*" %%a in ('cscript //nologo tmp.vbs') do set data_size_mb=%%a
-del tmp.vbs
-set data_size_mb=%data_size_mb:,=%
-
-echo wsh.echo FormatNumber(cdbl(%size%)/(1024*1024), 0) > tmp.vbs
+echo wsh.echo FormatNumber(cdbl(%size%)/(1024), 0) > tmp.vbs
 for /f "tokens=*" %%a in ('cscript //nologo tmp.vbs') do set data_size_kb=%%a
 del tmp.vbs
-set data_size_kb=%data_size_kb:,=%
+set data_size_kb=!data_size_kb:,=!
 
-if %data_size_gb% GTR 1 (
-    set "unit=GB"
-    set "data_size=%data_size_gb%"
-)else if %data_size_mb% GTR 1 (
-    set "unit=MB"
-    set "data_size=%data_size_mb%"
-) else if %data_size_kb% GTR 1 (
-     set "unit=KB"
-     set "data_size=%data_size_kb%"
-)else (
-    set "data_size=%size%"
+echo wsh.echo FormatNumber(cdbl(%size%)/(1024*1024), 1) > tmp.vbs
+for /f "tokens=*" %%a in ('cscript //nologo tmp.vbs') do set data_size_mb=%%a
+del tmp.vbs
+set data_size_mb=!data_size_mb:,=!
+
+echo wsh.echo FormatNumber(cdbl(%size%)/(1024*1024*1024), 1) > tmp.vbs
+for /f "tokens=*" %%a in ('cscript //nologo tmp.vbs') do set data_size_gb=%%a
+del tmp.vbs
+set data_size_gb=!data_size_gb:,=!
+
+if !data_size_gb! gtr 1 (
+    set "size=!data_size_gb!GB"
+) else if !data_size_mb! gtr 1 (
+    set "size=!data_size_mb!MB"
+) else if !data_size_kb! gtr 1 (
+    set "size=!data_size_kb!KB"
+) else (
+    set "size=!size!B"
 )
-
-endlocal & set "%~2=%data_size%%unit%"
-
+endlocal & set "%~2=%size%"
 exit /b
