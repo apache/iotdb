@@ -62,7 +62,7 @@ public class ConfigPlanListeningQueue extends AbstractPipeListeningQueue
 
   private static final String SNAPSHOT_FILE_NAME = "pipe_listening_queue.bin";
 
-  private int referenceCount = -1;
+  private int referenceCount = 0;
 
   private ConfigPlanListeningQueue() {
     super();

@@ -109,4 +109,68 @@ public class IoTDBPipeLifeCycleMetaIT extends AbstractPipeDualManualIT {
         "count(timeseries),",
         Collections.singleton(String.format("%d,", successCount)));
   }
+
+  @Test
+  public void testAutoRestartConfigTask() throws Exception {
+    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    String receiverIp = receiverDataNode.getIp();
+    int receiverPort = receiverDataNode.getPort();
+
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      Map<String, String> extractorAttributes = new HashMap<>();
+      Map<String, String> processorAttributes = new HashMap<>();
+      Map<String, String> connectorAttributes = new HashMap<>();
+
+      extractorAttributes.put("extractor.inclusion", "all");
+      extractorAttributes.put("extractor.inclusion.exclusion", "");
+      extractorAttributes.put("extractor.forwarding-pipe-requests", "false");
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.ip", receiverIp);
+      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      connectorAttributes.put("connector.exception.conflict.resolve-strategy", "retry");
+      connectorAttributes.put("connector.exception.conflict.retry-max-time-seconds", "-1");
+
+      TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("testPipe", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
+    }
+
+    int successCount = 0;
+    for (int i = 0; i < 10; ++i) {
+      if (TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv, String.format("create database root.ln%s", i))) {
+        ++successCount;
+      }
+    }
+
+    try {
+      TestUtils.restartCluster(senderEnv);
+      TestUtils.restartCluster(receiverEnv);
+    } catch (Exception e) {
+      e.printStackTrace();
+      return;
+    }
+
+    for (int i = 10; i < 20; ++i) {
+      if (TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv, String.format("create database root.ln%s", i))) {
+        ++successCount;
+      }
+    }
+
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "count databases",
+        "count,",
+        Collections.singleton(String.format("%d,", successCount)));
+  }
 }
