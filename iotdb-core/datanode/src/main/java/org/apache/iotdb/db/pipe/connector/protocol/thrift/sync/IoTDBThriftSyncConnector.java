@@ -244,7 +244,7 @@ public class IoTDBThriftSyncConnector extends IoTDBSyncSslConnector {
     exceptionHandler.handleExceptionStatus(
         resp.getStatus(),
         String.format("Transfer PipeTransferTabletBatchReq error, result status %s", resp.status),
-        tabletBatchBuilder.getTPipeTransferReqs().toString());
+        tabletBatchBuilder.deepCopyEvents().toString());
 
     tabletBatchBuilder.onSuccess();
   }

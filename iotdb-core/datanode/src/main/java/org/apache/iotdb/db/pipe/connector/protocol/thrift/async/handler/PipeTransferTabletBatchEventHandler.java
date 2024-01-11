@@ -52,7 +52,7 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
       throws IOException {
     // Deep copy to keep Ids' and events' reference
     requestCommitIds = batchBuilder.deepcopyRequestCommitIds();
-    events = batchBuilder.deepcopyEvents();
+    events = batchBuilder.deepCopyEvents();
     req = batchBuilder.toTPipeTransferReq();
 
     this.connector = connector;

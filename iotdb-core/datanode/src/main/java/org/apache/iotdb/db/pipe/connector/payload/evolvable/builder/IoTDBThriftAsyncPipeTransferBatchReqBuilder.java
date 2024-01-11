@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.builder;
 
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
-import org.apache.iotdb.pipe.api.event.Event;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,10 +28,6 @@ public class IoTDBThriftAsyncPipeTransferBatchReqBuilder extends PipeTransferBat
 
   public IoTDBThriftAsyncPipeTransferBatchReqBuilder(PipeParameters parameters) {
     super(parameters);
-  }
-
-  public List<Event> deepcopyEvents() {
-    return new ArrayList<>(events);
   }
 
   public List<Long> deepcopyRequestCommitIds() {
