@@ -489,6 +489,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         memoryCost = innerSpaceEstimator.estimateInnerCompactionMemory(selectedTsFileResourceList);
       } catch (IOException e) {
         innerSpaceEstimator.cleanup();
+        return -1;
       }
     }
     return memoryCost;

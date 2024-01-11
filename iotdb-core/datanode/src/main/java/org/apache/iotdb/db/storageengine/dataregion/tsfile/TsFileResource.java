@@ -400,6 +400,9 @@ public class TsFileResource {
 
   public DeviceTimeIndex buildDeviceTimeIndex() throws IOException {
     readLock();
+    if (resourceFileExists()) {
+      throw new IOException("resource file not found");
+    }
     try (InputStream inputStream =
         FSFactoryProducer.getFSFactory().getBufferedInputStream(file.getPath() + RESOURCE_SUFFIX)) {
       ReadWriteIOUtils.readByte(inputStream);
