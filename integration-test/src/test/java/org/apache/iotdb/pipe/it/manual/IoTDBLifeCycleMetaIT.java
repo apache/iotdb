@@ -23,40 +23,23 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
-import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
 public class IoTDBLifeCycleMetaIT extends AbstractPipeDualManualIT {
-  @Override
-  @Before
-  public void setUp() {
-    try {
-      MultiEnvFactory.createEnv(2);
-      senderEnv = MultiEnvFactory.getEnv(0);
-      receiverEnv = MultiEnvFactory.getEnv(1);
-
-      senderEnv.initClusterEnvironment(3, 3, 180);
-      receiverEnv.initClusterEnvironment(3, 3, 180);
-    } catch (Throwable e) {
-      Assume.assumeNoException(e);
-    }
-  }
-
   @Test
   public void testAutoRestart() throws Exception {
     DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -91,14 +74,40 @@ public class IoTDBLifeCycleMetaIT extends AbstractPipeDualManualIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
     }
 
-    for (int i = 0; i < 400; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
+    int successCount = 0;
+    for (int i = 0; i < 10; ++i) {
+      if (TestUtils.tryExecuteNonQueryWithRetry(
           senderEnv,
           String.format(
-              "create timeseries root.ln.wf01.GPS.status%s(status) with datatype=BOOLEAN,encoding=PLAIN",
+              "create timeseries root.ln.wf01.GPS.status%s with datatype=BOOLEAN,encoding=PLAIN",
               i))) {
-        return;
+        ++successCount;
       }
     }
+
+    try {
+      TestUtils.restartCluster(senderEnv);
+      TestUtils.restartCluster(receiverEnv);
+    } catch (Exception e) {
+      e.printStackTrace();
+      return;
+    }
+
+    for (int i = 10; i < 20; ++i) {
+      if (TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv,
+          String.format(
+              "create timeseries root.ln.wf01.GPS.status%s with datatype=BOOLEAN,encoding=PLAIN",
+              i))) {
+        ++successCount;
+      }
+    }
+
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "count timeseries",
+        "count(timeseries),",
+        Collections.singleton(String.format("%d,", successCount)),
+        300);
   }
 }
