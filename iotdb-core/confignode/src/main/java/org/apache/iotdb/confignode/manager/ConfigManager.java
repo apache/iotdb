@@ -574,7 +574,7 @@ public class ConfigManager implements IManager {
   public synchronized TSStatus setDatabase(DatabaseSchemaPlan databaseSchemaPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return clusterSchemaManager.setDatabase(databaseSchemaPlan);
+      return clusterSchemaManager.setDatabase(databaseSchemaPlan, false);
     } else {
       return status;
     }

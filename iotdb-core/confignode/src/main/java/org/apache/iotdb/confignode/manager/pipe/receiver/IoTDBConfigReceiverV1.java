@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiverV1;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
@@ -131,6 +132,8 @@ public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
 
   private TSStatus executePlan(ConfigPhysicalPlan plan) throws ConsensusException {
     switch (plan.getType()) {
+      case CreateDatabase:
+        return configManager.getClusterSchemaManager().setDatabase((DatabaseSchemaPlan) plan, true);
       case DeleteDatabase:
         return configManager.deleteDatabases(
             new TDeleteDatabasesReq(
@@ -173,7 +176,6 @@ public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
       case RevokeRoleFromUser:
       case UpdateUser:
         return configManager.getPermissionManager().operatePermission((AuthorPlan) plan, true);
-      case CreateDatabase:
       case CreateSchemaTemplate:
       case CreateUser:
       case CreateRole:

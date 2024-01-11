@@ -137,7 +137,7 @@ public class ClusterSchemaManager {
   // ======================================================
 
   /** Set Database */
-  public TSStatus setDatabase(DatabaseSchemaPlan databaseSchemaPlan) {
+  public TSStatus setDatabase(DatabaseSchemaPlan databaseSchemaPlan, boolean isGeneratedByPipe) {
     TSStatus result;
     if (databaseSchemaPlan.getSchema().getName().length() > MAX_DATABASE_NAME_LENGTH) {
       IllegalPathException illegalPathException =
@@ -162,7 +162,12 @@ public class ClusterSchemaManager {
         clusterSchemaInfo.checkDatabaseLimit();
       }
       // Cache DatabaseSchema
-      result = getConsensusManager().write(databaseSchemaPlan);
+      result =
+          getConsensusManager()
+              .write(
+                  isGeneratedByPipe
+                      ? new PipeEnrichedPlan(databaseSchemaPlan)
+                      : databaseSchemaPlan);
       // Bind Database metrics
       PartitionMetrics.bindDatabaseRelatedMetricsWhenUpdate(
           MetricService.getInstance(),
