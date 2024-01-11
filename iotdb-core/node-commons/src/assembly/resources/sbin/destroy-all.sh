@@ -28,8 +28,8 @@ export IOTDB_HOME="`dirname "$0"`/.."
 IOTDB_CLUSTER_PATH="${IOTDB_HOME}"/conf/iotdb-cluster.properties
 if [ ! -f ${IOTDB_CLUSTER_PATH} ]; then
   exec rm -rf ${IOTDB_HOME}/data/
-  exec ${IOTDB_HOME}/sbin/clean-datanode.sh -f >/dev/null 2>&1 &
-  exec ${IOTDB_HOME}/sbin/clean-confignode.sh -f >/dev/null 2>&1 &
+  exec ${IOTDB_HOME}/sbin/destroy-datanode.sh -f >/dev/null 2>&1 &
+  exec ${IOTDB_HOME}/sbin/destroy-confignode.sh -f >/dev/null 2>&1 &
   exit 0
 else
   confignodeStr=$(sed '/^confignode_address_list=/!d;s/.*=//' "${IOTDB_CLUSTER_PATH}")
@@ -45,9 +45,10 @@ fi
 function validateParam() {
   if [[ -z $1 || -z $2 ||  -z $3 ||  -z $4 ||  -z $5 ||  -z $6 ]]; then
     echo "The iotdb-cluster.properties file is incomplete, the current 1C1D will be cleaned ... "
+    exec ${IOTDB_HOME}/sbin/stop-standalone.sh -f >/dev/null 2>&1 &
     exec rm -rf ${IOTDB_HOME}/data/
-    exec ${IOTDB_HOME}/sbin/clean-datanode.sh -f >/dev/null 2>&1 &
-    exec ${IOTDB_HOME}/sbin/clean-confignode.sh -f >/dev/null 2>&1 &
+    exec ${IOTDB_HOME}/sbin/destroy-datanode.sh -f >/dev/null 2>&1 &
+    exec ${IOTDB_HOME}/sbin/destroy-confignode.sh -f >/dev/null 2>&1 &
     exit
   fi
 }
@@ -59,36 +60,39 @@ if [ "$IOTDB_SSH_OPTS" = "" ]; then
 fi
 
 unique_array=($(awk -v RS=' ' '!a[$1]++' <<< ${datanodeIps[@]}))
+confignodeIps=($(awk -v RS=' ' '!a[$1]++' <<< ${confignodeIps[@]}))
+size=${#confignodeIps[@]}
 for datanodeIP in ${unique_array[@]};do
   hasConfigNode="false"
-  for ((i=0; i<${#confignodeIps[@]}; i++))
-      do
-          if [[ "${confignodeIps[$i]}" == *"$datanodeIP"* ]]; then
-              hasConfigNode="true"
-              unset 'confignodeIps[$i]'
-              break
-          fi
-      done
-      if [[ "$hasConfigNode" == "true" ]]; then
-        echo "The system starts to clean data of DataNodes and ConfigNode of $datanodeIP"
-        ssh $IOTDB_SSH_OPTS -p $serverPort ${account}@$datanodeIP "
-          nohup bash $datanodePath/sbin/clean-datanode.sh -f >/dev/null 2>&1 &
-          sleep 3
-          nohup bash $confignodePath/sbin/clean-confignode.sh -f >/dev/null 2>&1 &
-          "
-      else
-        echo "The system starts to clean data of DataNodes of $datanodeIP"
-        ssh $IOTDB_SSH_OPTS -p $serverPort ${account}@$datanodeIP "
-            nohup bash $datanodePath/sbin/clean-datanode.sh -f >/dev/null 2>&1 & >/dev/null 2>&1 &
-          "
+  for ((i=0; i<$size; i++))
+    do
+      if [[ "${confignodeIps[$i]}" == "" ]]; then
+        continue
+      elif [[ "${confignodeIps[$i]}" == *"$datanodeIP"* ]]; then
+        hasConfigNode="true"
+        unset 'confignodeIps[$i]'
+        break
       fi
+    done
+    if [[ "$hasConfigNode" == "true" ]]; then
+      echo "The system starts to clean data of DataNodes and ConfigNode of $datanodeIP"
+      ssh $IOTDB_SSH_OPTS -p $serverPort ${account}@$datanodeIP "
+        nohup bash $datanodePath/sbin/destroy-datanode.sh -f >/dev/null 2>&1 &
+        sleep 3
+        nohup bash $confignodePath/sbin/destroy-confignode.sh -f >/dev/null 2>&1 &
+        "
+    else
+      echo "The system starts to clean data of DataNodes of $datanodeIP"
+      ssh $IOTDB_SSH_OPTS -p $serverPort ${account}@$datanodeIP "
+          nohup bash $datanodePath/sbin/destroy-datanode.sh -f >/dev/null 2>&1 & >/dev/null 2>&1 &
+        "
+    fi
 done
 
-unique_array=($(awk -v RS=' ' '!a[$1]++' <<< ${confignodeIps[@]}))
-for confignodeIP in ${unique_array[@]};do
+for confignodeIP in ${confignodeIps[@]};do
   echo "The system starts to clear data of ConfigNodes of $confignodeIP"
   ssh $IOTDB_SSH_OPTS -p $serverPort ${account}@$confignodeIP "
-      nohup bash $confignodePath/sbin/clean-confignode.sh -f >/dev/null 2>&1 &
+      nohup bash $confignodePath/sbin/destroy-confignode.sh -f >/dev/null 2>&1 &
   "
 done
 

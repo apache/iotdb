@@ -48,11 +48,14 @@ if [ "$IOTDB_SSH_OPTS" = "" ]; then
   IOTDB_SSH_OPTS="-o StrictHostKeyChecking=no"
 fi
 
+size=${#datanodeIps[@]}
 for confignodeIP in ${confignodeIps[@]};do
   hasDataNode="false"
-  for ((i=0; i<${#datanodeIps[@]}; i++))
+  for ((i=0; i<$size; i++))
   do
-      if [[ "${datanodeIps[$i]}" == *"$confignodeIP"* ]]; then
+      if [[ "${datanodeIps[$i]}" == "" ]]; then
+        continue
+      elif [[ "${datanodeIps[$i]}" == *"$confignodeIP"* ]]; then
           hasDataNode="true"
           unset 'datanodeIps[$i]'
           break

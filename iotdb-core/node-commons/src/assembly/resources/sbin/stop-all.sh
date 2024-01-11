@@ -33,7 +33,6 @@ else
   confignodePath=$(sed '/^confignode_deploy_path=/!d;s/.*=//' "${IOTDB_CLUSTER_PATH}")
   datanodePath=$(sed '/^datanode_deploy_path=/!d;s/.*=//' "${IOTDB_CLUSTER_PATH}")
   account=$(sed '/^ssh_account=/!d;s/.*=//' "${IOTDB_CLUSTER_PATH}")
-  echo $confignodeIps $datanodeIps $confignodePaths $datanodePaths $account $serverPort
 fi
 
 function validateParam() {
@@ -48,14 +47,17 @@ if [ "$IOTDB_SSH_OPTS" = "" ]; then
   IOTDB_SSH_OPTS="-o StrictHostKeyChecking=no"
 fi
 
+size=${#confignodeIps[@]}
 for datanodeIP in ${datanodeIps[@]};do
   hasConfigNode="false"
-  for ((i=0; i<${#confignodeIps[@]}; i++))
+  for ((i=0; i<$size; i++))
     do
-        if [[ "${confignodeIps[$i]}" == *"$datanodeIP"* ]]; then
-            hasConfigNode="true"
-            unset 'confignodeIps[$i]'
-            break
+        if [[ "${confignodeIps[$i]}" == "" ]]; then
+          continue
+        elif [[ "${confignodeIps[$i]}" == *"$datanodeIP"* ]]; then
+          hasConfigNode="true"
+          unset 'confignodeIps[$i]'
+          break
         fi
     done
     if [[ "$hasConfigNode" == "true" ]]; then
