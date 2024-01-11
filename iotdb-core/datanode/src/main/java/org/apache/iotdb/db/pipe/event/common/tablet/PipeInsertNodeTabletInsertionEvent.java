@@ -238,7 +238,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     }
   }
 
-  /////////////////////////// parsePattern ///////////////////////////
+  /////////////////////////// parsePatternOrTime ///////////////////////////
 
   public TabletInsertionEvent parseEventWithPatternOrTime() {
     return new PipeRawTabletInsertionEvent(

@@ -91,6 +91,11 @@ public class OffsetNode extends SingleChildProcessNode {
   }
 
   @Override
+  public String toString() {
+    return "OffsetNode-" + this.getPlanNodeId();
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;

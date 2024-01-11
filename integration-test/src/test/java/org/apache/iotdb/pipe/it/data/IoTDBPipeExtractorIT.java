@@ -741,6 +741,17 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualDataIT {
           "count(root.db.d1.at1),count(root.db.d3.at1),",
           Collections.singleton("3,3,"));
 
+      // flush realtime data - test PipeTsFileInsertionEvent
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, Collections.singletonList("flush"))) {
+        return;
+      }
+
+      TestUtils.assertDataOnEnv(
+          receiverEnv,
+          "select count(*) from root.**",
+          "count(root.db.d1.at1),count(root.db.d3.at1),",
+          Collections.singleton("3,3,"));
+
       // insert realtime data that does not overlap with time range
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
@@ -751,6 +762,17 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualDataIT {
       }
 
       TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "select count(*) from root.**",
+          "count(root.db.d1.at1),count(root.db.d3.at1),",
+          Collections.singleton("3,3,"));
+
+      // flush realtime data - test PipeTsFileInsertionEvent
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, Collections.singletonList("flush"))) {
+        return;
+      }
+
+      TestUtils.assertDataOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.at1),count(root.db.d3.at1),",

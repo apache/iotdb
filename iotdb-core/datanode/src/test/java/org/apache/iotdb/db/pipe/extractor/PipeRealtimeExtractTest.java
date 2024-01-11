@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -104,57 +105,68 @@ public class PipeRealtimeExtractTest {
   public void testRealtimeExtractProcess() {
     // set up realtime extractor
 
-    try (PipeRealtimeDataRegionLogExtractor extractor1 = new PipeRealtimeDataRegionLogExtractor();
-        PipeRealtimeDataRegionHybridExtractor extractor2 =
+    try (PipeRealtimeDataRegionLogExtractor extractor0 = new PipeRealtimeDataRegionLogExtractor();
+        PipeRealtimeDataRegionHybridExtractor extractor1 =
             new PipeRealtimeDataRegionHybridExtractor();
-        PipeRealtimeDataRegionTsFileExtractor extractor3 =
+        PipeRealtimeDataRegionTsFileExtractor extractor2 =
             new PipeRealtimeDataRegionTsFileExtractor();
-        PipeRealtimeDataRegionHybridExtractor extractor4 =
+        PipeRealtimeDataRegionHybridExtractor extractor3 =
             new PipeRealtimeDataRegionHybridExtractor()) {
 
-      extractor1.customize(
+      PipeParameters parameters0 =
           new PipeParameters(
               new HashMap<String, String>() {
                 {
                   put(PipeExtractorConstant.EXTRACTOR_PATTERN_KEY, pattern1);
                 }
-              }),
-          new PipeTaskRuntimeConfiguration(
-              new PipeTaskExtractorRuntimeEnvironment(
-                  "1", 1, Integer.parseInt(dataRegion1), null)));
-      extractor2.customize(
+              });
+      PipeParameters parameters1 =
           new PipeParameters(
               new HashMap<String, String>() {
                 {
                   put(PipeExtractorConstant.EXTRACTOR_PATTERN_KEY, pattern2);
                 }
-              }),
-          new PipeTaskRuntimeConfiguration(
-              new PipeTaskExtractorRuntimeEnvironment(
-                  "1", 1, Integer.parseInt(dataRegion1), null)));
-      extractor3.customize(
+              });
+      PipeParameters parameters2 =
           new PipeParameters(
               new HashMap<String, String>() {
                 {
                   put(PipeExtractorConstant.EXTRACTOR_PATTERN_KEY, pattern1);
                 }
-              }),
-          new PipeTaskRuntimeConfiguration(
-              new PipeTaskExtractorRuntimeEnvironment(
-                  "1", 1, Integer.parseInt(dataRegion2), null)));
-      extractor4.customize(
+              });
+      PipeParameters parameters3 =
           new PipeParameters(
               new HashMap<String, String>() {
                 {
                   put(PipeExtractorConstant.EXTRACTOR_PATTERN_KEY, pattern2);
                 }
-              }),
+              });
+
+      PipeTaskRuntimeConfiguration configuration0 =
           new PipeTaskRuntimeConfiguration(
-              new PipeTaskExtractorRuntimeEnvironment(
-                  "1", 1, Integer.parseInt(dataRegion2), null)));
+              new PipeTaskExtractorRuntimeEnvironment("1", 1, Integer.parseInt(dataRegion1), null));
+      PipeTaskRuntimeConfiguration configuration1 =
+          new PipeTaskRuntimeConfiguration(
+              new PipeTaskExtractorRuntimeEnvironment("1", 1, Integer.parseInt(dataRegion1), null));
+      PipeTaskRuntimeConfiguration configuration2 =
+          new PipeTaskRuntimeConfiguration(
+              new PipeTaskExtractorRuntimeEnvironment("1", 1, Integer.parseInt(dataRegion2), null));
+      PipeTaskRuntimeConfiguration configuration3 =
+          new PipeTaskRuntimeConfiguration(
+              new PipeTaskExtractorRuntimeEnvironment("1", 1, Integer.parseInt(dataRegion2), null));
+
+      // Some parameters of extractor are validated and initialized during the validation process.
+      extractor0.validate(new PipeParameterValidator(parameters0));
+      extractor0.customize(parameters0, configuration0);
+      extractor1.validate(new PipeParameterValidator(parameters1));
+      extractor1.customize(parameters1, configuration1);
+      extractor2.validate(new PipeParameterValidator(parameters2));
+      extractor2.customize(parameters2, configuration2);
+      extractor3.validate(new PipeParameterValidator(parameters3));
+      extractor3.customize(parameters3, configuration3);
 
       PipeRealtimeDataRegionExtractor[] extractors =
-          new PipeRealtimeDataRegionExtractor[] {extractor1, extractor2, extractor3, extractor4};
+          new PipeRealtimeDataRegionExtractor[] {extractor0, extractor1, extractor2, extractor3};
 
       // start extractor 0, 1
       extractors[0].start();

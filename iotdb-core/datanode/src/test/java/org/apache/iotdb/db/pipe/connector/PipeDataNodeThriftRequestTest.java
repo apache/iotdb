@@ -39,16 +39,18 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -177,25 +179,29 @@ public class PipeDataNodeThriftRequestTest {
 
   @Test
   public void testPipeTransferTabletBatchReq() throws IOException {
-    // InsertNode req
-    PipeTransferTabletInsertNodeReq insertNodeReq =
-        PipeTransferTabletInsertNodeReq.toTPipeTransferRawReq(
-            new InsertRowNode(
-                new PlanNodeId(""),
-                new PartialPath(new String[] {"root", "sg", "d"}),
-                false,
-                new String[] {"s"},
-                new TSDataType[] {TSDataType.INT32},
-                1,
-                new Object[] {1},
-                false));
+    final List<ByteBuffer> binaryBuffers = new ArrayList<>();
+    final List<ByteBuffer> insertNodeBuffers = new ArrayList<>();
+    final List<ByteBuffer> tabletBuffers = new ArrayList<>();
 
-    // Binary req
+    InsertRowNode node =
+        new InsertRowNode(
+            new PlanNodeId(""),
+            new PartialPath(new String[] {"root", "sg", "d"}),
+            false,
+            new String[] {"s"},
+            new TSDataType[] {TSDataType.INT32},
+            1,
+            new Object[] {1},
+            false);
+
+    // InsertNode buffer
+    insertNodeBuffers.add(node.serializeToByteBuffer());
+
+    // Binary buffer
     // Not do real test here since "serializeToWal" needs private inner class of walBuffer
-    PipeTransferTabletBinaryReq binaryReq =
-        PipeTransferTabletBinaryReq.toTPipeTransferReq(ByteBuffer.wrap(new byte[] {'a', 'b'}));
+    binaryBuffers.add(ByteBuffer.wrap(new byte[] {'a', 'b'}));
 
-    // Raw req
+    // Raw buffer
     List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT32));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
@@ -212,17 +218,31 @@ public class PipeDataNodeThriftRequestTest {
     t.addValue("s1", 1, 1);
     t.addValue("s6", 1, "1");
 
-    PipeTransferTabletRawReq rawReq = PipeTransferTabletRawReq.toTPipeTransferRawReq(t, false);
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      t.serialize(outputStream);
+      ReadWriteIOUtils.write(false, outputStream);
+      tabletBuffers.add(
+          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size()));
+    }
 
     PipeTransferTabletBatchReq req =
         PipeTransferTabletBatchReq.toTPipeTransferReq(
-            Arrays.asList(insertNodeReq, binaryReq, rawReq));
-    Assert.assertEquals(req, PipeTransferTabletBatchReq.fromTPipeTransferReq(req));
+            binaryBuffers, insertNodeBuffers, tabletBuffers);
+
+    PipeTransferTabletBatchReq deserializedReq =
+        PipeTransferTabletBatchReq.fromTPipeTransferReq(req);
+
+    Assert.assertArrayEquals(
+        new byte[] {'a', 'b'}, deserializedReq.getBinaryReqs().get(0).getBody());
+    Assert.assertEquals(node, deserializedReq.getInsertNodeReqs().get(0).getInsertNode());
+    Assert.assertEquals(t, deserializedReq.getTabletReqs().get(0).getTablet());
+    Assert.assertFalse(deserializedReq.getTabletReqs().get(0).getIsAligned());
   }
 
   @Test
-  public void testPipeTransferTsFilePieceReq() throws IOException {
-    byte[] body = "testPipeTransferTsFilePieceReq".getBytes();
+  public void testPipeTransferFilePieceReq() throws IOException {
+    byte[] body = "testPipeTransferFilePieceReq".getBytes();
     String fileName = "1.tsfile";
 
     PipeTransferTsFilePieceReq req =

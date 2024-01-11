@@ -176,7 +176,8 @@ public class DataDriverTest {
 
       String deviceId = DATA_DRIVER_TEST_SG + ".device0";
       Mockito.when(
-              dataRegion.query(driverContext.getPaths(), deviceId, fragmentInstanceContext, null))
+              dataRegion.query(
+                  driverContext.getPaths(), deviceId, fragmentInstanceContext, null, null))
           .thenReturn(new QueryDataSource(seqResources, unSeqResources));
       fragmentInstanceContext.initQueryDataSource(driverContext.getPaths());
       fragmentInstanceContext.initializeNumOfDrivers(1);

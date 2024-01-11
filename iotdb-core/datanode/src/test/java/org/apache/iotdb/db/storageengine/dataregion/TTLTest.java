@@ -180,6 +180,7 @@ public class TTLTest {
             Collections.singletonList(mockMeasurementPath()),
             sg1,
             EnvironmentUtils.TEST_QUERY_CONTEXT,
+            null,
             null);
     List<TsFileResource> seqResource = dataSource.getSeqResources();
     List<TsFileResource> unseqResource = dataSource.getUnseqResources();
@@ -194,6 +195,7 @@ public class TTLTest {
             Collections.singletonList(mockMeasurementPath()),
             sg1,
             EnvironmentUtils.TEST_QUERY_CONTEXT,
+            null,
             null);
     seqResource = dataSource.getSeqResources();
     unseqResource = dataSource.getUnseqResources();
@@ -224,6 +226,7 @@ public class TTLTest {
             Collections.singletonList(mockMeasurementPath()),
             sg1,
             EnvironmentUtils.TEST_QUERY_CONTEXT,
+            null,
             null);
     seqResource = dataSource.getSeqResources();
     unseqResource = dataSource.getUnseqResources();

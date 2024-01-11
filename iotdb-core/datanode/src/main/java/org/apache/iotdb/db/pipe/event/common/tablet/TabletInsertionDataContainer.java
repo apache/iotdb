@@ -167,8 +167,8 @@ public class TabletInsertionDataContainer {
     }
 
     rowCount = rowIndexList.size();
-    if (rowCount == 0) {
-      LOGGER.info(
+    if (rowCount == 0 && LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
           "InsertRowNode({}) is parsed to zero rows according to the pattern({}) and time range [{}, {}], the corresponding source event({}) will be ignored.",
           insertRowNode,
           pattern,
@@ -238,8 +238,8 @@ public class TabletInsertionDataContainer {
     }
 
     rowCount = timestampColumn.length;
-    if (rowCount == 0) {
-      LOGGER.info(
+    if (rowCount == 0 && LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
           "InsertTabletNode({}) is parsed to zero rows according to the pattern({}) and time range [{}, {}], the corresponding source event({}) will be ignored.",
           insertTabletNode,
           pattern,
@@ -315,8 +315,8 @@ public class TabletInsertionDataContainer {
     }
 
     rowCount = tablet.rowSize;
-    if (rowCount == 0) {
-      LOGGER.info(
+    if (rowCount == 0 && LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
           "Tablet({}) is parsed to zero rows according to the pattern({}) and time range [{}, {}], the corresponding source event({}) will be ignored.",
           tablet,
           pattern,
