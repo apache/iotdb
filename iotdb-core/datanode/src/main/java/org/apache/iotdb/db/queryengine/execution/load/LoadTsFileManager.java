@@ -19,6 +19,19 @@
 
 package org.apache.iotdb.db.queryengine.execution.load;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.DirectoryNotEmptyException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -41,22 +54,8 @@ import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.DirectoryNotEmptyException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 
 /**
  * {@link LoadTsFileManager} is used for dealing with {@link LoadTsFilePieceNode} and {@link
@@ -80,6 +79,7 @@ public class LoadTsFileManager {
 
   private final ScheduledExecutorService cleanupExecutors;
   private final Map<String, ScheduledFuture<?>> uuid2Future;
+  private final PriorityBlockingQueue<String> uuidQueue = new PriorityBlockingQueue<>();
 
   public LoadTsFileManager() {
     this.loadDir = SystemFileFactory.INSTANCE.getFile(CONFIG.getLoadTsFileDir());
@@ -372,6 +372,30 @@ public class LoadTsFileManager {
       dataPartition2LastDevice = null;
       dataPartition2ModificationFile = null;
       isClosed = true;
+    }
+  }
+
+  private static class TaskCleanupTask implements Runnable, Comparable<TaskCleanupTask> {
+
+    private final String uuid;
+    private final LoadTsFileManager loadTsFileManager;
+
+    private final long scheduledTime;
+
+    private TaskCleanupTask(String uuid, LoadTsFileManager loadTsFileManager, long delayInMs) {
+      this.uuid = uuid;
+      this.loadTsFileManager = loadTsFileManager;
+      scheduledTime = System.currentTimeMillis() + delayInMs;
+    }
+
+    @Override
+    public void run() {
+      loadTsFileManager.forceCloseWriterManager(uuid);
+    }
+
+    @Override
+    public int compareTo(TaskCleanupTask that) {
+      return Long.compare(this.scheduledTime, that.scheduledTime);
     }
   }
 

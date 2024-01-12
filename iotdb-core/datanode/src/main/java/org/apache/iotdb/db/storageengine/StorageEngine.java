@@ -143,7 +143,7 @@ public class StorageEngine implements IService {
   private List<FlushListener> customFlushListeners = new ArrayList<>();
   private int recoverDataRegionNum = 0;
 
-  private LoadTsFileManager loadTsFileManager;
+  private volatile LoadTsFileManager loadTsFileManager;
 
   private StorageEngine() {}
 
