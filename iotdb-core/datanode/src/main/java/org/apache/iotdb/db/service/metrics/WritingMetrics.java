@@ -222,7 +222,6 @@ public class WritingMetrics implements IMetricSet {
   private Timer globalMemoryTableInfoTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer createMemoryTableTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer flushMemoryTableTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-  private Timer serializeOneWalInfoEntryTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer serializeWalEntryTotalTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer syncTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer fsyncTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
@@ -252,14 +251,6 @@ public class WritingMetrics implements IMetricSet {
             MAKE_CHECKPOINT,
             Tag.TYPE.toString(),
             CheckpointType.FLUSH_MEMORY_TABLE.toString());
-    serializeOneWalInfoEntryTimer =
-        metricService.getOrCreateTimer(
-            Metric.WAL_COST.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.STAGE.toString(),
-            SERIALIZE_WAL_ENTRY,
-            Tag.TYPE.toString(),
-            SERIALIZE_ONE_WAL_INFO_ENTRY);
     serializeWalEntryTotalTimer =
         metricService.getOrCreateTimer(
             Metric.WAL_COST.toString(),
@@ -290,7 +281,6 @@ public class WritingMetrics implements IMetricSet {
     globalMemoryTableInfoTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     createMemoryTableTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     flushMemoryTableTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    serializeOneWalInfoEntryTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     serializeWalEntryTotalTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     syncTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     fsyncTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
@@ -307,7 +297,7 @@ public class WritingMetrics implements IMetricSet {
                     MAKE_CHECKPOINT,
                     Tag.TYPE.toString(),
                     type));
-    Arrays.asList(SERIALIZE_ONE_WAL_INFO_ENTRY, SERIALIZE_WAL_ENTRY_TOTAL)
+    Arrays.asList(SERIALIZE_WAL_ENTRY_TOTAL)
         .forEach(
             type ->
                 metricService.remove(
@@ -737,10 +727,6 @@ public class WritingMetrics implements IMetricSet {
         // do nothing
         break;
     }
-  }
-
-  public void recordSerializeOneWALInfoEntryCost(long costTimeInNanos) {
-    serializeOneWalInfoEntryTimer.updateNanos(costTimeInNanos);
   }
 
   public void recordSerializeWALEntryTotalCost(long costTimeInNanos) {
