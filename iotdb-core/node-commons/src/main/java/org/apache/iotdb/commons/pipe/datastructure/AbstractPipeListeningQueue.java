@@ -47,27 +47,11 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractPipeListeningQueue.class);
   private static final String SNAPSHOT_PREFIX = ".snapshot";
 
-  // Note that listening queue must serve extractors after the schemaRegion became ready,
-  // or else the queue may provide stale events to the extractors.
-  // On configNode this variable is also needed to prevent a created and dropped pipe
-  // send events again when redoing from log.
-  private volatile boolean leaderReady = false;
-
   private final Pair<Long, List<PipeSnapshotEvent>> snapshotCache =
       new Pair<>(Long.MIN_VALUE, new ArrayList<>());
 
   protected AbstractPipeListeningQueue() {
     super(LinkedQueueSerializerType.PLAIN);
-  }
-
-  /////////////////////////// LeaderReady ///////////////////////////
-
-  public boolean isLeaderReady() {
-    return leaderReady;
-  }
-
-  public void notifyLeaderReady() {
-    leaderReady = true;
   }
 
   /////////////////////////////// Snapshot Cache ///////////////////////////////
