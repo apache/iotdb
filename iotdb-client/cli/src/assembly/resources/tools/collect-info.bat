@@ -32,12 +32,11 @@ set "COLLECTION_DIR_LOGS=%COLLECTION_DIR%\logs"
 set "COLLECTION_FILE=%COLLECTION_DIR%\collection.txt"
 set "START_CLI_PATH=%IOTDB_HOME%\sbin\start-cli.bat"
 
-set "HELP=Usage: %0 [-h <ip>] [-p <port>] [-u <username>] [-pw <password>] [-jp <jdk_path>] [-dd <data_dir>]"
+set "HELP=Usage: %0 [-h <ip>] [-p <port>] [-u <username>] [-pw <password>] [-dd <data_dir>]"
 set "user_param=root"
 set "passwd_param=root"
 set "host_param=127.0.0.1"
 set "port_param=6667"
-set "jdk_path_param="
 
 set "properties_file=%IOTDB_HOME%\conf\iotdb-datanode.properties"
 set "key=dn_data_dirs"
@@ -76,12 +75,6 @@ if "%~1"=="-h" (
 )
 if "%~1"=="-p" (
     set "port_param=%~2"
-    shift
-    shift
-    goto parse_args
-)
-if "%~1"=="-jp" (
-    set "jdk_path_param=%~2"
     shift
     shift
     goto parse_args
@@ -179,11 +172,7 @@ exit /b
 setlocal enabledelayedexpansion
 set "command=%~1"
 echo =================== "%command%" ====================
-if not "%jdk_path_param%"=="" (
-    set JAVA_HOME="%jdk_path_param%";call "%START_CLI_PATH%" -h "%host_param%" -p "%port_param%" -u "%user_param%" -pw "%passwd_param%" -e "%command%"
-) else (
-    call "%START_CLI_PATH%" -h "%host_param%" -p "%port_param%" -u "%user_param%" -pw "%passwd_param%" -e "%command%"
-)
+call "%START_CLI_PATH%" -h "%host_param%" -p "%port_param%" -u "%user_param%" -pw "%passwd_param%" -e "%command%"
 
 exit /b
 
@@ -198,25 +187,26 @@ set /a totalSeqFileSize=0
 set /a totalUnseqFileSize=0
 
 set "directories=!directories:,= !"
+set /a seqFileSize=0
+set /a unseqFileSize=0
 
 for %%d in ("%directories: =" "%") do (
     set "seqdirectory=%%~d\sequence"
     set "unseqdirectory=%%~d\unsequence"
-
-    if exist "!seqdirectory!\\*.tsfile" (
-        for /f %%a in ('dir /s /b /a-d "!seqdirectory!\\*.tsfile"  ^| find /c /v ""') do (
+    if exist "!seqdirectory!" (
+        for /f %%a in ('dir /s /b /a-d "!seqdirectory!\\*.tsfile"  2^>nul ^| find /c /v ""') do (
             set /a "seqFileCount+=%%a"
         )
+     call :processDirectory "!seqdirectory!" seqFileSize
     )
-    if exist "!unseqdirectory!\\*.tsfile" (
-        for /f %%a in ('dir /s /b /a-d "!unseqdirectory!\\*.tsfile" ^| find /c /v ""') do (
+    if exist "!unseqdirectory!\*" (
+        for /f %%a in ('dir /s /b /a-d "!unseqdirectory!\\*.tsfile" 2^>nul ^| find /c /v ""') do (
             set /a "unseqFileCount+=%%a"
         )
+     call :processDirectory "!unseqdirectory!" unseqFileSize
     )
-    set /a seqFileSize=0
-    set /a unseqFileSize=0
-    call :processDirectory "!seqdirectory!" seqFileSize
-    call :processDirectory "!unseqdirectory!" unseqFileSize
+
+
     set /a "totalSeqFileSize+=!seqFileSize!"
     set /a "totalUnseqFileSize+=!unseqFileSize!"
 )
@@ -236,11 +226,19 @@ set "sizeVar=%~2"
 
 echo Set objFSO = CreateObject("Scripting.FileSystemObject") > tmp.vbs
 echo Set objFolder = objFSO.GetFolder("%dir%") >> tmp.vbs
-echo size = 0 >> tmp.vbs
-echo For Each objFile In objFolder.Files >> tmp.vbs
-echo     size = size + objFile.Size >> tmp.vbs
-echo Next >> tmp.vbs
-echo WScript.Echo size >> tmp.vbs
+echo Dim totalSize >> tmp.vbs
+echo totalSize = 0 >> tmp.vbs
+echo CalculateFolderSize objFolder >> tmp.vbs
+echo WScript.Echo totalSize >> tmp.vbs
+echo Sub CalculateFolderSize(objCurrentFolder) >> tmp.vbs
+echo    For Each objFile In objCurrentFolder.Files >> tmp.vbs
+echo        totalSize = totalSize + objFile.Size >> tmp.vbs
+echo    Next >> tmp.vbs
+
+echo    For Each objSubFolder In objCurrentFolder.SubFolders >> tmp.vbs
+echo        CalculateFolderSize objSubFolder >> tmp.vbs
+echo    Next >> tmp.vbs
+echo End Sub >> tmp.vbs
 
 for /f "tokens=*" %%a in ('cscript //nologo tmp.vbs') do set data_size=%%a
 del tmp.vbs
