@@ -232,12 +232,12 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualIT {
 
     if (!TestUtils.tryExecuteNonQueriesWithRetry(
         receiverEnv, isAligned ? CREATE_ALIGNED_TIMESERIES_SQL : CREATE_TIMESERIES_SQL)) {
-      return;
+      fail();
     }
 
     if (!TestUtils.tryExecuteNonQueriesWithRetry(
         senderEnv, isAligned ? CREATE_ALIGNED_TIMESERIES_SQL : CREATE_TIMESERIES_SQL)) {
-      return;
+      fail();
     }
 
     INSERT_NULL_VALUE_MAP.get(insertType).accept(isAligned);
