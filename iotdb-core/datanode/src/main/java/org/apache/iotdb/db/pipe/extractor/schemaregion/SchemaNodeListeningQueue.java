@@ -70,8 +70,9 @@ public class SchemaNodeListeningQueue extends AbstractPipeListeningQueue {
         default:
           event = new PipeWriteSchemaPlanEvent(node, false);
       }
-      event.increaseReferenceCount(SchemaNodeListeningQueue.class.getName());
-      super.listenToElement(event);
+      if (super.tryListenToElement(event)) {
+        event.increaseReferenceCount(SchemaNodeListeningQueue.class.getName());
+      }
     }
   }
 

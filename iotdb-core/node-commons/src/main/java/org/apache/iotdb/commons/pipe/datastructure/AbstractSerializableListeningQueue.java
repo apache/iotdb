@@ -65,10 +65,12 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
 
   /////////////////////////////// Function ///////////////////////////////
 
-  public void listenToElement(E element) {
-    if (!isSealed.get()) {
-      queue.add(element);
+  public boolean tryListenToElement(E element) {
+    if (isSealed.get()) {
+      return false;
     }
+    queue.add(element);
+    return true;
   }
 
   public ConcurrentIterableLinkedQueue<E>.DynamicIterator newIterator(long index) {

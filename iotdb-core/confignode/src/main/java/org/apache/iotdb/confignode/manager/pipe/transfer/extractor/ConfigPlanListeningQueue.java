@@ -97,8 +97,9 @@ public class ConfigPlanListeningQueue extends AbstractPipeListeningQueue
         default:
           event = new PipeWriteConfigPlanEvent(plan, isGeneratedByPipe);
       }
-      event.increaseReferenceCount(ConfigPlanListeningQueue.class.getName());
-      super.listenToElement(event);
+      if (super.tryListenToElement(event)) {
+        event.increaseReferenceCount(ConfigPlanListeningQueue.class.getName());
+      }
     }
   }
 
