@@ -326,7 +326,7 @@ public class AlignedChunkReader implements IChunkReader {
             valueDecoders,
             null,
             false,
-            new HashSet<>());
+            timeSet);
     alignedPageReader.initTsBlockBuilder(valueTypes);
     alignedPageReader.setDeleteIntervalList(valueDeleteIntervalList);
     return alignedPageReader.getLazyPointReader();
