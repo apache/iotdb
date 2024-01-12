@@ -230,9 +230,6 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
         currentNodeTEndPoint);
 
-    // Enable creating pipe tasks
-    ConfigPlanListeningQueue.getInstance().notifyLeaderReady();
-
     // Always start load services first
     configManager.getLoadManager().startLoadServices();
 
@@ -356,7 +353,13 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
           // read and re-serialize the PhysicalPlan
           ConfigPhysicalPlan nextPlan = logReader.next();
           try {
-            executor.executeNonQueryPlan(nextPlan);
+            TSStatus status = executor.executeNonQueryPlan(nextPlan);
+            if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              // Recover the linked queue.
+              // Note that the "nextPlan"s may contain create and drop pipe operations
+              // and will affect whether the queue listen to the plans.
+              ConfigPlanListeningQueue.getInstance().tryListenToPlan(nextPlan, false);
+            }
           } catch (UnknownPhysicalPlanTypeException e) {
             LOGGER.error(e.getMessage());
           }
