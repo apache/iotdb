@@ -19,18 +19,14 @@
 
 package org.apache.iotdb.confignode.manager.pipe.transfer.execution;
 
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.pipe.execution.scheduler.PipeSubtaskScheduler;
-import org.apache.iotdb.commons.pipe.task.DecoratingLock;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.task.subtask.PipeSubtask;
+import org.apache.iotdb.commons.pipe.task.subtask.PipeTransferSubtask;
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
-import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -39,18 +35,14 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.ListeningExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
 
 import static org.apache.iotdb.db.protocol.client.ConfigNodeInfo.CONFIG_REGION_ID;
 
-public class PipeConfigNodeSubtask extends PipeSubtask {
+public class PipeConfigNodeSubtask extends PipeTransferSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfigNodeSubtask.class);
 
@@ -60,17 +52,7 @@ public class PipeConfigNodeSubtask extends PipeSubtask {
   @SuppressWarnings("unused")
   private PipeProcessor processor;
 
-  private PipeConnector connector;
-
   private final PipeTaskMeta pipeTaskMeta;
-
-  // For thread pool to execute callbacks
-  private final DecoratingLock callbackDecoratingLock = new DecoratingLock();
-  private ExecutorService subtaskCallbackListeningExecutor;
-
-  // For controlling subtask submitting, making sure that
-  // a subtask is submitted to only one thread at a time
-  private volatile boolean isSubmitted = false;
 
   public PipeConfigNodeSubtask(
       String pipeName,
@@ -80,7 +62,8 @@ public class PipeConfigNodeSubtask extends PipeSubtask {
       Map<String, String> connectorAttributes,
       PipeTaskMeta pipeTaskMeta)
       throws Exception {
-    super(pipeName, creationTime);
+    // We initialize outputPipeConnector by initConnector()
+    super(pipeName, creationTime, null);
     this.pipeTaskMeta = pipeTaskMeta;
 
     initExtractor(extractorAttributes);
@@ -127,30 +110,20 @@ public class PipeConfigNodeSubtask extends PipeSubtask {
     final PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
 
     // 1. Construct connector
-    connector = PipeConfigNodeAgent.plugin().reflectConnector(connectorParameters);
+    outputPipeConnector = PipeConfigNodeAgent.plugin().reflectConnector(connectorParameters);
 
     // 2. Validate connector parameters
-    connector.validate(new PipeParameterValidator(connectorParameters));
+    outputPipeConnector.validate(new PipeParameterValidator(connectorParameters));
 
     // 3. Customize connector
     final PipeTaskRuntimeConfiguration runtimeConfiguration =
         new PipeTaskRuntimeConfiguration(
             // TODO: check CONFIG_REGION_ID.getId()
             new PipeTaskRuntimeEnvironment(taskID, creationTime, CONFIG_REGION_ID.getId()));
-    connector.customize(connectorParameters, runtimeConfiguration);
+    outputPipeConnector.customize(connectorParameters, runtimeConfiguration);
 
     // 4. Handshake
-    connector.handshake();
-  }
-
-  @Override
-  public void bindExecutors(
-      ListeningExecutorService subtaskWorkerThreadPoolExecutor,
-      ExecutorService subtaskCallbackListeningExecutor,
-      PipeSubtaskScheduler subtaskScheduler) {
-    this.subtaskWorkerThreadPoolExecutor = subtaskWorkerThreadPoolExecutor;
-    this.subtaskCallbackListeningExecutor = subtaskCallbackListeningExecutor;
-    this.subtaskScheduler = subtaskScheduler;
+    outputPipeConnector.handshake();
   }
 
   /**
@@ -176,7 +149,7 @@ public class PipeConfigNodeSubtask extends PipeSubtask {
         return false;
       }
 
-      connector.transfer(event);
+      outputPipeConnector.transfer(event);
 
       releaseLastEvent(true);
     } catch (PipeConnectionException e) {
@@ -196,125 +169,6 @@ public class PipeConfigNodeSubtask extends PipeSubtask {
     }
 
     return true;
-  }
-
-  @Override
-  public Boolean call() throws Exception {
-    final boolean hasAtLeastOneEventProcessed = super.call();
-
-    // Wait for the callable to be decorated by Futures.addCallback in the executorService
-    // to make sure that the callback can be submitted again on success or failure.
-    callbackDecoratingLock.waitForDecorated();
-
-    return hasAtLeastOneEventProcessed;
-  }
-
-  @Override
-  public synchronized void onSuccess(Boolean hasAtLeastOneEventProcessed) {
-    isSubmitted = false;
-
-    super.onSuccess(hasAtLeastOneEventProcessed);
-  }
-
-  @Override
-  public synchronized void onFailure(Throwable throwable) {
-    isSubmitted = false;
-
-    if (isClosed.get()) {
-      LOGGER.info(
-          "onFailure in pipe config node subtask, ignored because pipe is dropped.", throwable);
-      releaseLastEvent(false);
-      return;
-    }
-
-    if (retryCount.get() == 0) {
-      LOGGER.warn(
-          "Failed to execute subtask {}({}), because of {}. Will retry forever until success.",
-          taskID,
-          this.getClass().getSimpleName(),
-          throwable.getMessage(),
-          throwable);
-    }
-
-    if (retryCount.get() < MAX_RETRY_TIMES) {
-      retryCount.incrementAndGet();
-      LOGGER.warn(
-          "Retry executing subtask {}({}), retry count [{}/{}]",
-          taskID,
-          this.getClass().getSimpleName(),
-          retryCount.get(),
-          MAX_RETRY_TIMES);
-      try {
-        Thread.sleep(1000L * retryCount.get());
-      } catch (InterruptedException e) {
-        LOGGER.warn(
-            "Interrupted when retrying to execute subtask {}({})",
-            taskID,
-            this.getClass().getSimpleName());
-        Thread.currentThread().interrupt();
-      }
-
-      submitSelf();
-    } else {
-      final String errorMessage =
-          String.format(
-              "Failed to execute subtask %s(%s), "
-                  + "retry count exceeds the max retry times %d, last exception: %s",
-              taskID, this.getClass().getSimpleName(), retryCount.get(), throwable.getMessage());
-      LOGGER.warn(errorMessage, throwable);
-
-      if (lastEvent instanceof EnrichedEvent) {
-        PipeConfigNodeAgent.runtime()
-            .report(
-                pipeTaskMeta,
-                throwable instanceof PipeRuntimeException
-                    ? (PipeRuntimeException) throwable
-                    : new PipeRuntimeCriticalException(errorMessage));
-        LOGGER.warn(
-            "The last event is an instance of EnrichedEvent, so the exception is reported. "
-                + "Stopping current pipe task {}({}) locally... "
-                + "Status shown when query the pipe will be 'STOPPED'. "
-                + "Please restart the task by executing 'START PIPE' manually if needed.",
-            taskID,
-            this.getClass().getSimpleName(),
-            throwable);
-      } else {
-        LOGGER.error(
-            "The last event is not an instance of EnrichedEvent, "
-                + "so the exception cannot be reported. "
-                + "Stopping current pipe task {}({}) locally... "
-                + "Status shown when query the pipe will be 'RUNNING' "
-                + "instead of 'STOPPED', but the task is actually stopped. "
-                + "Please restart the task by executing 'START PIPE' manually if needed.",
-            taskID,
-            this.getClass().getSimpleName(),
-            throwable);
-      }
-      // Although the pipe task will be stopped, we still don't release the last event here
-      // Because we need to keep it for the next retry. If user wants to restart the task,
-      // the last event will be processed again. The last event will be released when the task
-      // is dropped or the process is running normally.
-    }
-  }
-
-  /**
-   * Submit the {@link PipeConfigNodeSubtask}. Be sure to add parallel check since a subtask is
-   * currently not designed to run in parallel.
-   */
-  @Override
-  public void submitSelf() {
-    if (shouldStopSubmittingSelf.get() || isSubmitted) {
-      return;
-    }
-
-    callbackDecoratingLock.markAsDecorating();
-    try {
-      final ListenableFuture<Boolean> nextFuture = subtaskWorkerThreadPoolExecutor.submit(this);
-      Futures.addCallback(nextFuture, this, subtaskCallbackListeningExecutor);
-      isSubmitted = true;
-    } finally {
-      callbackDecoratingLock.markAsDecorated();
-    }
   }
 
   // synchronized for close() and releaseLastEvent(). make sure that the lastEvent
@@ -337,12 +191,23 @@ public class PipeConfigNodeSubtask extends PipeSubtask {
     }
 
     try {
-      connector.close();
+      outputPipeConnector.close();
     } catch (Exception e) {
       LOGGER.info("Error occurred during closing PipeConnector.", e);
     } finally {
       // Should be after connector.close()
       super.close();
     }
+  }
+
+  //////////////////////////// Error report ////////////////////////////
+  @Override
+  protected String getRootCause(Throwable throwable) {
+    return null;
+  }
+
+  @Override
+  protected void report(EnrichedEvent event, PipeRuntimeException exception) {
+    PipeConfigNodeAgent.runtime().report(event.getPipeTaskMeta(), exception);
   }
 }
