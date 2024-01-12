@@ -30,7 +30,7 @@ Explicitly using mvnw here as the build requires maven 3.9 and the default insta
 ## Compile and Test:
 
 ### Compile
-`mvn package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests`
+`mvn clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests`
 
 ### Test
 First build IoTDB server
@@ -50,7 +50,7 @@ To compile on Windows, please install Boost first and add following Maven settin
 
 e.g.,
 ```
-mvn package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTest
+mvn clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTest
 -D"boost.include.dir"="D:\boost_1_75_0" -D"boost.library.dir"="D:\boost_1_75_0\stage\lib"
 ```
 
