@@ -40,8 +40,10 @@ import org.apache.iotdb.tsfile.read.reader.page.AlignedPageReader;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 public class AlignedChunkReader implements IChunkReader {
 
@@ -66,6 +68,8 @@ public class AlignedChunkReader implements IChunkReader {
 
   /** A list of deleted intervals. */
   private final List<List<TimeRange>> valueDeleteIntervalList;
+
+  private final Set<Long> timeSet = new HashSet<>();
 
   /**
    * Constructor of ChunkReader without deserializing chunk into page. This is used for fast
@@ -271,7 +275,8 @@ public class AlignedChunkReader implements IChunkReader {
             valueDataTypeList,
             valueDecoderList,
             filter,
-            queryAllSensors);
+            queryAllSensors,
+            timeSet);
     alignedPageReader.setDeleteIntervalList(valueDeleteIntervalList);
     return alignedPageReader;
   }
@@ -320,7 +325,8 @@ public class AlignedChunkReader implements IChunkReader {
             valueTypes,
             valueDecoders,
             null,
-            false);
+            false,
+            new HashSet<>());
     alignedPageReader.initTsBlockBuilder(valueTypes);
     alignedPageReader.setDeleteIntervalList(valueDeleteIntervalList);
     return alignedPageReader.getLazyPointReader();
