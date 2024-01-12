@@ -85,6 +85,33 @@ public class IoTDBOrderByLimitOffsetAlignByDeviceIT {
         retArray);
   }
 
+  @Test
+  public void aggregationWithHavingTest() {
+    // when aggregation with having, can only use MergeSortNode but not use TopKNode
+    String[] expectedHeader = new String[] {"Time,Device,sum(s1)"};
+    String[] retArray = new String[] {"3,root.db.d2,222.0,", "3,root.db.d3,333.0,"};
+    resultSetEqualTest(
+        "select sum(s1) from root.db.** group by ((1,5],1ms) having(sum(s1)>111) order by time limit 2 align by device;",
+        expectedHeader,
+        retArray);
+  }
+
+  @Test
+  public void fillTest() {
+    String[] expectedHeader = new String[] {"Time,Device,s1,s2"};
+    String[] retArray =
+        new String[] {
+          "1,root.fill.d1,1,null,",
+          "1,root.fill.d2,2,null,",
+          "1,root.fill.d3,3,null,",
+          "2,root.fill.d1,12,11.0,",
+        };
+    resultSetEqualTest(
+        "select * from root.fill.** order by time fill(linear) limit 4 align by device;",
+        expectedHeader,
+        retArray);
+  }
+
   private static final String[] SQL_LIST =
       new String[] {
         "CREATE DATABASE root.db;",
@@ -94,6 +121,16 @@ public class IoTDBOrderByLimitOffsetAlignByDeviceIT {
         "INSERT INTO root.db.d1(timestamp,s1) VALUES(1, 1), (2, 11), (3, 111);",
         "INSERT INTO root.db.d2(timestamp,s1) VALUES(1, 2), (2, 22), (3, 222);",
         "INSERT INTO root.db.d3(timestamp,s1) VALUES(1, 3), (2, 33), (3, 333);",
+        "CREATE DATABASE root.fill;",
+        "CREATE TIMESERIES root.fill.d1.s1 WITH DATATYPE=INT32, ENCODING=RLE;",
+        "CREATE TIMESERIES root.fill.d1.s2 WITH DATATYPE=FLOAT, ENCODING=RLE;",
+        "CREATE TIMESERIES root.fill.d2.s1 WITH DATATYPE=INT32, ENCODING=RLE;",
+        "CREATE TIMESERIES root.fill.d2.s2 WITH DATATYPE=FLOAT, ENCODING=RLE;",
+        "CREATE TIMESERIES root.fill.d3.s1 WITH DATATYPE=INT32, ENCODING=RLE;",
+        "CREATE TIMESERIES root.fill.d3.s2 WITH DATATYPE=FLOAT, ENCODING=RLE;",
+        "INSERT INTO root.fill.d1(timestamp,s1,s2) VALUES(1, 1, null), (2, null, 11), (3, 111, 111.1);",
+        "INSERT INTO root.fill.d2(timestamp,s1,s2) VALUES(1, 2, null), (2, 22, 22.2), (3, 222, null);",
+        "INSERT INTO root.fill.d3(timestamp,s1,s2) VALUES(1, 3, null), (2, 33, null), (3, 333, 333.3);",
       };
 
   protected static void insertData3() {

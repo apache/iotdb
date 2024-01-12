@@ -954,7 +954,7 @@ public class MTreeBelowSGCachedImpl {
         ICachedMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
         try {
           String leafName = path.getMeasurement();
-          if (device.hasChild(leafName)) {
+          if (store.hasChild(device, leafName)) {
             ICachedMNode node = device.getChild(leafName);
             if (node.isMeasurement()) {
               if (node.getAsMeasurementMNode().isPreDeleted()) {

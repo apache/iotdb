@@ -450,6 +450,10 @@ public class StorageEngine implements IService {
             logicalStorageGroupName);
     WRITING_METRICS.createFlushingMemTableStatusMetrics(dataRegionId);
     WRITING_METRICS.createDataRegionMemoryCostMetrics(dataRegion);
+    WRITING_METRICS.createSeriesFullFlushMemTableCounterMetrics(dataRegionId);
+    WRITING_METRICS.createWalFlushMemTableCounterMetrics(dataRegionId);
+    WRITING_METRICS.createTimedFlushMemTableCounterMetrics(dataRegionId);
+    WRITING_METRICS.createActiveMemtableCounterMetrics(dataRegionId);
     dataRegion.setDataTTLWithTimePrecisionCheck(ttl);
     dataRegion.setCustomFlushListeners(customFlushListeners);
     dataRegion.setCustomCloseFileListeners(customCloseFileListeners);

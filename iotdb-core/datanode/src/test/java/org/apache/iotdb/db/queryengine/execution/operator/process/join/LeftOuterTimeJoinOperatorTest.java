@@ -76,13 +76,13 @@ public class LeftOuterTimeJoinOperatorTest {
 
     // result table
     // Time, s1,    s2
-    // 4,     4,    40
-    // 6,     6,    null
-    // 9      9,    null
-    // 13     13,   130
-    // 17     17,   null
-    // 22     22,   null
-    // 25     25,   null
+    // 4      4     40
+    // 6      6     null
+    // 9      9     null
+    // 13     13    130
+    // 17     17    null
+    // 22     22    null
+    // 25     25    null
 
     OperatorContext operatorContext = Mockito.mock(OperatorContext.class);
     Mockito.when(operatorContext.getMaxRunTime()).thenReturn(new Duration(1, TimeUnit.SECONDS));
@@ -616,6 +616,282 @@ public class LeftOuterTimeJoinOperatorTest {
             assertEquals(column4IsNull[count], tsBlock.getColumn(3).isNull(i));
             if (!column4IsNull[count]) {
               assertEquals(column4Array[count], tsBlock.getColumn(3).getBoolean(i));
+            }
+          }
+        }
+        listenableFuture = leftOuterTimeJoinOperator.isBlocked();
+        listenableFuture.get();
+      }
+      assertEquals(timeArray.length, count);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testLeftOuterJoin3() {
+    // left table
+    // Time, s1
+    // 4     4
+    // 6     6
+    // 9     9
+    // ----------- TsBlock-1
+    // 13    13
+    // 17    17
+    // ----------- TsBlock-2
+    // 22    22
+    // 25    25
+    // ----------- TsBlock-3
+    // 100   100
+    // 101   101
+    // ----------- TsBlock-4
+    // 110   110
+    // 111   111
+    // ----------- TsBlock-5
+
+    // right table
+    // Time, s2
+    // 1     10
+    // 2     20
+    // 3     30
+    // ----------- TsBlock-1
+    // 4     40
+    // 5     50
+    // 10    100
+    // ----------- TsBlock-2
+    // 13    130
+    // 16    160
+    // ----------- TsBlock-3
+    // 26    260
+    // 27    270
+    // ----------- TsBlock-4
+
+    // result table
+    // Time, s1,    s2
+    // 4      4     40
+    // 6      6     null
+    // 9      9     null
+    // 13     13    130
+    // 17     17    null
+    // 22     22    null
+    // 25     25    null
+    // 100   100    null
+    // 101   101    null
+    // 110   110    null
+    // 111   111    null
+
+    OperatorContext operatorContext = Mockito.mock(OperatorContext.class);
+    Mockito.when(operatorContext.getMaxRunTime()).thenReturn(new Duration(1, TimeUnit.SECONDS));
+
+    Operator leftChild =
+        new Operator() {
+          private final long[][] timeArray =
+              new long[][] {
+                {4L, 6L, 9L},
+                {13L, 17L},
+                {22L, 25L},
+                {100L, 101L},
+                {110L, 111L}
+              };
+
+          private final int[][] valueArray =
+              new int[][] {
+                {4, 6, 9},
+                {13, 17},
+                {22, 25},
+                {100, 101},
+                {110, 111}
+              };
+
+          private final boolean[][][] valueIsNull =
+              new boolean[][][] {
+                {
+                  {false, false, false},
+                  {false, false},
+                  {false, false},
+                  {false, false},
+                  {false, false}
+                }
+              };
+
+          private int index = 0;
+
+          @Override
+          public OperatorContext getOperatorContext() {
+            return operatorContext;
+          }
+
+          @Override
+          public TsBlock next() {
+            TsBlockBuilder builder =
+                new TsBlockBuilder(
+                    timeArray[index].length, Collections.singletonList(TSDataType.INT32));
+            for (int i = 0, size = timeArray[index].length; i < size; i++) {
+              builder.getTimeColumnBuilder().writeLong(timeArray[index][i]);
+              if (valueIsNull[0][index][i]) {
+                builder.getColumnBuilder(0).appendNull();
+              } else {
+                builder.getColumnBuilder(0).writeInt(valueArray[index][i]);
+              }
+            }
+            builder.declarePositions(timeArray[index].length);
+            index++;
+            return builder.build();
+          }
+
+          @Override
+          public boolean hasNext() {
+            return index < 5;
+          }
+
+          @Override
+          public void close() {}
+
+          @Override
+          public boolean isFinished() {
+            return index >= 5;
+          }
+
+          @Override
+          public long calculateMaxPeekMemory() {
+            return 64 * 1024;
+          }
+
+          @Override
+          public long calculateMaxReturnSize() {
+            return 64 * 1024;
+          }
+
+          @Override
+          public long calculateRetainedSizeAfterCallingNext() {
+            return 0;
+          }
+        };
+
+    Operator rightChild =
+        new Operator() {
+          private final long[][] timeArray =
+              new long[][] {
+                {1L, 2L, 3L},
+                {4L, 5L, 10L},
+                {13L, 16L},
+                {26L, 27L}
+              };
+
+          private final long[][] valueArray =
+              new long[][] {
+                {10L, 20L, 30L},
+                {40L, 50L, 100L},
+                {130L, 160L},
+                {260L, 270L}
+              };
+
+          private final boolean[][][] valueIsNull =
+              new boolean[][][] {
+                {
+                  {false, false, false},
+                  {false, false, false},
+                  {false, false},
+                  {false, false}
+                }
+              };
+
+          private int index = 0;
+
+          @Override
+          public OperatorContext getOperatorContext() {
+            return operatorContext;
+          }
+
+          @Override
+          public TsBlock next() {
+            TsBlockBuilder builder =
+                new TsBlockBuilder(
+                    timeArray[index].length, Collections.singletonList(TSDataType.INT64));
+            for (int i = 0, size = timeArray[index].length; i < size; i++) {
+              builder.getTimeColumnBuilder().writeLong(timeArray[index][i]);
+              if (valueIsNull[0][index][i]) {
+                builder.getColumnBuilder(0).appendNull();
+              } else {
+                builder.getColumnBuilder(0).writeLong(valueArray[index][i]);
+              }
+            }
+            builder.declarePositions(timeArray[index].length);
+            index++;
+            return builder.build();
+          }
+
+          @Override
+          public boolean hasNext() {
+            return index < 4;
+          }
+
+          @Override
+          public void close() {}
+
+          @Override
+          public boolean isFinished() {
+            return index >= 4;
+          }
+
+          @Override
+          public long calculateMaxPeekMemory() {
+            return 64 * 1024;
+          }
+
+          @Override
+          public long calculateMaxReturnSize() {
+            return 64 * 1024;
+          }
+
+          @Override
+          public long calculateRetainedSizeAfterCallingNext() {
+            return 0;
+          }
+        };
+
+    LeftOuterTimeJoinOperator leftOuterTimeJoinOperator =
+        new LeftOuterTimeJoinOperator(
+            operatorContext,
+            leftChild,
+            1,
+            rightChild,
+            Arrays.asList(TSDataType.INT32, TSDataType.INT64),
+            new AscTimeComparator());
+
+    assertEquals(
+        TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes() + 64 * 1024 * 2,
+        leftOuterTimeJoinOperator.calculateMaxPeekMemory());
+    assertEquals(
+        TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
+        leftOuterTimeJoinOperator.calculateMaxReturnSize());
+    assertEquals(64 * 1024 * 2, leftOuterTimeJoinOperator.calculateRetainedSizeAfterCallingNext());
+
+    long[] timeArray = new long[] {4L, 6L, 9L, 13L, 17L, 22L, 25L, 100L, 101L, 110L, 111L};
+    int[] column1Array = new int[] {4, 6, 9, 13, 17, 22, 25, 100, 101, 110, 111};
+    boolean[] column1IsNull =
+        new boolean[] {false, false, false, false, false, false, false, false, false, false, false};
+    long[] column2Array = new long[] {40L, 0L, 0L, 130L, 0L, 0L, 0L, 0L, 0L, 0L, 0L};
+    boolean[] column2IsNull =
+        new boolean[] {false, true, true, false, true, true, true, true, true, true, true};
+
+    try {
+      int count = 0;
+      ListenableFuture<?> listenableFuture = leftOuterTimeJoinOperator.isBlocked();
+      listenableFuture.get();
+      while (!leftOuterTimeJoinOperator.isFinished() && leftOuterTimeJoinOperator.hasNext()) {
+        TsBlock tsBlock = leftOuterTimeJoinOperator.next();
+        if (tsBlock != null && !tsBlock.isEmpty()) {
+          for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++, count++) {
+            assertEquals(timeArray[count], tsBlock.getTimeByIndex(i));
+            assertEquals(column1IsNull[count], tsBlock.getColumn(0).isNull(i));
+            if (!column1IsNull[count]) {
+              assertEquals(column1Array[count], tsBlock.getColumn(0).getInt(i));
+            }
+            assertEquals(column2IsNull[count], tsBlock.getColumn(1).isNull(i));
+            if (!column2IsNull[count]) {
+              assertEquals(column2Array[count], tsBlock.getColumn(1).getLong(i));
             }
           }
         }

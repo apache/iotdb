@@ -406,7 +406,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       return newNode;
     }
 
-    // optimize `order by time limit N align by device` query,
+    // optimize `order by time|expression limit N align by device` query,
     // to ensure that the number of ExchangeNode equals to DataRegionNum but not equals to DeviceNum
     if (node instanceof TopKNode) {
       return processTopNode(node, visitedChildren, context, newNode, dataRegion);

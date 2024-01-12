@@ -35,6 +35,7 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
@@ -102,6 +103,13 @@ public class WriteBackConnector implements PipeConnector {
             ((PipeRawTabletInsertionEvent) tabletInsertionEvent).parseEventWithPatternOrTime());
       }
       return;
+    } else {
+      // ignore raw tablet event with zero rows
+      if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
+        if (((PipeRawTabletInsertionEvent) tabletInsertionEvent).hasNoNeedParsingAndIsEmpty()) {
+          return;
+        }
+      }
     }
 
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
@@ -120,9 +128,11 @@ public class WriteBackConnector implements PipeConnector {
 
   private void doTransfer(PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, WALPipeException {
-    TSStatus status;
+    final TSStatus status;
 
-    if (Objects.isNull(pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible())) {
+    final InsertNode insertNode =
+        pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
+    if (Objects.isNull(insertNode)) {
       status =
           PipeAgent.receiver()
               .thrift()
@@ -134,9 +144,7 @@ public class WriteBackConnector implements PipeConnector {
               .getStatus();
     } else {
       InsertBaseStatement statement =
-          PipeTransferTabletInsertNodeReq.toTPipeTransferRawReq(
-                  pipeInsertNodeTabletInsertionEvent.getInsertNode())
-              .constructStatement();
+          PipeTransferTabletInsertNodeReq.toTPipeTransferRawReq(insertNode).constructStatement();
       status = statement.isEmpty() ? RpcUtils.SUCCESS_STATUS : executeStatement(statement);
     }
 

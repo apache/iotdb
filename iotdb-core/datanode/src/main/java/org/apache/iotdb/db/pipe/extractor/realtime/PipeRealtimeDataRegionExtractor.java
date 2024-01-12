@@ -70,8 +70,8 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   protected String pattern;
   private boolean isDbNameCoveredByPattern = false;
 
-  protected long realtimeDataExtractionStartTime; // Event time
-  protected long realtimeDataExtractionEndTime; // Event time
+  protected long realtimeDataExtractionStartTime = Long.MIN_VALUE; // Event time
+  protected long realtimeDataExtractionEndTime = Long.MAX_VALUE; // Event time
 
   private final AtomicBoolean enableSkippingTimeParseByTimePartition = new AtomicBoolean(false);
   private boolean disableSkippingTimeParse = false;
@@ -136,6 +136,13 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     dataRegionId = String.valueOf(environment.getRegionId());
     pipeTaskMeta = environment.getPipeTaskMeta();
 
+    // Metrics related to TsFileEpoch are managed in PipeExtractorMetrics. These metrics are
+    // indexed by the taskID of IoTDBDataRegionExtractor. To avoid PipeRealtimeDataRegionExtractor
+    // holding a reference to IoTDBDataRegionExtractor, the taskID should be constructed to
+    // match that of IoTDBDataRegionExtractor.
+    long creationTime = environment.getCreationTime();
+    taskID = pipeName + "_" + dataRegionId + "_" + creationTime;
+
     pattern =
         parameters.getStringOrDefault(
             Arrays.asList(EXTRACTOR_PATTERN_KEY, SOURCE_PATTERN_KEY),
@@ -179,13 +186,6 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
                 PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
                 PipeExtractorConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
             PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
-
-    // Metrics related to TsFileEpoch are managed in PipeExtractorMetrics. These metrics are
-    // indexed by the taskID of IoTDBDataRegionExtractor. To avoid PipeRealtimeDataRegionExtractor
-    // holding a reference to IoTDBDataRegionExtractor, the taskID should be constructed to
-    // match that of IoTDBDataRegionExtractor.
-    long creationTime = configuration.getRuntimeEnvironment().getCreationTime();
-    taskID = pipeName + "_" + dataRegionId + "_" + creationTime;
   }
 
   @Override
