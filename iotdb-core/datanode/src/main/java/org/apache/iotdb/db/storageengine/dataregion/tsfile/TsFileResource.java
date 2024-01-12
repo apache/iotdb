@@ -401,6 +401,7 @@ public class TsFileResource {
   public DeviceTimeIndex buildDeviceTimeIndex() throws IOException {
     readLock();
     if (!resourceFileExists()) {
+      readUnlock();
       throw new IOException("resource file not found");
     }
     try (InputStream inputStream =
