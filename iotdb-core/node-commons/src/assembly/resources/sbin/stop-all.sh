@@ -64,7 +64,6 @@ for datanodeIP in ${datanodeIps[@]};do
       echo "The system stops the DataNode and ConfigNode of $datanodeIP"
       ssh $IOTDB_SSH_OPTS -p $serverPort ${account}@$datanodeIP "
         nohup bash $datanodePath/sbin/stop-datanode.sh
-        sleep 3
         nohup bash $confignodePath/sbin/stop-confignode.sh
         "
     else

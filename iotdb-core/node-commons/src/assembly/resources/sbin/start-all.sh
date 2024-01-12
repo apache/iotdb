@@ -72,13 +72,11 @@ for confignodeIP in ${confignodeIps[@]};do
     echo "The system starts the ConfigNode of $confignodeIP"
     ssh $IOTDB_SSH_OPTS -p $serverPort ${account}@$confignodeIP "nohup bash $confignodePath/sbin/start-confignode.sh >/dev/null 2>&1 &"
   fi
-  sleep 3
 done
 
 for datanodeIP in ${datanodeIps[@]};do
   echo "The system starts the DataNode of $datanodeIP"
   ssh $IOTDB_SSH_OPTS -p $serverPort ${account}@$datanodeIP "nohup bash $datanodePath/sbin/start-datanode.sh >/dev/null 2>&1 &"
-  sleep 3
 done
 
 echo "Cluster startup complete ..."
