@@ -124,7 +124,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
 
       IMNodeFactory<?> nodeFactory = MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
       // wait release and flush task
-      Thread.sleep(1000);
+      Thread.sleep(6500);
       // schemaRegion1
       IMNode<?> sg1 =
           nodeFactory.createDatabaseMNode(
