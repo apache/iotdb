@@ -66,7 +66,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBMetaExtractor {
   @Override
   public void start() throws Exception {
     // Delay the start process to schema region leader ready
-    if (!SchemaRegionConsensusImpl.getInstance().isLeaderReady(new SchemaRegionId(regionId))) {
+    if (!SchemaNodeListeningQueue.getInstance(regionId).isLeaderReady()) {
       return;
     }
     if (!listenTypes.isEmpty()) {
@@ -83,7 +83,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBMetaExtractor {
   // This method will return events only after schema region leader get ready
   @Override
   public EnrichedEvent supply() throws Exception {
-    if (!SchemaRegionConsensusImpl.getInstance().isLeaderReady(new SchemaRegionId(regionId))) {
+    if (!SchemaNodeListeningQueue.getInstance(regionId).isLeaderReady()) {
       return null;
     }
     if (!hasBeenStarted.get()) {

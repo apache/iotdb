@@ -50,8 +50,23 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
   private final Pair<Long, List<PipeSnapshotEvent>> snapshotCache =
       new Pair<>(Long.MIN_VALUE, new ArrayList<>());
 
+  private volatile boolean leaderReady = false;
+
   protected AbstractPipeListeningQueue() {
     super(LinkedQueueSerializerType.PLAIN);
+  }
+
+  /////////////////////////////// Leader ready ///////////////////////////////
+
+  // DO NOT use consensus layer's leader ready flag because SimpleConsensus'
+  // ready flag is always true
+  public boolean isLeaderReady() {
+    return leaderReady;
+  }
+
+  // The linked list starts serving only after leader gets ready
+  public void activate() {
+    leaderReady = true;
   }
 
   /////////////////////////////// Snapshot Cache ///////////////////////////////

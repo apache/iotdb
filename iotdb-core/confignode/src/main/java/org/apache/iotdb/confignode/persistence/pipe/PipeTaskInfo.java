@@ -43,7 +43,6 @@ import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAge
 import org.apache.iotdb.confignode.manager.pipe.transfer.extractor.ConfigPlanListeningQueue;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleMetaChangeProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
-import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
@@ -678,8 +677,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
   /////////////////////////////// ConfigTask ///////////////////////////////
 
   private void dropPipeOnConfigTaskAgent(String pipeName) {
-    // Operate tasks only after leader get ready
-    if (!ConfigNode.getInstance().getConfigManager().getConsensusManager().isLeaderReady()) {
+    // Operate tasks only after leader gets ready
+    if (!ConfigPlanListeningQueue.getInstance().isLeaderReady()) {
       return;
     }
     TPushPipeMetaRespExceptionMessage message = PipeConfigNodeAgent.task().handleDropPipe(pipeName);
@@ -696,7 +695,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   private void handleSinglePipeMetaChangeOnConfigTaskAgent(PipeMeta pipeMeta) {
     // Operate tasks only after leader get ready
-    if (!ConfigNode.getInstance().getConfigManager().getConsensusManager().isLeaderReady()) {
+    if (!ConfigPlanListeningQueue.getInstance().isLeaderReady()) {
       return;
     }
     // The new agent meta has separated status to enable control by diff
@@ -724,7 +723,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   public void handlePipeMetaChangesOnConfigTaskAgent() {
     // Operate tasks only after leader get ready
-    if (!ConfigNode.getInstance().getConfigManager().getConsensusManager().isLeaderReady()) {
+    if (!ConfigPlanListeningQueue.getInstance().isLeaderReady()) {
       return;
     }
     List<PipeMeta> pipeMetas = new ArrayList<>();

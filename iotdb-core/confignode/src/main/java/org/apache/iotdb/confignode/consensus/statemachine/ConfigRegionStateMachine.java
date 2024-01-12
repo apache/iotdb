@@ -241,6 +241,9 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     // Add Metric after leader ready
     configManager.addMetrics();
 
+    // Activate config pipe plan queue
+    ConfigPlanListeningQueue.getInstance().activate();
+
     // we do cq recovery async for two reasons:
     // 1. For performance: cq recovery may be time-consuming, we use another thread to do it in
     // make notifyLeaderChanged not blocked by it

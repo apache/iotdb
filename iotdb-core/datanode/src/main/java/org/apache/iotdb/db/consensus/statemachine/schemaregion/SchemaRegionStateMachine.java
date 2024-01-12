@@ -59,6 +59,11 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   }
 
   @Override
+  public void notifyLeaderReady() {
+    SchemaNodeListeningQueue.getInstance(schemaRegion.getSchemaRegionId().getId()).activate();
+  }
+
+  @Override
   public boolean isReadOnly() {
     return CommonDescriptor.getInstance().getConfig().isReadOnly();
   }
