@@ -24,6 +24,7 @@ import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.ConsensusGroup;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.RatisConfig;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
@@ -34,6 +35,8 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
@@ -42,6 +45,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 public class RatisConsensusTest {
+  private static final Logger logger = LoggerFactory.getLogger(RatisConsensusTest.class);
 
   private ConsensusGroupId gid;
   private List<Peer> peers;
@@ -207,7 +211,7 @@ public class RatisConsensusTest {
     doConsensus(0, 10, 210);
   }
 
-  // FIXME: Turn on the test when it is stable
+  @Test
   public void transferLeader() throws Exception {
     servers.get(0).createLocalPeer(group.getGroupId(), group.getPeers());
     servers.get(1).createLocalPeer(group.getGroupId(), group.getPeers());
@@ -215,14 +219,44 @@ public class RatisConsensusTest {
 
     doConsensus(0, 10, 10);
 
-    int leaderIndex = servers.get(0).getLeader(group.getGroupId()).getNodeId() - 1;
+    final int oldLeader = servers.get(0).getLeader(group.getGroupId()).getNodeId();
+    final int newLeader = (oldLeader + 1) % miniCluster.getServers().size();
+    logger.debug("old leader is {} and new leader is {}", oldLeader, newLeader);
 
-    servers.get(0).transferLeader(group.getGroupId(), peers.get((leaderIndex + 1) % 3));
+    try {
+      servers.get(0).transferLeader(group.getGroupId(), peers.get(newLeader));
+    } catch (ConsensusException e) {
+      logger.error("Failed to transfer snapshot:", e);
+      Assert.fail();
+    }
 
-    Peer newLeader = servers.get(0).getLeader(group.getGroupId());
-    Assert.assertNotNull(newLeader);
+    // After the transferLeader request, the new peer will start leader election, need to wait here
+    miniCluster.waitUntilActiveLeaderElectedAndReady();
 
-    Assert.assertEquals((leaderIndex + 1) % 3, newLeader.getNodeId() - 1);
+    final Peer newLeaderPeer = servers.get(0).getLeader(group.getGroupId());
+    Assert.assertNotNull(newLeaderPeer);
+    Assert.assertEquals(newLeader, newLeaderPeer.getNodeId());
+  }
+
+  @Test
+  public void transferLeaderFailed() throws Exception {
+    servers.get(0).createLocalPeer(group.getGroupId(), group.getPeers());
+    servers.get(1).createLocalPeer(group.getGroupId(), group.getPeers());
+    servers.get(2).createLocalPeer(group.getGroupId(), group.getPeers());
+
+    doConsensus(0, 10, 10);
+
+    final int leader = servers.get(0).getLeader(gid).getNodeId();
+    final int f1 = (leader + 1) % 3;
+    servers.get(f1).stop();
+    doConsensus(leader, 10, 20);
+
+    // transfer will fail since the server 2 is down
+    Assert.assertThrows(
+        ConsensusException.class,
+        () -> {
+          servers.get(leader).transferLeader(gid, peers.get(f1));
+        });
   }
 
   @Test
