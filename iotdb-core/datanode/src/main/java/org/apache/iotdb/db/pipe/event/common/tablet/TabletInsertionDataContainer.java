@@ -535,7 +535,7 @@ public class TabletInsertionDataContainer {
             if (Objects.isNull(binaryValueColumns[rowIndexList.get(i)])
                 || Objects.isNull(binaryValueColumns[rowIndexList.get(i)].getValues())
                 || originNullValueColumnBitmap.isMarked(rowIndexList.get(i))) {
-              valueColumns[i] = null;
+              valueColumns[i] = Binary.EMPTY_VALUE;
               nullValueColumnBitmap.mark(i);
             } else {
               valueColumns[i] = new Binary(binaryValueColumns[rowIndexList.get(i)].getValues());
