@@ -254,6 +254,7 @@ public class AuditLogger {
       case COUNT:
       case SHOW_TRIGGERS:
       case SHOW_PIPEPLUGINS:
+      case REPAIR_DATA:
         return AuditLogOperation.QUERY;
       default:
         logger.error("Unrecognizable operator type ({}) for audit log", type);

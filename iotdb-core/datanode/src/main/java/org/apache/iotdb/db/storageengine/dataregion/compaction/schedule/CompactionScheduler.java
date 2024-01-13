@@ -28,12 +28,16 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InsertionCrossSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.RepairUnsortedFileCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICrossSpaceSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,6 +47,7 @@ import java.util.concurrent.Phaser;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * CompactionScheduler schedules and submits the compaction task periodically, and it counts the
@@ -104,6 +109,14 @@ public class CompactionScheduler {
   @TestOnly
   public static void scheduleCompaction(TsFileManager tsFileManager, long timePartition) {
     scheduleCompaction(tsFileManager, timePartition, new CompactionScheduleSummary());
+  }
+
+  public static int scheduleRepairCompaction(TsFileManager tsFileManager, long timePartition) {
+    if (!tsFileManager.isAllowCompaction()) {
+      return 0;
+    }
+    // TODO:
+    return 0;
   }
 
   public static int scheduleInsertionCompaction(
@@ -169,6 +182,46 @@ public class CompactionScheduler {
     summary.incrementSubmitTaskNum(
         sequence ? CompactionTaskType.INNER_SEQ : CompactionTaskType.INNER_UNSEQ, trySubmitCount);
     return trySubmitCount;
+  }
+
+  private static int tryToSubmitRepairCompactionTask(
+      TsFileManager tsFileManager,
+      List<TsFileResource> seqList,
+      List<TsFileResource> unseqList,
+      long timePartition)
+      throws InterruptedException {
+    if (!config.isEnableRepairFileCompaction()) {
+      return 0;
+    }
+    List<TsFileResource> sourceFiles =
+        Stream.concat(seqList.stream(), unseqList.stream()).collect(Collectors.toList());
+    int trySubmitTaskNum = 0;
+    for (TsFileResource resource : sourceFiles) {
+      resource.readLock();
+      try {
+        if (resource.getStatus() != TsFileResourceStatus.NORMAL) {
+          continue;
+        }
+        if (TsFileResourceUtils.validateTsFileDataCorrectness(resource)) {
+          continue;
+        }
+      } catch (Exception e) {
+        LOGGER.error("Meet error when schedule repair compaction");
+      } finally {
+        resource.readUnlock();
+      }
+      RepairUnsortedFileCompactionTask task =
+          new RepairUnsortedFileCompactionTask(
+              timePartition,
+              tsFileManager,
+              resource,
+              resource.isSeq(),
+              tsFileManager.getNextCompactionTaskId());
+      if (CompactionTaskManager.getInstance().addTaskToWaitingQueue(task)) {
+        trySubmitTaskNum++;
+      }
+    }
+    return trySubmitTaskNum;
   }
 
   private static int tryToSubmitInsertionCompactionTask(

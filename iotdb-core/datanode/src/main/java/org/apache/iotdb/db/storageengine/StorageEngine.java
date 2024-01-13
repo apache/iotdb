@@ -553,6 +553,19 @@ public class StorageEngine implements IService {
     dataRegionMap.values().forEach(DataRegion::compact);
   }
 
+  /**
+   * check and repair unsorted data by compaction.
+   *
+   * @throws StorageEngineException StorageEngineException
+   */
+  public void repairData() throws StorageEngineException {
+    LOGGER.info("start repair data");
+    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+      throw new StorageEngineException("Current system mode is read only, does not support merge");
+    }
+    dataRegionMap.values().forEach(DataRegion::repairData);
+  }
+
   public void operateFlush(TFlushReq req) {
     if (req.storageGroups == null) {
       StorageEngine.getInstance().syncCloseAllProcessor();

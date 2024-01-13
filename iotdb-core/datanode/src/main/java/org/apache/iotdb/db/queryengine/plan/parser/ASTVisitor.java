@@ -185,6 +185,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.MergeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.RepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
@@ -3170,6 +3171,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     clearCacheStatement.setOnCluster(ctx.LOCAL() == null);
     return clearCacheStatement;
+  }
+
+  // Repair Data
+  @Override
+  public Statement visitRepairData(IoTDBSqlParser.RepairDataContext ctx) {
+    RepairDataStatement repairDataStatement = new RepairDataStatement(StatementType.REPAIR_DATA);
+    return repairDataStatement;
   }
 
   // Load Configuration

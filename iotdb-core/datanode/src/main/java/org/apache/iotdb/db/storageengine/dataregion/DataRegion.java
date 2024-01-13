@@ -2416,11 +2416,29 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
+  public void repairData() {
+    List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
+    timePartitions.sort(Comparator.reverseOrder());
+    CompactionScheduler.lockCompactionSelection();
+    try {
+      for (long timePartition : timePartitions) {
+        CompactionScheduler.scheduleRepairCompaction(tsFileManager, timePartition);
+      }
+    } finally {
+      CompactionScheduler.unlockCompactionSelection();
+    }
+  }
+
   protected int executeCompaction() {
     int trySubmitCount = 0;
     List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
     // sort the time partition from largest to smallest
     timePartitions.sort(Comparator.reverseOrder());
+
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableRepairFileCompaction()) {
+
+      return trySubmitCount;
+    }
 
     CompactionScheduleSummary summary = new CompactionScheduleSummary();
     if (IoTDBDescriptor.getInstance().getConfig().isEnableInsertionCrossSpaceCompaction()) {
