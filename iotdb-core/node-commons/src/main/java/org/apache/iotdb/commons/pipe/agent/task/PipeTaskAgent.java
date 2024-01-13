@@ -408,11 +408,17 @@ public abstract class PipeTaskAgent {
       dropPipe(pipeName, existedPipeMeta.getStaticMeta().getCreationTime());
     }
 
-    // Create pipe tasks and trigger create() method for each pipe task
+    // Create pipe tasks
     final Map<TConsensusGroupId, PipeTask> pipeTasks = buildPipeTasks(pipeMetaFromCoordinator);
-    for (PipeTask pipeTask : pipeTasks.values()) {
-      pipeTask.create();
-    }
+
+    // Trigger create() method for each pipe task by parallel stream
+    final long startTime = System.currentTimeMillis();
+    pipeTasks.values().parallelStream().forEach(PipeTask::create);
+    LOGGER.info(
+        "Create all pipe tasks on Pipe {} successfully within {} ms",
+        pipeName,
+        System.currentTimeMillis() - startTime);
+
     pipeTaskManager.addPipeTasks(pipeMetaFromCoordinator.getStaticMeta(), pipeTasks);
 
     // No matter the pipe status from coordinator is RUNNING or STOPPED, we always set the status
@@ -444,7 +450,7 @@ public abstract class PipeTaskAgent {
     // dropPipeTaskByConsensusGroup).
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
 
-    // Drop pipe tasks and trigger drop() method for each pipe task
+    // Drop pipe tasks
     final Map<TConsensusGroupId, PipeTask> pipeTasks =
         pipeTaskManager.removePipeTasks(existedPipeMeta.getStaticMeta());
     if (pipeTasks == null) {
@@ -455,9 +461,14 @@ public abstract class PipeTaskAgent {
           creationTime);
       return;
     }
-    for (PipeTask pipeTask : pipeTasks.values()) {
-      pipeTask.drop();
-    }
+
+    // Trigger drop() method for each pipe task by parallel stream
+    final long startTime = System.currentTimeMillis();
+    pipeTasks.values().parallelStream().forEach(PipeTask::drop);
+    LOGGER.info(
+        "Drop all pipe tasks on Pipe {} successfully within {} ms",
+        pipeName,
+        System.currentTimeMillis() - startTime);
 
     // Remove pipe meta from pipe meta keeper
     pipeMetaKeeper.removePipeMeta(pipeName);
@@ -475,7 +486,7 @@ public abstract class PipeTaskAgent {
     // dropPipeTaskByConsensusGroup).
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
 
-    // Drop pipe tasks and trigger drop() method for each pipe task
+    // Drop pipe tasks
     final Map<TConsensusGroupId, PipeTask> pipeTasks =
         pipeTaskManager.removePipeTasks(existedPipeMeta.getStaticMeta());
     if (pipeTasks == null) {
@@ -483,9 +494,14 @@ public abstract class PipeTaskAgent {
           "Pipe {} has already been dropped or has not been created. Skip dropping.", pipeName);
       return;
     }
-    for (PipeTask pipeTask : pipeTasks.values()) {
-      pipeTask.drop();
-    }
+
+    // Trigger drop() method for each pipe task by parallel stream
+    final long startTime = System.currentTimeMillis();
+    pipeTasks.values().parallelStream().forEach(PipeTask::drop);
+    LOGGER.info(
+        "Drop all pipe tasks on Pipe {} successfully within {} ms",
+        pipeName,
+        System.currentTimeMillis() - startTime);
 
     // Remove pipe meta from pipe meta keeper
     pipeMetaKeeper.removePipeMeta(pipeName);
@@ -498,7 +514,7 @@ public abstract class PipeTaskAgent {
       return;
     }
 
-    // Trigger start() method for each pipe task
+    // Get pipe tasks
     final Map<TConsensusGroupId, PipeTask> pipeTasks =
         pipeTaskManager.getPipeTasks(existedPipeMeta.getStaticMeta());
     if (pipeTasks == null) {
@@ -509,9 +525,14 @@ public abstract class PipeTaskAgent {
           creationTime);
       return;
     }
-    for (PipeTask pipeTask : pipeTasks.values()) {
-      pipeTask.start();
-    }
+
+    // Trigger start() method for each pipe task by parallel stream
+    final long startTime = System.currentTimeMillis();
+    pipeTasks.values().parallelStream().forEach(PipeTask::start);
+    LOGGER.info(
+        "Start all pipe tasks on Pipe {} successfully within {} ms",
+        pipeName,
+        System.currentTimeMillis() - startTime);
 
     // Set pipe meta status to RUNNING
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
@@ -530,7 +551,7 @@ public abstract class PipeTaskAgent {
       return;
     }
 
-    // Trigger stop() method for each pipe task
+    // Get pipe tasks
     final Map<TConsensusGroupId, PipeTask> pipeTasks =
         pipeTaskManager.getPipeTasks(existedPipeMeta.getStaticMeta());
     if (pipeTasks == null) {
@@ -541,9 +562,14 @@ public abstract class PipeTaskAgent {
           creationTime);
       return;
     }
-    for (PipeTask pipeTask : pipeTasks.values()) {
-      pipeTask.stop();
-    }
+
+    // Trigger stop() method for each pipe task by parallel stream
+    final long startTime = System.currentTimeMillis();
+    pipeTasks.values().parallelStream().forEach(PipeTask::stop);
+    LOGGER.info(
+        "Stop all pipe tasks on Pipe {} successfully within {} ms",
+        pipeName,
+        System.currentTimeMillis() - startTime);
 
     // Set pipe meta status to STOPPED
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
