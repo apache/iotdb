@@ -56,6 +56,7 @@ import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.UnsortedFileRepairTaskScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CloseFileListener;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushListener;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
@@ -563,7 +564,12 @@ public class StorageEngine implements IService {
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new StorageEngineException("Current system mode is read only, does not support merge");
     }
-    dataRegionMap.values().forEach(DataRegion::repairData);
+    cachedThreadPool.submit(
+        () -> {
+          List<DataRegion> dataRegionList = new ArrayList<>(dataRegionMap.values());
+
+          cachedThreadPool.submit(new UnsortedFileRepairTaskScheduler(dataRegionList));
+        });
   }
 
   public void operateFlush(TFlushReq req) {
