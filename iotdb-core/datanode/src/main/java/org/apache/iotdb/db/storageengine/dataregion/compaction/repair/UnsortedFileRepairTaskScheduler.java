@@ -42,14 +42,22 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class UnsortedFileRepairTaskScheduler implements Runnable {
 
-  private final Set<TimePartitionFiles> allTimePartitionFiles = new HashSet<>();
+  /** a repair task is running */
+  private static final AtomicBoolean isRepairingData = new AtomicBoolean(false);
+
   private static final Logger LOGGER =
       LoggerFactory.getLogger(UnsortedFileRepairTaskScheduler.class);
+  private final Set<TimePartitionFiles> allTimePartitionFiles = new HashSet<>();
+
+  public static boolean markRepairTaskStart() {
+    return isRepairingData.compareAndSet(false, true);
+  }
 
   public UnsortedFileRepairTaskScheduler(List<DataRegion> dataRegions) {
     collectFiles(dataRegions);
@@ -84,6 +92,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
     } catch (Exception e) {
 
     } finally {
+      isRepairingData.set(false);
       CompactionScheduler.unlockCompactionSelection();
     }
   }

@@ -3177,6 +3177,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitRepairData(IoTDBSqlParser.RepairDataContext ctx) {
     RepairDataStatement repairDataStatement = new RepairDataStatement(StatementType.REPAIR_DATA);
+    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+      throw new SemanticException("REPAIR DATA ON CLUSTER is not supported in standalone mode");
+    }
+    repairDataStatement.setOnCluster(ctx.LOCAL() == null);
     return repairDataStatement;
   }
 

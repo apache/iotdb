@@ -1349,6 +1349,14 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TSStatus repairData() {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? RpcUtils.squashResponseStatusList(nodeManager.repairData())
+        : status;
+  }
+
+  @Override
   public TSStatus loadConfiguration() {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()

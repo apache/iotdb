@@ -31,8 +31,18 @@ import java.util.List;
 
 public class RepairDataStatement extends Statement implements IConfigStatement {
 
+  private boolean onCluster;
+
   public RepairDataStatement(StatementType repairDataType) {
     this.statementType = repairDataType;
+  }
+
+  public boolean isOnCluster() {
+    return onCluster;
+  }
+
+  public void setOnCluster(boolean onCluster) {
+    this.onCluster = onCluster;
   }
 
   @Override

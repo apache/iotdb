@@ -30,7 +30,7 @@ import java.util.List;
 /** Used for fixing files which contains internal unsorted data */
 public class RepairUnsortedFileCompactionPerformer extends ReadPointCompactionPerformer {
 
-  private boolean rewriteFile;
+  private final boolean rewriteFile;
 
   public RepairUnsortedFileCompactionPerformer(boolean rewriteFile) {
     super();

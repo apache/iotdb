@@ -37,6 +37,6 @@ public class RepairDataTask implements IConfigTask {
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.repairData();
+    return configTaskExecutor.repairData(repairDataStatement.isOnCluster());
   }
 }

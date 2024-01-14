@@ -940,7 +940,7 @@ settle
 
 // Repair Data
 repairData
-    : REPAIR DATA
+    : REPAIR DATA (ON (LOCAL | CLUSTER))?
     ;
 
 // Explain

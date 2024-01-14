@@ -997,14 +997,24 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> repairData() {
+  public SettableFuture<ConfigTaskResult> repairData(boolean onCluster) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    TSStatus tsStatus = null;
-    try {
-      StorageEngine.getInstance().repairData();
-      tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-    } catch (Exception e) {
-      tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    TSStatus tsStatus = new TSStatus();
+    if (onCluster) {
+      try (ConfigNodeClient client =
+          CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        // Send request to some API server
+        tsStatus = client.repairData();
+      } catch (ClientManagerException | TException e) {
+        future.setException(e);
+      }
+    } else {
+      try {
+        StorageEngine.getInstance().repairData();
+        tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      } catch (Exception e) {
+        tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+      }
     }
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
