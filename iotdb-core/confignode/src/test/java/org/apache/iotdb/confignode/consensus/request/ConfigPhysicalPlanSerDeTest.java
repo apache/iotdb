@@ -101,6 +101,7 @@ import org.apache.iotdb.confignode.consensus.request.write.function.CreateFuncti
 import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
@@ -1670,5 +1671,22 @@ public class ConfigPhysicalPlanSerDeTest {
         (UpdateClusterIdPlan)
             ConfigPhysicalPlan.Factory.create(updateClusterIdPlan.serializeToByteBuffer());
     Assert.assertEquals(updateClusterIdPlan, deserializedPlan);
+  }
+
+  @Test
+  public void pipeEnrichedPlanTest() throws IOException {
+    DatabaseSchemaPlan req0 =
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.CreateDatabase,
+            new TDatabaseSchema()
+                .setName("sg")
+                .setTTL(Long.MAX_VALUE)
+                .setSchemaReplicationFactor(3)
+                .setDataReplicationFactor(3)
+                .setTimePartitionInterval(604800));
+    PipeEnrichedPlan plan = new PipeEnrichedPlan(req0);
+    PipeEnrichedPlan plan1 =
+        (PipeEnrichedPlan) ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
+    Assert.assertEquals(plan, plan1);
   }
 }
