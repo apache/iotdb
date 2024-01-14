@@ -27,15 +27,20 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceList;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -85,8 +90,8 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
 
   private void executeRepair() throws InterruptedException {
     for (TimePartitionFiles timePartition : allTimePartitionFiles) {
-
       checkInternalUnsortedFileAndRepair(timePartition);
+      checkOverlapInSequenceSpaceAndRepair(timePartition);
       finishRepairTimePartition(timePartition);
     }
   }
@@ -122,10 +127,85 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
     }
   }
 
-  private void checkOverlapInSequenceSpaceAndRepair(TimePartitionFiles timePartition) {
+  private void checkOverlapInSequenceSpaceAndRepair(TimePartitionFiles timePartition)
+      throws InterruptedException {
     TsFileManager tsFileManager = timePartition.getTsFileManager();
     TsFileResourceList seqList =
         tsFileManager.getOrCreateSequenceListByTimePartition(timePartition.getTimePartition());
+    List<TsFileResource> overlapFiles = checkTimePartitionHasOverlap(seqList);
+    for (TsFileResource overlapFile : overlapFiles) {
+      RepairUnsortedFileCompactionTask task =
+          new RepairUnsortedFileCompactionTask(
+              timePartition.getTimePartition(),
+              timePartition.getTsFileManager(),
+              overlapFile,
+              true,
+              false,
+              0);
+      if (CompactionTaskManager.getInstance().addTaskToWaitingQueue(task)) {
+        // TODO: wait the repair compaction task finished
+
+      }
+    }
+  }
+
+  private List<TsFileResource> checkTimePartitionHasOverlap(List<TsFileResource> resources) {
+    List<TsFileResource> overlapResources = new ArrayList<>();
+    Map<String, Long> deviceEndTimeMap = new HashMap<>();
+    Map<String, TsFileResource> deviceLastExistTsFileMap = new HashMap<>();
+    for (TsFileResource resource : resources) {
+      if (resource.getStatus() == TsFileResourceStatus.UNCLOSED
+          || resource.getStatus() == TsFileResourceStatus.DELETED) {
+        continue;
+      }
+      DeviceTimeIndex deviceTimeIndex;
+      try {
+        deviceTimeIndex = getDeviceTimeIndex(resource);
+      } catch (Exception e) {
+        continue;
+      }
+
+      Set<String> devices = deviceTimeIndex.getDevices();
+      boolean fileHasOverlap = false;
+      // check overlap
+      for (String device : devices) {
+        long deviceStartTimeInCurrentFile = deviceTimeIndex.getStartTime(device);
+        if (deviceStartTimeInCurrentFile > deviceTimeIndex.getEndTime(device)) {
+          continue;
+        }
+        if (!deviceEndTimeMap.containsKey(device)) {
+          continue;
+        }
+        long deviceEndTimeInPreviousFile = deviceEndTimeMap.get(device);
+        if (deviceStartTimeInCurrentFile <= deviceEndTimeInPreviousFile) {
+          fileHasOverlap = true;
+          overlapResources.add(resource);
+          break;
+        }
+      }
+      // update end time map
+      if (!fileHasOverlap) {
+        for (String device : devices) {
+          long deviceEndTimeInCurrentFile = deviceTimeIndex.getEndTime(device);
+          if (!deviceLastExistTsFileMap.containsKey(device)) {
+            deviceEndTimeMap.put(device, deviceEndTimeInCurrentFile);
+            deviceLastExistTsFileMap.put(device, resource);
+            continue;
+          }
+          deviceEndTimeMap.put(device, resource.getEndTime(device));
+          deviceLastExistTsFileMap.put(device, resource);
+        }
+      }
+    }
+    return overlapResources;
+  }
+
+  private DeviceTimeIndex getDeviceTimeIndex(TsFileResource resource) throws IOException {
+    ITimeIndex timeIndex = resource.getTimeIndex();
+    if (timeIndex instanceof DeviceTimeIndex) {
+      return (DeviceTimeIndex) timeIndex;
+    }
+    return resource.buildDeviceTimeIndex();
   }
 
   private void finishRepairTimePartition(TimePartitionFiles timePartition) {

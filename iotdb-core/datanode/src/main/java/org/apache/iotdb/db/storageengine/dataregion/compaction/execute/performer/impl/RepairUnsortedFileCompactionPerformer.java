@@ -24,10 +24,19 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.wri
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.List;
 
 /** Used for fixing files which contains internal unsorted data */
 public class RepairUnsortedFileCompactionPerformer extends ReadPointCompactionPerformer {
+
+  private boolean rewriteFile;
+
+  public RepairUnsortedFileCompactionPerformer(boolean rewriteFile) {
+    super();
+    this.rewriteFile = rewriteFile;
+  }
+
   @Override
   protected AbstractCompactionWriter getCompactionWriter(
       List<TsFileResource> seqFileResources,
@@ -35,5 +44,20 @@ public class RepairUnsortedFileCompactionPerformer extends ReadPointCompactionPe
       List<TsFileResource> targetFileResources)
       throws IOException {
     return new RepairUnsortedFileCompactionWriter(targetFileResources.get(0));
+  }
+
+  @Override
+  public void perform() throws Exception {
+    if (rewriteFile) {
+      super.perform();
+    } else {
+      hardLinkToTargetFile();
+    }
+  }
+
+  private void hardLinkToTargetFile() throws IOException {
+    TsFileResource seqSourceFile = seqFiles.get(0);
+    TsFileResource targetFile = targetFiles.get(0);
+    Files.createLink(targetFile.getTsFile().toPath(), seqSourceFile.getTsFile().toPath());
   }
 }

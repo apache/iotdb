@@ -52,11 +52,32 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
         tsFileManager,
         Collections.singletonList(sourceFile),
         sequence,
-        new RepairUnsortedFileCompactionPerformer(),
+        new RepairUnsortedFileCompactionPerformer(true),
         serialId,
         CompactionTaskPriorityType.NORMAL);
     this.sourceFile = sourceFile;
     this.innerSpaceEstimator = new RepairUnsortedFileCompactionEstimator();
+  }
+
+  public RepairUnsortedFileCompactionTask(
+      long timePartition,
+      TsFileManager tsFileManager,
+      TsFileResource sourceFile,
+      boolean sequence,
+      boolean rewriteFile,
+      long serialId) {
+    super(
+        timePartition,
+        tsFileManager,
+        Collections.singletonList(sourceFile),
+        sequence,
+        new RepairUnsortedFileCompactionPerformer(rewriteFile),
+        serialId,
+        CompactionTaskPriorityType.NORMAL);
+    this.sourceFile = sourceFile;
+    if (rewriteFile) {
+      this.innerSpaceEstimator = new RepairUnsortedFileCompactionEstimator();
+    }
   }
 
   @Override
