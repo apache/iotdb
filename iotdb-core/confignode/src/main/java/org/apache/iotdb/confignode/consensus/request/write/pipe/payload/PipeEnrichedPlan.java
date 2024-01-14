@@ -47,7 +47,8 @@ public class PipeEnrichedPlan extends ConfigPhysicalPlan {
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    stream.write(innerPlan.serializeToByteBuffer().array());
+    ByteBuffer buffer = innerPlan.serializeToByteBuffer();
+    stream.write(buffer.array(), 0, buffer.limit());
   }
 
   @Override
