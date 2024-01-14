@@ -81,7 +81,7 @@ public abstract class PipeTaskAgent {
       return pipeMetaKeeper.tryReadLock(timeOutInSeconds);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOGGER.warn("Interruption during requiring pipeMetaKeeper lock.", e);
+      LOGGER.warn("Interruption during requiring pipeMetaKeeper read lock.", e);
       return false;
     }
   }
@@ -94,13 +94,23 @@ public abstract class PipeTaskAgent {
     pipeMetaKeeper.acquireWriteLock();
   }
 
+  protected boolean tryWriteLockWithTimeOut(long timeOutInSeconds) {
+    try {
+      return pipeMetaKeeper.tryWriteLock(timeOutInSeconds);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.warn("Interruption during requiring pipeMetaKeeper write lock.", e);
+      return false;
+    }
+  }
+
   protected void releaseWriteLock() {
     pipeMetaKeeper.releaseWriteLock();
   }
 
   ////////////////////////// Pipe Task Management Entry //////////////////////////
 
-  public synchronized TPushPipeMetaRespExceptionMessage handleSinglePipeMetaChanges(
+  public TPushPipeMetaRespExceptionMessage handleSinglePipeMetaChanges(
       PipeMeta pipeMetaFromCoordinator) {
     acquireWriteLock();
     try {
@@ -272,7 +282,7 @@ public abstract class PipeTaskAgent {
     }
   }
 
-  public synchronized TPushPipeMetaRespExceptionMessage handleDropPipe(String pipeName) {
+  public TPushPipeMetaRespExceptionMessage handleDropPipe(String pipeName) {
     acquireWriteLock();
     try {
       return handleDropPipeInternal(pipeName);
@@ -299,7 +309,7 @@ public abstract class PipeTaskAgent {
     }
   }
 
-  public synchronized List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChanges(
+  public List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChanges(
       List<PipeMeta> pipeMetaListFromCoordinator) {
     acquireWriteLock();
     try {
@@ -356,7 +366,7 @@ public abstract class PipeTaskAgent {
     return exceptionMessages;
   }
 
-  public synchronized void dropAllPipeTasks() {
+  public void dropAllPipeTasks() {
     acquireWriteLock();
     try {
       dropAllPipeTasksInternal();

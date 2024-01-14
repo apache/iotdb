@@ -139,7 +139,7 @@ public class PipeRuntimeAgent implements IService {
     // Quick stop all pipes locally if critical exception occurs,
     // no need to wait for the next heartbeat cycle.
     if (pipeRuntimeException instanceof PipeRuntimeCriticalException) {
-      PipeAgent.task().stopAllPipesWithCriticalException();
+      PipeAgent.task().stopAllPipesWithCriticalExceptionIfPossible();
     }
   }
 
