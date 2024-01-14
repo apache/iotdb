@@ -42,8 +42,8 @@ import java.util.List;
  * This class aims to mark the {@link PlanNode} of schema operation assigned by configNode to
  * selectively forward the operations, {@link Statement}s of which extending {@link
  * IConfigStatement}. The handling logic is defined only in {@link SchemaExecutionVisitor} to
- * execute deletion logic and mark it as received, since the request does not need to pass {@link
- * RegionWriteExecutor} and is assigned directly to regions by configNode.
+ * execute deletion logic and mark it as received, since the request is assigned directly to {@link
+ * RegionWriteExecutor} and needn't be split by partition.
  *
  * <p>
  *
