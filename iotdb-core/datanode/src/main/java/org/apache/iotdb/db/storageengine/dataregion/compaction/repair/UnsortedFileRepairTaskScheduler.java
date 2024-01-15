@@ -92,6 +92,9 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
         List<TsFileResource> resources = timePartition.getAllFiles();
         for (TsFileResource resource : resources) {
           if (resource.getStatus() != TsFileResourceStatus.DELETED) {
+            continue;
+          }
+          if (cannotRepairFiles.contains(resource.getTsFile().getName())) {
             resource.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_REPAIR);
           }
         }
