@@ -176,7 +176,7 @@ public class Cli extends AbstractCli {
       timestampPrecision = properties.getTimestampPrecision();
       AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
       processCommand(ctx, execute, connection);
-      ctx.exit(CODE_ERROR);
+      ctx.exit(lastProcessStatus);
     } catch (SQLException e) {
       ctx.getPrinter().println(IOTDB_ERROR_PREFIX + "Can't execute sql because" + e.getMessage());
       ctx.exit(CODE_ERROR);
