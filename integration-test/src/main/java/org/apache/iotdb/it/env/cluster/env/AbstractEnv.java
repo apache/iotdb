@@ -392,6 +392,14 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
+  public Connection getWriteOnlyConnectionWithSpecifiedDataNode(
+      DataNodeWrapper dataNode, String username, String password) throws SQLException {
+    return new ClusterTestConnection(
+        getWriteConnectionWithSpecifiedDataNode(dataNode, null, username, password),
+        Collections.emptyList());
+  }
+
+  @Override
   public Connection getConnectionWithSpecifiedDataNode(
       DataNodeWrapper dataNode, String username, String password) throws SQLException {
     return new ClusterTestConnection(

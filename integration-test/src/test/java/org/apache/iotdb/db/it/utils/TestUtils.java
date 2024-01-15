@@ -466,7 +466,7 @@ public class TestUtils {
   public static void executeNonQueryOnSpecifiedDataNodeWithRetry(
       BaseEnv env, DataNodeWrapper wrapper, String sql) {
     for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
-      try (Connection connection = env.getConnectionWithSpecifiedDataNode(wrapper);
+      try (Connection connection = env.getWriteOnlyConnectionWithSpecifiedDataNode(wrapper);
           Statement statement = connection.createStatement()) {
         statement.execute(sql);
         break;
@@ -485,7 +485,7 @@ public class TestUtils {
   }
 
   // This method will not throw failure given that a failure is encountered.
-  // Instead, it return a flag to indicate the result of the execution.
+  // Instead, it returns a flag to indicate the result of the execution.
   public static boolean tryExecuteNonQueryOnSpecifiedDataNodeWithRetry(
       BaseEnv env, DataNodeWrapper wrapper, String sql) {
     return tryExecuteNonQueriesOnSpecifiedDataNodeWithRetry(
@@ -496,7 +496,7 @@ public class TestUtils {
       BaseEnv env, DataNodeWrapper wrapper, List<String> sqlList) {
     int lastIndex = 0;
     for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
-      try (Connection connection = env.getConnectionWithSpecifiedDataNode(wrapper);
+      try (Connection connection = env.getWriteOnlyConnectionWithSpecifiedDataNode(wrapper);
           Statement statement = connection.createStatement()) {
         for (int i = lastIndex; i < sqlList.size(); ++i) {
           statement.execute(sqlList.get(i));

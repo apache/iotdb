@@ -133,6 +133,14 @@ public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
   private TSStatus executePlan(ConfigPhysicalPlan plan) throws ConsensusException {
     switch (plan.getType()) {
       case CreateDatabase:
+        ((DatabaseSchemaPlan) plan)
+            .getSchema()
+            .setSchemaReplicationFactor(
+                ConfigNodeDescriptor.getInstance().getConf().getSchemaReplicationFactor());
+        ((DatabaseSchemaPlan) plan)
+            .getSchema()
+            .setDataReplicationFactor(
+                ConfigNodeDescriptor.getInstance().getConf().getDataReplicationFactor());
         return configManager.getClusterSchemaManager().setDatabase((DatabaseSchemaPlan) plan, true);
       case AlterDatabase:
         return configManager

@@ -52,13 +52,9 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualManualIT {
       senderEnv = MultiEnvFactory.getEnv(0);
       receiverEnv = MultiEnvFactory.getEnv(1);
 
-      senderEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(false);
-      receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(false);
-
       senderEnv
           .getConfig()
           .getCommonConfig()
-          .setAutoCreateSchemaEnabled(true)
           .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
           .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
           .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
@@ -187,16 +183,19 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualManualIT {
         "count(timeseries),",
         Collections.singleton(String.format("%d,", successCount)));
 
+    int index;
     try {
-      senderEnv.shutdownDataNode(senderEnv.getFirstLeaderSchemaRegionDataNodeIndex());
+      index = senderEnv.getFirstLeaderSchemaRegionDataNodeIndex();
+      senderEnv.shutdownDataNode(index);
     } catch (Exception e) {
       e.printStackTrace();
       return;
     }
 
     for (int i = 10; i < 20; ++i) {
-      if (TestUtils.tryExecuteNonQueryWithRetry(
+      if (TestUtils.tryExecuteNonQueryOnSpecifiedDataNodeWithRetry(
           senderEnv,
+          senderEnv.getDataNodeWrapper(index == 0 ? 1 : 0),
           String.format(
               "create timeseries root.ln.wf01.GPS.status%s with datatype=BOOLEAN,encoding=PLAIN",
               i))) {

@@ -25,8 +25,10 @@ import org.apache.iotdb.commons.pipe.datastructure.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.event.SerializableEvent;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaTemplatePlan;
@@ -85,6 +87,16 @@ public class ConfigPlanListeningQueue extends AbstractPipeListeningQueue
             LOGGER.warn("Failed to collect UnsetTemplatePlan because ", e);
             return;
           }
+          break;
+        case CreateDatabase:
+          // Do not transfer system database plan
+          if (((DatabaseSchemaPlan) plan)
+              .getSchema()
+              .getName()
+              .equals(SchemaConstant.SYSTEM_DATABASE)) {
+            return;
+          }
+          event = new PipeWriteConfigPlanEvent(plan, isGeneratedByPipe);
           break;
         default:
           event = new PipeWriteConfigPlanEvent(plan, isGeneratedByPipe);
