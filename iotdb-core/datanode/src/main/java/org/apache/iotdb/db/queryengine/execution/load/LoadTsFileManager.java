@@ -168,12 +168,12 @@ public class LoadTsFileManager {
       return;
     }
     try {
-      Files.delete(loadDirPath);
+      Files.deleteIfExists(loadDirPath);
       LOGGER.info("Load dir {} was deleted.", loadDirPath);
     } catch (DirectoryNotEmptyException e) {
       LOGGER.info("Load dir {} is not empty, skip deleting.", loadDirPath);
     } catch (IOException e) {
-      LOGGER.warn(MESSAGE_DELETE_FAIL, loadDirPath, e);
+      LOGGER.info(MESSAGE_DELETE_FAIL, loadDirPath);
     }
   }
 
@@ -187,12 +187,12 @@ public class LoadTsFileManager {
       return;
     }
     try {
-      Files.delete(loadDirPath);
+      Files.deleteIfExists(loadDirPath);
       LOGGER.info("Load dir {} was deleted.", loadDirPath);
     } catch (DirectoryNotEmptyException e) {
       LOGGER.info("Load dir {} is not empty, skip deleting.", loadDirPath);
     } catch (IOException e) {
-      LOGGER.warn(MESSAGE_DELETE_FAIL, loadDirPath, e);
+      LOGGER.info(MESSAGE_DELETE_FAIL, loadDirPath);
     }
   }
 
