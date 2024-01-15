@@ -166,11 +166,11 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
         IOUtils.writePathPrivilege(
             outputStream, pathPrivilege, STRING_ENCODING, encodingBufferLocal);
       }
-      // handle outputstream in save role locally.
+      // handle outputstream's exception in saveRole locally.
       outputStream.flush();
       fileOutputStream.getFD().sync();
     } catch (Exception e) {
-      LOGGER.warn("meet error when save role: {}", role);
+      LOGGER.warn("meet error when save role: {}", role.getName());
       throw new IOException(e);
     } finally {
       encodingBufferLocal.remove();

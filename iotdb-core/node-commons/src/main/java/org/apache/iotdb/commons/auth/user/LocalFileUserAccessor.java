@@ -234,7 +234,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
       outputStream.flush();
       fileOutputStream.getFD().sync();
     } catch (Exception e) {
-      LOGGER.warn("Get exception when save user{}'s privileges", user.getName(), e);
+      LOGGER.warn("Get exception when save user {}'s privileges", user.getName(), e);
       throw new IOException(e);
     } finally {
       encodingBufferLocal.remove();
@@ -258,7 +258,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
       outputStream.flush();
       fileOutputStream.getFD().sync();
     } catch (Exception e) {
-      LOGGER.warn("Get Exception when save user{}'s roles", user.getName(), e);
+      LOGGER.warn("Get Exception when save user {}'s roles", user.getName(), e);
       throw new IOException(e);
     } finally {
       encodingBufferLocal.remove();

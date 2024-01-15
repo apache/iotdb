@@ -123,7 +123,7 @@ public class FileUtils {
           out.flush();
           fileOutputStream.getFD().sync(); // after try block, stream will call close automatically
         } catch (IOException e) {
-          LOGGER.warn("get ioexception on file{}:", file.getName(), e);
+          LOGGER.warn("get ioexception on file {}", file.getAbsolutePath(), e);
           throw e;
         }
       }

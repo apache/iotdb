@@ -45,5 +45,10 @@ public class LocalFileUserManager extends BasicUserManager {
   @Override
   public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
     accessor.processLoadSnapshot(snapshotDir);
+    try {
+      super.reset();
+    } catch (AuthException e) {
+      throw new IOException(e);
+    }
   }
 }
