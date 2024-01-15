@@ -27,6 +27,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.Objects;
 import java.util.function.Function;
 
 public class PlainQueueSerializer<E> implements QueueSerializer<E> {
@@ -41,11 +42,10 @@ public class PlainQueueSerializer<E> implements QueueSerializer<E> {
       E element;
       while (true) {
         element = itr.next(0);
-        if (element == null) {
+        if (Objects.isNull(element)) {
           break;
         }
         ByteBuffer planBuffer = elementSerializationFunction.apply(element);
-        ReadWriteIOUtils.write(planBuffer.capacity(), fileOutputStream);
         ReadWriteIOUtils.write(planBuffer, fileOutputStream);
       }
     }
@@ -60,15 +60,15 @@ public class PlainQueueSerializer<E> implements QueueSerializer<E> {
       Function<ByteBuffer, E> elementDeserializationFunction)
       throws IOException {
     try (FileChannel channel = inputStream.getChannel()) {
-      queue.setFirstIndex(ReadWriteIOUtils.readInt(inputStream));
+      queue.setFirstIndex(ReadWriteIOUtils.readLong(inputStream));
       while (true) {
-        int capacity = ReadWriteIOUtils.readInt(inputStream);
-        if (capacity == -1) {
-          // EOF
+        if (inputStream.available() == 0) {
           return;
         }
+        int capacity = ReadWriteIOUtils.readInt(inputStream);
         ByteBuffer buffer = ByteBuffer.allocate(capacity);
         channel.read(buffer);
+        buffer.flip();
         E element = elementDeserializationFunction.apply(buffer);
         if (element == null) {
           throw new IOException("Failed to load snapshot.");

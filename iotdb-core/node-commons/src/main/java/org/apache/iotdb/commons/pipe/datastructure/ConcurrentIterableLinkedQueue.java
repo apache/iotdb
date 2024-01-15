@@ -182,7 +182,7 @@ public class ConcurrentIterableLinkedQueue<E> {
     }
   }
 
-  public void setFirstIndex(int firstIndex) {
+  public void setFirstIndex(long firstIndex) {
     lock.writeLock().lock();
     try {
       this.firstIndex = firstIndex;
@@ -190,7 +190,7 @@ public class ConcurrentIterableLinkedQueue<E> {
         tailIndex = firstIndex;
       }
     } finally {
-      lock.readLock().unlock();
+      lock.writeLock().unlock();
     }
   }
 

@@ -154,4 +154,8 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
     isSealed.set(true);
     queue.clear();
   }
+
+  public boolean isOpened() {
+    return !isSealed.get();
+  }
 }

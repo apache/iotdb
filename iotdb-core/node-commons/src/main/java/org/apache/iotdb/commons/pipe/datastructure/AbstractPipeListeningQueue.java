@@ -115,7 +115,6 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
       ReadWriteIOUtils.write(snapshotCache.getRight().size(), fileOutputStream);
       for (PipeSnapshotEvent event : snapshotCache.getRight()) {
         ByteBuffer planBuffer = serializeToByteBuffer(event);
-        ReadWriteIOUtils.write(planBuffer.capacity(), fileOutputStream);
         ReadWriteIOUtils.write(planBuffer, fileOutputStream);
       }
     }
@@ -145,7 +144,9 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
           }
           ByteBuffer buffer = ByteBuffer.allocate(capacity);
           channel.read(buffer);
-          snapshotCache.getRight().add((PipeSnapshotEvent) deserializeFromByteBuffer(buffer));
+          PipeSnapshotEvent event = (PipeSnapshotEvent) deserializeFromByteBuffer(buffer);
+          event.increaseReferenceCount(AbstractPipeListeningQueue.class.getName());
+          snapshotCache.getRight().add(event);
         }
       }
     }

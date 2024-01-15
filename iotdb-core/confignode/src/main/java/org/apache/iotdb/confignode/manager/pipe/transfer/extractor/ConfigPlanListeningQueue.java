@@ -170,12 +170,12 @@ public class ConfigPlanListeningQueue extends AbstractPipeListeningQueue
 
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
-    return super.serializeToFile(new File(snapshotDir + SNAPSHOT_FILE_NAME));
+    return super.serializeToFile(new File(snapshotDir, SNAPSHOT_FILE_NAME));
   }
 
   @Override
   public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
-    super.deserializeFromFile(new File(snapshotDir + SNAPSHOT_FILE_NAME));
+    super.deserializeFromFile(new File(snapshotDir, SNAPSHOT_FILE_NAME));
   }
 
   /////////////////////////////// INSTANCE ///////////////////////////////
