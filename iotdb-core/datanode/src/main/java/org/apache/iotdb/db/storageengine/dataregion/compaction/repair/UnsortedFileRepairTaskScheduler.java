@@ -25,8 +25,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceList;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
@@ -72,13 +72,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
       timePartitions.sort(Comparator.reverseOrder());
       TsFileManager tsFileManager = dataRegion.getTsFileManager();
       for (long timePartition : timePartitions) {
-        List<TsFileResource> seqFileListSnapshot =
-            new ArrayList<>(tsFileManager.getOrCreateSequenceListByTimePartition(timePartition));
-        List<TsFileResource> unseqFileListSnapshot =
-            new ArrayList<>(tsFileManager.getOrCreateUnsequenceListByTimePartition(timePartition));
-        allTimePartitionFiles.add(
-            new TimePartitionFiles(
-                dataRegion, timePartition, seqFileListSnapshot, unseqFileListSnapshot));
+        allTimePartitionFiles.add(new TimePartitionFiles(dataRegion, timePartition));
       }
     }
   }
@@ -139,8 +133,8 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
   private void checkOverlapInSequenceSpaceAndRepair(TimePartitionFiles timePartition)
       throws InterruptedException {
     TsFileManager tsFileManager = timePartition.getTsFileManager();
-    TsFileResourceList seqList =
-        tsFileManager.getOrCreateSequenceListByTimePartition(timePartition.getTimePartition());
+    List<TsFileResource> seqList =
+        tsFileManager.getTsFileListSnapshot(timePartition.getTimePartition(), true);
     List<TsFileResource> overlapFiles = checkTimePartitionHasOverlap(seqList);
     for (TsFileResource overlapFile : overlapFiles) {
       RepairUnsortedFileCompactionTask task =
@@ -227,20 +221,27 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
     private final String dataRegionId;
     private final TsFileManager tsFileManager;
     private final long timePartition;
-    private final List<TsFileResource> seqFiles;
-    private final List<TsFileResource> unseqFiles;
+    private final long maxVersion;
 
-    private TimePartitionFiles(
-        DataRegion dataRegion,
-        long timePartition,
-        List<TsFileResource> seqFiles,
-        List<TsFileResource> unseqFiles) {
+    private TimePartitionFiles(DataRegion dataRegion, long timePartition) {
       this.databaseName = dataRegion.getDatabaseName();
       this.dataRegionId = dataRegion.getDataRegionId();
       this.tsFileManager = dataRegion.getTsFileManager();
       this.timePartition = timePartition;
-      this.seqFiles = seqFiles;
-      this.unseqFiles = unseqFiles;
+      this.maxVersion = calculateMaxVersion();
+    }
+
+    private long calculateMaxVersion() {
+      long maxVersion = 0;
+      List<TsFileResource> resources = tsFileManager.getTsFileListSnapshot(timePartition, true);
+      if (!resources.isEmpty()) {
+        maxVersion = getFileVersion(resources.get(resources.size() - 1));
+      }
+      resources = tsFileManager.getTsFileListSnapshot(timePartition, false);
+      if (!resources.isEmpty()) {
+        maxVersion = Math.max(maxVersion, getFileVersion(resources.get(resources.size() - 1)));
+      }
+      return maxVersion;
     }
 
     public long getTimePartition() {
@@ -260,11 +261,35 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
     }
 
     public List<TsFileResource> getSeqFiles() {
-      return seqFiles;
+      return tsFileManager.getTsFileListSnapshot(timePartition, true).stream()
+          .filter(this::resourceVersionFilter)
+          .collect(Collectors.toList());
     }
 
     public List<TsFileResource> getUnseqFiles() {
-      return unseqFiles;
+      return tsFileManager.getTsFileListSnapshot(timePartition, false).stream()
+          .filter(this::resourceVersionFilter)
+          .collect(Collectors.toList());
+    }
+
+    private boolean resourceVersionFilter(TsFileResource resource) {
+      if (resource.getStatus() == TsFileResourceStatus.DELETED
+          || resource.getStatus() == TsFileResourceStatus.UNCLOSED) {
+        return false;
+      }
+      long fileVersion = getFileVersion(resource);
+      return fileVersion >= 0 && fileVersion <= maxVersion;
+    }
+
+    private long getFileVersion(TsFileResource resource) {
+      long version = -1;
+      try {
+        TsFileNameGenerator.TsFileName tsFileName =
+            TsFileNameGenerator.getTsFileName(resource.getTsFile().getName());
+        version = tsFileName.getVersion();
+      } catch (IOException ignored) {
+      }
+      return version;
     }
   }
 }
