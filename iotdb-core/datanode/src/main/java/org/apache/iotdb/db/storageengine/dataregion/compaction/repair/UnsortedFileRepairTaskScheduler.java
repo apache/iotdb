@@ -26,7 +26,6 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
@@ -233,82 +232,5 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
     List<TsFileResource> filesCannotRepair = new ArrayList<>();
     // TODO: find files that can not repair by compaction
     return filesCannotRepair;
-  }
-
-  static class TimePartitionFiles {
-    private final String databaseName;
-    private final String dataRegionId;
-    private final TsFileManager tsFileManager;
-    private final long timePartition;
-    private final long maxFileTimestamp;
-
-    private TimePartitionFiles(DataRegion dataRegion, long timePartition) {
-      this.databaseName = dataRegion.getDatabaseName();
-      this.dataRegionId = dataRegion.getDataRegionId();
-      this.tsFileManager = dataRegion.getTsFileManager();
-      this.timePartition = timePartition;
-      this.maxFileTimestamp = calculateMaxTimestamp();
-    }
-
-    private long calculateMaxTimestamp() {
-      long maxTimestamp = 0;
-      List<TsFileResource> resources = tsFileManager.getTsFileListSnapshot(timePartition, true);
-      if (!resources.isEmpty()) {
-        maxTimestamp = getFileTimestamp(resources.get(resources.size() - 1));
-      }
-      resources = tsFileManager.getTsFileListSnapshot(timePartition, false);
-      if (!resources.isEmpty()) {
-        maxTimestamp = Math.max(maxTimestamp, getFileTimestamp(resources.get(resources.size() - 1)));
-      }
-      return maxTimestamp;
-    }
-
-    public long getTimePartition() {
-      return timePartition;
-    }
-
-    public String getDatabaseName() {
-      return databaseName;
-    }
-
-    public String getDataRegionId() {
-      return dataRegionId;
-    }
-
-    public TsFileManager getTsFileManager() {
-      return tsFileManager;
-    }
-
-    public List<TsFileResource> getSeqFiles() {
-      return tsFileManager.getTsFileListSnapshot(timePartition, true).stream()
-          .filter(this::resourceTimestampFilter)
-          .collect(Collectors.toList());
-    }
-
-    public List<TsFileResource> getUnseqFiles() {
-      return tsFileManager.getTsFileListSnapshot(timePartition, false).stream()
-          .filter(this::resourceTimestampFilter)
-          .collect(Collectors.toList());
-    }
-
-    private boolean resourceTimestampFilter(TsFileResource resource) {
-      if (resource.getStatus() == TsFileResourceStatus.DELETED
-          || resource.getStatus() == TsFileResourceStatus.UNCLOSED) {
-        return false;
-      }
-      long fileTimestamp = getFileTimestamp(resource);
-      return fileTimestamp >= 0 && fileTimestamp <= maxFileTimestamp;
-    }
-
-    private long getFileTimestamp(TsFileResource resource) {
-      long timestamp = -1;
-      try {
-        TsFileNameGenerator.TsFileName tsFileName =
-            TsFileNameGenerator.getTsFileName(resource.getTsFile().getName());
-        timestamp = tsFileName.getTime();
-      } catch (IOException ignored) {
-      }
-      return timestamp;
-    }
   }
 }

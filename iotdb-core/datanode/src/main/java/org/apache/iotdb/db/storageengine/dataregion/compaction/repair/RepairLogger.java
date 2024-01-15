@@ -37,14 +37,10 @@ public class RepairLogger implements Closeable {
     this.logFile = new File(String.format("%s%s", repairTaskStartTime, repairLogSuffix));
   }
 
-  public void recordRepairedTimePartition(
-      UnsortedFileRepairTaskScheduler.TimePartitionFiles timePartition) {}
+  public void recordRepairedTimePartition(TimePartitionFiles timePartition) {}
 
   public void recordCannotRepairFiles(
-      UnsortedFileRepairTaskScheduler.TimePartitionFiles timePartition,
-      List<TsFileResource> resources) {
-
-  }
+      TimePartitionFiles timePartition, List<TsFileResource> resources) {}
 
   public String getRepairLogFilePath() {
     return logFile.getAbsolutePath();
