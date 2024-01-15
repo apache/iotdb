@@ -710,6 +710,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
+      extractorAttributes.put("source.inclusion", "data");
       extractorAttributes.put("source.start-time", "1970-01-01T08:00:02+08:00");
       extractorAttributes.put("source.end-time", "1970-01-01T08:00:04+08:00");
 
