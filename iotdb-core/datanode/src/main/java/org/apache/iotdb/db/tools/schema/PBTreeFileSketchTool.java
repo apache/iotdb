@@ -92,8 +92,6 @@ public class PBTreeFileSketchTool {
   }
 
   public static void main(String[] args) {
-    args = new String[] {"-f", "/Users/chenyanze/Downloads/pbtree.pst", "-o", "sketch_1.txt"};
-//    args = new String[] {"-f", "/Users/chenyanze/Downloads/pbtree1.pst", "-o", "sketch_2.txt"};
     Options options = createOptions();
     HelpFormatter hf = new HelpFormatter();
     hf.setOptionComparator(null);
@@ -121,7 +119,7 @@ public class PBTreeFileSketchTool {
       parseBasicParams(commandLine);
       sketchFile(inputFile, outputFile);
     } catch (Exception e) {
-      logger.error("Encounter an error, because: {} ", e.getMessage(), e);
+      logger.error("Encounter an error, because: {} ", e.getMessage());
     }
   }
 
