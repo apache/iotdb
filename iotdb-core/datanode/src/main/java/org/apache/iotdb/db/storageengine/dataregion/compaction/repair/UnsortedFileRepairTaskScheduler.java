@@ -52,7 +52,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(UnsortedFileRepairTaskScheduler.class);
   private final Set<TimePartitionFiles> allTimePartitionFiles = new HashSet<>();
-  private final RepairLogger repairLogger = new RepairLogger();
+  private RepairLogger repairLogger;
 
   public static boolean markRepairTaskStart() {
     return isRepairingData.compareAndSet(false, true);
@@ -96,6 +96,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
     CompactionScheduler.exclusiveLockCompactionSelection();
     CompactionTaskManager.getInstance().waitAllCompactionFinish();
     try {
+      repairLogger = new RepairLogger();
       executeRepair();
     } catch (Exception e) {
       LOGGER.error("Meet error when execute repair schedule task", e);
@@ -234,7 +235,15 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
 
   private void finishRepairTimePartition(TimePartitionFiles timePartition) {
     allTimePartitionFiles.remove(timePartition);
-    repairLogger.recordRepairedTimePartition(timePartition);
+    try {
+      repairLogger.recordRepairedTimePartition(timePartition);
+    } catch (Exception e) {
+      LOGGER.error(
+          "[RepairScheduler][{}][{}] failed to record repair log for time partition {}",
+          timePartition.getDatabaseName(),
+          timePartition.getDataRegionId(),
+          timePartition.getTimePartition());
+    }
     LOGGER.info(
         "[RepairScheduler][{}][{}] time partition {} has been repaired",
         timePartition.getDatabaseName(),
