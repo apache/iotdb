@@ -833,7 +833,9 @@ public class WrappedSegment implements ISegment<ByteBuffer, ICachedMNode> {
             String.format(
                 "(%s, %s, %s),",
                 pair.left,
-                    isAligned==null?"null":(RecordUtils.getAlignment(bufferR) ? "aligned" : "not_aligned"),
+                isAligned == null
+                    ? "null"
+                    : (RecordUtils.getAlignment(bufferR) ? "aligned" : "not_aligned"),
                 RecordUtils.getRecordSegAddr(bufferR) == -1
                     ? -1
                     : Long.toHexString(RecordUtils.getRecordSegAddr(bufferR))));
@@ -847,19 +849,16 @@ public class WrappedSegment implements ISegment<ByteBuffer, ICachedMNode> {
                 TSEncoding.values()[schemaBytes[1]],
                 CompressionType.deserialize(schemaBytes[2]),
                 RecordUtils.getRecordAlias(bufferR)));
-      } else if(RecordUtils.getRecordType(bufferR) == 5){
+      } else if (RecordUtils.getRecordType(bufferR) == 5) {
         int oriPos = bufferR.position();
         bufferR.position(oriPos + 3);
         long of = ReadWriteIOUtils.readLong(bufferR);
         boolean pred = ReadWriteIOUtils.readBool(bufferR);
-        ViewExpression viewExpression =  ViewExpression.deserialize(bufferR);
+        ViewExpression viewExpression = ViewExpression.deserialize(bufferR);
         // view
         builder.append(
-                String.format(
-                        "view(%s, %s, %s, %s),",
-                        pair.left,
-                        of,pred, viewExpression.toString()));
-      }else {
+            String.format("view(%s, %s, %s, %s),", pair.left, of, pred, viewExpression.toString()));
+      } else {
         throw new BufferUnderflowException();
       }
     }

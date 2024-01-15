@@ -116,7 +116,6 @@ public abstract class PageManager implements IPageManager {
     this.channel = channel;
     this.pmtFile = pmtFile;
     this.readChannel = FileChannel.open(pmtFile.toPath(), StandardOpenOption.READ);
-    this.metric = metric;
 
     if (IoTDBDescriptor.getInstance()
         .getConfig()
@@ -866,16 +865,7 @@ public abstract class PageManager implements IPageManager {
       // for record offset, length of string key
       int totalSize = SchemaFileConfig.SEG_HEADER_SIZE + 6 * childNum;
       for (ICachedMNode child : node.getChildren().values()) {
-        totalSize += child.getName().getBytes().length;
-        if (child.isMeasurement()) {
-          totalSize +=
-              child.getAsMeasurementMNode().getAlias() == null
-                  ? 4
-                  : child.getAsMeasurementMNode().getAlias().getBytes().length + 4;
-          totalSize += 24; // slightly larger than actually HEADER size
-        } else {
-          totalSize += 16; // slightly larger
-        }
+        totalSize += child.getName().getBytes().length + RecordUtils.getRecordLength(child);
       }
       return (short) totalSize > SchemaFileConfig.SEG_MIN_SIZ
           ? (short) totalSize
