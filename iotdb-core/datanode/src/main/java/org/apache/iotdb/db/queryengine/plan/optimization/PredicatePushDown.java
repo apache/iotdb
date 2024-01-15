@@ -295,9 +295,8 @@ public class PredicatePushDown implements PlanOptimizer {
     public void setPushDownFilterNode(FilterNode pushDownFilterNode) {
       this.pushDownFilterNode = pushDownFilterNode;
       this.needProject =
-          !pushDownFilterNode
-              .getOutputColumnNames()
-              .equals(pushDownFilterNode.getChild().getOutputColumnNames());
+          pushDownFilterNode.getOutputColumnNames().size()
+              != pushDownFilterNode.getChild().getOutputColumnNames().size();
     }
 
     public boolean hasNotInheritedPredicate() {
