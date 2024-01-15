@@ -452,10 +452,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     List<String> outputColumnNames = node.getOutputColumnNames();
     List<String> inputColumnNames = node.getChild().getOutputColumnNames();
     List<Integer> remainingColumnIndexList = new ArrayList<>();
-    for (int i = 0; i < inputColumnNames.size(); i++) {
-      if (outputColumnNames.contains(inputColumnNames.get(i))) {
-        remainingColumnIndexList.add(i);
-      }
+    for (String outputColumnName : outputColumnNames) {
+      remainingColumnIndexList.add(inputColumnNames.indexOf(outputColumnName));
     }
     return new ProjectOperator(operatorContext, child, remainingColumnIndexList);
   }

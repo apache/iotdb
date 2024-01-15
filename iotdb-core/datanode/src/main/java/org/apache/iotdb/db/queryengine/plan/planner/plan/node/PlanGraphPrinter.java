@@ -415,7 +415,11 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   public List<String> visitProject(ProjectNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Project-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("OutputColumns: %s", node.getOutputColumnNames()));
+    List<String> outputColumns = node.getOutputColumnNames();
+    for (int i = 0; i < outputColumns.size(); i++) {
+      String outputColumn = outputColumns.get(i);
+      boxValue.add(String.format("OutputColumn-%d: %s", i, outputColumn));
+    }
     return render(node, boxValue, context);
   }
 
