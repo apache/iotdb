@@ -60,8 +60,7 @@ public class PredicatePushIntoScanValidator extends PredicateVisitor<Boolean, Vo
   @Override
   public Boolean visitIsNullExpression(IsNullExpression isNullExpression, Void context) {
     if (!isNullExpression.isNot()) {
-      // IS NULL can be pushed down
-      return false;
+      throw new IllegalArgumentException("IS NULL can be pushed down");
     }
     return processUnaryExpression(isNullExpression);
   }

@@ -181,7 +181,7 @@ public class PredicatePushDown implements PlanOptimizer {
       for (Expression conjunct : conjuncts) {
         boolean canPushDown = false;
         for (int i = 0; i < sourceSymbolForEachChild.size(); i++) {
-          if (PredicateUtils.isPredicateOnlyContainSourceSymbol(
+          if (PredicateUtils.predicateCanPushDownToSource(
               conjunct, sourceSymbolForEachChild.get(i))) {
             pushDownConjunctsForEachChild.get(i).add(conjunct);
             canPushDown = true;
@@ -255,8 +255,7 @@ public class PredicatePushDown implements PlanOptimizer {
       }
 
       Expression inheritedPredicate = context.getInheritedPredicate();
-      if (PredicateUtils.isPredicateOnlyContainSourceSymbol(
-          inheritedPredicate, node.getSourceSymbol())) {
+      if (PredicateUtils.predicateCanPushDownToSource(inheritedPredicate, node.getSourceSymbol())) {
         node.setPushDownPredicate(inheritedPredicate);
         context.setEnablePushDown(true);
         if (context.needProject()) {

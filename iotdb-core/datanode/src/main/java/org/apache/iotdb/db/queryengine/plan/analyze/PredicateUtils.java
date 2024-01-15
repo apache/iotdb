@@ -30,7 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.ternary.TernaryExpression
 import org.apache.iotdb.db.queryengine.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.UnaryExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.visitor.logical.SourceSymbolUniquenessChecker;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.logical.PredicateCanPushDownToSourceChecker;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.logical.TimeFilterExistChecker;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ConvertPredicateToFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ConvertPredicateToTimeFilterVisitor;
@@ -350,8 +350,8 @@ public class PredicateUtils {
     }
   }
 
-  public static boolean isPredicateOnlyContainSourceSymbol(
+  public static boolean predicateCanPushDownToSource(
       Expression predicate, String checkedSourceSymbol) {
-    return new SourceSymbolUniquenessChecker().process(predicate, checkedSourceSymbol);
+    return new PredicateCanPushDownToSourceChecker().process(predicate, checkedSourceSymbol);
   }
 }

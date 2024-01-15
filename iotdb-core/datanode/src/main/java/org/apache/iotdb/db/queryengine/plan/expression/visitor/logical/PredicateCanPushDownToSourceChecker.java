@@ -23,10 +23,21 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.LeafOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.queryengine.plan.expression.unary.IsNullExpression;
 
 import static org.apache.iotdb.tsfile.utils.Preconditions.checkArgument;
 
-public class SourceSymbolUniquenessChecker extends LogicalAndVisitor<String> {
+public class PredicateCanPushDownToSourceChecker extends LogicalAndVisitor<String> {
+
+  @Override
+  public Boolean visitIsNullExpression(
+      IsNullExpression isNullExpression, String checkedSourceSymbol) {
+    if (!isNullExpression.isNot()) {
+      // IS NULL cannot be pushed down
+      return Boolean.FALSE;
+    }
+    return process(isNullExpression.getExpression(), checkedSourceSymbol);
+  }
 
   @Override
   public Boolean visitTimeSeriesOperand(
@@ -34,6 +45,7 @@ public class SourceSymbolUniquenessChecker extends LogicalAndVisitor<String> {
     PartialPath path = timeSeriesOperand.getPath();
 
     checkArgument(path instanceof MeasurementPath);
+    // check if the predicate only contains checkedSourceSymbol
     if (((MeasurementPath) path).isUnderAlignedEntity()) {
       return path.getDevice().equals(checkedSourceSymbol);
     } else {
