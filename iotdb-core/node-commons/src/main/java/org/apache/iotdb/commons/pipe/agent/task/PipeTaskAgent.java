@@ -139,7 +139,8 @@ public abstract class PipeTaskAgent {
 
   protected abstract boolean isShutdown();
 
-  private void executeSinglePipeMetaChanges(final PipeMeta metaFromCoordinator) {
+  private void executeSinglePipeMetaChanges(final PipeMeta metaFromCoordinator)
+      throws IllegalPathException {
     final String pipeName = metaFromCoordinator.getStaticMeta().getPipeName();
     final PipeMeta metaInAgent = pipeMetaKeeper.getPipeMeta(pipeName);
 
@@ -177,7 +178,8 @@ public abstract class PipeTaskAgent {
   private void executeSinglePipeRuntimeMetaChanges(
       /* @NotNull */ PipeStaticMeta pipeStaticMeta,
       /* @NotNull */ PipeRuntimeMeta runtimeMetaFromCoordinator,
-      /* @NotNull */ PipeRuntimeMeta runtimeMetaInAgent) {
+      /* @NotNull */ PipeRuntimeMeta runtimeMetaInAgent)
+      throws IllegalPathException {
     // 1. Handle region group leader changed first
     final Map<Integer, PipeTaskMeta> consensusGroupIdToTaskMetaMapFromCoordinator =
         runtimeMetaFromCoordinator.getConsensusGroupId2TaskMetaMap();
