@@ -301,7 +301,7 @@ public class IoTDBPredicatePushDownIT {
 
   @Test
   public void testAlignedAggregationAlignByTime1() {
-    String expectedHeader1 = "Time,count(root.sg1.d1.s2),count(root.sg1.d1.s3),";
+    String expectedHeader1 = "count(root.sg1.d1.s2),count(root.sg1.d1.s3),";
     String[] retArray1 =
         new String[] {
           "11,11,",
@@ -311,12 +311,12 @@ public class IoTDBPredicatePushDownIT {
         expectedHeader1,
         retArray1);
 
-    String expectedHeader2 = "Time,count(root.sg1.d1.s3),";
+    String expectedHeader2 = "count(root.sg1.d1.s3),";
     String[] retArray2 = new String[] {"11,"};
     resultSetEqualTest(
         "select count(s3) from root.sg1.d1 where s2 >= 10 and s2 < 30", expectedHeader2, retArray2);
 
-    String expectedHeader3 = "Time,count(root.sg1.d1.s2),";
+    String expectedHeader3 = "count(root.sg1.d1.s2),";
     String[] retArray3 =
         new String[] {
           "11,",
@@ -327,7 +327,7 @@ public class IoTDBPredicatePushDownIT {
 
   @Test
   public void testAlignedAggregationAlignByTime2() {
-    String expectedHeader1 = "Time,count(root.sg1.d1.s2),count(root.sg1.d1.s3),";
+    String expectedHeader1 = "count(root.sg1.d1.s2),count(root.sg1.d1.s3),";
     String[] retArray1 =
         new String[] {
           "6,17,",
@@ -335,7 +335,7 @@ public class IoTDBPredicatePushDownIT {
     resultSetEqualTest(
         "select count(s2), count(s3) from root.sg1.d1 where s3 > 15", expectedHeader1, retArray1);
 
-    String expectedHeader2 = "Time,count(root.sg1.d1.s2),";
+    String expectedHeader2 = "count(root.sg1.d1.s2),";
     String[] retArray2 =
         new String[] {
           "6,",
@@ -343,7 +343,7 @@ public class IoTDBPredicatePushDownIT {
     resultSetEqualTest(
         "select count(s2) from root.sg1.d1 where s3 > 15", expectedHeader2, retArray2);
 
-    String expectedHeader3 = "Time,count(root.sg1.d1.s3),";
+    String expectedHeader3 = "count(root.sg1.d1.s3),";
     String[] retArray3 =
         new String[] {
           "17,",
@@ -354,19 +354,19 @@ public class IoTDBPredicatePushDownIT {
 
   @Test
   public void testNonAlignedAggregationAlignByTime1() {
-    String expectedHeader1 = "Time,count(root.sg1.d2.s2),count(root.sg1.d2.s3),";
+    String expectedHeader1 = "count(root.sg1.d2.s2),count(root.sg1.d2.s3),";
     String[] retArray1 = new String[] {"11,11,"};
     resultSetEqualTest(
         "select count(s2), count(s3) from root.sg1.d2 where s2 >= 10 and s2 < 30",
         expectedHeader1,
         retArray1);
 
-    String expectedHeader2 = "Time,count(root.sg1.d2.s3),";
+    String expectedHeader2 = "count(root.sg1.d2.s3),";
     String[] retArray2 = new String[] {"11,"};
     resultSetEqualTest(
         "select count(s3) from root.sg1.d2 where s2 >= 10 and s2 < 30", expectedHeader2, retArray2);
 
-    String expectedHeader3 = "Time,count(root.sg1.d2.s2),";
+    String expectedHeader3 = "count(root.sg1.d2.s2),";
     String[] retArray3 = new String[] {"11,"};
     resultSetEqualTest(
         "select count(s2) from root.sg1.d2 where s2 >= 10 and s2 < 30", expectedHeader3, retArray3);
@@ -374,7 +374,7 @@ public class IoTDBPredicatePushDownIT {
 
   @Test
   public void testNonAlignedAggregationAlignByTime2() {
-    String expectedHeader1 = "Time,count(root.sg1.d2.s2),count(root.sg1.d2.s3),";
+    String expectedHeader1 = "count(root.sg1.d2.s2),count(root.sg1.d2.s3),";
     String[] retArray1 =
         new String[] {
           "5,15,",
@@ -382,7 +382,7 @@ public class IoTDBPredicatePushDownIT {
     resultSetEqualTest(
         "select count(s2), count(s3) from root.sg1.d2 where s3 > 15", expectedHeader1, retArray1);
 
-    String expectedHeader2 = "Time,count(root.sg1.d2.s2),";
+    String expectedHeader2 = "count(root.sg1.d2.s2),";
     String[] retArray2 =
         new String[] {
           "5,",
@@ -390,7 +390,7 @@ public class IoTDBPredicatePushDownIT {
     resultSetEqualTest(
         "select count(s2) from root.sg1.d2 where s3 > 15", expectedHeader2, retArray2);
 
-    String expectedHeader3 = "Time,count(root.sg1.d2.s3),";
+    String expectedHeader3 = "count(root.sg1.d2.s3),";
     String[] retArray3 =
         new String[] {
           "15,",
@@ -402,8 +402,7 @@ public class IoTDBPredicatePushDownIT {
   @Test
   public void testMixAggregationAlignByTime() {
     String expectedHeader1 =
-        "Time,count(root.sg1.d1.s2),count(root.sg1.d2.s2)"
-            + ",count(root.sg1.d1.s3),count(root.sg1.d2.s3),";
+        "count(root.sg1.d1.s2),count(root.sg1.d2.s2),count(root.sg1.d1.s3),count(root.sg1.d2.s3),";
     String[] retArray1 =
         new String[] {
           "11,11,11,11,",
