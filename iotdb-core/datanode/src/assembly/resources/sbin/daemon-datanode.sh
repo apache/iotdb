@@ -58,19 +58,21 @@ RestartPreventExitStatus=SIGKILL
 WantedBy=multi-user.target
 EOF
 
-echo "DataNode service registration successful!"
+echo "Daemon service of IoTDB DataNode has been successfully registered."
 
 systemctl daemon-reload
 
-echo "Do you want to start IoTDB DataNode service ? y/n (default n)"
+echo "Do you want to start IoTDB DataNode ? y/n (default n)"
+echo "or you can use 'systemctl start iotdb-datanode' to start it later."
 read -r START_SERVICE
 echo - - - - - - - - - -
 if [[ "$START_SERVICE" =~ ^[Yy]$ ]]; then
-    ${IOTDB_SBIN_HOME}/sbin/stop-datanode.sh >/dev/null 2>&1 &
+    "${IOTDB_SBIN_HOME}"/sbin/stop-datanode.sh >/dev/null 2>&1 &
     systemctl start iotdb-datanode
 fi
 
-echo "Do you want to start IoTDB DataNode service when startup ? y/n (default n)"
+echo "Do you want to start IoTDB DataNode when system startup ? y/n (default n)"
+echo "or you can use 'systemctl enable iotdb-datanode' to enable it later."
 read -r ADD_STARTUP
 echo - - - - - - - - - -
 if [[ "$ADD_STARTUP" =~ ^[Yy]$ ]]; then
