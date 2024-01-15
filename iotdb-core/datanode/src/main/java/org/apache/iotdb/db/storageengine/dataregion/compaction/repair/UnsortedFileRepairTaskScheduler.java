@@ -240,27 +240,27 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
     private final String dataRegionId;
     private final TsFileManager tsFileManager;
     private final long timePartition;
-    private final long maxVersion;
+    private final long maxFileTimestamp;
 
     private TimePartitionFiles(DataRegion dataRegion, long timePartition) {
       this.databaseName = dataRegion.getDatabaseName();
       this.dataRegionId = dataRegion.getDataRegionId();
       this.tsFileManager = dataRegion.getTsFileManager();
       this.timePartition = timePartition;
-      this.maxVersion = calculateMaxVersion();
+      this.maxFileTimestamp = calculateMaxTimestamp();
     }
 
-    private long calculateMaxVersion() {
-      long maxVersion = 0;
+    private long calculateMaxTimestamp() {
+      long maxTimestamp = 0;
       List<TsFileResource> resources = tsFileManager.getTsFileListSnapshot(timePartition, true);
       if (!resources.isEmpty()) {
-        maxVersion = getFileVersion(resources.get(resources.size() - 1));
+        maxTimestamp = getFileTimestamp(resources.get(resources.size() - 1));
       }
       resources = tsFileManager.getTsFileListSnapshot(timePartition, false);
       if (!resources.isEmpty()) {
-        maxVersion = Math.max(maxVersion, getFileVersion(resources.get(resources.size() - 1)));
+        maxTimestamp = Math.max(maxTimestamp, getFileTimestamp(resources.get(resources.size() - 1)));
       }
-      return maxVersion;
+      return maxTimestamp;
     }
 
     public long getTimePartition() {
@@ -281,34 +281,34 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
 
     public List<TsFileResource> getSeqFiles() {
       return tsFileManager.getTsFileListSnapshot(timePartition, true).stream()
-          .filter(this::resourceVersionFilter)
+          .filter(this::resourceTimestampFilter)
           .collect(Collectors.toList());
     }
 
     public List<TsFileResource> getUnseqFiles() {
       return tsFileManager.getTsFileListSnapshot(timePartition, false).stream()
-          .filter(this::resourceVersionFilter)
+          .filter(this::resourceTimestampFilter)
           .collect(Collectors.toList());
     }
 
-    private boolean resourceVersionFilter(TsFileResource resource) {
+    private boolean resourceTimestampFilter(TsFileResource resource) {
       if (resource.getStatus() == TsFileResourceStatus.DELETED
           || resource.getStatus() == TsFileResourceStatus.UNCLOSED) {
         return false;
       }
-      long fileVersion = getFileVersion(resource);
-      return fileVersion >= 0 && fileVersion <= maxVersion;
+      long fileTimestamp = getFileTimestamp(resource);
+      return fileTimestamp >= 0 && fileTimestamp <= maxFileTimestamp;
     }
 
-    private long getFileVersion(TsFileResource resource) {
-      long version = -1;
+    private long getFileTimestamp(TsFileResource resource) {
+      long timestamp = -1;
       try {
         TsFileNameGenerator.TsFileName tsFileName =
             TsFileNameGenerator.getTsFileName(resource.getTsFile().getName());
-        version = tsFileName.getVersion();
+        timestamp = tsFileName.getTime();
       } catch (IOException ignored) {
       }
-      return version;
+      return timestamp;
     }
   }
 }

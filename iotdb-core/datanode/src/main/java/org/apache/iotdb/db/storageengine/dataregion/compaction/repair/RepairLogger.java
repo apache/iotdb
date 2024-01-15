@@ -42,7 +42,9 @@ public class RepairLogger implements Closeable {
 
   public void recordCannotRepairFiles(
       UnsortedFileRepairTaskScheduler.TimePartitionFiles timePartition,
-      List<TsFileResource> resources) {}
+      List<TsFileResource> resources) {
+
+  }
 
   public String getRepairLogFilePath() {
     return logFile.getAbsolutePath();
