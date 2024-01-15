@@ -54,6 +54,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(UnsortedFileRepairTaskScheduler.class);
   private final Set<TimePartitionFiles> allTimePartitionFiles = new HashSet<>();
+  private final RepairLogger repairLogger = new RepairLogger();
 
   public static boolean markRepairTaskStart() {
     return isRepairingData.compareAndSet(false, true);
@@ -70,7 +71,6 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
       }
       List<Long> timePartitions = dataRegion.getTimePartitions();
       timePartitions.sort(Comparator.reverseOrder());
-      TsFileManager tsFileManager = dataRegion.getTsFileManager();
       for (long timePartition : timePartitions) {
         allTimePartitionFiles.add(new TimePartitionFiles(dataRegion, timePartition));
       }
@@ -84,16 +84,23 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
     try {
       executeRepair();
     } catch (Exception e) {
-
+      LOGGER.error("Meet error when execute repair schedule task", e);
     } finally {
       isRepairingData.set(false);
+      try {
+        repairLogger.close();
+      } catch (Exception e) {
+        LOGGER.error("Failed to close repair logger {}", repairLogger.getRepairLogFilePath(), e);
+      }
       CompactionScheduler.unlockCompactionSelection();
     }
   }
 
   private void executeRepair() throws InterruptedException {
     for (TimePartitionFiles timePartition : allTimePartitionFiles) {
+      // repair unsorted data in single file
       checkInternalUnsortedFileAndRepair(timePartition);
+      // repair unsorted data between sequence files
       checkOverlapInSequenceSpaceAndRepair(timePartition);
       finishRepairTimePartition(timePartition);
     }
@@ -144,7 +151,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
               overlapFile,
               true,
               false,
-              0);
+              tsFileManager.getNextCompactionTaskId());
       if (CompactionTaskManager.getInstance().addTaskToWaitingQueue(task)) {
         // TODO: wait the repair compaction task finished
 
@@ -164,7 +171,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
       DeviceTimeIndex deviceTimeIndex;
       try {
         deviceTimeIndex = getDeviceTimeIndex(resource);
-      } catch (Exception e) {
+      } catch (Exception ignored) {
         continue;
       }
 
@@ -212,11 +219,23 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
   }
 
   private void finishRepairTimePartition(TimePartitionFiles timePartition) {
-
     allTimePartitionFiles.remove(timePartition);
+    repairLogger.recordRepairedTimePartition(timePartition);
+    repairLogger.recordCannotRepairFiles(timePartition, collectCannotRepairFiles(timePartition));
+    LOGGER.info(
+        "[RepairScheduler][{}][{}] time partition {} has been repaired",
+        timePartition.getDatabaseName(),
+        timePartition.getDataRegionId(),
+        timePartition.getTimePartition());
   }
 
-  private static class TimePartitionFiles {
+  private List<TsFileResource> collectCannotRepairFiles(TimePartitionFiles timePartition) {
+    List<TsFileResource> filesCannotRepair = new ArrayList<>();
+    // TODO: find files that can not repair by compaction
+    return filesCannotRepair;
+  }
+
+  static class TimePartitionFiles {
     private final String databaseName;
     private final String dataRegionId;
     private final TsFileManager tsFileManager;
