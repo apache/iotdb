@@ -25,26 +25,31 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.io.Closeable;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class RepairLogger implements Closeable {
 
-  private static final String repairTimePartitionStartLogPrefix = "START_TIME_PARTITION";
-  private static final String cannotRepairFileLogPrefix = "TSFILE";
-  private static final String repairTimePartitionEndLogPrefix = "END_TIME_PARTITION";
-  private static final String repairLogSuffix = ".repair-data.log";
+  static final String repairTimePartitionStartLogPrefix = "START_TIME_PARTITION";
+  static final String cannotRepairFileLogPrefix = "TSFILE";
+  static final String repairTimePartitionEndLogPrefix = "END_TIME_PARTITION";
+  static final String repairLogSuffix = ".repair-data.log";
   private final File logFile;
   private final long repairTaskStartTime;
   private final FileOutputStream logStream;
 
-  public RepairLogger() throws FileNotFoundException {
+  public RepairLogger(boolean isRecover) throws IOException {
     this.repairTaskStartTime = System.currentTimeMillis();
     this.logFile = new File(String.format("%s%s", repairTaskStartTime, repairLogSuffix));
+    Path logFilePath = logFile.toPath();
+    if (!Files.exists(logFilePath)) {
+      Files.createFile(logFilePath);
+    }
     this.logStream = new FileOutputStream(logFile, true);
   }
 

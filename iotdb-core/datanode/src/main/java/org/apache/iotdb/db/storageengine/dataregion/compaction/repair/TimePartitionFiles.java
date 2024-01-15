@@ -33,9 +33,9 @@ import java.util.stream.Collectors;
 class TimePartitionFiles {
   private final String databaseName;
   private final String dataRegionId;
-  private final TsFileManager tsFileManager;
+  private TsFileManager tsFileManager;
   private final long timePartition;
-  private final long maxFileTimestamp;
+  private long maxFileTimestamp;
 
   TimePartitionFiles(DataRegion dataRegion, long timePartition) {
     this.databaseName = dataRegion.getDatabaseName();
@@ -43,6 +43,12 @@ class TimePartitionFiles {
     this.tsFileManager = dataRegion.getTsFileManager();
     this.timePartition = timePartition;
     this.maxFileTimestamp = calculateMaxTimestamp();
+  }
+
+  TimePartitionFiles(String databaseName, String dataRegionId, long timePartition) {
+    this.databaseName = databaseName;
+    this.dataRegionId = dataRegionId;
+    this.timePartition = timePartition;
   }
 
   private long calculateMaxTimestamp() {

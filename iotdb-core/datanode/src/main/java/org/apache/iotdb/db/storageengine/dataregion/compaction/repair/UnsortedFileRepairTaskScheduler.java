@@ -53,6 +53,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
       LoggerFactory.getLogger(UnsortedFileRepairTaskScheduler.class);
   private final Set<TimePartitionFiles> allTimePartitionFiles = new HashSet<>();
   private RepairLogger repairLogger;
+  private final boolean isRecover;
 
   public static boolean markRepairTaskStart() {
     return isRepairingData.compareAndSet(false, true);
@@ -65,6 +66,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
 
   /** Used for recover from log file */
   public UnsortedFileRepairTaskScheduler(List<DataRegion> dataRegions, boolean isRecover) {
+    this.isRecover = isRecover;
     collectTimePartitions(dataRegions);
     if (isRecover) {
       recover(dataRegions);
@@ -76,7 +78,12 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
     LOGGER.info(
         "recover unfinished repair schedule task from log file: {}",
         recoveryPerformer.getRepairLogFilePath());
-    recoveryPerformer.perform();
+    try {
+      recoveryPerformer.perform();
+    } catch (Exception e) {
+      LOGGER.error(
+          "Failed to parse repair log file {}", recoveryPerformer.getRepairLogFilePath(), e);
+    }
   }
 
   private void collectTimePartitions(List<DataRegion> dataRegions) {
@@ -96,7 +103,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
     CompactionScheduler.exclusiveLockCompactionSelection();
     CompactionTaskManager.getInstance().waitAllCompactionFinish();
     try {
-      repairLogger = new RepairLogger();
+      repairLogger = new RepairLogger(isRecover);
       executeRepair();
     } catch (Exception e) {
       LOGGER.error("Meet error when execute repair schedule task", e);
