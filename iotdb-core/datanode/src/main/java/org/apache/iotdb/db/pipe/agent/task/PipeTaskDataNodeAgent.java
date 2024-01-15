@@ -29,8 +29,10 @@ import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.PipeDataRegionFilter;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
@@ -39,6 +41,8 @@ import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaNodeListeningQueue;
 import org.apache.iotdb.db.pipe.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeBuilder;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeTaskBuilder;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.OperateSchemaQueueNode;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
@@ -54,10 +58,9 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 public class PipeTaskDataNodeAgent extends PipeTaskAgent {
 
@@ -121,25 +124,32 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
     // Clear useless events for listening queues
     try {
       // Remove used messages
-      final ConcurrentMap<Integer, Long> earliestIndexMap = new ConcurrentHashMap<>();
+      final Map<Integer, Long> earliestIndexMap = new HashMap<>();
 
-      pipeMetaListFromCoordinator.forEach(
-          pipeMeta -> {
-            Map<Integer, PipeTaskMeta> metaMap =
-                pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
-            for (SchemaRegionId regionId : SchemaEngine.getInstance().getAllSchemaRegionIds()) {
-              int id = regionId.getId();
-              PipeTaskMeta schemaMeta = metaMap.get(id);
-              if (schemaMeta != null) {
-                ProgressIndex schemaIndex = schemaMeta.getProgressIndex();
-                if (schemaIndex instanceof MetaProgressIndex
-                    && ((MetaProgressIndex) schemaIndex).getIndex()
-                        < earliestIndexMap.getOrDefault(id, Long.MAX_VALUE)) {
-                  earliestIndexMap.put(id, ((MetaProgressIndex) schemaIndex).getIndex());
-                }
+      for (PipeMeta pipeMeta : pipeMetaListFromCoordinator) {
+        Map<Integer, PipeTaskMeta> metaMap =
+            pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
+
+        if (!PipeSchemaNodeFilter.getPipeListenSet(
+                pipeMeta.getStaticMeta().getExtractorParameters())
+            .isEmpty()) {
+          for (SchemaRegionId regionId : SchemaEngine.getInstance().getAllSchemaRegionIds()) {
+            int id = regionId.getId();
+            PipeTaskMeta schemaMeta = metaMap.get(id);
+
+            if (schemaMeta != null) {
+              ProgressIndex schemaIndex = schemaMeta.getProgressIndex();
+              if (schemaIndex instanceof MetaProgressIndex
+                  && ((MetaProgressIndex) schemaIndex).getIndex()
+                      < earliestIndexMap.getOrDefault(id, Long.MAX_VALUE)) {
+                earliestIndexMap.put(id, ((MetaProgressIndex) schemaIndex).getIndex());
+              } else if (!earliestIndexMap.containsKey(id)) {
+                earliestIndexMap.put(id, Long.MAX_VALUE);
               }
             }
-          });
+          }
+        }
+      }
 
       // Do not clear if there are only "minimumProgressIndex"s to avoid clearing
       // the queue when there are schema tasks that haven't been started yet
@@ -147,6 +157,29 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
       // at this round of metaSync, no need to clear here
       earliestIndexMap.forEach(
           (schemaId, index) -> SchemaNodeListeningQueue.getInstance(schemaId).removeBefore(index));
+
+      // Close queues of no sending pipe because there may be no pipeTasks originally for
+      // listening queues
+      SchemaEngine.getInstance()
+          .getAllSchemaRegionIds()
+          .forEach(
+              schemaRegionId -> {
+                int id = schemaRegionId.getId();
+                if (!earliestIndexMap.containsKey(id)
+                    && SchemaNodeListeningQueue.getInstance(id).isLeaderReady()
+                    && SchemaNodeListeningQueue.getInstance(id).isOpened()) {
+                  try {
+                    SchemaRegionConsensusImpl.getInstance()
+                        .write(
+                            schemaRegionId, new OperateSchemaQueueNode(new PlanNodeId(""), false));
+                  } catch (ConsensusException e) {
+                    LOGGER.warn(
+                        "Failed to close listening queue for schemaRegion {}, because {}",
+                        schemaRegionId,
+                        e.getMessage());
+                  }
+                }
+              });
     } catch (Exception e) {
       final String errorMessage =
           String.format("Failed to handle pipe meta changes because %s", e.getMessage());
