@@ -289,6 +289,9 @@ public class Analysis {
   private List<String> measurementList;
   private List<IMeasurementSchema> measurementSchemaList;
 
+  // tmp variable, remove before merge
+  private boolean buildPlanUseTemplate;
+
   public Analysis() {
     this.finishQueryAfterAnalyze = false;
   }
@@ -876,5 +879,13 @@ public class Analysis {
 
   public boolean isTemplateWildCardQuery() {
     return this.templateWildCardQuery;
+  }
+
+  public void setBuildPlanUseTemplate(boolean buildPlanUseTemplate) {
+    this.buildPlanUseTemplate = buildPlanUseTemplate;
+  }
+
+  public boolean isBuildPlanUseTemplate() {
+    return this.buildPlanUseTemplate;
   }
 }

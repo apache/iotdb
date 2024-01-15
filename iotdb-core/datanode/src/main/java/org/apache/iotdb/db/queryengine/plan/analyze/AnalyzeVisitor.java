@@ -259,6 +259,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       if (queryStatement.isAlignByDevice()) {
         if (TemplatedAnalyze.canBuildPlanUseTemplate(
             analysis, queryStatement, partitionFetcher, schemaTree, context)) {
+          analysis.setBuildPlanUseTemplate(true);
           return analysis;
         }
 
