@@ -19,12 +19,16 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.repair;
 
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class RepairLogger implements Closeable {
 
@@ -37,10 +41,33 @@ public class RepairLogger implements Closeable {
     this.logFile = new File(String.format("%s%s", repairTaskStartTime, repairLogSuffix));
   }
 
-  public void recordRepairedTimePartition(TimePartitionFiles timePartition) {}
+  void recordRepairedTimePartition(TimePartitionFiles timePartition) {
+    markStartOfRepairedTimePartition(timePartition);
+    recordCannotRepairFiles(timePartition);
+    markEndOfRepairedTimePartition(timePartition);
+  }
 
-  public void recordCannotRepairFiles(
-      TimePartitionFiles timePartition, List<TsFileResource> resources) {}
+  void recordCannotRepairFiles(TimePartitionFiles timePartition) {
+    TsFileManager tsFileManager = timePartition.getTsFileManager();
+    List<TsFileResource> seqResources =
+        tsFileManager.getTsFileListSnapshot(timePartition.getTimePartition(), true);
+    List<TsFileResource> unseqResources =
+        tsFileManager.getTsFileListSnapshot(timePartition.getTimePartition(), false);
+    List<TsFileResource> cannotRepairFiles =
+        Stream.concat(seqResources.stream(), unseqResources.stream())
+            .filter(
+                resource -> resource.getTsFileRepairStatus() == TsFileRepairStatus.CAN_NOT_REPAIR)
+            .collect(Collectors.toList());
+    for (TsFileResource cannotRepairFile : cannotRepairFiles) {
+      recordOneFile(cannotRepairFile);
+    }
+  }
+
+  private void markStartOfRepairedTimePartition(TimePartitionFiles timePartition) {}
+
+  private void markEndOfRepairedTimePartition(TimePartitionFiles timePartition) {}
+
+  private void recordOneFile(TsFileResource resource) {}
 
   public String getRepairLogFilePath() {
     return logFile.getAbsolutePath();

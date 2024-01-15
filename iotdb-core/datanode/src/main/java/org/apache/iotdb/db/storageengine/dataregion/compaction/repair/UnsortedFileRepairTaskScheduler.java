@@ -35,7 +35,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -60,16 +59,15 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
   }
 
   public UnsortedFileRepairTaskScheduler(List<DataRegion> dataRegions) {
-    collectFiles(dataRegions);
+    collectTimePartitions(dataRegions);
   }
 
-  private void collectFiles(List<DataRegion> dataRegions) {
+  private void collectTimePartitions(List<DataRegion> dataRegions) {
     for (DataRegion dataRegion : dataRegions) {
       if (dataRegion == null) {
         continue;
       }
       List<Long> timePartitions = dataRegion.getTimePartitions();
-      timePartitions.sort(Comparator.reverseOrder());
       for (long timePartition : timePartitions) {
         allTimePartitionFiles.add(new TimePartitionFiles(dataRegion, timePartition));
       }
@@ -220,17 +218,10 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
   private void finishRepairTimePartition(TimePartitionFiles timePartition) {
     allTimePartitionFiles.remove(timePartition);
     repairLogger.recordRepairedTimePartition(timePartition);
-    repairLogger.recordCannotRepairFiles(timePartition, collectCannotRepairFiles(timePartition));
     LOGGER.info(
         "[RepairScheduler][{}][{}] time partition {} has been repaired",
         timePartition.getDatabaseName(),
         timePartition.getDataRegionId(),
         timePartition.getTimePartition());
-  }
-
-  private List<TsFileResource> collectCannotRepairFiles(TimePartitionFiles timePartition) {
-    List<TsFileResource> filesCannotRepair = new ArrayList<>();
-    // TODO: find files that can not repair by compaction
-    return filesCannotRepair;
   }
 }
