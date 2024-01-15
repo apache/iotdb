@@ -61,6 +61,7 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualManualIT {
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.exception.conflict.resolve-strategy", "retry");
       connectorAttributes.put("connector.exception.conflict.retry-max-time-seconds", "-1");
+      connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
@@ -88,6 +89,7 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualManualIT {
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.exception.conflict.resolve-strategy", "retry");
       connectorAttributes.put("connector.exception.conflict.retry-max-time-seconds", "-1");
+      connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", senderEnv.getDataNodeWrapper(0).getIp());
       connectorAttributes.put(
           "connector.port", Integer.toString(senderEnv.getDataNodeWrapper(0).getPort()));
@@ -167,6 +169,7 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualManualIT {
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.exception.conflict.resolve-strategy", "retry");
       connectorAttributes.put("connector.exception.conflict.retry-max-time-seconds", "-1");
+      connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
@@ -194,6 +197,7 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualManualIT {
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.exception.conflict.resolve-strategy", "retry");
       connectorAttributes.put("connector.exception.conflict.retry-max-time-seconds", "-1");
+      connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", senderEnv.getDataNodeWrapper(0).getIp());
       connectorAttributes.put(
           "connector.port", Integer.toString(senderEnv.getDataNodeWrapper(0).getPort()));

@@ -374,6 +374,7 @@ public class IoTDBIdempotentIT extends AbstractPipeDualManualIT {
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.exception.conflict.resolve-strategy", "retry");
       connectorAttributes.put("connector.exception.conflict.retry-max-time-seconds", "-1");
 
