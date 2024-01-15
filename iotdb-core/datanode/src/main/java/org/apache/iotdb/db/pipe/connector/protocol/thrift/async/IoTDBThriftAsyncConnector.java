@@ -331,11 +331,11 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
   }
 
   /**
-   * Transfer queued events which are waiting for retry.
+   * Transfer queued {@link Event}s which are waiting for retry.
    *
    * @throws Exception if an error occurs. The error will be handled by pipe framework, which will
-   *     retry the event and mark the event as failure and stop the pipe if the retry times exceeds
-   *     the threshold.
+   *     retry the {@link Event} and mark the {@link Event} as failure and stop the pipe if the
+   *     retry times exceeds the threshold.
    * @see PipeConnector#transfer(Event) for more details.
    * @see PipeConnector#transfer(TabletInsertionEvent) for more details.
    * @see PipeConnector#transfer(TsFileInsertionEvent) for more details.

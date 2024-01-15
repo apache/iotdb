@@ -144,6 +144,13 @@ public interface BaseEnv {
   ISession getSessionConnection(List<String> nodeUrls) throws IoTDBConnectionException;
 
   /**
+   * Get the index of the first dataNode with a SchemaRegion leader.
+   *
+   * @return The index of DataNode with SchemaRegion-leader in dataNodeWrapperList
+   */
+  int getFirstLeaderSchemaRegionDataNodeIndex() throws IOException, InterruptedException;
+
+  /**
    * Get the index of the ConfigNode leader.
    *
    * @return The index of ConfigNode-Leader in configNodeWrapperList

@@ -235,6 +235,11 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
+  public int getFirstLeaderSchemaRegionDataNodeIndex() {
+    return -1;
+  }
+
+  @Override
   public int getLeaderConfigNodeIndex() {
     return -1;
   }
