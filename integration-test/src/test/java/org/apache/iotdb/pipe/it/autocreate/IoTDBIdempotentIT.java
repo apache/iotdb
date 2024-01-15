@@ -54,7 +54,11 @@ public class IoTDBIdempotentIT extends AbstractPipeDualAutoIT {
       senderEnv = MultiEnvFactory.getEnv(0);
       receiverEnv = MultiEnvFactory.getEnv(1);
 
-      senderEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
+      senderEnv
+          .getConfig()
+          .getCommonConfig()
+          .setAutoCreateSchemaEnabled(true)
+          .setDefaultSchemaRegionGroupNumPerDatabase(1);
       receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
 
       // Limit the schemaRegion number to 1 to guarantee the after sql executed on the same region
@@ -103,7 +107,7 @@ public class IoTDBIdempotentIT extends AbstractPipeDualAutoIT {
   public void testInternalCreateTimeseriesIdempotent() throws Exception {
     testIdempotent(
         Collections.emptyList(),
-        "insert into root.test.g1(time, speed) values(now(), 1.0);",
+        "insert into root.ln.wf01.wt01(time, status0) values(now(), false);",
         "create timeseries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
         "count timeseries",
         "count(timeseries),",
