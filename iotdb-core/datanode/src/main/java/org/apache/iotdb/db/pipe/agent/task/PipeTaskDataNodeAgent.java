@@ -91,10 +91,11 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
       final PipeParameters extractorParameters = pipeStaticMeta.getExtractorParameters();
 
       // Advance the extractor parameters parsing logic to avoid creating un-relevant pipeTasks
-      if (StorageEngine.getInstance()
-                  .getAllDataRegionIds()
-                  .contains(new DataRegionId(consensusGroupId))
-              && PipeDataRegionFilter.getDataRegionListenPair(extractorParameters).getLeft()
+      if (Boolean.TRUE.equals(
+              StorageEngine.getInstance()
+                      .getAllDataRegionIds()
+                      .contains(new DataRegionId(consensusGroupId))
+                  && PipeDataRegionFilter.getDataRegionListenPair(extractorParameters).getLeft())
           || SchemaEngine.getInstance()
                   .getAllSchemaRegionIds()
                   .contains(new SchemaRegionId(consensusGroupId))
@@ -144,6 +145,8 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
                       < earliestIndexMap.getOrDefault(id, Long.MAX_VALUE)) {
                 earliestIndexMap.put(id, ((MetaProgressIndex) schemaIndex).getIndex());
               } else if (!earliestIndexMap.containsKey(id)) {
+                // Do not clear "minimumProgressIndex"s related queue to avoid clearing
+                // the queue when there are schema tasks just started and transferring
                 earliestIndexMap.put(id, Long.MAX_VALUE);
               }
             }
@@ -151,10 +154,6 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
         }
       }
 
-      // Do not clear if there are only "minimumProgressIndex"s to avoid clearing
-      // the queue when there are schema tasks that haven't been started yet
-      // If there are no pipeTasks on a schema region then the queue has already been closed
-      // at this round of metaSync, no need to clear here
       earliestIndexMap.forEach(
           (schemaId, index) -> SchemaNodeListeningQueue.getInstance(schemaId).removeBefore(index));
 

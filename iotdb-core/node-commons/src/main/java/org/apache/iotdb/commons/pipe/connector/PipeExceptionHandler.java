@@ -113,6 +113,7 @@ public class PipeExceptionHandler {
         return;
         // PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION
       case 1809:
+        firstEncounterTime = 0;
         LOGGER.info(
             "Idempotent conflict exception in pipe transfer, will ignore. status: {}", status);
         return;
@@ -157,5 +158,9 @@ public class PipeExceptionHandler {
         }
         throw new PipeException(exceptionMessage);
     }
+  }
+
+  public void reset() {
+    firstEncounterTime = 0;
   }
 }
