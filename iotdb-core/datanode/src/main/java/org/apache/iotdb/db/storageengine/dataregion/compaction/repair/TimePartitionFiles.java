@@ -26,6 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -90,6 +91,15 @@ class TimePartitionFiles {
     return tsFileManager.getTsFileListSnapshot(timePartition, false).stream()
         .filter(this::resourceTimestampFilter)
         .collect(Collectors.toList());
+  }
+
+  public List<TsFileResource> getAllFiles() {
+    List<TsFileResource> seqFiles = getSeqFiles();
+    List<TsFileResource> unseqFiles = getUnseqFiles();
+    List<TsFileResource> allFiles = new ArrayList<>(seqFiles.size() + unseqFiles.size());
+    allFiles.addAll(seqFiles);
+    allFiles.addAll(unseqFiles);
+    return allFiles;
   }
 
   private boolean resourceTimestampFilter(TsFileResource resource) {

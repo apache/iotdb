@@ -24,6 +24,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.Repa
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
@@ -80,6 +81,21 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
         recoveryPerformer.getRepairLogFilePath());
     try {
       recoveryPerformer.perform();
+      Map<TimePartitionFiles, Set<String>> repairedTimePartitionWithCannotRepairFiles =
+          recoveryPerformer.getRepairedTimePartitionsWithCannotRepairFiles();
+      for (TimePartitionFiles timePartition : allTimePartitionFiles) {
+        Set<String> cannotRepairFiles = repairedTimePartitionWithCannotRepairFiles.remove(timePartition);
+        if (cannotRepairFiles == null || cannotRepairFiles.isEmpty()) {
+          continue;
+        }
+        // mark cannot repair file in TsFileResource
+        List<TsFileResource> resources = timePartition.getAllFiles();
+        for (TsFileResource resource : resources) {
+          if (resource.getStatus() != TsFileResourceStatus.DELETED) {
+            resource.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_REPAIR);
+          }
+        }
+      }
     } catch (Exception e) {
       LOGGER.error(
           "Failed to parse repair log file {}", recoveryPerformer.getRepairLogFilePath(), e);

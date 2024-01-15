@@ -26,6 +26,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -33,9 +34,9 @@ import java.util.Set;
 public class RepairTaskRecoveryPerformer {
 
   private File logFile;
-  private Map<TimePartitionFiles, List<String>> repairedTimePartitionsWithCannotRepairFiles;
+  private Map<TimePartitionFiles, Set<String>> repairedTimePartitionsWithCannotRepairFiles;
   private TimePartitionFiles currentTimePartition;
-  private List<String> currentTimePartitionCannotRepairFiles;
+  private Set<String> currentTimePartitionCannotRepairFiles;
 
   public RepairTaskRecoveryPerformer(List<DataRegion> dataRegions) {}
 
@@ -44,18 +45,20 @@ public class RepairTaskRecoveryPerformer {
     parseLogFile();
   }
 
-  private void findLogFile() {}
+  private void findLogFile() {
+    // TODO: find the active log file
+  }
 
   private void parseLogFile() throws IOException {
     try (BufferedReader reader = new BufferedReader(new FileReader(logFile))) {
       String curLine;
       while ((curLine = reader.readLine()) != null) {
         if (curLine.startsWith(RepairLogger.repairTimePartitionStartLogPrefix)) {
-          parseStartTimePartitionLog(curLine);
+          parseStartTimePartitionLog(curLine.trim());
         } else if (curLine.startsWith(RepairLogger.repairTimePartitionEndLogPrefix)) {
-          parseEndTimePartitionLog(curLine);
+          parseEndTimePartitionLog(curLine.trim());
         } else if (curLine.startsWith(RepairLogger.cannotRepairFileLogPrefix)) {
-          parseFileLog(curLine);
+          parseFileLog(curLine.trim());
         } else {
           throw new IllegalArgumentException("Unknown format of repair log");
         }
@@ -72,7 +75,7 @@ public class RepairTaskRecoveryPerformer {
       throw new RuntimeException(String.format("String '%s' is not a legal repair log", line));
     }
     currentTimePartition = new TimePartitionFiles(values[1], values[2], Long.parseLong(values[3]));
-    currentTimePartitionCannotRepairFiles = new ArrayList<>();
+    currentTimePartitionCannotRepairFiles = new HashSet<>();
   }
 
   private void parseFileLog(String line) {
@@ -90,6 +93,10 @@ public class RepairTaskRecoveryPerformer {
     List<TimePartitionFiles> repairedTimePartitions = new ArrayList<>();
 
     return repairedTimePartitions;
+  }
+
+  public Map<TimePartitionFiles, Set<String>> getRepairedTimePartitionsWithCannotRepairFiles() {
+    return repairedTimePartitionsWithCannotRepairFiles;
   }
 
   private void markResourcesThatCannotRepair(Set<TimePartitionFiles> timePartitions) {}
