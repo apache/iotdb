@@ -1010,8 +1010,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       }
     } else {
       try {
-        StorageEngine.getInstance().repairData();
-        tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+        if (StorageEngine.getInstance().repairData()) {
+          tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+        } else {
+          tsStatus =
+              RpcUtils.getStatus(
+                  TSStatusCode.EXECUTE_STATEMENT_ERROR, "already have a running repair task");
+        }
       } catch (Exception e) {
         tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
       }

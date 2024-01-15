@@ -560,10 +560,9 @@ public class StorageEngine implements IService {
    *
    * @throws StorageEngineException StorageEngineException
    */
-  public void repairData() throws StorageEngineException {
+  public boolean repairData() throws StorageEngineException {
     if (!UnsortedFileRepairTaskScheduler.markRepairTaskStart()) {
-      LOGGER.info("");
-      return;
+      return false;
     }
     LOGGER.info("start repair data");
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
@@ -574,6 +573,7 @@ public class StorageEngine implements IService {
           List<DataRegion> dataRegionList = new ArrayList<>(dataRegionMap.values());
           cachedThreadPool.submit(new UnsortedFileRepairTaskScheduler(dataRegionList));
         });
+    return true;
   }
 
   /** recover the progress of unfinished repair schedule task */

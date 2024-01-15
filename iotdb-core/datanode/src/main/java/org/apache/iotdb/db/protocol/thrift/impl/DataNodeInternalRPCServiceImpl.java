@@ -1321,11 +1321,15 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus repairData() throws TException {
     try {
-      storageEngine.repairData();
+      if (storageEngine.repairData()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      } else {
+        return RpcUtils.getStatus(
+            TSStatusCode.EXECUTE_STATEMENT_ERROR, "already have a running repair task");
+      }
     } catch (StorageEngineException e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
