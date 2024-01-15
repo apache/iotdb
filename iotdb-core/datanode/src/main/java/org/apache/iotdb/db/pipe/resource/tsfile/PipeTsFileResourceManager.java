@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.resource.tsfile;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.runtime.PipePeriodicalJobExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -33,11 +34,11 @@ import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ConcurrentModificationException;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class PipeTsFileResourceManager {
@@ -45,15 +46,33 @@ public class PipeTsFileResourceManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileResourceManager.class);
 
   private final Map<String, PipeTsFileResource> hardlinkOrCopiedFileToPipeTsFileResourceMap =
-      new HashMap<>();
+      new ConcurrentHashMap<>();
   private final ReentrantLock lock = new ReentrantLock();
 
   public PipeTsFileResourceManager() {
     PipeAgent.runtime()
         .registerPeriodicalJob(
             "PipeTsFileResourceManager#ttlCheck()",
-            this::ttlCheck,
+            this::tryTtlCheck,
             Math.max(PipeTsFileResource.TSFILE_MIN_TIME_TO_LIVE_IN_MS / 1000, 1));
+  }
+
+  private void tryTtlCheck() {
+    try {
+      final long timeout = PipePeriodicalJobExecutor.getMinIntervalSeconds() >> 1;
+      if (lock.tryLock(timeout, TimeUnit.SECONDS)) {
+        try {
+          ttlCheck();
+        } finally {
+          lock.unlock();
+        }
+      } else {
+        LOGGER.warn("failed to try lock when checking TTL because of timeout ({}s)", timeout);
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.warn("failed to try lock when checking TTL because of interruption", e);
+    }
   }
 
   private void ttlCheck() {
@@ -62,7 +81,6 @@ public class PipeTsFileResourceManager {
     while (iterator.hasNext()) {
       final Map.Entry<String, PipeTsFileResource> entry = iterator.next();
 
-      lock.lock();
       try {
         if (entry.getValue().closeIfOutOfTimeToLive()) {
           iterator.remove();
@@ -72,13 +90,8 @@ public class PipeTsFileResourceManager {
               entry.getKey(),
               entry.getValue().getReferenceCount());
         }
-      } catch (ConcurrentModificationException e) {
-        LOGGER.info(
-            "Concurrent modification issues happened, skipping the file in this round of ttl check");
       } catch (IOException e) {
         LOGGER.warn("failed to close PipeTsFileResource when checking TTL: ", e);
-      } finally {
-        lock.unlock();
       }
     }
   }
