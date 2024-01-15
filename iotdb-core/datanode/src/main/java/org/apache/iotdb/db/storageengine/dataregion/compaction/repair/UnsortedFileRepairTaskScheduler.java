@@ -76,7 +76,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
 
   @Override
   public void run() {
-    CompactionScheduler.lockCompactionSelection();
+    CompactionScheduler.exclusiveLockCompactionSelection();
     CompactionTaskManager.getInstance().waitAllCompactionFinish();
     try {
       executeRepair();
@@ -89,7 +89,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
       } catch (Exception e) {
         LOGGER.error("Failed to close repair logger {}", repairLogger.getRepairLogFilePath(), e);
       }
-      CompactionScheduler.unlockCompactionSelection();
+      CompactionScheduler.exclusiveUnlockCompactionSelection();
     }
   }
 
