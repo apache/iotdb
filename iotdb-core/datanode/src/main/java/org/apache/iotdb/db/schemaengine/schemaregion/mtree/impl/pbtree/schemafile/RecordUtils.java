@@ -53,7 +53,7 @@ public class RecordUtils {
   private static final short INTERNAL_NODE_LENGTH =
       (short) 1 + 2 + 8 + 4 + 1; // always fixed length record
   private static final short MEASUREMENT_BASIC_LENGTH =
-      (short) 1 + 2 + 8 + 8; // final length depends on its alias and props
+      (short) 1 + 2 + 8 + 8 + 4; // final length depends on its alias and props
   private static final short VIEW_BASIC_LENGTH =
       (short) 1 + 2 + 8 + 1; // final length depends on its view expression
 
@@ -100,12 +100,11 @@ public class RecordUtils {
       return VIEW_BASIC_LENGTH
           + ViewExpression.getSerializeSize(((LogicalViewSchema) node.getSchema()).getExpression());
     } else {
+      // consider props and alias
       int bufferLength =
           node.getAlias() == null
               ? 4 + MEASUREMENT_BASIC_LENGTH
               : (node.getAlias().getBytes().length + 4 + MEASUREMENT_BASIC_LENGTH);
-      // consider props
-      bufferLength += 4;
       if (node.getSchema().getProps() != null) {
         for (Map.Entry<String, String> e : node.getSchema().getProps().entrySet()) {
           bufferLength += 8 + e.getKey().getBytes().length + e.getValue().length();
