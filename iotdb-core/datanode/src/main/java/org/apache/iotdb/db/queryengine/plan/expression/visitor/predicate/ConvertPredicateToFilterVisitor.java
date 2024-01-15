@@ -40,11 +40,13 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.IsNullExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.filter.factory.ValueFilterApi;
 import org.apache.iotdb.tsfile.read.filter.operator.ValueFilterOperators;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.util.HashSet;
 import java.util.List;
@@ -340,7 +342,7 @@ public class ConvertPredicateToFilterVisitor
       case BOOLEAN:
         return (T) Boolean.valueOf(valueString);
       case TEXT:
-        return (T) valueString;
+        return (T) new Binary(valueString, TSFileConfig.STRING_CHARSET);
       default:
         throw new UnsupportedOperationException(
             String.format("Unsupported data type %s", dataType));
