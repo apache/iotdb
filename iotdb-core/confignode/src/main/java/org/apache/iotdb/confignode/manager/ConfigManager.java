@@ -755,7 +755,7 @@ public class ConfigManager implements IManager {
     }
     schemaPartitionRespString.append(lineSeparator).append("}");
     LOGGER.info(
-        "[GetOrCreateSchemaPartition]:{} Receive PathPatternTree: {}, Return TSchemaPartitionTableResp: {}",
+        "[GetOrCreateSchemaPartition]:{}Receive PathPatternTree: {}, Return TSchemaPartitionTableResp: {}",
         lineSeparator,
         devicePathString,
         schemaPartitionRespString);
@@ -840,7 +840,7 @@ public class ConfigManager implements IManager {
 
     schemaNodeManagementRespString.append(lineSeparator).append("}");
     LOGGER.info(
-        "[GetNodePathsPartition]: {} Received PartialPath: {}, Level: {}, PathPatternTree: {}, Resp: {}",
+        "[GetNodePathsPartition]:{}Received PartialPath: {}, Level: {}, PathPatternTree: {}, Resp: {}",
         lineSeparator,
         partialPath,
         level,
@@ -949,7 +949,7 @@ public class ConfigManager implements IManager {
     dataPartitionRespString.append(lineSeparator).append("}");
 
     LOGGER.info(
-        "[GetOrCreateDataPartition]:{} Receive PartitionSlotsMap: {}, Return TDataPartitionTableResp: {}",
+        "[GetOrCreateDataPartition]:{}Receive PartitionSlotsMap: {}, Return TDataPartitionTableResp: {}",
         lineSeparator,
         partitionSlotsMapString,
         dataPartitionRespString);
