@@ -78,22 +78,36 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
   /**
    * Using try lock method to prevent deadlock when stopping all pipes with critical exceptions and
    * {@link PipeTaskDataNodeAgent#handlePipeMetaChanges(List)}} concurrently.
-   *
-   * @return true if the lock is acquired and all pipes are stopped, false if the lock is not
-   *     acquired
    */
-  public boolean stopAllPipesWithCriticalExceptionIfPossible() {
-    if (tryWriteLockWithTimeOut(5)) {
-      try {
-        stopAllPipesWithCriticalExceptionInternal();
-        return true;
-      } finally {
-        releaseWriteLock();
+  public void stopAllPipesWithCriticalException() {
+    try {
+      int retryCount = 0;
+      while (true) {
+        if (tryWriteLockWithTimeOut(5)) {
+          try {
+            stopAllPipesWithCriticalExceptionInternal();
+            LOGGER.info("Stopped all pipes with critical exception.");
+            return;
+          } finally {
+            releaseWriteLock();
+          }
+        } else {
+          Thread.sleep(1000);
+          LOGGER.warn(
+              "Failed to stop all pipes with critical exception, retry count: {}.", ++retryCount);
+        }
       }
-    } else {
-      LOGGER.info(
-          "Failed to stop all pipes with critical exception because of timeout (5s). Ignored.");
-      return false;
+    } catch (InterruptedException e) {
+      LOGGER.error(
+          "Interrupted when trying to stop all pipes with critical exception, exception message: {}",
+          e.getMessage(),
+          e);
+      Thread.currentThread().interrupt();
+    } catch (Exception e) {
+      LOGGER.error(
+          "Failed to stop all pipes with critical exception, exception message: {}",
+          e.getMessage(),
+          e);
     }
   }
 

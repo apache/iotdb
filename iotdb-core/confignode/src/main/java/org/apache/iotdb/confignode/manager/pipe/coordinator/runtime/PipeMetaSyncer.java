@@ -114,6 +114,9 @@ public class PipeMetaSyncer {
         && pipeAutoRestartRoundCounter.incrementAndGet()
             == PipeConfig.getInstance().getPipeMetaSyncerAutoRestartPipeCheckIntervalRound()) {
       somePipesNeedRestarting = autoRestartWithLock();
+      if (somePipesNeedRestarting) {
+        LOGGER.info("Some pipes need restarting, will restart them after this sync");
+      }
       pipeAutoRestartRoundCounter.set(0);
     }
 
