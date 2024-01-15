@@ -21,11 +21,15 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.repair;
 
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +38,9 @@ import java.util.Set;
 public class RepairTaskRecoveryPerformer {
 
   private File logFile;
-  private Map<TimePartitionFiles, Set<String>> repairedTimePartitionsWithCannotRepairFiles;
+  private static final Logger LOGGER = LoggerFactory.getLogger(RepairTaskRecoveryPerformer.class);
+  private final Map<TimePartitionFiles, Set<String>> repairedTimePartitionsWithCannotRepairFiles =
+      new HashMap<>();
   private TimePartitionFiles currentTimePartition;
   private Set<String> currentTimePartitionCannotRepairFiles;
 
@@ -69,6 +75,11 @@ public class RepairTaskRecoveryPerformer {
   private void parseStartTimePartitionLog(String line) {
     if (currentTimePartition != null) {
       // TODO: previous time partition log is not complete
+      LOGGER.error(
+          "[{}][{}]Repair data log is not complete, time partition is {}.",
+          currentTimePartition.getDatabaseName(),
+          currentTimePartition.getDataRegionId(),
+          currentTimePartition.getTimePartition());
     }
     String[] values = line.split(" ");
     if (values.length != 4) {
