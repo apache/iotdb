@@ -1083,10 +1083,10 @@ public class PipelineBuilderTest {
         new FullOuterTimeJoinNode(new PlanNodeId("TimeJoinNode"), Ordering.ASC);
     for (int i = 0; i < exchangeNum; i++) {
       ExchangeNode exchangeNode =
-          new ExchangeNode(new PlanNodeId(String.format("ExchangeNode%d", i)));
+          new ExchangeNode(new PlanNodeId(String.format("FullOuterTimeJoinWithExchangeNode%d", i)));
       exchangeNode.setUpstream(
           new TEndPoint("127.0.0.2", 6667),
-          new FragmentInstanceId(new PlanFragmentId("q", 1), "ds"),
+          new FragmentInstanceId(new PlanFragmentId("q", i), "ds"),
           new PlanNodeId("test"));
       fullOuterTimeJoinNode.addChild(exchangeNode);
     }
