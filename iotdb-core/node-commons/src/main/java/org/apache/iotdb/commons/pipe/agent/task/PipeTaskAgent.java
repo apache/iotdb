@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.agent.task;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
@@ -778,7 +779,8 @@ public abstract class PipeTaskAgent {
   ///////////////////////// Manage by consensusGroupId /////////////////////////
 
   protected abstract void createPipeTask(
-      int consensusGroupId, PipeStaticMeta pipeStaticMeta, PipeTaskMeta pipeTaskMeta);
+      int consensusGroupId, PipeStaticMeta pipeStaticMeta, PipeTaskMeta pipeTaskMeta)
+      throws IllegalPathException;
 
   private void dropPipeTask(int consensusGroupId, PipeStaticMeta pipeStaticMeta) {
     pipeMetaKeeper

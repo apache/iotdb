@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.manager.pipe.transfer.agent.task;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
@@ -26,6 +27,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
+import org.apache.iotdb.confignode.manager.pipe.transfer.extractor.PipeConfigPlanFilter;
 import org.apache.iotdb.confignode.manager.pipe.transfer.task.PipeConfigNodeTask;
 import org.apache.iotdb.confignode.manager.pipe.transfer.task.PipeConfigNodeTaskBuilder;
 import org.apache.iotdb.confignode.manager.pipe.transfer.task.PipeConfigNodeTaskStage;
@@ -45,10 +47,14 @@ public class PipeTaskConfigNodeAgent extends PipeTaskAgent {
 
   @Override
   protected void createPipeTask(
-      int consensusGroupId, PipeStaticMeta pipeStaticMeta, PipeTaskMeta pipeTaskMeta) {
+      int consensusGroupId, PipeStaticMeta pipeStaticMeta, PipeTaskMeta pipeTaskMeta)
+      throws IllegalPathException {
+    // Advance the extractor parameters parsing logic to avoid creating un-relevant pipeTasks
     if (consensusGroupId == Integer.MIN_VALUE
         && pipeTaskMeta.getLeaderNodeId()
-            == ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()) {
+            == ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()
+        && !PipeConfigPlanFilter.getPipeListenSet(pipeStaticMeta.getExtractorParameters())
+            .isEmpty()) {
       final PipeConfigNodeTask pipeTask =
           new PipeConfigNodeTask(
               new PipeConfigNodeTaskStage(

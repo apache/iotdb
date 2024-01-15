@@ -32,17 +32,9 @@ import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeCo
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_EXCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_INCLUSION_KEY;
 
 public class IoTDBSchemaRegionExtractor extends IoTDBMetaExtractor {
   private Set<PlanNodeType> listenTypes = new HashSet<>();
@@ -52,15 +44,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBMetaExtractor {
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
     super.customize(parameters, configuration);
-
-    listenTypes =
-        PipeSchemaNodeFilter.getPipeListenSet(
-            parameters.getStringOrDefault(
-                Arrays.asList(EXTRACTOR_INCLUSION_KEY, SOURCE_INCLUSION_KEY),
-                EXTRACTOR_INCLUSION_DEFAULT_VALUE),
-            parameters.getStringOrDefault(
-                Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
-                EXTRACTOR_EXCLUSION_DEFAULT_VALUE));
+    listenTypes = PipeSchemaNodeFilter.getPipeListenSet(parameters);
   }
 
   @Override
@@ -69,6 +53,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBMetaExtractor {
     if (!SchemaNodeListeningQueue.getInstance(regionId).isLeaderReady()) {
       return;
     }
+    // Typically if this is empty the PipeTask won't be created, this is just in case
     if (!listenTypes.isEmpty()) {
       referenceCount.getAndIncrement();
       if (referenceCount.get() == 1) {

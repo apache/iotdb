@@ -235,6 +235,17 @@ public class IoTDBIdempotentIT extends AbstractPipeDualManualIT {
   }
 
   @Test
+  public void testAlterDatabaseIdempotent() throws Exception {
+    testIdempotent(
+        Collections.singletonList("create database root.sg1"),
+        "ALTER DATABASE root.sg1 WITH SCHEMA_REGION_GROUP_NUM=2, DATA_REGION_GROUP_NUM=3;",
+        "create database root.sg2",
+        "count databases",
+        "count,",
+        Collections.singleton("2,"));
+  }
+
+  @Test
   public void testDropDatabaseIdempotent() throws Exception {
     testIdempotent(
         Collections.singletonList("create database root.sg1"),

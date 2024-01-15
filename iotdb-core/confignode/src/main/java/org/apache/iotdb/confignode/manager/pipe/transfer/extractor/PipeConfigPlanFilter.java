@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -35,6 +36,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_EXCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_INCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.datastructure.PipeInclusionNormalizer.getPartialPaths;
 
 /**
@@ -45,7 +52,7 @@ import static org.apache.iotdb.commons.pipe.datastructure.PipeInclusionNormalize
  * because the rollback is usually useless. Consensus layer ensures that a failed plan won't be
  * written to peer, consequently won't be extracted by {@link ConfigPlanListeningQueue}.
  */
-class PipeConfigPlanFilter {
+public class PipeConfigPlanFilter {
 
   private static final Map<PartialPath, List<ConfigPhysicalPlanType>> PLAN_MAP = new HashMap<>();
 
@@ -128,8 +135,17 @@ class PipeConfigPlanFilter {
         || PLAN_MAP.values().stream().anyMatch(types -> types.contains(type));
   }
 
-  static Set<ConfigPhysicalPlanType> getPipeListenSet(String inclusionStr, String exclusionStr)
+  public static Set<ConfigPhysicalPlanType> getPipeListenSet(PipeParameters parameters)
       throws IllegalPathException, IllegalArgumentException {
+    String inclusionStr =
+        parameters.getStringOrDefault(
+            Arrays.asList(EXTRACTOR_INCLUSION_KEY, SOURCE_INCLUSION_KEY),
+            EXTRACTOR_INCLUSION_DEFAULT_VALUE);
+    String exclusionStr =
+        parameters.getStringOrDefault(
+            Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
+            EXTRACTOR_EXCLUSION_DEFAULT_VALUE);
+
     Set<ConfigPhysicalPlanType> planTypes = new HashSet<>();
     List<PartialPath> inclusionPath = getPartialPaths(inclusionStr);
     List<PartialPath> exclusionPath = getPartialPaths(exclusionStr);

@@ -45,15 +45,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_EXCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_INCLUSION_KEY;
 
 public class ConfigPlanListeningQueue extends AbstractPipeListeningQueue
     implements SnapshotProcessor {
@@ -119,7 +111,7 @@ public class ConfigPlanListeningQueue extends AbstractPipeListeningQueue
   // reference count is handled under consensus layer.
   public void increaseReferenceCountForListeningPipe(PipeParameters parameters)
       throws IllegalPathException {
-    if (needToRecord(parameters)) {
+    if (!PipeConfigPlanFilter.getPipeListenSet(parameters).isEmpty()) {
       referenceCount++;
       if (referenceCount == 1) {
         open();
@@ -129,23 +121,12 @@ public class ConfigPlanListeningQueue extends AbstractPipeListeningQueue
 
   public void decreaseReferenceCountForListeningPipe(PipeParameters parameters)
       throws IllegalPathException, IOException {
-    if (needToRecord(parameters)) {
+    if (!PipeConfigPlanFilter.getPipeListenSet(parameters).isEmpty()) {
       referenceCount--;
       if (referenceCount == 0) {
         close();
       }
     }
-  }
-
-  private boolean needToRecord(PipeParameters parameters) throws IllegalPathException {
-    return !PipeConfigPlanFilter.getPipeListenSet(
-            parameters.getStringOrDefault(
-                Arrays.asList(EXTRACTOR_INCLUSION_KEY, SOURCE_INCLUSION_KEY),
-                EXTRACTOR_INCLUSION_DEFAULT_VALUE),
-            parameters.getStringOrDefault(
-                Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
-                EXTRACTOR_EXCLUSION_DEFAULT_VALUE))
-        .isEmpty();
   }
 
   /////////////////////////////// Element Ser / De Method ////////////////////////////////

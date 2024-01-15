@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
@@ -31,7 +32,9 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.extractor.dataregion.PipeDataRegionFilter;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
+import org.apache.iotdb.db.pipe.extractor.schemaregion.PipeSchemaNodeFilter;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaNodeListeningQueue;
 import org.apache.iotdb.db.pipe.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeBuilder;
@@ -42,6 +45,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -77,15 +81,21 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
 
   @Override
   protected void createPipeTask(
-      int consensusGroupId, PipeStaticMeta pipeStaticMeta, PipeTaskMeta pipeTaskMeta) {
+      int consensusGroupId, PipeStaticMeta pipeStaticMeta, PipeTaskMeta pipeTaskMeta)
+      throws IllegalPathException {
     if (pipeTaskMeta.getLeaderNodeId() == CONFIG.getDataNodeId()) {
       final PipeDataNodeTask pipeTask;
+      final PipeParameters extractorParameters = pipeStaticMeta.getExtractorParameters();
+
+      // Advance the extractor parameters parsing logic to avoid creating un-relevant pipeTasks
       if (StorageEngine.getInstance()
-              .getAllDataRegionIds()
-              .contains(new DataRegionId(consensusGroupId))
+                  .getAllDataRegionIds()
+                  .contains(new DataRegionId(consensusGroupId))
+              && PipeDataRegionFilter.getDataRegionListenPair(extractorParameters).getLeft()
           || SchemaEngine.getInstance()
-              .getAllSchemaRegionIds()
-              .contains(new SchemaRegionId(consensusGroupId))) {
+                  .getAllSchemaRegionIds()
+                  .contains(new SchemaRegionId(consensusGroupId))
+              && !PipeSchemaNodeFilter.getPipeListenSet(extractorParameters).isEmpty()) {
         pipeTask =
             new PipeDataNodeTaskBuilder(pipeStaticMeta, consensusGroupId, pipeTaskMeta).build();
       } else {
@@ -106,34 +116,45 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
   @Override
   public List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChangesInternal(
       List<PipeMeta> pipeMetaListFromCoordinator) {
-    final ConcurrentMap<Integer, Long> earliestIndexMap = new ConcurrentHashMap<>();
+    List<TPushPipeMetaRespExceptionMessage> exceptionMessages =
+        super.handlePipeMetaChangesInternal(pipeMetaListFromCoordinator);
+    // Clear useless events for listening queues
+    try {
+      // Remove used messages
+      final ConcurrentMap<Integer, Long> earliestIndexMap = new ConcurrentHashMap<>();
 
-    pipeMetaListFromCoordinator.forEach(
-        pipeMeta -> {
-          Map<Integer, PipeTaskMeta> metaMap =
-              pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
-          for (SchemaRegionId regionId : SchemaEngine.getInstance().getAllSchemaRegionIds()) {
-            int id = regionId.getId();
-            PipeTaskMeta schemaMeta = metaMap.get(id);
-            if (schemaMeta != null) {
-              ProgressIndex schemaIndex = schemaMeta.getProgressIndex();
-              if (schemaIndex instanceof MetaProgressIndex
-                  && ((MetaProgressIndex) schemaIndex).getIndex()
-                      < earliestIndexMap.getOrDefault(id, Long.MAX_VALUE)) {
-                earliestIndexMap.put(id, ((MetaProgressIndex) schemaIndex).getIndex());
+      pipeMetaListFromCoordinator.forEach(
+          pipeMeta -> {
+            Map<Integer, PipeTaskMeta> metaMap =
+                pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
+            for (SchemaRegionId regionId : SchemaEngine.getInstance().getAllSchemaRegionIds()) {
+              int id = regionId.getId();
+              PipeTaskMeta schemaMeta = metaMap.get(id);
+              if (schemaMeta != null) {
+                ProgressIndex schemaIndex = schemaMeta.getProgressIndex();
+                if (schemaIndex instanceof MetaProgressIndex
+                    && ((MetaProgressIndex) schemaIndex).getIndex()
+                        < earliestIndexMap.getOrDefault(id, Long.MAX_VALUE)) {
+                  earliestIndexMap.put(id, ((MetaProgressIndex) schemaIndex).getIndex());
+                }
               }
             }
-          }
-        });
+          });
 
-    // Do not clear if there are only "minimumProgressIndex"s to avoid clearing
-    // the queue when there are schema tasks that haven't been started yet
-    // If there are no pipeTasks on schema region the queue will at the latest
-    // be closed at this round of meta sync, no need to clear here
-    earliestIndexMap.forEach(
-        (schemaId, index) -> SchemaNodeListeningQueue.getInstance(schemaId).removeBefore(index));
-
-    return super.handlePipeMetaChangesInternal(pipeMetaListFromCoordinator);
+      // Do not clear if there are only "minimumProgressIndex"s to avoid clearing
+      // the queue when there are schema tasks that haven't been started yet
+      // If there are no pipeTasks on a schema region then the queue has already been closed
+      // at this round of metaSync, no need to clear here
+      earliestIndexMap.forEach(
+          (schemaId, index) -> SchemaNodeListeningQueue.getInstance(schemaId).removeBefore(index));
+    } catch (Exception e) {
+      final String errorMessage =
+          String.format("Failed to handle pipe meta changes because %s", e.getMessage());
+      LOGGER.warn("Failed to handle pipe meta changes because ", e);
+      exceptionMessages.add(
+          new TPushPipeMetaRespExceptionMessage(null, errorMessage, System.currentTimeMillis()));
+    }
+    return exceptionMessages;
   }
 
   public synchronized void stopAllPipesWithCriticalException() {

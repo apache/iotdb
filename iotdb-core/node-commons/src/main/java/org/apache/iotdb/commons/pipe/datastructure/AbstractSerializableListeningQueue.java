@@ -33,6 +33,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.EnumMap;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
@@ -152,8 +153,19 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
   @Override
   public synchronized void close() throws IOException {
     isSealed.set(true);
+    try (ConcurrentIterableLinkedQueue<E>.DynamicIterator itr = queue.iterateFromEarliest()) {
+      while (true) {
+        E element = itr.next(0);
+        if (Objects.isNull(element)) {
+          break;
+        }
+        releaseResource(element);
+      }
+    }
     queue.clear();
   }
+
+  protected abstract void releaseResource(E element);
 
   public boolean isOpened() {
     return !isSealed.get();

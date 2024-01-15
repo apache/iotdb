@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -34,13 +35,19 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_EXCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_INCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.datastructure.PipeInclusionNormalizer.getPartialPaths;
 
 /**
  * {@link PipeSchemaNodeFilter} is to classify the {@link PlanNode}s to help linkedList and pipe to
  * collect.
  */
-class PipeSchemaNodeFilter {
+public class PipeSchemaNodeFilter {
 
   private static final Map<PartialPath, List<PlanNodeType>> NODE_MAP = new HashMap<>();
 
@@ -98,8 +105,17 @@ class PipeSchemaNodeFilter {
     }
   }
 
-  static Set<PlanNodeType> getPipeListenSet(String inclusionStr, String exclusionStr)
+  public static Set<PlanNodeType> getPipeListenSet(PipeParameters parameters)
       throws IllegalPathException, IllegalArgumentException {
+    String inclusionStr =
+        parameters.getStringOrDefault(
+            Arrays.asList(EXTRACTOR_INCLUSION_KEY, SOURCE_INCLUSION_KEY),
+            EXTRACTOR_INCLUSION_DEFAULT_VALUE);
+    String exclusionStr =
+        parameters.getStringOrDefault(
+            Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
+            EXTRACTOR_EXCLUSION_DEFAULT_VALUE);
+
     Set<PlanNodeType> planTypes = new HashSet<>();
     List<PartialPath> inclusionPath = getPartialPaths(inclusionStr);
     List<PartialPath> exclusionPath = getPartialPaths(exclusionStr);

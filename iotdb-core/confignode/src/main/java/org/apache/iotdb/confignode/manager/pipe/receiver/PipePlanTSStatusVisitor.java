@@ -70,7 +70,10 @@ public class PipePlanTSStatusVisitor extends PhysicalPlanVisitor<TSStatus, TSSta
 
   @Override
   public TSStatus visitAlterDatabase(DatabaseSchemaPlan plan, TSStatus context) {
-    if (context.getCode() == TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()) {
+    if (context.getCode() == TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    } else if (context.getCode() == TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }

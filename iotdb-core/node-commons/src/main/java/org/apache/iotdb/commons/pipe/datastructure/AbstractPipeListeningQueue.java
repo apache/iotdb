@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.datastructure;
 
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -168,5 +169,13 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
   public synchronized void close() throws IOException {
     clearSnapshots();
     super.close();
+  }
+
+  @Override
+  protected void releaseResource(Event event) {
+    if (event instanceof EnrichedEvent) {
+      ((EnrichedEvent) event)
+          .decreaseReferenceCount(AbstractPipeListeningQueue.class.getName(), false);
+    }
   }
 }
