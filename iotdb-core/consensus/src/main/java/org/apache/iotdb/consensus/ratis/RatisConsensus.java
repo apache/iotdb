@@ -81,7 +81,6 @@ import org.apache.ratis.protocol.exceptions.ResourceUnavailableException;
 import org.apache.ratis.server.DivisionInfo;
 import org.apache.ratis.server.RaftServer;
 import org.apache.ratis.server.RaftServerConfigKeys;
-import org.apache.ratis.server.storage.RaftStorage;
 import org.apache.ratis.thirdparty.io.grpc.StatusRuntimeException;
 import org.apache.ratis.util.TimeDuration;
 import org.apache.ratis.util.function.CheckedSupplier;
@@ -188,7 +187,6 @@ class RatisConsensus implements IConsensus {
         RaftServer.newBuilder()
             .setServerId(myself.getId())
             .setProperties(properties)
-            .setOption(RaftStorage.StartupOption.RECOVER)
             .setStateMachineRegistry(
                 raftGroupId ->
                     new ApplicationStateMachineProxy(
@@ -430,7 +428,7 @@ class RatisConsensus implements IConsensus {
         group.getPeers().isEmpty() ? RaftGroup.valueOf(group.getGroupId(), myself) : group;
     try (RatisClient client = getRaftClient(clientGroup)) {
       RaftClientReply reply =
-          client.getRaftClient().getGroupManagementApi(myself.getId()).add(group, false);
+          client.getRaftClient().getGroupManagementApi(myself.getId()).add(group);
       if (!reply.isSuccess()) {
         throw new RatisRequestFailedException(reply.getException());
       }
