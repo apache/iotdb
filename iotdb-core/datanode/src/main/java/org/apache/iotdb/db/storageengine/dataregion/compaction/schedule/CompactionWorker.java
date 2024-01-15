@@ -87,6 +87,9 @@ public class CompactionWorker implements Runnable {
       task.transitSourceFilesToMerging();
       if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionMemControl()) {
         estimatedMemoryCost = task.getEstimatedMemoryCost();
+        if (estimatedMemoryCost < 0) {
+          return false;
+        }
         CompactionTaskType taskType = task.getCompactionTaskType();
         memoryAcquired =
             SystemInfo.getInstance().addCompactionMemoryCost(taskType, estimatedMemoryCost, 60);
