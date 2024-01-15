@@ -354,4 +354,10 @@ public class PredicateUtils {
       Expression predicate, String checkedSourceSymbol) {
     return new PredicateCanPushDownToSourceChecker().process(predicate, checkedSourceSymbol);
   }
+
+  public static Expression simplifyPredicateWithNullOperand(Expression predicate) {
+    return predicate;
+    //    Expression evaluatedPredicate = new NullOperandEvaluator().process(predicate, null);
+    //    return simplifyPredicate(evaluatedPredicate);
+  }
 }

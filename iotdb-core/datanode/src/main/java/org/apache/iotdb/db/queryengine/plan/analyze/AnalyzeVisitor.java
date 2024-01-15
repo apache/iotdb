@@ -1308,8 +1308,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       PartialPath devicePath = deviceIterator.next();
       Expression whereExpression;
       try {
-        whereExpression =
-            normalizeExpression(analyzeWhereSplitByDevice(queryStatement, devicePath, schemaTree));
+        whereExpression = analyzeWhereSplitByDevice(queryStatement, devicePath, schemaTree);
       } catch (MeasurementNotExistException e) {
         logger.warn(
             "Meets MeasurementNotExistException in analyzeDeviceToWhere when executing align by device, "
@@ -1340,10 +1339,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             queryStatement.getFromComponent().getPrefixPaths(),
             schemaTree,
             true);
-    Expression whereExpression =
-        PredicateUtils.combineConjuncts(
-            conJunctions.stream().distinct().collect(Collectors.toList()));
-    whereExpression = normalizeExpression(whereExpression);
+    Expression whereExpression = convertConJunctionsToWhereExpression(conJunctions);
     TSDataType outputType = analyzeExpressionType(analysis, whereExpression);
     if (outputType != TSDataType.BOOLEAN) {
       throw new SemanticException(String.format(WHERE_WRONG_TYPE_ERROR_MSG, outputType));
@@ -1356,8 +1352,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     List<Expression> conJunctions =
         ExpressionAnalyzer.concatDeviceAndBindSchemaForPredicate(
             queryStatement.getWhereCondition().getPredicate(), devicePath, schemaTree, true);
-    return PredicateUtils.combineConjuncts(
-        conJunctions.stream().distinct().collect(Collectors.toList()));
+    return convertConJunctionsToWhereExpression(conJunctions);
+  }
+
+  private Expression convertConJunctionsToWhereExpression(List<Expression> conJunctions) {
+    Expression predicate =
+        PredicateUtils.combineConjuncts(
+            conJunctions.stream().distinct().collect(Collectors.toList()));
+    predicate = PredicateUtils.simplifyPredicateWithNullOperand(predicate);
+    predicate = normalizeExpression(predicate);
+    return predicate;
   }
 
   private void analyzeDeviceViewOutput(Analysis analysis, QueryStatement queryStatement) {
