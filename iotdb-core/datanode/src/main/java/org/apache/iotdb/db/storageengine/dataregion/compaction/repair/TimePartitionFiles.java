@@ -27,6 +27,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameG
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 class TimePartitionFiles {
@@ -103,5 +104,20 @@ class TimePartitionFiles {
     } catch (IOException ignored) {
     }
     return timestamp;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    TimePartitionFiles that = (TimePartitionFiles) o;
+    return timePartition == that.timePartition
+        && Objects.equals(databaseName, that.databaseName)
+        && Objects.equals(dataRegionId, that.dataRegionId);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(databaseName, dataRegionId, timePartition);
   }
 }

@@ -58,8 +58,25 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
     return isRepairingData.compareAndSet(false, true);
   }
 
+  /** Used for create a new repair schedule task */
   public UnsortedFileRepairTaskScheduler(List<DataRegion> dataRegions) {
+    this(dataRegions, false);
+  }
+
+  /** Used for recover from log file */
+  public UnsortedFileRepairTaskScheduler(List<DataRegion> dataRegions, boolean isRecover) {
     collectTimePartitions(dataRegions);
+    if (isRecover) {
+      recover(dataRegions);
+    }
+  }
+
+  private void recover(List<DataRegion> dataRegions) {
+    RepairTaskRecoveryPerformer recoveryPerformer = new RepairTaskRecoveryPerformer(dataRegions);
+    LOGGER.info(
+        "recover unfinished repair schedule task from log file: {}",
+        recoveryPerformer.getRepairLogFilePath());
+    recoveryPerformer.perform();
   }
 
   private void collectTimePartitions(List<DataRegion> dataRegions) {
