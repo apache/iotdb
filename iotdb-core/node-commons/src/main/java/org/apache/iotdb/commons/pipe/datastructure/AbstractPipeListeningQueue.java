@@ -58,8 +58,13 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
 
   /////////////////////////////// Leader ready ///////////////////////////////
 
-  // DO NOT use consensus layer's leader ready flag because SimpleConsensus'
-  // ready flag is always true
+  /**
+   * Get leader ready state, DO NOT use consensus layer's leader ready flag because SimpleConsensus'
+   * ready flag is always {@code true}. Note that this flag has nothing to do with listening and a
+   * {@link PipeTask} starts only iff the current node is a leader and ready.
+   *
+   * @return {@code true} iff the current node is a leader and ready
+   */
   public boolean isLeaderReady() {
     return leaderReady;
   }
@@ -67,6 +72,10 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
   // The linked list starts serving only after leader gets ready
   public void activate() {
     leaderReady = true;
+  }
+
+  public void deactivate() {
+    leaderReady = false;
   }
 
   /////////////////////////////// Snapshot Cache ///////////////////////////////

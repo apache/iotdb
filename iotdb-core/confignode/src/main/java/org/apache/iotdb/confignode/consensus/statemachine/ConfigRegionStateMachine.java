@@ -220,6 +220,9 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       configManager.getClusterSchemaManager().clearSchemaQuotaCache();
       // Remove Metric after leader change
       configManager.removeMetrics();
+
+      // Deactivate config pipe plan queue
+      ConfigPlanListeningQueue.getInstance().deactivate();
     }
   }
 
@@ -260,7 +263,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
             configManager
                 .getPipeManager()
                 .getPipeRuntimeCoordinator()
-                .onConfigRegionGroupLeaderChanged());
+                .onConfigRegionGroupLeaderChangedIfReady());
 
     // To adapt old version, we check cluster ID after state machine has been fully recovered.
     // Do check async because sync will be slow and block every other things.
