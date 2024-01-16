@@ -42,6 +42,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -185,15 +186,18 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
         sourceFile.readUnlock();
       }
       TsFileManager tsFileManager = timePartition.getTsFileManager();
+      CountDownLatch latch = new CountDownLatch(1);
       RepairUnsortedFileCompactionTask task =
           new RepairUnsortedFileCompactionTask(
               timePartition.getTimePartition(),
               timePartition.getTsFileManager(),
               sourceFile,
+              latch,
               sourceFile.isSeq(),
               tsFileManager.getNextCompactionTaskId());
       if (CompactionTaskManager.getInstance().addTaskToWaitingQueue(task)) {
         // TODO: wait the repair compaction task finished
+        latch.await();
       }
     }
   }
@@ -205,17 +209,19 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
         tsFileManager.getTsFileListSnapshot(timePartition.getTimePartition(), true);
     List<TsFileResource> overlapFiles = checkTimePartitionHasOverlap(seqList);
     for (TsFileResource overlapFile : overlapFiles) {
+      CountDownLatch latch = new CountDownLatch(1);
       RepairUnsortedFileCompactionTask task =
           new RepairUnsortedFileCompactionTask(
               timePartition.getTimePartition(),
               timePartition.getTsFileManager(),
               overlapFile,
+              latch,
               true,
               false,
               tsFileManager.getNextCompactionTaskId());
       if (CompactionTaskManager.getInstance().addTaskToWaitingQueue(task)) {
         // TODO: wait the repair compaction task finished
-
+        latch.await();
       }
     }
   }

@@ -32,6 +32,7 @@ import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * Repair the internal unsorted file by compaction and move it to unSequence space after compaction
@@ -40,6 +41,7 @@ import java.util.Collections;
 public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
 
   private final TsFileResource sourceFile;
+  private CountDownLatch latch;
 
   public RepairUnsortedFileCompactionTask(
       long timePartition,
@@ -78,6 +80,49 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
     if (rewriteFile) {
       this.innerSpaceEstimator = new RepairUnsortedFileCompactionEstimator();
     }
+  }
+
+  public RepairUnsortedFileCompactionTask(
+      long timePartition,
+      TsFileManager tsFileManager,
+      TsFileResource sourceFile,
+      CountDownLatch latch,
+      boolean sequence,
+      long serialId) {
+    super(
+        timePartition,
+        tsFileManager,
+        Collections.singletonList(sourceFile),
+        sequence,
+        new RepairUnsortedFileCompactionPerformer(true),
+        serialId,
+        CompactionTaskPriorityType.NORMAL);
+    this.sourceFile = sourceFile;
+    this.innerSpaceEstimator = new RepairUnsortedFileCompactionEstimator();
+    this.latch = latch;
+  }
+
+  public RepairUnsortedFileCompactionTask(
+      long timePartition,
+      TsFileManager tsFileManager,
+      TsFileResource sourceFile,
+      CountDownLatch latch,
+      boolean sequence,
+      boolean rewriteFile,
+      long serialId) {
+    super(
+        timePartition,
+        tsFileManager,
+        Collections.singletonList(sourceFile),
+        sequence,
+        new RepairUnsortedFileCompactionPerformer(rewriteFile),
+        serialId,
+        CompactionTaskPriorityType.NORMAL);
+    this.sourceFile = sourceFile;
+    if (rewriteFile) {
+      this.innerSpaceEstimator = new RepairUnsortedFileCompactionEstimator();
+    }
+    this.latch = latch;
   }
 
   @Override
@@ -134,5 +179,11 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
           sourceFile.getTsFile().getAbsolutePath());
     }
     return memoryCost;
+  }
+
+  @Override
+  public void handleTaskCleanup() {
+    super.handleTaskCleanup();
+    latch.countDown();
   }
 }
