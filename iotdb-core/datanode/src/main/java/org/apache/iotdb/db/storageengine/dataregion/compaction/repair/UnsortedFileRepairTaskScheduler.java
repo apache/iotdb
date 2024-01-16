@@ -128,10 +128,14 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
     for (TimePartitionFiles timePartition : allTimePartitionFiles) {
       Set<String> cannotRepairFiles =
           repairedTimePartitionWithCannotRepairFiles.remove(timePartition);
-      if (cannotRepairFiles == null || cannotRepairFiles.isEmpty()) {
+      if (cannotRepairFiles == null) {
         continue;
       }
+      // mark time partition as repaired
       timePartition.setRepaired(true);
+      if (cannotRepairFiles.isEmpty()) {
+        continue;
+      }
       // mark cannot repair file in TsFileResource
       List<TsFileResource> resources = timePartition.getAllFiles();
       for (TsFileResource resource : resources) {

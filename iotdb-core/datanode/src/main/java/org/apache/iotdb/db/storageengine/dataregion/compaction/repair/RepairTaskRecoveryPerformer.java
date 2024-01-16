@@ -72,6 +72,8 @@ public class RepairTaskRecoveryPerformer {
           currentTimePartition.getDatabaseName(),
           currentTimePartition.getDataRegionId(),
           currentTimePartition.getTimePartition());
+      repairedTimePartitionsWithCannotRepairFiles.put(
+          currentTimePartition, currentTimePartitionCannotRepairFiles);
     }
     String[] values = line.split(" ");
     if (values.length != 4) {
