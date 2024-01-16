@@ -169,6 +169,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
       } catch (Exception e) {
         LOGGER.error("Failed to close repair logger {}", repairLogger.getRepairLogFilePath(), e);
       }
+      LOGGER.info("Finished repair task");
       CompactionScheduler.exclusiveUnlockCompactionSelection();
     }
   }

@@ -564,13 +564,13 @@ public class StorageEngine implements IService {
    * @throws StorageEngineException StorageEngineException
    */
   public boolean repairData() throws StorageEngineException {
+    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+      throw new StorageEngineException("Current system mode is read only, does not support merge");
+    }
     if (!UnsortedFileRepairTaskScheduler.markRepairTaskStart()) {
       return false;
     }
     LOGGER.info("start repair data");
-    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
-      throw new StorageEngineException("Current system mode is read only, does not support merge");
-    }
     List<DataRegion> dataRegionList = new ArrayList<>(dataRegionMap.values());
     cachedThreadPool.submit(new UnsortedFileRepairTaskScheduler(dataRegionList));
     return true;
