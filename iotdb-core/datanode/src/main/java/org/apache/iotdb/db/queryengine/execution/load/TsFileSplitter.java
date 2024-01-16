@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.load;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.queryengine.metric.LoadTsFileMetricSet;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -66,6 +67,8 @@ public class TsFileSplitter {
   private final File tsFile;
   private final Function<TsFileData, Boolean> consumer;
 
+  private static final LoadTsFileMetricSet LOAD_TS_FILE_METRICS = LoadTsFileMetricSet.getInstance();
+
   public TsFileSplitter(File tsFile, Function<TsFileData, Boolean> consumer) {
     this.tsFile = tsFile;
     this.consumer = consumer;
@@ -73,6 +76,7 @@ public class TsFileSplitter {
 
   @SuppressWarnings({"squid:S3776", "squid:S6541"})
   public void splitTsFileByDataPartition() throws IOException, IllegalStateException {
+    long splitStartTime = System.nanoTime();
     try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
       TreeMap<Long, List<Deletion>> offset2Deletions = new TreeMap<>();
       getAllModification(offset2Deletions);
@@ -304,6 +308,9 @@ public class TsFileSplitter {
 
       consumeAllAlignedChunkData(reader.position(), pageIndex2ChunkData);
       handleModification(offset2Deletions, Long.MAX_VALUE);
+    } finally {
+      LOAD_TS_FILE_METRICS.recordLoadTsFileTimeCost(
+          LoadTsFileMetricSet.LOAD_TSFILE_SPLIT_PHASE, System.nanoTime() - splitStartTime);
     }
   }
 

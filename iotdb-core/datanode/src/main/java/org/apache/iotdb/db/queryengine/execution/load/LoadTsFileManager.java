@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.LoadFileException;
+import org.apache.iotdb.db.queryengine.metric.LoadTsFileMetricSet;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
@@ -73,6 +74,8 @@ public class LoadTsFileManager {
   private static final String MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED =
       "%s TsFileWriterManager has been closed.";
   private static final String MESSAGE_DELETE_FAIL = "failed to delete {}.";
+
+  private static final LoadTsFileMetricSet LOAD_TSFILE_METRICS = LoadTsFileMetricSet.getInstance();
 
   private final File loadDir;
 
@@ -144,7 +147,11 @@ public class LoadTsFileManager {
     if (!uuid2WriterManager.containsKey(uuid)) {
       return false;
     }
+
+    long startTime = System.nanoTime();
     uuid2WriterManager.get(uuid).loadAll(isGeneratedByPipe, progressIndex);
+    LOAD_TSFILE_METRICS.recordLoadTsFileTimeCost(
+        LoadTsFileMetricSet.LOAD_TSFILE_WRITE_PHASE, System.nanoTime() - startTime);
     clean(uuid);
     return true;
   }

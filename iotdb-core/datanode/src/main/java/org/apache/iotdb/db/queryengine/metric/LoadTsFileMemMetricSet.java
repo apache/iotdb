@@ -74,7 +74,7 @@ public class LoadTsFileMemMetricSet implements IMetricSet {
         Tag.NAME.toString(),
         LOAD_TSFILE_DATA_CACHE_MEMORY);
     metricService.remove(
-        MetricType.AUTO_GAUGE,
+        MetricType.GAUGE,
         Metric.LOAD_MEM.toString(),
         Tag.NAME.toString(),
         LOAD_TSFILE_ANALYZE_SCHEMA_MEMORY);

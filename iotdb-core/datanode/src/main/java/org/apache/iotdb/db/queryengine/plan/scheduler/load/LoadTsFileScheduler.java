@@ -48,6 +48,7 @@ import org.apache.iotdb.db.queryengine.execution.load.TsFileData;
 import org.apache.iotdb.db.queryengine.execution.load.TsFileSplitter;
 import org.apache.iotdb.db.queryengine.load.LoadTsFileDataCacheMemoryBlock;
 import org.apache.iotdb.db.queryengine.load.LoadTsFileMemoryManager;
+import org.apache.iotdb.db.queryengine.metric.LoadTsFileMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
@@ -105,6 +106,8 @@ public class LoadTsFileScheduler implements IScheduler {
   private static final int TRANSMIT_LIMIT =
       CommonDescriptor.getInstance().getConfig().getTTimePartitionSlotTransmitLimit();
 
+  private static final LoadTsFileMetricSet LOAD_TSFILE_METRICS = LoadTsFileMetricSet.getInstance();
+
   private final MPPQueryContext queryContext;
   private final QueryStateMachine stateMachine;
   private final LoadTsFileDispatcherImpl dispatcher;
@@ -157,7 +160,14 @@ public class LoadTsFileScheduler implements IScheduler {
                 partitionFetcher.queryDataPartition(
                     slotList,
                     queryContext.getSession().getUserName()))) { // do not decode, load locally
+
+          long loadLocallyStartTime = System.nanoTime();
           isLoadSingleTsFileSuccess = loadLocally(node);
+          long loadLocallyEndTime = System.nanoTime();
+          LOAD_TSFILE_METRICS.recordLoadTsFileTimeCost(
+              LoadTsFileMetricSet.LOAD_TSFILE_WRITE_PHASE,
+              loadLocallyEndTime - loadLocallyStartTime);
+
           node.clean();
 
         } else { // need decode, load locally or remotely, use two phases method
@@ -206,6 +216,8 @@ public class LoadTsFileScheduler implements IScheduler {
 
   private boolean firstPhase(LoadSingleTsFileNode node) {
     final TsFileDataManager tsFileDataManager = new TsFileDataManager(this, node, block);
+    long startTime = System.nanoTime();
+
     try {
       new TsFileSplitter(
               node.getTsFileResource().getTsFile(), tsFileDataManager::addOrSendTsFileData)
@@ -229,6 +241,9 @@ public class LoadTsFileScheduler implements IScheduler {
       return false;
     } finally {
       tsFileDataManager.clear();
+
+      LOAD_TSFILE_METRICS.recordLoadTsFileTimeCost(
+          LoadTsFileMetricSet.LOAD_TSFILE_DISPATCH_FIRST_PHASE, System.nanoTime() - startTime);
     }
     return true;
   }
@@ -300,6 +315,7 @@ public class LoadTsFileScheduler implements IScheduler {
     final TLoadCommandReq loadCommandReq =
         new TLoadCommandReq(
             (isFirstPhaseSuccess ? LoadCommand.EXECUTE : LoadCommand.ROLLBACK).ordinal(), uuid);
+    long startTime = System.nanoTime();
 
     try {
       loadCommandReq.setIsGeneratedByPipe(isGeneratedByPipe);
@@ -339,6 +355,9 @@ public class LoadTsFileScheduler implements IScheduler {
       LOGGER.warn("Interrupt or Execution error.", e);
       stateMachine.transitionToFailed(e);
       return false;
+    } finally {
+      LOAD_TSFILE_METRICS.recordLoadTsFileTimeCost(
+          LoadTsFileMetricSet.LOAD_TSFILE_DISPATCH_SECOND_PHASE, System.nanoTime() - startTime);
     }
     return true;
   }
@@ -359,6 +378,8 @@ public class LoadTsFileScheduler implements IScheduler {
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new LoadReadOnlyException();
     }
+
+    long startTime = System.nanoTime();
 
     try {
       FragmentInstance instance =
@@ -381,6 +402,9 @@ public class LoadTsFileScheduler implements IScheduler {
               e.getFailureStatus().getMessage()));
       stateMachine.transitionToFailed(e.getFailureStatus());
       return false;
+    } finally {
+      LOAD_TSFILE_METRICS.recordLoadTsFileTimeCost(
+          LoadTsFileMetricSet.LOAD_TSFILE_WRITE_PHASE, System.nanoTime() - startTime);
     }
 
     // add metrics

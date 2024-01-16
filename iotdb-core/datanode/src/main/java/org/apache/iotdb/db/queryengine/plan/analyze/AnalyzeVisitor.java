@@ -56,6 +56,7 @@ import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.execution.operator.window.WindowType;
+import org.apache.iotdb.db.queryengine.metric.LoadTsFileMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.SchemaValidator;
@@ -212,6 +213,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
+
+  private static final LoadTsFileMetricSet LOAD_TSFILE_METRICS = LoadTsFileMetricSet.getInstance();
 
   public AnalyzeVisitor(IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
     this.partitionFetcher = partitionFetcher;
@@ -2682,8 +2685,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   @Override
   public Analysis visitLoadFile(LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
-    return new LoadTsfileAnalyzer(loadTsFileStatement, context, partitionFetcher, schemaFetcher)
-        .analyzeFileByFile();
+    long startTime = System.nanoTime();
+    Analysis analysis =
+        new LoadTsfileAnalyzer(loadTsFileStatement, context, partitionFetcher, schemaFetcher)
+            .analyzeFileByFile();
+    LOAD_TSFILE_METRICS.recordLoadTsFileTimeCost(
+        LoadTsFileMetricSet.LOAD_TSFILE_ANALYSIS_PHASE, System.nanoTime() - startTime);
+    return analysis;
   }
 
   /** get analysis according to statement and params */

@@ -154,7 +154,8 @@ public enum Metric {
   PIPE_PROCEDURE("pipe_procedure"),
   PIPE_TASK_STATUS("pipe_task_status"),
   // load related
-  LOAD_MEM("load_mem");
+  LOAD_MEM("load_mem"),
+  LOAD_TIME_COST("load_time_cost");
 
   final String value;
 
