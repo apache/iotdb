@@ -47,6 +47,7 @@ public abstract class PipeTransferSubtask extends PipeReportableSubtask {
   // For controlling subtask submitting, making sure that a subtask is submitted to only one thread
   // at a time
   protected volatile boolean isSubmitted = false;
+  // For thread pool to execute callbacks
   protected final DecoratingLock callbackDecoratingLock = new DecoratingLock();
 
   protected PipeTransferSubtask(

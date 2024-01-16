@@ -22,7 +22,6 @@ package org.apache.iotdb.db.pipe.task.subtask.connector;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.pipe.task.DecoratingLock;
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.task.subtask.PipeTransferSubtask;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
@@ -47,9 +46,6 @@ public class PipeConnectorSubtask extends PipeTransferSubtask {
 
   // For input and output
   private final BoundedBlockingPendingQueue<Event> inputPendingQueue;
-
-  // For thread pool to execute callbacks
-  protected final DecoratingLock callbackDecoratingLock = new DecoratingLock();
 
   // Record these variables to provide corresponding value to tag key of monitoring metrics
   private final String attributeSortedString;
