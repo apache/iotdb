@@ -722,8 +722,9 @@ public class SeriesScanUtil {
         if (mergeReader.hasNextTimeValuePair()) {
 
           TsBlockBuilder builder = new TsBlockBuilder(getTsDataTypeList());
-          long currentPageEndPointTime = mergeReader.getCurrentReadStopTime();
+          long currentPageEndPointTime;
           while (mergeReader.hasNextTimeValuePair()) {
+            currentPageEndPointTime = mergeReader.getCurrentReadStopTime();
 
             /*
              * get current first point in mergeReader, this maybe overlapped later
