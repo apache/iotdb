@@ -62,6 +62,7 @@ public class RecordUtils {
   private static final short ALIAS_OFFSET = 19;
   private static final short SEG_ADDRESS_OFFSET = 3;
   private static final short SCHEMA_OFFSET = 11;
+  private static final short VIEW_OFFSET = 12;
   private static final short INTERNAL_BITFLAG_OFFSET = 15;
 
   private static final byte INTERNAL_TYPE = 0;
@@ -310,7 +311,14 @@ public class RecordUtils {
     return res;
   }
 
-  public static boolean getAlignment(ByteBuffer recBuf) {
+  /** return as: [dataType, encoding, compression, preDelete] */
+  public static ViewExpression getViewExpression(ByteBuffer recBuf) {
+    int oriPos = recBuf.position();
+    recBuf.position(oriPos + VIEW_OFFSET);
+    return ViewExpression.deserialize(recBuf);
+  }
+
+  public static Boolean getAlignment(ByteBuffer recBuf) {
     int oriPos = recBuf.position();
     recBuf.position(oriPos + INTERNAL_BITFLAG_OFFSET);
     byte flag = ReadWriteIOUtils.readByte(recBuf);
