@@ -37,6 +37,7 @@ class TimePartitionFiles {
   private TsFileManager tsFileManager;
   private final long timePartition;
   private long maxFileTimestamp;
+  private boolean repaired;
 
   TimePartitionFiles(DataRegion dataRegion, long timePartition) {
     this.databaseName = dataRegion.getDatabaseName();
@@ -44,6 +45,7 @@ class TimePartitionFiles {
     this.tsFileManager = dataRegion.getTsFileManager();
     this.timePartition = timePartition;
     this.maxFileTimestamp = calculateMaxTimestamp();
+    this.repaired = false;
   }
 
   TimePartitionFiles(String databaseName, String dataRegionId, long timePartition) {
@@ -79,6 +81,14 @@ class TimePartitionFiles {
 
   public TsFileManager getTsFileManager() {
     return tsFileManager;
+  }
+
+  public boolean isRepaired() {
+    return repaired;
+  }
+
+  public void setRepaired(boolean repaired) {
+    this.repaired = repaired;
   }
 
   public List<TsFileResource> getSeqFiles() {

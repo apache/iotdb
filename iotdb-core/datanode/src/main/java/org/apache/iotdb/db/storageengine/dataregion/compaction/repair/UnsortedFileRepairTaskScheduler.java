@@ -131,6 +131,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
       if (cannotRepairFiles == null || cannotRepairFiles.isEmpty()) {
         continue;
       }
+      timePartition.setRepaired(true);
       // mark cannot repair file in TsFileResource
       List<TsFileResource> resources = timePartition.getAllFiles();
       for (TsFileResource resource : resources) {
@@ -186,6 +187,14 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
 
   private void executeRepair() throws InterruptedException {
     for (TimePartitionFiles timePartition : allTimePartitionFiles) {
+      if (timePartition.isRepaired()) {
+        LOGGER.info(
+            "[RepairScheduler][{}][{}] skip repair time partition {} because it is repaired",
+            timePartition.getDatabaseName(),
+            timePartition.getDataRegionId(),
+            timePartition.getTimePartition());
+        continue;
+      }
       // repair unsorted data in single file
       checkInternalUnsortedFileAndRepair(timePartition);
       // repair unsorted data between sequence files
