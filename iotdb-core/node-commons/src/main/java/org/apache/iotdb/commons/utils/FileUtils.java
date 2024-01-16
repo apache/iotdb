@@ -113,12 +113,18 @@ public class FileUtils {
       } else {
         // copy file
         try (BufferedInputStream in = new BufferedInputStream(new FileInputStream(file));
-            BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(targetFile))) {
+            FileOutputStream fileOutputStream = new FileOutputStream(targetFile);
+            BufferedOutputStream out = new BufferedOutputStream(fileOutputStream)) {
           byte[] bytes = new byte[BUFFER_SIZE];
           int size = 0;
           while ((size = in.read(bytes)) > 0) {
             out.write(bytes, 0, size);
           }
+          out.flush();
+          fileOutputStream.getFD().sync(); // after try block, stream will call close automatically
+        } catch (IOException e) {
+          LOGGER.warn("get ioexception on file {}", file.getAbsolutePath(), e);
+          throw e;
         }
       }
     }
