@@ -67,7 +67,6 @@ public class RepairTaskRecoveryPerformer {
 
   private void parseStartTimePartitionLog(String line) {
     if (currentTimePartition != null) {
-      // TODO: previous time partition log is not complete
       LOGGER.error(
           "[{}][{}]Repair data log is not complete, time partition is {}.",
           currentTimePartition.getDatabaseName(),

@@ -74,10 +74,10 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
       repairLogger = new RepairLogger();
     } catch (Exception e) {
       try {
-        LOGGER.error("Failed to create repair logger", e);
+        LOGGER.error("[RepairScheduler] Failed to create repair logger", e);
         repairLogger.close();
       } catch (IOException closeException) {
-        LOGGER.error("Failed to close repair logger", closeException);
+        LOGGER.error("[RepairScheduler] Failed to close repair logger", closeException);
       }
       return;
     }
@@ -88,15 +88,21 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
   /** Used for recover from log file */
   public UnsortedFileRepairTaskScheduler(List<DataRegion> dataRegions, File logFile) {
     this.isRecover = true;
-    LOGGER.info("start recover repair log {}", logFile.getAbsolutePath());
+    LOGGER.info("[RepairScheduler] start recover repair log {}", logFile.getAbsolutePath());
     try {
       repairLogger = new RepairLogger(logFile);
     } catch (Exception e) {
       try {
-        LOGGER.error("Failed to get repair logger from log file {}", logFile.getAbsolutePath(), e);
+        LOGGER.error(
+            "[RepairScheduler] Failed to get repair logger from log file {}",
+            logFile.getAbsolutePath(),
+            e);
         repairLogger.close();
       } catch (IOException closeException) {
-        LOGGER.error("Failed to close log file {}", logFile.getAbsolutePath(), closeException);
+        LOGGER.error(
+            "[RepairScheduler] Failed to close log file {}",
+            logFile.getAbsolutePath(),
+            closeException);
       }
       return;
     }
@@ -104,7 +110,8 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
     try {
       recover(logFile);
     } catch (Exception e) {
-      LOGGER.error("Failed to parse repair log file {}", logFile.getAbsolutePath(), e);
+      LOGGER.error(
+          "[RepairScheduler] Failed to parse repair log file {}", logFile.getAbsolutePath(), e);
       return;
     }
     initSuccess = true;
@@ -113,7 +120,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
   private void recover(File logFile) throws IOException {
     RepairTaskRecoveryPerformer recoveryPerformer = new RepairTaskRecoveryPerformer(logFile);
     LOGGER.info(
-        "recover unfinished repair schedule task from log file: {}",
+        "[RepairScheduler] recover unfinished repair schedule task from log file: {}",
         recoveryPerformer.getRepairLogFilePath());
     recoveryPerformer.perform();
     Map<TimePartitionFiles, Set<String>> repairedTimePartitionWithCannotRepairFiles =
@@ -152,7 +159,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
   @Override
   public void run() {
     if (!initSuccess) {
-      LOGGER.info("Failed to init repair schedule task");
+      LOGGER.info("[RepairScheduler] Failed to init repair schedule task");
       markRepairTaskFinish();
       return;
     }
@@ -161,15 +168,18 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
     try {
       executeRepair();
     } catch (Exception e) {
-      LOGGER.error("Meet error when execute repair schedule task", e);
+      LOGGER.error("[RepairScheduler] Meet error when execute repair schedule task", e);
     } finally {
       markRepairTaskFinish();
       try {
         repairLogger.close();
       } catch (Exception e) {
-        LOGGER.error("Failed to close repair logger {}", repairLogger.getRepairLogFilePath(), e);
+        LOGGER.error(
+            "[RepairScheduler] Failed to close repair logger {}",
+            repairLogger.getRepairLogFilePath(),
+            e);
       }
-      LOGGER.info("Finished repair task");
+      LOGGER.info("[RepairScheduler] Finished repair task");
       CompactionScheduler.exclusiveUnlockCompactionSelection();
     }
   }
@@ -201,6 +211,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
       } finally {
         sourceFile.readUnlock();
       }
+      LOGGER.info("[RepairScheduler] file {} need to repair", sourceFile);
       TsFileManager tsFileManager = timePartition.getTsFileManager();
       CountDownLatch latch = new CountDownLatch(1);
       RepairUnsortedFileCompactionTask task =
@@ -212,7 +223,6 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
               sourceFile.isSeq(),
               tsFileManager.getNextCompactionTaskId());
       if (CompactionTaskManager.getInstance().addTaskToWaitingQueue(task)) {
-        // TODO: wait the repair compaction task finished
         latch.await();
       }
     }
@@ -235,8 +245,8 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
               true,
               false,
               tsFileManager.getNextCompactionTaskId());
+      LOGGER.info("[RepairScheduler] file {} need to repair", overlapFile);
       if (CompactionTaskManager.getInstance().addTaskToWaitingQueue(task)) {
-        // TODO: wait the repair compaction task finished
         latch.await();
       }
     }
