@@ -72,7 +72,7 @@ if [[ -z "$START_SERVICE" || "$START_SERVICE" =~ ^[Yy]$ ]]; then
 fi
 
 echo "Do you want to start IoTDB DataNode when system startup ? y/n (default y)"
-echo "or you can use 'systemctl enable iotdb-datanode' to enable it later."
+echo "Or you can use 'systemctl enable iotdb-datanode' to enable it later."
 read -r ADD_STARTUP
 echo - - - - - - - - - -
 if [[ -z "$ADD_STARTUP" || "$ADD_STARTUP" =~ ^[Yy]$ ]]; then
