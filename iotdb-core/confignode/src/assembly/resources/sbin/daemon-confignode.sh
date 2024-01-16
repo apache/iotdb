@@ -68,7 +68,7 @@ read -r START_SERVICE
 START_SERVICE=${START_SERVICE,,} # to lower case
 echo - - - - - - - - - -
 if [[ -z "$START_SERVICE" || "$START_SERVICE" =~ ^[y]$ ]]; then
-    "${IOTDB_SBIN_HOME}/sbin/stop-confignode.sh" >/dev/null 2>&1 &
+    "${IOTDB_SBIN_HOME}"/sbin/stop-confignode.sh >/dev/null 2>&1 &
     systemctl start iotdb-confignode
 fi
 
