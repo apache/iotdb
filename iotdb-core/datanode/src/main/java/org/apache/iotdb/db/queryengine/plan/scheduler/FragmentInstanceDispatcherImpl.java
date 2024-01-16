@@ -131,6 +131,9 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                 RpcUtils.getStatus(
                     TSStatusCode.INTERNAL_SERVER_ERROR, UNEXPECTED_ERRORS + t.getMessage())));
       } finally {
+        // friendly for gc, clear the plan node tree, for some queries select all devices, it will
+        // release lots of memory
+        instance.getFragment().clearUselessField();
         QUERY_EXECUTION_METRIC_SET.recordExecutionCost(
             DISPATCH_READ, System.nanoTime() - startTime);
       }
