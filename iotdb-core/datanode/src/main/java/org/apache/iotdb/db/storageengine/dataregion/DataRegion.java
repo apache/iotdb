@@ -2416,19 +2416,6 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  public void repairData() {
-    List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
-    timePartitions.sort(Comparator.reverseOrder());
-    CompactionScheduler.exclusiveLockCompactionSelection();
-    try {
-      for (long timePartition : timePartitions) {
-        CompactionScheduler.scheduleRepairCompaction(tsFileManager, timePartition);
-      }
-    } finally {
-      CompactionScheduler.exclusiveUnlockCompactionSelection();
-    }
-  }
-
   protected int executeCompaction() {
     int trySubmitCount = 0;
     List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());

@@ -1320,6 +1320,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus repairData() throws TException {
+    if (!storageEngine.isAllSgReady()) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, "not all sg is ready");
+    }
     try {
       if (storageEngine.repairData()) {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);

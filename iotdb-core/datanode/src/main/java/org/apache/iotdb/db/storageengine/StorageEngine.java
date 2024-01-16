@@ -224,9 +224,9 @@ public class StorageEngine implements IService {
         new Thread(
             () -> {
               checkResults(futures, "StorageEngine failed to recover.");
+              recoverRepairDataScheduleTask();
               setAllSgReady(true);
               ttlMapForRecover.clear();
-              recoverRepairDataScheduleTask();
             },
             ThreadName.STORAGE_ENGINE_RECOVER_TRIGGER.getName());
     recoverEndTrigger.start();
@@ -593,6 +593,7 @@ public class StorageEngine implements IService {
             .filter(f -> f.getName().endsWith(RepairLogger.repairLogSuffix) && f.isFile())
             .collect(Collectors.toList());
     if (!fileList.isEmpty()) {
+      UnsortedFileRepairTaskScheduler.markRepairTaskStart();
       cachedThreadPool.submit(new UnsortedFileRepairTaskScheduler(dataRegionList, fileList.get(0)));
     }
   }

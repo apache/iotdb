@@ -57,9 +57,14 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
   private final Set<TimePartitionFiles> allTimePartitionFiles = new HashSet<>();
   private RepairLogger repairLogger;
   private final boolean isRecover;
+  private boolean initSuccess = false;
 
   public static boolean markRepairTaskStart() {
     return isRepairingData.compareAndSet(false, true);
+  }
+
+  public static void markRepairTaskFinish() {
+    isRepairingData.set(false);
   }
 
   /** Used for create a new repair schedule task */
@@ -74,13 +79,16 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
       } catch (IOException closeException) {
         LOGGER.error("Failed to close repair logger", closeException);
       }
+      return;
     }
     collectTimePartitions(dataRegions);
+    initSuccess = true;
   }
 
   /** Used for recover from log file */
   public UnsortedFileRepairTaskScheduler(List<DataRegion> dataRegions, File logFile) {
     this.isRecover = true;
+    LOGGER.info("start recover repair log {}", logFile.getAbsolutePath());
     try {
       repairLogger = new RepairLogger(logFile);
     } catch (Exception e) {
@@ -90,40 +98,42 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
       } catch (IOException closeException) {
         LOGGER.error("Failed to close log file {}", logFile.getAbsolutePath(), closeException);
       }
+      return;
     }
     collectTimePartitions(dataRegions);
-    recover(logFile);
+    try {
+      recover(logFile);
+    } catch (Exception e) {
+      LOGGER.error("Failed to parse repair log file {}", logFile.getAbsolutePath(), e);
+      return;
+    }
+    initSuccess = true;
   }
 
-  private void recover(File logFile) {
+  private void recover(File logFile) throws IOException {
     RepairTaskRecoveryPerformer recoveryPerformer = new RepairTaskRecoveryPerformer(logFile);
     LOGGER.info(
         "recover unfinished repair schedule task from log file: {}",
         recoveryPerformer.getRepairLogFilePath());
-    try {
-      recoveryPerformer.perform();
-      Map<TimePartitionFiles, Set<String>> repairedTimePartitionWithCannotRepairFiles =
-          recoveryPerformer.getRepairedTimePartitionsWithCannotRepairFiles();
-      for (TimePartitionFiles timePartition : allTimePartitionFiles) {
-        Set<String> cannotRepairFiles =
-            repairedTimePartitionWithCannotRepairFiles.remove(timePartition);
-        if (cannotRepairFiles == null || cannotRepairFiles.isEmpty()) {
+    recoveryPerformer.perform();
+    Map<TimePartitionFiles, Set<String>> repairedTimePartitionWithCannotRepairFiles =
+        recoveryPerformer.getRepairedTimePartitionsWithCannotRepairFiles();
+    for (TimePartitionFiles timePartition : allTimePartitionFiles) {
+      Set<String> cannotRepairFiles =
+          repairedTimePartitionWithCannotRepairFiles.remove(timePartition);
+      if (cannotRepairFiles == null || cannotRepairFiles.isEmpty()) {
+        continue;
+      }
+      // mark cannot repair file in TsFileResource
+      List<TsFileResource> resources = timePartition.getAllFiles();
+      for (TsFileResource resource : resources) {
+        if (resource.getStatus() != TsFileResourceStatus.DELETED) {
           continue;
         }
-        // mark cannot repair file in TsFileResource
-        List<TsFileResource> resources = timePartition.getAllFiles();
-        for (TsFileResource resource : resources) {
-          if (resource.getStatus() != TsFileResourceStatus.DELETED) {
-            continue;
-          }
-          if (cannotRepairFiles.contains(resource.getTsFile().getName())) {
-            resource.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_REPAIR);
-          }
+        if (cannotRepairFiles.contains(resource.getTsFile().getName())) {
+          resource.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_REPAIR);
         }
       }
-    } catch (Exception e) {
-      LOGGER.error(
-          "Failed to parse repair log file {}", recoveryPerformer.getRepairLogFilePath(), e);
     }
   }
 
@@ -141,6 +151,11 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
 
   @Override
   public void run() {
+    if (!initSuccess) {
+      LOGGER.info("Failed to init repair schedule task");
+      markRepairTaskFinish();
+      return;
+    }
     CompactionScheduler.exclusiveLockCompactionSelection();
     CompactionTaskManager.getInstance().waitAllCompactionFinish();
     try {
@@ -148,12 +163,13 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
     } catch (Exception e) {
       LOGGER.error("Meet error when execute repair schedule task", e);
     } finally {
-      isRepairingData.set(false);
+      markRepairTaskFinish();
       try {
         repairLogger.close();
       } catch (Exception e) {
         LOGGER.error("Failed to close repair logger {}", repairLogger.getRepairLogFilePath(), e);
       }
+      UnsortedFileRepairTaskScheduler.isRepairingData.set(false);
       CompactionScheduler.exclusiveUnlockCompactionSelection();
     }
   }
