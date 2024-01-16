@@ -22,6 +22,8 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.RepairUnsortedFileCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -51,13 +53,28 @@ public class RepairUnsortedFileCompactionPerformer extends ReadPointCompactionPe
     if (rewriteFile) {
       super.perform();
     } else {
-      hardLinkToTargetFile();
+      prepareTargetFile();
     }
   }
 
-  private void hardLinkToTargetFile() throws IOException {
+  private void prepareTargetFile() throws IOException {
     TsFileResource seqSourceFile = seqFiles.get(0);
     TsFileResource targetFile = targetFiles.get(0);
     Files.createLink(targetFile.getTsFile().toPath(), seqSourceFile.getTsFile().toPath());
+    ITimeIndex timeIndex = seqSourceFile.getTimeIndex();
+    if (timeIndex instanceof DeviceTimeIndex) {
+      targetFile.setTimeIndex(timeIndex);
+    } else {
+      targetFile.setTimeIndex(seqSourceFile.buildDeviceTimeIndex());
+    }
+  }
+
+  @Override
+  public void setSourceFiles(List<TsFileResource> sourceFiles) {
+    if (sourceFiles.get(0).isSeq()) {
+      seqFiles = sourceFiles;
+    } else {
+      unseqFiles = sourceFiles;
+    }
   }
 }
