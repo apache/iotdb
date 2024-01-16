@@ -203,7 +203,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
     }
     Assert.assertFalse(TsFileResourceUtils.validateTsFileDataCorrectness(resource));
     RepairUnsortedFileCompactionTask task =
-        new RepairUnsortedFileCompactionTask(0, tsFileManager, resource, true, false, 0);
+        new RepairUnsortedFileCompactionTask(0, tsFileManager, resource, resource.isSeq(), 0);
     task.start();
     Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
     Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
