@@ -93,6 +93,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -1009,6 +1010,21 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.setException(e);
       }
     } else {
+      if (!StorageEngine.getInstance().isAllSgReady()) {
+        future.setException(
+            new IoTDBException(
+                "not all sg is ready", TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+        return future;
+      }
+      IoTDBConfig iotdbConfig = IoTDBDescriptor.getInstance().getConfig();
+      if (!iotdbConfig.isEnableSeqSpaceCompaction()
+          || !iotdbConfig.isEnableUnseqSpaceCompaction()) {
+        future.setException(
+            new IoTDBException(
+                "cannot start repair task because inner space compaction is not enabled",
+                TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+        return future;
+      }
       try {
         if (StorageEngine.getInstance().repairData()) {
           tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
