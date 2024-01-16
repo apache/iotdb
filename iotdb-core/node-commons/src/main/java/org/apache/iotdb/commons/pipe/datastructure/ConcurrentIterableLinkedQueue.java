@@ -261,7 +261,7 @@ public class ConcurrentIterableLinkedQueue<E> {
       try {
         while (!hasNext()) {
           if (isClosed) {
-            LOGGER.warn("Calling next() to a closed iterator, return null.");
+            LOGGER.warn("Calling next() to a closed iterator, will return null.");
             return null;
           }
           if (!hasNextCondition.await(waitTimeMillis, TimeUnit.MILLISECONDS)) {
