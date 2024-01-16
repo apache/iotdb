@@ -150,18 +150,19 @@ public class PipeConnectorSubtask extends PipeDataNodeSubtask {
       if (!isClosed.get()) {
         throw e;
       } else {
-        LOGGER.info("PipeConnectionException in pipe transfer, ignored because pipe is dropped.");
+        LOGGER.info(
+            "PipeConnectionException in pipe transfer, ignored because pipe is dropped.", e);
         releaseLastEvent(false);
       }
     } catch (Exception e) {
       if (!isClosed.get()) {
         throw new PipeException(
-            "Error occurred during executing PipeConnector#transfer, perhaps need to check "
-                + "whether the implementation of PipeConnector is correct "
-                + "according to the pipe-api description.",
+            String.format(
+                "Exception in pipe transfer, subtask: %s, last event: %s, root cause: %s",
+                taskID, lastEvent, ErrorHandlingUtils.getRootCause(e).getMessage()),
             e);
       } else {
-        LOGGER.info("Exception in pipe transfer, ignored because pipe is dropped.");
+        LOGGER.info("Exception in pipe transfer, ignored because pipe is dropped.", e);
         releaseLastEvent(false);
       }
     }
@@ -316,8 +317,9 @@ public class PipeConnectorSubtask extends PipeDataNodeSubtask {
       outputPipeConnector.close();
     } catch (Exception e) {
       LOGGER.info(
-          "Error occurred during closing PipeConnector, perhaps need to check whether the "
-              + "implementation of PipeConnector is correct according to the pipe-api description.",
+          "Exception occurred when closing pipe connector subtask {}, root cause: {}",
+          taskID,
+          ErrorHandlingUtils.getRootCause(e).getMessage(),
           e);
     } finally {
       inputPendingQueue.forEach(
