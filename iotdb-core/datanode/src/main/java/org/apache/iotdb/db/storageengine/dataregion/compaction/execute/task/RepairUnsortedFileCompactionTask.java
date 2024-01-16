@@ -184,6 +184,8 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
   @Override
   public void handleTaskCleanup() {
     super.handleTaskCleanup();
-    latch.countDown();
+    if (latch != null) {
+      latch.countDown();
+    }
   }
 }
