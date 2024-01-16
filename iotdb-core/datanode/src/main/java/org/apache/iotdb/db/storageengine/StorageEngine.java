@@ -56,6 +56,7 @@ import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.UnsortedFileRepairTaskScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CloseFileListener;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushListener;
@@ -97,6 +98,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 
@@ -568,16 +571,31 @@ public class StorageEngine implements IService {
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new StorageEngineException("Current system mode is read only, does not support merge");
     }
-    cachedThreadPool.submit(
-        () -> {
-          List<DataRegion> dataRegionList = new ArrayList<>(dataRegionMap.values());
-          cachedThreadPool.submit(new UnsortedFileRepairTaskScheduler(dataRegionList));
-        });
+    List<DataRegion> dataRegionList = new ArrayList<>(dataRegionMap.values());
+    cachedThreadPool.submit(new UnsortedFileRepairTaskScheduler(dataRegionList));
     return true;
   }
 
   /** recover the progress of unfinished repair schedule task */
-  public void recoverRepairDataScheduleTask() {}
+  public void recoverRepairDataScheduleTask() {
+    List<DataRegion> dataRegionList = new ArrayList<>(dataRegionMap.values());
+    String repairLogDirPath =
+        IoTDBDescriptor.getInstance().getConfig().getSystemDir()
+            + File.separator
+            + RepairLogger.repairLogDir;
+    File repairLogDir = new File(repairLogDirPath);
+    if (!repairLogDir.exists() || !repairLogDir.isDirectory()) {
+      return;
+    }
+    File[] files = repairLogDir.listFiles();
+    List<File> fileList =
+        Stream.of(files == null ? new File[0] : files)
+            .filter(f -> f.getName().endsWith(RepairLogger.repairLogSuffix) && f.isFile())
+            .collect(Collectors.toList());
+    if (!fileList.isEmpty()) {
+      cachedThreadPool.submit(new UnsortedFileRepairTaskScheduler(dataRegionList, fileList.get(0)));
+    }
+  }
 
   public void operateFlush(TFlushReq req) {
     if (req.storageGroups == null) {

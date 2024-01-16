@@ -34,6 +34,7 @@ import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -62,20 +63,39 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
 
   /** Used for create a new repair schedule task */
   public UnsortedFileRepairTaskScheduler(List<DataRegion> dataRegions) {
-    this(dataRegions, false);
+    this.isRecover = false;
+    try {
+      repairLogger = new RepairLogger();
+    } catch (Exception e) {
+      try {
+        LOGGER.error("Failed to create repair logger", e);
+        repairLogger.close();
+      } catch (IOException closeException) {
+        LOGGER.error("Failed to close repair logger", closeException);
+      }
+    }
+    collectTimePartitions(dataRegions);
   }
 
   /** Used for recover from log file */
-  public UnsortedFileRepairTaskScheduler(List<DataRegion> dataRegions, boolean isRecover) {
-    this.isRecover = isRecover;
-    collectTimePartitions(dataRegions);
-    if (isRecover) {
-      recover(dataRegions);
+  public UnsortedFileRepairTaskScheduler(List<DataRegion> dataRegions, File logFile) {
+    this.isRecover = true;
+    try {
+      repairLogger = new RepairLogger(logFile);
+    } catch (Exception e) {
+      try {
+        LOGGER.error("Failed to get repair logger from log file {}", logFile.getAbsolutePath(), e);
+        repairLogger.close();
+      } catch (IOException closeException) {
+        LOGGER.error("Failed to close log file {}", logFile.getAbsolutePath(), closeException);
+      }
     }
+    collectTimePartitions(dataRegions);
+    recover(logFile);
   }
 
-  private void recover(List<DataRegion> dataRegions) {
-    RepairTaskRecoveryPerformer recoveryPerformer = new RepairTaskRecoveryPerformer(dataRegions);
+  private void recover(File logFile) {
+    RepairTaskRecoveryPerformer recoveryPerformer = new RepairTaskRecoveryPerformer(logFile);
     LOGGER.info(
         "recover unfinished repair schedule task from log file: {}",
         recoveryPerformer.getRepairLogFilePath());
@@ -123,7 +143,6 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
     CompactionScheduler.exclusiveLockCompactionSelection();
     CompactionTaskManager.getInstance().waitAllCompactionFinish();
     try {
-      repairLogger = new RepairLogger(isRecover);
       executeRepair();
     } catch (Exception e) {
       LOGGER.error("Meet error when execute repair schedule task", e);

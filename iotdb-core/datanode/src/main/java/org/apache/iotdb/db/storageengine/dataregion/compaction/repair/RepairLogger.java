@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.repair;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.io.Closeable;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -38,18 +40,43 @@ public class RepairLogger implements Closeable {
   static final String repairTimePartitionStartLogPrefix = "START_TIME_PARTITION";
   static final String cannotRepairFileLogPrefix = "TSFILE";
   static final String repairTimePartitionEndLogPrefix = "END_TIME_PARTITION";
-  static final String repairLogSuffix = ".repair-data.log";
+  public static final String repairLogSuffix = ".repair-data.log";
+  public static final String repairLogDir = "repair";
   private final File logFile;
   private final long repairTaskStartTime;
   private final FileOutputStream logStream;
 
-  public RepairLogger(boolean isRecover) throws IOException {
+  public RepairLogger() throws IOException {
     this.repairTaskStartTime = System.currentTimeMillis();
-    this.logFile = new File(String.format("%s%s", repairTaskStartTime, repairLogSuffix));
+    File logFileDir =
+        new File(
+            IoTDBDescriptor.getInstance().getConfig().getSystemDir()
+                + File.separator
+                + repairLogDir);
+    if (!logFileDir.exists()) {
+      logFileDir.mkdirs();
+    }
+    File[] files = logFileDir.listFiles();
+    if (files != null) {
+      for (File file : files) {
+        if (file.getName().endsWith(repairLogSuffix)) {
+          Files.delete(file.toPath());
+        }
+      }
+    }
+    String logFileName = String.format("%s%s", repairTaskStartTime, repairLogSuffix);
+    this.logFile = new File(logFileDir.getPath() + File.separator + logFileName);
     Path logFilePath = logFile.toPath();
     if (!Files.exists(logFilePath)) {
       Files.createFile(logFilePath);
     }
+    this.logStream = new FileOutputStream(logFile);
+  }
+
+  public RepairLogger(File logFile) throws FileNotFoundException {
+    this.logFile = logFile;
+    String logFileName = logFile.getName();
+    this.repairTaskStartTime = Long.parseLong(logFileName.replace(repairLogSuffix, ""));
     this.logStream = new FileOutputStream(logFile, true);
   }
 
@@ -59,7 +86,7 @@ public class RepairLogger implements Closeable {
     markEndOfRepairedTimePartition(timePartition);
   }
 
-  void recordCannotRepairFiles(TimePartitionFiles timePartition) {
+  void recordCannotRepairFiles(TimePartitionFiles timePartition) throws IOException {
     TsFileManager tsFileManager = timePartition.getTsFileManager();
     List<TsFileResource> seqResources =
         tsFileManager.getTsFileListSnapshot(timePartition.getTimePartition(), true);
@@ -71,11 +98,7 @@ public class RepairLogger implements Closeable {
                 resource -> resource.getTsFileRepairStatus() == TsFileRepairStatus.CAN_NOT_REPAIR)
             .collect(Collectors.toList());
     for (TsFileResource cannotRepairFile : cannotRepairFiles) {
-      try {
-        recordOneFile(cannotRepairFile);
-      } catch (Exception e) {
-
-      }
+      recordOneFile(cannotRepairFile);
     }
   }
 
@@ -109,5 +132,7 @@ public class RepairLogger implements Closeable {
   }
 
   @Override
-  public void close() throws IOException {}
+  public void close() throws IOException {
+    logStream.close();
+  }
 }
