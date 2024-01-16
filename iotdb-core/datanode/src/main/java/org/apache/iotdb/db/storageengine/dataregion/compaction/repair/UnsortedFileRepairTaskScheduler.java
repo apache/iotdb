@@ -312,7 +312,6 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
   }
 
   private void finishRepairTimePartition(TimePartitionFiles timePartition) {
-    allTimePartitionFiles.remove(timePartition);
     try {
       repairLogger.recordRepairedTimePartition(timePartition);
     } catch (Exception e) {
