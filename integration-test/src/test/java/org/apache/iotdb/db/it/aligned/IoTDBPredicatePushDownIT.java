@@ -63,7 +63,6 @@ public class IoTDBPredicatePushDownIT {
           "10,10,10,",
           "11,11,11,",
           "12,12,12,",
-          "13,130000,130000,",
           "14,14,14,",
           "15,15,15,",
           "16,16,16,",
@@ -78,16 +77,7 @@ public class IoTDBPredicatePushDownIT {
     String expectedHeader2 = "Time,root.sg1.d1.s3,";
     String[] retArray2 =
         new String[] {
-          "10,10,",
-          "11,11,",
-          "12,12,",
-          "13,130000,",
-          "14,14,",
-          "15,15,",
-          "16,16,",
-          "17,17,",
-          "18,18,",
-          "19,19,",
+          "10,10,", "11,11,", "12,12,", "14,14,", "15,15,", "16,16,", "17,17,", "18,18,", "19,19,",
           "20,20,"
         };
     resultSetEqualTest(
@@ -96,16 +86,7 @@ public class IoTDBPredicatePushDownIT {
     String expectedHeader3 = "Time,root.sg1.d1.s2,";
     String[] retArray3 =
         new String[] {
-          "10,10,",
-          "11,11,",
-          "12,12,",
-          "13,130000,",
-          "14,14,",
-          "15,15,",
-          "16,16,",
-          "17,17,",
-          "18,18,",
-          "19,19,",
+          "10,10,", "11,11,", "12,12,", "14,14,", "15,15,", "16,16,", "17,17,", "18,18,", "19,19,",
           "20,20,"
         };
     resultSetEqualTest(
@@ -126,7 +107,7 @@ public class IoTDBPredicatePushDownIT {
           "20,20,20,",
           "21,null,21,",
           "22,null,22,",
-          "23,null,23,",
+          "23,null,230000,",
           "24,null,24,",
           "25,null,25,",
           "26,null,26,",
@@ -172,7 +153,7 @@ public class IoTDBPredicatePushDownIT {
           "20,20,",
           "21,21,",
           "22,22,",
-          "23,23,",
+          "23,230000,",
           "24,24,",
           "25,25,",
           "26,26,",
@@ -284,7 +265,6 @@ public class IoTDBPredicatePushDownIT {
           "10,10,10,10,10,",
           "11,11,11,11,11,",
           "12,12,12,12,12,",
-          "13,130000,13,130000,13,",
           "14,14,14,14,14,",
           "15,15,15,15,15,",
           "16,16,16,16,16,",
@@ -304,7 +284,7 @@ public class IoTDBPredicatePushDownIT {
     String expectedHeader1 = "count(root.sg1.d1.s2),count(root.sg1.d1.s3),";
     String[] retArray1 =
         new String[] {
-          "11,11,",
+          "10,10,",
         };
     resultSetEqualTest(
         "select count(s2), count(s3) from root.sg1.d1 where s2 >= 10 and s2 < 30",
@@ -312,14 +292,14 @@ public class IoTDBPredicatePushDownIT {
         retArray1);
 
     String expectedHeader2 = "count(root.sg1.d1.s3),";
-    String[] retArray2 = new String[] {"11,"};
+    String[] retArray2 = new String[] {"10,"};
     resultSetEqualTest(
         "select count(s3) from root.sg1.d1 where s2 >= 10 and s2 < 30", expectedHeader2, retArray2);
 
     String expectedHeader3 = "count(root.sg1.d1.s2),";
     String[] retArray3 =
         new String[] {
-          "11,",
+          "10,",
         };
     resultSetEqualTest(
         "select count(s2) from root.sg1.d1 where s2 >= 10 and s2 < 30", expectedHeader3, retArray3);
@@ -405,7 +385,7 @@ public class IoTDBPredicatePushDownIT {
         "count(root.sg1.d1.s2),count(root.sg1.d2.s2),count(root.sg1.d1.s3),count(root.sg1.d2.s3),";
     String[] retArray1 =
         new String[] {
-          "11,11,11,11,",
+          "10,10,10,10,",
         };
     resultSetEqualTest(
         "select count(s2), count(s3) from root.sg1.d1, root.sg1.d2 where s2 >= 10 and s2 < 30",
