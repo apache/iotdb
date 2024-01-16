@@ -1059,7 +1059,7 @@ public class AnalyzeTest {
           new MPPQueryContext(
               "",
               new QueryId("test_query"),
-              new SessionInfo(0, "test", ZoneId.systemDefault().getId()),
+              new SessionInfo(0, "test", ZoneId.systemDefault()),
               new TEndPoint(),
               new TEndPoint());
       Analyzer analyzer =

@@ -139,7 +139,7 @@ public class TemplatedLogicalPlan {
                 OFFSET_VALUE,
                 limitValue,
                 whereExpression,
-                queryStatement.getSelectComponent().getZoneId(),
+                queryStatement.isGroupByTime(),
                 analysis.getDeviceTemplate().getSchemaMap(),
                 filterLayoutMap));
   }
@@ -209,7 +209,6 @@ public class TemplatedLogicalPlan {
             .planFilter(
                 whereExpression,
                 queryStatement.isGroupByTime(),
-                queryStatement.getSelectComponent().getZoneId(),
                 queryStatement.getResultTimeOrder());
 
     return planBuilder.getRoot();

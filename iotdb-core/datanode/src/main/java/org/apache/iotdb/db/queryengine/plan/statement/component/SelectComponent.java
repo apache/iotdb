@@ -22,15 +22,12 @@ package org.apache.iotdb.db.queryengine.plan.statement.component;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 /** This class maintains information of {@code SELECT} clause. */
 public class SelectComponent extends StatementNode {
-
-  private final ZoneId zoneId;
 
   private boolean hasLast = false;
 
@@ -40,12 +37,8 @@ public class SelectComponent extends StatementNode {
 
   private Map<String, Expression> aliasToColumnMap;
 
-  public SelectComponent(ZoneId zoneId) {
-    this.zoneId = zoneId;
-  }
-
-  public ZoneId getZoneId() {
-    return zoneId;
+  public SelectComponent() {
+    // do nothing
   }
 
   public boolean hasBuiltInAggregationFunction() {

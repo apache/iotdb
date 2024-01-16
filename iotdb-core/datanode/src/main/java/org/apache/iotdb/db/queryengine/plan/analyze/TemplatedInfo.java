@@ -30,14 +30,12 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
@@ -57,9 +55,8 @@ public class TemplatedInfo {
   private List<Integer> deviceToMeasurementIndexes;
   private final long offsetValue;
   private long limitValue;
-  // these variables below are use in value filter condition
+  // two variables below are use in value filter condition
   private final Expression predicate;
-  private ZoneId zoneId;
   private boolean keepNull;
   // not serialize
   private Map<String, IMeasurementSchema> schemaMap;
@@ -78,7 +75,7 @@ public class TemplatedInfo {
       long offsetValue,
       long limitValue,
       Expression predicate,
-      ZoneId zoneId,
+      boolean keepNull,
       Map<String, IMeasurementSchema> schemaMap,
       Map<String, List<InputLocation>> layoutMap) {
     this.measurementList = measurementList;
@@ -93,7 +90,7 @@ public class TemplatedInfo {
     this.limitValue = limitValue;
     this.predicate = predicate;
     if (predicate != null) {
-      this.zoneId = zoneId;
+      this.keepNull = keepNull;
       this.schemaMap = schemaMap;
       this.layoutMap = layoutMap;
     }
@@ -179,10 +176,6 @@ public class TemplatedInfo {
     return this.predicate;
   }
 
-  public ZoneId getZoneId() {
-    return this.zoneId;
-  }
-
   public boolean isKeepNull() {
     return this.keepNull;
   }
@@ -245,7 +238,7 @@ public class TemplatedInfo {
     if (predicate != null) {
       ReadWriteIOUtils.write((byte) 1, byteBuffer);
       Expression.serialize(predicate, byteBuffer);
-      ReadWriteIOUtils.write(zoneId.getId(), byteBuffer);
+      ReadWriteIOUtils.write(keepNull, byteBuffer);
     } else {
       ReadWriteIOUtils.write((byte) 0, byteBuffer);
     }
@@ -285,7 +278,7 @@ public class TemplatedInfo {
     if (predicate != null) {
       ReadWriteIOUtils.write((byte) 1, stream);
       Expression.serialize(predicate, stream);
-      ReadWriteIOUtils.write(zoneId.getId(), stream);
+      ReadWriteIOUtils.write(keepNull, stream);
     } else {
       ReadWriteIOUtils.write((byte) 0, stream);
     }
@@ -340,13 +333,13 @@ public class TemplatedInfo {
     long limitValue = ReadWriteIOUtils.readLong(byteBuffer);
 
     Expression predicate = null;
-    ZoneId zone = null;
     byte hasFilter = ReadWriteIOUtils.readByte(byteBuffer);
     Map<String, IMeasurementSchema> currentSchemaMap = null;
     Map<String, List<InputLocation>> layoutMap = null;
+    boolean keepNull = false;
     if (hasFilter == 1) {
       predicate = Expression.deserialize(byteBuffer);
-      zone = ZoneId.of(Objects.requireNonNull(ReadWriteIOUtils.readString(byteBuffer)));
+      keepNull = ReadWriteIOUtils.readBool(byteBuffer);
       currentSchemaMap = new HashMap<>();
       for (IMeasurementSchema measurementSchema : measurementSchemaList) {
         currentSchemaMap.put(measurementSchema.getMeasurementId(), measurementSchema);
@@ -366,7 +359,7 @@ public class TemplatedInfo {
         offsetValue,
         limitValue,
         predicate,
-        zone,
+        keepNull,
         currentSchemaMap,
         layoutMap);
   }

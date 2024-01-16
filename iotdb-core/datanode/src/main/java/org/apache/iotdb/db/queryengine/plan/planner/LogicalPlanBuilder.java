@@ -96,7 +96,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaUtils;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.utils.SchemaUtils;
@@ -107,7 +106,6 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.apache.commons.lang3.Validate;
 
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -230,8 +228,7 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public LogicalPlanBuilder planLast(
-      Analysis analysis, Ordering timeseriesOrdering, ZoneId zoneId) {
+  public LogicalPlanBuilder planLast(Analysis analysis, Ordering timeseriesOrdering) {
     Set<String> deviceAlignedSet = new HashSet<>();
     Set<String> deviceExistViewSet = new HashSet<>();
     // <Device, <Measurement, Expression>>
@@ -314,7 +311,7 @@ public class LogicalPlanBuilder {
       }
     }
 
-    processLastQueryTransformNode(analysis, sourceNodeList, zoneId);
+    processLastQueryTransformNode(analysis, sourceNodeList);
 
     if (timeseriesOrdering != null) {
       sourceNodeList.sort(
@@ -351,8 +348,7 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  private void processLastQueryTransformNode(
-      Analysis analysis, List<PlanNode> sourceNodeList, ZoneId zoneId) {
+  private void processLastQueryTransformNode(Analysis analysis, List<PlanNode> sourceNodeList) {
     if (analysis.getLastQueryNonWritableViewSourceExpressionMap() == null) {
       return;
     }
@@ -377,8 +373,7 @@ public class LogicalPlanBuilder {
           planBuilder
               .planRawDataSource(
                   sourceExpressions, Ordering.DESC, 0, 0, analysis.isLastLevelUseWildcard())
-              .planWhereAndSourceTransform(
-                  null, sourceTransformExpressions, false, zoneId, Ordering.DESC)
+              .planWhereAndSourceTransform(null, sourceTransformExpressions, false, Ordering.DESC)
               .planAggregation(
                   new LinkedHashSet<>(Arrays.asList(maxTimeAgg, lastValueAgg)),
                   null,
@@ -832,7 +827,6 @@ public class LogicalPlanBuilder {
               root,
               selectExpression.toArray(new Expression[0]),
               queryStatement.isGroupByTime(),
-              queryStatement.getSelectComponent().getZoneId(),
               queryStatement.getResultTimeOrder());
     }
 
@@ -1134,7 +1128,6 @@ public class LogicalPlanBuilder {
       Expression filterExpression,
       Set<Expression> selectExpressions,
       boolean isGroupByTime,
-      ZoneId zoneId,
       Ordering scanOrder) {
     if (filterExpression == null || selectExpressions.isEmpty()) {
       return this;
@@ -1147,14 +1140,13 @@ public class LogicalPlanBuilder {
             selectExpressions.toArray(new Expression[0]),
             filterExpression,
             isGroupByTime,
-            zoneId,
             scanOrder);
     updateTypeProvider(selectExpressions);
     return this;
   }
 
   public LogicalPlanBuilder planTransform(
-      Set<Expression> selectExpressions, boolean isGroupByTime, ZoneId zoneId, Ordering scanOrder) {
+      Set<Expression> selectExpressions, boolean isGroupByTime, Ordering scanOrder) {
     boolean needTransform = false;
     for (Expression expression : selectExpressions) {
       if (ExpressionAnalyzer.checkIsNeedTransform(expression)) {
@@ -1172,7 +1164,6 @@ public class LogicalPlanBuilder {
             this.getRoot(),
             selectExpressions.toArray(new Expression[0]),
             isGroupByTime,
-            zoneId,
             scanOrder);
     updateTypeProvider(selectExpressions);
     return this;
@@ -1212,7 +1203,6 @@ public class LogicalPlanBuilder {
       Set<Expression> selectExpressions,
       Set<Expression> orderByExpression,
       boolean isGroupByTime,
-      ZoneId zoneId,
       Ordering scanOrder) {
 
     Set<Expression> outputExpressions = new HashSet<>(selectExpressions);
@@ -1221,10 +1211,9 @@ public class LogicalPlanBuilder {
     }
 
     if (havingExpression != null) {
-      return planFilterAndTransform(
-          havingExpression, outputExpressions, isGroupByTime, zoneId, scanOrder);
+      return planFilterAndTransform(havingExpression, outputExpressions, isGroupByTime, scanOrder);
     } else {
-      return planTransform(outputExpressions, isGroupByTime, zoneId, scanOrder);
+      return planTransform(outputExpressions, isGroupByTime, scanOrder);
     }
   }
 
@@ -1232,13 +1221,12 @@ public class LogicalPlanBuilder {
       Expression whereExpression,
       Set<Expression> sourceTransformExpressions,
       boolean isGroupByTime,
-      ZoneId zoneId,
       Ordering scanOrder) {
     if (whereExpression != null) {
       return planFilterAndTransform(
-          whereExpression, sourceTransformExpressions, isGroupByTime, zoneId, scanOrder);
+          whereExpression, sourceTransformExpressions, isGroupByTime, scanOrder);
     } else {
-      return planTransform(sourceTransformExpressions, isGroupByTime, zoneId, scanOrder);
+      return planTransform(sourceTransformExpressions, isGroupByTime, scanOrder);
     }
   }
 
@@ -1485,7 +1473,7 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public LogicalPlanBuilder planShowQueries(Analysis analysis, ShowQueriesStatement statement) {
+  public LogicalPlanBuilder planShowQueries(Analysis analysis) {
     List<TDataNodeLocation> dataNodeLocations = analysis.getRunningDataNodeLocations();
     if (dataNodeLocations.size() == 1) {
       this.root =
@@ -1494,7 +1482,6 @@ public class LogicalPlanBuilder {
                   analysis.getWhereExpression(),
                   analysis.getSourceExpressions(),
                   false,
-                  statement.getZoneId(),
                   Ordering.ASC)
               .planSort(analysis.getMergeOrderParameter())
               .getRoot();
@@ -1514,7 +1501,6 @@ public class LogicalPlanBuilder {
                           analysis.getWhereExpression(),
                           analysis.getSourceExpressions(),
                           false,
-                          statement.getZoneId(),
                           Ordering.ASC)
                       .planSort(analysis.getMergeOrderParameter())
                       .getRoot()));
@@ -1586,7 +1572,6 @@ public class LogicalPlanBuilder {
               root,
               selectExpression.toArray(new Expression[0]),
               queryStatement.isGroupByTime(),
-              queryStatement.getSelectComponent().getZoneId(),
               queryStatement.getResultTimeOrder());
     }
 

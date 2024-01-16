@@ -49,7 +49,7 @@ public class LogicalPlannerTestUtil {
         new MPPQueryContext(
             "",
             new QueryId("test_query"),
-            new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault().getId()),
+            new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault()),
             DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT,
             DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT);
     Analyzer analyzer =

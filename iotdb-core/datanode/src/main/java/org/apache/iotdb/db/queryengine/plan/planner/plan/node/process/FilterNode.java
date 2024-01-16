@@ -30,7 +30,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.time.ZoneId;
 import java.util.Objects;
 
 public class FilterNode extends TransformNode {
@@ -43,9 +42,8 @@ public class FilterNode extends TransformNode {
       Expression[] outputExpressions,
       Expression predicate,
       boolean keepNull,
-      ZoneId zoneId,
       Ordering scanOrder) {
-    super(id, childPlanNode, outputExpressions, keepNull, zoneId, scanOrder);
+    super(id, childPlanNode, outputExpressions, keepNull, scanOrder);
     this.predicate = predicate;
   }
 
@@ -55,9 +53,8 @@ public class FilterNode extends TransformNode {
       Expression[] outputExpressions,
       Expression predicate,
       boolean keepNull,
-      ZoneId zoneId,
       Ordering scanOrder) {
-    super(id, outputExpressions, keepNull, zoneId, scanOrder);
+    super(id, outputExpressions, keepNull, scanOrder);
     this.predicate = predicate;
   }
 
@@ -68,8 +65,7 @@ public class FilterNode extends TransformNode {
 
   @Override
   public PlanNode clone() {
-    return new FilterNode(
-        getPlanNodeId(), outputExpressions, predicate, keepNull, zoneId, scanOrder);
+    return new FilterNode(getPlanNodeId(), outputExpressions, predicate, keepNull, scanOrder);
   }
 
   @Override
@@ -81,7 +77,6 @@ public class FilterNode extends TransformNode {
     }
     Expression.serialize(predicate, byteBuffer);
     ReadWriteIOUtils.write(keepNull, byteBuffer);
-    ReadWriteIOUtils.write(zoneId.getId(), byteBuffer);
     ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
   }
 
@@ -94,7 +89,6 @@ public class FilterNode extends TransformNode {
     }
     Expression.serialize(predicate, stream);
     ReadWriteIOUtils.write(keepNull, stream);
-    ReadWriteIOUtils.write(zoneId.getId(), stream);
     ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
   }
 
@@ -106,10 +100,9 @@ public class FilterNode extends TransformNode {
     }
     Expression predicate = Expression.deserialize(byteBuffer);
     boolean keepNull = ReadWriteIOUtils.readBool(byteBuffer);
-    ZoneId zoneId = ZoneId.of(Objects.requireNonNull(ReadWriteIOUtils.readString(byteBuffer)));
     Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new FilterNode(planNodeId, outputExpressions, predicate, keepNull, zoneId, scanOrder);
+    return new FilterNode(planNodeId, outputExpressions, predicate, keepNull, scanOrder);
   }
 
   @Override
@@ -132,7 +125,6 @@ public class FilterNode extends TransformNode {
         null,
         typeProvider.getTemplatedInfo().getPredicate(),
         typeProvider.getTemplatedInfo().isKeepNull(),
-        typeProvider.getTemplatedInfo().getZoneId(),
         typeProvider.getTemplatedInfo().getScanOrder());
   }
 

@@ -40,6 +40,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -290,5 +291,9 @@ public class LocalExecutionPlanContext {
 
   public void setTimePartitions(List<Long> timePartitions) {
     this.timePartitions.set(timePartitions);
+  }
+
+  public ZoneId getZoneId() {
+    return driverContext.getFragmentInstanceContext().getSessionInfo().getZoneId();
   }
 }

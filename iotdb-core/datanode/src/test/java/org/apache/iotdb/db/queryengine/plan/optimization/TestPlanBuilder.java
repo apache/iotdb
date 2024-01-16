@@ -55,7 +55,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.LongLiteral;
 import org.apache.iotdb.db.utils.columngenerator.parameter.SlidingTimeColumnGeneratorParameter;
 
-import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -266,7 +265,6 @@ public class TestPlanBuilder {
             getRoot(),
             expressions.toArray(new Expression[0]),
             false,
-            ZonedDateTime.now().getOffset(),
             Ordering.ASC);
     return this;
   }
@@ -327,7 +325,6 @@ public class TestPlanBuilder {
             expressions.toArray(new Expression[0]),
             predicate,
             isGroupByTime,
-            ZonedDateTime.now().getOffset(),
             Ordering.ASC);
     return this;
   }

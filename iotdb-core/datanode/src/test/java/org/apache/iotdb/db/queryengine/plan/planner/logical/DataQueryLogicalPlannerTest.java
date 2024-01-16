@@ -58,7 +58,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -230,7 +229,6 @@ public class DataQueryLogicalPlannerTest {
             new Expression[] {new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1"))},
             predicate,
             false,
-            ZonedDateTime.now().getOffset(),
             Ordering.DESC);
 
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), filterNode, 100);
@@ -286,7 +284,6 @@ public class DataQueryLogicalPlannerTest {
             },
             predicate1,
             false,
-            ZonedDateTime.now().getOffset(),
             Ordering.DESC);
 
     List<PlanNode> sourceNodeList2 = new ArrayList<>();
@@ -325,7 +322,6 @@ public class DataQueryLogicalPlannerTest {
             },
             predicate2,
             false,
-            ZonedDateTime.now().getOffset(),
             Ordering.DESC);
 
     Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
@@ -800,7 +796,6 @@ public class DataQueryLogicalPlannerTest {
             },
             predicate,
             false,
-            ZonedDateTime.now().getOffset(),
             Ordering.DESC);
 
     AggregationNode aggregationNode =
@@ -923,7 +918,6 @@ public class DataQueryLogicalPlannerTest {
             },
             predicate1,
             false,
-            ZonedDateTime.now().getOffset(),
             Ordering.DESC);
 
     AggregationNode aggregationNode1 =
@@ -979,7 +973,6 @@ public class DataQueryLogicalPlannerTest {
             },
             predicate2,
             false,
-            ZonedDateTime.now().getOffset(),
             Ordering.DESC);
 
     AggregationNode aggregationNode2 =

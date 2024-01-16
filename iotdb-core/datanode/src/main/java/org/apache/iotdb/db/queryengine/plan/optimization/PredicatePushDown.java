@@ -241,7 +241,6 @@ public class PredicatePushDown implements PlanOptimizer {
           pushDownFilterNode.getOutputExpressions(),
           predicate,
           pushDownFilterNode.isKeepNull(),
-          pushDownFilterNode.getZoneId(),
           pushDownFilterNode.getScanOrder());
     }
 

@@ -359,7 +359,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           Collections.singletonList(node.getSeriesPath().getSeriesType()),
           makeLayout(Collections.singletonList(node)),
           false,
-          null,
           node.getPlanNodeId(),
           node.getScanOrder(),
           context);
@@ -426,7 +425,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           dataTypes,
           makeLayout(Collections.singletonList(node)),
           false,
-          null,
           node.getPlanNodeId(),
           node.getScanOrder(),
           context);
@@ -1015,12 +1013,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 inputColumns,
                 inputDataTypes,
                 descriptor.getTimeDurationThreshold(),
-                ZoneId.of(
-                    context
-                        .getDriverContext()
-                        .getFragmentInstanceContext()
-                        .getSessionInfo()
-                        .getZoneId())),
+                context.getZoneId()),
             child);
       case LINEAR:
         return new LinearFillOperator(
@@ -1189,7 +1182,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     // Use FilterAndProject Operator when project expressions are all mappable
     if (!hasNonMappableUDF) {
       // init project UDTFContext
-      UDTFContext projectContext = new UDTFContext(node.getZoneId());
+      UDTFContext projectContext = new UDTFContext(context.getZoneId());
       projectContext.constructUdfExecutors(projectExpressions);
 
       List<ColumnTransformer> projectOutputTransformerList = new ArrayList<>();
@@ -1238,7 +1231,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           inputLocations,
           node.getOutputExpressions(),
           node.isKeepNull(),
-          node.getZoneId(),
+          context.getZoneId(),
           expressionTypes,
           node.getScanOrder() == Ordering.ASC);
     } catch (QueryProcessException e) {
@@ -1262,7 +1255,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         getInputColumnTypes(node, context.getTypeProvider()),
         makeLayout(node),
         node.isKeepNull(),
-        node.getZoneId(),
         node.getPlanNodeId(),
         node.getScanOrder(),
         context);
@@ -1275,7 +1267,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       List<TSDataType> inputDataTypes,
       Map<String, List<InputLocation>> inputLocations,
       boolean isKeepNull,
-      ZoneId zoneId,
       PlanNodeId planNodeId,
       Ordering scanOrder,
       LocalExecutionPlanContext context) {
@@ -1309,7 +1300,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     }
 
     // init UDTFContext
-    UDTFContext filterContext = new UDTFContext(zoneId);
+    UDTFContext filterContext = new UDTFContext(context.getZoneId());
     filterContext.constructUdfExecutors(new Expression[] {predicate});
 
     // records LeafColumnTransformer of filter
@@ -1349,7 +1340,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     // init project transformer when project expressions are all mappable
     if (!hasNonMappableUdf) {
       // init project UDTFContext
-      UDTFContext projectContext = new UDTFContext(zoneId);
+      UDTFContext projectContext = new UDTFContext(context.getZoneId());
       projectContext.constructUdfExecutors(projectExpressions);
 
       ColumnTransformerVisitor.ColumnTransformerVisitorContext projectColumnTransformerContext =
@@ -1403,7 +1394,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           inputLocations,
           projectExpressions,
           isKeepNull,
-          zoneId,
+          context.getZoneId(),
           expressionTypes,
           scanOrder == Ordering.ASC);
     } catch (QueryProcessException e) {
@@ -1454,7 +1445,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     }
 
     // init UDTFContext
-    UDTFContext filterContext = new UDTFContext(node.getZoneId());
+    UDTFContext filterContext = new UDTFContext(context.getZoneId());
     filterContext.constructUdfExecutors(new Expression[] {filterExpression});
 
     // records LeafColumnTransformer of filter
@@ -1494,7 +1485,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     // init project transformer when project expressions are all mappable
     if (!hasNonMappableUdf) {
       // init project UDTFContext
-      UDTFContext projectContext = new UDTFContext(node.getZoneId());
+      UDTFContext projectContext = new UDTFContext(context.getZoneId());
       projectContext.constructUdfExecutors(projectExpressions);
 
       ColumnTransformerVisitor.ColumnTransformerVisitorContext projectColumnTransformerContext =
@@ -1550,7 +1541,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           inputLocations,
           projectExpressions,
           node.isKeepNull(),
-          node.getZoneId(),
+          context.getZoneId(),
           expressionTypes,
           node.getScanOrder() == Ordering.ASC);
     } catch (QueryProcessException e) {
