@@ -3398,7 +3398,12 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   public void releaseFlushTimeMap(long timePartitionId) {
-    lastFlushTimeMap.removePartition(timePartitionId);
+    writeLock("releaseFlushTimeMap");
+    try {
+      lastFlushTimeMap.removePartition(timePartitionId);
+    } finally {
+      writeUnlock();
+    }
   }
 
   public long getMemCost() {
