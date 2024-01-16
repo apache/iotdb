@@ -208,4 +208,15 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   public boolean hasNoNeedParsingAndIsEmpty() {
     return !shouldParsePatternOrTime() && tablet.rowSize == 0;
   }
+
+  /////////////////////////// Object ///////////////////////////
+
+  @Override
+  public String toString() {
+    return String.format(
+            "PipeRawTabletInsertionEvent{tablet=%s, isAligned=%s, sourceEvent=%s, needToReport=%s, allocatedMemoryBlock=%s, dataContainer=%s}",
+            tablet, isAligned, sourceEvent, needToReport, allocatedMemoryBlock, dataContainer)
+        + " - "
+        + super.toString();
+  }
 }
