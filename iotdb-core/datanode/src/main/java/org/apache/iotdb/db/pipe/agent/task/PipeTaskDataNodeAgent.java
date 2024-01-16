@@ -144,10 +144,10 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
                   && ((MetaProgressIndex) schemaIndex).getIndex()
                       < earliestIndexMap.getOrDefault(id, Long.MAX_VALUE)) {
                 earliestIndexMap.put(id, ((MetaProgressIndex) schemaIndex).getIndex());
-              } else if (!earliestIndexMap.containsKey(id)) {
-                // Do not clear "minimumProgressIndex"s related queue to avoid clearing
+              } else {
+                // Do not clear "minimumProgressIndex"s related queues to avoid clearing
                 // the queue when there are schema tasks just started and transferring
-                earliestIndexMap.put(id, Long.MAX_VALUE);
+                earliestIndexMap.put(id, 0L);
               }
             }
           }

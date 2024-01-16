@@ -45,7 +45,7 @@ import java.util.Set;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
-public class IoTDBIdempotentIT extends AbstractPipeDualAutoIT {
+public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
   @Override
   @Before
   public void setUp() {

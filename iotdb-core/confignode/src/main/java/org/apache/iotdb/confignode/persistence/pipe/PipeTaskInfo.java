@@ -43,6 +43,7 @@ import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAge
 import org.apache.iotdb.confignode.manager.pipe.transfer.extractor.ConfigPlanListeningQueue;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleMetaChangeProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
@@ -436,9 +437,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   /**
-   * Replace the local {@link PipeMeta}s by the {@link PipeMeta}s from the leader ConfigNode.
+   * Replace the local {@link PipeMeta}s by the {@link PipeMeta}s from the leader {@link
+   * ConfigNode}.
    *
-   * @param plan The plan containing all the {@link PipeMeta}s from leader ConfigNode
+   * @param plan The plan containing all the {@link PipeMeta}s from leader {@link ConfigNode}
    * @return {@link TSStatusCode#SUCCESS_STATUS}
    */
   public TSStatus handleMetaChanges(PipeHandleMetaChangePlan plan) {
@@ -472,6 +474,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
               if (configIndex instanceof MetaProgressIndex
                   && ((MetaProgressIndex) configIndex).getIndex() < earliestIndex.get()) {
                 earliestIndex.set(((MetaProgressIndex) configIndex).getIndex());
+              } else {
+                // Do not clear "minimumProgressIndex"s related queues to avoid clearing
+                // the queue when there are schema tasks just started and transferring
+                earliestIndex.set(0);
               }
             });
 
