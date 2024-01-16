@@ -330,22 +330,34 @@ public class ConvertPredicateToFilterVisitor
 
   @SuppressWarnings("unchecked")
   private <T extends Comparable<T>> T getValue(String valueString, TSDataType dataType) {
-    switch (dataType) {
-      case INT32:
-        return (T) Integer.valueOf(valueString);
-      case INT64:
-        return (T) Long.valueOf(valueString);
-      case FLOAT:
-        return (T) Float.valueOf(valueString);
-      case DOUBLE:
-        return (T) Double.valueOf(valueString);
-      case BOOLEAN:
-        return (T) Boolean.valueOf(valueString);
-      case TEXT:
-        return (T) new Binary(valueString, TSFileConfig.STRING_CHARSET);
-      default:
-        throw new UnsupportedOperationException(
-            String.format("Unsupported data type %s", dataType));
+    try {
+      switch (dataType) {
+        case INT32:
+          return (T) Integer.valueOf(valueString);
+        case INT64:
+          return (T) Long.valueOf(valueString);
+        case FLOAT:
+          return (T) Float.valueOf(valueString);
+        case DOUBLE:
+          return (T) Double.valueOf(valueString);
+        case BOOLEAN:
+          if (valueString.equalsIgnoreCase("true")) {
+            return (T) Boolean.TRUE;
+          } else if (valueString.equalsIgnoreCase("false")) {
+            return (T) Boolean.FALSE;
+          } else {
+            throw new IllegalArgumentException(
+                String.format("\"%s\" cannot be cast to [%s]", valueString, dataType));
+          }
+        case TEXT:
+          return (T) new Binary(valueString, TSFileConfig.STRING_CHARSET);
+        default:
+          throw new UnsupportedOperationException(
+              String.format("Unsupported data type %s", dataType));
+      }
+    } catch (NumberFormatException e) {
+      throw new IllegalArgumentException(
+          String.format("\"%s\" cannot be cast to [%s]", valueString, dataType));
     }
   }
 
