@@ -65,9 +65,8 @@ systemctl daemon-reload
 echo "Do you want to start IoTDB ConfigNode ? y/n (default y)"
 echo "Or you can use 'systemctl start iotdb-confignode' to start it later."
 read -r START_SERVICE
-START_SERVICE=${START_SERVICE,,} # to lower case
 echo - - - - - - - - - -
-if [[ -z "$START_SERVICE" || "$START_SERVICE" =~ ^[y]$ ]]; then
+if [[ -z "$START_SERVICE" || "$START_SERVICE" =~ ^[Yy]$ ]]; then
     "${IOTDB_SBIN_HOME}"/sbin/stop-confignode.sh >/dev/null 2>&1 &
     systemctl start iotdb-confignode
 fi
@@ -75,7 +74,6 @@ fi
 echo "Do you want to start IoTDB ConfigNode when system startup ? y/n (default y)"
 echo "Or you can use 'systemctl enable iotdb-confignode' to enable it later."
 read -r ADD_STARTUP
-ADD_STARTUP=${ADD_STARTUP,,}
 echo - - - - - - - - - -
 if [[ -z "$ADD_STARTUP" || "$ADD_STARTUP" =~ ^[Yy]$ ]]; then
    systemctl enable iotdb-confignode
