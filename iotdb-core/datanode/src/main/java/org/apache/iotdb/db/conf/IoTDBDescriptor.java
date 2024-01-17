@@ -437,12 +437,6 @@ public class IoTDBDescriptor {
                 "compaction_submission_interval_in_ms",
                 Long.toString(conf.getCompactionSubmissionIntervalInMs()))));
 
-    conf.setEnableRepairFileCompaction(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_repair_file_compaction",
-                Boolean.toString(conf.isEnableRepairFileCompaction()))));
-
     conf.setEnableInsertionCrossSpaceCompaction(
         Boolean.parseBoolean(
             properties.getProperty(

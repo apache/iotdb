@@ -2422,11 +2422,6 @@ public class DataRegion implements IDataRegionForQuery {
     // sort the time partition from largest to smallest
     timePartitions.sort(Comparator.reverseOrder());
 
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableRepairFileCompaction()) {
-
-      return trySubmitCount;
-    }
-
     CompactionScheduleSummary summary = new CompactionScheduleSummary();
     if (IoTDBDescriptor.getInstance().getConfig().isEnableInsertionCrossSpaceCompaction()) {
       trySubmitCount += executeInsertionCompaction(timePartitions);
