@@ -61,8 +61,7 @@ public class RegionCache {
     RegionStatus status;
     if (RegionStatus.Removing.equals(lastSample.getStatus())) {
       status = RegionStatus.Removing;
-    } else if (System.nanoTime() - lastSample.getSendTimestamp()
-        > HEARTBEAT_TIMEOUT_TIME_IN_NS) {
+    } else if (System.nanoTime() - lastSample.getSendTimestamp() > HEARTBEAT_TIMEOUT_TIME_IN_NS) {
       status = RegionStatus.Unknown;
     } else {
       status = lastSample.getStatus();
