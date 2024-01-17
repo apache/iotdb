@@ -88,11 +88,14 @@ public class ShowRegionTask implements IConfigTask {
         builder.getColumnBuilder(4).writeInt(regionInfo.getSeriesSlots());
         builder.getColumnBuilder(5).writeLong(regionInfo.getTimeSlots());
         builder.getColumnBuilder(6).writeInt(regionInfo.getDataNodeId());
-        builder.getColumnBuilder(7).writeBinary(BytesUtils.valueOf(regionInfo.getClientRpcIp()));
-        builder.getColumnBuilder(8).writeInt(regionInfo.getClientRpcPort());
-        builder.getColumnBuilder(9).writeBinary(BytesUtils.valueOf(regionInfo.getRoleType()));
         builder
-            .getColumnBuilder(10)
+            .getColumnBuilder(7)
+            .writeBinary(BytesUtils.valueOf(regionInfo.getInternalAddress()));
+        builder.getColumnBuilder(8).writeBinary(BytesUtils.valueOf(regionInfo.getClientRpcIp()));
+        builder.getColumnBuilder(9).writeInt(regionInfo.getClientRpcPort());
+        builder.getColumnBuilder(10).writeBinary(BytesUtils.valueOf(regionInfo.getRoleType()));
+        builder
+            .getColumnBuilder(11)
             .writeBinary(
                 new Binary(
                     DateTimeUtils.convertLongToDate(regionInfo.getCreateTime()),
