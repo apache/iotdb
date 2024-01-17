@@ -651,7 +651,7 @@ public class RatisConfig {
       private int segmentCacheNumMax = 2;
       private SizeInBytes segmentCacheSizeMax = SizeInBytes.valueOf("200MB");
       private SizeInBytes preallocatedSize = SizeInBytes.valueOf("4MB");
-      private SizeInBytes writeBufferSize = SizeInBytes.valueOf("64KB");
+      private SizeInBytes writeBufferSize = SizeInBytes.valueOf("8MB");
       private int forceSyncNum = 128;
       private boolean unsafeFlushEnabled = true;
 
