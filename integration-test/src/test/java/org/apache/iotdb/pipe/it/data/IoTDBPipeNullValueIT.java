@@ -17,8 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it;
+package org.apache.iotdb.pipe.it.data;
 
+import static org.junit.Assert.fail;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
@@ -27,7 +35,6 @@ import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2;
-import org.apache.iotdb.pipe.PipeEnvironmentException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -35,25 +42,15 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Consumer;
-
-import static org.junit.Assert.fail;
-
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
-public class IoTDBPipeNullValueIT extends AbstractPipeDualIT {
+public class IoTDBPipeNullValueIT extends AbstractPipeDualDataIT {
 
   // Test dimensions:
   // 1. is or not aligned
@@ -129,7 +126,7 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualIT {
 
   @Override
   @Before
-  public void setUp() throws PipeEnvironmentException {
+  public void setUp() {
     super.setUp();
 
     constructTablet();
@@ -242,7 +239,7 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualIT {
 
     INSERT_NULL_VALUE_MAP.get(insertType).accept(isAligned);
 
-    TestUtils.assertDataOnEnv(
+    TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
         "select count(*) from root.**",
         "count(root.sg.d1.s0),count(root.sg.d1.s1),",
