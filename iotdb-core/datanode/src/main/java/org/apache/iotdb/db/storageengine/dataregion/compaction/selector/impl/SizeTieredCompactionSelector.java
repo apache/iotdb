@@ -41,9 +41,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * SizeTieredCompactionSelector selects files to be compacted based on the size of files. The
@@ -184,6 +187,50 @@ public class SizeTieredCompactionSelector
       }
     }
     return Collections.emptyList();
+  }
+
+  private List<InnerSpaceCompactionTask> selectTaskBaseOnLevelNew() {
+    List<InnerSpaceCompactionTask> taskList = new ArrayList<>();
+    Map<Integer, List<TsFileResource>> fileResourcesByLevel = groupingTsFileResourcesByLevel();
+    Collection<List<TsFileResource>> values = fileResourcesByLevel.values();
+    long targetCompactionFileSize = config.getTargetCompactionFileSize();
+    for (List<TsFileResource> eachLevelResources : values) {
+      List<TsFileResource> selectedFileList = new ArrayList<>();
+      long selectedFileSize = 0L;
+      for (TsFileResource currentFile : eachLevelResources) {
+        selectedFileSize += currentFile.getTsFileSize();
+        if (selectedFileSize + currentFile.getTsFileSize() > targetCompactionFileSize
+            || selectedFileList.size() >= config.getFileLimitPerInnerTask()) {
+          taskList.add(createCompactionTask(selectedFileList, CompactionTaskPriorityType.NORMAL));
+          selectedFileList = new ArrayList<>();
+          selectedFileSize = 0;
+        }
+        selectedFileList.add(currentFile);
+      }
+      if (selectedFileList.size() > 1) {
+        taskList.add(createCompactionTask(selectedFileList, CompactionTaskPriorityType.NORMAL));
+      }
+    }
+    return taskList;
+  }
+
+  private Map<Integer, List<TsFileResource>> groupingTsFileResourcesByLevel() {
+    return tsFileResources.stream()
+        .filter(tsFile -> tsFile.getStatus() == TsFileResourceStatus.NORMAL)
+        .collect(Collectors.groupingBy(this::getInnerCompactionCntSafely));
+  }
+
+  private Integer getInnerCompactionCntSafely(TsFileResource fileResource) {
+    try {
+      TsFileNameGenerator.TsFileName fileName =
+          TsFileNameGenerator.getTsFileName(fileResource.getTsFile().getName());
+      return fileName.getInnerCompactionCnt();
+    } catch (IOException e) {
+      LOGGER.error(
+          "parse TsFile name {} error when inner compaction selecting file.",
+          fileResource.getTsFile().getName());
+      return 0;
+    }
   }
 
   private List<InnerSpaceCompactionTask> selectTaskBaseOnModFile() {
