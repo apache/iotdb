@@ -208,7 +208,7 @@ public class RecoverReadTest {
   }
 
   @Test
-  public void consistentReadTimeout() throws Exception {
+  public void consistentReadWithSlowApply() throws Exception {
     final ConsensusGroupId gid = miniCluster.getGid();
     final List<Peer> members = miniCluster.getPeers();
 
