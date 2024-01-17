@@ -31,44 +31,44 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-class TimePartitionFiles {
+public class RepairTimePartition {
   private final String databaseName;
   private final String dataRegionId;
   private TsFileManager tsFileManager;
-  private final long timePartition;
+  private final long timePartitionId;
   private long maxFileTimestamp;
   private boolean repaired;
 
-  TimePartitionFiles(DataRegion dataRegion, long timePartition) {
+  public RepairTimePartition(DataRegion dataRegion, long timePartitionId) {
     this.databaseName = dataRegion.getDatabaseName();
     this.dataRegionId = dataRegion.getDataRegionId();
     this.tsFileManager = dataRegion.getTsFileManager();
-    this.timePartition = timePartition;
+    this.timePartitionId = timePartitionId;
     this.maxFileTimestamp = calculateMaxTimestamp();
     this.repaired = false;
   }
 
-  TimePartitionFiles(String databaseName, String dataRegionId, long timePartition) {
+  public RepairTimePartition(String databaseName, String dataRegionId, long timePartitionId) {
     this.databaseName = databaseName;
     this.dataRegionId = dataRegionId;
-    this.timePartition = timePartition;
+    this.timePartitionId = timePartitionId;
   }
 
   private long calculateMaxTimestamp() {
     long maxTimestamp = 0;
-    List<TsFileResource> resources = tsFileManager.getTsFileListSnapshot(timePartition, true);
+    List<TsFileResource> resources = tsFileManager.getTsFileListSnapshot(timePartitionId, true);
     if (!resources.isEmpty()) {
       maxTimestamp = getFileTimestamp(resources.get(resources.size() - 1));
     }
-    resources = tsFileManager.getTsFileListSnapshot(timePartition, false);
+    resources = tsFileManager.getTsFileListSnapshot(timePartitionId, false);
     if (!resources.isEmpty()) {
       maxTimestamp = Math.max(maxTimestamp, getFileTimestamp(resources.get(resources.size() - 1)));
     }
     return maxTimestamp;
   }
 
-  public long getTimePartition() {
-    return timePartition;
+  public long getTimePartitionId() {
+    return timePartitionId;
   }
 
   public String getDatabaseName() {
@@ -92,13 +92,13 @@ class TimePartitionFiles {
   }
 
   public List<TsFileResource> getSeqFiles() {
-    return tsFileManager.getTsFileListSnapshot(timePartition, true).stream()
+    return tsFileManager.getTsFileListSnapshot(timePartitionId, true).stream()
         .filter(this::resourceTimestampFilter)
         .collect(Collectors.toList());
   }
 
   public List<TsFileResource> getUnseqFiles() {
-    return tsFileManager.getTsFileListSnapshot(timePartition, false).stream()
+    return tsFileManager.getTsFileListSnapshot(timePartitionId, false).stream()
         .filter(this::resourceTimestampFilter)
         .collect(Collectors.toList());
   }
@@ -136,14 +136,14 @@ class TimePartitionFiles {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    TimePartitionFiles that = (TimePartitionFiles) o;
-    return timePartition == that.timePartition
+    RepairTimePartition that = (RepairTimePartition) o;
+    return timePartitionId == that.timePartitionId
         && Objects.equals(databaseName, that.databaseName)
         && Objects.equals(dataRegionId, that.dataRegionId);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(databaseName, dataRegionId, timePartition);
+    return Objects.hash(databaseName, dataRegionId, timePartitionId);
   }
 }

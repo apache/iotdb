@@ -35,9 +35,9 @@ public class RepairTaskRecoveryPerformer {
 
   private final File logFile;
   private static final Logger LOGGER = LoggerFactory.getLogger(RepairTaskRecoveryPerformer.class);
-  private final Map<TimePartitionFiles, Set<String>> repairedTimePartitionsWithCannotRepairFiles =
+  private final Map<RepairTimePartition, Set<String>> repairedTimePartitionsWithCannotRepairFiles =
       new HashMap<>();
-  private TimePartitionFiles currentTimePartition;
+  private RepairTimePartition currentTimePartition;
   private Set<String> currentTimePartitionCannotRepairFiles;
 
   public RepairTaskRecoveryPerformer(File logFile) {
@@ -71,7 +71,7 @@ public class RepairTaskRecoveryPerformer {
           "[{}][{}]Repair data log is not complete, time partition is {}.",
           currentTimePartition.getDatabaseName(),
           currentTimePartition.getDataRegionId(),
-          currentTimePartition.getTimePartition());
+          currentTimePartition.getTimePartitionId());
       repairedTimePartitionsWithCannotRepairFiles.put(
           currentTimePartition, currentTimePartitionCannotRepairFiles);
     }
@@ -79,12 +79,16 @@ public class RepairTaskRecoveryPerformer {
     if (values.length != 4) {
       throw new RuntimeException(String.format("String '%s' is not a legal repair log", line));
     }
-    currentTimePartition = new TimePartitionFiles(values[1], values[2], Long.parseLong(values[3]));
+    currentTimePartition = new RepairTimePartition(values[1], values[2], Long.parseLong(values[3]));
     currentTimePartitionCannotRepairFiles = new HashSet<>();
   }
 
   private void parseFileLog(String line) {
-    currentTimePartitionCannotRepairFiles.add(line);
+    String[] values = line.split(" ");
+    if (values.length != 2) {
+      throw new RuntimeException(String.format("String '%s' is not a legal repair log", line));
+    }
+    currentTimePartitionCannotRepairFiles.add(values[1]);
   }
 
   private void parseEndTimePartitionLog(String line) {
@@ -94,7 +98,7 @@ public class RepairTaskRecoveryPerformer {
     currentTimePartitionCannotRepairFiles = null;
   }
 
-  Map<TimePartitionFiles, Set<String>> getRepairedTimePartitionsWithCannotRepairFiles() {
+  Map<RepairTimePartition, Set<String>> getRepairedTimePartitionsWithCannotRepairFiles() {
     return repairedTimePartitionsWithCannotRepairFiles;
   }
 

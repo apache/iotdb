@@ -54,7 +54,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(UnsortedFileRepairTaskScheduler.class);
-  private final Set<TimePartitionFiles> allTimePartitionFiles = new HashSet<>();
+  private final Set<RepairTimePartition> allTimePartitionFiles = new HashSet<>();
   private RepairLogger repairLogger;
   private final boolean isRecover;
   private boolean initSuccess = false;
@@ -124,9 +124,9 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
         "[RepairScheduler] recover unfinished repair schedule task from log file: {}",
         recoveryPerformer.getRepairLogFilePath());
     recoveryPerformer.perform();
-    Map<TimePartitionFiles, Set<String>> repairedTimePartitionWithCannotRepairFiles =
+    Map<RepairTimePartition, Set<String>> repairedTimePartitionWithCannotRepairFiles =
         recoveryPerformer.getRepairedTimePartitionsWithCannotRepairFiles();
-    for (TimePartitionFiles timePartition : allTimePartitionFiles) {
+    for (RepairTimePartition timePartition : allTimePartitionFiles) {
       Set<String> cannotRepairFiles =
           repairedTimePartitionWithCannotRepairFiles.remove(timePartition);
       if (cannotRepairFiles == null) {
@@ -140,7 +140,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
       // mark cannot repair file in TsFileResource
       List<TsFileResource> resources = timePartition.getAllFiles();
       for (TsFileResource resource : resources) {
-        if (resource.getStatus() != TsFileResourceStatus.DELETED) {
+        if (resource.getStatus() != TsFileResourceStatus.NORMAL) {
           continue;
         }
         if (cannotRepairFiles.contains(resource.getTsFile().getName())) {
@@ -157,7 +157,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
       }
       List<Long> timePartitions = dataRegion.getTimePartitions();
       for (long timePartition : timePartitions) {
-        allTimePartitionFiles.add(new TimePartitionFiles(dataRegion, timePartition));
+        allTimePartitionFiles.add(new RepairTimePartition(dataRegion, timePartition));
       }
     }
   }
@@ -191,13 +191,13 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
   }
 
   private void executeRepair() throws InterruptedException {
-    for (TimePartitionFiles timePartition : allTimePartitionFiles) {
+    for (RepairTimePartition timePartition : allTimePartitionFiles) {
       if (timePartition.isRepaired()) {
         LOGGER.info(
             "[RepairScheduler][{}][{}] skip repair time partition {} because it is repaired",
             timePartition.getDatabaseName(),
             timePartition.getDataRegionId(),
-            timePartition.getTimePartition());
+            timePartition.getTimePartitionId());
         repairProgress++;
         continue;
       }
@@ -209,7 +209,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
     }
   }
 
-  private void checkInternalUnsortedFileAndRepair(TimePartitionFiles timePartition)
+  private void checkInternalUnsortedFileAndRepair(RepairTimePartition timePartition)
       throws InterruptedException {
     List<TsFileResource> sourceFiles =
         Stream.concat(timePartition.getSeqFiles().stream(), timePartition.getUnseqFiles().stream())
@@ -233,7 +233,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
       CountDownLatch latch = new CountDownLatch(1);
       RepairUnsortedFileCompactionTask task =
           new RepairUnsortedFileCompactionTask(
-              timePartition.getTimePartition(),
+              timePartition.getTimePartitionId(),
               timePartition.getTsFileManager(),
               sourceFile,
               latch,
@@ -245,17 +245,17 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
     }
   }
 
-  private void checkOverlapInSequenceSpaceAndRepair(TimePartitionFiles timePartition)
+  private void checkOverlapInSequenceSpaceAndRepair(RepairTimePartition timePartition)
       throws InterruptedException {
     TsFileManager tsFileManager = timePartition.getTsFileManager();
     List<TsFileResource> seqList =
-        tsFileManager.getTsFileListSnapshot(timePartition.getTimePartition(), true);
+        tsFileManager.getTsFileListSnapshot(timePartition.getTimePartitionId(), true);
     List<TsFileResource> overlapFiles = checkTimePartitionHasOverlap(seqList);
     for (TsFileResource overlapFile : overlapFiles) {
       CountDownLatch latch = new CountDownLatch(1);
       RepairUnsortedFileCompactionTask task =
           new RepairUnsortedFileCompactionTask(
-              timePartition.getTimePartition(),
+              timePartition.getTimePartitionId(),
               timePartition.getTsFileManager(),
               overlapFile,
               latch,
@@ -330,7 +330,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
     return resource.buildDeviceTimeIndex();
   }
 
-  private void finishRepairTimePartition(TimePartitionFiles timePartition) {
+  private void finishRepairTimePartition(RepairTimePartition timePartition) {
     try {
       repairLogger.recordRepairedTimePartition(timePartition);
     } catch (Exception e) {
@@ -338,14 +338,14 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
           "[RepairScheduler][{}][{}] failed to record repair log for time partition {}",
           timePartition.getDatabaseName(),
           timePartition.getDataRegionId(),
-          timePartition.getTimePartition());
+          timePartition.getTimePartitionId());
     }
     repairProgress++;
     LOGGER.info(
         "[RepairScheduler][{}][{}] time partition {} has been repaired, progress: {}/{}",
         timePartition.getDatabaseName(),
         timePartition.getDataRegionId(),
-        timePartition.getTimePartition(),
+        timePartition.getTimePartitionId(),
         repairProgress,
         allTimePartitionFiles.size());
   }

@@ -80,18 +80,18 @@ public class RepairLogger implements Closeable {
     this.logStream = new FileOutputStream(logFile, true);
   }
 
-  void recordRepairedTimePartition(TimePartitionFiles timePartition) throws IOException {
+  public void recordRepairedTimePartition(RepairTimePartition timePartition) throws IOException {
     markStartOfRepairedTimePartition(timePartition);
     recordCannotRepairFiles(timePartition);
     markEndOfRepairedTimePartition(timePartition);
   }
 
-  void recordCannotRepairFiles(TimePartitionFiles timePartition) throws IOException {
+  private void recordCannotRepairFiles(RepairTimePartition timePartition) throws IOException {
     TsFileManager tsFileManager = timePartition.getTsFileManager();
     List<TsFileResource> seqResources =
-        tsFileManager.getTsFileListSnapshot(timePartition.getTimePartition(), true);
+        tsFileManager.getTsFileListSnapshot(timePartition.getTimePartitionId(), true);
     List<TsFileResource> unseqResources =
-        tsFileManager.getTsFileListSnapshot(timePartition.getTimePartition(), false);
+        tsFileManager.getTsFileListSnapshot(timePartition.getTimePartitionId(), false);
     List<TsFileResource> cannotRepairFiles =
         Stream.concat(seqResources.stream(), unseqResources.stream())
             .filter(
@@ -102,7 +102,7 @@ public class RepairLogger implements Closeable {
     }
   }
 
-  private void markStartOfRepairedTimePartition(TimePartitionFiles timePartition)
+  private void markStartOfRepairedTimePartition(RepairTimePartition timePartition)
       throws IOException {
     String startTimePartitionLog =
         String.format(
@@ -110,11 +110,11 @@ public class RepairLogger implements Closeable {
             repairTimePartitionStartLogPrefix,
             timePartition.getDatabaseName(),
             timePartition.getDataRegionId(),
-            timePartition.getTimePartition());
+            timePartition.getTimePartitionId());
     logStream.write(startTimePartitionLog.getBytes());
   }
 
-  private void markEndOfRepairedTimePartition(TimePartitionFiles timePartition) throws IOException {
+  private void markEndOfRepairedTimePartition(RepairTimePartition timePartition) throws IOException {
     String endTimePartitionLog = String.format("%s\n", repairTimePartitionEndLogPrefix);
     logStream.write(endTimePartitionLog.getBytes());
     logStream.flush();
