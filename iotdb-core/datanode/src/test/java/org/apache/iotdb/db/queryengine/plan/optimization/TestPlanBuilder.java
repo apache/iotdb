@@ -329,6 +329,17 @@ public class TestPlanBuilder {
     return this;
   }
 
+  public TestPlanBuilder transform(String id, List<Expression> expressions, boolean isGroupByTime) {
+    this.root =
+        new TransformNode(
+            new PlanNodeId(id),
+            getRoot(),
+            expressions.toArray(new Expression[0]),
+            isGroupByTime,
+            Ordering.ASC);
+    return this;
+  }
+
   public TestPlanBuilder into(String id, PartialPath sourcePath, PartialPath intoPath) {
     IntoPathDescriptor intoPathDescriptor = new IntoPathDescriptor();
     intoPathDescriptor.specifyTargetPath(sourcePath.toString(), "", intoPath);

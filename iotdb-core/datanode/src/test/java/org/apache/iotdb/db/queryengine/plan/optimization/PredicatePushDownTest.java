@@ -34,6 +34,7 @@ import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.gt;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.intValue;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.or;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.sin;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.timeSeries;
 import static org.apache.iotdb.db.queryengine.plan.optimization.OptimizationTestUtil.schemaMap;
 
@@ -90,6 +91,34 @@ public class PredicatePushDownTest {
                     .getRoot(),
                 new TestPlanBuilder().scan("0", schemaMap.get("root.sg.d1.s1")).getRoot())
             .project("5", Collections.singletonList("root.sg.d1.s1"))
+            .getRoot());
+
+    checkPushDown(
+        "select sin(s1) from root.sg.d1 where time > 100 and s2 > 10",
+        new TestPlanBuilder()
+            .fullOuterTimeJoin(
+                Arrays.asList(schemaMap.get("root.sg.d1.s1"), schemaMap.get("root.sg.d1.s2")))
+            .filter(
+                "3",
+                Collections.singletonList(sin(timeSeries(schemaMap.get("root.sg.d1.s1")))),
+                gt(timeSeries(schemaMap.get("root.sg.d1.s2")), intValue("10")),
+                false)
+            .getRoot(),
+        new TestPlanBuilder()
+            .leftOuterTimeJoin(
+                "4",
+                Ordering.ASC,
+                new TestPlanBuilder()
+                    .scan(
+                        "1",
+                        schemaMap.get("root.sg.d1.s2"),
+                        gt(timeSeries(schemaMap.get("root.sg.d1.s2")), intValue("10")))
+                    .getRoot(),
+                new TestPlanBuilder().scan("0", schemaMap.get("root.sg.d1.s1")).getRoot())
+            .transform(
+                "5",
+                Collections.singletonList(sin(timeSeries(schemaMap.get("root.sg.d1.s1")))),
+                false)
             .getRoot());
 
     checkPushDown(
