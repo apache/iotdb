@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.it.cluster;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
@@ -26,6 +27,7 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
@@ -56,6 +58,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.iotdb.consensus.ConsensusFactory.RATIS_CONSENSUS;
 
@@ -125,6 +128,12 @@ public class IoTDBClusterRestartIT {
   @Test
   public void clusterRestartAfterUpdateDataNodeTest()
       throws InterruptedException, ClientManagerException, IOException, TException {
+    // Create default Database
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+      TSStatus status = client.setDatabase(new TDatabaseSchema("root.database"));
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    }
     // Create some DataPartitions to extend 2 DataRegionGroups
     Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap =
         ConfigNodeTestUtils.constructPartitionSlotsMap(
@@ -208,14 +217,16 @@ public class IoTDBClusterRestartIT {
       showRegionResp
           .getRegionInfoList()
           .forEach(
-              regionInfo ->
-                  dataNodeWrapperList.forEach(
-                      dataNodeWrapper -> {
-                        if (regionInfo.getClientRpcIp().equals(dataNodeWrapper.getIp())) {
-                          Assert.assertEquals(
-                              dataNodeWrapper.getPort(), regionInfo.getClientRpcPort());
-                        }
-                      }));
+              regionInfo -> {
+                AtomicBoolean matched = new AtomicBoolean(false);
+                dataNodeWrapperList.forEach(
+                    dataNodeWrapper -> {
+                      if (regionInfo.getClientRpcPort() == dataNodeWrapper.getPort()) {
+                        matched.set(true);
+                      }
+                    });
+                Assert.assertTrue(matched.get());
+              });
     }
   }
 
