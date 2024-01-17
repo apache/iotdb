@@ -35,7 +35,7 @@ public class PageHeader implements IMetadata {
 
   private int uncompressedSize;
   private int compressedSize;
-  private Statistics<? extends Serializable> statistics;
+  private final Statistics<? extends Serializable> statistics;
   private boolean modified;
 
   public PageHeader(
