@@ -75,6 +75,21 @@ public class RegionGroup {
     return replicaSet.deepCopy();
   }
 
+  /**
+   * Update the DataNodeLocation in TRegionReplicaSet if necessary.
+   *
+   * @param newDataNodeLocation The new DataNodeLocation.
+   */
+  public void updateDataNode(TDataNodeLocation newDataNodeLocation) {
+    for (int i = 0; i < replicaSet.getDataNodeLocationsSize(); i++) {
+      if (replicaSet.getDataNodeLocations().get(i).getDataNodeId()
+          == newDataNodeLocation.getDataNodeId()) {
+        replicaSet.getDataNodeLocations().set(i, newDataNodeLocation);
+        return;
+      }
+    }
+  }
+
   public void addRegionLocation(TDataNodeLocation node) {
     replicaSet.addToDataNodeLocations(node);
     replicaSet.getDataNodeLocations().sort(TDataNodeLocation::compareTo);

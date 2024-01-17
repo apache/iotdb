@@ -400,17 +400,23 @@ public class TsFileResource {
 
   public DeviceTimeIndex buildDeviceTimeIndex() throws IOException {
     readLock();
-    try (InputStream inputStream =
-        FSFactoryProducer.getFSFactory().getBufferedInputStream(file.getPath() + RESOURCE_SUFFIX)) {
-      ReadWriteIOUtils.readByte(inputStream);
-      ITimeIndex timeIndexFromResourceFile = ITimeIndex.createTimeIndex(inputStream);
-      if (!(timeIndexFromResourceFile instanceof DeviceTimeIndex)) {
-        throw new IOException("cannot build DeviceTimeIndex from resource " + file.getPath());
+    try {
+      if (!resourceFileExists()) {
+        throw new IOException("resource file not found");
       }
-      return (DeviceTimeIndex) timeIndexFromResourceFile;
-    } catch (Exception e) {
-      throw new IOException(
-          "Can't read file " + file.getPath() + RESOURCE_SUFFIX + " from disk", e);
+      try (InputStream inputStream =
+          FSFactoryProducer.getFSFactory()
+              .getBufferedInputStream(file.getPath() + RESOURCE_SUFFIX)) {
+        ReadWriteIOUtils.readByte(inputStream);
+        ITimeIndex timeIndexFromResourceFile = ITimeIndex.createTimeIndex(inputStream);
+        if (!(timeIndexFromResourceFile instanceof DeviceTimeIndex)) {
+          throw new IOException("cannot build DeviceTimeIndex from resource " + file.getPath());
+        }
+        return (DeviceTimeIndex) timeIndexFromResourceFile;
+      } catch (Exception e) {
+        throw new IOException(
+            "Can't read file " + file.getPath() + RESOURCE_SUFFIX + " from disk", e);
+      }
     } finally {
       readUnlock();
     }

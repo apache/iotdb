@@ -119,7 +119,7 @@ public class PBTreeFileSketchTool {
       parseBasicParams(commandLine);
       sketchFile(inputFile, outputFile);
     } catch (Exception e) {
-      logger.error("Encounter an error, because: {} ", e.getMessage());
+      logger.error("Encounter an error, because: {} ", e.getMessage(), e);
     }
   }
 

@@ -233,7 +233,7 @@ public class RecoverReadTest {
     // wait until active leader to serve read index requests
     miniCluster.waitUntilActiveLeaderElected();
 
-    // query during redo: get exception that ratis is under recovery
-    Assert.assertThrows(RatisReadUnavailableException.class, () -> miniCluster.readThrough(0));
+    // query, the result will return since it will be queued and handled by leader once ready
+    Assert.assertEquals(50, miniCluster.mustRead(0));
   }
 }

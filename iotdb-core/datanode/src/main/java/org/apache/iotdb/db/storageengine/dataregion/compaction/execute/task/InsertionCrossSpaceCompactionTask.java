@@ -123,7 +123,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
         unseqFileToInsert.getTsFileSize() / 1024 / 1024);
     boolean isSuccess = true;
     if (!tsFileManager.isAllowCompaction()
-        || !IoTDBDescriptor.getInstance().getConfig().isEnableInsertionCrossSpaceCompaction()) {
+        || !IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction()) {
       return true;
     }
     try {
@@ -224,6 +224,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
           new File(targetTsFile.getPath() + ModificationFile.FILE_SUFFIX).toPath(),
           new File(sourceTsFile.getPath() + ModificationFile.FILE_SUFFIX).toPath());
     }
+    targetFile.setProgressIndex(unseqFileToInsert.getMaxProgressIndexAfterClose());
     targetFile.deserialize();
   }
 

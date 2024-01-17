@@ -41,9 +41,9 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class JvmGcMonitorMetrics implements IMetricSet {
   // Duration of observation window
-  public static final long OBSERVATION_WINDOW_MS = TimeUnit.MINUTES.toMillis(1);
+  public static final long OBSERVATION_WINDOW_MS = TimeUnit.SECONDS.toMillis(30);
   // Interval for data collection
-  public static final long SLEEP_INTERVAL_MS = TimeUnit.SECONDS.toMillis(5);
+  public static final long SLEEP_INTERVAL_MS = TimeUnit.SECONDS.toMillis(3);
   // Max GC time threshold
   public static final long MAX_GC_TIME_PERCENTAGE = 30L;
   // The time when JvmGcMonitorMetrics start running
@@ -66,7 +66,7 @@ public class JvmGcMonitorMetrics implements IMetricSet {
   // Hook function called with GC exception
   private final GcTimeAlertHandler alertHandler;
 
-  public JvmGcMonitorMetrics() {
+  private JvmGcMonitorMetrics() {
     bufSize = (int) (OBSERVATION_WINDOW_MS / SLEEP_INTERVAL_MS + 2);
     // Prevent the user from accidentally creating an abnormally big buffer, which will result in
     // slow calculations and likely inaccuracy.
@@ -165,6 +165,10 @@ public class JvmGcMonitorMetrics implements IMetricSet {
             (gcTimeWithinObservationWindow
                 * 100
                 / Math.min(OBSERVATION_WINDOW_MS, gcMonitorRunTime)));
+  }
+
+  public GcData getGcData() {
+    return curData;
   }
 
   /** Encapsulates data about GC pauses measured at the specific timestamp. */

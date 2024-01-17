@@ -41,16 +41,16 @@ public abstract class EnrichedEvent implements Event {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(EnrichedEvent.class);
 
-  private final AtomicInteger referenceCount;
+  protected final AtomicInteger referenceCount;
 
   protected final String pipeName;
   protected final PipeTaskMeta pipeTaskMeta;
 
-  private String committerKey;
+  protected String committerKey;
   public static final long NO_COMMIT_ID = -1;
-  private long commitId = NO_COMMIT_ID;
+  protected long commitId = NO_COMMIT_ID;
 
-  private final String pattern;
+  protected final String pattern;
 
   protected final long startTime;
   protected final long endTime;
@@ -58,7 +58,7 @@ public abstract class EnrichedEvent implements Event {
   protected boolean isPatternParsed;
   protected boolean isTimeParsed;
 
-  private boolean shouldReportOnCommit = false;
+  protected boolean shouldReportOnCommit = false;
 
   protected EnrichedEvent(
       String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime) {
@@ -244,5 +244,36 @@ public abstract class EnrichedEvent implements Event {
     if (shouldReportOnCommit) {
       reportProgress();
     }
+  }
+
+  @Override
+  public String toString() {
+    return "EnrichedEvent{"
+        + "referenceCount="
+        + referenceCount.get()
+        + ", pipeName='"
+        + pipeName
+        + '\''
+        + ", pipeTaskMeta="
+        + pipeTaskMeta
+        + ", committerKey='"
+        + committerKey
+        + '\''
+        + ", commitId="
+        + commitId
+        + ", pattern='"
+        + pattern
+        + '\''
+        + ", startTime="
+        + startTime
+        + ", endTime="
+        + endTime
+        + ", isPatternParsed="
+        + isPatternParsed
+        + ", isTimeParsed="
+        + isTimeParsed
+        + ", shouldReportOnCommit="
+        + shouldReportOnCommit
+        + '}';
   }
 }

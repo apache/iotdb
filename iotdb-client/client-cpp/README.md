@@ -20,15 +20,28 @@
 -->
 # Building C++ Client
 
-To compile cpp client, add "-P compile-cpp" option to maven build command.
+To compile cpp client, add "-P with-cpp" option to maven build command.
 
 The compiling requires the module "compile-tools" to be built first.
 For more information, please refer to "compile-tools/README.md".
 
+Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
 
 ## Compile and Test:
 
-`mvn integration-test -P compile-cpp -pl client-cpp,server -am -Diotdb.test.skip=true -Dtsfile.test.skip=true -Djdbc.test.skip=true`
+### Compile
+`mvn clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests`
+
+### Test
+First build IoTDB server
+
+Explicitly using "install" instead of package in order to be sure we're using libs built on this machine
+
+`mvn clean install -P with-cpp -pl distribution,iotdb-client/client-cpp -am -DskipTests`
+
+After run verify
+
+`mvn clean verify -P with-cpp -pl iotdb-client/client-cpp -am`
 
 To compile on Windows, please install Boost first and add following Maven settings:
 ```
@@ -37,8 +50,7 @@ To compile on Windows, please install Boost first and add following Maven settin
 
 e.g.,
 ```
-mvn integration-test -P compile-cpp -pl client-cpp,server,example/client-cpp-example -am 
--D"iotdb.test.skip"=true -D"tsfile.test.skip"=true -D"jdbc.test.skip"=true 
+mvn clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTest
 -D"boost.include.dir"="D:\boost_1_75_0" -D"boost.library.dir"="D:\boost_1_75_0\stage\lib"
 ```
 

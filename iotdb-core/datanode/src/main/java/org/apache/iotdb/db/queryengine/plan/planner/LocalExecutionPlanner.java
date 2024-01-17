@@ -171,8 +171,11 @@ public class LocalExecutionPlanner {
     context
         .getPipelineDriverFactories()
         .forEach(
-            pipeline ->
-                sourcePaths.addAll(((DataDriverContext) pipeline.getDriverContext()).getPaths()));
+            pipeline -> {
+              DataDriverContext dataDriverContext = (DataDriverContext) pipeline.getDriverContext();
+              sourcePaths.addAll(dataDriverContext.getPaths());
+              dataDriverContext.clearPaths();
+            });
     return sourcePaths;
   }
 

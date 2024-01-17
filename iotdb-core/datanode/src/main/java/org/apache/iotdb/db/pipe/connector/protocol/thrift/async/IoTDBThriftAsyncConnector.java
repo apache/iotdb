@@ -341,25 +341,35 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
    */
   private synchronized void transferQueuedEventsIfNecessary() throws Exception {
     while (!retryEventQueue.isEmpty()) {
-      final Event event = retryEventQueue.peek();
+      final Event peekedEvent = retryEventQueue.peek();
 
-      if (event instanceof PipeInsertNodeTabletInsertionEvent) {
-        retryConnector.transfer((PipeInsertNodeTabletInsertionEvent) event);
-      } else if (event instanceof PipeRawTabletInsertionEvent) {
-        retryConnector.transfer((PipeRawTabletInsertionEvent) event);
-      } else if (event instanceof PipeTsFileInsertionEvent) {
-        retryConnector.transfer((PipeTsFileInsertionEvent) event);
+      if (peekedEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+        retryConnector.transfer((PipeInsertNodeTabletInsertionEvent) peekedEvent);
+      } else if (peekedEvent instanceof PipeRawTabletInsertionEvent) {
+        retryConnector.transfer((PipeRawTabletInsertionEvent) peekedEvent);
+      } else if (peekedEvent instanceof PipeTsFileInsertionEvent) {
+        retryConnector.transfer((PipeTsFileInsertionEvent) peekedEvent);
       } else {
         LOGGER.warn(
-            "IoTDBThriftAsyncConnector does not support transfer generic event: {}.", event);
+            "IoTDBThriftAsyncConnector does not support transfer generic event: {}.", peekedEvent);
       }
 
-      if (event instanceof EnrichedEvent) {
-        ((EnrichedEvent) event)
+      if (peekedEvent instanceof EnrichedEvent) {
+        ((EnrichedEvent) peekedEvent)
             .decreaseReferenceCount(IoTDBThriftAsyncConnector.class.getName(), true);
       }
 
-      retryEventQueue.poll();
+      final Event polledEvent = retryEventQueue.poll();
+      if (polledEvent != peekedEvent) {
+        LOGGER.error(
+            "The event polled from the queue is not the same as the event peeked from the queue. "
+                + "Peeked event: {}, polled event: {}.",
+            peekedEvent,
+            polledEvent);
+      }
+      if (polledEvent != null) {
+        LOGGER.info("Polled event {} from retry queue.", polledEvent);
+      }
     }
   }
 
@@ -379,8 +389,10 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
    *
    * @param event event to retry
    */
-  public void addFailureEventToRetryQueue(Event event) {
+  public synchronized void addFailureEventToRetryQueue(Event event) {
     retryEventQueue.offer(event);
+
+    LOGGER.info("Added event {} to retry queue.", event);
   }
 
   //////////////////////////// Operations for close ////////////////////////////
