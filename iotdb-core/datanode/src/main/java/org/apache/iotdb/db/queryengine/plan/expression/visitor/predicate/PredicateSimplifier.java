@@ -186,19 +186,40 @@ public class PredicateSimplifier extends ExpressionAnalyzeVisitor<Expression, Vo
     boolean firstIsConstant = simplifiedFirstExpression.isConstantOperand();
     boolean secondIsConstant = simplifiedSecondExpression.isConstantOperand();
     boolean thirdIsConstant = simplifiedThirdExpression.isConstantOperand();
-    if (firstIsConstant
-        && secondIsConstant
-        && lessThan(
-            (ConstantOperand) simplifiedFirstExpression,
-            (ConstantOperand) simplifiedSecondExpression)) {
-      return ConstantOperand.FALSE;
+    boolean isNotBetween = betweenExpression.isNotBetween();
+    if (firstIsConstant && secondIsConstant) {
+      if (!isNotBetween
+          && lessThan(
+              (ConstantOperand) simplifiedFirstExpression,
+              (ConstantOperand) simplifiedSecondExpression)) {
+        // 1 between 2 and time => false
+        return ConstantOperand.FALSE;
+      }
+      if (isNotBetween
+          && lessEqual(
+              (ConstantOperand) simplifiedSecondExpression,
+              (ConstantOperand) simplifiedFirstExpression)) {
+        // 1 not between 0 and time => false
+        // 1 not between 1 and time => false
+        return ConstantOperand.FALSE;
+      }
     }
-    if (firstIsConstant
-        && thirdIsConstant
-        && lessThan(
-            (ConstantOperand) simplifiedThirdExpression,
-            (ConstantOperand) simplifiedFirstExpression)) {
-      return ConstantOperand.FALSE;
+    if (firstIsConstant && thirdIsConstant) {
+      if (!isNotBetween
+          && lessThan(
+              (ConstantOperand) simplifiedThirdExpression,
+              (ConstantOperand) simplifiedFirstExpression)) {
+        // 1 between time and 0 => false
+        return ConstantOperand.FALSE;
+      }
+      if (isNotBetween
+          && lessEqual(
+              (ConstantOperand) simplifiedFirstExpression,
+              (ConstantOperand) simplifiedThirdExpression)) {
+        // 1 not between time and 2 => false
+        // 1 not between time and 1 => false
+        return ConstantOperand.FALSE;
+      }
     }
     betweenExpression.setFirstExpression(simplifiedFirstExpression);
     betweenExpression.setSecondExpression(simplifiedSecondExpression);
@@ -211,6 +232,13 @@ public class PredicateSimplifier extends ExpressionAnalyzeVisitor<Expression, Vo
     T value1 = getValue(operand1.getValueString(), operand1.getDataType());
     T value2 = getValue(operand2.getValueString(), operand2.getDataType());
     return value1.compareTo(value2) < 0;
+  }
+
+  private <T extends Comparable<T>> boolean lessEqual(
+      ConstantOperand operand1, ConstantOperand operand2) {
+    T value1 = getValue(operand1.getValueString(), operand1.getDataType());
+    T value2 = getValue(operand2.getValueString(), operand2.getDataType());
+    return value1.compareTo(value2) <= 0;
   }
 
   @Override
