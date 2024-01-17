@@ -61,7 +61,9 @@ public class PredicatePushDown implements PlanOptimizer {
     if (queryStatement.isLastQuery() || !analysis.hasValueFilter()) {
       return plan;
     }
-    return plan.accept(new Rewriter(), new RewriterContext(context.getQueryId()));
+    return plan.accept(
+        new Rewriter(),
+        new RewriterContext(context.getQueryId(), queryStatement.isAlignByDevice()));
   }
 
   private static class Rewriter extends PlanVisitor<PlanNode, RewriterContext> {
@@ -290,31 +292,40 @@ public class PredicatePushDown implements PlanOptimizer {
 
     private PlanNode planProject(PlanNode resultNode, RewriterContext context) {
       FilterNode pushDownFilterNode = context.getPushDownFilterNode();
-      if ((resultNode instanceof TransformNode)
-          || (pushDownFilterNode.getOutputColumnNames().size()
-              == pushDownFilterNode.getChild().getOutputColumnNames().size())) {
+      if (resultNode instanceof TransformNode) {
         return resultNode;
       }
 
-      return new ProjectNode(
-          context.genPlanNodeId(), resultNode, pushDownFilterNode.getOutputColumnNames());
+      if (context.isAlignByDevice()
+          || (pushDownFilterNode.getOutputColumnNames().size()
+              != pushDownFilterNode.getChild().getOutputColumnNames().size())) {
+        return new ProjectNode(
+            context.genPlanNodeId(), resultNode, pushDownFilterNode.getOutputColumnNames());
+      }
+      return resultNode;
     }
   }
 
   private static class RewriterContext {
 
     private final QueryId queryId;
+    private final boolean isAlignByDevice;
 
     private FilterNode pushDownFilterNode;
 
     private boolean enablePushDown = false;
 
-    private RewriterContext(QueryId queryId) {
+    private RewriterContext(QueryId queryId, boolean isAlignByDevice) {
       this.queryId = queryId;
+      this.isAlignByDevice = isAlignByDevice;
     }
 
     public PlanNodeId genPlanNodeId() {
       return queryId.genPlanNodeId();
+    }
+
+    public boolean isAlignByDevice() {
+      return isAlignByDevice;
     }
 
     public FilterNode getPushDownFilterNode() {
