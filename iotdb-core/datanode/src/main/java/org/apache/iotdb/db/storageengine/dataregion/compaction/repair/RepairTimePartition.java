@@ -39,12 +39,12 @@ public class RepairTimePartition {
   private long maxFileTimestamp;
   private boolean repaired;
 
-  public RepairTimePartition(DataRegion dataRegion, long timePartitionId) {
+  public RepairTimePartition(DataRegion dataRegion, long timePartitionId, long maxFileTimestamp) {
     this.databaseName = dataRegion.getDatabaseName();
     this.dataRegionId = dataRegion.getDataRegionId();
     this.tsFileManager = dataRegion.getTsFileManager();
     this.timePartitionId = timePartitionId;
-    this.maxFileTimestamp = calculateMaxTimestamp();
+    this.maxFileTimestamp = maxFileTimestamp;
     this.repaired = false;
   }
 
@@ -52,19 +52,6 @@ public class RepairTimePartition {
     this.databaseName = databaseName;
     this.dataRegionId = dataRegionId;
     this.timePartitionId = timePartitionId;
-  }
-
-  private long calculateMaxTimestamp() {
-    long maxTimestamp = 0;
-    List<TsFileResource> resources = tsFileManager.getTsFileListSnapshot(timePartitionId, true);
-    if (!resources.isEmpty()) {
-      maxTimestamp = getFileTimestamp(resources.get(resources.size() - 1));
-    }
-    resources = tsFileManager.getTsFileListSnapshot(timePartitionId, false);
-    if (!resources.isEmpty()) {
-      maxTimestamp = Math.max(maxTimestamp, getFileTimestamp(resources.get(resources.size() - 1)));
-    }
-    return maxTimestamp;
   }
 
   public long getTimePartitionId() {

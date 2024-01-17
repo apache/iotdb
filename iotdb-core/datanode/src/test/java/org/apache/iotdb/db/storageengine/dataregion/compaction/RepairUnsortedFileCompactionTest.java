@@ -54,7 +54,6 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Arrays;
@@ -749,7 +748,8 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
     File logFile = new File(currentTime + RepairLogger.repairLogSuffix);
     Files.createFile(logFile.toPath());
     try (RepairLogger logger = new RepairLogger(logFile)) {
-      RepairTimePartition timePartition = new RepairTimePartition(mockDataRegion, 0);
+      RepairTimePartition timePartition =
+          new RepairTimePartition(mockDataRegion, 0, System.currentTimeMillis());
       // record seqResource3 as cannot recover
       logger.recordRepairedTimePartition(timePartition);
     }

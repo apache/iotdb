@@ -114,7 +114,8 @@ public class RepairLogger implements Closeable {
     logStream.write(startTimePartitionLog.getBytes());
   }
 
-  private void markEndOfRepairedTimePartition(RepairTimePartition timePartition) throws IOException {
+  private void markEndOfRepairedTimePartition(RepairTimePartition timePartition)
+      throws IOException {
     String endTimePartitionLog = String.format("%s\n", repairTimePartitionEndLogPrefix);
     logStream.write(endTimePartitionLog.getBytes());
     logStream.flush();
@@ -129,6 +130,10 @@ public class RepairLogger implements Closeable {
 
   public String getRepairLogFilePath() {
     return logFile.getAbsolutePath();
+  }
+
+  public long getRepairTaskStartTime() {
+    return repairTaskStartTime;
   }
 
   @Override

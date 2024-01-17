@@ -58,6 +58,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
   private RepairLogger repairLogger;
   private final boolean isRecover;
   private boolean initSuccess = false;
+  private long repairTaskTime;
   private int repairProgress = 0;
 
   public static boolean markRepairTaskStart() {
@@ -82,6 +83,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
       }
       return;
     }
+    this.repairTaskTime = repairLogger.getRepairTaskStartTime();
     collectTimePartitions(dataRegions);
     initSuccess = true;
   }
@@ -107,6 +109,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
       }
       return;
     }
+    this.repairTaskTime = repairLogger.getRepairTaskStartTime();
     collectTimePartitions(dataRegions);
     try {
       recover(logFile);
@@ -157,7 +160,8 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
       }
       List<Long> timePartitions = dataRegion.getTimePartitions();
       for (long timePartition : timePartitions) {
-        allTimePartitionFiles.add(new RepairTimePartition(dataRegion, timePartition));
+        allTimePartitionFiles.add(
+            new RepairTimePartition(dataRegion, timePartition, repairTaskTime));
       }
     }
   }
