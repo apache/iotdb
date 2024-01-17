@@ -73,7 +73,7 @@ public class PipeWriteSchemaPlanEvent extends PipeWritePlanEvent {
 
   @Override
   public void deserializeFromByteBuffer(ByteBuffer buffer) {
-    planNode = PlanNodeType.deserialize(buffer);
     isGeneratedByPipe = ReadWriteIOUtils.readBool(buffer);
+    planNode = PlanNodeType.deserialize(buffer);
   }
 }
