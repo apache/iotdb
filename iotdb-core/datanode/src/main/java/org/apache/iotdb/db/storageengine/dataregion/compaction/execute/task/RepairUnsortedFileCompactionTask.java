@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.RepairUnsortedFileCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.RepairUnsortedFileCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Collections;
 import java.util.concurrent.CountDownLatch;
 
@@ -41,6 +43,7 @@ import java.util.concurrent.CountDownLatch;
 public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
 
   private final TsFileResource sourceFile;
+  private final boolean rewriteFile;
   private CountDownLatch latch;
 
   public RepairUnsortedFileCompactionTask(
@@ -59,6 +62,7 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
         CompactionTaskPriorityType.NORMAL);
     this.sourceFile = sourceFile;
     this.innerSpaceEstimator = new RepairUnsortedFileCompactionEstimator();
+    this.rewriteFile = false;
   }
 
   public RepairUnsortedFileCompactionTask(
@@ -80,6 +84,7 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
     if (rewriteFile) {
       this.innerSpaceEstimator = new RepairUnsortedFileCompactionEstimator();
     }
+    this.rewriteFile = rewriteFile;
   }
 
   public RepairUnsortedFileCompactionTask(
@@ -100,6 +105,7 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
     this.sourceFile = sourceFile;
     this.innerSpaceEstimator = new RepairUnsortedFileCompactionEstimator();
     this.latch = latch;
+    this.rewriteFile = false;
   }
 
   public RepairUnsortedFileCompactionTask(
@@ -122,6 +128,7 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
     if (rewriteFile) {
       this.innerSpaceEstimator = new RepairUnsortedFileCompactionEstimator();
     }
+    this.rewriteFile = rewriteFile;
     this.latch = latch;
   }
 
@@ -158,6 +165,29 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
       targetTsFile.getParentFile().mkdirs();
     }
     return targetTsFile;
+  }
+
+  @Override
+  protected void prepareTargetFiles() throws IOException {
+    CompactionUtils.updateProgressIndex(
+        targetTsFileList, selectedTsFileResourceList, Collections.emptyList());
+    CompactionUtils.moveTargetFile(targetTsFileList, true, storageGroupName + "-" + dataRegionId);
+
+    LOGGER.info(
+        "{}-{} [InnerSpaceCompactionTask] start to rename mods file",
+        storageGroupName,
+        dataRegionId);
+
+    if (rewriteFile) {
+      CompactionUtils.combineModsInInnerCompaction(
+          selectedTsFileResourceList, targetTsFileResource);
+    } else {
+      if (sourceFile.modFileExists()) {
+        Files.createLink(
+            new File(targetTsFileResource.getModFile().getFilePath()).toPath(),
+            new File(sourceFile.getModFile().getFilePath()).toPath());
+      }
+    }
   }
 
   @Override

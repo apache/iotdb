@@ -299,6 +299,10 @@ public class TsFileResource {
     return getModFile().exists();
   }
 
+  public boolean compactionModFileExists() {
+    return getCompactionModFile().exists();
+  }
+
   public List<IChunkMetadata> getChunkMetadataList(PartialPath seriesPath) {
     return new ArrayList<>(pathToChunkMetadataListMap.get(seriesPath));
   }

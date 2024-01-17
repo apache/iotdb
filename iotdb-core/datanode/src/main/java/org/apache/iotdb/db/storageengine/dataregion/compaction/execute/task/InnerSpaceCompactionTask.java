@@ -203,17 +203,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         performer.setSummary(summary);
         performer.perform();
 
-        CompactionUtils.updateProgressIndex(
-            targetTsFileList, selectedTsFileResourceList, Collections.emptyList());
-        CompactionUtils.moveTargetFile(
-            targetTsFileList, true, storageGroupName + "-" + dataRegionId);
-
-        LOGGER.info(
-            "{}-{} [InnerSpaceCompactionTask] start to rename mods file",
-            storageGroupName,
-            dataRegionId);
-        CompactionUtils.combineModsInInnerCompaction(
-            selectedTsFileResourceList, targetTsFileResource);
+        prepareTargetFiles();
 
         if (Thread.currentThread().isInterrupted() || summary.isCancel()) {
           throw new InterruptedException(
@@ -309,6 +299,18 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       releaseAllLocks();
     }
     return isSuccess;
+  }
+
+  protected void prepareTargetFiles() throws IOException {
+    CompactionUtils.updateProgressIndex(
+        targetTsFileList, selectedTsFileResourceList, Collections.emptyList());
+    CompactionUtils.moveTargetFile(targetTsFileList, true, storageGroupName + "-" + dataRegionId);
+
+    LOGGER.info(
+        "{}-{} [InnerSpaceCompactionTask] start to rename mods file",
+        storageGroupName,
+        dataRegionId);
+    CompactionUtils.combineModsInInnerCompaction(selectedTsFileResourceList, targetTsFileResource);
   }
 
   public void recover() {
