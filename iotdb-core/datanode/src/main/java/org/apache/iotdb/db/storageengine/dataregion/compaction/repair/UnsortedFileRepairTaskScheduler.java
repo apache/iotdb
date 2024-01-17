@@ -58,6 +58,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
   private RepairLogger repairLogger;
   private final boolean isRecover;
   private boolean initSuccess = false;
+  private int repairProgress = 0;
 
   public static boolean markRepairTaskStart() {
     return isRepairingData.compareAndSet(false, true);
@@ -197,6 +198,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
             timePartition.getDatabaseName(),
             timePartition.getDataRegionId(),
             timePartition.getTimePartition());
+        repairProgress++;
         continue;
       }
       // repair unsorted data in single file
@@ -334,10 +336,13 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
           timePartition.getDataRegionId(),
           timePartition.getTimePartition());
     }
+    repairProgress++;
     LOGGER.info(
-        "[RepairScheduler][{}][{}] time partition {} has been repaired",
+        "[RepairScheduler][{}][{}] time partition {} has been repaired, progress: {}/{}",
         timePartition.getDatabaseName(),
         timePartition.getDataRegionId(),
-        timePartition.getTimePartition());
+        timePartition.getTimePartition(),
+        repairProgress,
+        allTimePartitionFiles.size());
   }
 }
