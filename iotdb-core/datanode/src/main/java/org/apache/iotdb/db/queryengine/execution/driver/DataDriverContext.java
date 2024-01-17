@@ -31,8 +31,10 @@ import java.util.List;
 
 public class DataDriverContext extends DriverContext {
 
-  private final List<PartialPath> paths;
-  private final List<DataSourceOperator> sourceOperators;
+  // it will be set to null, after being merged into Parent FIContext
+  private List<PartialPath> paths;
+  // it will be set to null, after QueryDataSource being inited
+  private List<DataSourceOperator> sourceOperators;
 
   public DataDriverContext(FragmentInstanceContext fragmentInstanceContext, int pipelineId) {
     super(fragmentInstanceContext, pipelineId);
@@ -58,6 +60,11 @@ public class DataDriverContext extends DriverContext {
     return paths;
   }
 
+  public void clearPaths() {
+    // friendly for gc
+    paths = null;
+  }
+
   public IDataRegionForQuery getDataRegion() {
     return getFragmentInstanceContext().getDataRegion();
   }
@@ -68,6 +75,11 @@ public class DataDriverContext extends DriverContext {
 
   public List<DataSourceOperator> getSourceOperators() {
     return sourceOperators;
+  }
+
+  public void clearSourceOperators() {
+    // friendly for gc
+    sourceOperators = null;
   }
 
   @Override

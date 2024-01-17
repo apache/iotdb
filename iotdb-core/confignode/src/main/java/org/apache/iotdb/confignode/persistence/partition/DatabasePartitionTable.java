@@ -439,6 +439,7 @@ public class DatabasePartitionTable {
               regionInfo.setClientRpcIp(dataNodeLocation.getClientRpcEndPoint().getIp());
               regionInfo.setClientRpcPort(dataNodeLocation.getClientRpcEndPoint().getPort());
               regionInfo.setCreateTime(regionGroup.getCreateTime());
+              regionInfo.setInternalAddress(dataNodeLocation.getInternalEndPoint().getIp());
               regionInfoList.add(regionInfo);
             });
 

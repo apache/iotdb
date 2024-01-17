@@ -131,6 +131,9 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                 RpcUtils.getStatus(
                     TSStatusCode.INTERNAL_SERVER_ERROR, UNEXPECTED_ERRORS + t.getMessage())));
       } finally {
+        // friendly for gc, clear the plan node tree, for some queries select all devices, it will
+        // release lots of memory
+        instance.getFragment().clearUselessField();
         QUERY_EXECUTION_METRIC_SET.recordExecutionCost(
             DISPATCH_READ, System.nanoTime() - startTime);
       }
@@ -389,10 +392,13 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         RegionWriteExecutor writeExecutor = new RegionWriteExecutor();
         RegionExecutionResult writeResult = writeExecutor.execute(groupId, planNode);
         if (!writeResult.isAccepted()) {
-          logger.warn(
-              "write locally failed. TSStatus: {}, message: {}",
-              writeResult.getStatus(),
-              writeResult.getMessage());
+          // DO NOT LOG READ_ONLY ERROR
+          if (writeResult.getStatus().getCode() != TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()) {
+            logger.warn(
+                "write locally failed. TSStatus: {}, message: {}",
+                writeResult.getStatus(),
+                writeResult.getMessage());
+          }
           if (writeResult.getStatus() == null) {
             throw new FragmentInstanceDispatchException(
                 RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, writeResult.getMessage()));

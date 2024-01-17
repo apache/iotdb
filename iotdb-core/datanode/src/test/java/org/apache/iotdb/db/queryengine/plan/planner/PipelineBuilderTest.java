@@ -1007,6 +1007,37 @@ public class PipelineBuilderTest {
     assertEquals(2, context.getExchangeSumNum());
   }
 
+  @Test
+  public void testConsumeAllChildrenPipelineBuilderWithExchange() throws IllegalPathException {
+    TypeProvider typeProvider = new TypeProvider();
+    FullOuterTimeJoinNode fullOuterTimeJoinNode =
+        initFullOuterTimeJoinNodeWithExchangeNode(typeProvider, 3, 3);
+    LocalExecutionPlanContext context = createLocalExecutionPlanContext(typeProvider);
+    context.setDegreeOfParallelism(1);
+
+    List<Operator> childrenOperator =
+        operatorTreeGenerator.dealWithConsumeAllChildrenPipelineBreaker(
+            fullOuterTimeJoinNode, context);
+    assertEquals(0, context.getPipelineNumber());
+    assertEquals(6, childrenOperator.size());
+    assertEquals(6, fullOuterTimeJoinNode.getChildren().size());
+    for (int i = 0; i < 3; i++) {
+      assertEquals(ExchangeOperator.class, childrenOperator.get(i).getClass());
+      assertEquals(ExchangeNode.class, fullOuterTimeJoinNode.getChildren().get(i).getClass());
+    }
+
+    for (int i = 3; i < 6; i++) {
+      assertEquals(SeriesScanOperator.class, childrenOperator.get(i).getClass());
+      assertEquals(SeriesScanNode.class, fullOuterTimeJoinNode.getChildren().get(i).getClass());
+      assertEquals(
+          String.format("root.sg.d%d.s1", i - 3),
+          fullOuterTimeJoinNode.getChildren().get(i).getOutputColumnNames().get(0));
+    }
+
+    // Validate the number exchange operator
+    assertEquals(3, context.getExchangeSumNum());
+  }
+
   private LocalExecutionPlanContext createLocalExecutionPlanContext(TypeProvider typeProvider) {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
@@ -1036,6 +1067,30 @@ public class PipelineBuilderTest {
     FullOuterTimeJoinNode fullOuterTimeJoinNode =
         new FullOuterTimeJoinNode(new PlanNodeId("TimeJoinNode"), Ordering.ASC);
     for (int i = 0; i < childNum; i++) {
+      SeriesScanNode seriesScanNode =
+          new SeriesScanNode(
+              new PlanNodeId(String.format("SeriesScanNode%d", i)),
+              new MeasurementPath(String.format("root.sg.d%d.s1", i), TSDataType.INT32));
+      typeProvider.setType(seriesScanNode.getSeriesPath().toString(), TSDataType.INT32);
+      fullOuterTimeJoinNode.addChild(seriesScanNode);
+    }
+    return fullOuterTimeJoinNode;
+  }
+
+  private FullOuterTimeJoinNode initFullOuterTimeJoinNodeWithExchangeNode(
+      TypeProvider typeProvider, int exchangeNum, int scanNum) throws IllegalPathException {
+    FullOuterTimeJoinNode fullOuterTimeJoinNode =
+        new FullOuterTimeJoinNode(new PlanNodeId("TimeJoinNode"), Ordering.ASC);
+    for (int i = 0; i < exchangeNum; i++) {
+      ExchangeNode exchangeNode =
+          new ExchangeNode(new PlanNodeId(String.format("FullOuterTimeJoinWithExchangeNode%d", i)));
+      exchangeNode.setUpstream(
+          new TEndPoint("127.0.0.2", 6667),
+          new FragmentInstanceId(new PlanFragmentId("q", i), "ds"),
+          new PlanNodeId("test"));
+      fullOuterTimeJoinNode.addChild(exchangeNode);
+    }
+    for (int i = 0; i < scanNum; i++) {
       SeriesScanNode seriesScanNode =
           new SeriesScanNode(
               new PlanNodeId(String.format("SeriesScanNode%d", i)),

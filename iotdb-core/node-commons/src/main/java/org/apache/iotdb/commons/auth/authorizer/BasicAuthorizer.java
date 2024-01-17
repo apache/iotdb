@@ -72,7 +72,6 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   BasicAuthorizer(IUserManager userManager, IRoleManager roleManager) throws AuthException {
     this.userManager = userManager;
     this.roleManager = roleManager;
-    init();
   }
 
   protected void init() throws AuthException {
