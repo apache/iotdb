@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.manager.load.cache.node;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadSample;
@@ -35,7 +36,7 @@ public class NodeHeartbeatSample {
 
   private TLoadSample loadSample = null;
 
-  /** Constructor for ConfigNode sample. */
+  @TestOnly
   public NodeHeartbeatSample(long sendTimestamp, long receiveTimestamp) {
     this.sendTimestamp = sendTimestamp;
     this.receiveTimestamp = receiveTimestamp;
@@ -56,6 +57,7 @@ public class NodeHeartbeatSample {
     }
   }
 
+  /** Constructor for ConfigNode sample. */
   public NodeHeartbeatSample(TConfigNodeHeartbeatResp heartbeatResp, long receiveTimestamp) {
     this.sendTimestamp = heartbeatResp.getTimestamp();
     this.receiveTimestamp = receiveTimestamp;
@@ -96,7 +98,7 @@ public class NodeHeartbeatSample {
    * @return A NodeHeartbeatSample that only contain timestamp and NodeStatus
    */
   public static NodeHeartbeatSample generateDefaultSample(NodeStatus status) {
-    long currentTime = System.currentTimeMillis();
+    long currentTime = System.nanoTime();
     return new NodeHeartbeatSample(
         new TDataNodeHeartbeatResp(currentTime, status.getStatus()).setStatusReason(null),
         currentTime);
