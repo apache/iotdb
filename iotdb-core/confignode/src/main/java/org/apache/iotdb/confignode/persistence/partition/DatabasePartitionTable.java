@@ -90,6 +90,16 @@ public class DatabasePartitionTable {
   }
 
   /**
+   * Update the DataNodeLocation in cached RegionGroups.
+   *
+   * @param newDataNodeLocation The new DataNodeLocation.
+   */
+  public void updateDataNode(TDataNodeLocation newDataNodeLocation) {
+    regionGroupMap.forEach(
+        (regionGroupId, regionGroup) -> regionGroup.updateDataNode(newDataNodeLocation));
+  }
+
+  /**
    * Cache allocation result of new RegionGroups.
    *
    * @param replicaSets List<TRegionReplicaSet>
