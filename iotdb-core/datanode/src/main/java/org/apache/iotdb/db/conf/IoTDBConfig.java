@@ -425,9 +425,6 @@ public class IoTDBConfig {
   /** Compact the unsequence files into the overlapped sequence files */
   private boolean enableCrossSpaceCompaction = true;
 
-  /** Insert the non overlapped unsequence files into sequence space */
-  private boolean enableInsertionCrossSpaceCompaction = true;
-
   /** The buffer for sort operation */
   private long sortBufferSize = 1024 * 1024L;
 
@@ -2698,14 +2695,6 @@ public class IoTDBConfig {
 
   public void setEnableCrossSpaceCompaction(boolean enableCrossSpaceCompaction) {
     this.enableCrossSpaceCompaction = enableCrossSpaceCompaction;
-  }
-
-  public boolean isEnableInsertionCrossSpaceCompaction() {
-    return enableInsertionCrossSpaceCompaction;
-  }
-
-  public void setEnableInsertionCrossSpaceCompaction(boolean enableInsertionCrossSpaceCompaction) {
-    this.enableInsertionCrossSpaceCompaction = enableInsertionCrossSpaceCompaction;
   }
 
   public InnerSequenceCompactionSelector getInnerSequenceCompactionSelector() {
