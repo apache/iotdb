@@ -33,6 +33,7 @@ import org.apache.iotdb.confignode.manager.pipe.transfer.task.PipeConfigNodeTask
 import java.util.Map;
 
 public class PipeTaskConfigNodeAgent extends PipeTaskAgent {
+
   @Override
   protected boolean isShutdown() {
     return PipeConfigNodeAgent.runtime().isShutdown();
@@ -69,7 +70,7 @@ public class PipeTaskConfigNodeAgent extends PipeTaskAgent {
         .put(consensusGroupId, pipeTaskMeta);
   }
 
-  public synchronized void stopAllPipesWithCriticalException() {
+  public void stopAllPipesWithCriticalException() {
     super.stopAllPipesWithCriticalException(
         ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId());
   }
