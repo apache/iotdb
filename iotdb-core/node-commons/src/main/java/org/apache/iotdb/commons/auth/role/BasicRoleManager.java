@@ -27,6 +27,9 @@ import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -46,6 +49,8 @@ public abstract class BasicRoleManager implements IRoleManager {
   protected IRoleAccessor accessor;
   protected HashLock lock;
   private boolean preVersion = false;
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(BasicRoleManager.class);
 
   BasicRoleManager(LocalFileRoleAccessor accessor) {
     this.roleMap = new HashMap<>();
@@ -172,6 +177,7 @@ public abstract class BasicRoleManager implements IRoleManager {
       try {
         roleMap.put(roleName, accessor.loadRole(roleName));
       } catch (IOException e) {
+        LOGGER.warn("Get exception when load role {}", roleName);
         throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
       }
     }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.auth.role;
 
+import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.Role;
 
 import org.apache.thrift.TException;
@@ -45,5 +46,10 @@ public class LocalFileRoleManager extends BasicRoleManager {
   @Override
   public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
     accessor.processLoadSnapshot(snapshotDir);
+    try {
+      super.reset();
+    } catch (AuthException e) {
+      throw new IOException(e);
+    }
   }
 }

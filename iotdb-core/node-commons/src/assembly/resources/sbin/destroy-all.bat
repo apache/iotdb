@@ -16,23 +16,27 @@
 @REM specific language governing permissions and limitations
 @REM under the License.
 @REM
-
 @echo off
 
-SET /P CLEAN_SERVICE="Do you want to clean all the data in the IoTDB ? y/n (default n): "
-IF NOT "%CLEAN_SERVICE%"=="y" IF NOT "%CLEAN_SERVICE%"=="Y" (
-  ECHO Exiting...
-  EXIT 0
+echo "Do you want to clean the data in the IoTDB ? y/n (default n): "
+set /p CLEAN_SERVICE=
+
+if not "%CLEAN_SERVICE%"=="y" if not "%CLEAN_SERVICE%"=="Y" (
+  echo "Exiting..."
+  goto finally
 )
 
 pushd %~dp0..
 if NOT DEFINED IOTDB_HOME set IOTDB_HOME=%cd%
 popd
 
+start cmd /c "%IOTDB_HOME%\\sbin\\stop-standalone.bat -f"
+timeout /t 5 > nul
 rmdir /s /q "%IOTDB_HOME%\\data\\"
 
-start cmd /c "%IOTDB_HOME%\\sbin\\clean-datanode.bat -f"
-start cmd /c "%IOTDB_HOME%\\sbin\\clean-confignode.bat -f"
+start cmd /c "%IOTDB_HOME%\\sbin\\destroy-datanode.bat -f"
+start cmd /c "%IOTDB_HOME%\\sbin\\destroy-confignode.bat -f"
 
-ECHO Cluster cleanup complete ...
-exit 0
+ECHO "Cluster cleanup complete ..."
+:finally
+exit /b

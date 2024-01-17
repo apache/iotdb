@@ -362,7 +362,17 @@ public class AggregationDistributionTest {
         f -> verifyAggregationStep(expectedStep, f.getFragment().getPlanNodeTree()));
 
     Map<String, List<String>> expectedDescriptorValue = new HashMap<>();
-    expectedDescriptorValue.put(groupedPath, Arrays.asList(groupedPath, d3s1Path, d4s1Path));
+    expectedDescriptorValue.put(groupedPath, Collections.singletonList(groupedPath));
+    assertTrue(
+        fragmentInstances
+                .get(0)
+                .getFragment()
+                .getPlanNodeTree()
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+            instanceof GroupByLevelNode);
     verifyGroupByLevelDescriptor(
         expectedDescriptorValue,
         (GroupByLevelNode)
@@ -518,8 +528,8 @@ public class AggregationDistributionTest {
         f -> verifyAggregationStep(expectedStep, f.getFragment().getPlanNodeTree()));
 
     Map<String, List<String>> expectedDescriptorValue = new HashMap<>();
-    expectedDescriptorValue.put(groupedPathS1, Arrays.asList(groupedPathS1, d1s1Path));
-    expectedDescriptorValue.put(groupedPathS2, Arrays.asList(groupedPathS2, d1s2Path));
+    expectedDescriptorValue.put(groupedPathS1, Collections.singletonList(groupedPathS1));
+    expectedDescriptorValue.put(groupedPathS2, Collections.singletonList(groupedPathS2));
     verifyGroupByLevelDescriptor(
         expectedDescriptorValue,
         (GroupByLevelNode)
@@ -583,10 +593,23 @@ public class AggregationDistributionTest {
     List<FragmentInstance> fragmentInstances = plan.getInstances();
     fragmentInstances.forEach(
         f -> verifyAggregationStep(expectedStep, f.getFragment().getPlanNodeTree()));
+    assertTrue(
+        fragmentInstances
+                .get(0)
+                .getFragment()
+                .getPlanNodeTree()
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+            instanceof GroupByLevelNode);
+    assertTrue(
+        fragmentInstances.get(2).getFragment().getPlanNodeTree().getChildren().get(0)
+            instanceof GroupByLevelNode);
 
     Map<String, List<String>> expectedDescriptorValue = new HashMap<>();
-    expectedDescriptorValue.put(groupedPathS1, Arrays.asList(groupedPathS1, d1s1Path, d2s1Path));
-    expectedDescriptorValue.put(groupedPathS2, Arrays.asList(groupedPathS2, d1s2Path));
+    expectedDescriptorValue.put(groupedPathS1, Arrays.asList(groupedPathS1, d2s1Path));
+    expectedDescriptorValue.put(groupedPathS2, Collections.singletonList(groupedPathS2));
     verifyGroupByLevelDescriptor(
         expectedDescriptorValue,
         (GroupByLevelNode)

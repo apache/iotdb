@@ -281,9 +281,7 @@ public class WALBuffer extends AbstractWALBuffer {
 
       int size = byteBufferView.position();
       try {
-        long start = System.nanoTime();
         walEntry.serialize(byteBufferView);
-        WRITING_METRICS.recordSerializeOneWALInfoEntryCost(System.nanoTime() - start);
         size = byteBufferView.position() - size;
       } catch (Exception e) {
         logger.error(

@@ -26,7 +26,7 @@
 Using maven to build this example project:
 
 * cd the root path of the whole project
-* run `mvn package -DskipTests -P compile-cpp -pl example/client-cpp-example -am`
+* run `mvn clean package -DskipTests -P with-cpp -pl example/client-cpp-example -am`
 * cd example/client-cpp-example/target
 
 You can find some files to form a complete project:

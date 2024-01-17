@@ -75,12 +75,39 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
     return new PipeDataNodeBuilder(pipeMetaFromConfigNode).build();
   }
 
-  public synchronized void stopAllPipesWithCriticalException() {
-    acquireWriteLock();
+  /**
+   * Using try lock method to prevent deadlock when stopping all pipes with critical exceptions and
+   * {@link PipeTaskDataNodeAgent#handlePipeMetaChanges(List)}} concurrently.
+   */
+  public void stopAllPipesWithCriticalException() {
     try {
-      stopAllPipesWithCriticalExceptionInternal();
-    } finally {
-      releaseWriteLock();
+      int retryCount = 0;
+      while (true) {
+        if (tryWriteLockWithTimeOut(5)) {
+          try {
+            stopAllPipesWithCriticalExceptionInternal();
+            LOGGER.info("Stopped all pipes with critical exception.");
+            return;
+          } finally {
+            releaseWriteLock();
+          }
+        } else {
+          Thread.sleep(1000);
+          LOGGER.warn(
+              "Failed to stop all pipes with critical exception, retry count: {}.", ++retryCount);
+        }
+      }
+    } catch (InterruptedException e) {
+      LOGGER.error(
+          "Interrupted when trying to stop all pipes with critical exception, exception message: {}",
+          e.getMessage(),
+          e);
+      Thread.currentThread().interrupt();
+    } catch (Exception e) {
+      LOGGER.error(
+          "Failed to stop all pipes with critical exception, exception message: {}",
+          e.getMessage(),
+          e);
     }
   }
 
@@ -220,7 +247,7 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
 
   ///////////////////////// Heartbeat /////////////////////////
 
-  public synchronized void collectPipeMetaList(TDataNodeHeartbeatResp resp) throws TException {
+  public void collectPipeMetaList(TDataNodeHeartbeatResp resp) throws TException {
     // Try the lock instead of directly acquire it to prevent the block of the cluster heartbeat
     // 10s is the half of the HEARTBEAT_TIMEOUT_TIME defined in class BaseNodeCache in ConfigNode
     if (!tryReadLockWithTimeOut(10)) {
@@ -251,7 +278,7 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
     resp.setPipeMetaList(pipeMetaBinaryList);
   }
 
-  public synchronized void collectPipeMetaList(TPipeHeartbeatReq req, TPipeHeartbeatResp resp)
+  public void collectPipeMetaList(TPipeHeartbeatReq req, TPipeHeartbeatResp resp)
       throws TException {
     acquireReadLock();
     try {
