@@ -445,8 +445,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
       hasValueFilter = resultPair.right;
 
-      // set where condition to null if predicate is only contain time filter.
-      if (!hasValueFilter) {
+      predicate = PredicateUtils.simplifyPredicate(predicate);
+
+      // set where condition to null if predicate is true or time filter.
+      if (!hasValueFilter || predicate.equals(ConstantOperand.TRUE)) {
         queryStatement.setWhereCondition(null);
       } else {
         whereCondition.setPredicate(predicate);
@@ -1295,7 +1297,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     for (Expression expression : analysis.getSourceTransformExpressions()) {
       sourceExpressions.addAll(searchSourceExpressions(expression));
     }
-    if (queryStatement.hasWhere()) {
+    Expression whereExpression = analysis.getWhereExpression();
+    if (whereExpression != null) {
       sourceExpressions.addAll(searchSourceExpressions(analysis.getWhereExpression()));
     }
   }
