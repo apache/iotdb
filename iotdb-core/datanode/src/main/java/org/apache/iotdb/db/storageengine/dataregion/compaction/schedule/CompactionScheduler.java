@@ -174,7 +174,7 @@ public class CompactionScheduler {
   private static int tryToSubmitInsertionCompactionTask(
       TsFileManager tsFileManager, long timePartition, Phaser insertionTaskPhaser)
       throws InterruptedException {
-    if (!config.isEnableInsertionCrossSpaceCompaction()) {
+    if (!config.isEnableCrossSpaceCompaction()) {
       return 0;
     }
     String logicalStorageGroupName = tsFileManager.getStorageGroupName();

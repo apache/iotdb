@@ -612,8 +612,7 @@ public class DataRegion implements IDataRegionForQuery {
   public void initCompactionSchedule() {
     if (!config.isEnableSeqSpaceCompaction()
         && !config.isEnableUnseqSpaceCompaction()
-        && !config.isEnableCrossSpaceCompaction()
-        && !config.isEnableInsertionCrossSpaceCompaction()) {
+        && !config.isEnableCrossSpaceCompaction()) {
       return;
     }
     timedCompactionScheduleTask =
@@ -2437,7 +2436,7 @@ public class DataRegion implements IDataRegionForQuery {
     timePartitions.sort(Comparator.reverseOrder());
 
     CompactionScheduleSummary summary = new CompactionScheduleSummary();
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableInsertionCrossSpaceCompaction()) {
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction()) {
       trySubmitCount += executeInsertionCompaction(timePartitions);
       summary.incrementSubmitTaskNum(CompactionTaskType.INSERTION, trySubmitCount);
     }
