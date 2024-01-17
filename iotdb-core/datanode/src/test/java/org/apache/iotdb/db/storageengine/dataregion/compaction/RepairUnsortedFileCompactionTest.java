@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
@@ -31,6 +33,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
+import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
@@ -462,6 +466,9 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
       writer.endFile();
     }
 
+    seqResources.add(seqResource1);
+    seqResources.add(seqResource2);
+
     tsFileManager.addAll(seqResources, true);
     Assert.assertFalse(TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(seqResources));
 
@@ -470,5 +477,64 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
     Assert.assertTrue(task.start());
     Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
     Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
+    Assert.assertTrue(
+        TsFileResourceUtils.validateTsFileDataCorrectness(
+            tsFileManager.getTsFileList(false).get(0)));
+    Assert.assertTrue(
+        TsFileResourceUtils.validateTsFileResourceCorrectness(
+            tsFileManager.getTsFileList(false).get(0)));
+  }
+
+  @Test
+  public void testRepairOverlapBetweenFileWithModFile() throws IOException, IllegalPathException {
+    TsFileResource seqResource1 = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqResource1)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleAlignedSeriesToCurrentDevice(
+          Arrays.asList("s1", "s2"),
+          new TimeRange[][] {new TimeRange[] {new TimeRange(10, 20), new TimeRange(25, 30)}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+
+    TsFileResource seqResource2 = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqResource2)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleAlignedSeriesToCurrentDevice(
+          Arrays.asList("s1", "s2"),
+          new TimeRange[][] {new TimeRange[] {new TimeRange(20, 30), new TimeRange(35, 40)}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    ModificationFile modFile = seqResource2.getModFile();
+    Deletion writedModification =
+        new Deletion(new PartialPath("root.testsg.d1.s1"), Long.MAX_VALUE, 15);
+    modFile.write(writedModification);
+    modFile.close();
+
+    seqResources.add(seqResource1);
+    seqResources.add(seqResource2);
+
+    tsFileManager.addAll(seqResources, true);
+    Assert.assertFalse(TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(seqResources));
+
+    RepairUnsortedFileCompactionTask task =
+        new RepairUnsortedFileCompactionTask(0, tsFileManager, seqResource2, true, false, 0);
+    Assert.assertTrue(task.start());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
+    TsFileResource targetResource = tsFileManager.getTsFileList(false).get(0);
+    Assert.assertTrue(TsFileResourceUtils.validateTsFileDataCorrectness(targetResource));
+    Assert.assertTrue(TsFileResourceUtils.validateTsFileResourceCorrectness(targetResource));
+    Assert.assertTrue(targetResource.modFileExists());
+    Assert.assertEquals(1, targetResource.getModFile().getModifications().size());
+    Deletion modification =
+        (Deletion) targetResource.getModFile().getModifications().iterator().next();
+    Assert.assertEquals(writedModification.getFileOffset(), modification.getFileOffset());
+    Assert.assertEquals(writedModification.getEndTime(), modification.getEndTime());
   }
 }
