@@ -152,7 +152,7 @@ public class HeartbeatService {
 
   private TConfigNodeHeartbeatReq genConfigNodeHeartbeatReq() {
     TConfigNodeHeartbeatReq req = new TConfigNodeHeartbeatReq();
-    req.setTimestamp(System.currentTimeMillis());
+    req.setTimestamp(System.nanoTime());
     return req;
   }
 
