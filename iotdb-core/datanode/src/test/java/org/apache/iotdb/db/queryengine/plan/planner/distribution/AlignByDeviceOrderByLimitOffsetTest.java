@@ -519,7 +519,10 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     for (PlanNode node : firstFiTopNode.getChildren().get(0).getChildren()) {
       assertTrue(node instanceof DeviceViewNode);
       assertTrue(node.getChildren().get(0) instanceof LimitNode);
-      assertTrue(node.getChildren().get(0).getChildren().get(0) instanceof LeftOuterTimeJoinNode);
+      assertTrue(node.getChildren().get(0).getChildren().get(0) instanceof ProjectNode);
+      assertTrue(
+          node.getChildren().get(0).getChildren().get(0).getChildren().get(0)
+              instanceof LeftOuterTimeJoinNode);
     }
     assertTrue(firstFiTopNode.getChildren().get(1) instanceof ExchangeNode);
     assertTrue(firstFiTopNode.getChildren().get(2) instanceof ExchangeNode);

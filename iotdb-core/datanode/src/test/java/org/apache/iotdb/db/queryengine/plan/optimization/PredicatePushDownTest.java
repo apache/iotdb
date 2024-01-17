@@ -372,10 +372,11 @@ public class PredicatePushDownTest {
                             new TestPlanBuilder()
                                 .scan("1", schemaMap.get("root.sg.d1.s2"))
                                 .getRoot())
+                        .project("12", Arrays.asList("root.sg.d1.s1", "root.sg.d1.s2"))
                         .getRoot(),
                     new TestPlanBuilder()
                         .leftOuterTimeJoin(
-                            "12",
+                            "13",
                             Ordering.ASC,
                             new TestPlanBuilder()
                                 .scan(
@@ -386,12 +387,14 @@ public class PredicatePushDownTest {
                             new TestPlanBuilder()
                                 .scan("5", schemaMap.get("root.sg.d2.s2"))
                                 .getRoot())
+                        .project("14", Arrays.asList("root.sg.d2.s1", "root.sg.d2.s2"))
                         .getRoot(),
                     new TestPlanBuilder()
                         .scanAligned(
                             "8",
                             schemaMap.get("root.sg.d2.a"),
                             gt(timeSeries(schemaMap.get("root.sg.d2.a.s1")), intValue("10")))
+                        .project("15", Arrays.asList("root.sg.d2.a.s1", "root.sg.d2.a.s2"))
                         .getRoot()))
             .getRoot());
   }
