@@ -110,6 +110,7 @@
         <jetty.version>9.4.53.v20231009</jetty.version>
         <jjwt.version>0.11.5</jjwt.version>
         <jline.version>3.23.0</jline.version>
+        <jna.version>5.14.0</jna.version>
         <!--
       do not upgrade this package unless we have to...
       Some experiments(https://github.com/jixuan1989/DependencyTest/blob/main/src/main/java/timecho/exp/JolTimeCost.java):
@@ -192,7 +193,7 @@
     -->
         <thrift.version>0.14.1</thrift.version>
         <!-- This was the last version to support Java 8 -->
-        <tomcat.version>9.0.58</tomcat.version>
+        <tomcat.version>9.0.83</tomcat.version>
         <xz.version>1.9</xz.version>
         <zeppelin.version>0.10.1</zeppelin.version>
         <zstd-jni.version>1.5.5-5</zstd-jni.version>
@@ -292,6 +293,11 @@
                 <groupId>org.jline</groupId>
                 <artifactId>jline</artifactId>
                 <version>${jline.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>net.java.dev.jna</groupId>
+                <artifactId>jna</artifactId>
+                <version>${jna.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.commons</groupId>
@@ -1457,7 +1463,7 @@
             <dependency>
                 <groupId>org.apache.zookeeper</groupId>
                 <artifactId>zookeeper</artifactId>
-                <version>3.6.3</version>
+                <version>3.7.2</version>
             </dependency>
             <!-- Conflict:
         hive-common (pulls in 9.3.20.v20170531)
@@ -1476,7 +1482,7 @@
             <dependency>
                 <groupId>org.apache.avro</groupId>
                 <artifactId>avro</artifactId>
-                <version>1.8.2</version>
+                <version>1.11.3</version>
                 <exclusions>
                     <!-- Jackson moved from codehaus to fasterxml and is now the new version -->
                     <exclusion>
@@ -1908,7 +1914,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-source-plugin</artifactId>
-                    <version>3.3.0</version>
+                    <version>3.2.1</version>
                 </plugin>
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>
@@ -2008,7 +2014,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-clean-plugin</artifactId>
-                    <version>3.3.1</version>
+                    <version>3.3.2</version>
                 </plugin>
                 <plugin>
                     <groupId>pl.project13.maven</groupId>
@@ -2782,6 +2788,7 @@
                                             </includes>
                                         </fileSet>
                                     </fileSets>
+                                    <failIfNoFiles>false</failIfNoFiles>
                                 </configuration>
                             </execution>
                         </executions>

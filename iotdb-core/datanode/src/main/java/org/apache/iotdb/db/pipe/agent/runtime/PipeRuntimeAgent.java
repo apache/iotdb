@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.progress.assigner.SimpleConsensusProgressIndexAssigner;
 import org.apache.iotdb.db.pipe.resource.PipeHardlinkFileDirStartupCleaner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.service.ResourcesInformationHolder;
@@ -38,6 +39,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PipeRuntimeAgent implements IService {
@@ -102,14 +104,20 @@ public class PipeRuntimeAgent implements IService {
     simpleConsensusProgressIndexAssigner.assignIfNeeded(insertNode);
   }
 
-  ////////////////////// Recover ProgressIndex Assigner //////////////////////
+  ////////////////////// Load ProgressIndex Assigner //////////////////////
 
   public void assignProgressIndexForTsFileLoad(TsFileResource tsFileResource) {
-    tsFileResource.setProgressIndex(
-        new RecoverProgressIndex(
-            DATA_NODE_ID,
-            simpleConsensusProgressIndexAssigner.getSimpleProgressIndexForTsFileRecovery()));
+    // override the progress index of the tsfile resource, not to update the progress index
+    tsFileResource.setProgressIndex(getNextProgressIndexForTsFileLoad());
   }
+
+  public RecoverProgressIndex getNextProgressIndexForTsFileLoad() {
+    return new RecoverProgressIndex(
+        DATA_NODE_ID,
+        simpleConsensusProgressIndexAssigner.getSimpleProgressIndexForTsFileRecovery());
+  }
+
+  ////////////////////// Recover ProgressIndex Assigner //////////////////////
 
   public void assignProgressIndexForTsFileRecovery(TsFileResource tsFileResource) {
     tsFileResource.updateProgressIndex(
@@ -132,7 +140,8 @@ public class PipeRuntimeAgent implements IService {
     // Quick stop all pipes locally if critical exception occurs,
     // no need to wait for the next heartbeat cycle.
     if (pipeRuntimeException instanceof PipeRuntimeCriticalException) {
-      PipeAgent.task().stopAllPipesWithCriticalException();
+      // To avoid deadlock, we use a new thread to stop all pipes.
+      CompletableFuture.runAsync(() -> PipeAgent.task().stopAllPipesWithCriticalException());
     }
   }
 

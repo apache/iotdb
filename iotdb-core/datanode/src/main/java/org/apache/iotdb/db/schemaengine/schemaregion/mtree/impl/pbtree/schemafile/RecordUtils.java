@@ -53,8 +53,9 @@ public class RecordUtils {
   private static final short INTERNAL_NODE_LENGTH =
       (short) 1 + 2 + 8 + 4 + 1; // always fixed length record
   private static final short MEASUREMENT_BASIC_LENGTH =
-      (short) 1 + 2 + 8 + 8; // final length depends on its alias and props
-  private static final short VIEW_BASIC_LENGTH = (short) 1 + 2 + 8 + 1;
+      (short) 1 + 2 + 8 + 8 + 4; // final length depends on its alias and props
+  private static final short VIEW_BASIC_LENGTH =
+      (short) 1 + 2 + 8 + 1; // final length depends on its view expression
 
   /** These offset rather than magic number may also be used to track usage of related field. */
   private static final short LENGTH_OFFSET = 1;
@@ -62,6 +63,7 @@ public class RecordUtils {
   private static final short ALIAS_OFFSET = 19;
   private static final short SEG_ADDRESS_OFFSET = 3;
   private static final short SCHEMA_OFFSET = 11;
+  private static final short VIEW_OFFSET = 12;
   private static final short INTERNAL_BITFLAG_OFFSET = 15;
 
   private static final byte INTERNAL_TYPE = 0;
@@ -82,6 +84,33 @@ public class RecordUtils {
       }
     } else {
       return internal2Buffer(node);
+    }
+  }
+
+  public static int getRecordLength(ICachedMNode node) {
+    if (node.isMeasurement()) {
+      return getRecordLength(node.getAsMeasurementMNode());
+    } else {
+      return INTERNAL_NODE_LENGTH;
+    }
+  }
+
+  private static int getRecordLength(IMeasurementMNode<ICachedMNode> node) {
+    if (node.isLogicalView()) {
+      return VIEW_BASIC_LENGTH
+          + ViewExpression.getSerializeSize(((LogicalViewSchema) node.getSchema()).getExpression());
+    } else {
+      // consider props and alias
+      int bufferLength =
+          node.getAlias() == null
+              ? 4 + MEASUREMENT_BASIC_LENGTH
+              : (node.getAlias().getBytes().length + 4 + MEASUREMENT_BASIC_LENGTH);
+      if (node.getSchema().getProps() != null) {
+        for (Map.Entry<String, String> e : node.getSchema().getProps().entrySet()) {
+          bufferLength += 8 + e.getKey().getBytes().length + e.getValue().length();
+        }
+      }
+      return bufferLength;
     }
   }
 
@@ -153,18 +182,7 @@ public class RecordUtils {
    * <p>It doesn't use MeasurementSchema.serializeTo for duplication of measurementId
    */
   private static ByteBuffer measurement2Buffer(IMeasurementMNode<ICachedMNode> node) {
-    int bufferLength =
-        node.getAlias() == null
-            ? 4 + MEASUREMENT_BASIC_LENGTH
-            : (node.getAlias().getBytes().length + 4 + MEASUREMENT_BASIC_LENGTH);
-
-    // consider props
-    bufferLength += 4;
-    if (node.getSchema().getProps() != null) {
-      for (Map.Entry<String, String> e : node.getSchema().getProps().entrySet()) {
-        bufferLength += 8 + e.getKey().getBytes().length + e.getValue().length();
-      }
-    }
+    int bufferLength = getRecordLength(node);
     // normal measurement
     ByteBuffer buffer = ByteBuffer.allocate(bufferLength);
     ReadWriteIOUtils.write(MEASUREMENT_TYPE, buffer);
@@ -310,7 +328,14 @@ public class RecordUtils {
     return res;
   }
 
-  public static boolean getAlignment(ByteBuffer recBuf) {
+  /** return as: [dataType, encoding, compression, preDelete] */
+  public static ViewExpression getViewExpression(ByteBuffer recBuf) {
+    int oriPos = recBuf.position();
+    recBuf.position(oriPos + VIEW_OFFSET);
+    return ViewExpression.deserialize(recBuf);
+  }
+
+  public static Boolean getAlignment(ByteBuffer recBuf) {
     int oriPos = recBuf.position();
     recBuf.position(oriPos + INTERNAL_BITFLAG_OFFSET);
     byte flag = ReadWriteIOUtils.readByte(recBuf);

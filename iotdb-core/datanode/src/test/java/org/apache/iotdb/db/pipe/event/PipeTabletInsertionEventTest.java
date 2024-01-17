@@ -75,18 +75,18 @@ public class PipeTabletInsertionEventTest {
   }
 
   private void createMeasurementSchema() {
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < schemas.length; i++) {
       schemas[i] = new MeasurementSchema(measurementIds[i], dataTypes[i]);
     }
   }
 
   private void createInsertRowNode() throws IllegalPathException {
-    final Object[] values = new Object[6];
+    final Object[] values = new Object[schemas.length];
 
     values[0] = 100;
     values[1] = 10000L;
     values[2] = 2F;
-    values[3] = 1.0;
+    values[3] = 1D;
     values[4] = false;
     values[5] = BytesUtils.valueOf("text");
 
@@ -116,20 +116,20 @@ public class PipeTabletInsertionEventTest {
   }
 
   private void createInsertTabletNode() throws IllegalPathException {
-    final Object[] values = new Object[6];
+    final Object[] values = new Object[schemas.length];
 
-    values[0] = new int[5];
-    values[1] = new long[5];
-    values[2] = new float[5];
-    values[3] = new double[5];
-    values[4] = new boolean[5];
-    values[5] = new Binary[5];
+    values[0] = new int[times.length];
+    values[1] = new long[times.length];
+    values[2] = new float[times.length];
+    values[3] = new double[times.length];
+    values[4] = new boolean[times.length];
+    values[5] = new Binary[times.length];
 
-    for (int r = 0; r < 5; r++) {
+    for (int r = 0; r < times.length; r++) {
       ((int[]) values[0])[r] = 100;
-      ((long[]) values[1])[r] = 10000;
-      ((float[]) values[2])[r] = 2;
-      ((double[]) values[3])[r] = 1.0;
+      ((long[]) values[1])[r] = 10000L;
+      ((float[]) values[2])[r] = 2F;
+      ((double[]) values[3])[r] = 1D;
       ((boolean[]) values[4])[r] = false;
       ((Binary[]) values[5])[r] = BytesUtils.valueOf("text");
     }
@@ -162,11 +162,11 @@ public class PipeTabletInsertionEventTest {
   }
 
   private void createTablet() {
-    final Object[] values = new Object[6];
+    final Object[] values = new Object[schemas.length];
 
     // create tablet for insertRowNode
-    BitMap[] bitMapsForInsertRowNode = new BitMap[6];
-    for (int i = 0; i < 6; i++) {
+    BitMap[] bitMapsForInsertRowNode = new BitMap[schemas.length];
+    for (int i = 0; i < schemas.length; i++) {
       bitMapsForInsertRowNode[i] = new BitMap(1);
     }
 
@@ -179,9 +179,9 @@ public class PipeTabletInsertionEventTest {
 
     for (int r = 0; r < 1; r++) {
       ((int[]) values[0])[r] = 100;
-      ((long[]) values[1])[r] = 10000;
-      ((float[]) values[2])[r] = 2;
-      ((double[]) values[3])[r] = 1.0;
+      ((long[]) values[1])[r] = 10000L;
+      ((float[]) values[2])[r] = 2F;
+      ((double[]) values[3])[r] = 1D;
       ((boolean[]) values[4])[r] = false;
       ((Binary[]) values[5])[r] = BytesUtils.valueOf("text");
     }
@@ -193,26 +193,27 @@ public class PipeTabletInsertionEventTest {
     tabletForInsertRowNode.bitMaps = bitMapsForInsertRowNode;
 
     // create tablet for insertTabletNode
-    BitMap[] bitMapsForInsertTabletNode = new BitMap[6];
-    for (int i = 0; i < 6; i++) {
+    BitMap[] bitMapsForInsertTabletNode = new BitMap[schemas.length];
+    for (int i = 0; i < schemas.length; i++) {
       bitMapsForInsertTabletNode[i] = new BitMap(times.length);
     }
 
-    values[0] = new int[5];
-    values[1] = new long[5];
-    values[2] = new float[5];
-    values[3] = new double[5];
-    values[4] = new boolean[5];
-    values[5] = new Binary[5];
+    values[0] = new int[times.length];
+    values[1] = new long[times.length];
+    values[2] = new float[times.length];
+    values[3] = new double[times.length];
+    values[4] = new boolean[times.length];
+    values[5] = new Binary[times.length];
 
-    for (int r = 0; r < 5; r++) {
+    for (int r = 0; r < times.length; r++) {
       ((int[]) values[0])[r] = 100;
-      ((long[]) values[1])[r] = 10000;
-      ((float[]) values[2])[r] = 2;
-      ((double[]) values[3])[r] = 1.0;
+      ((long[]) values[1])[r] = 10000L;
+      ((float[]) values[2])[r] = 2F;
+      ((double[]) values[3])[r] = 1D;
       ((boolean[]) values[4])[r] = false;
       ((Binary[]) values[5])[r] = BytesUtils.valueOf("text");
     }
+
     tabletForInsertTabletNode = new Tablet(deviceId, Arrays.asList(schemas), times.length);
     tabletForInsertTabletNode.values = values;
     tabletForInsertTabletNode.timestamps = times;
@@ -276,5 +277,73 @@ public class PipeTabletInsertionEventTest {
     boolean isAligned4 = event4.isAligned();
     Assert.assertEquals(tablet2, tablet4);
     Assert.assertTrue(isAligned4);
+  }
+
+  @Test
+  public void convertToTabletWithFilteredRowsForTest() {
+    TabletInsertionDataContainer container1 =
+        new TabletInsertionDataContainer(
+            null,
+            new PipeRawTabletInsertionEvent(tabletForInsertRowNode, 111L, 113L),
+            insertRowNode,
+            pattern);
+    Tablet tablet1 = container1.convertToTablet();
+    Assert.assertEquals(0, tablet1.rowSize);
+    boolean isAligned1 = container1.isAligned();
+    Assert.assertFalse(isAligned1);
+
+    TabletInsertionDataContainer container2 =
+        new TabletInsertionDataContainer(
+            null,
+            new PipeRawTabletInsertionEvent(tabletForInsertRowNode, 110L, 110L),
+            insertRowNode,
+            pattern);
+    Tablet tablet2 = container2.convertToTablet();
+    Assert.assertEquals(1, tablet2.rowSize);
+    boolean isAligned2 = container2.isAligned();
+    Assert.assertFalse(isAligned2);
+
+    TabletInsertionDataContainer container3 =
+        new TabletInsertionDataContainer(
+            null,
+            new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, 111L, 113L),
+            insertTabletNode,
+            pattern);
+    Tablet tablet3 = container3.convertToTablet();
+    Assert.assertEquals(3, tablet3.rowSize);
+    boolean isAligned3 = container3.isAligned();
+    Assert.assertFalse(isAligned3);
+
+    TabletInsertionDataContainer container4 =
+        new TabletInsertionDataContainer(
+            null,
+            new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, Long.MIN_VALUE, 109L),
+            insertTabletNode,
+            pattern);
+    Tablet tablet4 = container4.convertToTablet();
+    Assert.assertEquals(0, tablet4.rowSize);
+    boolean isAligned4 = container4.isAligned();
+    Assert.assertFalse(isAligned4);
+  }
+
+  @Test
+  public void isEventTimeOverlappedWithTimeRangeTest() {
+    PipeRawTabletInsertionEvent event;
+
+    event = new PipeRawTabletInsertionEvent(tabletForInsertRowNode, 111L, 113L);
+    Assert.assertFalse(event.isEventTimeOverlappedWithTimeRange());
+    event = new PipeRawTabletInsertionEvent(tabletForInsertRowNode, 110L, 110L);
+    Assert.assertTrue(event.isEventTimeOverlappedWithTimeRange());
+
+    event = new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, 111L, 113L);
+    Assert.assertTrue(event.isEventTimeOverlappedWithTimeRange());
+    event = new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, Long.MIN_VALUE, 110L);
+    Assert.assertTrue(event.isEventTimeOverlappedWithTimeRange());
+    event = new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, 114L, Long.MAX_VALUE);
+    Assert.assertTrue(event.isEventTimeOverlappedWithTimeRange());
+    event = new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, Long.MIN_VALUE, 109L);
+    Assert.assertFalse(event.isEventTimeOverlappedWithTimeRange());
+    event = new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, 115L, Long.MAX_VALUE);
+    Assert.assertFalse(event.isEventTimeOverlappedWithTimeRange());
   }
 }

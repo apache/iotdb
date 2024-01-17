@@ -110,12 +110,6 @@ public class MemTableFlushTask {
         memTable.getSeriesNumber() == 0
             ? 0
             : memTable.getTotalPointsNum() / memTable.getSeriesNumber();
-    LOGGER.info(
-        "The memTable size of SG {} is {}, the avg series points num in chunk is {}, total timeseries number is {}",
-        storageGroup,
-        memTable.memSize(),
-        avgSeriesPointsNum,
-        memTable.getSeriesNumber());
     WRITING_METRICS.recordFlushingMemTableStatus(
         storageGroup,
         memTable.memSize(),
@@ -213,12 +207,6 @@ public class MemTableFlushTask {
             MetricLevel.CORE,
             Tag.NAME.toString(),
             "flush");
-
-    LOGGER.info(
-        "Database {} memtable {} flushing a memtable has finished! Time consumption: {}ms",
-        storageGroup,
-        memTable,
-        System.currentTimeMillis() - start);
   }
 
   /** encoding task (second task of pipeline) */
@@ -284,12 +272,6 @@ public class MemTableFlushTask {
           }
 
           recordFlushPointsMetric();
-
-          LOGGER.info(
-              "Database {}, flushing memtable {} into disk: Encoding data cost " + "{} ms.",
-              storageGroup,
-              writer.getFile().getName(),
-              memSerializeTime);
           WRITING_METRICS.recordFlushCost(WritingMetrics.FLUSH_STAGE_ENCODING, memSerializeTime);
         }
       };

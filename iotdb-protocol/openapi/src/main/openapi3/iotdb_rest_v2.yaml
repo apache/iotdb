@@ -267,6 +267,10 @@ components:
           type: array
           items:
             type: string
+        data_types:
+          type: array
+          items:
+            type: string
         timestamps:
           type: array
           items:

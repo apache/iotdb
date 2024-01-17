@@ -25,6 +25,8 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
+import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
@@ -59,6 +61,8 @@ public class FragmentInstanceContext extends QueryContext {
 
   private IDataRegionForQuery dataRegion;
   private Filter globalTimeFilter;
+
+  // it will only be used once, after sharedQueryDataSource being inited, it will be set to null
   private List<PartialPath> sourcePaths;
   // Shared by all scan operators in this fragment instance to avoid memory problem
   private QueryDataSource sharedQueryDataSource;
@@ -68,6 +72,10 @@ public class FragmentInstanceContext extends QueryContext {
   private Set<TsFileResource> unClosedFilePaths;
   /** check if there is tmp file to be deleted. */
   private boolean mayHaveTmpFile = false;
+
+  // null for all time partitions
+  // empty for zero time partitions
+  private List<Long> timePartitions;
 
   private final AtomicLong startNanos = new AtomicLong();
   private final AtomicLong endNanos = new AtomicLong();
@@ -337,7 +345,8 @@ public class FragmentInstanceContext extends QueryContext {
               selectedDeviceIdSet.size() == 1 ? selectedDeviceIdSet.iterator().next() : null,
               this,
               // time filter may be stateful, so we need to copy it
-              globalTimeFilter != null ? globalTimeFilter.copy() : null);
+              globalTimeFilter != null ? globalTimeFilter.copy() : null,
+              timePartitions);
 
       // used files should be added before mergeLock is unlocked, or they may be deleted by
       // running merge
@@ -354,6 +363,8 @@ public class FragmentInstanceContext extends QueryContext {
   public synchronized QueryDataSource getSharedQueryDataSource() throws QueryProcessException {
     if (sharedQueryDataSource == null) {
       initQueryDataSource(sourcePaths);
+      // friendly for gc
+      sourcePaths = null;
     }
     return sharedQueryDataSource;
   }
@@ -450,6 +461,61 @@ public class FragmentInstanceContext extends QueryContext {
     sourcePaths = null;
     sharedQueryDataSource = null;
     releaseDataNodeQueryContext();
+
+    // record fragment instance execution time and metadata get time to metrics
+    long durationTime = System.currentTimeMillis() - executionStartTime.get();
+    QueryRelatedResourceMetricSet.getInstance().updateFragmentInstanceTime(durationTime);
+
+    SeriesScanCostMetricSet.getInstance()
+        .recordNonAlignedTimeSeriesMetadataCount(
+            getQueryStatistics().loadTimeSeriesMetadataDiskSeqCount.get(),
+            getQueryStatistics().loadTimeSeriesMetadataDiskUnSeqCount.get(),
+            getQueryStatistics().loadTimeSeriesMetadataMemSeqCount.get(),
+            getQueryStatistics().loadTimeSeriesMetadataMemUnSeqCount.get());
+    SeriesScanCostMetricSet.getInstance()
+        .recordNonAlignedTimeSeriesMetadataTime(
+            getQueryStatistics().loadTimeSeriesMetadataDiskSeqTime.get(),
+            getQueryStatistics().loadTimeSeriesMetadataDiskUnSeqTime.get(),
+            getQueryStatistics().loadTimeSeriesMetadataMemSeqTime.get(),
+            getQueryStatistics().loadTimeSeriesMetadataMemUnSeqTime.get());
+    SeriesScanCostMetricSet.getInstance()
+        .recordAlignedTimeSeriesMetadataCount(
+            getQueryStatistics().loadTimeSeriesMetadataAlignedDiskSeqCount.get(),
+            getQueryStatistics().loadTimeSeriesMetadataAlignedDiskUnSeqCount.get(),
+            getQueryStatistics().loadTimeSeriesMetadataAlignedMemSeqCount.get(),
+            getQueryStatistics().loadTimeSeriesMetadataAlignedMemUnSeqCount.get());
+    SeriesScanCostMetricSet.getInstance()
+        .recordAlignedTimeSeriesMetadataTime(
+            getQueryStatistics().loadTimeSeriesMetadataAlignedDiskSeqTime.get(),
+            getQueryStatistics().loadTimeSeriesMetadataAlignedDiskUnSeqTime.get(),
+            getQueryStatistics().loadTimeSeriesMetadataAlignedMemSeqTime.get(),
+            getQueryStatistics().loadTimeSeriesMetadataAlignedMemUnSeqTime.get());
+
+    SeriesScanCostMetricSet.getInstance()
+        .recordConstructChunkReadersCount(
+            getQueryStatistics().constructAlignedChunkReadersMemCount.get(),
+            getQueryStatistics().constructAlignedChunkReadersDiskCount.get(),
+            getQueryStatistics().constructNonAlignedChunkReadersMemCount.get(),
+            getQueryStatistics().constructNonAlignedChunkReadersDiskCount.get());
+    SeriesScanCostMetricSet.getInstance()
+        .recordConstructChunkReadersTime(
+            getQueryStatistics().constructAlignedChunkReadersMemTime.get(),
+            getQueryStatistics().constructAlignedChunkReadersDiskTime.get(),
+            getQueryStatistics().constructNonAlignedChunkReadersMemTime.get(),
+            getQueryStatistics().constructNonAlignedChunkReadersDiskTime.get());
+
+    SeriesScanCostMetricSet.getInstance()
+        .recordPageReadersDecompressCount(
+            getQueryStatistics().pageReadersDecodeAlignedMemCount.get(),
+            getQueryStatistics().pageReadersDecodeAlignedDiskCount.get(),
+            getQueryStatistics().pageReadersDecodeNonAlignedMemCount.get(),
+            getQueryStatistics().pageReadersDecodeNonAlignedDiskCount.get());
+    SeriesScanCostMetricSet.getInstance()
+        .recordPageReadersDecompressTime(
+            getQueryStatistics().pageReadersDecodeAlignedMemTime.get(),
+            getQueryStatistics().pageReadersDecodeAlignedDiskTime.get(),
+            getQueryStatistics().pageReadersDecodeNonAlignedMemTime.get(),
+            getQueryStatistics().pageReadersDecodeNonAlignedDiskTime.get());
   }
 
   private void releaseDataNodeQueryContext() {
@@ -470,5 +536,13 @@ public class FragmentInstanceContext extends QueryContext {
 
   public boolean mayHaveTmpFile() {
     return mayHaveTmpFile;
+  }
+
+  public Optional<List<Long>> getTimePartitions() {
+    return Optional.ofNullable(timePartitions);
+  }
+
+  public void setTimePartitions(List<Long> timePartitions) {
+    this.timePartitions = timePartitions;
   }
 }

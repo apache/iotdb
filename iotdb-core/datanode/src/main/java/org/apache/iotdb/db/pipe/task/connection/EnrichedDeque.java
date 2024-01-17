@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.task.connection;
 
-import org.apache.iotdb.db.pipe.metric.PipeEventCounter;
+import org.apache.iotdb.db.pipe.metric.PipeDataRegionEventCounter;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import java.util.Deque;
@@ -27,7 +27,7 @@ import java.util.function.Consumer;
 
 public class EnrichedDeque<E extends Event> {
 
-  private final PipeEventCounter eventCounter = new PipeEventCounter();
+  private final PipeDataRegionEventCounter eventCounter = new PipeDataRegionEventCounter();
   protected final Deque<E> deque;
 
   protected EnrichedDeque(Deque<E> deque) {

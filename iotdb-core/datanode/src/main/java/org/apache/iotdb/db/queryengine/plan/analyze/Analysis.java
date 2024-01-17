@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -107,7 +108,7 @@ public class Analysis {
 
   // An ordered map from cross-timeseries aggregation to list of inner-timeseries aggregations. The
   // keys' order is the output one.
-  private LinkedHashMap<Expression, Set<Expression>> crossGroupByExpressions;
+  private Map<Expression, Set<Expression>> crossGroupByExpressions;
 
   // tag keys specified in `GROUP BY TAG` clause
   private List<String> tagKeys;
@@ -194,7 +195,7 @@ public class Analysis {
   // one.
   private Set<Expression> orderByExpressions;
 
-  private boolean hasSort = false;
+  private boolean hasSortNode = false;
 
   // parameter of `FILL` clause
   private FillDescriptor fillDescriptor;
@@ -282,7 +283,7 @@ public class Analysis {
   // when deviceTemplate is not empty and all expressions in this query are templated measurements,
   // i.e. no aggregation and arithmetic expression
   private boolean onlyQueryTemplateMeasurements = true;
-  // if it is wildcard query
+  // if it is wildcard query in templated align by device query
   private boolean templateWildCardQuery;
   // all queried measurementList and schemaList in deviceTemplate.
   private List<String> measurementList;
@@ -293,11 +294,25 @@ public class Analysis {
   }
 
   public List<TRegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
-    return dataPartition.getDataRegionReplicaSet(seriesPath.getDevice(), timefilter);
+    return dataPartition.getDataRegionReplicaSetWithTimeFilter(seriesPath.getDevice(), timefilter);
+  }
+
+  public TRegionReplicaSet getPartitionInfo(
+      PartialPath seriesPath, TTimePartitionSlot tTimePartitionSlot) {
+    return dataPartition.getDataRegionReplicaSet(seriesPath.getDevice(), tTimePartitionSlot).get(0);
+  }
+
+  /**
+   * Get all time partition ids and combine adjacent time partition if they belong to same data
+   * region
+   */
+  public List<List<TTimePartitionSlot>> getTimePartitionRange(
+      PartialPath seriesPath, Filter timefilter) {
+    return dataPartition.getTimePartitionRange(seriesPath.getDevice(), timefilter);
   }
 
   public List<TRegionReplicaSet> getPartitionInfo(String deviceName, Filter globalTimeFilter) {
-    return dataPartition.getDataRegionReplicaSet(deviceName, globalTimeFilter);
+    return dataPartition.getDataRegionReplicaSetWithTimeFilter(deviceName, globalTimeFilter);
   }
 
   public Statement getStatement() {
@@ -388,12 +403,11 @@ public class Analysis {
             && ((QueryStatement) statement).isAggregationQuery());
   }
 
-  public LinkedHashMap<Expression, Set<Expression>> getCrossGroupByExpressions() {
+  public Map<Expression, Set<Expression>> getCrossGroupByExpressions() {
     return crossGroupByExpressions;
   }
 
-  public void setCrossGroupByExpressions(
-      LinkedHashMap<Expression, Set<Expression>> crossGroupByExpressions) {
+  public void setCrossGroupByExpressions(Map<Expression, Set<Expression>> crossGroupByExpressions) {
     this.crossGroupByExpressions = crossGroupByExpressions;
   }
 
@@ -714,12 +728,12 @@ public class Analysis {
     this.deviceToOrderByExpressions = deviceToOrderByExpressions;
   }
 
-  public void setHasSort(boolean hasSort) {
-    this.hasSort = hasSort;
+  public void setHasSortNode(boolean hasSortNode) {
+    this.hasSortNode = hasSortNode;
   }
 
-  public boolean isHasSort() {
-    return hasSort;
+  public boolean isHasSortNode() {
+    return hasSortNode;
   }
 
   public Map<String, List<SortItem>> getDeviceToSortItems() {

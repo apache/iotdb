@@ -75,10 +75,12 @@ public class AlignedTimeSeriesMetadata implements ITimeSeriesMetadata {
     return statistics.map(stat -> stat.hasNullValue(rowCount)).orElse(true);
   }
 
+  @Override
   public int getMeasurementCount() {
     return valueTimeseriesMetadataList.size();
   }
 
+  @Override
   public boolean timeAllSelected() {
     for (int index = 0; index < getMeasurementCount(); index++) {
       if (!hasNullValue(index)) {
@@ -153,6 +155,7 @@ public class AlignedTimeSeriesMetadata implements ITimeSeriesMetadata {
     return getAlignedChunkMetadata(timeChunkMetadata, valueChunkMetadataList);
   }
 
+  /** Notice: if all the value chunks is empty chunk, then return empty list. */
   private List<AlignedChunkMetadata> getAlignedChunkMetadata(
       List<IChunkMetadata> timeChunkMetadata, List<List<IChunkMetadata>> valueChunkMetadataList) {
     List<AlignedChunkMetadata> res = new ArrayList<>();
@@ -189,13 +192,16 @@ public class AlignedTimeSeriesMetadata implements ITimeSeriesMetadata {
   @Override
   public boolean typeMatch(List<TSDataType> dataTypes) {
     if (valueTimeseriesMetadataList != null) {
+      int notMatchCount = 0;
       for (int i = 0, size = dataTypes.size(); i < size; i++) {
         TimeseriesMetadata valueTimeSeriesMetadata = valueTimeseriesMetadataList.get(i);
         if (valueTimeSeriesMetadata != null
             && !valueTimeSeriesMetadata.typeMatch(dataTypes.get(i))) {
-          return false;
+          valueTimeseriesMetadataList.set(i, null);
+          notMatchCount++;
         }
       }
+      return notMatchCount != dataTypes.size();
     }
     return true;
   }

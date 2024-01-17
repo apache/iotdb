@@ -43,6 +43,7 @@ import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateExceptio
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.schemaengine.metric.SchemaRegionMemMetric;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
@@ -130,8 +131,9 @@ public class MTreeBelowSGMemoryImpl {
   public MTreeBelowSGMemoryImpl(
       PartialPath storageGroupPath,
       Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter,
-      MemSchemaRegionStatistics regionStatistics) {
-    store = new MemMTreeStore(storageGroupPath, regionStatistics);
+      MemSchemaRegionStatistics regionStatistics,
+      SchemaRegionMemMetric metric) {
+    store = new MemMTreeStore(storageGroupPath, regionStatistics, metric);
     this.regionStatistics = regionStatistics;
     this.storageGroupMNode = store.getRoot();
     this.rootNode = store.generatePrefix(storageGroupPath);
@@ -165,6 +167,7 @@ public class MTreeBelowSGMemoryImpl {
       File snapshotDir,
       String storageGroupFullPath,
       MemSchemaRegionStatistics regionStatistics,
+      SchemaRegionMemMetric metric,
       Consumer<IMeasurementMNode<IMemMNode>> measurementProcess,
       Consumer<IDeviceMNode<IMemMNode>> deviceProcess,
       Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter)
@@ -172,7 +175,7 @@ public class MTreeBelowSGMemoryImpl {
     return new MTreeBelowSGMemoryImpl(
         new PartialPath(storageGroupFullPath),
         MemMTreeStore.loadFromSnapshot(
-            snapshotDir, measurementProcess, deviceProcess, regionStatistics),
+            snapshotDir, measurementProcess, deviceProcess, regionStatistics, metric),
         tagGetter,
         regionStatistics);
   }
@@ -503,9 +506,11 @@ public class MTreeBelowSGMemoryImpl {
     IMeasurementMNode<IMemMNode> deletedNode = getMeasurementMNode(path);
     IMemMNode parent = deletedNode.getParent();
     // delete the last node of path
-    store.deleteChild(parent, path.getMeasurement());
-    if (deletedNode.getAlias() != null) {
-      parent.getAsDeviceMNode().deleteAliasChild(deletedNode.getAlias());
+    synchronized (this) {
+      store.deleteChild(parent, path.getMeasurement());
+      if (deletedNode.getAlias() != null) {
+        parent.getAsDeviceMNode().deleteAliasChild(deletedNode.getAlias());
+      }
     }
     deleteEmptyInternalMNode(parent.getAsDeviceMNode());
     return deletedNode;
@@ -541,13 +546,19 @@ public class MTreeBelowSGMemoryImpl {
     }
 
     // delete all empty ancestors except database and MeasurementMNode
-    while (isEmptyInternalMNode(curNode)) {
+    while (true) {
       // if current database has no time series, return the database name
       if (curNode.isDatabase()) {
         return;
       }
-      store.deleteChild(curNode.getParent(), curNode.getName());
-      curNode = curNode.getParent();
+
+      synchronized (this) {
+        if (!isEmptyInternalMNode(curNode)) {
+          break;
+        }
+        store.deleteChild(curNode.getParent(), curNode.getName());
+        curNode = curNode.getParent();
+      }
     }
   }
 
@@ -949,7 +960,8 @@ public class MTreeBelowSGMemoryImpl {
 
           protected IDeviceSchemaInfo collectEntity(IDeviceMNode<IMemMNode> node) {
             PartialPath device = getPartialPathFromRootToNode(node.getAsMNode());
-            return new ShowDevicesResult(device.getFullPath(), node.isAlignedNullable());
+            return new ShowDevicesResult(
+                device.getFullPath(), node.isAlignedNullable(), node.getSchemaTemplateId());
           }
         };
     if (showDevicesPlan.usingSchemaTemplate()) {

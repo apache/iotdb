@@ -59,7 +59,7 @@ import org.apache.iotdb.confignode.manager.load.cache.node.ConfigNodeHeartbeatCa
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
-import org.apache.iotdb.confignode.manager.pipe.PipeManager;
+import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
@@ -616,7 +616,7 @@ public class NodeManager {
       }
 
       // Check whether the remove ConfigNode is leader
-      TConfigNodeLocation leader = getConsensusManager().getLeader();
+      TConfigNodeLocation leader = getConsensusManager().getLeaderLocation();
       if (leader == null) {
         return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
             .setMessage(

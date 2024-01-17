@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.pagemgr;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.schemaengine.metric.SchemaRegionCachedMetric;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.SchemaFile;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.SchemaPage;
@@ -38,9 +39,10 @@ import java.util.Iterator;
  */
 public interface IPageManager {
 
-  void writeNewChildren(ICachedMNode parNode) throws MetadataException, IOException;
-
-  void writeUpdatedChildren(ICachedMNode parNode) throws MetadataException, IOException;
+  /**
+   * All change will be an internal process, lock and dirty pages are now in the scope of context.
+   */
+  void writeMNode(ICachedMNode node) throws MetadataException, IOException;
 
   void delete(ICachedMNode node) throws IOException, MetadataException;
 
@@ -51,11 +53,11 @@ public interface IPageManager {
 
   void clear() throws IOException, MetadataException;
 
-  void flushDirtyPages() throws IOException;
-
   void close() throws IOException;
 
   int getLastPageIndex();
 
   void inspect(PrintWriter pw) throws IOException, MetadataException;
+
+  void setMetric(SchemaRegionCachedMetric metric);
 }

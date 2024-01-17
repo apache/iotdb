@@ -1809,6 +1809,7 @@ public class CompactionSchedulerTest {
             canMerge = true;
             break;
           }
+          previousFileLevel = currentFileLevel;
         }
         tsFileManager.readUnlock();
         if (!canMerge) {
@@ -1816,7 +1817,7 @@ public class CompactionSchedulerTest {
         }
         Thread.sleep(100);
         sleepTime += 100;
-        if (sleepTime >= 200_000) {
+        if (sleepTime >= 20_000) {
           fail();
         }
       }

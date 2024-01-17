@@ -46,8 +46,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.SlidingWindowA
 import org.apache.iotdb.db.queryengine.execution.operator.process.SortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear.LinearFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.join.FullOuterTimeJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.HorizontallyConcatOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.join.RowBasedTimeJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryCollectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryMergeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryOperator;
@@ -458,13 +458,13 @@ public class OperatorMemoryTest {
     expectedMaxPeekMemory =
         Math.max(expectedMaxPeekMemory + expectedMaxReturnSize, childrenMaxPeekMemory);
 
-    RowBasedTimeJoinOperator rowBasedTimeJoinOperator =
-        new RowBasedTimeJoinOperator(
+    FullOuterTimeJoinOperator fullOuterTimeJoinOperator =
+        new FullOuterTimeJoinOperator(
             Mockito.mock(OperatorContext.class), children, Ordering.ASC, dataTypeList, null, null);
 
-    assertEquals(expectedMaxPeekMemory, rowBasedTimeJoinOperator.calculateMaxPeekMemory());
-    assertEquals(expectedMaxReturnSize, rowBasedTimeJoinOperator.calculateMaxReturnSize());
-    assertEquals(3 * 64 * 1024L, rowBasedTimeJoinOperator.calculateRetainedSizeAfterCallingNext());
+    assertEquals(expectedMaxPeekMemory, fullOuterTimeJoinOperator.calculateMaxPeekMemory());
+    assertEquals(expectedMaxReturnSize, fullOuterTimeJoinOperator.calculateMaxReturnSize());
+    assertEquals(3 * 64 * 1024L, fullOuterTimeJoinOperator.calculateRetainedSizeAfterCallingNext());
   }
 
   @Test

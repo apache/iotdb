@@ -63,6 +63,12 @@ public class DataNodeSchemaCache {
   // cache update or clean have higher priority than cache read
   private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(false);
 
+  // To make insert and delete executive, I import a new rwlock to datanode schema.
+  // The reason is that some operations [loadtsfiles] will hold readlock then acquire writelock
+  // before
+  // closing the tsfile and resting the datanodeCache.
+  private final ReentrantReadWriteLock insertDeletionLock = new ReentrantReadWriteLock(false);
+
   private DataNodeSchemaCache() {
     deviceUsingTemplateSchemaCache = new DeviceUsingTemplateSchemaCache(templateManager);
     timeSeriesSchemaCache = new TimeSeriesSchemaCache();
@@ -102,6 +108,22 @@ public class DataNodeSchemaCache {
 
   public void releaseWriteLock() {
     readWriteLock.writeLock().unlock();
+  }
+
+  public void takeInsertLock() {
+    insertDeletionLock.readLock().lock();
+  }
+
+  public void releaseInsertLock() {
+    insertDeletionLock.readLock().unlock();
+  }
+
+  public void takeDeleteLock() {
+    insertDeletionLock.writeLock().lock();
+  }
+
+  public void releaseDeleteLock() {
+    insertDeletionLock.writeLock().unlock();
   }
 
   /**
@@ -233,6 +255,28 @@ public class DataNodeSchemaCache {
     } finally {
       releaseReadLock();
     }
+  }
+
+  public void updateLastCacheWithoutLock(
+      String database,
+      PartialPath devicePath,
+      String[] measurements,
+      MeasurementSchema[] measurementSchemas,
+      boolean isAligned,
+      IntFunction<TimeValuePair> timeValuePairProvider,
+      IntPredicate shouldUpdateProvider,
+      boolean highPriorityUpdate,
+      Long latestFlushedTime) {
+    timeSeriesSchemaCache.updateLastCache(
+        database,
+        devicePath,
+        measurements,
+        measurementSchemas,
+        isAligned,
+        timeValuePairProvider,
+        shouldUpdateProvider,
+        highPriorityUpdate,
+        latestFlushedTime);
   }
 
   /**

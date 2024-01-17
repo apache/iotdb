@@ -22,7 +22,9 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
-import java.util.Calendar;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Objects;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
@@ -59,6 +61,24 @@ public class TimeDuration implements Serializable {
         + nonMonthDuration;
   }
 
+  public boolean isGreaterThan(TimeDuration right) {
+    if (this.monthDuration > right.monthDuration) {
+      return true;
+    } else if (this.monthDuration == right.monthDuration) {
+      return this.nonMonthDuration > right.nonMonthDuration;
+    }
+    return false;
+  }
+
+  public TimeDuration merge(TimeDuration other) {
+    return new TimeDuration(
+        this.monthDuration + other.monthDuration, this.nonMonthDuration + other.nonMonthDuration);
+  }
+
+  public TimeDuration multiple(long times) {
+    return new TimeDuration((int) (monthDuration * times), nonMonthDuration * times);
+  }
+
   /** Think month as 28 days. */
   public long getMinTotalDuration(TimeUnit currPrecision) {
     return currPrecision.convert(monthDuration * 28 * 86400_000L, TimeUnit.MILLISECONDS)
@@ -88,74 +108,45 @@ public class TimeDuration implements Serializable {
       TimeUnit currPrecision) {
     long[] result = new long[length];
     result[0] = startTime;
-    Calendar calendar = Calendar.getInstance();
-    calendar.setTimeZone(timeZone);
     for (int i = 1; i < length; i++) {
-      result[i] = getStartTime(result[i - 1], duration, currPrecision, calendar);
+      result[i] = getStartTime(startTime, duration.multiple(i), currPrecision, timeZone.toZoneId());
     }
     return result;
   }
 
   /**
-   * Add several time durations contains natural months based on the startTime and avoid edge cases,
-   * ie 2/28
+   * Add time duration contains natural months to startTime.
+   *
+   * <p>Attention: This method does not support accumulation. If you need to calculate the date two
+   * months after the start time, just add two months directly through duration, rather than adding
+   * one month first and then adding another month in a loop, it will get wrong result.
+   *
+   * <p>There is an example:
+   *
+   * <pre>
+   * 1.30 + 2mo = 3.30(right)
+   * 1.30 + 1mo = 2.28, 2.28 + 1mo = 3.28(wrong)
+   * </pre>
    *
    * @param startTime start time
    * @param duration one duration
-   * @param times num of duration elapsed
    * @return the time after durations elapsed
    */
   public static long calcPositiveIntervalByMonth(
-      long startTime,
-      TimeDuration duration,
-      long times,
-      TimeZone timeZone,
-      TimeUnit currPrecision) {
-    Calendar calendar = Calendar.getInstance();
-    calendar.setTimeZone(timeZone);
-    for (int i = 0; i < times; i++) {
-      startTime = getStartTime(startTime, duration, currPrecision, calendar);
-    }
-    return startTime;
+      long startTime, TimeDuration duration, TimeZone timeZone, TimeUnit currPrecision) {
+    return getStartTime(startTime, duration, currPrecision, timeZone.toZoneId());
   }
 
   private static long getStartTime(
-      long startTime, TimeDuration duration, TimeUnit currPrecision, Calendar calendar) {
+      long startTime, TimeDuration duration, TimeUnit currPrecision, ZoneId zoneId) {
     long coarserThanMsPart = getCoarserThanMsPart(startTime, currPrecision);
-    calendar.setTimeInMillis(coarserThanMsPart);
-    boolean isLastDayOfMonth =
-        calendar.get(Calendar.DAY_OF_MONTH) == calendar.getActualMaximum(Calendar.DAY_OF_MONTH);
-    calendar.add(Calendar.MONTH, duration.monthDuration);
-    if (isLastDayOfMonth) {
-      calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH));
-    }
-    return currPrecision.convert(calendar.getTimeInMillis(), TimeUnit.MILLISECONDS)
+    LocalDateTime localDateTime =
+        LocalDateTime.ofInstant(Instant.ofEpochMilli(coarserThanMsPart), zoneId);
+    localDateTime = localDateTime.plusMonths(duration.monthDuration);
+    return currPrecision.convert(
+            localDateTime.atZone(zoneId).toInstant().toEpochMilli(), TimeUnit.MILLISECONDS)
         + getFinerThanMsPart(startTime, currPrecision)
         + duration.nonMonthDuration;
-  }
-
-  /**
-   * subtract time duration contains natural months based on the startTime
-   *
-   * @param startTime start time
-   * @param duration the duration
-   * @return the time before duration
-   */
-  public static long calcNegativeIntervalByMonth(
-      long startTime, TimeDuration duration, TimeZone timeZone, TimeUnit currPrecision) {
-    Calendar calendar = Calendar.getInstance();
-    calendar.setTimeZone(timeZone);
-    long timeBeforeMonthElapsedInMs =
-        TimeUnit.MILLISECONDS.convert(startTime - duration.nonMonthDuration, currPrecision);
-    calendar.setTimeInMillis(timeBeforeMonthElapsedInMs);
-    boolean isLastDayOfMonth =
-        calendar.get(Calendar.DAY_OF_MONTH) == calendar.getActualMaximum(Calendar.DAY_OF_MONTH);
-    calendar.add(Calendar.MONTH, -duration.monthDuration);
-    if (isLastDayOfMonth) {
-      calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH));
-    }
-    return currPrecision.convert(calendar.getTimeInMillis(), TimeUnit.MILLISECONDS)
-        + getFinerThanMsPart(startTime - duration.nonMonthDuration, currPrecision);
   }
 
   private static long getCoarserThanMsPart(long time, TimeUnit currPrecision) {

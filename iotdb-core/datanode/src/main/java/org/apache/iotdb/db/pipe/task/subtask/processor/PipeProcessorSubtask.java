@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.db.pipe.task.subtask.processor;
 
+import org.apache.iotdb.commons.pipe.execution.scheduler.PipeSubtaskScheduler;
+import org.apache.iotdb.commons.pipe.task.EventSupplier;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
-import org.apache.iotdb.db.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.db.pipe.metric.PipeProcessorMetrics;
-import org.apache.iotdb.db.pipe.task.connection.EventSupplier;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
-import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
+import org.apache.iotdb.db.pipe.task.subtask.PipeDataNodeSubtask;
+import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -38,7 +39,7 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class PipeProcessorSubtask extends PipeSubtask {
+public class PipeProcessorSubtask extends PipeDataNodeSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeProcessorSubtask.class);
 
@@ -132,12 +133,12 @@ public class PipeProcessorSubtask extends PipeSubtask {
     } catch (Exception e) {
       if (!isClosed.get()) {
         throw new PipeException(
-            "Error occurred during executing PipeProcessor#process, perhaps need to check "
-                + "whether the implementation of PipeProcessor is correct "
-                + "according to the pipe-api description.",
+            String.format(
+                "Exception in pipe process, subtask: %s, last event: %s, root cause: %s",
+                taskID, lastEvent, ErrorHandlingUtils.getRootCause(e).getMessage()),
             e);
       } else {
-        LOGGER.info("Exception in pipe event processing, ignored because pipe is dropped.");
+        LOGGER.info("Exception in pipe event processing, ignored because pipe is dropped.", e);
         releaseLastEvent(false);
       }
     }
@@ -163,8 +164,9 @@ public class PipeProcessorSubtask extends PipeSubtask {
       pipeProcessor.close();
     } catch (Exception e) {
       LOGGER.info(
-          "Error occurred during closing PipeProcessor, perhaps need to check whether the "
-              + "implementation of PipeProcessor is correct according to the pipe-api description.",
+          "Exception occurred when closing pipe processor subtask {}, root cause: {}",
+          taskID,
+          ErrorHandlingUtils.getRootCause(e).getMessage(),
           e);
     } finally {
       outputEventCollector.close();

@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaFileNotExists;
+import org.apache.iotdb.db.schemaengine.metric.SchemaRegionCachedMetric;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.pagemgr.BTreePageManager;
@@ -81,6 +82,16 @@ public class SchemaFile implements ISchemaFile {
 
   private final IMNodeFactory<ICachedMNode> nodeFactory =
       MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
+
+  private static String getDirPath(String sgName, int schemaRegionId) {
+    return SchemaFileConfig.SCHEMA_FOLDER
+        + File.separator
+        + sgName
+        + File.separator
+        + schemaRegionId;
+  }
+
+  // region Constructors
 
   // todo refactor constructor for schema file in Jan.
   private SchemaFile(
@@ -135,7 +146,7 @@ public class SchemaFile implements ISchemaFile {
   }
 
   // load or init
-  public static ISchemaFile initSchemaFile(String sgName, int schemaRegionId)
+  public static SchemaFile initSchemaFile(String sgName, int schemaRegionId)
       throws IOException, MetadataException {
     File pmtFile =
         SystemFileFactory.INSTANCE.getFile(
@@ -152,23 +163,17 @@ public class SchemaFile implements ISchemaFile {
         false);
   }
 
-  public static ISchemaFile loadSchemaFile(String sgName, int schemaRegionId)
+  public static SchemaFile loadSchemaFile(String sgName, int schemaRegionId)
       throws IOException, MetadataException {
     return new SchemaFile(sgName, schemaRegionId, false, -1L, false);
   }
 
-  public static ISchemaFile loadSchemaFile(File file) throws IOException, MetadataException {
+  public static SchemaFile loadSchemaFile(File file) throws IOException, MetadataException {
     // only be called to sketch a PBTree File
     return new SchemaFile(file);
   }
 
-  private static String getDirPath(String sgName, int schemaRegionId) {
-    return SchemaFileConfig.SCHEMA_FOLDER
-        + File.separator
-        + sgName
-        + File.separator
-        + schemaRegionId;
-  }
+  // endregion
 
   // region Interface Implementation
 
@@ -243,10 +248,7 @@ public class SchemaFile implements ISchemaFile {
                 node.getFullPath()));
       }
     }
-
-    pageManager.writeNewChildren(node);
-    pageManager.writeUpdatedChildren(node);
-    pageManager.flushDirtyPages();
+    pageManager.writeMNode(node);
     updateHeaderBuffer();
   }
 
@@ -270,7 +272,6 @@ public class SchemaFile implements ISchemaFile {
   @Override
   public void close() throws IOException {
     updateHeaderBuffer();
-    pageManager.flushDirtyPages();
     pageManager.close();
     forceChannel();
     channel.close();
@@ -279,7 +280,6 @@ public class SchemaFile implements ISchemaFile {
   @Override
   public void sync() throws IOException {
     updateHeaderBuffer();
-    pageManager.flushDirtyPages();
     forceChannel();
   }
 
@@ -414,7 +414,7 @@ public class SchemaFile implements ISchemaFile {
     return (short) (globalIndex & SchemaFileConfig.SEG_INDEX_MASK);
   }
 
-  /** TODO: shall merge with {@linkplain PageManager#reEstimateSegSize} */
+  /** TODO: shall merge with PageManager#reEstimateSegSize */
   static short reEstimateSegSize(int oldSize) {
     for (short size : SchemaFileConfig.SEG_SIZE_LST) {
       if (oldSize < size) {
@@ -449,6 +449,10 @@ public class SchemaFile implements ISchemaFile {
     return ((PageManager) pageManager).getTargetSegmentAddressOnTest(srcSegAddr, key);
   }
 
+  public void setMetric(SchemaRegionCachedMetric metric) {
+    pageManager.setMetric(metric);
+  }
+
   // endregion
 
   // region Snapshot
@@ -474,7 +478,7 @@ public class SchemaFile implements ISchemaFile {
     }
   }
 
-  public static ISchemaFile loadSnapshot(File snapshotDir, String sgName, int schemaRegionId)
+  public static SchemaFile loadSnapshot(File snapshotDir, String sgName, int schemaRegionId)
       throws IOException, MetadataException {
     File snapshot = SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.PBTREE_SNAPSHOT);
     if (!snapshot.exists()) {

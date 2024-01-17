@@ -292,11 +292,6 @@ public class ClusterNodeStartUtils {
       TDataNodeLocation registeredLocation = registeredDataNode.getLocation();
 
       if (registeredLocation
-          .getClientRpcEndPoint()
-          .equals(newDataNodeLocation.getClientRpcEndPoint())) {
-        conflictEndPointSet.add(newDataNodeLocation.getClientRpcEndPoint());
-      }
-      if (registeredLocation
           .getInternalEndPoint()
           .equals(newDataNodeLocation.getInternalEndPoint())) {
         conflictEndPointSet.add(newDataNodeLocation.getInternalEndPoint());

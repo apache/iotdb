@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.request;
 
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.PipeRequestType;
-import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnectorRequestVersion;
+import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
+import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
@@ -60,7 +61,10 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
     final List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>();
 
     for (final PipeTransferTabletBinaryReq binaryReq : binaryReqs) {
-      final Statement statement = binaryReq.constructStatement();
+      final InsertBaseStatement statement = binaryReq.constructStatement();
+      if (statement.isEmpty()) {
+        continue;
+      }
       if (statement instanceof InsertRowStatement) {
         insertRowStatementList.add((InsertRowStatement) statement);
       } else if (statement instanceof InsertTabletStatement) {
@@ -74,11 +78,14 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
     }
 
     for (final PipeTransferTabletInsertNodeReq insertNodeReq : insertNodeReqs) {
-      final Statement insertStatement = insertNodeReq.constructStatement();
-      if (insertStatement instanceof InsertRowStatement) {
-        insertRowStatementList.add((InsertRowStatement) insertStatement);
-      } else if (insertStatement instanceof InsertTabletStatement) {
-        insertTabletStatementList.add((InsertTabletStatement) insertStatement);
+      final InsertBaseStatement statement = insertNodeReq.constructStatement();
+      if (statement.isEmpty()) {
+        continue;
+      }
+      if (statement instanceof InsertRowStatement) {
+        insertRowStatementList.add((InsertRowStatement) statement);
+      } else if (statement instanceof InsertTabletStatement) {
+        insertTabletStatementList.add((InsertTabletStatement) statement);
       } else {
         throw new UnsupportedOperationException(
             String.format(
@@ -88,7 +95,11 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
     }
 
     for (final PipeTransferTabletRawReq tabletReq : tabletReqs) {
-      insertTabletStatementList.add(tabletReq.constructStatement());
+      final InsertTabletStatement statement = tabletReq.constructStatement();
+      if (statement.isEmpty()) {
+        continue;
+      }
+      insertTabletStatementList.add(statement);
     }
 
     insertRowsStatement.setInsertRowStatementList(insertRowStatementList);
@@ -98,44 +109,34 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeTransferTabletBatchReq toTPipeTransferReq(List<TPipeTransferReq> reqs)
+  public static PipeTransferTabletBatchReq toTPipeTransferReq(
+      List<ByteBuffer> binaryBuffers,
+      List<ByteBuffer> insertNodeBuffers,
+      List<ByteBuffer> tabletBuffers)
       throws IOException {
     final PipeTransferTabletBatchReq batchReq = new PipeTransferTabletBatchReq();
 
-    for (final TPipeTransferReq req : reqs) {
-      if (req instanceof PipeTransferTabletBinaryReq) {
-        batchReq.binaryReqs.add((PipeTransferTabletBinaryReq) req);
-      } else if (req instanceof PipeTransferTabletInsertNodeReq) {
-        batchReq.insertNodeReqs.add((PipeTransferTabletInsertNodeReq) req);
-      } else if (req instanceof PipeTransferTabletRawReq) {
-        batchReq.tabletReqs.add((PipeTransferTabletRawReq) req);
-      } else {
-        throw new UnsupportedOperationException(
-            String.format(
-                "unknown TPipeTransferReq type %s when constructing PipeTransferTabletBatchReq",
-                req.getType()));
-      }
-    }
+    // batchReq.binaryReqs, batchReq.insertNodeReqs, batchReq.tabletReqs are empty
+    // when this method is called from PipeTransferTabletBatchReqBuilder.toTPipeTransferReq()
 
     batchReq.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
     batchReq.type = PipeRequestType.TRANSFER_TABLET_BATCH.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      ReadWriteIOUtils.write(batchReq.binaryReqs.size(), outputStream);
-      for (final PipeTransferTabletBinaryReq binaryReq : batchReq.binaryReqs) {
-        ReadWriteIOUtils.write(binaryReq.getBody().length, outputStream);
-        outputStream.write(binaryReq.getBody());
+      ReadWriteIOUtils.write(binaryBuffers.size(), outputStream);
+      for (final ByteBuffer binaryBuffer : binaryBuffers) {
+        ReadWriteIOUtils.write(binaryBuffer.limit(), outputStream);
+        outputStream.write(binaryBuffer.array(), 0, binaryBuffer.limit());
       }
 
-      ReadWriteIOUtils.write(batchReq.insertNodeReqs.size(), outputStream);
-      for (final PipeTransferTabletInsertNodeReq insertNodeReq : batchReq.insertNodeReqs) {
-        insertNodeReq.getInsertNode().serialize(outputStream);
+      ReadWriteIOUtils.write(insertNodeBuffers.size(), outputStream);
+      for (final ByteBuffer insertNodeBuffer : insertNodeBuffers) {
+        outputStream.write(insertNodeBuffer.array(), 0, insertNodeBuffer.limit());
       }
 
-      ReadWriteIOUtils.write(batchReq.tabletReqs.size(), outputStream);
-      for (final PipeTransferTabletRawReq tabletReq : batchReq.tabletReqs) {
-        tabletReq.getTablet().serialize(outputStream);
-        ReadWriteIOUtils.write(tabletReq.getIsAligned(), outputStream);
+      ReadWriteIOUtils.write(tabletBuffers.size(), outputStream);
+      for (final ByteBuffer tabletBuffer : tabletBuffers) {
+        outputStream.write(tabletBuffer.array(), 0, tabletBuffer.limit());
       }
 
       batchReq.body =
@@ -177,6 +178,23 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
     batchReq.body = transferReq.body;
 
     return batchReq;
+  }
+
+  /////////////////////////////// TestOnly ///////////////////////////////
+
+  @TestOnly
+  public List<PipeTransferTabletBinaryReq> getBinaryReqs() {
+    return binaryReqs;
+  }
+
+  @TestOnly
+  public List<PipeTransferTabletInsertNodeReq> getInsertNodeReqs() {
+    return insertNodeReqs;
+  }
+
+  @TestOnly
+  public List<PipeTransferTabletRawReq> getTabletReqs() {
+    return tabletReqs;
   }
 
   /////////////////////////////// Object ///////////////////////////////

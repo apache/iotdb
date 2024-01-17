@@ -114,26 +114,13 @@ public class IoTDBDescriptor {
     return conf;
   }
 
-  public String getConfDir() {
-    // Check if a config-directory was specified first.
-    String confString = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
-    // If it wasn't, check if a home directory was provided (This usually contains a config)
-    if (confString == null) {
-      confString = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
-      if (confString != null) {
-        confString = confString + File.separatorChar + "conf";
-      }
-    }
-    return confString;
-  }
-
   /**
    * get props url location
    *
    * @return url object if location exit, otherwise null.
    */
   public URL getPropsUrl(String configFileName) {
-    String urlString = getConfDir();
+    String urlString = commonDescriptor.getConfDir();
     if (urlString == null) {
       // If urlString wasn't provided, try to find a default config in the root of the classpath.
       URL uri = IoTDBConfig.class.getResource("/" + configFileName);
@@ -834,11 +821,10 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "recovery_log_interval_in_ms", String.valueOf(conf.getRecoveryLogIntervalInMs()))));
 
-    conf.setEnableDiscardOutOfOrderData(
+    conf.setEnableSeparateData(
         Boolean.parseBoolean(
             properties.getProperty(
-                "enable_discard_out_of_order_data",
-                Boolean.toString(conf.isEnableDiscardOutOfOrderData()))));
+                "enable_separate_data", Boolean.toString(conf.isEnableSeparateData()))));
 
     conf.setWindowEvaluationThreadCount(
         Integer.parseInt(
@@ -907,11 +893,21 @@ public class IoTDBDescriptor {
       conf.setIntoOperationExecutionThreadCount(2);
     }
 
-    conf.setMaxLoadingTimeseriesNumber(
+    conf.setMaxAllocateMemoryRatioForLoad(
+        Double.parseDouble(
+            properties.getProperty(
+                "max_allocate_memory_ratio_for_load",
+                String.valueOf(conf.getMaxAllocateMemoryRatioForLoad()))));
+    conf.setLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber(
         Integer.parseInt(
             properties.getProperty(
-                "max_loading_timeseries_number",
-                String.valueOf(conf.getMaxLoadingTimeseriesNumber()))));
+                "load_tsfile_analyze_schema_batch_flush_time_series_number",
+                String.valueOf(conf.getLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber()))));
+    conf.setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "load_tsfile_analyze_schema_memory_size_in_bytes",
+                String.valueOf(conf.getLoadTsFileAnalyzeSchemaMemorySizeInBytes()))));
 
     conf.setExtPipeDir(properties.getProperty("ext_pipe_dir", conf.getExtPipeDir()).trim());
 

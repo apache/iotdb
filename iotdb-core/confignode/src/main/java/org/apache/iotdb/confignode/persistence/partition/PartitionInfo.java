@@ -743,7 +743,8 @@ public class PartitionInfo implements SnapshotProcessor {
         .forEach(
             databasePartitionTable ->
                 databasePartitionTable.countDataNodeScatterWidth(dataNodeId, type, scatterSet));
-    return scatterSet.cardinality() - 1;
+    // The minimal scatter width is 0
+    return Math.max(scatterSet.cardinality() - 1, 0);
   }
 
   /**
@@ -974,12 +975,15 @@ public class PartitionInfo implements SnapshotProcessor {
       return new GetRegionIdResp(
           new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), new ArrayList<>());
     }
-
     DatabasePartitionTable databasePartitionTable = databasePartitionTables.get(plan.getDatabase());
     return new GetRegionIdResp(
         new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
         databasePartitionTable
-            .getRegionId(plan.getPartitionType(), plan.getSeriesSlotId(), plan.getTimeSlotId())
+            .getRegionId(
+                plan.getPartitionType(),
+                plan.getSeriesSlotId(),
+                plan.getStartTimeSlotId(),
+                plan.getEndTimeSlotId())
             .stream()
             .distinct()
             .sorted(Comparator.comparing(TConsensusGroupId::getId))

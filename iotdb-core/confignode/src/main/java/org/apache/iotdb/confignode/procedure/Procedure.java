@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure;
 
+import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureAbortedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
@@ -508,12 +509,6 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
     return sb.toString();
   }
 
-  protected String toStringClass() {
-    StringBuilder sb = new StringBuilder();
-    toStringClassDetails(sb);
-    return sb.toString();
-  }
-
   /**
    * Called from {@link #toString()} when interpolating {@link Procedure} State. Allows decorating
    * generic Procedure State with Procedure particulars.
@@ -556,8 +551,8 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
     return rootProcId;
   }
 
-  public String getProcName() {
-    return toStringClass();
+  public String getProcType() {
+    return getClass().getSimpleName();
   }
 
   public long getSubmittedTime() {
@@ -899,5 +894,40 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   @Override
   public int compareTo(Procedure<Env> other) {
     return Long.compare(getProcId(), other.getProcId());
+  }
+
+  /**
+   * This function will be called just when procedure is submitted for execution.
+   *
+   * @param env The environment passed to the procedure executor
+   */
+  protected void updateMetricsOnSubmit(Env env) {
+    if (env instanceof ConfigNodeProcedureEnv) {
+      ((ConfigNodeProcedureEnv) env)
+          .getConfigManager()
+          .getProcedureManager()
+          .getProcedureMetrics()
+          .updateMetricsOnSubmit(getProcType());
+    }
+  }
+
+  /**
+   * This function will be called just after procedure execution is finished. Override this method
+   * to update metrics at the end of the procedure. The default implementation adds runtime of a
+   * procedure to a time histogram for successfully completed procedures. Increments failed counter
+   * for failed procedures.
+   *
+   * @param env The environment passed to the procedure executor
+   * @param runtime Runtime of the procedure in milliseconds
+   * @param success true if procedure is completed successfully
+   */
+  protected void updateMetricsOnFinish(Env env, long runtime, boolean success) {
+    if (env instanceof ConfigNodeProcedureEnv) {
+      ((ConfigNodeProcedureEnv) env)
+          .getConfigManager()
+          .getProcedureManager()
+          .getProcedureMetrics()
+          .updateMetricsOnFinish(getProcType(), runtime, success);
+    }
   }
 }

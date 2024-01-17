@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.rescon;
 
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.ICacheManager;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.IMemoryManager;
 
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -33,10 +33,11 @@ public class CachedSchemaRegionStatistics extends MemSchemaRegionStatistics {
   private final AtomicLong pinnedMemorySize = new AtomicLong(0);
   private final AtomicLong unpinnedMNodeNum = new AtomicLong(0);
   private final AtomicLong pinnedMNodeNum = new AtomicLong(0);
+  private final AtomicLong volatileMNodeNum = new AtomicLong(0);
 
   private long mlogCheckPoint = 0;
 
-  private ICacheManager cacheManager;
+  private IMemoryManager memoryManager;
 
   private final CachedSchemaEngineStatistics cachedEngineStatistics;
 
@@ -66,12 +67,16 @@ public class CachedSchemaRegionStatistics extends MemSchemaRegionStatistics {
     cachedEngineStatistics.updateUnpinnedMemorySize(delta);
   }
 
+  public void updateVolatileMNodeNum(int delta) {
+    this.volatileMNodeNum.addAndGet(delta);
+  }
+
   public void setMlogCheckPoint(long mlogCheckPoint) {
     this.mlogCheckPoint = mlogCheckPoint;
   }
 
-  public void setCacheManager(ICacheManager cacheManager) {
-    this.cacheManager = cacheManager;
+  public void setMemoryManager(IMemoryManager memoryManager) {
+    this.memoryManager = memoryManager;
   }
 
   public long getUnpinnedMemorySize() {
@@ -94,12 +99,12 @@ public class CachedSchemaRegionStatistics extends MemSchemaRegionStatistics {
     return mlogCheckPoint;
   }
 
-  public long getBufferNodeNum() {
-    return cacheManager == null ? 0 : cacheManager.getBufferNodeNum();
+  public long getVolatileMNodeNum() {
+    return volatileMNodeNum.get();
   }
 
   public long getCacheNodeNum() {
-    return cacheManager == null ? 0 : cacheManager.getCacheNodeNum();
+    return memoryManager == null ? 0 : memoryManager.getCacheNodeNum();
   }
 
   @Override

@@ -400,17 +400,23 @@ public class TsFileResource {
 
   public DeviceTimeIndex buildDeviceTimeIndex() throws IOException {
     readLock();
-    try (InputStream inputStream =
-        FSFactoryProducer.getFSFactory().getBufferedInputStream(file.getPath() + RESOURCE_SUFFIX)) {
-      ReadWriteIOUtils.readByte(inputStream);
-      ITimeIndex timeIndexFromResourceFile = ITimeIndex.createTimeIndex(inputStream);
-      if (!(timeIndexFromResourceFile instanceof DeviceTimeIndex)) {
-        throw new IOException("cannot build DeviceTimeIndex from resource " + file.getPath());
+    try {
+      if (!resourceFileExists()) {
+        throw new IOException("resource file not found");
       }
-      return (DeviceTimeIndex) timeIndexFromResourceFile;
-    } catch (Exception e) {
-      throw new IOException(
-          "Can't read file " + file.getPath() + RESOURCE_SUFFIX + " from disk", e);
+      try (InputStream inputStream =
+          FSFactoryProducer.getFSFactory()
+              .getBufferedInputStream(file.getPath() + RESOURCE_SUFFIX)) {
+        ReadWriteIOUtils.readByte(inputStream);
+        ITimeIndex timeIndexFromResourceFile = ITimeIndex.createTimeIndex(inputStream);
+        if (!(timeIndexFromResourceFile instanceof DeviceTimeIndex)) {
+          throw new IOException("cannot build DeviceTimeIndex from resource " + file.getPath());
+        }
+        return (DeviceTimeIndex) timeIndexFromResourceFile;
+      } catch (Exception e) {
+        throw new IOException(
+            "Can't read file " + file.getPath() + RESOURCE_SUFFIX + " from disk", e);
+      }
     } finally {
       readUnlock();
     }
@@ -670,9 +676,9 @@ public class TsFileResource {
 
   /** @return true if the device is contained in the TsFile and it lives beyond TTL */
   public boolean isSatisfied(
-      String deviceId, Filter timeFilter, boolean isSeq, long ttl, boolean debug) {
+      String deviceId, Filter globalTimeFilter, boolean isSeq, long ttl, boolean debug) {
     if (deviceId == null) {
-      return isSatisfied(timeFilter, isSeq, ttl, debug);
+      return isSatisfied(globalTimeFilter, isSeq, ttl, debug);
     }
 
     long[] startAndEndTime = timeIndex.getStartAndEndTime(deviceId);
@@ -696,8 +702,8 @@ public class TsFileResource {
       return false;
     }
 
-    if (timeFilter != null) {
-      boolean res = timeFilter.satisfyStartEndTime(startTime, endTime);
+    if (globalTimeFilter != null) {
+      boolean res = globalTimeFilter.satisfyStartEndTime(startTime, endTime);
       if (debug && !res) {
         DEBUG_LOGGER.info(
             "Path: {} file {} is not satisfied because of time filter!", deviceId, fsFactory);

@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
@@ -50,6 +51,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
@@ -100,6 +102,8 @@ public abstract class AbstractMemTable implements IMemTable {
   private String dataRegionId;
 
   private static final String METRIC_POINT_IN = Metric.POINTS_IN.toString();
+
+  private final AtomicBoolean isTotallyGeneratedByPipe = new AtomicBoolean(true);
 
   protected AbstractMemTable() {
     this.database = null;
@@ -460,10 +464,13 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public ReadOnlyMemChunk query(
-      PartialPath fullPath, long ttlLowerBound, List<Pair<Modification, IMemTable>> modsToMemtable)
+      QueryContext context,
+      PartialPath fullPath,
+      long ttlLowerBound,
+      List<Pair<Modification, IMemTable>> modsToMemtable)
       throws IOException, QueryProcessException {
     return ResourceByPathUtils.getResourceInstance(fullPath)
-        .getReadOnlyMemChunkFromMemTable(this, modsToMemtable, ttlLowerBound);
+        .getReadOnlyMemChunkFromMemTable(context, this, modsToMemtable, ttlLowerBound);
   }
 
   /**
@@ -704,5 +711,15 @@ public abstract class AbstractMemTable implements IMemTable {
   public void setDatabaseAndDataRegionId(String database, String dataRegionId) {
     this.database = database;
     this.dataRegionId = dataRegionId;
+  }
+
+  @Override
+  public void markAsNotGeneratedByPipe() {
+    this.isTotallyGeneratedByPipe.set(false);
+  }
+
+  @Override
+  public boolean isTotallyGeneratedByPipe() {
+    return this.isTotallyGeneratedByPipe.get();
   }
 }

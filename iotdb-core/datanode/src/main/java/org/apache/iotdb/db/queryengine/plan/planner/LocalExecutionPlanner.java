@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
@@ -45,10 +46,20 @@ import java.util.List;
 public class LocalExecutionPlanner {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LocalExecutionPlanner.class);
+  private static final long ALLOCATE_MEMORY_FOR_OPERATORS;
+  private static final long MAX_REST_MEMORY_FOR_LOAD;
+
+  static {
+    IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+    ALLOCATE_MEMORY_FOR_OPERATORS = CONFIG.getAllocateMemoryForOperators();
+    MAX_REST_MEMORY_FOR_LOAD =
+        (long)
+            (((double) ALLOCATE_MEMORY_FOR_OPERATORS)
+                * (1.0 - CONFIG.getMaxAllocateMemoryRatioForLoad()));
+  }
 
   /** allocated memory for operator execution */
-  private long freeMemoryForOperators =
-      IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForOperators();
+  private long freeMemoryForOperators = ALLOCATE_MEMORY_FOR_OPERATORS;
 
   public long getFreeMemoryForOperators() {
     return freeMemoryForOperators;
@@ -77,6 +88,8 @@ public class LocalExecutionPlanner {
     context.addPipelineDriverFactory(root, context.getDriverContext(), estimatedMemorySize);
 
     instanceContext.setSourcePaths(collectSourcePaths(context));
+
+    context.getTimePartitions().ifPresent(instanceContext::setTimePartitions);
 
     // set maxBytes one SourceHandle can reserve after visiting the whole tree
     context.setMaxBytesOneHandleCanReserve();
@@ -158,9 +171,40 @@ public class LocalExecutionPlanner {
     context
         .getPipelineDriverFactories()
         .forEach(
-            pipeline ->
-                sourcePaths.addAll(((DataDriverContext) pipeline.getDriverContext()).getPaths()));
+            pipeline -> {
+              DataDriverContext dataDriverContext = (DataDriverContext) pipeline.getDriverContext();
+              sourcePaths.addAll(dataDriverContext.getPaths());
+              dataDriverContext.clearPaths();
+            });
     return sourcePaths;
+  }
+
+  public synchronized boolean forceAllocateFreeMemoryForOperators(long memoryInBytes) {
+    if (freeMemoryForOperators - memoryInBytes <= MAX_REST_MEMORY_FOR_LOAD) {
+      return false;
+    } else {
+      freeMemoryForOperators -= memoryInBytes;
+      return true;
+    }
+  }
+
+  public synchronized long tryAllocateFreeMemoryForOperators(long memoryInBytes) {
+    if (freeMemoryForOperators - memoryInBytes <= MAX_REST_MEMORY_FOR_LOAD) {
+      long result = freeMemoryForOperators - MAX_REST_MEMORY_FOR_LOAD;
+      freeMemoryForOperators = MAX_REST_MEMORY_FOR_LOAD;
+      return result;
+    } else {
+      freeMemoryForOperators -= memoryInBytes;
+      return memoryInBytes;
+    }
+  }
+
+  public synchronized void releaseToFreeMemoryForOperators(long memoryInBytes) {
+    freeMemoryForOperators += memoryInBytes;
+  }
+
+  public long getAllocateMemoryForOperators() {
+    return ALLOCATE_MEMORY_FOR_OPERATORS;
   }
 
   private static class InstanceHolder {

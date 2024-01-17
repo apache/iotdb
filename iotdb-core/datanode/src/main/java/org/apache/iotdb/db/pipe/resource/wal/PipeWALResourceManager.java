@@ -26,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ConcurrentModificationException;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -60,24 +61,30 @@ public abstract class PipeWALResourceManager {
   private void ttlCheck() {
     final Iterator<Map.Entry<Long, PipeWALResource>> iterator =
         memtableIdToPipeWALResourceMap.entrySet().iterator();
-    while (iterator.hasNext()) {
-      final Map.Entry<Long, PipeWALResource> entry = iterator.next();
-      final ReentrantLock lock =
-          memtableIdSegmentLocks[(int) (entry.getKey() % SEGMENT_LOCK_COUNT)];
+    try {
+      while (iterator.hasNext()) {
+        final Map.Entry<Long, PipeWALResource> entry = iterator.next();
+        final ReentrantLock lock =
+            memtableIdSegmentLocks[(int) (entry.getKey() % SEGMENT_LOCK_COUNT)];
 
-      lock.lock();
-      try {
-        if (entry.getValue().invalidateIfPossible()) {
-          iterator.remove();
-        } else {
-          LOGGER.info(
-              "WAL (memtableId {}) is still referenced {} times",
-              entry.getKey(),
-              entry.getValue().getReferenceCount());
+        lock.lock();
+        try {
+          if (entry.getValue().invalidateIfPossible()) {
+            iterator.remove();
+          } else if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug(
+                "WAL (memtableId {}) is still referenced {} times",
+                entry.getKey(),
+                entry.getValue().getReferenceCount());
+          }
+        } finally {
+          lock.unlock();
         }
-      } finally {
-        lock.unlock();
       }
+    } catch (ConcurrentModificationException e) {
+      LOGGER.error(
+          "Concurrent modification issues happened, skipping the WAL in this round of ttl check",
+          e);
     }
   }
 

@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.process;
 
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
-import org.apache.iotdb.db.queryengine.plan.optimization.base.ColumnInjectionPushDown;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -51,7 +50,7 @@ import java.util.stream.Collectors;
  * input as a TsBlock, it may be raw data or partial aggregation result. This node will output the
  * final series aggregated result represented by TsBlock.
  */
-public class AggregationNode extends MultiChildProcessNode implements ColumnInjectionPushDown {
+public class AggregationNode extends MultiChildProcessNode {
 
   // The list of aggregate functions, each AggregateDescriptor will be output as one or two column
   // of result TsBlock
@@ -153,7 +152,6 @@ public class AggregationNode extends MultiChildProcessNode implements ColumnInje
     return outputEndTime;
   }
 
-  @Override
   public void setOutputEndTime(boolean outputEndTime) {
     this.outputEndTime = outputEndTime;
   }

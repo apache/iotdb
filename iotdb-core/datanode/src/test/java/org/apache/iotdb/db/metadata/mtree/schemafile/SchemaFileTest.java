@@ -230,7 +230,6 @@ public class SchemaFileTest {
     nsf.writeMNode(vt4);
 
     Assert.assertEquals(11111L, nsf.init().getAsDatabaseMNode().getDataTTL());
-
     nsf.close();
   }
 
@@ -522,7 +521,7 @@ public class SchemaFileTest {
     ICachedMNodeContainer.getCachedMNodeContainer(ent1).updateMNode("m1");
 
     Assert.assertEquals(
-        64, getSegment(sf, getSegAddr(sf, getSegAddrInContainer(ent1), "m1")).size());
+        63, getSegment(sf, getSegAddr(sf, getSegAddrInContainer(ent1), "m1")).size());
 
     sf.writeMNode(ent1);
 

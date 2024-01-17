@@ -20,7 +20,6 @@
 package org.apache.iotdb.confignode.service.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -105,10 +104,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDropPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetClusterIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
@@ -117,8 +116,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
@@ -131,7 +128,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
-import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
@@ -206,6 +202,20 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
     // Print log to record the ConfigNode that performs the GetConfigurationRequest
     LOGGER.info("Execute GetSystemConfiguration with result {}", resp);
+    return resp;
+  }
+
+  @Override
+  public TGetClusterIdResp getClusterId() throws TException {
+    TGetClusterIdResp resp = new TGetClusterIdResp();
+    String clusterId = configManager.getClusterManager().getClusterId();
+    if (clusterId == null) {
+      LOGGER.error("clusterId not generated yet, should never happen.");
+      return resp.setClusterId("")
+          .setStatus(new TSStatus(TSStatusCode.GET_CLUSTER_ID_ERROR.getStatusCode()));
+    }
+    resp.setClusterId(clusterId).setStatus(RpcUtils.SUCCESS_STATUS);
+    LOGGER.info("Execute getClusterId with result {}", resp);
     return resp;
   }
 
@@ -903,27 +913,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  @Deprecated
-  public TSStatus createPipeSink(TPipeSinkInfo req) {
-    // To be deleted
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-  }
-
-  @Override
-  @Deprecated
-  public TSStatus dropPipeSink(TDropPipeSinkReq req) {
-    // To be deleted
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-  }
-
-  @Override
-  @Deprecated
-  public TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req) {
-    // To be deleted
-    return new TGetPipeSinkResp();
-  }
-
-  @Override
   public TSStatus createPipe(TCreatePipeReq req) {
     return configManager.createPipe(req);
   }
@@ -954,12 +943,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TSStatus executeSyncCommand(ByteBuffer configPhysicalPlanBinary) {
+    return configManager.executeSyncCommand(configPhysicalPlanBinary);
+  }
+
+  @Override
   public TGetRegionIdResp getRegionId(TGetRegionIdReq req) {
-    if (req.isSetTimeStamp() && req.getType() != TConsensusGroupType.DataRegion) {
-      TSStatus status = new TSStatus(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode());
-      status.setMessage("Only data region can set time");
-      return new TGetRegionIdResp(status);
-    }
     return configManager.getRegionId(req);
   }
 

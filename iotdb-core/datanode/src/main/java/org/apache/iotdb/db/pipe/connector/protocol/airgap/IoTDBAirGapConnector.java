@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.IoTDBConnector;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -33,12 +34,12 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
-import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -63,17 +64,18 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.zip.CRC32;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_AIR_GAP_E_LANGUAGE_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_AIR_GAP_HANDSHAKE_TIMEOUT_MS_KEY;
 import static org.apache.iotdb.commons.utils.BasicStructureSerDeUtil.LONG_LEN;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_DEFAULT_VALUE;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_DEFAULT_VALUE;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_AIR_GAP_E_LANGUAGE_ENABLE_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_AIR_GAP_HANDSHAKE_TIMEOUT_MS_KEY;
 
 public class IoTDBAirGapConnector extends IoTDBConnector {
 
@@ -199,7 +201,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
         throw new PipeException("Handshake error with target server ip: " + ip + ", port: " + port);
       } else {
         isSocketAlive.set(i, true);
-        socket.setSoTimeout((int) PIPE_CONFIG.getPipeConnectorTimeoutMs());
+        socket.setSoTimeout((int) PIPE_CONFIG.getPipeConnectorTransferTimeoutMs());
         LOGGER.info("Handshake success. Target server ip: {}, port: {}", ip, port);
       }
     }
@@ -241,11 +243,20 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
     if (((EnrichedEvent) tabletInsertionEvent).shouldParsePatternOrTime()) {
       if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
         transfer(
-            ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).parseEventWithPattern());
+            ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent)
+                .parseEventWithPatternOrTime());
       } else { // tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
-        transfer(((PipeRawTabletInsertionEvent) tabletInsertionEvent).parseEventWithPattern());
+        transfer(
+            ((PipeRawTabletInsertionEvent) tabletInsertionEvent).parseEventWithPatternOrTime());
       }
       return;
+    } else {
+      // ignore raw tablet event with zero rows
+      if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
+        if (((PipeRawTabletInsertionEvent) tabletInsertionEvent).hasNoNeedParsingAndIsEmpty()) {
+          return;
+        }
+      }
     }
 
     final int socketIndex = nextSocketIndex();
@@ -322,12 +333,13 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
   private void doTransfer(
       Socket socket, PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, WALPipeException, IOException {
+    final InsertNode insertNode =
+        pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
     final byte[] bytes =
-        pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible() == null
+        Objects.isNull(insertNode)
             ? PipeTransferTabletBinaryReq.toTransferInsertNodeBytes(
                 pipeInsertNodeTabletInsertionEvent.getByteBuffer())
-            : PipeTransferTabletInsertNodeReq.toTransferInsertNodeBytes(
-                pipeInsertNodeTabletInsertionEvent.getInsertNode());
+            : PipeTransferTabletInsertNodeReq.toTransferInsertNodeBytes(insertNode);
 
     if (!send(socket, bytes)) {
       throw new PipeException(

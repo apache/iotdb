@@ -497,6 +497,7 @@ public class WALNode implements IWALNode {
           || snapshotCount >= config.getMaxWalMemTableSnapshotNum()
           || oldestMemTableTVListsRamCost > config.getWalMemTableSnapshotThreshold()) {
         flushMemTable(dataRegion, oldestTsFile, oldestMemTable);
+        WRITING_METRICS.recordWalFlushMemTableCount(dataRegion.getDataRegionId(), 1);
         WRITING_METRICS.recordMemTableRamWhenCauseFlush(identifier, oldestMemTableTVListsRamCost);
       } else {
         snapshotMemTable(dataRegion, oldestTsFile, oldestMemTableInfo);
@@ -515,7 +516,7 @@ public class WALNode implements IWALNode {
             identifier,
             memTable.getMemTableId(),
             tsFile,
-            effectiveInfoRatio,
+            String.format("%.4f", effectiveInfoRatio),
             config.getWalMinEffectiveInfoRatio(),
             memTable.getTVListsRamCost());
       }
@@ -582,7 +583,7 @@ public class WALNode implements IWALNode {
               "WAL node-{} snapshots memTable-{} to wal files because Effective information ratio {} is below wal min effective info ratio {}, memTable size is {}.",
               identifier,
               memTable.getMemTableId(),
-              effectiveInfoRatio,
+              String.format("%.4f", effectiveInfoRatio),
               config.getWalMinEffectiveInfoRatio(),
               memTable.getTVListsRamCost());
           WRITING_METRICS.recordMemTableRamWhenCauseSnapshot(
@@ -943,7 +944,7 @@ public class WALNode implements IWALNode {
   }
 
   /** Get the .wal file starts with the specified version id */
-  public File getWALFile(long versionId) {
+  public File getWALFile(long versionId) throws FileNotFoundException {
     return WALFileUtils.getWALFile(logDirectory, versionId);
   }
 

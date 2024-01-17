@@ -175,7 +175,7 @@ public class PointPriorityReader {
   public boolean addNewPageIfPageNotEmpty(PageElement pageElement)
       throws IOException, IllegalPathException, WriteProcessException {
     if (currentPointElement != null) {
-      nextPointInOtherPage = Math.min(nextPointInOtherPage, pageElement.startTime);
+      nextPointInOtherPage = Math.min(nextPointInOtherPage, pageElement.getStartTime());
       if (currentPoint.getTimestamp() >= nextPointInOtherPage) {
         pointQueue.add(currentPointElement);
         currentPointElement = null;
