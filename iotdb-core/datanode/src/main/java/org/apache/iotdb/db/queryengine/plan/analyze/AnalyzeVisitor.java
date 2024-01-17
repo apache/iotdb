@@ -42,7 +42,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIncompatibleException;
 import org.apache.iotdb.db.exception.metadata.view.UnsupportedViewException;
-import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
@@ -270,12 +269,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           deviceList = pushDownLimitOffsetInGroupByTimeForDevice(deviceList, queryStatement);
         }
 
-        analyzeDeviceToWhere(analysis, queryStatement, schemaTree, deviceList);
-
         outputExpressions = analyzeSelect(analysis, queryStatement, schemaTree, deviceList);
-
-        if (deviceList.isEmpty()) {
+        if (outputExpressions.isEmpty()) {
           return finishQuery(queryStatement, analysis);
+        }
+
+        analyzeDeviceToWhere(analysis, queryStatement, schemaTree, deviceList);
+        if (deviceList.isEmpty()) {
+          return finishQuery(queryStatement, analysis, outputExpressions);
         }
         analysis.setDeviceList(deviceList);
 
@@ -334,6 +335,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         // analyze aggregation input
         analyzeGroupBy(analysis, queryStatement, schemaTree);
         analyzeWhere(analysis, queryStatement, schemaTree);
+        if (analysis.getWhereExpression() != null
+            && analysis.getWhereExpression().equals(ConstantOperand.FALSE)) {
+          return finishQuery(queryStatement, analysis, outputExpressions);
+        }
         analyzeSourceTransform(analysis, outputExpressions, queryStatement);
 
         // analyze series scan
@@ -416,6 +421,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return analysis;
   }
 
+  private Analysis finishQuery(
+      QueryStatement queryStatement,
+      Analysis analysis,
+      List<Pair<Expression, String>> outputExpressions) {
+    analyzeOutput(analysis, queryStatement, outputExpressions);
+    analysis.setFinishQueryAfterAnalyze(true);
+    return analysis;
+  }
+
   private void analyzeGlobalTimeFilter(Analysis analysis, QueryStatement queryStatement) {
     Expression globalTimePredicate = null;
     boolean hasValueFilter = false;
@@ -431,12 +445,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
       hasValueFilter = resultPair.right;
 
-      predicate = PredicateUtils.simplifyPredicate(predicate);
-
-      // set where condition to null if predicate is true or time filter.
-      if (!hasValueFilter
-          || (predicate.getExpressionType().equals(ExpressionType.CONSTANT)
-              && Boolean.parseBoolean(predicate.getExpressionString()))) {
+      // set where condition to null if predicate is only contain time filter.
+      if (!hasValueFilter) {
         queryStatement.setWhereCondition(null);
       } else {
         whereCondition.setPredicate(predicate);
@@ -1304,28 +1314,26 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     Map<String, Expression> deviceToWhereExpression = new HashMap<>();
     Iterator<PartialPath> deviceIterator = deviceSet.iterator();
+    boolean hasValueFilter = false;
     while (deviceIterator.hasNext()) {
       PartialPath devicePath = deviceIterator.next();
-      Expression whereExpression;
-      try {
-        whereExpression = analyzeWhereSplitByDevice(queryStatement, devicePath, schemaTree);
-      } catch (MeasurementNotExistException e) {
-        logger.warn(
-            "Meets MeasurementNotExistException in analyzeDeviceToWhere when executing align by device, "
-                + "error msg: {}",
-            e.getMessage());
+      Expression whereExpression =
+          analyzeWhereSplitByDevice(queryStatement, devicePath, schemaTree);
+      if (whereExpression.equals(ConstantOperand.FALSE)) {
         deviceIterator.remove();
-        continue;
+      } else if (whereExpression.equals(ConstantOperand.TRUE)) {
+        deviceToWhereExpression.put(devicePath.getFullPath(), null);
+      } else {
+        TSDataType outputType = analyzeExpressionType(analysis, whereExpression);
+        if (outputType != TSDataType.BOOLEAN) {
+          throw new SemanticException(String.format(WHERE_WRONG_TYPE_ERROR_MSG, outputType));
+        }
+        deviceToWhereExpression.put(devicePath.getFullPath(), whereExpression);
+        hasValueFilter = true;
       }
-
-      TSDataType outputType = analyzeExpressionType(analysis, whereExpression);
-      if (outputType != TSDataType.BOOLEAN) {
-        throw new SemanticException(String.format(WHERE_WRONG_TYPE_ERROR_MSG, outputType));
-      }
-
-      deviceToWhereExpression.put(devicePath.getFullPath(), whereExpression);
     }
     analysis.setDeviceToWhereExpression(deviceToWhereExpression);
+    analysis.setHasValueFilter(hasValueFilter);
   }
 
   private void analyzeWhere(
@@ -1340,6 +1348,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             schemaTree,
             true);
     Expression whereExpression = convertConJunctionsToWhereExpression(conJunctions);
+    if (whereExpression.equals(ConstantOperand.TRUE)) {
+      analysis.setWhereExpression(null);
+      analysis.setHasValueFilter(false);
+      return;
+    }
+
     TSDataType outputType = analyzeExpressionType(analysis, whereExpression);
     if (outputType != TSDataType.BOOLEAN) {
       throw new SemanticException(String.format(WHERE_WRONG_TYPE_ERROR_MSG, outputType));
@@ -1359,7 +1373,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Expression predicate =
         PredicateUtils.combineConjuncts(
             conJunctions.stream().distinct().collect(Collectors.toList()));
-    predicate = PredicateUtils.simplifyPredicateWithNullOperand(predicate);
+    predicate = PredicateUtils.simplifyPredicate(predicate);
     predicate = normalizeExpression(predicate);
     return predicate;
   }

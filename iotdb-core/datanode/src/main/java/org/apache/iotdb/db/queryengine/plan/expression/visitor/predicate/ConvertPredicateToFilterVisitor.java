@@ -329,7 +329,7 @@ public class ConvertPredicateToFilterVisitor
   }
 
   @SuppressWarnings("unchecked")
-  private <T extends Comparable<T>> T getValue(String valueString, TSDataType dataType) {
+  public static <T extends Comparable<T>> T getValue(String valueString, TSDataType dataType) {
     try {
       switch (dataType) {
         case INT32:

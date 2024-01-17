@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.logical.Predicate
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.logical.TimeFilterExistChecker;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ConvertPredicateToFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ConvertPredicateToTimeFilterVisitor;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.PredicateSimplifier;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ReversePredicateVisitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -240,39 +241,13 @@ public class PredicateUtils {
   }
 
   /**
-   * Simplify the given predicate (Remove the TRUE expression).
+   * Simplify the given predicate (Remove the NULL and TRUE/FALSE expression).
    *
    * @param predicate given predicate
    * @return the predicate after simplifying
    */
   public static Expression simplifyPredicate(Expression predicate) {
-    if (predicate.getExpressionType().equals(ExpressionType.LOGIC_AND)) {
-      Expression left = simplifyPredicate(((BinaryExpression) predicate).getLeftExpression());
-      Expression right = simplifyPredicate(((BinaryExpression) predicate).getRightExpression());
-      boolean isLeftTrue =
-          left.isConstantOperand() && Boolean.parseBoolean(left.getExpressionString());
-      boolean isRightTrue =
-          right.isConstantOperand() && Boolean.parseBoolean(right.getExpressionString());
-      if (isLeftTrue && isRightTrue) {
-        return new ConstantOperand(TSDataType.BOOLEAN, "true");
-      } else if (isLeftTrue) {
-        return right;
-      } else if (isRightTrue) {
-        return left;
-      }
-      return ExpressionFactory.and(left, right);
-    } else if (predicate.getExpressionType().equals(ExpressionType.LOGIC_OR)) {
-      Expression left = simplifyPredicate(((BinaryExpression) predicate).getLeftExpression());
-      Expression right = simplifyPredicate(((BinaryExpression) predicate).getRightExpression());
-      boolean isLeftTrue =
-          left.isConstantOperand() && Boolean.parseBoolean(left.getExpressionString());
-      boolean isRightTrue =
-          right.isConstantOperand() && Boolean.parseBoolean(right.getExpressionString());
-      if (isRightTrue || isLeftTrue) {
-        return new ConstantOperand(TSDataType.BOOLEAN, "true");
-      }
-    }
-    return predicate;
+    return new PredicateSimplifier().process(predicate, null);
   }
 
   /**
@@ -353,11 +328,5 @@ public class PredicateUtils {
   public static boolean predicateCanPushDownToSource(
       Expression predicate, String checkedSourceSymbol) {
     return new PredicateCanPushDownToSourceChecker().process(predicate, checkedSourceSymbol);
-  }
-
-  public static Expression simplifyPredicateWithNullOperand(Expression predicate) {
-    return predicate;
-    //    Expression evaluatedPredicate = new NullOperandEvaluator().process(predicate, null);
-    //    return simplifyPredicate(evaluatedPredicate);
   }
 }
