@@ -118,9 +118,12 @@ public class SizeTieredCompactionSelector
         selectedFileSize = 0L;
         continue;
       }
+
       long totalSizeIfSelectCurrentFile = selectedFileSize + currentFile.getTsFileSize();
-      if (totalSizeIfSelectCurrentFile > targetCompactionFileSize
-          || selectedFileList.size() >= config.getFileLimitPerInnerTask()) {
+      boolean canNotAddCurrentFileIntoCurrentTask =
+          totalSizeIfSelectCurrentFile > targetCompactionFileSize
+              || selectedFileList.size() >= config.getFileLimitPerInnerTask();
+      if (canNotAddCurrentFileIntoCurrentTask) {
         // total file size or num will beyond the threshold if select current file, stop the
         // selection of current task
         if (selectedFileList.size() > 1) {
