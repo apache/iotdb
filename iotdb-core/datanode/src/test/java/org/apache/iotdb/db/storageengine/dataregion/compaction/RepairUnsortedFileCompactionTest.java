@@ -56,6 +56,7 @@ import org.mockito.Mockito;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
@@ -582,7 +583,9 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
     Assert.assertTrue(TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(seqResources));
 
     long currentTime = System.currentTimeMillis();
-    File logFile = new File(currentTime + RepairLogger.repairLogSuffix);
+    Path tempDir = Files.createTempDirectory("");
+    File logFile = new File(tempDir.toString() + File.separator + currentTime + RepairLogger.repairLogSuffix);
+
     Files.createFile(logFile.toPath());
     UnsortedFileRepairTaskScheduler scheduler =
         new UnsortedFileRepairTaskScheduler(Collections.singletonList(mockDataRegion), logFile);
@@ -628,7 +631,9 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
     Assert.assertFalse(TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(seqResources));
 
     long currentTime = System.currentTimeMillis();
-    File logFile = new File(currentTime + RepairLogger.repairLogSuffix);
+    Path tempDir = Files.createTempDirectory("");
+    File logFile = new File(tempDir.toString() + File.separator + currentTime + RepairLogger.repairLogSuffix);
+
     Files.createFile(logFile.toPath());
     UnsortedFileRepairTaskScheduler scheduler =
         new UnsortedFileRepairTaskScheduler(Collections.singletonList(mockDataRegion), logFile);
@@ -686,7 +691,9 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
     Assert.assertFalse(TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(seqResources));
 
     long currentTime = System.currentTimeMillis();
-    File logFile = new File(currentTime + RepairLogger.repairLogSuffix);
+    Path tempDir = Files.createTempDirectory("");
+    File logFile = new File(tempDir.toString() + File.separator + currentTime + RepairLogger.repairLogSuffix);
+
     Files.createFile(logFile.toPath());
     UnsortedFileRepairTaskScheduler scheduler =
         new UnsortedFileRepairTaskScheduler(Collections.singletonList(mockDataRegion), logFile);
@@ -745,7 +752,8 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
     Assert.assertFalse(TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(seqResources));
 
     long currentTime = System.currentTimeMillis();
-    File logFile = new File(currentTime + RepairLogger.repairLogSuffix);
+    Path tempDir = Files.createTempDirectory("");
+    File logFile = new File(tempDir.toString() + File.separator + currentTime + RepairLogger.repairLogSuffix);
     Files.createFile(logFile.toPath());
     try (RepairLogger logger = new RepairLogger(logFile)) {
       RepairTimePartition timePartition =
