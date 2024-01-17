@@ -43,6 +43,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -85,7 +86,7 @@ public abstract class PipeTaskAgent {
       return pipeMetaKeeper.tryReadLock(timeOutInSeconds);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOGGER.warn("Interruption during requiring pipeMetaKeeper lock.", e);
+      LOGGER.warn("Interruption during requiring pipeMetaKeeper read lock.", e);
       return false;
     }
   }
@@ -98,13 +99,23 @@ public abstract class PipeTaskAgent {
     pipeMetaKeeper.acquireWriteLock();
   }
 
+  protected boolean tryWriteLockWithTimeOut(long timeOutInSeconds) {
+    try {
+      return pipeMetaKeeper.tryWriteLock(timeOutInSeconds);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.warn("Interruption during requiring pipeMetaKeeper write lock.", e);
+      return false;
+    }
+  }
+
   protected void releaseWriteLock() {
     pipeMetaKeeper.releaseWriteLock();
   }
 
   ////////////////////////// Pipe Task Management Entry //////////////////////////
 
-  public synchronized TPushPipeMetaRespExceptionMessage handleSinglePipeMetaChanges(
+  public TPushPipeMetaRespExceptionMessage handleSinglePipeMetaChanges(
       PipeMeta pipeMetaFromCoordinator) {
     acquireWriteLock();
     try {
@@ -276,7 +287,7 @@ public abstract class PipeTaskAgent {
     }
   }
 
-  public synchronized TPushPipeMetaRespExceptionMessage handleDropPipe(String pipeName) {
+  public TPushPipeMetaRespExceptionMessage handleDropPipe(String pipeName) {
     acquireWriteLock();
     try {
       return handleDropPipeInternal(pipeName);
@@ -303,7 +314,7 @@ public abstract class PipeTaskAgent {
     }
   }
 
-  public synchronized List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChanges(
+  public List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChanges(
       List<PipeMeta> pipeMetaListFromCoordinator) {
     acquireWriteLock();
     try {
@@ -360,7 +371,7 @@ public abstract class PipeTaskAgent {
     return exceptionMessages;
   }
 
-  public synchronized void dropAllPipeTasks() {
+  public void dropAllPipeTasks() {
     acquireWriteLock();
     try {
       dropAllPipeTasksInternal();
@@ -412,11 +423,17 @@ public abstract class PipeTaskAgent {
       dropPipe(pipeName, existedPipeMeta.getStaticMeta().getCreationTime());
     }
 
-    // Create pipe tasks and trigger create() method for each pipe task
+    // Create pipe tasks
     final Map<Integer, PipeTask> pipeTasks = buildPipeTasks(pipeMetaFromCoordinator);
-    for (PipeTask pipeTask : pipeTasks.values()) {
-      pipeTask.create();
-    }
+
+    // Trigger create() method for each pipe task by parallel stream
+    final long startTime = System.currentTimeMillis();
+    pipeTasks.values().parallelStream().forEach(PipeTask::create);
+    LOGGER.info(
+        "Create all pipe tasks on Pipe {} successfully within {} ms",
+        pipeName,
+        System.currentTimeMillis() - startTime);
+
     pipeTaskManager.addPipeTasks(pipeMetaFromCoordinator.getStaticMeta(), pipeTasks);
 
     // No matter the pipe status from coordinator is RUNNING or STOPPED, we always set the status
@@ -447,7 +464,7 @@ public abstract class PipeTaskAgent {
     // dropPipeTaskByConsensusGroup).
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
 
-    // Drop pipe tasks and trigger drop() method for each pipe task
+    // Drop pipe tasks
     final Map<Integer, PipeTask> pipeTasks =
         pipeTaskManager.removePipeTasks(existedPipeMeta.getStaticMeta());
     if (pipeTasks == null) {
@@ -458,9 +475,14 @@ public abstract class PipeTaskAgent {
           creationTime);
       return;
     }
-    for (PipeTask pipeTask : pipeTasks.values()) {
-      pipeTask.drop();
-    }
+
+    // Trigger drop() method for each pipe task by parallel stream
+    final long startTime = System.currentTimeMillis();
+    pipeTasks.values().parallelStream().forEach(PipeTask::drop);
+    LOGGER.info(
+        "Drop all pipe tasks on Pipe {} successfully within {} ms",
+        pipeName,
+        System.currentTimeMillis() - startTime);
 
     // Remove pipe meta from pipe meta keeper
     pipeMetaKeeper.removePipeMeta(pipeName);
@@ -478,7 +500,7 @@ public abstract class PipeTaskAgent {
     // dropPipeTaskByConsensusGroup).
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
 
-    // Drop pipe tasks and trigger drop() method for each pipe task
+    // Drop pipe tasks
     final Map<Integer, PipeTask> pipeTasks =
         pipeTaskManager.removePipeTasks(existedPipeMeta.getStaticMeta());
     if (pipeTasks == null) {
@@ -486,9 +508,14 @@ public abstract class PipeTaskAgent {
           "Pipe {} has already been dropped or has not been created. Skip dropping.", pipeName);
       return;
     }
-    for (PipeTask pipeTask : pipeTasks.values()) {
-      pipeTask.drop();
-    }
+
+    // Trigger drop() method for each pipe task by parallel stream
+    final long startTime = System.currentTimeMillis();
+    pipeTasks.values().parallelStream().forEach(PipeTask::drop);
+    LOGGER.info(
+        "Drop all pipe tasks on Pipe {} successfully within {} ms",
+        pipeName,
+        System.currentTimeMillis() - startTime);
 
     // Remove pipe meta from pipe meta keeper
     pipeMetaKeeper.removePipeMeta(pipeName);
@@ -501,7 +528,7 @@ public abstract class PipeTaskAgent {
       return;
     }
 
-    // Trigger start() method for each pipe task
+    // Get pipe tasks
     final Map<Integer, PipeTask> pipeTasks =
         pipeTaskManager.getPipeTasks(existedPipeMeta.getStaticMeta());
     if (pipeTasks == null) {
@@ -512,9 +539,14 @@ public abstract class PipeTaskAgent {
           creationTime);
       return;
     }
-    for (PipeTask pipeTask : pipeTasks.values()) {
-      pipeTask.start();
-    }
+
+    // Trigger start() method for each pipe task by parallel stream
+    final long startTime = System.currentTimeMillis();
+    pipeTasks.values().parallelStream().forEach(PipeTask::start);
+    LOGGER.info(
+        "Start all pipe tasks on Pipe {} successfully within {} ms",
+        pipeName,
+        System.currentTimeMillis() - startTime);
 
     // Set pipe meta status to RUNNING
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
@@ -533,7 +565,7 @@ public abstract class PipeTaskAgent {
       return;
     }
 
-    // Trigger stop() method for each pipe task
+    // Get pipe tasks
     final Map<Integer, PipeTask> pipeTasks =
         pipeTaskManager.getPipeTasks(existedPipeMeta.getStaticMeta());
     if (pipeTasks == null) {
@@ -544,9 +576,14 @@ public abstract class PipeTaskAgent {
           creationTime);
       return;
     }
-    for (PipeTask pipeTask : pipeTasks.values()) {
-      pipeTask.stop();
-    }
+
+    // Trigger stop() method for each pipe task by parallel stream
+    final long startTime = System.currentTimeMillis();
+    pipeTasks.values().parallelStream().forEach(PipeTask::stop);
+    LOGGER.info(
+        "Stop all pipe tasks on Pipe {} successfully within {} ms",
+        pipeName,
+        System.currentTimeMillis() - startTime);
 
     // Set pipe meta status to STOPPED
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
@@ -799,13 +836,45 @@ public abstract class PipeTaskAgent {
     }
   }
 
-  protected void stopAllPipesWithCriticalException(int currentNodeId) {
-    acquireWriteLock();
-    try {
-      stopAllPipesWithCriticalExceptionInternal(currentNodeId);
-    } finally {
-      releaseWriteLock();
-    }
+  /**
+   * Using try lock method to prevent deadlock when stopping all pipes with critical exceptions and
+   * {@link PipeTaskAgent#handlePipeMetaChanges(List)}} concurrently.
+   */
+  protected void stopAllPipesWithCriticalException(final int currentNodeId) {
+    // To avoid deadlock, we use a new thread to stop all pipes.
+    CompletableFuture.runAsync(
+        () -> {
+          try {
+            int retryCount = 0;
+            while (true) {
+              if (tryWriteLockWithTimeOut(5)) {
+                try {
+                  stopAllPipesWithCriticalExceptionInternal(currentNodeId);
+                  LOGGER.info("Stopped all pipes with critical exception.");
+                  return;
+                } finally {
+                  releaseWriteLock();
+                }
+              } else {
+                Thread.sleep(1000);
+                LOGGER.warn(
+                    "Failed to stop all pipes with critical exception, retry count: {}.",
+                    ++retryCount);
+              }
+            }
+          } catch (InterruptedException e) {
+            LOGGER.error(
+                "Interrupted when trying to stop all pipes with critical exception, exception message: {}",
+                e.getMessage(),
+                e);
+            Thread.currentThread().interrupt();
+          } catch (Exception e) {
+            LOGGER.error(
+                "Failed to stop all pipes with critical exception, exception message: {}",
+                e.getMessage(),
+                e);
+          }
+        });
   }
 
   private void stopAllPipesWithCriticalExceptionInternal(int currentNodeId) {

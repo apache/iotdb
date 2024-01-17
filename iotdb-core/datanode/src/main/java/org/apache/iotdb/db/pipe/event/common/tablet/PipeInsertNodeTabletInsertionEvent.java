@@ -249,13 +249,10 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   @Override
   public String toString() {
-    return "PipeInsertNodeTabletInsertionEvent{"
-        + "walEntryHandler="
-        + walEntryHandler
-        + ", progressIndex="
-        + progressIndex
-        + ", isAligned="
-        + isAligned
-        + '}';
+    return String.format(
+            "PipeInsertNodeTabletInsertionEvent{walEntryHandler=%s, progressIndex=%s, isAligned=%s, isGeneratedByPipe=%s, dataContainer=%s}",
+            walEntryHandler, progressIndex, isAligned, isGeneratedByPipe, dataContainer)
+        + " - "
+        + super.toString();
   }
 }

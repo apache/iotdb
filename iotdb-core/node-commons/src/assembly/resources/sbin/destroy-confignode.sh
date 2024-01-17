@@ -24,13 +24,13 @@ fi
 
 reCheck=$1
 if [[ "$reCheck" != "-f" ]]; then
-  read -p "Do you want to clean all the data in the IoTDB ? y/n (default n): " CLEAN_SERVICE
+  read -p "Do you want to clean data of confignode in the IoTDB ? y/n (default n): " CLEAN_SERVICE
   if [[ "$CLEAN_SERVICE" != "y" && "$CLEAN_SERVICE" != "Y" ]]; then
     echo "Exiting..."
-    exit 0
+    exit 1
   fi
 fi
-
+nohup bash ${IOTDB_HOME}/sbin/stop-confignode.sh -f >/dev/null 2>&1 &
 rm -rf ${IOTDB_HOME}/data/confignode/ >/dev/null 2>&1 &
 
 IOTDB_CONFIGNODE_CONFIG=${IOTDB_HOME}/conf/iotdb-confignode.properties
@@ -51,5 +51,4 @@ function clearPath {
 clearPath $cn_system_dir
 clearPath $cn_consensus_dir
 
-exit
 echo "ConfigNode clean done ..."

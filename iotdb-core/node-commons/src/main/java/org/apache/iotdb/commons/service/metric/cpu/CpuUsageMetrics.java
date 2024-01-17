@@ -17,8 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.metricsets.cpu;
+package org.apache.iotdb.commons.service.metric.cpu;
 
+import org.apache.iotdb.commons.service.metric.JvmGcMonitorMetrics;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -63,6 +64,9 @@ public class CpuUsageMetrics implements IMetricSet {
   private final ThreadMXBean threadMxBean = ManagementFactory.getThreadMXBean();
   private AtomicLong lastUpdateTime = new AtomicLong(0L);
   private AtomicLong updateCount = new AtomicLong(0);
+
+  private static final JvmGcMonitorMetrics.GcData gcData =
+      JvmGcMonitorMetrics.getInstance().getGcData();
 
   public CpuUsageMetrics(
       List<String> modules,
@@ -309,10 +313,17 @@ public class CpuUsageMetrics implements IMetricSet {
       processCpuLoadGauge =
           metricService.getAutoGauge("process_cpu_load", MetricLevel.CORE, "name", "process");
     }
+    long gcTimePercentage = gcData.getGcTimePercentage();
     double processCpuLoad = processCpuLoadGauge.getValue();
     for (Map.Entry<String, Long> entry : moduleIncrementCpuTimeMap.entrySet()) {
       moduleCpuTimePercentageMap.put(
-          entry.getKey(), entry.getValue() * 1.0 / totalIncrementTime * processCpuLoad);
+          entry.getKey(),
+          entry.getValue()
+              * 1.0
+              / totalIncrementTime
+              * processCpuLoad
+              * (100L - gcTimePercentage) // gc time is not included in module cpu usage
+              / 100);
       if (entry.getValue() > 0.0) {
         moduleUserTimePercentageMap.put(
             entry.getKey(),
@@ -323,7 +334,13 @@ public class CpuUsageMetrics implements IMetricSet {
     }
     for (Map.Entry<String, Long> entry : poolIncrementCpuTimeMap.entrySet()) {
       poolCpuUsageMap.put(
-          entry.getKey(), entry.getValue() * 1.0 / totalIncrementTime * processCpuLoad);
+          entry.getKey(),
+          entry.getValue()
+              * 1.0
+              / totalIncrementTime
+              * processCpuLoad
+              * (100L - gcTimePercentage) // gc time is not included in pool cpu usage
+              / 100);
       if (entry.getValue() > 0.0) {
         poolUserTimePercentageMap.put(
             entry.getKey(),

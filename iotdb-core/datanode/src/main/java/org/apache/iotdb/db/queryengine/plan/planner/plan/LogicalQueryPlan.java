@@ -28,7 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 public class LogicalQueryPlan {
 
   private final MPPQueryContext context;
-  private final PlanNode rootNode;
+  private PlanNode rootNode;
 
   public LogicalQueryPlan(MPPQueryContext context, PlanNode rootNode) {
     this.context = context;
@@ -41,5 +41,9 @@ public class LogicalQueryPlan {
 
   public MPPQueryContext getContext() {
     return context;
+  }
+
+  public void clearUselessMemory() {
+    rootNode = null;
   }
 }

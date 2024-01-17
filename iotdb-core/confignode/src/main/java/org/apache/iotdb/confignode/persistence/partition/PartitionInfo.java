@@ -743,7 +743,8 @@ public class PartitionInfo implements SnapshotProcessor {
         .forEach(
             databasePartitionTable ->
                 databasePartitionTable.countDataNodeScatterWidth(dataNodeId, type, scatterSet));
-    return scatterSet.cardinality() - 1;
+    // The minimal scatter width is 0
+    return Math.max(scatterSet.cardinality() - 1, 0);
   }
 
   /**

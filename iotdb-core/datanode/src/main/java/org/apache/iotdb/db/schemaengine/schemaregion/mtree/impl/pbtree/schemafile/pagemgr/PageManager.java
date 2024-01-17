@@ -95,18 +95,13 @@ public abstract class PageManager implements IPageManager {
 
   private final AtomicInteger logCounter;
   private SchemaFileLogWriter logWriter;
-  private final SchemaRegionCachedMetric metric;
+  private SchemaRegionCachedMetric metric = null;
 
   // flush strategy is dependent on consensus protocol, only check protocol on init
   protected FlushPageStrategy flushDirtyPagesStrategy;
   protected SinglePageFlushStrategy singlePageFlushStrategy;
 
-  PageManager(
-      FileChannel channel,
-      File pmtFile,
-      int lastPageIndex,
-      String logPath,
-      SchemaRegionCachedMetric metric)
+  PageManager(FileChannel channel, File pmtFile, int lastPageIndex, String logPath)
       throws IOException, MetadataException {
     this.pageInstCache =
         Collections.synchronizedMap(new LinkedHashMap<>(SchemaFileConfig.PAGE_CACHE_SIZE, 1, true));
@@ -121,7 +116,6 @@ public abstract class PageManager implements IPageManager {
     this.channel = channel;
     this.pmtFile = pmtFile;
     this.readChannel = FileChannel.open(pmtFile.toPath(), StandardOpenOption.READ);
-    this.metric = metric;
 
     if (IoTDBDescriptor.getInstance()
         .getConfig()
@@ -739,7 +733,7 @@ public abstract class PageManager implements IPageManager {
 
       ByteBuffer newBuf = ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH);
       if (metric != null) {
-        metric.recordFlushPageNum(1);
+        metric.recordLoadPageNum(1);
       }
       loadFromFile(newBuf, pageIdx);
       page = ISchemaPage.loadSchemaPage(newBuf);
@@ -871,16 +865,7 @@ public abstract class PageManager implements IPageManager {
       // for record offset, length of string key
       int totalSize = SchemaFileConfig.SEG_HEADER_SIZE + 6 * childNum;
       for (ICachedMNode child : node.getChildren().values()) {
-        totalSize += child.getName().getBytes().length;
-        if (child.isMeasurement()) {
-          totalSize +=
-              child.getAsMeasurementMNode().getAlias() == null
-                  ? 4
-                  : child.getAsMeasurementMNode().getAlias().getBytes().length + 4;
-          totalSize += 24; // slightly larger than actually HEADER size
-        } else {
-          totalSize += 16; // slightly larger
-        }
+        totalSize += child.getName().getBytes().length + RecordUtils.getRecordLength(child);
       }
       return (short) totalSize > SchemaFileConfig.SEG_MIN_SIZ
           ? (short) totalSize
@@ -1171,5 +1156,10 @@ public abstract class PageManager implements IPageManager {
       }
       return null;
     }
+  }
+
+  @Override
+  public void setMetric(SchemaRegionCachedMetric metric) {
+    this.metric = metric;
   }
 }

@@ -19,18 +19,17 @@
 #
 
 reCheck=$1
-echo $reCheck
 if [[ "$reCheck" != "-f" ]]; then
-  read -p "Do you want to clean all the data in the IoTDB ? y/n (default n): " CLEAN_SERVICE
+  read -p "Do you want to clean data of datanode in the IoTDB ? y/n (default n): " CLEAN_SERVICE
   if [[ "$CLEAN_SERVICE" != "y" && "$CLEAN_SERVICE" != "Y" ]]; then
     echo "Exiting..."
-    exit 0
+    exit 1
   fi
 fi
-
 if [ -z "${IOTDB_HOME}" ]; then
   export IOTDB_HOME="$(cd "`dirname "$0"`"/..; pwd)"
 fi
+nohup bash ${IOTDB_HOME}/sbin/stop-datanode.sh -f >/dev/null 2>&1 &
 
 rm -rf ${IOTDB_HOME}/data/datanode/ >/dev/null 2>&1 &
 IOTDB_DATANODE_CONFIG=${IOTDB_HOME}/conf/iotdb-datanode.properties
