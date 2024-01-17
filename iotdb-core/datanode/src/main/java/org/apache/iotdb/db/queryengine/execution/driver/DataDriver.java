@@ -103,6 +103,7 @@ public class DataDriver extends Driver {
 
       this.init = true;
     } finally {
+      ((DataDriverContext) driverContext).clearSourceOperators();
       QUERY_EXECUTION_METRICS.recordExecutionCost(
           QUERY_RESOURCE_INIT, System.nanoTime() - startTime);
     }

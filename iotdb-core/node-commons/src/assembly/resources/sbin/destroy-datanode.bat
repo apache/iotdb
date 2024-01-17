@@ -17,23 +17,22 @@
 @REM under the License.
 @REM
 @echo off
-
 pushd %~dp0..
 if NOT DEFINED IOTDB_HOME set IOTDB_HOME=%cd%
 popd
 
 set "reCheck=%1"
-echo %reCheck%
 if not "%reCheck%" == "-f" (
-    echo -n "Do you want to clean all the data in the IoTDB ? y/n (default n): "
+    echo "Do you want to clean the data of datanode in the IoTDB ? y/n (default n): "
     set /p CLEAN_SERVICE=
 )
 
 if not "%CLEAN_SERVICE%"=="y" if not "%CLEAN_SERVICE%"=="Y" (
   echo "Exiting..."
-  exit 0
+  goto finally
 )
-
+start cmd /c "%IOTDB_HOME%\\sbin\\stop-datanode.bat -f"
+timeout /t 3 > nul
 rmdir /s /q "%IOTDB_HOME%\data\datanode\" 2>nul
 set IOTDB_DATANODE_CONFIG=%IOTDB_HOME%\conf\iotdb-datanode.properties
 set "delimiter=,;"
@@ -201,3 +200,6 @@ for %%i in (%sort_tmp_dir%) do (
 
 endlocal
 echo "DataNode clean done ..."
+
+:finally
+exit /b

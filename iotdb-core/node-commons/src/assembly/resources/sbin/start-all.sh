@@ -48,11 +48,14 @@ if [ "$IOTDB_SSH_OPTS" = "" ]; then
   IOTDB_SSH_OPTS="-o StrictHostKeyChecking=no"
 fi
 
+size=${#datanodeIps[@]}
 for confignodeIP in ${confignodeIps[@]};do
   hasDataNode="false"
-  for ((i=0; i<${#datanodeIps[@]}; i++))
+  for ((i=0; i<$size; i++))
   do
-      if [[ "${datanodeIps[$i]}" == *"$confignodeIP"* ]]; then
+      if [[ "${datanodeIps[$i]}" == "" ]]; then
+        continue
+      elif [[ "${datanodeIps[$i]}" == *"$confignodeIP"* ]]; then
           hasDataNode="true"
           unset 'datanodeIps[$i]'
           break
@@ -69,13 +72,11 @@ for confignodeIP in ${confignodeIps[@]};do
     echo "The system starts the ConfigNode of $confignodeIP"
     ssh $IOTDB_SSH_OPTS -p $serverPort ${account}@$confignodeIP "nohup bash $confignodePath/sbin/start-confignode.sh >/dev/null 2>&1 &"
   fi
-  sleep 3
 done
 
 for datanodeIP in ${datanodeIps[@]};do
   echo "The system starts the DataNode of $datanodeIP"
   ssh $IOTDB_SSH_OPTS -p $serverPort ${account}@$datanodeIP "nohup bash $datanodePath/sbin/start-datanode.sh >/dev/null 2>&1 &"
-  sleep 3
 done
 
 echo "Cluster startup complete ..."

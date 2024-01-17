@@ -189,14 +189,14 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
     return exceptionMessages;
   }
 
-  public synchronized void stopAllPipesWithCriticalException() {
+  public void stopAllPipesWithCriticalException() {
     super.stopAllPipesWithCriticalException(
         IoTDBDescriptor.getInstance().getConfig().getDataNodeId());
   }
 
   ///////////////////////// Heartbeat /////////////////////////
 
-  public synchronized void collectPipeMetaList(TDataNodeHeartbeatResp resp) throws TException {
+  public void collectPipeMetaList(TDataNodeHeartbeatResp resp) throws TException {
     // Try the lock instead of directly acquire it to prevent the block of the cluster heartbeat
     // 10s is the half of the HEARTBEAT_TIMEOUT_TIME defined in class BaseNodeCache in ConfigNode
     if (!tryReadLockWithTimeOut(10)) {
@@ -227,7 +227,7 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
     resp.setPipeMetaList(pipeMetaBinaryList);
   }
 
-  public synchronized void collectPipeMetaList(TPipeHeartbeatReq req, TPipeHeartbeatResp resp)
+  public void collectPipeMetaList(TPipeHeartbeatReq req, TPipeHeartbeatResp resp)
       throws TException {
     acquireReadLock();
     try {
