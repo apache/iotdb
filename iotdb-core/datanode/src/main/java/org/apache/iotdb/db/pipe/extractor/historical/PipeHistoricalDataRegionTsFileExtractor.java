@@ -407,6 +407,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
           pipeName,
           dataRegionId,
           resource.getTsFilePath(),
+          historicalDataExtractionTimeLowerBound,
           e);
       // If failed to get the generation time of the TsFile, we will extract the data in the TsFile
       // anyway.
