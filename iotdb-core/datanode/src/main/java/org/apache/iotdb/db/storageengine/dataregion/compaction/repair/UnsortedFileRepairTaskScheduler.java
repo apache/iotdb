@@ -226,7 +226,9 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
       } finally {
         sourceFile.readUnlock();
       }
-      LOGGER.info("[RepairScheduler] file {} need to repair", sourceFile);
+      LOGGER.info(
+          "[RepairScheduler] file {} need to repair because it has internal unsorted data",
+          sourceFile);
       TsFileManager tsFileManager = timePartition.getTsFileManager();
       CountDownLatch latch = new CountDownLatch(1);
       RepairUnsortedFileCompactionTask task =
@@ -260,7 +262,9 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
               true,
               false,
               tsFileManager.getNextCompactionTaskId());
-      LOGGER.info("[RepairScheduler] file {} need to repair", overlapFile);
+      LOGGER.info(
+          "[RepairScheduler] file {} need to repair because it is overlapped with other files",
+          overlapFile);
       if (CompactionTaskManager.getInstance().addTaskToWaitingQueue(task)) {
         latch.await();
       }
