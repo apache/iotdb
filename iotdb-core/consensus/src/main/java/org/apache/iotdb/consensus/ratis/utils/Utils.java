@@ -318,6 +318,7 @@ public class Utils {
         properties, config.getLeaderLogAppender().isInstallSnapshotEnabled());
 
     GrpcConfigKeys.Server.setHeartbeatChannel(properties, true);
+    GrpcConfigKeys.Server.setLogMessageBatchDuration(properties, TimeDuration.ONE_MINUTE);
     RaftServerConfigKeys.Rpc.setFirstElectionTimeoutMin(
         properties, config.getRpc().getFirstElectionTimeoutMin());
     RaftServerConfigKeys.Rpc.setFirstElectionTimeoutMax(
