@@ -113,7 +113,7 @@ public interface PipeConnector extends PipePlugin {
   void heartbeat() throws Exception;
 
   /**
-   * This method is used to transfer the TabletInsertionEvent.
+   * This method is used to transfer the {@link TabletInsertionEvent}.
    *
    * @param tabletInsertionEvent TabletInsertionEvent to be transferred
    * @throws PipeConnectionException if the connection is broken
@@ -122,7 +122,7 @@ public interface PipeConnector extends PipePlugin {
   void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception;
 
   /**
-   * This method is used to transfer the TsFileInsertionEvent.
+   * This method is used to transfer the {@link TsFileInsertionEvent}.
    *
    * @param tsFileInsertionEvent TsFileInsertionEvent to be transferred
    * @throws PipeConnectionException if the connection is broken
@@ -140,7 +140,7 @@ public interface PipeConnector extends PipePlugin {
   }
 
   /**
-   * This method is used to transfer the generic events, including HeartbeatEvent.
+   * This method is used to transfer generic events.
    *
    * @param event Event to be transferred
    * @throws PipeConnectionException if the connection is broken

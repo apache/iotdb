@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.manager.pipe.transfer.execution;
 
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorRetryTimesConfigurableException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
@@ -27,6 +28,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.task.subtask.PipeTransferSubtask;
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
+import org.apache.iotdb.confignode.manager.pipe.transfer.extractor.IoTDBConfigRegionExtractor;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -127,10 +129,10 @@ public class PipeConfigNodeSubtask extends PipeTransferSubtask {
   }
 
   /**
-   * Try to consume an {@link Event} by the pipe plugin.
+   * Try to consume an {@link Event} by the {@link IoTDBConfigRegionExtractor}.
    *
-   * @return true if the {@link Event} is consumed successfully, false if no more {@link Event} can
-   *     be consumed
+   * @return {@code true} if the {@link Event} is consumed successfully, {@code false} if no more
+   *     {@link Event} can be consumed
    * @throws Exception if any error occurs when consuming the {@link Event}
    */
   @SuppressWarnings("squid:S112") // Allow to throw Exception
@@ -152,18 +154,22 @@ public class PipeConfigNodeSubtask extends PipeTransferSubtask {
       outputPipeConnector.transfer(event);
 
       releaseLastEvent(true);
-    } catch (PipeConnectionException e) {
+    } catch (PipeConnectionException | PipeRuntimeConnectorRetryTimesConfigurableException e) {
       if (!isClosed.get()) {
         throw e;
       } else {
-        LOGGER.info("PipeConnectionException in pipe transfer, ignored because pipe is dropped.");
+        LOGGER.info(
+            "{} in pipe transfer, ignored because pipe is dropped.", e.getClass().getName(), e);
         releaseLastEvent(false);
       }
     } catch (Exception e) {
       if (!isClosed.get()) {
-        throw new PipeException("Error occurred during executing PipeConnector#transfer.", e);
+        throw new PipeException(
+            String.format(
+                "Exception in pipe transfer, subtask: %s, last event: %s", taskID, lastEvent),
+            e);
       } else {
-        LOGGER.info("Exception in pipe transfer, ignored because pipe is dropped.");
+        LOGGER.info("Exception in pipe transfer, ignored because pipe is dropped.", e);
         releaseLastEvent(false);
       }
     }

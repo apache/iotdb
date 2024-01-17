@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.task.subtask.connector;
 
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorRetryTimesConfigurableException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -107,12 +108,12 @@ public class PipeConnectorSubtask extends PipeTransferSubtask {
       }
 
       releaseLastEvent(true);
-    } catch (PipeConnectionException e) {
+    } catch (PipeConnectionException | PipeRuntimeConnectorRetryTimesConfigurableException e) {
       if (!isClosed.get()) {
         throw e;
       } else {
         LOGGER.info(
-            "PipeConnectionException in pipe transfer, ignored because pipe is dropped.", e);
+            "{} in pipe transfer, ignored because pipe is dropped.", e.getClass().getName(), e);
         releaseLastEvent(false);
       }
     } catch (Exception e) {
@@ -131,16 +132,16 @@ public class PipeConnectorSubtask extends PipeTransferSubtask {
     return true;
   }
 
-  private void transferHeartbeatEvent(PipeHeartbeatEvent event) {
+  private void transferHeartbeatEvent(PipeHeartbeatEvent event) throws Exception {
     try {
       outputPipeConnector.heartbeat();
       outputPipeConnector.transfer(event);
     } catch (Exception e) {
-      throw new PipeConnectionException(
-          "PipeConnector: "
-              + outputPipeConnector.getClass().getName()
-              + " heartbeat failed, or encountered failure when transferring generic event.",
-          e);
+      LOGGER.warn(
+          "PipeConnector: {} heartbeat failed, or encountered failure when transferring generic event. Failure: {}",
+          outputPipeConnector.getClass().getName(),
+          e.getMessage());
+      throw e;
     }
 
     lastHeartbeatEventInjectTime = System.currentTimeMillis();

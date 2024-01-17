@@ -20,6 +20,8 @@
 package org.apache.iotdb.commons.pipe.connector;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorRetryTimesConfigurableException;
+import org.apache.iotdb.commons.pipe.task.subtask.PipeSubtask;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
@@ -27,6 +29,8 @@ import org.slf4j.LoggerFactory;
 
 public class PipeExceptionHandler {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeExceptionHandler.class);
+  private static final int CONFLICT_RETRY_MAX_TIMES = 100;
+
   private final boolean isAllowConflictRetry;
   private final long conflictRetryMaxSeconds;
   private final boolean conflictRecordIgnoredData;
@@ -34,6 +38,7 @@ public class PipeExceptionHandler {
   private final boolean othersRecordIgnoredData;
 
   private long firstEncounterTime;
+  private String lastRecordMessage = "";
 
   public PipeExceptionHandler(
       boolean isAllowConflictRetry,
@@ -54,7 +59,7 @@ public class PipeExceptionHandler {
    * Handle {@link TSStatus} returned by receiver. Do nothing if ignore the event, and throw
    * exception if retry the event. This method does not implement the retry logic and caller should
    * retry later by invoking {@link PipeExceptionHandler#handleExceptionStatus(TSStatus, String,
-   * String)}. It is also thread-safe since it only read from class variables.
+   * String)}. It is also thread-safe since it only reads from class variables.
    *
    * @throws PipeException to retry the current event
    * @param status the {@link TSStatus} to judge
@@ -95,17 +100,23 @@ public class PipeExceptionHandler {
 
   /**
    * Handle {@link TSStatus} returned by receiver. Do nothing if ignore the event, and throw
-   * exception if retry the event. Upper class must ensure an event call the method continuously
-   * until it is successfully transferred or ignored, and the method is invoked only by a single
-   * thread.
+   * exception if retry the event. Upper class must ensure that the method is invoked only by a
+   * single thread.
    *
    * @throws PipeException to retry the current event
    * @param status the {@link TSStatus} to judge
    * @param exceptionMessage The exception message to throw
-   * @param recordMessage The message to record an ignored event
+   * @param recordMessage The message to record an ignored event, the caller should assure that the
+   *     same event generates always the same record message, for instance, do not put any
+   *     time-related info here
    */
   public void handleExceptionStatus(
       TSStatus status, String exceptionMessage, String recordMessage) {
+    // Reset the time counter if the event changes
+    if (!lastRecordMessage.equals(recordMessage)) {
+      firstEncounterTime = 0;
+      lastRecordMessage = recordMessage;
+    }
     switch (status.getCode()) {
         // SUCCESS_STATUS
       case 200:
@@ -139,7 +150,15 @@ public class PipeExceptionHandler {
           firstEncounterTime = 0;
           return;
         }
-        throw new PipeException(exceptionMessage);
+        // We assume one retry costs one second here, and the retry times is configured here
+        // to better assure a conflict won't cost the whole task to stop (i.e. wait for the
+        // next meta sync to re-open the task)
+        throw new PipeRuntimeConnectorRetryTimesConfigurableException(
+            exceptionMessage,
+            (int)
+                Math.max(
+                    PipeSubtask.MAX_RETRY_TIMES,
+                    Math.min(CONFLICT_RETRY_MAX_TIMES, conflictRetryMaxSeconds * 1.1)));
         // Other exceptions
       default:
         if (firstEncounterTime == 0) {
@@ -158,9 +177,5 @@ public class PipeExceptionHandler {
         }
         throw new PipeException(exceptionMessage);
     }
-  }
-
-  public void reset() {
-    firstEncounterTime = 0;
   }
 }

@@ -114,7 +114,6 @@ public abstract class IoTDBSyncSslConnector extends IoTDBConnector {
   @Override
   public void handshake() throws Exception {
     clientManager.checkClientStatusAndTryReconstructIfNecessary();
-    exceptionHandler.reset();
   }
 
   @Override

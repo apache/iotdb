@@ -72,6 +72,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.time.ZoneId;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -189,7 +191,7 @@ public class IoTDBThriftReceiverV1 extends IoTDBFileReceiverV1 {
     final Pair<InsertRowsStatement, InsertMultiTabletsStatement> statementPair =
         req.constructStatements();
     return new TPipeTransferResp(
-        RpcUtils.squashResponseStatusList(
+        getPriorStatus(
             Stream.of(
                     statementPair.getLeft().isEmpty()
                         ? RpcUtils.SUCCESS_STATUS
@@ -198,6 +200,28 @@ public class IoTDBThriftReceiverV1 extends IoTDBFileReceiverV1 {
                         ? RpcUtils.SUCCESS_STATUS
                         : executeStatementAndClassifyExceptions(statementPair.getRight()))
                 .collect(Collectors.toList())));
+  }
+
+  private TSStatus getPriorStatus(List<TSStatus> tsStatusList) {
+    List<Integer> prioritySequence =
+        Collections.unmodifiableList(
+            Arrays.asList(
+                TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+                TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode(),
+                TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode(),
+                TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode()));
+    TSStatus resultStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    for (TSStatus status : tsStatusList) {
+      if (!prioritySequence.contains(status.getCode())) {
+        return status;
+      }
+      if (prioritySequence.indexOf(status.getCode())
+          > prioritySequence.indexOf(resultStatus.getCode())) {
+        resultStatus.setCode(status.getCode());
+        resultStatus.setMessage(status.getMessage());
+      }
+    }
+    return resultStatus;
   }
 
   @Override
