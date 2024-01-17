@@ -42,14 +42,12 @@ import java.util.List;
 
 public class AlignedChunkWriterImpl implements IChunkWriter {
 
-  protected TimeChunkWriter timeChunkWriter;
-  protected List<ValueChunkWriter> valueChunkWriterList;
-  protected int valueIndex;
+  private final TimeChunkWriter timeChunkWriter;
+  private final List<ValueChunkWriter> valueChunkWriterList;
+  private int valueIndex;
 
   // Used for batch writing
-  protected long remainingPointsNumber;
-
-  protected AlignedChunkWriterImpl() {}
+  private long remainingPointsNumber;
 
   // TestOnly
   public AlignedChunkWriterImpl(VectorMeasurementSchema schema) {

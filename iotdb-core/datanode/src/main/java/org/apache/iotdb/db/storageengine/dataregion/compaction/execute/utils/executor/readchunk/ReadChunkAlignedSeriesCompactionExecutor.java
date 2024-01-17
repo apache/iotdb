@@ -103,7 +103,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     Map<String, IMeasurementSchema> measurementSchemaMap = new HashMap<>();
     for (Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> pair :
         this.readerAndChunkMetadataList) {
-      TsFileSequenceReader reader = pair.getLeft();
+      CompactionTsFileReader reader = (CompactionTsFileReader) pair.getLeft();
       List<AlignedChunkMetadata> alignedChunkMetadataList = pair.getRight();
       for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
         if (alignedChunkMetadata == null) {

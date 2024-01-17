@@ -46,23 +46,23 @@ import java.nio.channels.WritableByteChannel;
 
 public class ValueChunkWriter {
 
-  protected static final Logger logger = LoggerFactory.getLogger(ValueChunkWriter.class);
+  private static final Logger logger = LoggerFactory.getLogger(ValueChunkWriter.class);
 
-  protected final String measurementId;
+  private final String measurementId;
 
-  protected final TSEncoding encodingType;
+  private final TSEncoding encodingType;
 
-  protected final TSDataType dataType;
+  private final TSDataType dataType;
 
-  protected final CompressionType compressionType;
+  private final CompressionType compressionType;
 
   /** all pages of this chunk. */
-  protected final PublicBAOS pageBuffer;
+  private final PublicBAOS pageBuffer;
 
-  protected int numOfPages;
+  private int numOfPages;
 
   /** write data into current page */
-  protected ValuePageWriter pageWriter;
+  private ValuePageWriter pageWriter;
 
   /** page size threshold. */
   private final long pageSizeThreshold;
@@ -76,12 +76,12 @@ public class ValueChunkWriter {
   private static final int MINIMUM_RECORD_COUNT_FOR_CHECK = 1500;
 
   /** statistic of this chunk. */
-  protected Statistics<? extends Serializable> statistics;
+  private Statistics<? extends Serializable> statistics;
 
   /** first page info */
-  protected int sizeWithoutStatistic;
+  private int sizeWithoutStatistic;
 
-  protected Statistics<?> firstPageStatistics;
+  private Statistics<?> firstPageStatistics;
 
   public ValueChunkWriter(
       String measurementId,

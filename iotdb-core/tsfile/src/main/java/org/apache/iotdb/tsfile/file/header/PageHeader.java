@@ -67,17 +67,6 @@ public class PageHeader implements IMetadata {
     return new PageHeader(uncompressedSize, compressedSize, statistics);
   }
 
-  public static PageHeader deserializeFrom(
-      InputStream inputStream, Statistics<? extends Serializable> chunkStatistic)
-      throws IOException {
-    int uncompressedSize = ReadWriteForEncodingUtils.readUnsignedVarInt(inputStream);
-    if (uncompressedSize == 0) {
-      return new PageHeader(0, 0, null);
-    }
-    int compressedSize = ReadWriteForEncodingUtils.readUnsignedVarInt(inputStream);
-    return new PageHeader(uncompressedSize, compressedSize, chunkStatistic);
-  }
-
   public static PageHeader deserializeFrom(ByteBuffer buffer, TSDataType dataType) {
     int uncompressedSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
     if (uncompressedSize == 0) { // Empty Page
@@ -121,10 +110,6 @@ public class PageHeader implements IMetadata {
   @Override
   public Statistics<? extends Serializable> getStatistics() {
     return statistics;
-  }
-
-  public void setStatistics(Statistics<? extends Serializable> statistics) {
-    this.statistics = statistics;
   }
 
   @Override
