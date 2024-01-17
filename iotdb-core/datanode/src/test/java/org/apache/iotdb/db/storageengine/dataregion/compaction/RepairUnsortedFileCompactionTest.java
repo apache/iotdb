@@ -697,7 +697,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
   }
 
   @Test
-  public void testRecoverRepairScheduleSkipRepairedTimePartition() throws IOException {
+  public void testRecoverRepairScheduleSkipRepairedTimePartitionAndMarkFile() throws IOException {
     DataRegion mockDataRegion = Mockito.mock(DataRegion.class);
     Mockito.when(mockDataRegion.getTsFileManager()).thenReturn(tsFileManager);
     Mockito.when(mockDataRegion.getDatabaseName()).thenReturn("root.testsg");
@@ -750,14 +750,17 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
     Files.createFile(logFile.toPath());
     try (RepairLogger logger = new RepairLogger(logFile)) {
       RepairTimePartition timePartition = new RepairTimePartition(mockDataRegion, 0);
+      // record seqResource3 as cannot recover
       logger.recordRepairedTimePartition(timePartition);
     }
+    // reset the repair status
     seqResource3.setTsFileRepairStatus(TsFileRepairStatus.NORMAL);
 
     UnsortedFileRepairTaskScheduler scheduler =
         new UnsortedFileRepairTaskScheduler(Collections.singletonList(mockDataRegion), logFile);
     scheduler.run();
     Assert.assertEquals(3, tsFileManager.getTsFileList(true).size());
+    // check whether the repair status is marked correctly
     Assert.assertEquals(TsFileRepairStatus.NEED_TO_REPAIR, seqResource3.getTsFileRepairStatus());
     Files.deleteIfExists(logFile.toPath());
   }
