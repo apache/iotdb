@@ -192,7 +192,7 @@ public class ConfigNodeConfig {
   private String leaderDistributionPolicy = ILeaderBalancer.MIN_COST_FLOW_POLICY;
 
   /** Whether to enable auto leader balance for Ratis consensus protocol. */
-  private boolean enableAutoLeaderBalanceForRatisConsensus = false;
+  private boolean enableAutoLeaderBalanceForRatisConsensus = true;
 
   /** Whether to enable auto leader balance for IoTConsensus protocol. */
   private boolean enableAutoLeaderBalanceForIoTConsensus = true;
