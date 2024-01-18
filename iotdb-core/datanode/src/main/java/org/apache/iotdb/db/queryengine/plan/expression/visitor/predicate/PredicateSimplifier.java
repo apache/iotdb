@@ -187,37 +187,24 @@ public class PredicateSimplifier extends ExpressionAnalyzeVisitor<Expression, Vo
     boolean secondIsConstant = simplifiedSecondExpression.isConstantOperand();
     boolean thirdIsConstant = simplifiedThirdExpression.isConstantOperand();
     boolean isNotBetween = betweenExpression.isNotBetween();
-    if (firstIsConstant && secondIsConstant) {
-      if (!isNotBetween
-          && lessThan(
-              (ConstantOperand) simplifiedFirstExpression,
-              (ConstantOperand) simplifiedSecondExpression)) {
-        // 1 between 2 and time => false
-        return ConstantOperand.FALSE;
-      }
-      if (isNotBetween
-          && lessEqual(
-              (ConstantOperand) simplifiedSecondExpression,
-              (ConstantOperand) simplifiedFirstExpression)) {
-        // 1 not between 0 and time => false
-        // 1 not between 1 and time => false
-        return ConstantOperand.FALSE;
-      }
-    }
-    if (firstIsConstant && thirdIsConstant) {
-      if (!isNotBetween
-          && lessThan(
-              (ConstantOperand) simplifiedThirdExpression,
-              (ConstantOperand) simplifiedFirstExpression)) {
-        // 1 between time and 0 => false
-        return ConstantOperand.FALSE;
-      }
-      if (isNotBetween
-          && lessEqual(
-              (ConstantOperand) simplifiedFirstExpression,
-              (ConstantOperand) simplifiedThirdExpression)) {
-        // 1 not between time and 2 => false
-        // 1 not between time and 1 => false
+
+    if ((firstIsConstant
+            && secondIsConstant
+            && lessThan(
+                (ConstantOperand) simplifiedFirstExpression,
+                (ConstantOperand) simplifiedSecondExpression))
+        || (firstIsConstant
+            && thirdIsConstant
+            && lessThan(
+                (ConstantOperand) simplifiedThirdExpression,
+                (ConstantOperand) simplifiedFirstExpression))) {
+      if (isNotBetween) {
+        // 1 NOT BETWEEN time AND 0 => TRUE
+        // 1 NOT BETWEEN 2 AND time => TRUE
+        return ConstantOperand.TRUE;
+      } else {
+        // 1 BETWEEN time AND 0 => FALSE
+        // 1 BETWEEN 2 AND time => FALSE
         return ConstantOperand.FALSE;
       }
     }
