@@ -804,4 +804,24 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
     Assert.assertEquals(2, timePartition.getSeqFileSnapshot().size());
     Assert.assertEquals(2, timePartition.getUnSeqFileSnapshot().size());
   }
+
+  @Test
+  public void testEstimateRepairCompactionMemory() throws IOException {
+    TsFileResource resource = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s1",
+          new TimeRange[][] {new TimeRange[] {new TimeRange(10, 20), new TimeRange(5, 30)}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    RepairUnsortedFileCompactionTask task =
+        new RepairUnsortedFileCompactionTask(0, tsFileManager, resource, true, true, 0);
+    Assert.assertTrue(task.getEstimatedMemoryCost() > 0);
+    task = new RepairUnsortedFileCompactionTask(0, tsFileManager, resource, true, false, 0);
+    Assert.assertEquals(0, task.getEstimatedMemoryCost());
+  }
 }
