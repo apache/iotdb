@@ -113,7 +113,6 @@ public class RepairLogger implements Closeable {
     String endTimePartitionLog = String.format("%s\n", repairTimePartitionEndLogPrefix);
     logStream.write(endTimePartitionLog.getBytes());
     logStream.flush();
-    logStream.getFD().sync();
   }
 
   public void recordOneFile(TsFileResource resource) throws IOException {
@@ -132,6 +131,7 @@ public class RepairLogger implements Closeable {
 
   @Override
   public void close() throws IOException {
+    logStream.getFD().sync();
     logStream.close();
   }
 }

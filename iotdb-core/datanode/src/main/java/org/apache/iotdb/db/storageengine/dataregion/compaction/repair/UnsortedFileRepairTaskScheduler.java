@@ -122,13 +122,13 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
   }
 
   private void recover(File logFile) throws IOException {
-    RepairTaskRecoveryPerformer recoveryPerformer = new RepairTaskRecoveryPerformer(logFile);
+    RepairTaskRecoverLogParser recoverLogParser = new RepairTaskRecoverLogParser(logFile);
     LOGGER.info(
         "[RepairScheduler] recover unfinished repair schedule task from log file: {}",
-        recoveryPerformer.getRepairLogFilePath());
-    recoveryPerformer.perform();
+        recoverLogParser.getRepairLogFilePath());
+    recoverLogParser.parse();
     Map<RepairTimePartition, Set<String>> repairedTimePartitionWithCannotRepairFiles =
-        recoveryPerformer.getRepairedTimePartitionsWithCannotRepairFiles();
+        recoverLogParser.getRepairedTimePartitionsWithCannotRepairFiles();
     for (RepairTimePartition timePartition : allTimePartitionFiles) {
       Set<String> cannotRepairFiles =
           repairedTimePartitionWithCannotRepairFiles.remove(timePartition);

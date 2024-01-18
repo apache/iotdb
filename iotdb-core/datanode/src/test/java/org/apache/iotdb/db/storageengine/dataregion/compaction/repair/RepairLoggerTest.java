@@ -58,10 +58,10 @@ public class RepairLoggerTest extends AbstractCompactionTest {
     try (RepairLogger logger = new RepairLogger(logFile)) {
       logger.recordRepairedTimePartition(mockRepairTimePartition);
     }
-    RepairTaskRecoveryPerformer performer = new RepairTaskRecoveryPerformer(logFile);
-    performer.perform();
+    RepairTaskRecoverLogParser logParser = new RepairTaskRecoverLogParser(logFile);
+    logParser.parse();
     Map<RepairTimePartition, Set<String>> repairedTimePartitionsWithCannotRepairFiles =
-        performer.getRepairedTimePartitionsWithCannotRepairFiles();
+        logParser.getRepairedTimePartitionsWithCannotRepairFiles();
     Assert.assertEquals(1, repairedTimePartitionsWithCannotRepairFiles.size());
     for (Map.Entry<RepairTimePartition, Set<String>> entry :
         repairedTimePartitionsWithCannotRepairFiles.entrySet()) {
@@ -95,10 +95,10 @@ public class RepairLoggerTest extends AbstractCompactionTest {
       logger.markStartOfRepairedTimePartition(mockRepairTimePartition);
       logger.recordCannotRepairFiles(mockRepairTimePartition);
     }
-    RepairTaskRecoveryPerformer performer = new RepairTaskRecoveryPerformer(logFile);
-    performer.perform();
+    RepairTaskRecoverLogParser logParser = new RepairTaskRecoverLogParser(logFile);
+    logParser.parse();
     Map<RepairTimePartition, Set<String>> repairedTimePartitionsWithCannotRepairFiles =
-        performer.getRepairedTimePartitionsWithCannotRepairFiles();
+        logParser.getRepairedTimePartitionsWithCannotRepairFiles();
     Assert.assertEquals(1, repairedTimePartitionsWithCannotRepairFiles.size());
     for (Map.Entry<RepairTimePartition, Set<String>> entry :
         repairedTimePartitionsWithCannotRepairFiles.entrySet()) {

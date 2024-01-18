@@ -31,20 +31,20 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-public class RepairTaskRecoveryPerformer {
+public class RepairTaskRecoverLogParser {
 
   private final File logFile;
-  private static final Logger LOGGER = LoggerFactory.getLogger(RepairTaskRecoveryPerformer.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(RepairTaskRecoverLogParser.class);
   private final Map<RepairTimePartition, Set<String>> repairedTimePartitionsWithCannotRepairFiles =
       new HashMap<>();
   private RepairTimePartition currentTimePartition;
   private Set<String> currentTimePartitionCannotRepairFiles;
 
-  public RepairTaskRecoveryPerformer(File logFile) {
+  public RepairTaskRecoverLogParser(File logFile) {
     this.logFile = logFile;
   }
 
-  void perform() throws IOException {
+  void parse() throws IOException {
     parseLogFile();
   }
 
