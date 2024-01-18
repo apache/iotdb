@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.pipe.connector;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorRetryTimesConfigurableException;
 import org.apache.iotdb.commons.pipe.task.subtask.PipeSubtask;
+import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
@@ -56,10 +57,10 @@ public class PipeExceptionHandler {
   }
 
   /**
-   * Handle {@link TSStatus} returned by receiver. Do nothing if ignore the event, and throw
-   * exception if retry the event. This method does not implement the retry logic and caller should
-   * retry later by invoking {@link PipeExceptionHandler#handleExceptionStatus(TSStatus, String,
-   * String)}. It is also thread-safe since it only reads from class variables.
+   * Handle {@link TSStatus} returned by receiver. Do nothing if ignore the {@link Event}, and throw
+   * exception if retry the {@link Event}. This method does not implement the retry logic and caller
+   * should retry later by invoking {@link PipeExceptionHandler#handleExceptionStatus(TSStatus,
+   * String, String)}. It is also thread-safe since it only reads from class variables.
    *
    * @throws PipeException to retry the current event
    * @param status the {@link TSStatus} to judge
@@ -99,16 +100,16 @@ public class PipeExceptionHandler {
   }
 
   /**
-   * Handle {@link TSStatus} returned by receiver. Do nothing if ignore the event, and throw
-   * exception if retry the event. Upper class must ensure that the method is invoked only by a
-   * single thread.
+   * Handle {@link TSStatus} returned by receiver. Do nothing if ignore the {@link Event}, and throw
+   * exception if retry the {@link Event}. Upper class must ensure that the method is invoked only
+   * by a single thread.
    *
    * @throws PipeException to retry the current event
    * @param status the {@link TSStatus} to judge
    * @param exceptionMessage The exception message to throw
-   * @param recordMessage The message to record an ignored event, the caller should assure that the
-   *     same event generates always the same record message, for instance, do not put any
-   *     time-related info here
+   * @param recordMessage The message to record an ignored {@link Event}, the caller should assure
+   *     that the same {@link Event} generates always the same record message, for instance, do not
+   *     put any time-related info here
    */
   public void handleExceptionStatus(
       TSStatus status, String exceptionMessage, String recordMessage) {
