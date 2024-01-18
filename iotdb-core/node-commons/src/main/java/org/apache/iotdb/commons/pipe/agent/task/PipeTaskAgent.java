@@ -404,7 +404,7 @@ public abstract class PipeTaskAgent {
    * Create a new pipe. If the pipe already exists, do nothing and return {@code false}. Otherwise,
    * create the pipe and return {@code true}.
    *
-   * @param pipeMetaFromCoordinator pipe meta from coordinator
+   * @param pipeMetaFromCoordinator {@link PipeMeta} from coordinator
    * @return {@code true} if the pipe is created successfully and should be started, {@code false}
    *     if the pipe already exists or is created but should not be started
    * @throws IllegalStateException if the status is illegal

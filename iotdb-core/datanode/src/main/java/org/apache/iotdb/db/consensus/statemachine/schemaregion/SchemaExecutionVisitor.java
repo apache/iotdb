@@ -75,7 +75,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/** Schema write PlanNode visitor */
+/** Schema write {@link PlanNode} visitor */
 public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion> {
   private static final Logger logger = LoggerFactory.getLogger(SchemaExecutionVisitor.class);
 
