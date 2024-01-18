@@ -124,8 +124,10 @@ public abstract class PipeDataNodeSubtask extends PipeSubtask {
   private void onNonEnrichedEventFailure(@NotNull Throwable throwable) {
     if (retryCount.get() == 0) {
       LOGGER.warn(
-          "Failed to execute subtask {}({}), because of {}. Will retry forever.",
+          "Failed to execute subtask {} (creation time: {}, simple class: {}), "
+              + "because of {}. Will retry forever.",
           taskID,
+          creationTime,
           this.getClass().getSimpleName(),
           throwable.getMessage(),
           throwable);
@@ -133,16 +135,18 @@ public abstract class PipeDataNodeSubtask extends PipeSubtask {
 
     retryCount.incrementAndGet();
     LOGGER.warn(
-        "Retry executing subtask {}({}), retry count {}",
+        "Retry executing subtask {} (creation time: {}, simple class: {}), retry count {}",
         taskID,
+        creationTime,
         this.getClass().getSimpleName(),
         retryCount.get());
     try {
       Thread.sleep(Math.min(1000L * retryCount.get(), 10000));
     } catch (InterruptedException e) {
       LOGGER.warn(
-          "Interrupted when retrying to execute subtask {}({})",
+          "Interrupted when retrying to execute subtask {} (creation time: {}, simple class: {})",
           taskID,
+          creationTime,
           this.getClass().getSimpleName());
       Thread.currentThread().interrupt();
     }
