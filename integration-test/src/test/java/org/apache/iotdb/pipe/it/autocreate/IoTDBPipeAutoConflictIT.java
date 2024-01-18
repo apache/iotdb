@@ -44,7 +44,7 @@ import java.util.Set;
 public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
   @Test
   public void testDoubleLivingAutoConflict() throws Exception {
-    // Double living is two clusters with pipes connecting each other.
+    // Double living is two clusters each with a pipe connecting to the other.
     DataNodeWrapper senderDataNode = senderEnv.getDataNodeWrapper(0);
     DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
@@ -71,13 +71,13 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
 
       extractorAttributes.put("source.inclusion", "all");
       extractorAttributes.put("source.inclusion.exclusion", "");
-      // add this property to avoid to make self cycle.
+      // add this property to avoid making self cycle.
       extractorAttributes.put("source.forwarding-pipe-requests", "false");
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      connectorAttributes.put("sink", "iotdb-thrift-sink");
+      connectorAttributes.put("sink.batch.enable", "false");
+      connectorAttributes.put("sink.ip", receiverIp);
+      connectorAttributes.put("sink.port", Integer.toString(receiverPort));
 
       TSStatus status =
           client.createPipe(
@@ -187,7 +187,6 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
 
   @Test
   public void testDoubleLivingAutoConflictTemplate() throws Exception {
-    // Double living is two clusters with pipes connecting each other.
     DataNodeWrapper senderDataNode = senderEnv.getDataNodeWrapper(0);
     DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
@@ -204,7 +203,6 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
 
       extractorAttributes.put("source.inclusion", "all");
       extractorAttributes.put("source.inclusion.exclusion", "");
-      // add this property to avoid to make self cycle.
       extractorAttributes.put("source.forwarding-pipe-requests", "false");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
@@ -231,7 +229,6 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
 
       extractorAttributes.put("source.inclusion", "all");
       extractorAttributes.put("source.inclusion.exclusion", "");
-      // add this property to avoid to make self cycle.
       extractorAttributes.put("source.forwarding-pipe-requests", "false");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");

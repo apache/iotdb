@@ -695,7 +695,7 @@ public abstract class AbstractEnv implements BaseEnv {
     }
     if (lastErrorNode != null) {
       throw new IOException(
-          "Failed to get the index of ConfigNode-Leader. Last error configNode: "
+          "Failed to get the index of SchemaRegion-Leader from configNode. Last error configNode: "
               + lastErrorNode.getIpAndPortString(),
           lastException);
     } else {

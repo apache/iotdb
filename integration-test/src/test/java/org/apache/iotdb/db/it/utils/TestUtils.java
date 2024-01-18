@@ -674,7 +674,7 @@ public class TestUtils {
         env.startDataNode(i);
       }
       ((AbstractEnv) env).testWorkingNoUnknown();
-    } catch (Exception | Error e) {
+    } catch (Throwable e) {
       Assume.assumeNoException(e);
     }
   }
@@ -723,7 +723,7 @@ public class TestUtils {
       long consistentSeconds) {
     try (Connection connection = env.getConnection();
         Statement statement = connection.createStatement()) {
-      // Keep retrying if there are execution failure
+      // Keep retrying if there are execution failures
       await()
           .atMost(consistentSeconds, TimeUnit.SECONDS)
           .failFast(

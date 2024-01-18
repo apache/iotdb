@@ -543,10 +543,10 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
     SchemaNodeListeningQueue queue = SchemaNodeListeningQueue.getInstance(id);
     try {
       if (node.isOpen()) {
-        logger.info("Opened listening queue on schema region {}", id);
+        logger.info("Opened pipe listening queue on schema region {}", id);
         queue.open();
       } else {
-        logger.info("Closed listening queue on schema region {}", id);
+        logger.info("Closed pipe listening queue on schema region {}", id);
         queue.close();
       }
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());

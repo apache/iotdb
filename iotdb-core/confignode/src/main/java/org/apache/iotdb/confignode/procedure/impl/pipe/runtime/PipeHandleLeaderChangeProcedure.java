@@ -59,7 +59,6 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
       Map<TConsensusGroupId, Pair<Integer, Integer>> dataRegionGroupToOldAndNewLeaderPairMap) {
     super();
     this.dataRegionGroupToOldAndNewLeaderPairMap = dataRegionGroupToOldAndNewLeaderPairMap;
-    System.out.println(this);
   }
 
   @Override
