@@ -35,6 +35,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFi
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -62,7 +63,8 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
 
   @Override
   public void perform()
-      throws IOException, MetadataException, InterruptedException, StorageEngineException {
+      throws IOException, MetadataException, InterruptedException, StorageEngineException,
+          PageException {
     // size for file writer is 5% of per compaction task memory budget
     long sizeForFileWriter =
         (long)
@@ -121,7 +123,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
       TsFileResource targetResource,
       CompactionTsFileWriter writer,
       MultiTsFileDeviceIterator deviceIterator)
-      throws IOException, InterruptedException, IllegalPathException {
+      throws IOException, InterruptedException, IllegalPathException, PageException {
     checkThreadInterrupted();
     LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList =
         deviceIterator.getReaderAndChunkMetadataForCurrentAlignedSeries();
