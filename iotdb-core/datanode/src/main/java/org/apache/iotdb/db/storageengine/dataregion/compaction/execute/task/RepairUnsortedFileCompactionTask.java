@@ -59,7 +59,7 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
         sequence,
         new RepairUnsortedFileCompactionPerformer(true),
         serialId,
-        CompactionTaskPriorityType.NORMAL);
+        CompactionTaskPriorityType.REPAIR_DATA);
     this.sourceFile = sourceFile;
     this.innerSpaceEstimator = new RepairUnsortedFileCompactionEstimator();
     this.rewriteFile = false;
@@ -79,7 +79,7 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
         sequence,
         new RepairUnsortedFileCompactionPerformer(rewriteFile),
         serialId,
-        CompactionTaskPriorityType.NORMAL);
+        CompactionTaskPriorityType.REPAIR_DATA);
     this.sourceFile = sourceFile;
     if (rewriteFile) {
       this.innerSpaceEstimator = new RepairUnsortedFileCompactionEstimator();
@@ -101,7 +101,7 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
         sequence,
         new RepairUnsortedFileCompactionPerformer(true),
         serialId,
-        CompactionTaskPriorityType.NORMAL);
+        CompactionTaskPriorityType.REPAIR_DATA);
     this.sourceFile = sourceFile;
     this.innerSpaceEstimator = new RepairUnsortedFileCompactionEstimator();
     this.latch = latch;
@@ -123,7 +123,7 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
         sequence,
         new RepairUnsortedFileCompactionPerformer(rewriteFile),
         serialId,
-        CompactionTaskPriorityType.NORMAL);
+        CompactionTaskPriorityType.REPAIR_DATA);
     this.sourceFile = sourceFile;
     if (rewriteFile) {
       this.innerSpaceEstimator = new RepairUnsortedFileCompactionEstimator();
