@@ -221,13 +221,6 @@ public class PredicateSimplifier extends ExpressionAnalyzeVisitor<Expression, Vo
     return value1.compareTo(value2) < 0;
   }
 
-  private <T extends Comparable<T>> boolean lessEqual(
-      ConstantOperand operand1, ConstantOperand operand2) {
-    T value1 = getValue(operand1.getValueString(), operand1.getDataType());
-    T value2 = getValue(operand2.getValueString(), operand2.getDataType());
-    return value1.compareTo(value2) <= 0;
-  }
-
   @Override
   public Expression visitFunctionExpression(FunctionExpression functionExpression, Void context) {
     List<Expression> simplifiedInputExpressions = new ArrayList<>();
