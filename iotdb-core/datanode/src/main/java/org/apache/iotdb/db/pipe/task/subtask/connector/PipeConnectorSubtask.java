@@ -200,7 +200,7 @@ public class PipeConnectorSubtask extends PipeDataNodeSubtask {
     isSubmitted = false;
 
     if (isClosed.get()) {
-      LOGGER.info("onFailure in pipe transfer, ignored because pipe is dropped.");
+      LOGGER.info("onFailure in pipe transfer, ignored because pipe is dropped.", throwable);
       releaseLastEvent(false);
       return;
     }
