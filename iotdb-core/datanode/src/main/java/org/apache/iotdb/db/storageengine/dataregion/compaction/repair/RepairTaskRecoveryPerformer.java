@@ -62,18 +62,15 @@ public class RepairTaskRecoveryPerformer {
           throw new IllegalArgumentException("Unknown format of repair log");
         }
       }
+      if (currentTimePartition != null) {
+        handleIncompleteRepairedTimePartition();
+      }
     }
   }
 
   private void parseStartTimePartitionLog(String line) {
     if (currentTimePartition != null) {
-      LOGGER.error(
-          "[{}][{}]Repair data log is not complete, time partition is {}.",
-          currentTimePartition.getDatabaseName(),
-          currentTimePartition.getDataRegionId(),
-          currentTimePartition.getTimePartitionId());
-      repairedTimePartitionsWithCannotRepairFiles.put(
-          currentTimePartition, currentTimePartitionCannotRepairFiles);
+      handleIncompleteRepairedTimePartition();
     }
     String[] values = line.split(" ");
     if (values.length != 4) {
@@ -96,6 +93,16 @@ public class RepairTaskRecoveryPerformer {
         currentTimePartition, currentTimePartitionCannotRepairFiles);
     currentTimePartition = null;
     currentTimePartitionCannotRepairFiles = null;
+  }
+
+  private void handleIncompleteRepairedTimePartition() {
+    LOGGER.error(
+        "[{}][{}]Repair data log is not complete, time partition is {}.",
+        currentTimePartition.getDatabaseName(),
+        currentTimePartition.getDataRegionId(),
+        currentTimePartition.getTimePartitionId());
+    repairedTimePartitionsWithCannotRepairFiles.put(
+        currentTimePartition, currentTimePartitionCannotRepairFiles);
   }
 
   Map<RepairTimePartition, Set<String>> getRepairedTimePartitionsWithCannotRepairFiles() {

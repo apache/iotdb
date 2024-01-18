@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.repair;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -33,7 +32,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class RepairLogger implements Closeable {
 
@@ -86,14 +84,10 @@ public class RepairLogger implements Closeable {
     markEndOfRepairedTimePartition(timePartition);
   }
 
-  private void recordCannotRepairFiles(RepairTimePartition timePartition) throws IOException {
-    TsFileManager tsFileManager = timePartition.getTsFileManager();
-    List<TsFileResource> seqResources =
-        tsFileManager.getTsFileListSnapshot(timePartition.getTimePartitionId(), true);
-    List<TsFileResource> unseqResources =
-        tsFileManager.getTsFileListSnapshot(timePartition.getTimePartitionId(), false);
+  public void recordCannotRepairFiles(RepairTimePartition timePartition) throws IOException {
+    List<TsFileResource> resources = timePartition.getAllFiles();
     List<TsFileResource> cannotRepairFiles =
-        Stream.concat(seqResources.stream(), unseqResources.stream())
+        resources.stream()
             .filter(
                 resource -> resource.getTsFileRepairStatus() == TsFileRepairStatus.CAN_NOT_REPAIR)
             .collect(Collectors.toList());
@@ -102,7 +96,7 @@ public class RepairLogger implements Closeable {
     }
   }
 
-  private void markStartOfRepairedTimePartition(RepairTimePartition timePartition)
+  public void markStartOfRepairedTimePartition(RepairTimePartition timePartition)
       throws IOException {
     String startTimePartitionLog =
         String.format(
@@ -114,7 +108,7 @@ public class RepairLogger implements Closeable {
     logStream.write(startTimePartitionLog.getBytes());
   }
 
-  private void markEndOfRepairedTimePartition(RepairTimePartition timePartition)
+  public void markEndOfRepairedTimePartition(RepairTimePartition timePartition)
       throws IOException {
     String endTimePartitionLog = String.format("%s\n", repairTimePartitionEndLogPrefix);
     logStream.write(endTimePartitionLog.getBytes());
@@ -122,7 +116,7 @@ public class RepairLogger implements Closeable {
     logStream.getFD().sync();
   }
 
-  private void recordOneFile(TsFileResource resource) throws IOException {
+  public void recordOneFile(TsFileResource resource) throws IOException {
     String fileLog =
         String.format("%s %s\n", cannotRepairFileLogPrefix, resource.getTsFile().getName());
     logStream.write(fileLog.getBytes());

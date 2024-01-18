@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.compaction;
+package org.apache.iotdb.db.storageengine.dataregion.compaction.repair;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -25,14 +25,12 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.RepairUnsortedFileCompactionTask;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairLogger;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairTimePartition;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.UnsortedFileRepairTaskScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
@@ -584,7 +582,8 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
 
     long currentTime = System.currentTimeMillis();
     Path tempDir = Files.createTempDirectory("");
-    File logFile = new File(tempDir.toString() + File.separator + currentTime + RepairLogger.repairLogSuffix);
+    File logFile =
+        new File(tempDir.toString() + File.separator + currentTime + RepairLogger.repairLogSuffix);
 
     Files.createFile(logFile.toPath());
     UnsortedFileRepairTaskScheduler scheduler =
@@ -632,7 +631,8 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
 
     long currentTime = System.currentTimeMillis();
     Path tempDir = Files.createTempDirectory("");
-    File logFile = new File(tempDir.toString() + File.separator + currentTime + RepairLogger.repairLogSuffix);
+    File logFile =
+        new File(tempDir.toString() + File.separator + currentTime + RepairLogger.repairLogSuffix);
 
     Files.createFile(logFile.toPath());
     UnsortedFileRepairTaskScheduler scheduler =
@@ -692,7 +692,8 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
 
     long currentTime = System.currentTimeMillis();
     Path tempDir = Files.createTempDirectory("");
-    File logFile = new File(tempDir.toString() + File.separator + currentTime + RepairLogger.repairLogSuffix);
+    File logFile =
+        new File(tempDir.toString() + File.separator + currentTime + RepairLogger.repairLogSuffix);
 
     Files.createFile(logFile.toPath());
     UnsortedFileRepairTaskScheduler scheduler =
@@ -753,7 +754,8 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
 
     long currentTime = System.currentTimeMillis();
     Path tempDir = Files.createTempDirectory("");
-    File logFile = new File(tempDir.toString() + File.separator + currentTime + RepairLogger.repairLogSuffix);
+    File logFile =
+        new File(tempDir.toString() + File.separator + currentTime + RepairLogger.repairLogSuffix);
     Files.createFile(logFile.toPath());
     try (RepairLogger logger = new RepairLogger(logFile)) {
       RepairTimePartition timePartition =
