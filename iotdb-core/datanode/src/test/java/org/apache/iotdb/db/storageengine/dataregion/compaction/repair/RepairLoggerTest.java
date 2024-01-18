@@ -65,9 +65,12 @@ public class RepairLoggerTest extends AbstractCompactionTest {
     Assert.assertEquals(1, repairedTimePartitionsWithCannotRepairFiles.size());
     for (Map.Entry<RepairTimePartition, Set<String>> entry :
         repairedTimePartitionsWithCannotRepairFiles.entrySet()) {
-      Assert.assertEquals(mockRepairTimePartition.getDatabaseName(), entry.getKey().getDatabaseName());
-      Assert.assertEquals(mockRepairTimePartition.getDataRegionId(), entry.getKey().getDataRegionId());
-      Assert.assertEquals(mockRepairTimePartition.getTimePartitionId(), entry.getKey().getTimePartitionId());
+      Assert.assertEquals(
+          mockRepairTimePartition.getDatabaseName(), entry.getKey().getDatabaseName());
+      Assert.assertEquals(
+          mockRepairTimePartition.getDataRegionId(), entry.getKey().getDataRegionId());
+      Assert.assertEquals(
+          mockRepairTimePartition.getTimePartitionId(), entry.getKey().getTimePartitionId());
       Assert.assertTrue(entry.getValue().contains(resource2.getTsFile().getName()));
       break;
     }
@@ -102,9 +105,12 @@ public class RepairLoggerTest extends AbstractCompactionTest {
     Assert.assertEquals(1, repairedTimePartitionsWithCannotRepairFiles.size());
     for (Map.Entry<RepairTimePartition, Set<String>> entry :
         repairedTimePartitionsWithCannotRepairFiles.entrySet()) {
-      Assert.assertEquals(mockRepairTimePartition.getDatabaseName(), entry.getKey().getDatabaseName());
-      Assert.assertEquals(mockRepairTimePartition.getDataRegionId(), entry.getKey().getDataRegionId());
-      Assert.assertEquals(mockRepairTimePartition.getTimePartitionId(), entry.getKey().getTimePartitionId());
+      Assert.assertEquals(
+          mockRepairTimePartition.getDatabaseName(), entry.getKey().getDatabaseName());
+      Assert.assertEquals(
+          mockRepairTimePartition.getDataRegionId(), entry.getKey().getDataRegionId());
+      Assert.assertEquals(
+          mockRepairTimePartition.getTimePartitionId(), entry.getKey().getTimePartitionId());
       Assert.assertTrue(entry.getValue().contains(resource2.getTsFile().getName()));
       break;
     }

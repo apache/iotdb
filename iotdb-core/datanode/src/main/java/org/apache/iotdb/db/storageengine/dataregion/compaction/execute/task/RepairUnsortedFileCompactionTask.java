@@ -191,6 +191,16 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
   }
 
   @Override
+  protected boolean doCompaction() {
+    boolean isSuccess = super.doCompaction();
+    if (!isSuccess) {
+      LOGGER.info("Failed to repair file {}", sourceFile.getTsFile().getAbsolutePath());
+      sourceFile.setTsFileRepairStatus(TsFileRepairStatus.CAN_NOT_REPAIR);
+    }
+    return isSuccess;
+  }
+
+  @Override
   public long getEstimatedMemoryCost() {
     if (innerSpaceEstimator != null && memoryCost == 0L) {
       try {

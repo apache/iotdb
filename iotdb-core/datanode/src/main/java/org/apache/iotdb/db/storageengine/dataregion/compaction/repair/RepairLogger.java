@@ -108,8 +108,7 @@ public class RepairLogger implements Closeable {
     logStream.write(startTimePartitionLog.getBytes());
   }
 
-  public void markEndOfRepairedTimePartition(RepairTimePartition timePartition)
-      throws IOException {
+  public void markEndOfRepairedTimePartition(RepairTimePartition timePartition) throws IOException {
     String endTimePartitionLog = String.format("%s\n", repairTimePartitionEndLogPrefix);
     logStream.write(endTimePartitionLog.getBytes());
     logStream.flush();
