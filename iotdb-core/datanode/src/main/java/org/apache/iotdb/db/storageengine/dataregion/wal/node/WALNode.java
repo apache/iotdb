@@ -236,7 +236,6 @@ public class WALNode implements IWALNode {
 
     private List<MemTableInfo> activeOrPinnedMemTables;
 
-    private Map<Long, Set<Long>> memTableIdsOfWalMap = new ConcurrentHashMap<>();
     private static final int MAX_RECURSION_TIME = 5;
 
     // the effective information ratio
@@ -269,8 +268,6 @@ public class WALNode implements IWALNode {
       this.sortedWalFilesExcludingLast =
           Arrays.copyOfRange(allWalFilesOfOneNode, 0, allWalFilesOfOneNode.length - 1);
       this.activeOrPinnedMemTables = checkpointManager.activeOrPinnedMemTables();
-      this.memTableIdsOfWalMap = buffer.getMemTableIdsOfWal();
-
       this.pinnedMemTableIds = initPinnedMemTableIds();
       this.fileIndexAfterFilterSafelyDeleteIndex = initFileIndexAfterFilterSafelyDeleteIndex();
       this.successfullyDeleted = new ArrayList<>();
@@ -595,7 +592,7 @@ public class WALNode implements IWALNode {
     }
 
     public boolean isContainsActiveOrPinnedMemTable(Long versionId) {
-      Set<Long> memTableIdsOfCurrentWal = memTableIdsOfWalMap.get(versionId);
+      Set<Long> memTableIdsOfCurrentWal = buffer.getMemTableIds(versionId);
       // If this set is empty, there is a case where WalEntry has been logged but not persisted,
       // because WalEntry is persisted asynchronously. In this case, the file cannot be deleted
       // directly, so it is considered active

@@ -41,11 +41,15 @@ import org.apache.iotdb.db.utils.MmapUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -194,8 +198,6 @@ public class WALBuffer extends AbstractWALBuffer {
     final List<Checkpoint> checkpoints = new ArrayList<>();
     final List<WALFlushListener> fsyncListeners = new ArrayList<>();
     WALFlushListener rollWALFileWriterListener = null;
-
-    final Set<Long> memTableIds = new HashSet<>();
   }
 
   /** This task serializes WALEntry to workingBuffer and will call fsync at last. */
@@ -314,10 +316,9 @@ public class WALBuffer extends AbstractWALBuffer {
       }
       // update related info
       totalSize += size;
-      info.metaData.add(size, searchIndex);
+      info.metaData.add(size, searchIndex, walEntry.getMemTableId());
       walEntry.getWalFlushListener().getWalEntryHandler().setSize(size);
       info.fsyncListeners.add(walEntry.getWalFlushListener());
-      info.memTableIds.add(walEntry.getMemTableId());
     }
 
     /**
@@ -519,11 +520,9 @@ public class WALBuffer extends AbstractWALBuffer {
       } finally {
         switchSyncingBufferToIdle();
       }
-      long walFileVersion =
-          WALFileUtils.parseVersionId(currentWALFileWriter.getLogFile().getName());
       memTableIdsOfWal
-          .computeIfAbsent(walFileVersion, memTableIds -> new HashSet<>())
-          .addAll(info.memTableIds);
+          .computeIfAbsent(currentWALFileVersion, memTableIds -> new HashSet<>())
+          .addAll(info.metaData.getMemTablesId());
 
       boolean forceSuccess = false;
       // try to roll log writer
@@ -699,11 +698,31 @@ public class WALBuffer extends AbstractWALBuffer {
     return checkpointManager;
   }
 
-  public Map<Long, Set<Long>> getMemTableIdsOfWal() {
-    return memTableIdsOfWal;
-  }
-
   public void removeMemTableIdsOfWal(Long walVersionId) {
     this.memTableIdsOfWal.remove(walVersionId);
+  }
+
+  public Set<Long> getMemTableIds(long fileVersionId) {
+    if (fileVersionId >= currentWALFileVersion) {
+      return Collections.emptySet();
+    }
+    return memTableIdsOfWal.computeIfAbsent(
+        fileVersionId,
+        id -> {
+          try {
+            File file = WALFileUtils.getWALFile(new File(logDirectory), id);
+            return WALMetaData.readFromWALFile(
+                    file, FileChannel.open(file.toPath(), StandardOpenOption.READ))
+                .getMemTablesId();
+          } catch (IOException e) {
+            logger.error("Fail to read memTable ids from the wal file {}.", id);
+            return new HashSet<>();
+          }
+        });
+  }
+
+  @TestOnly
+  public Map<Long, Set<Long>> getMemTableIdsOfWal() {
+    return memTableIdsOfWal;
   }
 }
