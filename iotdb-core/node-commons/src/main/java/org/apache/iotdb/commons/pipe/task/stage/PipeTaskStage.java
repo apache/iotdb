@@ -66,7 +66,7 @@ public abstract class PipeTaskStage {
   protected abstract void createSubtask() throws PipeException;
 
   /**
-   * Start a pipe task stage.
+   * Start a {@link PipeTaskStage}.
    *
    * @throws PipeException if failed to start a pipe task stage.
    */
@@ -91,7 +91,7 @@ public abstract class PipeTaskStage {
   protected abstract void startSubtask() throws PipeException;
 
   /**
-   * Stop a pipe task stage.
+   * Stop a {@link PipeTaskStage}.
    *
    * @throws PipeException if failed to stop a pipe task stage.
    */
@@ -117,7 +117,7 @@ public abstract class PipeTaskStage {
   protected abstract void stopSubtask() throws PipeException;
 
   /**
-   * Drop a pipe task stage.
+   * Drop a {@link PipeTaskStage}.
    *
    * @throws PipeException if failed to drop a pipe task stage.
    */

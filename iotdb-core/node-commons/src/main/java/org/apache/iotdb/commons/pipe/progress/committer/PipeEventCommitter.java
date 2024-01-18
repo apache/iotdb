@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.progress.committer;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.pipe.api.event.Event;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,7 +30,7 @@ import java.util.Objects;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
-/** Used to queue events for one pipe of one dataRegion to commit in order. */
+/** Used to queue {@link Event}s for one pipe of one region to commit in order. */
 public class PipeEventCommitter {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeEventCommitter.class);
