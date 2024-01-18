@@ -208,6 +208,7 @@ public class AuditLogger {
       case ALTER_LOGICAL_VIEW:
       case DELETE_LOGICAL_VIEW:
       case RENAME_LOGICAL_VIEW:
+      case REPAIR_DATA:
         return AuditLogOperation.DDL;
       case LOAD_DATA:
       case INSERT:
@@ -254,7 +255,6 @@ public class AuditLogger {
       case COUNT:
       case SHOW_TRIGGERS:
       case SHOW_PIPEPLUGINS:
-      case REPAIR_DATA:
         return AuditLogOperation.QUERY;
       default:
         logger.error("Unrecognizable operator type ({}) for audit log", type);
