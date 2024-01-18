@@ -136,6 +136,7 @@ public class SchemaUtils {
       case SqlConstant.MIN_VALUE:
       case SqlConstant.MAX_VALUE:
       case SqlConstant.MODE:
+      case SqlConstant.MAX_BY:
       default:
         return null;
     }
@@ -169,6 +170,7 @@ public class SchemaUtils {
       case VARIANCE:
       case VAR_POP:
       case VAR_SAMP:
+      case MAX_BY:
         return true;
       default:
         throw new IllegalArgumentException(
@@ -202,6 +204,8 @@ public class SchemaUtils {
         return Collections.singletonList(TAggregationType.VAR_POP);
       case VAR_SAMP:
         return Collections.singletonList(TAggregationType.VAR_SAMP);
+      case MAX_BY:
+        return Collections.singletonList(TAggregationType.MAX_BY);
       case AVG:
         return Arrays.asList(TAggregationType.COUNT, TAggregationType.SUM);
       case TIME_DURATION:

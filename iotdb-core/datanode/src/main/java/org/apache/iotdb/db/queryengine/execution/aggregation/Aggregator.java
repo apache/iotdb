@@ -68,17 +68,20 @@ public class Aggregator {
       checkArgument(
           step.isInputRaw(),
           "Step in SeriesAggregateScanOperator and RawDataAggregateOperator can only process raw input");
-      for (InputLocation[] inputLocations : inputLocationList) {
+      checkArgument(
+          inputLocationList.size() == 1,
+          "inputLocationList.size() in SeriesAggregateScanOperator and RawDataAggregateOperator can only be 1.");
+      Column[] timeAndValueColumn = new Column[1 + inputLocationList.get(0).length];
+      timeAndValueColumn[0] = tsBlock.getTimeColumn();
+      for (int i = 0; i < inputLocationList.get(0).length; i++) {
         checkArgument(
-            inputLocations[0].getTsBlockIndex() == 0,
+            inputLocationList.get(0)[i].getTsBlockIndex() == 0,
             "RawDataAggregateOperator can only process one tsBlock input.");
-        Column[] timeAndValueColumn = new Column[2];
-        timeAndValueColumn[0] = tsBlock.getTimeColumn();
-        int index = inputLocations[0].getValueColumnIndex();
+        int index = inputLocationList.get(0)[i].getValueColumnIndex();
         // for count_time, time column is also its value column
-        timeAndValueColumn[1] = index == -1 ? timeAndValueColumn[0] : tsBlock.getColumn(index);
-        accumulator.addInput(timeAndValueColumn, bitMap, lastIndex);
+        timeAndValueColumn[1 + i] = index == -1 ? timeAndValueColumn[0] : tsBlock.getColumn(index);
       }
+      accumulator.addInput(timeAndValueColumn, bitMap, lastIndex);
     } finally {
       QUERY_EXECUTION_METRICS.recordExecutionCost(
           AGGREGATION_FROM_RAW_DATA, System.nanoTime() - startTime);

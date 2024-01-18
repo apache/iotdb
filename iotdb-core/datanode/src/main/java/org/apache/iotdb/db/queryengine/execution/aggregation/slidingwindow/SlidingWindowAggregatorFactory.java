@@ -119,7 +119,7 @@ public class SlidingWindowAggregatorFactory {
 
   public static SlidingWindowAggregator createSlidingWindowAggregator(
       TAggregationType aggregationType,
-      TSDataType dataType,
+      List<TSDataType> dataTypes,
       List<Expression> inputExpressions,
       Map<String, String> inputAttributes,
       boolean ascending,
@@ -127,7 +127,7 @@ public class SlidingWindowAggregatorFactory {
       AggregationStep step) {
     Accumulator accumulator =
         AccumulatorFactory.createAccumulator(
-            aggregationType, dataType, inputExpressions, inputAttributes, ascending);
+            aggregationType, dataTypes, inputExpressions, inputAttributes, ascending);
     switch (aggregationType) {
       case SUM:
       case AVG:
@@ -142,13 +142,13 @@ public class SlidingWindowAggregatorFactory {
         return new SmoothQueueSlidingWindowAggregator(accumulator, inputLocationList, step);
       case MAX_VALUE:
         return new MonotonicQueueSlidingWindowAggregator(
-            accumulator, inputLocationList, step, maxComparators.get(dataType));
+            accumulator, inputLocationList, step, maxComparators.get(dataTypes.get(0)));
       case MIN_VALUE:
         return new MonotonicQueueSlidingWindowAggregator(
-            accumulator, inputLocationList, step, minComparators.get(dataType));
+            accumulator, inputLocationList, step, minComparators.get(dataTypes.get(0)));
       case EXTREME:
         return new MonotonicQueueSlidingWindowAggregator(
-            accumulator, inputLocationList, step, extremeComparators.get(dataType));
+            accumulator, inputLocationList, step, extremeComparators.get(dataTypes.get(0)));
       case MIN_TIME:
       case FIRST_VALUE:
         return !ascending

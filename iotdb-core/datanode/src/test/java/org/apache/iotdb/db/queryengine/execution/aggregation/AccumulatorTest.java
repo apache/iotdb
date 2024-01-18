@@ -81,7 +81,7 @@ public class AccumulatorTest {
     Accumulator avgAccumulator =
         AccumulatorFactory.createAccumulator(
             TAggregationType.AVG,
-            TSDataType.DOUBLE,
+            Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -134,7 +134,7 @@ public class AccumulatorTest {
     Accumulator countAccumulator =
         AccumulatorFactory.createAccumulator(
             TAggregationType.COUNT,
-            TSDataType.DOUBLE,
+            Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -180,7 +180,7 @@ public class AccumulatorTest {
     Accumulator countTimeAccumulator =
         AccumulatorFactory.createAccumulator(
             TAggregationType.COUNT_TIME,
-            TSDataType.DOUBLE,
+            Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -223,7 +223,7 @@ public class AccumulatorTest {
     Accumulator extremeAccumulator =
         AccumulatorFactory.createAccumulator(
             TAggregationType.EXTREME,
-            TSDataType.DOUBLE,
+            Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -263,7 +263,7 @@ public class AccumulatorTest {
     Accumulator firstValueAccumulator =
         AccumulatorFactory.createAccumulator(
             TAggregationType.FIRST_VALUE,
-            TSDataType.DOUBLE,
+            Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -309,7 +309,7 @@ public class AccumulatorTest {
     Accumulator lastValueAccumulator =
         AccumulatorFactory.createAccumulator(
             TAggregationType.LAST_VALUE,
-            TSDataType.DOUBLE,
+            Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -354,7 +354,7 @@ public class AccumulatorTest {
     Accumulator maxTimeAccumulator =
         AccumulatorFactory.createAccumulator(
             TAggregationType.MAX_TIME,
-            TSDataType.DOUBLE,
+            Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -394,7 +394,7 @@ public class AccumulatorTest {
     Accumulator minTimeAccumulator =
         AccumulatorFactory.createAccumulator(
             TAggregationType.MIN_TIME,
-            TSDataType.DOUBLE,
+            Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -434,7 +434,7 @@ public class AccumulatorTest {
     Accumulator extremeAccumulator =
         AccumulatorFactory.createAccumulator(
             TAggregationType.MAX_VALUE,
-            TSDataType.DOUBLE,
+            Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -474,7 +474,7 @@ public class AccumulatorTest {
     Accumulator extremeAccumulator =
         AccumulatorFactory.createAccumulator(
             TAggregationType.MIN_VALUE,
-            TSDataType.DOUBLE,
+            Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -514,7 +514,7 @@ public class AccumulatorTest {
     Accumulator sumAccumulator =
         AccumulatorFactory.createAccumulator(
             TAggregationType.SUM,
-            TSDataType.DOUBLE,
+            Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -560,7 +560,7 @@ public class AccumulatorTest {
     Accumulator stddevAccumulator =
         AccumulatorFactory.createAccumulator(
             TAggregationType.STDDEV,
-            TSDataType.DOUBLE,
+            Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -614,7 +614,7 @@ public class AccumulatorTest {
     Accumulator stddevPopAccumulator =
         AccumulatorFactory.createAccumulator(
             TAggregationType.STDDEV_POP,
-            TSDataType.DOUBLE,
+            Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -661,7 +661,7 @@ public class AccumulatorTest {
     Accumulator stddevSampAccumulator =
         AccumulatorFactory.createAccumulator(
             TAggregationType.STDDEV_SAMP,
-            TSDataType.DOUBLE,
+            Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -715,7 +715,7 @@ public class AccumulatorTest {
     Accumulator varianceAccumulator =
         AccumulatorFactory.createAccumulator(
             TAggregationType.VARIANCE,
-            TSDataType.DOUBLE,
+            Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -769,7 +769,7 @@ public class AccumulatorTest {
     Accumulator varPopAccumulator =
         AccumulatorFactory.createAccumulator(
             TAggregationType.VAR_POP,
-            TSDataType.DOUBLE,
+            Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -816,7 +816,7 @@ public class AccumulatorTest {
     Accumulator varSampAccumulator =
         AccumulatorFactory.createAccumulator(
             TAggregationType.VAR_SAMP,
-            TSDataType.DOUBLE,
+            Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
             Collections.emptyMap(),
             true);

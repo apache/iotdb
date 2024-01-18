@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.parameter;
 
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
+import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -30,6 +31,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class CrossSeriesAggregationDescriptor extends AggregationDescriptor {
 
@@ -108,8 +110,13 @@ public class CrossSeriesAggregationDescriptor extends AggregationDescriptor {
   @Override
   public List<List<String>> getInputColumnNamesList() {
     if (step.isInputRaw()) {
-      return Collections.singletonList(
-          Collections.singletonList(inputExpressions.get(0).getExpressionString()));
+      List<String> inputColumnNames =
+          SqlConstant.COUNT_IF.equalsIgnoreCase(aggregationFuncName)
+              ? Collections.singletonList(inputExpressions.get(0).getExpressionString())
+              : inputExpressions.stream()
+                  .map(Expression::getExpressionString)
+                  .collect(Collectors.toList());
+      return Collections.singletonList(inputColumnNames);
     }
 
     List<List<String>> inputColumnNamesList = new ArrayList<>();

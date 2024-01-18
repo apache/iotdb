@@ -223,6 +223,7 @@ public class MaxByAccumulator implements Accumulator {
   private void updateIntResult(int yMaxVal, Column xColumn, int xIndex) {
     if (!initResult || yMaxVal > yMaxValue.getInt()) {
       initResult = true;
+      yMaxValue.setInt(yMaxVal);
       updateX(xColumn, xIndex);
     }
   }
@@ -241,6 +242,7 @@ public class MaxByAccumulator implements Accumulator {
   private void updateLongResult(long yMaxVal, Column xColumn, int xIndex) {
     if (!initResult || yMaxVal > yMaxValue.getLong()) {
       initResult = true;
+      yMaxValue.setLong(yMaxVal);
       updateX(xColumn, xIndex);
     }
   }
@@ -259,6 +261,7 @@ public class MaxByAccumulator implements Accumulator {
   private void updateFloatResult(float yMaxVal, Column xColumn, int xIndex) {
     if (!initResult || yMaxVal > yMaxValue.getFloat()) {
       initResult = true;
+      yMaxValue.setFloat(yMaxVal);
       updateX(xColumn, xIndex);
     }
   }
@@ -277,6 +280,7 @@ public class MaxByAccumulator implements Accumulator {
   private void updateDoubleResult(double yMaxVal, Column xColumn, int xIndex) {
     if (!initResult || yMaxVal > yMaxValue.getDouble()) {
       initResult = true;
+      yMaxValue.setDouble(yMaxVal);
       updateX(xColumn, xIndex);
     }
   }

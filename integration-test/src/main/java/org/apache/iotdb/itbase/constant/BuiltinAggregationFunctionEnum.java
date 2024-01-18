@@ -41,6 +41,7 @@ public enum BuiltinAggregationFunctionEnum {
   COUNT("count"),
   AVG("avg"),
   SUM("sum"),
+  MAX_BY("max_by")
   ;
 
   private final String functionName;

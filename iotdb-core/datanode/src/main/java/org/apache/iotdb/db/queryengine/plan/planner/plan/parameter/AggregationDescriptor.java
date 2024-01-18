@@ -34,6 +34,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class AggregationDescriptor {
 
@@ -108,8 +109,13 @@ public class AggregationDescriptor {
 
   public List<List<String>> getInputColumnNamesList() {
     if (step.isInputRaw()) {
-      return Collections.singletonList(
-          Collections.singletonList(inputExpressions.get(0).getExpressionString()));
+      List<String> inputColumnNames =
+          SqlConstant.COUNT_IF.equalsIgnoreCase(aggregationFuncName)
+              ? Collections.singletonList(inputExpressions.get(0).getExpressionString())
+              : inputExpressions.stream()
+                  .map(Expression::getExpressionString)
+                  .collect(Collectors.toList());
+      return Collections.singletonList(inputColumnNames);
     }
 
     return Collections.singletonList(getInputColumnNames());
@@ -162,6 +168,11 @@ public class AggregationDescriptor {
           break;
         case VAR_SAMP:
           outputAggregationNames.add(SqlConstant.VAR_SAMP);
+          break;
+        case MAX_BY:
+          // max_by(x, y) takes x and y as the input
+          outputAggregationNames.add(SqlConstant.MAX_BY_INPUT_X);
+          outputAggregationNames.add(SqlConstant.MAX_BY_INPUT_Y);
           break;
         default:
           outputAggregationNames.add(aggregationFuncName);
