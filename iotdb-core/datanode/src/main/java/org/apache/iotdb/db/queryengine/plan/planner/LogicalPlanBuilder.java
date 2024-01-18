@@ -697,29 +697,27 @@ public class LogicalPlanBuilder {
 
   public static void updateTypeProviderByPartialAggregation(
       AggregationDescriptor aggregationDescriptor, TypeProvider typeProvider) {
-    List<TAggregationType> splitAggregations =
+    List<String> partialAggregationsNames =
         SchemaUtils.splitPartialAggregation(aggregationDescriptor.getAggregationType());
     String inputExpressionStr =
         aggregationDescriptor.getInputExpressions().get(0).getExpressionString();
-    for (TAggregationType aggregation : splitAggregations) {
-      String functionName = aggregation.toString().toLowerCase();
-      TSDataType aggregationType = SchemaUtils.getAggregationType(functionName);
+    for (String partialAggregationName : partialAggregationsNames) {
+      TSDataType aggregationType = SchemaUtils.getAggregationType(partialAggregationName);
       typeProvider.setType(
-          String.format("%s(%s)", functionName, inputExpressionStr),
-          aggregationType == null ? typeProvider.getType(inputExpressionStr) : aggregationType);
+          String.format("%s(%s)", partialAggregationName, inputExpressionStr),
+          aggregationType == null ? TSDataType.TEXT : aggregationType);
     }
   }
 
   public static void updateTypeProviderByPartialAggregation(
       CrossSeriesAggregationDescriptor aggregationDescriptor, TypeProvider typeProvider) {
-    List<TAggregationType> splitAggregations =
-        SchemaUtils.splitPartialAggregation(aggregationDescriptor.getAggregationType());
+    List<String> partialAggregationsNames =
+            SchemaUtils.splitPartialAggregation(aggregationDescriptor.getAggregationType());
     PartialPath path = ((TimeSeriesOperand) aggregationDescriptor.getOutputExpression()).getPath();
-    for (TAggregationType aggregationType : splitAggregations) {
-      String functionName = aggregationType.toString().toLowerCase();
+    for (String partialAggregationName : partialAggregationsNames) {
       typeProvider.setType(
-          String.format("%s(%s)", functionName, path.getFullPath()),
-          SchemaUtils.getSeriesTypeByPath(path, functionName));
+          String.format("%s(%s)", partialAggregationName, path.getFullPath()),
+          SchemaUtils.getSeriesTypeByPath(path, partialAggregationName));
     }
   }
 

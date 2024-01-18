@@ -146,22 +146,22 @@ public class AggregationDescriptor {
           outputAggregationNames.add(SqlConstant.MIN_TIME);
           break;
         case STDDEV:
-          outputAggregationNames.add(SqlConstant.STDDEV);
+          outputAggregationNames.add(SqlConstant.STDDEV + "_partial");
           break;
         case STDDEV_POP:
-          outputAggregationNames.add(SqlConstant.STDDEV_POP);
+          outputAggregationNames.add(SqlConstant.STDDEV_POP + "_partial");
           break;
         case STDDEV_SAMP:
-          outputAggregationNames.add(SqlConstant.STDDEV_SAMP);
+          outputAggregationNames.add(SqlConstant.STDDEV_SAMP + "_partial");
           break;
         case VARIANCE:
-          outputAggregationNames.add(SqlConstant.VARIANCE);
+          outputAggregationNames.add(SqlConstant.VARIANCE + "_partial");
           break;
         case VAR_POP:
-          outputAggregationNames.add(SqlConstant.VAR_POP);
+          outputAggregationNames.add(SqlConstant.VAR_POP + "_partial");
           break;
         case VAR_SAMP:
-          outputAggregationNames.add(SqlConstant.VAR_SAMP);
+          outputAggregationNames.add(SqlConstant.VAR_SAMP + "_partial");
           break;
         default:
           outputAggregationNames.add(aggregationFuncName);

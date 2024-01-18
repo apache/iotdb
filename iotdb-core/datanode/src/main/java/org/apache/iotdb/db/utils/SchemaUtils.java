@@ -137,7 +137,7 @@ public class SchemaUtils {
       case SqlConstant.MAX_VALUE:
       case SqlConstant.MODE:
       default:
-        return null;
+        return TSDataType.TEXT;
     }
   }
 
@@ -184,28 +184,28 @@ public class SchemaUtils {
     }
   }
 
-  public static List<TAggregationType> splitPartialAggregation(TAggregationType aggregationType) {
+  public static List<String> splitPartialAggregation(TAggregationType aggregationType) {
     switch (aggregationType) {
       case FIRST_VALUE:
-        return Collections.singletonList(TAggregationType.MIN_TIME);
+        return Collections.singletonList(SqlConstant.MIN_TIME);
       case LAST_VALUE:
-        return Collections.singletonList(TAggregationType.MAX_TIME);
+        return Collections.singletonList(SqlConstant.MAX_TIME);
       case STDDEV:
-        return Collections.singletonList(TAggregationType.STDDEV);
+        return Collections.singletonList(SqlConstant.STDDEV + "_partial");
       case STDDEV_POP:
-        return Collections.singletonList(TAggregationType.STDDEV_POP);
+        return Collections.singletonList(SqlConstant.STDDEV_POP + "_partial");
       case STDDEV_SAMP:
-        return Collections.singletonList(TAggregationType.STDDEV_SAMP);
+        return Collections.singletonList(SqlConstant.STDDEV_SAMP + "_partial");
       case VARIANCE:
-        return Collections.singletonList(TAggregationType.VARIANCE);
+        return Collections.singletonList(SqlConstant.VARIANCE + "_partial");
       case VAR_POP:
-        return Collections.singletonList(TAggregationType.VAR_POP);
+        return Collections.singletonList(SqlConstant.VAR_POP + "_partial");
       case VAR_SAMP:
-        return Collections.singletonList(TAggregationType.VAR_SAMP);
+        return Collections.singletonList(SqlConstant.VAR_SAMP + "_partial");
       case AVG:
-        return Arrays.asList(TAggregationType.COUNT, TAggregationType.SUM);
+        return Arrays.asList(SqlConstant.COUNT, SqlConstant.SUM);
       case TIME_DURATION:
-        return Arrays.asList(TAggregationType.MAX_TIME, TAggregationType.MIN_TIME);
+        return Arrays.asList(SqlConstant.MAX_TIME, SqlConstant.MIN_TIME);
       case SUM:
       case MIN_VALUE:
       case MAX_VALUE:
