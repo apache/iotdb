@@ -90,6 +90,12 @@ public class PredicateSimplifier extends ExpressionAnalyzeVisitor<Expression, Vo
   @Override
   public Expression visitLogicNotExpression(LogicNotExpression logicNotExpression, Void context) {
     Expression simplifiedInputExpression = process(logicNotExpression.getExpression(), context);
+    if (simplifiedInputExpression.equals(ConstantOperand.TRUE)) {
+      return ConstantOperand.FALSE;
+    }
+    if (simplifiedInputExpression.equals(ConstantOperand.FALSE)) {
+      return ConstantOperand.TRUE;
+    }
     logicNotExpression.setExpression(simplifiedInputExpression);
     return logicNotExpression;
   }
@@ -133,6 +139,11 @@ public class PredicateSimplifier extends ExpressionAnalyzeVisitor<Expression, Vo
     } else if (isRightTrue) {
       return simplifiedLeft;
     }
+    boolean isLeftFalse = simplifiedLeft.equals(ConstantOperand.FALSE);
+    boolean isRightFalse = simplifiedRight.equals(ConstantOperand.FALSE);
+    if (isLeftFalse || isRightFalse) {
+      return ConstantOperand.FALSE;
+    }
     logicAndExpression.setLeftExpression(simplifiedLeft);
     logicAndExpression.setRightExpression(simplifiedRight);
     return logicAndExpression;
@@ -146,6 +157,15 @@ public class PredicateSimplifier extends ExpressionAnalyzeVisitor<Expression, Vo
     boolean isRightTrue = simplifiedRight.equals(ConstantOperand.TRUE);
     if (isRightTrue || isLeftTrue) {
       return ConstantOperand.TRUE;
+    }
+    boolean isLeftFalse = simplifiedLeft.equals(ConstantOperand.FALSE);
+    boolean isRightFalse = simplifiedRight.equals(ConstantOperand.FALSE);
+    if (isLeftFalse && isRightFalse) {
+      return ConstantOperand.FALSE;
+    } else if (isLeftFalse) {
+      return simplifiedRight;
+    } else if (isRightFalse) {
+      return simplifiedLeft;
     }
     logicOrExpression.setLeftExpression(simplifiedLeft);
     logicOrExpression.setRightExpression(simplifiedRight);

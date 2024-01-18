@@ -261,6 +261,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           analysis.setBuildPlanUseTemplate(true);
           return analysis;
         }
+        if (analysis.isFinishQueryAfterAnalyze()) {
+          return analysis;
+        }
 
         List<PartialPath> deviceList = analyzeFrom(queryStatement, schemaTree);
 
