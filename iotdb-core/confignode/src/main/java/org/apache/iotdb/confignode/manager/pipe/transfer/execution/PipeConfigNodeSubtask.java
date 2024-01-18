@@ -159,7 +159,9 @@ public class PipeConfigNodeSubtask extends PipeTransferSubtask {
         throw e;
       } else {
         LOGGER.info(
-            "{} in pipe transfer, ignored because pipe is dropped.", e.getClass().getName(), e);
+            "{} in pipe transfer, ignored because pipe is dropped.",
+            e.getClass().getSimpleName(),
+            e);
         releaseLastEvent(false);
       }
     } catch (Exception e) {
