@@ -145,7 +145,10 @@ public class StorageEngine implements IService {
 
   private volatile LoadTsFileManager loadTsFileManager;
 
-  private StorageEngine() {}
+  private StorageEngine() {
+    // init load tsfile manager at startup to clean the unsuccessful loaded files
+    getLoadTsFileManager();
+  }
 
   public static StorageEngine getInstance() {
     return InstanceHolder.INSTANCE;
