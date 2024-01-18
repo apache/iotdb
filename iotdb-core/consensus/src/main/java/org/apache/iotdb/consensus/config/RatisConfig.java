@@ -550,7 +550,6 @@ public class RatisConfig {
     private final int segmentCacheNumMax;
     private final SizeInBytes segmentCacheSizeMax;
     private final SizeInBytes preallocatedSize;
-    private final SizeInBytes writeBufferSize;
     private final int forceSyncNum;
     private final boolean unsafeFlushEnabled;
 
@@ -565,7 +564,6 @@ public class RatisConfig {
         int segmentCacheNumMax,
         SizeInBytes segmentCacheSizeMax,
         SizeInBytes preallocatedSize,
-        SizeInBytes writeBufferSize,
         int forceSyncNum,
         boolean unsafeFlushEnabled) {
       this.useMemory = useMemory;
@@ -578,7 +576,6 @@ public class RatisConfig {
       this.segmentCacheNumMax = segmentCacheNumMax;
       this.segmentCacheSizeMax = segmentCacheSizeMax;
       this.preallocatedSize = preallocatedSize;
-      this.writeBufferSize = writeBufferSize;
       this.forceSyncNum = forceSyncNum;
       this.unsafeFlushEnabled = unsafeFlushEnabled;
     }
@@ -619,10 +616,6 @@ public class RatisConfig {
       return preallocatedSize;
     }
 
-    public SizeInBytes getWriteBufferSize() {
-      return writeBufferSize;
-    }
-
     public int getForceSyncNum() {
       return forceSyncNum;
     }
@@ -651,7 +644,6 @@ public class RatisConfig {
       private int segmentCacheNumMax = 2;
       private SizeInBytes segmentCacheSizeMax = SizeInBytes.valueOf("200MB");
       private SizeInBytes preallocatedSize = SizeInBytes.valueOf("4MB");
-      private SizeInBytes writeBufferSize = SizeInBytes.valueOf("8MB");
       private int forceSyncNum = 128;
       private boolean unsafeFlushEnabled = true;
 
@@ -667,7 +659,6 @@ public class RatisConfig {
             segmentCacheNumMax,
             segmentCacheSizeMax,
             preallocatedSize,
-            writeBufferSize,
             forceSyncNum,
             unsafeFlushEnabled);
       }
@@ -719,11 +710,6 @@ public class RatisConfig {
 
       public Log.Builder setPreallocatedSize(SizeInBytes preallocatedSize) {
         this.preallocatedSize = preallocatedSize;
-        return this;
-      }
-
-      public Log.Builder setWriteBufferSize(SizeInBytes writeBufferSize) {
-        this.writeBufferSize = writeBufferSize;
         return this;
       }
 
