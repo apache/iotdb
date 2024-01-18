@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.pipe.transfer.extractor.ConfigPlanListeningQueue;
 import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
+import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.confignode.writelog.io.SingleFileLogReader;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IStateMachine;
@@ -70,7 +71,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
   private final ConfigPlanExecutor executor;
   private ConfigManager configManager;
 
-  /** Variables for ConfigNode Simple Consensus. */
+  /** Variables for {@link ConfigNode} Simple Consensus. */
   private LogWriter simpleLogWriter;
 
   private File simpleLogFile;
@@ -110,7 +111,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         .orElseGet(() -> new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()));
   }
 
-  /** Transmit PhysicalPlan to confignode.service.executor.PlanExecutor */
+  /** Transmit {@link ConfigPhysicalPlan} to {@link ConfigPlanExecutor} */
   protected TSStatus write(ConfigPhysicalPlan plan) {
     TSStatus result;
     try {
@@ -174,7 +175,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     return read(plan);
   }
 
-  /** Transmit PhysicalPlan to confignode.service.executor.PlanExecutor */
+  /** Transmit {@link ConfigPhysicalPlan} to {@link ConfigPlanExecutor} */
   protected DataSet read(ConfigPhysicalPlan plan) {
     DataSet result;
     try {

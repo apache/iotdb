@@ -59,7 +59,7 @@ import java.util.stream.Collectors;
  *                                             | ----------------------> drop pipe -----------------------> |
  * </code>
  *
- * <p>Other transitions are not allowed, will be ignored when received in the pipe task agent.
+ * <p>Other transitions are not allowed, will be ignored when received in the {@link PipeTaskAgent}.
  */
 public abstract class PipeTaskAgent {
 
