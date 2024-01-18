@@ -774,4 +774,34 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
     Assert.assertEquals(TsFileRepairStatus.NEED_TO_REPAIR, seqResource3.getTsFileRepairStatus());
     Files.deleteIfExists(logFile.toPath());
   }
+
+  @Test
+  public void testTimePartitionFilterFiles() {
+    DataRegion mockDataRegion = Mockito.mock(DataRegion.class);
+    Mockito.when(mockDataRegion.getTsFileManager()).thenReturn(tsFileManager);
+    Mockito.when(mockDataRegion.getTimePartitions()).thenReturn(Collections.singletonList(0L));
+
+    TsFileResource seqResource1 = createEmptyFileAndResourceWithName("100-1-0-0.tsfile", 0, true);
+    TsFileResource seqResource2 = createEmptyFileAndResourceWithName("200-3-0-0.tsfile", 0, true);
+    TsFileResource seqResource3 = createEmptyFileAndResourceWithName("300-5-0-0.tsfile", 0, true);
+    TsFileResource unseqResource1 =
+        createEmptyFileAndResourceWithName("101-2-0-0.tsfile", 0, false);
+    TsFileResource unseqResource2 =
+        createEmptyFileAndResourceWithName("201-4-0-0.tsfile", 0, false);
+    TsFileResource unseqResource3 =
+        createEmptyFileAndResourceWithName("301-6-0-0.tsfile", 0, false);
+    seqResources.add(seqResource1);
+    seqResources.add(seqResource2);
+    seqResources.add(seqResource3);
+    unseqResources.add(unseqResource1);
+    unseqResources.add(unseqResource2);
+    unseqResources.add(unseqResource3);
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    RepairTimePartition timePartition = new RepairTimePartition(mockDataRegion, 0, 250);
+    Assert.assertEquals(4, timePartition.getAllFileSnapshot().size());
+    Assert.assertEquals(2, timePartition.getSeqFileSnapshot().size());
+    Assert.assertEquals(2, timePartition.getUnSeqFileSnapshot().size());
+  }
 }

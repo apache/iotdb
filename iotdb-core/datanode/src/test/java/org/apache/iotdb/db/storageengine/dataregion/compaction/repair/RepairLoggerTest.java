@@ -46,7 +46,7 @@ public class RepairLoggerTest extends AbstractCompactionTest {
     Mockito.when(mockRepairTimePartition.getDatabaseName()).thenReturn("root.testsg");
     Mockito.when(mockRepairTimePartition.getDataRegionId()).thenReturn("0");
     Mockito.when(mockRepairTimePartition.getTimePartitionId()).thenReturn(0L);
-    Mockito.when(mockRepairTimePartition.getAllFiles())
+    Mockito.when(mockRepairTimePartition.getAllFileSnapshot())
         .thenReturn(Arrays.asList(resource1, resource2));
     Path tempDirPath = Files.createTempDirectory("");
     File logFile =
@@ -85,7 +85,7 @@ public class RepairLoggerTest extends AbstractCompactionTest {
     Mockito.when(mockRepairTimePartition.getDatabaseName()).thenReturn("root.testsg");
     Mockito.when(mockRepairTimePartition.getDataRegionId()).thenReturn("0");
     Mockito.when(mockRepairTimePartition.getTimePartitionId()).thenReturn(0L);
-    Mockito.when(mockRepairTimePartition.getAllFiles())
+    Mockito.when(mockRepairTimePartition.getAllFileSnapshot())
         .thenReturn(Arrays.asList(resource1, resource2));
     Path tempDirPath = Files.createTempDirectory("");
     File logFile =

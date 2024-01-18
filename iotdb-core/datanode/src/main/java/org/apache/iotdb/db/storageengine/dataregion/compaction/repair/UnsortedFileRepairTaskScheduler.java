@@ -141,7 +141,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
         continue;
       }
       // mark cannot repair file in TsFileResource
-      List<TsFileResource> resources = timePartition.getAllFiles();
+      List<TsFileResource> resources = timePartition.getAllFileSnapshot();
       for (TsFileResource resource : resources) {
         if (resource.getStatus() != TsFileResourceStatus.NORMAL) {
           continue;
@@ -216,7 +216,9 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
   private void checkInternalUnsortedFileAndRepair(RepairTimePartition timePartition)
       throws InterruptedException {
     List<TsFileResource> sourceFiles =
-        Stream.concat(timePartition.getSeqFiles().stream(), timePartition.getUnseqFiles().stream())
+        Stream.concat(
+                timePartition.getSeqFileSnapshot().stream(),
+                timePartition.getUnSeqFileSnapshot().stream())
             .collect(Collectors.toList());
     for (TsFileResource sourceFile : sourceFiles) {
       sourceFile.readLock();

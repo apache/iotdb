@@ -85,7 +85,7 @@ public class RepairLogger implements Closeable {
   }
 
   public void recordCannotRepairFiles(RepairTimePartition timePartition) throws IOException {
-    List<TsFileResource> resources = timePartition.getAllFiles();
+    List<TsFileResource> resources = timePartition.getAllFileSnapshot();
     List<TsFileResource> cannotRepairFiles =
         resources.stream()
             .filter(

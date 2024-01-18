@@ -78,21 +78,21 @@ public class RepairTimePartition {
     this.repaired = repaired;
   }
 
-  public List<TsFileResource> getSeqFiles() {
+  public List<TsFileResource> getSeqFileSnapshot() {
     return tsFileManager.getTsFileListSnapshot(timePartitionId, true).stream()
         .filter(this::resourceTimestampFilter)
         .collect(Collectors.toList());
   }
 
-  public List<TsFileResource> getUnseqFiles() {
+  public List<TsFileResource> getUnSeqFileSnapshot() {
     return tsFileManager.getTsFileListSnapshot(timePartitionId, false).stream()
         .filter(this::resourceTimestampFilter)
         .collect(Collectors.toList());
   }
 
-  public List<TsFileResource> getAllFiles() {
-    List<TsFileResource> seqFiles = getSeqFiles();
-    List<TsFileResource> unseqFiles = getUnseqFiles();
+  public List<TsFileResource> getAllFileSnapshot() {
+    List<TsFileResource> seqFiles = getSeqFileSnapshot();
+    List<TsFileResource> unseqFiles = getUnSeqFileSnapshot();
     List<TsFileResource> allFiles = new ArrayList<>(seqFiles.size() + unseqFiles.size());
     allFiles.addAll(seqFiles);
     allFiles.addAll(unseqFiles);
